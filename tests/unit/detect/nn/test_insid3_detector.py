@@ -88,6 +88,38 @@ class TestInsid3Construction:
             det._ensure_model_loaded()
 
 
+class TestInsid3Resolution:
+    def test_tile_px_default_is_a_dinov3_patch_multiple(self):
+        det = Insid3Detector()
+        assert det.dino_version == 3
+        assert det.tile_px == 512
+        assert det.tile_px % 16 == 0   # 16 * 32
+
+    def test_match_crop_threads_patch_into_cosine_match(self, monkeypatch):
+        det = Insid3Detector()
+        det._device = "cpu"
+        det._model = type("M", (), {"config": type("C", (), {"patch_size": 16})()})()
+        det._processor = object()
+        det._basis = np.zeros((4, 0))
+        det._prototype = np.ones(4)
+
+        seen = {}
+        monkeypatch.setattr(
+            "phenotypic.detect.nn._dino_support.extract_patch_features",
+            lambda *a, **k: np.ones((32, 32, 4), dtype=np.float32),
+        )
+
+        def fake_match(features, prototype, thresh, out_shape, patch=None):
+            seen["patch"] = patch
+            return np.zeros(out_shape, dtype=bool)
+
+        monkeypatch.setattr(
+            "phenotypic.detect.nn._dino_support.cosine_match_to_mask", fake_match
+        )
+        det._match_crop(np.zeros((512, 512, 3), dtype=np.uint8))
+        assert seen["patch"] == 16
+
+
 # ---------------------------------------------------------------------------
 # Faithful INSID3 positional-bias removal (C2) — synthetic features, no model
 # ---------------------------------------------------------------------------

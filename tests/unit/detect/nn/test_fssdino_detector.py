@@ -102,6 +102,34 @@ class TestFssDinoConstruction:
 # ---------------------------------------------------------------------------
 
 
+class TestFssDinoResolution:
+    def test_tile_px_default_is_a_dinov2_patch_multiple(self):
+        det = FssDinoDetector()
+        assert det.dino_version == 2
+        assert det.tile_px == 518
+        assert det.tile_px % 14 == 0   # 14 * 37
+
+    def test_segment_crop_upsamples_through_covered_extent(self, monkeypatch):
+        """A 600x800 crop at patch 14 has a (42, 57) grid covering 588x798.
+        The returned mask must be 600x800 with no scale error."""
+        det = FssDinoDetector(dino_version=2)
+        det._device = "cpu"
+        det._model = type("M", (), {"config": type("C", (), {"patch_size": 14})()})()
+        det._processor = object()
+        det._fg_prototypes = np.ones((1, 4), dtype=np.float64)
+        det._bg_prototypes = np.zeros((1, 4), dtype=np.float64)
+        det._fg_gram = np.eye(4)
+        det._bg_gram = np.eye(4)
+
+        monkeypatch.setattr(
+            "phenotypic.detect.nn._dino_support.extract_hidden_layer_features",
+            lambda *a, **k: np.ones((42, 57, 4), dtype=np.float32),
+        )
+        out = det._segment_crop(np.zeros((600, 800, 3), dtype=np.uint8))
+        assert out.shape == (600, 800)
+        assert out.dtype == bool
+
+
 class TestFssDinoAlgorithm:
     def test_cluster_prototypes_kmeans_cosine(self):
         from phenotypic.detect.nn._fssdino_detector import cluster_prototypes
@@ -221,6 +249,20 @@ class TestFssDinoFunctionalDinoV2:
         assert objmask.any(), "FssDinoDetector produced an empty objmask"
         # Semantic route: objmap auto-labels from objmask (Spec 1 §8 invariant).
         assert np.array_equal(objmap[:] > 0, objmask[:])
+
+    def test_dense_grid_is_native_not_224(self, synth_plate):
+        """Direct F1 regression: synth_plate is 600x800, so at patch 14 the
+        grid must be (42, 57). Before the fix every tile was squashed to
+        224x224 -> a (16, 16) grid."""
+        from transformers import AutoImageProcessor, AutoModel
+
+        from phenotypic.detect.nn._dino_support import extract_patch_features
+
+        m = AutoModel.from_pretrained("facebook/dinov2-small").eval()
+        p = AutoImageProcessor.from_pretrained("facebook/dinov2-small")
+        rgb = np.asarray(synth_plate.rgb[:], dtype=np.uint8)
+        dense = extract_patch_features(m, p, rgb, device="cpu")
+        assert dense.shape[:2] == (600 // 14, 800 // 14) == (42, 57)
 
 
 if __name__ == "__main__":

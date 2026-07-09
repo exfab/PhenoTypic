@@ -29,12 +29,13 @@ class TestSam2DetectorConstruction:
         assert det.pred_iou_thresh == 0.7
         assert det.stability_score_thresh == 0.92
         assert det.min_mask_region_area == 100
-        # Native SAM2 crop knobs default to upstream AMG values (sliding
-        # window off → stock single full-image pass).
-        assert det.crop_n_layers == 0
+        # Native SAM2 crop-pyramid knobs default to upstream AMG values,
+        # except crop_n_layers, which PhenoTypic engages by default.
+        assert det.crop_n_layers == 1
         assert det.crop_nms_thresh == 0.7
         assert det.crop_overlap_ratio == 512 / 1500
         assert det.crop_n_points_downscale_factor == 1
+        assert det.box_nms_thresh == 0.7
         assert det.device == "auto"
         assert det.checkpoint is None
         assert det.config is None
@@ -247,6 +248,26 @@ class TestSam2DetectorFunctional:
         ])
         result = pipeline.apply(synth_plate.copy(), inplace=False)
         assert result.objmap[:].max() > 0
+
+
+class TestSam2CropPyramid:
+    def test_crop_pyramid_is_engaged_by_default(self):
+        from phenotypic.detect.nn import Sam2Detector
+
+        det = Sam2Detector()
+        assert det.crop_n_layers == 1
+        assert det.box_nms_thresh == 0.7
+
+    def test_build_sam2_generator_accepts_box_nms_thresh(self):
+        """`box_nms_thresh` dedups the dense point grid's redundant proposals
+        within one crop. SAM2 exposes it; Sam2Detector did not."""
+        import inspect
+
+        from phenotypic.detect.nn._sam2_detector import build_sam2_generator
+
+        sig = inspect.signature(build_sam2_generator)
+        assert "box_nms_thresh" in sig.parameters
+        assert sig.parameters["box_nms_thresh"].default == 0.7
 
 
 if __name__ == "__main__":

@@ -212,8 +212,246 @@ class TestRecipeAlgorithm:
 
 
 # ---------------------------------------------------------------------------
+# F3 — tiled DINO features + crop-pyramid pass-through (no weights)
+# ---------------------------------------------------------------------------
+
+
+class TestDinoSam2Tiling:
+    def test_has_tiling_fields(self):
+        det = DinoSam2Detector()
+        assert det.tile_px == 518  # 14 * 37, an exact DINOv2 patch multiple
+        assert det.tile_overlap == 0.15
+        assert det.crop_n_layers == 1
+        assert det.crop_nms_thresh == 0.7
+        assert det.crop_overlap_ratio == 512 / 1500
+        assert det.crop_n_points_downscale_factor == 1
+
+    def test_pool_prototype_tiled_is_nonzero_for_a_small_colony(self):
+        """F3 regression: on a full plate a 30px colony is 0.16 patches wide,
+        so pool_prototype rounds it to empty and returns a zero vector."""
+        from phenotypic.detect.nn._dino_support import pool_prototype_tiled
+        from phenotypic.detect.nn._tiling import _Tile
+
+        tiles = [_Tile(0, 0, 518, 518)]
+        dense = [np.ones((37, 37, 8), dtype=np.float32)]
+        mask = np.zeros((518, 518), dtype=bool)
+        mask[250:280, 250:280] = True  # 30 px colony
+
+        proto = pool_prototype_tiled(dense, tiles, mask, 14)
+        assert proto.shape == (8,)
+        assert np.any(proto)  # NOT the zero vector
+
+    def test_pool_prototype_tiled_pools_from_the_owning_tile(self):
+        """The prototype must come from the tile whose core holds the centroid."""
+        from phenotypic.detect.nn._dino_support import pool_prototype_tiled
+        from phenotypic.detect.nn._tiling import _plan_tiles
+
+        tiles = _plan_tiles((518, 800), 518, 0.15)
+        assert len(tiles) == 2
+        dense = [
+            np.ones((37, 37, 4), dtype=np.float32),
+            np.full((37, 37, 4), 2.0, dtype=np.float32),
+        ]
+
+        left = np.zeros((518, 800), dtype=bool)
+        left[250:280, 100:130] = True
+        right = np.zeros((518, 800), dtype=bool)
+        right[250:280, 600:630] = True
+
+        assert np.allclose(pool_prototype_tiled(dense, tiles, left, 14), 1.0)
+        assert np.allclose(pool_prototype_tiled(dense, tiles, right, 14), 2.0)
+
+    def test_whole_plate_pooling_collapses_where_tiled_pooling_does_not(self):
+        """The F3 mechanism, at plate scale and without a backbone.
+
+        A plate reaching the ViT at the 224-px classification preset gives a
+        16x16 grid whatever the plate's size, so a 30 px colony is a fraction
+        of one patch, rounds to empty, and pool_prototype returns its
+        zero-vector fail-safe. The same colony inside a 518 px tile spans
+        30 / 14 = 2.1 patches and pools normally.
+        """
+        from phenotypic.detect.nn._dino_support import (
+            pool_prototype,
+            pool_prototype_tiled,
+        )
+        from phenotypic.detect.nn._tiling import _plan_tiles
+
+        shape = (1500, 2000)
+        mask = np.zeros(shape, dtype=bool)
+        mask[1000:1030, 1200:1230] = True  # a 30 px colony
+
+        whole_grid = np.ones((16, 16, 4), dtype=np.float32)  # the 224 preset
+        # proc_hw is the geometry the plate actually reached the ViT at.
+        assert not np.any(
+            pool_prototype(whole_grid, mask, proc_hw=(224, 224), patch=14)
+        )
+
+        tiles = _plan_tiles(shape, 518, 0.15)
+        dense = [np.ones((37, 37, 4), dtype=np.float32) for _ in tiles]
+        assert np.any(pool_prototype_tiled(dense, tiles, mask, 14))
+
+    def test_pool_prototype_tiled_empty_mask_is_the_zero_fail_safe(self):
+        from phenotypic.detect.nn._dino_support import pool_prototype_tiled
+        from phenotypic.detect.nn._tiling import _Tile
+
+        tiles = [_Tile(0, 0, 518, 518)]
+        dense = [np.ones((37, 37, 8), dtype=np.float32)]
+        proto = pool_prototype_tiled(
+            dense, tiles, np.zeros((518, 518), dtype=bool), 14
+        )
+        assert proto.shape == (8,)
+        assert not np.any(proto)
+
+    def test_crop_fields_reach_build_sam2_generator(self, monkeypatch):
+        from phenotypic.detect.nn import _checkpoint_manager as cm
+        from phenotypic.detect.nn import _sam2_detector as sam2_mod
+
+        seen: dict = {}
+        monkeypatch.setattr(cm, "resolve_device", lambda device: "cpu")
+        monkeypatch.setattr(
+            sam2_mod,
+            "build_sam2_generator",
+            lambda *a, **k: (seen.update(k), object())[1],
+        )
+
+        class _FakeModel:
+            def to(self, device):
+                return self
+
+        monkeypatch.setitem(
+            sys.modules,
+            "transformers",
+            types.SimpleNamespace(
+                AutoModel=types.SimpleNamespace(
+                    from_pretrained=lambda repo_id: _FakeModel()
+                ),
+                AutoImageProcessor=types.SimpleNamespace(
+                    from_pretrained=lambda repo_id: object()
+                ),
+            ),
+        )
+
+        det = DinoSam2Detector(
+            device="cpu",
+            crop_n_layers=2,
+            crop_nms_thresh=0.55,
+            crop_overlap_ratio=0.25,
+            crop_n_points_downscale_factor=2,
+        )
+        det._ensure_model_loaded()
+
+        assert seen["crop_n_layers"] == 2
+        assert seen["crop_nms_thresh"] == 0.55
+        assert seen["crop_overlap_ratio"] == 0.25
+        assert seen["crop_n_points_downscale_factor"] == 2
+        assert seen["min_mask_region_area"] == 100
+
+    def test_infer_one_extracts_features_per_tile_not_per_plate(self, monkeypatch):
+        """_infer_one must never hand the whole plate to the ViT: on a
+        600x800 plate at tile_px=518 that is four 518x518 crops."""
+        from phenotypic.detect.nn import _dino_support
+
+        det = DinoSam2Detector(device="cpu")
+        proposal = np.zeros((600, 800), dtype=bool)
+        proposal[300:340, 400:440] = True
+
+        det._device = "cpu"
+        det._dino_processor = object()
+        det._dino_model = types.SimpleNamespace(
+            config=types.SimpleNamespace(patch_size=14, num_register_tokens=0)
+        )
+        det._generator = types.SimpleNamespace(
+            generate=lambda rgb: [
+                {"segmentation": proposal, "predicted_iou": 0.9},
+                {"segmentation": ~proposal, "predicted_iou": 0.8},
+            ]
+        )
+
+        shapes: list = []
+
+        def fake_extract(model, processor, rgb, *, device):
+            shapes.append(rgb.shape[:2])
+            return np.ones((rgb.shape[0] // 14, rgb.shape[1] // 14, 6), np.float32)
+
+        monkeypatch.setattr(_dino_support, "extract_patch_features", fake_extract)
+
+        objmap = det._infer_one(np.zeros((600, 800, 3), dtype=np.uint8))
+
+        assert objmap.shape == (600, 800)
+        assert shapes == [(518, 518)] * 4
+        assert (600, 800) not in shapes
+
+
+# ---------------------------------------------------------------------------
 # Functional — requires foundation + sam2 + weights (skips otherwise)
 # ---------------------------------------------------------------------------
+
+
+def _dinov2_backbone_loadable() -> bool:
+    from phenotypic.detect.nn import FOUNDATION_AVAILABLE
+
+    if not FOUNDATION_AVAILABLE:
+        return False
+    try:
+        from transformers import AutoImageProcessor, AutoModel
+
+        AutoModel.from_pretrained("facebook/dinov2-small")
+        AutoImageProcessor.from_pretrained("facebook/dinov2-small")
+        return True
+    except Exception:
+        return False
+
+
+@pytest.mark.skipif(
+    not _dinov2_backbone_loadable(),
+    reason="Requires transformers + a loadable DINOv2 backbone (ungated)",
+)
+class TestDinoSam2FunctionalDinoV2:
+    def test_prototypes_are_not_all_zero(self, synth_plate):
+        """Direct F3 regression: before the fix every proposal pooled an empty
+        mask and got the zero vector, so all scores were identical.
+
+        ``synth_plate`` is only 600x800, so it cannot reproduce the collapse on
+        its own -- the whole-image grid is already 42x57. The plate-scale
+        mechanism is covered by
+        ``TestDinoSam2Tiling.test_whole_plate_pooling_collapses_where_tiled_pooling_does_not``.
+        What this asserts is that the tiled path pools real DINOv2 features
+        that are non-zero *and* colony-specific.
+        """
+        from transformers import AutoImageProcessor, AutoModel
+
+        from phenotypic.detect.nn._dino_support import (
+            extract_patch_features,
+            pool_prototype_tiled,
+        )
+        from phenotypic.detect.nn._tiling import _plan_tiles
+
+        model = AutoModel.from_pretrained("facebook/dinov2-small").eval()
+        processor = AutoImageProcessor.from_pretrained("facebook/dinov2-small")
+        patch = int(model.config.patch_size)
+
+        rgb = np.asarray(synth_plate.rgb[:], dtype=np.uint8)
+        objmap = np.asarray(synth_plate.objmap[:])
+        labels = np.unique(objmap)[1:6]
+
+        tiles = _plan_tiles(rgb.shape[:2], 518, 0.15)
+        dense = [
+            extract_patch_features(
+                model, processor, rgb[t.y0:t.y1, t.x0:t.x1], device="cpu"
+            )
+            for t in tiles
+        ]
+        protos = [
+            pool_prototype_tiled(dense, tiles, objmap == lab, patch)
+            for lab in labels
+        ]
+
+        print(f"tiles={len(tiles)} dense_grid={dense[0].shape} patch={patch}")
+        print(f"norms={[round(float(np.linalg.norm(p)), 3) for p in protos]}")
+        print(f"distinct={len({tuple(np.round(p, 4)) for p in protos})}/{len(protos)}")
+
+        assert all(np.any(pr) for pr in protos)
+        assert len({tuple(np.round(pr, 4)) for pr in protos}) > 1
 
 
 def _dinosam2_runnable() -> bool:
