@@ -2671,6 +2671,123 @@ identical signatures downstream.
 
 ---
 
+## Execution: dependency DAG and agent clusters
+
+Derived from each task's `Files` / `Interfaces` block via the `orchestration-clustering`
+procedure. This is a version-controlled view of the plan, not a separate tool.
+
+### Dependency DAG
+
+```
+1.1 ──> 1.2 ──> 1.3                          [cluster A]
+                 │
+                 ├──> 2.1                    [cluster D]
+                 ├──> {2.2 + 2.3} ──> 2.4    [cluster E]   (2.2/2.3 atomic — see below)
+                 ├──> 4.1                    [cluster F]
+                 └──> 5.1 ─> 5.2, 5.3, 5.4, 5.5   [cluster G]
+
+3.1 ──> 3.2 ──> 3.3                          [clusters B, C]   (independent of A/D/E/F)
+
+A, C ──> G          D, E ──> G          F ──> G
+E, G ──> 6.1 ──> 6.2                         [cluster H]
+```
+
+### Atomicity finding — 2.2 and 2.3 cannot be split
+
+Verified against the tree, in both directions:
+
+- `_GAT_DEFER_VALUES = {"norm": None}` landing *before* the field migration →
+  `setattr(op, "norm", None)` raises `ValidationError` (no such field; `extra="forbid"`).
+- The old `_GAT_DEFER_ATTRS` tuple setting `False` *after* the migration →
+  `op.norm = False` raises `ValidationError` (`False` is not a valid `NormOut`).
+
+Neither ordering stays green, so the GAT contract change and the eight-class field
+migration are **one commit, one cluster**. This overrides the plan's separate Task 2.2 /
+2.3 commit steps: land them as a single commit.
+
+### Clusters
+
+| # | Tasks | Shape | Model / effort | Parallel? |
+|---|---|---|---|---|
+| **A** | 1.1, 1.2, 1.3 | Keystone + Leaf | Opus-tier, high | ∥ with B→C |
+| **B** | 3.1 | **Seam** (colour-space lift) | Opus-tier, high | ∥ with A |
+| **C** | 3.2, 3.3 | Sweep (11 modes) + verify | Opus-tier, high | after B |
+| **D** | 2.1 | **Seam** (public API rename) | Opus-tier, high | after A |
+| **E** | 2.2 + 2.3 + 2.4 | **Seam**-bearing Sweep (atomic) | Opus-tier, high | after D; ∥ with F |
+| **F** | 4.1 | Keystone (small, `norm="rescale"` call) | Opus-tier, high | after A; ∥ with E |
+| **G** | 5.1–5.5 | Keystone + Leaves | Opus-tier, high | after A, C, E, F |
+| **H** | 6.1, 6.2 | Leaf (docs) + final gate | Sonnet-tier / Opus-tier gate | after E, G |
+
+**Why A is one cluster:** 1.1 is a Leaf folded into the Keystone that consumes it; 1.2 and
+1.3 share `sdk_/mixin/__init__.py` and `sdk_/__init__.py`, and 1.3's stacking test asserts
+the *interaction* of both mixins. One intent, one reviewable diff.
+
+**Why B is isolated despite being small:** risk ≠ size. It moves `colour.RGB_to_XYZ` calls
+out of an accessor. A silent numeric change here corrupts every `LabL/A/B` detection
+downstream and would not surface until much later. It gets its own gate.
+
+**Why E stays on the frontier model:** it is a consistency-critical sweep (the same edit
+shape across 8 classes) wrapped around a Seam (the GAT contract). A Sonnet-tier sweep here
+would need a frontier verify pass anyway; skip the round-trip. Instruct the agent to
+sub-batch internally — five `enhance/` classes, then three `correction/` classes — with a
+self-verify (`uv run pytest tests/unit/enhance tests/unit/correction -q`) between batches.
+
+**Why G is not split per-op:** 5.2/5.3/5.5 are Leaves of 5.1's Keystone. They share
+`enhance/__init__.py`, `tests/unit/enhance/test_contrast_ops.py`, and the taxonomy roster.
+Splitting them would serialize on those three files and invite inconsistent docstrings.
+
+### Parallel-worktree candidates
+
+**A ∥ (B → C)** only. Verified zero file overlap: A touches `sdk_/`, B and C touch
+`_core/_image_parts/`. E ∥ F also has zero overlap (`enhance/_focus_edge_laplace.py` is
+untouched by the migration), so they may run concurrently once D clears.
+
+**One correction to Task 3.3, Step 4.** Removing the `xfail` from
+`tests/unit/sdk_/mixin/test_input_layer_mixin.py` writes a file that cluster **A** owns.
+That is the only overlap between the two parallel arms. **Move that step into cluster G**,
+which runs after both. Cluster C must not touch `tests/unit/sdk_/`.
+
+### Decouple-then-flip for the breaking rename (cluster D)
+
+Task 2.1's `test_disable_normalization_sets_norm_none` constructs
+`LocalEdgeDenoise(norm="clip")`, which does not exist until cluster **E**. Landing D as
+written leaves a red test.
+
+Flip the order: in D, test `NormControlMixin` against a **local probe class** that declares
+`norm: NormOut` via `NormalizedOutputMixin` (available from cluster A). D then stays green
+standalone. Re-point the test at `LocalEdgeDenoise` as the final step of cluster E, where
+the real field arrives. Each step stays green.
+
+### Gates
+
+- **Per cluster (light):** read the diff, run the cluster's suites plus
+  `uv run ruff check --fix`. Surface any design question the review raises *before*
+  dispatching the next cluster.
+- **Deep review (frontier model, fresh agent) over the combined diff of:** cluster C
+  (the colour-space + 11-mode change), cluster E (the eight-class migration), and
+  cluster G (the four new ops). Triage and fix high-signal findings before proceeding.
+- **Never review with a weaker model than implemented.** Every cluster here is
+  Opus-tier except H's docs task, whose gate is Opus-tier anyway.
+- **End:** one simplify pass (quality only, no behaviour change) across the full branch
+  diff, apply fixes, then re-run `uv run pytest tests/unit -q` and the doctest sweep from
+  Task 6.2.
+
+### Sequenced dispatch
+
+```
+1.  A                    (+ B → C in a parallel worktree)
+2.  gate: A, C           deep review over C's diff
+3.  D                    (probe-class test; see decouple-then-flip)
+4.  E                    (+ F in a parallel worktree)
+5.  gate: E              deep review over E's combined diff
+6.  G                    (includes 3.3's deferred xfail removal)
+7.  gate: G              deep review over G's diff
+8.  H                    docs + full verification
+9.  simplify pass        + regression suite
+```
+
+---
+
 ## Execution Handoff
 
 Plan complete and saved to
