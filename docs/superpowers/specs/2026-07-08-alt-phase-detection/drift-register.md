@@ -21,11 +21,18 @@ Four categories:
 | M1 | `acos` argument clamped to `[-1,1]` | none of the three references clamps | FORCED | Roundoff can push `energy/(sumAn+ε)` above 1 ⇒ `NaN`. Paired with a test asserting the clamp **never fires** on the three shipped plates, so it is provably inert. |
 | M2 | `orientation` / `feature_type` mapped from radians to `[0,1]` | `phasecongmono` returns radians | CONTRACT | `detect_mat ∈ [0,1]`. The map is stated in the docstring and is invertible. |
 | M3 | `FocusEdgePhase` tightened to `n_scale ≥ 2` | our own shipped code, not a reference | CAPABILITY | Fixes a silent all-zero output at `n_scale=1` (`_focus_edge_phase.py:320` divides by `n_scale − 1`). Unrelated to the port; may be split into its own commit. Changelog entry required. |
+| M4 | `fft2`, not `perfft2` | **the references disagree** | *not a deviation — a recorded choice* | MATLAB `phasecongmono.m` l.156 uses `perfft2`; Julia `phasecongruency.jl` l.446 uses `fft` and says so (`# Use fft rather than perfft2`). We ship the Julia branch. Material: `pc` moves up to `0.67` absolute, `0.13` even 16 px inside the border. The golden fixture pins the **`perfft2`** branch, since that is what `phasepack` computes; the branches differ only in which spectrum enters an identical chain. Kernel takes `periodic: bool = False`; **the operation does not expose it.** `verify_claims.py::check_18`. |
+| M5 | `T = max(…, ε)` | `phasepack` only; neither MATLAB nor Julia floors `T` | CAPABILITY | A free guard on the degenerate case. Inactive on every non-constant image — the smallest `T` across the five fixture images is `3.7e-3`, 37× the floor; only a literally constant image reaches it. Kept because the fixture encodes it and it costs nothing. |
 
 **Nothing else.** The congruency formula, `ε = 1e-4`, `k = 3.0`, `deviation_gain = 1.5`, the geometric
 noise factor `(1/mult)^s` — including its known inaccuracy at the anchor scale — and Kovesi's Rayleigh
 constant with its measured `1.048×` bias are all reproduced verbatim. **A port has a reference; use
 it.** The golden fixture enforces this at `rtol=1e-6`.
+
+**Where the references disagree (M4), a port has no reference.** The deliverable is then a *recorded
+decision*, not a fix. Two such forks exist: the periodic FFT (M4) and, at odd sizes only, the
+frequency-grid normalisation (Julia `k/N` vs MATLAB `k/(N−1)`; we follow the Julia, and the fixture is
+generated at even sizes so it cannot silently arbitrate).
 
 ### Corrected before shipping
 
@@ -133,6 +140,15 @@ the difference, and it did so in one run. A second omission — `T = max(…, ε
 time. **A behavioural control and a golden fixture answer different questions; neither substitutes for
 the other.** `references.md` §10.3.
 
+**S7 — the fix for S6 immediately re-committed S4.** Having found that `phasepack` used `perfft2` and
+this spec did not, the correction was written as "every reference implementation bandpasses the
+periodic component" and pushed. Kovesi's Julia does not — it comments `perfft2` out on line 444 with
+`# Use fft rather than perfft2`. One `grep` of the source that had been sitting in the scratchpad the
+whole time would have caught it. The same commit misattributed `phasepack`'s `max(T, ε)` floor to
+Kovesi. **Both errors were generalisations from a single reference, made while writing the lesson
+about not generalising from a single reference.** When two implementations disagree, the deliverable
+is not a fix — it is a recorded decision. `references.md` §10.3.
+
 **The lesson, in one line:** copying a reference's *constants* is not faithfulness. Copying its
 *principle*, correctly instantiated, is — and verifying the principle is part of copying it.
 Where a reference also publishes its *test data*, take that too: it is the only ground truth in the
@@ -161,6 +177,7 @@ Kept visible so nobody re-derives them.
 | `E ≤ A_Σ` matters for the `[0,1]` bound. | It does not. But `E/A_Σ ≈ 1` was *also* a folded-construction artifact: the real value is `0.999948` at an edge, `0.0` on flat. |
 | `references.md` §6's "80–95% luminance". | Mixed `load_synth_yeast_plate` into one table and `load_yeast_plate` into another. Real plates: 69–80%. |
 | "`pc` is invariant to the `fx`/`fy` swap, so nothing else catches it" (§7). | True but incomplete, and the incompleteness was the dangerous half. There is a **second** axis bug — the `−sumh2` sign — and the vertical/horizontal edge pair is blind to *that* one in `pc` **and** `orientation`. Only an off-axis pattern (`starsine`) catches it. |
-| §2's "filter the image FFT". | Wrong. Every reference filters the image's **periodic component** (`perfft2`). Using `fft2` moves `pc` by up to `0.67` absolute, and `0.13` even 16 px inside the border. §2.0. |
-| §2.2's noise threshold, as written. | Omitted Kovesi's `T = max(…, ε)` floor. A noiseless synthetic then gets `T = 0` and the multiplicative noise gate stops gating. |
-| "Kovesi's Julia, MATLAB and `phasepack` agree verbatim." | Not at **odd** sizes: the Julia frequency grid divides by `N`, the MATLAB by `N − 1` (`8.2e-3` on a 255² `starsine`, `0.0` at even sizes). We follow the Julia — `k/N` is the true DFT bin frequency — and generate the fixture at even sizes so it cannot silently arbitrate. |
+| "Every reference implementation bandpasses the periodic component." | **Two of three.** MATLAB `phasecongmono.m` l.156 and `phasepack` do; Kovesi's Julia comments `perfft2` out (`IMG = fft(img)   # Use fft rather than perfft2`). Asserted after checking only `phasepack` — S4 repeating itself inside the commit that added S6. We ship the Julia branch and fixture the MATLAB one. §2.0. |
+| "The `max(…, ε)` floor is Kovesi's." | It is **`phasepack`'s**. Neither MATLAB nor Julia floors `T`. Inactive on every non-constant image (smallest fixture `T` = `3.7e-3`, 37× the floor). Kept as a free guard, correctly attributed. |
+| Implied: the shipped `FocusEdgePhase` might share the `fft2` defect. | It does not. `perfft2` is `phasecongmono`-specific; MATLAB `phasecong3.m` l.146 and Julia `phasecong3` both use plain `fft2`. §3.2's scope guard holds. |
+| "Kovesi's Julia, MATLAB and `phasepack` agree verbatim." | False twice over: the `perfft2` fork above, and — at **odd** sizes — the frequency grid (Julia divides by `N`, MATLAB by `N − 1`; `8.2e-3` on a 255² `starsine`, `0.0` at even sizes). We follow the Julia (`k/N` is the true DFT bin frequency) and generate the fixture at even sizes so it cannot silently arbitrate. |

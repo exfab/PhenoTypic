@@ -272,14 +272,25 @@ def filter_grid(rows: int, cols: int) -> tuple[np.ndarray, np.ndarray, np.ndarra
 
 
 def periodic_fft2(img: np.ndarray) -> np.ndarray:
-    """Moisan's periodic component of the FFT (Kovesi's ``perfft2``). **Not optional.**
+    """Moisan's periodic component of the FFT (Kovesi's ``perfft2``).
 
     ``fft2`` treats the image as tiled, so the jump between opposite borders injects a
     cross-shaped artifact into every frequency band. The periodic/smooth decomposition
     splits ``img = p + s`` with ``s`` carrying that jump, and returns ``F(p)``.
 
-    Every reference implementation of ``phasecongmono`` uses it. Omitting it changes ``pc``
-    by up to **0.59 absolute** -- not a border effect, a whole-image one (check_18).
+    **The references disagree on whether to use it**, and the choice is material -- ``pc``
+    moves by up to 0.67 absolute (check_18):
+
+    * MATLAB ``phasecongmono.m`` l.156: ``IM = perfft2(im);``  -- and ``phasepack`` ports this.
+    * Julia ``phasecongruency.jl`` l.444-446: ``perfft2`` is commented out, with
+      ``IMG = fft(img)   # Use fft rather than perfft2``. No reason is given.
+
+    This spec follows the Julia -- Kovesi's most recent word -- so ``periodic`` defaults to
+    ``False``. The golden fixture (check_19) pins the ``periodic=True`` branch, because that
+    is the branch ``phasepack`` computes. Since the two branches differ only in which
+    spectrum enters an otherwise identical chain, fixturing one validates the other's
+    machinery. ``perfft2`` is specific to ``phasecongmono``: both MATLAB and Julia
+    ``phasecong3`` use plain ``fft2``, so the shipped ``FocusEdgePhase`` is unaffected.
     """
     rows, cols = img.shape
     s = np.zeros_like(img, dtype=float)
@@ -394,23 +405,26 @@ def monogenic_phase_congruency(
     noise_threshold: bool = True,
     swap_axes: bool = False,
     flip_h2_sign: bool = False,
-    periodic: bool = True,
+    periodic: bool = False,
     matlab_odd_grid: bool = False,
 ) -> Monogenic:
     """The operator specified in ``monogenic-phase-congruency.md`` §2, transcribed here.
 
-    Log-Gabor bandpass + Riesz transform of the image's PERIODIC component, summed over
-    scales::
+    Log-Gabor bandpass + Riesz transform, summed over scales::
 
         PC = W * max(1 - deviation_gain*acos(E/(sumAn + eps)), 0) * max(E - T, 0)/(E + eps)
 
-    Verified against ``phasepack.phasecongmono`` to ``8e-14`` on five images at even sizes
-    (check_18). Two deliberate departures from that reference, both declared:
+    Defaults follow Kovesi's Julia. With ``periodic=True`` it reproduces
+    ``phasepack.phasecongmono`` -- i.e. Kovesi's MATLAB -- to ``7e-13`` (check_19).
+
+    Declared departures from ``phasepack``:
 
     * ``acos``'s argument is clipped to ``[-1, 1]``. ``phasepack`` does not clip and would
       emit ``NaN``; ``n_clamped`` counts how often that would have happened. It never does.
-    * ``periodic=False`` and the two axis switches exist only so checks 17 and 18 can inject
-      the corresponding bugs and show which tests catch them.
+    * The ``max(T, eps)`` floor is ``phasepack``'s, not Kovesi's -- neither MATLAB nor Julia
+      floors ``T``. It is inactive on every non-constant image, so it is kept as a free guard.
+    * ``swap_axes`` and ``flip_h2_sign`` exist only so check_17 can inject the corresponding
+      bugs and show which tests catch them.
     """
     rows, cols = img.shape
     if matlab_odd_grid:
@@ -463,7 +477,8 @@ def monogenic_phase_congruency(
     total_tau = tau * (1 - (1 / mult) ** nscale) / (1 - 1 / mult)  # geometric sum
     threshold = 0.0
     if noise_threshold:
-        # Kovesi floors T at epsilon so that a noiseless image still divides safely.
+        # phasepack's floor, not Kovesi's (neither MATLAB nor Julia has it). Inactive unless
+        # the image is constant; kept because it costs nothing and the fixture encodes it.
         threshold = max(total_tau * np.sqrt(np.pi / 2) + k * total_tau * np.sqrt((4 - np.pi) / 2), eps)
 
     energy = np.sqrt(sum_f**2 + sum_h1**2 + sum_h2**2)
@@ -1228,7 +1243,7 @@ def check_15_step2line_congruency_survives_the_feature_type_sweep() -> Result:
     ft_deg = np.degrees(mono.feature_type[rows, col])
 
     ft_span = ft_deg[-1] - ft_deg[0]
-    rising = float(np.mean(np.diff(ft_deg) > 0))  # near-monotone; the periodic FFT adds small wiggles
+    rising = float(np.mean(np.diff(ft_deg) > 0))
     ft_sweeps = 75.0 < ft_span < 95.0 and rising > 0.95  # phasecycles = 0.25 -> 90 deg
 
     pc_collapse = pc_col.max() / pc_col.min()
@@ -1240,8 +1255,8 @@ def check_15_step2line_congruency_survives_the_feature_type_sweep() -> Result:
     ok = (
         ft_sweeps
         and mono.n_clamped == 0  # M1: the acos argument never leaves [-1, 1]
-        and 0.9 < endpoints < 1.1
-        and pc_collapse < 1.3
+        and 0.9 < endpoints < 1.15
+        and pc_collapse < 1.6
         and grad_collapse > 8.0
         and grad_col[-1] / grad_col[0] < 0.15
         and localised == 1.0
@@ -1339,7 +1354,7 @@ def check_17_starsine_pins_the_orientation_convention() -> Result:
         return float(np.degrees(mono.orientation[np.unravel_index(np.argmax(mono.pc), mono.pc.shape)]))
 
     v_deg, h_deg = orientation_at_peak(vertical), orientation_at_peak(horizontal)
-    convention_ok = abs(v_deg) < 0.02 and abs(h_deg - 90.0) < 0.02
+    convention_ok = abs(v_deg) < 1e-6 and abs(h_deg - 90.0) < 1e-6
 
     # The straight-edge pair is blind to the sign flip: 0 and 90 deg are self-mirrored mod 180,
     # so the flipped orientation lands back on the unflipped one.
@@ -1349,7 +1364,7 @@ def check_17_starsine_pins_the_orientation_convention() -> Result:
         return float(np.degrees(angular_distance_mod_pi(np.array(b), np.array(a))))
 
     v_flip, h_flip = flip_shift(vertical), flip_shift(horizontal)
-    flip_invisible = v_flip < 0.05 and h_flip < 0.05
+    flip_invisible = v_flip < 1e-6 and h_flip < 1e-6
 
     # ...and pc is blind to the swap.
     pc_plain = monogenic_phase_congruency(vertical).pc
@@ -1384,22 +1399,28 @@ def check_17_starsine_pins_the_orientation_convention() -> Result:
     )
 
 
-def check_18_the_periodic_fft_is_not_optional() -> Result:
-    """``perfft2`` is load-bearing, and the two reference grids diverge at odd sizes.
+def check_18_the_two_references_disagree_on_the_periodic_fft() -> Result:
+    """``perfft2`` vs ``fft2``: the references genuinely disagree, and it matters.
 
-    Every reference implementation of ``phasecongmono`` bandpasses the image's **periodic
-    component**, not the image. ``fft2`` treats the image as tiled, so the jump between
-    opposite borders leaks a cross-shaped artifact into every log-Gabor band.
+    * MATLAB ``phasecongmono.m`` l.156 uses ``perfft2``; ``phasepack`` ports that.
+    * Julia ``phasecongruency.jl`` l.444-446 comments ``perfft2`` out and uses ``fft``,
+      annotated "Use fft rather than perfft2". No reason is given.
 
-    This check exists because an earlier revision of this file omitted ``perfft2`` and the
-    resulting ``pc`` was wrong by up to **0.67 absolute** -- and, damningly, checks 15-17 all
-    still passed. Border trimming does not rescue it: 16 px in from every edge the error is
-    still 0.13 on ``step2line``, because the leak is spread across the whole spectrum.
+    So "all three references agree verbatim" was false. This spec follows the Julia (the
+    default here and in the operation) and pins the MATLAB branch with the golden fixture.
+    Neither choice is a bug; recording which one we made is the point.
+
+    The gap is not cosmetic and not a border artifact: 16 px inside every edge ``pc`` still
+    differs by ``0.13`` on ``step2line``, because ``fft2``'s implicit tiling leaks the
+    border discontinuity across the whole spectrum.
+
+    ``perfft2`` is specific to ``phasecongmono``. Both MATLAB (l.146) and Julia
+    ``phasecong3`` use plain ``fft2``, so the shipped ``FocusEdgePhase`` is untouched by this.
 
     Separately: for ODD sizes Kovesi's Julia divides the frequency axis by ``N`` while his
-    MATLAB (which ``phasepack`` ports) divides by ``N - 1``. ``k/N`` is the true DFT bin
-    frequency and is what this file uses. The two agree exactly at even sizes, so the golden
-    fixture (check_19) is generated at even sizes only and cannot arbitrate between them.
+    MATLAB (hence ``phasepack``) divides by ``N - 1``. ``k/N`` is the true DFT bin frequency,
+    so the Julia form is used. The two are bit-identical at even sizes, which is why the
+    golden fixture is generated at even sizes only and cannot silently arbitrate.
     """
     n = 256
     step = np.zeros((n, n))
@@ -1412,11 +1433,10 @@ def check_18_the_periodic_fft_is_not_optional() -> Result:
     }
     whole, interior = {}, {}
     for name, img in cases.items():
-        d = np.abs(monogenic_phase_congruency(img).pc - monogenic_phase_congruency(img, periodic=False).pc)
+        d = np.abs(monogenic_phase_congruency(img, periodic=True).pc - monogenic_phase_congruency(img).pc)
         whole[name] = float(d.max())
         interior[name] = float(d[16:-16, 16:-16].max())
 
-    # Even sizes: the two frequency-grid conventions are bit-identical. Odd sizes: they are not.
     even = float(
         np.abs(
             monogenic_phase_congruency(cases["starsine"]).pc
@@ -1432,18 +1452,19 @@ def check_18_the_periodic_fft_is_not_optional() -> Result:
     )
 
     ok = (
-        whole["step2line"] > 0.5  # omitting perfft2 is catastrophic, not cosmetic
-        and interior["step2line"] > 0.05  # and it is not a border effect
+        whole["step2line"] > 0.5  # the choice is material, not cosmetic
+        and interior["step2line"] > 0.05  # and it is not confined to the border
         and interior["starsine"] > 0.05
         and even < 1e-15  # the grids agree where the fixture lives
         and odd > 1e-3  # and disagree where it does not
     )
     return Result(
-        "18 the periodic FFT is not optional; the two reference grids diverge at odd sizes",
+        "18 the two references disagree on the periodic FFT (and on odd-size grids)",
         ok,
-        "fft2 instead of perfft2 shifts pc by "
+        "MATLAB perfft2 vs Julia fft2 shifts pc by "
         + ", ".join(f"{k} {whole[k]:.4f} (interior {interior[k]:.4f})" for k in cases)
-        + f"; Julia's k/N vs MATLAB's k/(N-1) grid: {even:.1e} at 256 (identical), {odd:.1e} at 255",
+        + f"; Julia's k/N vs MATLAB's k/(N-1) grid: {even:.1e} at 256 (identical), {odd:.1e} at 255. "
+        f"We ship the Julia branch; check_19 fixtures the MATLAB one",
     )
 
 
@@ -1460,8 +1481,13 @@ def check_19_golden_fixture_agrees_with_phasepack() -> Result:
     reference" is a claim about transcription, not about correctness. Checks 09b and 15-18 are
     what speak to correctness.
 
-    64x64 (even, so the §18 grid divergence cannot bite). Skips with a PASS if the fixture is
-    absent, so the file stays runnable from a bare checkout of the spec text alone.
+    Called with ``periodic=True`` because that is what ``phasepack`` computes (MATLAB
+    lineage). The operation itself defaults to ``periodic=False``, following Kovesi's Julia --
+    the two branches differ only in which spectrum enters an otherwise identical chain, so
+    fixturing one validates the other's machinery. check_18.
+
+    64x64 (even, so the check_18 grid divergence cannot bite). Skips with a PASS if the fixture
+    is absent, so the file stays runnable from a bare checkout of the spec text alone.
     """
     from pathlib import Path
 
@@ -1483,7 +1509,7 @@ def check_19_golden_fixture_agrees_with_phasepack() -> Result:
     worst_pc = worst_ft = worst_t = 0.0
     ok = True
     for name, img in cases.items():
-        mono = monogenic_phase_congruency(img)
+        mono = monogenic_phase_congruency(img, periodic=True)
         worst_pc = max(worst_pc, float(np.abs(golden[f"{name}__pc"] - mono.pc).max()))
         worst_ft = max(worst_ft, float(np.abs(golden[f"{name}__ft"] - mono.feature_type).max()))
         worst_t = max(worst_t, abs(float(golden[f"{name}__T"]) - mono.threshold))
@@ -1522,7 +1548,7 @@ CHECKS: tuple[Callable[[], Result], ...] = (
     check_15_step2line_congruency_survives_the_feature_type_sweep,
     check_16_noiseonf_exercises_the_rayleigh_threshold,
     check_17_starsine_pins_the_orientation_convention,
-    check_18_the_periodic_fft_is_not_optional,
+    check_18_the_two_references_disagree_on_the_periodic_fft,
     check_19_golden_fixture_agrees_with_phasepack,
 )
 

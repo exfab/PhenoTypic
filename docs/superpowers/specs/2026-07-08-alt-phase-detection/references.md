@@ -841,22 +841,43 @@ A test suite built only from horizontal and vertical step edges would ship that 
 removed. Agreement: `max|Δpc| = 3.5e-14` across five 64×64 images — eight orders inside the `rtol=1e-6`
 target. `verify_claims.py::check_19`.
 
-It immediately paid for itself by exposing **two omissions in this spec's own §2**, neither of which
-any behavioural control detected:
+It immediately paid for itself by exposing **three things this spec had asserted without checking**,
+none of which any behavioural control detects.
 
-| Omission | Consequence | Caught by |
-|---|---|---|
-| **`perfft2`, not `fft2`.** Every reference bandpasses the image's *periodic component* (Moisan's periodic/smooth decomposition). | `pc` wrong by up to **0.67 absolute**. Not a border effect: 16 px inside every edge the error is still `0.13` on `step2line`. `fft2` tiles the image, so the border jump leaks a cross into every log-Gabor band. | Fixture only. Checks 15, 16, 17 **all passed with the bug present.** |
-| **`T = max(…, ε)`.** Kovesi floors the noise threshold. | A noiseless synthetic gets `T = 0` and the multiplicative noise gate stops gating. | Fixture only. |
+### The `perfft2` fork — the references disagree
 
-There is also a genuine divergence between Kovesi's own two implementations, at **odd sizes only**:
-`frequencyfilt.jl` divides an odd frequency axis by `N`, while his older MATLAB `filtergrid.m` — which
+| Source | Spectrum |
+|---|---|
+| MATLAB `phasecongmono.m` l.156 | `IM = perfft2(im);` |
+| `phasepack` (ports the MATLAB) | `perfft2` |
+| **Julia `phasecongruency.jl` l.444–446** | `# (IMG,) = perfft2(img)` … `IMG = fft(img)   # Use fft rather than perfft2` |
+
+Neither source explains the change. The gap is material: `pc` differs by up to **0.67 absolute**, and
+`0.13` even 16 px inside every edge, because `fft2` tiles the image and leaks the border discontinuity
+across the whole spectrum.
+
+**Decision:** ship the Julia branch (`fft2`), fixture the MATLAB one (`perfft2`). The two differ only
+in which spectrum enters an otherwise identical chain, so the fixture still validates the machinery.
+`perfft2` is `phasecongmono`-specific — MATLAB `phasecong3.m` l.146 and Julia `phasecong3` both use
+plain `fft2`, so the shipped `FocusEdgePhase` is unaffected.
+
+### Two claims that were simply wrong
+
+| Claim as written | Truth |
+|---|---|
+| "Every reference bandpasses the periodic component." | Two of three. Kovesi's own Julia opts out, explicitly. |
+| "`T = max(…, ε)` is Kovesi's floor." | It is **`phasepack`'s**. Neither MATLAB nor Julia floors `T`. It is inactive on every non-constant image — the smallest fixture `T` is `3.7e-3`, 37× the floor. Kept as a free guard, now attributed. |
+
+### And a genuine divergence, at odd sizes only
+
+`frequencyfilt.jl` divides an odd frequency axis by `N`; his older MATLAB `filtergrid.m` — which
 `phasepack` ports — divides by `N − 1`. `k/N` is the true DFT bin frequency, so this spec follows the
 Julia. The two are bit-identical at even sizes (`0.0`) and differ by `8.2e-3` on a 255² `starsine`,
 which is why the fixture is generated at even sizes only and cannot arbitrate between them.
 
 **The lesson.** Behavioural controls answer "does it behave like a phase-congruency operator?" A golden
 fixture answers "is it *this* operator?" `step2line`, `noiseonf` and `starsine` all said yes to the
-first question while the second was still no. Both kinds of test are necessary; neither substitutes for
-the other. Note the converse too, from §10: `phasepack` carries no tests at all, so the fixture pins
-*transcription*, not *correctness* — checks `09b` and `15`–`18` are what speak to correctness.
+first while the second was unanswered. Both kinds of test are necessary; neither substitutes for the
+other. And note the converse, from §10: `phasepack` carries no tests at all, so the fixture pins
+*transcription*, not *correctness* — checks `09b` and `15`–`18` are what speak to correctness. The
+fixture told us where the references disagree; it cannot tell us which is right.

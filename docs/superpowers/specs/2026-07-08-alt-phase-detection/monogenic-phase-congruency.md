@@ -25,24 +25,33 @@ must not imply we have reproduced the CCDC formulation, which may differ.
 
 ## 2. Algorithm
 
-Per scale `s`, filter the **periodic component** of the image FFT (§2.0) with the isotropic log-Gabor
-radial, take the inverse FFT for the even channel `f_s`, and apply the packed Riesz multiplier for the
-two odd channels. Then `Aₛ = √(f_s² + h1_s² + h2_s²)`.
+Per scale `s`, filter the image FFT with the isotropic log-Gabor radial, take the inverse FFT for the
+even channel `f_s`, and apply the packed Riesz multiplier for the two odd channels. Then
+`Aₛ = √(f_s² + h1_s² + h2_s²)`.
 
-### 2.0 Use `perfft2`, not `fft2` — this is not a detail
+### 2.0 `fft2` or `perfft2`? The references disagree. We ship `fft2`.
 
 ```
-IM = perfft2(img)        # Moisan's periodic/smooth decomposition; return F(periodic part)
+IM = fft2(img)           # Julia, phasecongruency.jl l.446: "Use fft rather than perfft2"
+IM = perfft2(img)        # MATLAB, phasecongmono.m l.156 — and phasepack, which ports it
 ```
 
-`fft2` treats the image as tiled, so the intensity jump between opposite borders leaks a cross-shaped
-artifact into **every** log-Gabor band. Every reference implementation bandpasses the periodic
-component. Omitting it moves `pc` by up to **0.67 absolute**, and it is not a border effect: 16 px
-inside every edge the error is still `0.13` on `step2line`.
+Kovesi's MATLAB bandpasses the image's **periodic component** (Moisan's periodic/smooth
+decomposition). His later Julia explicitly comments that out. No reason is given in either source.
 
-This is recorded so emphatically because an early revision of `verify_claims.py` omitted it and
-**checks 15, 16 and 17 all still passed** — the behavioural tests are insensitive to it, and only the
-golden fixture caught it. `verify_claims.py::check_18`, `references.md` §10.3.
+**The choice is material, not cosmetic.** `fft2` treats the image as tiled, so the intensity jump
+between opposite borders leaks a cross-shaped artifact into every log-Gabor band: `pc` differs by up
+to **0.67 absolute**, and 16 px inside every edge still by `0.13` on `step2line`.
+
+**Decision:** implement `fft2` — Kovesi's most recent word. The golden fixture (§7) pins the
+`perfft2` branch, because that is what `phasepack` computes. The two branches differ only in *which
+spectrum enters an otherwise identical chain*, so fixturing one validates the other's machinery. The
+kernel takes `periodic: bool = False`; the **operation does not expose it**.
+
+`perfft2` is specific to `phasecongmono`. Both MATLAB (`phasecong3.m` l.146) and Julia `phasecong3`
+use plain `fft2`, so the shipped `FocusEdgePhase` is unaffected and §3.2's scope guard holds.
+
+`verify_claims.py::check_18`, `references.md` §10.3.
 
 ### 2.1 The congruency formula is NOT `_phasecong3`'s
 
@@ -67,11 +76,13 @@ phase-deviation term uses `acos(E/ΣA)` scaled by `deviation_gain`, which sharpe
 ```
 tau      = median(sumAn)/√(log 4)                    # at the FIRST scale only
 totalTau = tau · (1 − (1/mult)^n_scale)/(1 − 1/mult)
-T        = max( totalTau·√(π/2) + k·totalTau·√((4−π)/2),  ε )   # floored at ε
+T        = max( totalTau·√(π/2) + k·totalTau·√((4−π)/2),  ε )   # the floor is phasepack's
 ```
 
-The `max(…, ε)` floor is Kovesi's and is easy to drop by accident: without it a noiseless synthetic
-image gets `T = 0`, and `max(E−T,0)/(E+ε)` stops suppressing anything at all.
+The `max(…, ε)` floor is **`phasepack`'s, not Kovesi's** — neither MATLAB nor Julia has it. It is
+inactive on every non-constant image (the smallest `T` across the five fixture images is `3.7e-3`,
+37× the floor; only a literally constant image reaches it). Kept because it costs nothing, guards the
+degenerate case, and the fixture encodes it. Recorded in `drift-register.md`.
 
 `(1/mult)^s` is the log-Gabor instantiation of Kovesi's "relative bandwidths" principle, and it is
 **exact for this bank** (`references.md` §4.4.3: the kernel-norm ratios converge to `1/mult` to six
@@ -88,7 +99,8 @@ states that `k` absorbs exactly such a constant. **Inherit it.**
 ### 2.3 `ε = 1e-4`, and clamp the `acos`
 
 All three references use `ε = 1e-4` for `phasecongmono` (Julia line 441, MATLAB line 153, `phasepack`
-line 129). `1e-5` belongs to `phasecong3`, which is why `FocusEdgePhase` correctly uses it. Not
+line 129). `1e-5` belongs to **Julia's** `phasecong3` (MATLAB's `phasecong3.m` uses `1e-4`), which is
+why `FocusEdgePhase` — a Julia port — correctly uses it. Not
 cosmetic: `ε` is the only thing keeping `energy/(sumAn + ε)` strictly below 1 before it enters
 `acos`.
 
@@ -245,22 +257,24 @@ package continuing to install.
 
 The fixture holds `pc`, `ft` and `T` for five 64×64 images — a step edge plus all four of Kovesi's
 generators — at `nscale=4, minWaveLength=3, mult=2.1, sigmaOnf=0.55, k=3.0, cutOff=0.5, g=10.0,
-deviationGain=1.5`. Sizes are **even** on purpose: the two reference frequency grids diverge at odd
-sizes (§2.0's sibling issue, `verify_claims.py::check_18`), so an odd-sized fixture would silently
-pick a side.
+deviationGain=1.5`, and it pins the **`periodic=True` branch** (§2.0), since that is what `phasepack`
+computes. Sizes are **even** on purpose: the two reference frequency grids diverge at odd sizes
+(`verify_claims.py::check_18`), so an odd-sized fixture would silently pick a side.
 
 Current agreement, `verify_claims.py::check_19`: `max|Δpc| = 3.5e-14`, `max|Δft| = 6.7e-13`,
 `max|ΔT| = 4.4e-16`. Eight orders inside the `rtol = 1e-6` target.
 
-**It has already earned its keep.** The fixture is what caught the missing `perfft2` (§2.0). The
-behavioural controls — `step2line`, `noiseonf`, `starsine` — all passed with that bug present. Reuse
-the same fixture for `FocusEdgeMonogenicPhase`'s test suite rather than regenerating it.
+**It has already earned its keep.** The fixture is what surfaced the `perfft2` fork (§2.0) and the
+`T`-floor misattribution (§2.2). The behavioural controls — `step2line`, `noiseonf`, `starsine` — are
+blind to both. Reuse the same fixture for `FocusEdgeMonogenicPhase`'s test suite rather than
+regenerating it; call the kernel with `periodic=True` in that one test only.
 
 Two deliberate departures from `phasepack`, both to be preserved in the operation:
 
 - **Clip `acos`'s argument to `[−1, 1]`.** `phasepack` does not, and would emit `NaN`. Instrument the
   clamp and assert it never fires (test 4); it never has.
 - **`ε = 1e-4`**, matching `phasepack` and Kovesi — not `FocusEdgePhase`'s `1e-5` (test 3).
+- **`T` floored at `ε`.** `phasepack`'s, not Kovesi's; inactive on any non-constant image (§2.2).
 
 Regenerate only with `uv add --group dev phasepack` and a deliberate decision to move the goalposts.
 Per `references.md` §10, `phasepack` ships **no tests of its own**, so this fixture is stronger
@@ -287,8 +301,7 @@ to correctness.
 | Risk | Mitigation |
 |---|---|
 | Transcription error in the port | Golden fixture at `rtol=1e-6` — **generated, committed, and already proven** (§7). It is the only thing that caught the missing `perfft2`. |
-| Using `fft2` instead of `perfft2` | §2.0 + `verify_claims.py::check_18`. **No behavioural test catches this** — `pc` shifts by 0.67 and `step2line`/`noiseonf`/`starsine` all still pass. |
-| Dropping the `max(T, ε)` floor | §2.2. A noiseless synthetic then gets `T = 0` and the noise gate stops gating. Fixture-only catch. |
+| Silently switching `fft2`/`perfft2` | §2.0 + `verify_claims.py::check_18`. **No behavioural test catches this** — `pc` shifts by 0.67 while `step2line`/`noiseonf`/`starsine` all still pass. Only the fixture sees it, and only because it pins the `perfft2` branch. |
 | `fx`/`fy` axis swap silently rotates orientation by 90° | Test 7. `pc` is invariant to the swap (`1.5e-17`), so nothing else catches it. |
 | `atan2(+sumh2, …)` sign flip mirrors orientation about the x-axis | Test 7's `starsine` arm. **Axis-aligned edges are blind to this one**, in `pc` and `orientation` alike — the bug the obvious test cannot see. |
 | The §3.2 refactor regresses shipped `FocusEdgePhase` | Scope is four helper functions; the existing 292-line test file is the gate. |
