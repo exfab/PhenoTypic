@@ -1,0 +1,240 @@
+# `FocusEdgeMonogenicPhase` — design
+
+**Status: CLOSED. Buildable now.**
+**Companion:** [`references.md`](./references.md) §5 and §8.1. **Deviations:** [`drift-register.md`](./drift-register.md).
+
+Phase congruency via an isotropic log-Gabor bandpass and the Riesz transform, instead of Kovesi's
+oriented log-Gabor bank. A drop-in alternative to the existing `FocusEdgePhase` that eliminates the
+orientation sweep.
+
+**This is a port, not a derivation.** Kovesi's Julia (`ImagePhaseCongruency.jl`), Kovesi's MATLAB
+(`phasecongmono.m`), and the MIT-licensed `phasepack` agree verbatim. Where this document and a
+reference disagree, the reference wins.
+
+---
+
+## 1. Attribution
+
+The field-notebook card and `breadth-survey.md` cite Wang Lijuan et al., *Image feature detection
+based on phase congruency by Monogenic filters*, CCDC 2014. **We have not read that paper.**
+
+What this operation implements is **Kovesi's `phasecongmono`**. The class docstring must say so, and
+must not imply we have reproduced the CCDC formulation, which may differ.
+
+---
+
+## 2. Algorithm
+
+Per scale `s`, filter the image FFT with the isotropic log-Gabor radial, take the inverse FFT for the
+even channel `f_s`, and apply the packed Riesz multiplier for the two odd channels. Then
+`Aₛ = √(f_s² + h1_s² + h2_s²)`.
+
+### 2.1 The congruency formula is NOT `_phasecong3`'s
+
+```
+sumAn  = Σₛ Aₛ                      maxAn = maxₛ Aₛ
+energy = √( (Σₛf_s)² + (Σₛh1_s)² + (Σₛh2_s)² )
+width  = (sumAn/(maxAn + ε) − 1)/(n_scale − 1)
+W      = 1/(1 + exp(g·(cutoff − width)))
+
+PC = W · max(1 − deviation_gain·acos(energy/(sumAn + ε)), 0) · max(energy − T, 0)/(energy + ε)
+or = atan(−sumh2/sumh1)
+ft = atan2(sumf, √(sumh1² + sumh2²))
+```
+
+Two things differ from `_phasecong3` and both are load-bearing. The noise threshold is applied as a
+**multiplicative fraction** `max(E−T,0)/(E+ε)`, not subtracted from the numerator — Kovesi's comment
+says subtracting it early "would interfere with the phase deviation computation." And the
+phase-deviation term uses `acos(E/ΣA)` scaled by `deviation_gain`, which sharpens edge localization.
+
+### 2.2 Noise threshold — keep it verbatim
+
+```
+tau      = median(sumAn)/√(log 4)                    # at the FIRST scale only
+totalTau = tau · (1 − (1/mult)^n_scale)/(1 − 1/mult)
+T        = totalTau·√(π/2) + k·totalTau·√((4−π)/2)
+```
+
+`(1/mult)^s` is the log-Gabor instantiation of Kovesi's "relative bandwidths" principle, and it is
+**exact for this bank** (`references.md` §4.4.3: the kernel-norm ratios converge to `1/mult` to six
+digits). It has one known wrinkle — the `s=0 → s=1` ratio is `0.715`, not `0.476`. The lowpass is
+**not** the cause; without it the ratio is still `0.589`. The finest log-Gabor simply is not
+band-limited on the lattice (~30% of scale-0's energy sits above `|u| = 0.45`, ~15% above Nyquist), and
+that is the scale `τ` is anchored on. **Do not fix this.** The golden fixture must match, and the
+reference is the definition.
+
+Likewise `median(A)/√(log 4)` is the exact Rayleigh median, i.e. of a *two*-component amplitude,
+while `A` here has three components. Measured bias: `1.048×`. It is a constant per bank, and Kovesi
+states that `k` absorbs exactly such a constant. **Inherit it.**
+
+### 2.3 `ε = 1e-4`, and clamp the `acos`
+
+All three references use `ε = 1e-4` for `phasecongmono` (Julia line 441, MATLAB line 153, `phasepack`
+line 129). `1e-5` belongs to `phasecong3`, which is why `FocusEdgePhase` correctly uses it. Not
+cosmetic: `ε` is the only thing keeping `energy/(sumAn + ε)` strictly below 1 before it enters
+`acos`.
+
+**No reference clamps the `acos` argument.** Mathematically `energy ≤ sumAn` by the triangle
+inequality on the scale sum, so with `ε > 0` the ratio is `< 1`; roundoff can still exceed 1 and
+yield `NaN`. We clamp to `[-1, 1]` — a documented, numerically-necessary deviation, paired with a
+test asserting the clamp **never activates** on real images, so it is provably a no-op.
+
+---
+
+## 3. Architecture
+
+| File | Exports | Reads | Writes |
+|---|---|---|---|
+| `enhance/_monogenic_kernels.py` | nothing (private, shared) | — | — |
+| `enhance/_focus_edge_monogenic_phase.py` | `FocusEdgeMonogenicPhase(FocusEdge)` | `detect_mat` | `detect_mat` |
+
+### 3.1 `_monogenic_kernels.py`
+
+Pure functions, no `Image` dependency, unit-testable without fixtures:
+
+- `construct_filter_grids(rows, cols)` — quadrant-shifted frequency grids.
+- `log_gabor_radial(radius, n_scale, min_wavelength, mult, sigma_onf)` — isotropic radial bandpass.
+- `riesz_multiplier(sintheta, costheta)` → `1j*sintheta - costheta`.
+- `rayleigh_mode(amplitude)` — Rayleigh σ from the amplitude histogram.
+- `spread_weight(sum_amplitude, max_amplitude, n_scale, cutoff, g)` — Kovesi's `W`.
+
+`riesz_multiplier` is Kovesi's `packedmonogenicfilters` (`H = (i·fx − fy)/f`), which packs both odd
+channels into one complex array so a single `ifft2` yields `h1` in the real part and `h2` in the
+imaginary part. Our existing `construct_filter_grids` already returns `sintheta = fx/freq` and
+`costheta = fy/freq`, so no new grid maths is needed. Its lowpass `1/(1 + (radius/0.45)**30)` is
+already identical to Kovesi's `lowpassfilter(freq, 0.45, 15)` (the order is doubled).
+
+`FocusEdgeColorPhase` shares this module wholesale; see [`color-phase-congruency.md`](./color-phase-congruency.md).
+
+### 3.2 Bounded refactor of `FocusEdgePhase`
+
+Four helpers already exist inside `enhance/_focus_edge_phase.py` (542 lines). Move these, and only
+these, into `_monogenic_kernels.py`, and import them back:
+
+- `_construct_filter_grids` → `construct_filter_grids`
+- `_construct_log_gabor_filters` → `log_gabor_radial`
+- `_rayleigh_mode` → `rayleigh_mode`
+- the inline `width` / `weight` block → `spread_weight`
+
+**Scope guard:** `_compute_angular_spread` and `_phasecong3` stay put. Nothing else is touched.
+Behaviour must be bit-identical; `tests/unit/enhance/test_phase_congruency.py` (292 lines) is the
+gate.
+
+### 3.3 Latent bug found while specifying this
+
+`FocusEdgePhase` declares `n_scale: Annotated[int, TuneSpec(3, 6)] = Field(4, ge=1)`, but
+`_phasecong3` computes
+
+```python
+width = (sum_amplitude / (max_amplitude + epsilon) - 1) / (self.n_scale - 1)   # line 320
+```
+
+At `n_scale=1` this divides by zero, emits a `RuntimeWarning`, and the operation **silently returns
+an all-zero `detect_mat`** (verified on `load_synth_yeast_plate()`; no NaN, no Inf, just zeros).
+`TuneSpec(3, 6)` means the optimizer never lands there, so it has gone unnoticed.
+
+This spec tightens `FocusEdgePhase` to `ge=2` as part of the §3.2 refactor of the very block that
+contains the division.
+
+> Behaviour change: `FocusEdgePhase(n_scale=1)` currently returns zeros and will now raise
+> `pydantic.ValidationError`. Trading a silent wrong answer for a loud one is right, but it belongs
+> in the changelog. It is unrelated to this port and may be split into its own commit.
+
+---
+
+## 4. Fields
+
+| field | default | annotation | source |
+|---|---|---|---|
+| `n_scale` | `4` | `TuneSpec(3, 6)`, `Field(ge=2)` | Kovesi; `ge=2` per §3.3 |
+| `min_wavelength` | `3.0` | `TuneSpec(2.0, 10.0)`, `Field(ge=2.0)` | Kovesi |
+| `mult` | `2.1` | `TuneSpec(1.5, 3.0)`, `Field(gt=1.0)` | Kovesi |
+| `sigma_onf` | `0.55` | `TuneSpec(0.1, 1.0)`, `Field(ge=0.1, le=1.0)` | Kovesi |
+| `k` | `3.0` | `TuneSpec(0.5, 20.0)`, `Field(ge=0.0)` | **`phasecongmono`'s default is 3.0**, not `phasecong3`'s 2.0 |
+| `deviation_gain` | `1.5` | `TuneSpec(1.0, 2.0)`, `Field(gt=0.0)` | Kovesi: "sensible values are from 1 to about 2" |
+| `cutoff` | `0.5` | `TuneSpec(0.3, 0.7)`, `Field(gt=0.0, lt=1.0)` | Kovesi |
+| `g` | `10.0` | `TuneSpec(2.0, 20.0)`, `Field(gt=0.0)` | Kovesi |
+| `noise_method` | `-1.0` | `TuneSpec(tunable=False)` | Kovesi |
+| `output` | `"pc"` | `MonogenicOutput` | matches `phasecongmono`'s return tuple |
+
+`MonogenicOutput = Literal["pc", "orientation", "feature_type"]`, declared once as a `TypeAlias` in
+`sdk_/typing_.py` alongside `FootprintShape` and `DetectMode`. No `Enum` — no user-visible
+documentation surface, so per the `adding-an-operation` skill a bare `Literal` alias suffices.
+
+`orientation` and `feature_type` are angles. Map them into `[0,1]` before writing `detect_mat`
+(`(θ + π/2)/π` and `(ft + π/2)/π`), and say so in the docstring — `detect_mat`'s contract forces it,
+and the raw angle is recoverable by inverting the map.
+
+`ε = 1e-4` (§2.3), a module constant, not a field.
+
+---
+
+## 5. Error handling
+
+Ordinary pydantic bounds; invalid input raises `pydantic.ValidationError` (a `ValueError` subclass).
+The `acos` clamp (§2.3) is the only numeric guard, and it is tested to be inert.
+
+---
+
+## 6. Testing
+
+Test-first, per `superpowers:test-driven-development`.
+
+1. `test_phase_congruency.py` passes unchanged after the §3.2 refactor. Bit-identical.
+2. **Golden fixture.** Generate `phasecongmono`'s output once from `phasepack` on a fixed synthetic
+   image, commit the arrays as a `.npz`, and assert `rtol=1e-6`. See §7 — this needs a one-off
+   approved install; `phasepack` does **not** become a runtime or CI dependency.
+3. **`ε` regression.** Assert the module constant is `1e-4`, with a comment naming the three
+   references. Cheap, and it prevents someone "unifying" it with `FocusEdgePhase`'s `1e-5`.
+4. **The `acos` clamp is a no-op.** Instrument it; run over `load_synth_yeast_plate()`,
+   `load_yeast_plate()`, `load_fungi_plate()`; assert it never fired.
+5. **Contrast and illumination invariance.** `f → αf + β` leaves `pc` unchanged within tolerance.
+   The defining property of phase congruency.
+6. `detect_mat` output in `[0,1]`; `rgb`/`gray` unmutated (free from the integrity validator);
+   `to_json`/`from_json` round-trip; constructible with no arguments; 90° rotation equivariance.
+7. **Axis convention.** A vertical edge and a horizontal edge must produce `orientation` values
+   `π/2` apart. Guards against an `fx`/`fy` swap between our grids and Kovesi's, which would rotate
+   every orientation by 90° while leaving `pc` untouched — i.e. would pass every other test.
+8. `FocusEdgeMonogenicPhase` and `FocusEdgePhase` localize a synthetic step edge to within 1 px of
+   each other.
+9. Doctests on `load_synth_yeast_plate()`, per the repo rule.
+10. `ValidationError` on out-of-bounds fields; `n_scale=1` rejected.
+
+---
+
+## 7. The golden fixture
+
+`phasepack` is MIT-licensed but unmaintained since 2016. Installing it was refused by the sandbox as
+an agent-chosen PyPI package, correctly.
+
+Plan: with a one-off approved install, run `phasepack.phasecongmono` on a fixed, seeded synthetic
+image at fixed parameters, commit `tests/fixtures/phasecongmono_golden.npz` (inputs, parameters, and
+expected `PC`, `or`, `ft`, `T`), and drop the dependency. The test loads the fixture. No runtime dep,
+no CI dep, no reliance on a 2016 package continuing to install.
+
+Record in the fixture's metadata: `phasepack` version, its `ε`, its `k` default (`2.0`, not Kovesi's
+`3.0`), and the exact parameters used, so a future reader can regenerate it.
+
+---
+
+## 8. Acceptance criteria
+
+1. `test_phase_congruency.py` passes unchanged.
+2. Golden-fixture agreement at `rtol=1e-6`.
+3. The `acos` clamp is provably inert on all three shipped plates.
+4. The axis-convention test passes.
+5. `uv run mypy src/phenotypic` and `uv run ruff check` clean.
+6. The operation appears in the GUI builder's enhancer dropdown.
+7. Class docstring attributes the algorithm to Kovesi's `phasecongmono`, not to CCDC 2014.
+
+---
+
+## 9. Risks
+
+| Risk | Mitigation |
+|---|---|
+| Transcription error in the port | Golden fixture at `rtol=1e-6`. This is the whole point of §7. |
+| `fx`/`fy` axis swap silently rotates orientation by 90° | Test 7. `pc` is invariant to the swap, so nothing else catches it. |
+| The §3.2 refactor regresses shipped `FocusEdgePhase` | Scope is four helper functions; the existing 292-line test file is the gate. |
+| Someone "unifies" `ε` with `FocusEdgePhase`'s | Test 3, plus a comment naming the three references. |
+| `phasepack` cannot be installed even once | Fall back to hand-transcribing `phasecongruency.jl` and generating the fixture from a careful Julia run, or accept the unit tests alone and record the weaker guarantee. |
