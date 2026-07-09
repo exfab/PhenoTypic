@@ -1431,12 +1431,17 @@ On `Sam2Detector`:
 
 ```python
     box_nms_thresh: Annotated[float, TuneSpec(0.0, 1.0)] = 0.7
-    # 1 crop layer = 5 encoder passes (1 full image + 2**(1+1)**2 = 4 crops).
-    # Engages SAM2's edge rejection, crop overlap, full-image fallback, and
-    # resolution-preferring NMS. ~3.91 -> ~1.9 native px per encoder px on a
-    # 4000x3000 plate, at ~5x the inference cost.
+    # 1 crop layer = 5 encoder passes: the always-present full-image pass plus
+    # (2 ** 1) ** 2 = 4 crops. Engages SAM2's edge rejection, crop overlap,
+    # full-image fallback, and resolution-preferring NMS. ~3.91 -> ~1.9 native
+    # px per encoder px on a 4000x3000 plate, at ~5x the inference cost.
     crop_n_layers: Annotated[int, TuneSpec(0, 2)] = 1
 ```
+
+**Index carefully.** `**` is right-associative, so `2**(1+1)**2` is `2**((1+1)**2)`
+== 16, not 4. And the loop variable `i_layer` is **0-based**, so `crop_n_layers=1`
+runs `i_layer=0` → `(2**(0+1))**2 == 4` crops. Write the docstring in terms of a
+1-based layer number `n` to avoid the ambiguity entirely.
 
 and forward `box_nms_thresh=self.box_nms_thresh` in `_ensure_model_loaded`.
 
@@ -1449,12 +1454,13 @@ Fix the three docstring defects. Replace the `crop_n_layers` paragraph
             resizes the whole image to a fixed **1024x1024 square** -- a
             non-aspect-preserving squash, so a 4:3 plate enters the model as
             ellipses -- and small colonies on a multi-megapixel plate can be
-            lost to downsampling.  ``0`` keeps a single full-image pass; each
-            added layer ``i`` re-tiles the *entire* image into
-            ``(2 ** (i + 1)) ** 2`` overlapping crops (4 at layer 1, 16 at
-            layer 2), each encoded nearer native resolution, and merges them by
-            NMS that prefers masks from smaller crops.  The full-image pass is
-            always included.  Default 1 (5 encoder passes).
+            lost to downsampling.  ``0`` keeps a single full-image pass; the
+            ``n``-th added layer (``n`` = 1, 2, ...) re-tiles the *entire*
+            image into ``(2 ** n) ** 2`` overlapping crops -- 4 at layer 1,
+            16 at layer 2 -- each encoded nearer native resolution, and merges
+            them by NMS that prefers masks from smaller crops.  The full-image
+            pass is always included, so ``crop_n_layers=1`` costs 5 encoder
+            passes and ``2`` costs 21.  Default 1.
 ```
 
 Add to the `Sam2Detector` docstring's parameter list:
