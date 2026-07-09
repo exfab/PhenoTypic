@@ -837,9 +837,10 @@ A test suite built only from horizontal and vertical step edges would ship that 
 
 ### 10.3 The golden fixture, and what only it could catch
 
-`phasepack` 1.5 was installed once (user-approved), used to generate `golden_phasecongmono.npz`, and
-removed. Agreement: `max|Δpc| = 3.5e-14` across five 64×64 images — eight orders inside the `rtol=1e-6`
-target. `verify_claims.py::check_19`.
+`phasepack` 1.5 was installed once (user-approved), used to generate
+`tests/fixtures/phasecongmono_golden.npz`, and removed. Agreement: `max|Δpc| = 3.5e-14` across five
+64×64 images — `log10(1e-6 / 3.52e-14) = 7.45`, so **7.5 orders** inside the `rtol=1e-6` target, and
+`max|Δorientation| = 0°` exactly. `verify_claims.py::check_19`.
 
 It immediately paid for itself by exposing **three things this spec had asserted without checking**,
 none of which any behavioural control detects.

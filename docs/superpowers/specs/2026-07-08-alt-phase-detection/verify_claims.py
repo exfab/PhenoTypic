@@ -1478,10 +1478,10 @@ def check_18_the_perfft2_fork_is_real_the_odd_grid_gap_is_a_phasepack_bug() -> R
 def check_19_golden_fixture_agrees_with_phasepack() -> Result:
     """Numeric agreement with ``phasepack.phasecongmono`` at ``rtol = 1e-6``.
 
-    ``golden_phasecongmono.npz`` was generated once from ``phasepack`` 1.5 (MIT), which is an
-    independent transcription of Kovesi's MATLAB. The dependency is not retained: the fixture
-    is the reference from here on. Regenerate only with ``uv add --group dev phasepack`` and a
-    deliberate decision to move the goalposts.
+    ``tests/fixtures/phasecongmono_golden.npz`` was generated once from ``phasepack`` 1.5 (MIT),
+    which is an independent transcription of Kovesi's MATLAB. The dependency is not retained: the
+    fixture is the reference from here on. Regenerate only with ``uv add --group dev phasepack``
+    and a deliberate decision to move the goalposts.
 
     Per ``references.md`` §10, ``phasepack`` itself ships **no tests** -- so this fixture is
     stronger validation than the reference implementation carries, and "it matches the
@@ -1493,17 +1493,36 @@ def check_19_golden_fixture_agrees_with_phasepack() -> Result:
     the two branches differ only in which spectrum enters an otherwise identical chain, so
     fixturing one validates the other's machinery. check_18.
 
-    64x64 (even, so the check_18 grid divergence cannot bite). Skips with a PASS if the fixture
-    is absent, so the file stays runnable from a bare checkout of the spec text alone.
+    64x64 (even, so the check_18 grid divergence cannot bite). **Fails** if the fixture is absent
+    -- it does not skip. A skip would let the suite print "21/21 checks passed" while the one
+    check that pins the transcription never ran.
     """
     from pathlib import Path
 
-    path = Path(__file__).with_name("golden_phasecongmono.npz")
-    if not path.exists():
+    # The fixture lives at the repo's tests/fixtures/, not beside this file: it is consumed both
+    # here and by tests/unit/enhance/test_monogenic_kernels.py, and one canonical copy cannot
+    # drift from itself. Walk up rather than hard-coding a depth, so moving this script does not
+    # silently disarm check_19.
+    #
+    # The ascent STOPS at the checkout root (the directory holding `.git` -- a dir in a normal
+    # clone, a file in a git worktree). Without that bound, a worktree whose own copy went
+    # missing would keep climbing into the parent checkout and silently validate against *its*
+    # fixture, which is a different tree at a different commit. Read the wrong oracle and
+    # check_19 reports PASS for code it never tested.
+    path = None
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "tests" / "fixtures" / "phasecongmono_golden.npz"
+        if candidate.exists():
+            path = candidate
+            break
+        if (parent / ".git").exists():
+            break  # checkout root reached; do not escape into an enclosing repository
+    if path is None:
         # FAIL, do not skip. A skip here reports "21/21 passed" while the only check that
         # pins the transcription never runs -- and this file is what caught the perfft2 fork.
         return Result("19 golden fixture agrees with phasepack (rtol=1e-6)", False,
-                      f"FIXTURE MISSING: {path.name}. The check did not run; do not read the suite as green.")
+                      "FIXTURE MISSING: tests/fixtures/phasecongmono_golden.npz not found in any "
+                      "parent of this file. The check did not run; do not read the suite as green.")
 
     n = 64
     step = np.zeros((n, n))

@@ -44,7 +44,7 @@
 | **Create** `src/phenotypic/enhance/_focus_edge_monogenic_phase.py` | The `FocusEdgeMonogenicPhase(FocusEdge)` operation. Thin: field declarations, `_operate`, the angle→`[0,1]` map. |
 | **Modify** `src/phenotypic/sdk_/typing_.py` | Add `MonogenicOutput` `TypeAlias` next to `FootprintShape`/`DetectMode`. |
 | **Modify** `src/phenotypic/enhance/__init__.py` | Export `FocusEdgeMonogenicPhase` (import + `__all__`). This is what puts it in the GUI builder dropdown — `gui/_operation_registry.py` discovers by scanning the `phenotypic.enhance` module. |
-| **Move** `docs/superpowers/specs/2026-07-08-alt-phase-detection/golden_phasecongmono.npz` → `tests/fixtures/phasecongmono_golden.npz` | One canonical copy. `verify_claims.py::check_19` resolves it by walking up from `__file__`. |
+| **Move** `docs/superpowers/specs/2026-07-08-alt-phase-detection/golden_phasecongmono.npz` → `tests/fixtures/phasecongmono_golden.npz` | One canonical copy, shared by `verify_claims.py::check_19` and `test_monogenic_kernels.py`. `check_19` resolves it by walking up from `__file__`, stopping at the `.git` checkout root so a worktree cannot validate against the parent repo's copy. **Done as S0.** |
 | **Modify** `docs/superpowers/specs/2026-07-08-alt-phase-detection/verify_claims.py` | Fixture path resolution only. |
 | **Create** `tests/unit/enhance/test_monogenic_kernels.py` | Unit tests for every pure helper. |
 | **Create** `tests/unit/enhance/_kovesi_synthetic.py` | Kovesi's four MIT test-image generators, lifted from `verify_claims.py` with the notice. |
@@ -617,11 +617,29 @@ git commit -m "feat(enhance): add shared frequency-domain kernels for phase cong
 
 Bit-identical behaviour is the whole requirement. `_phasecong3` and `_compute_angular_spread` stay methods — `detect/_filamentous_fungi_detector.py:424` calls `FocusEdgePhase(...)._phasecong3(arr)` directly.
 
-Also fixes the latent `n_scale=1` bug: `_phasecong3` divides by `n_scale - 1` (line 320) and silently returns an all-zero `detect_mat`. Tighten to `ge=2`. No test or caller uses `n_scale=1`.
+Also fixes the latent `n_scale=1` bug: `_phasecong3` divides by `n_scale - 1` (line 320) and returns an all-zero `detect_mat` (measured on `load_synth_yeast_plate()`: `max=0` at `n_scale=1` versus `max=0.971004` at `n_scale=4`, with a `RuntimeWarning` and no NaN). Tighten to `ge=2`.
+
+> **This is a deliberate validity narrowing, and one committed fixture depends on the old bound.**
+> No *caller* uses `n_scale=1` — `detect/_filamentous_fungi_detector.py:424` passes no `n_scale` and
+> takes the default `4`. But `tests/fixtures/tune/back_compat_pipelines/enhance_features_edges.json`
+> serializes `"n_scale": 1`, and `test_annotation_back_compat.py::test_legacy_pipeline_json_still_loads`
+> deserializes it through `ImagePipeline.from_json`. Applying the `ge=2` edit alone yields
+> `1 failed, 14 passed` on that file (verified 2026-07-09).
+>
+> That corpus is *designed* to fire here: its docstring says each fixture "sits at the tightest
+> legal-today edge ... so a too-tight bound that excluded a previously-valid config would trip this
+> lock immediately." We are consciously accepting the trip, because the config it locks in is one
+> that already produces nothing. The fixture moves to the new tightest legal edge, `n_scale=2`
+> (Step 6), and the old bound is pinned shut by `test_n_scale_one_is_rejected` (Step 7) so a future
+> revert to `ge=1` cannot silently restore the all-zero path. Recorded as drift **M8**.
+>
+> There is no `CHANGELOG` in this repository; the breaking change is recorded in
+> `drift-register.md` and pinned by the test, not by prose.
 
 **Files:**
 - Modify: `src/phenotypic/enhance/_focus_edge_phase.py`
-- Test: `tests/unit/enhance/test_phase_congruency.py` (must pass **unchanged**)
+- Modify: `tests/fixtures/tune/back_compat_pipelines/enhance_features_edges.json` (`"n_scale": 1` → `2`)
+- Test: `tests/unit/enhance/test_phase_congruency.py` — its existing 25 tests must pass **unchanged**; Step 7 *appends* two.
 
 **Interfaces:**
 - Consumes: Task 1's `construct_filter_grids`, `log_gabor_radial`, `rayleigh_mode`, `spread_weight`.
@@ -791,19 +809,45 @@ The `-1` assertion is a hard gate: anything else means the refactor changed the 
 - [ ] **Step 5: Run the existing test file, the taxonomy test, and the filamentous detector's tests**
 
 Run: `uv run pytest tests/unit/enhance/test_phase_congruency.py tests/unit/abc_/test_enhancer_taxonomy.py tests/unit/tune/test_enhance_annotations.py -q`
-Expected: all pass, unchanged.
+Expected: all pass, unchanged. (`test_phase_congruency.py` = **25 passed**; verified under `ge=2` before this plan was written, so the bound change does not disturb it.)
 
 Run: `uv run pytest tests/unit/detect -q -k filamentous`
 Expected: all pass (this exercises the `._phasecong3` caller).
 
-- [ ] **Step 6: Add the `n_scale >= 2` regression test**
+- [ ] **Step 6: Watch the back-compat lock fire, then move it to the new edge**
+
+Do **not** skip straight to editing the fixture. Run the lock first and confirm it fails — a guard you never saw fail is a guard you cannot trust.
+
+Run: `uv run pytest tests/unit/tune/test_annotation_back_compat.py -q`
+Expected: exactly
+
+```
+FAILED tests/unit/tune/test_annotation_back_compat.py::test_legacy_pipeline_json_still_loads[enhance_features_edges]
+1 failed, 14 passed
+```
+
+If it passes, the `ge=2` edit did not land — go back to Step 3. If a *different* fixture fails, stop: another op's bound was disturbed and this plan does not cover it.
+
+Now move that fixture to the new tightest legal edge. Edit `tests/fixtures/tune/back_compat_pipelines/enhance_features_edges.json`, changing **only** the one key (the file's other values — `n_orient: 1`, `min_wavelength: 2.0`, `k: 0.0`, `sigma_onf: 0.1`, `cutoff: 0.5` — are all still legal and must stay at their edges):
+
+```json
+        "n_scale": 2,
+```
+
+Re-run: `uv run pytest tests/unit/tune/test_annotation_back_compat.py -q`
+Expected: `15 passed`.
+
+- [ ] **Step 7: Pin the old bound shut**
+
+The corpus no longer guards `n_scale=1`, so a plain revert of `ge=2` → `ge=1` would silently restore the all-zero path. Replace that guard with a direct one.
 
 Append to `tests/unit/enhance/test_phase_congruency.py`, inside `TestPhaseCongruencyEnhancerParameterValidation`:
 
 ```python
     def test_n_scale_one_is_rejected(self):
-        """n_scale=1 divides by (n_scale - 1) and silently returns an all-zero
-        detect_mat. Rejected at construction rather than producing garbage."""
+        """n_scale=1 divides by (n_scale - 1) and returns an all-zero detect_mat
+        (max=0 versus 0.971004 at n_scale=4). Rejected at construction rather
+        than producing garbage. See drift-register M8."""
         with pytest.raises(ValidationError):
             FocusEdgePhase(n_scale=1)
 
@@ -811,20 +855,34 @@ Append to `tests/unit/enhance/test_phase_congruency.py`, inside `TestPhaseCongru
         assert FocusEdgePhase(n_scale=2).n_scale == 2
 ```
 
-- [ ] **Step 7: Run the tests, lint, type-check**
+The existing `test_n_scale_less_than_one_raises_error` (line 24) only asserts `n_scale=0` raises, which held under `ge=1` too. Rename it to `test_n_scale_zero_is_rejected` so the file does not carry a name that implies coverage it never had.
 
-Run: `uv run pytest tests/unit/enhance/test_phase_congruency.py -q && uv run ruff check --fix src/phenotypic/enhance/_focus_edge_phase.py && uv run mypy src/phenotypic`
+**Prove the new test can fail:** temporarily restore `ge=1`, run `pytest tests/unit/enhance/test_phase_congruency.py -k n_scale_one -q`, confirm it FAILS, then restore `ge=2`. A `pytest.raises` that never saw the non-raising branch is not evidence.
+
+- [ ] **Step 8: Run the tests, lint, type-check**
+
+Run: `uv run pytest tests/unit/enhance/test_phase_congruency.py tests/unit/tune/test_annotation_back_compat.py -q && uv run ruff check --fix src/phenotypic/enhance/_focus_edge_phase.py && uv run mypy src/phenotypic`
 Expected: pass, clean.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Record drift M8**
+
+Add a row to `docs/superpowers/specs/2026-07-08-alt-phase-detection/drift-register.md`: `n_scale` narrowed `ge=1` → `ge=2`; deviates from `phasecong3.m`, which also divides by `nscale-1` and is equally undefined at `nscale=1` — we raise where Kovesi would emit a warning and zeros. Evidence: `max=0` vs `max=0.971004`; back-compat fixture moved from `1` to `2`.
+
+- [ ] **Step 10: Commit**
 
 ```bash
-git add src/phenotypic/enhance/_focus_edge_phase.py tests/unit/enhance/test_phase_congruency.py
-git commit -m "refactor(enhance): move FocusEdgePhase's frequency helpers into _monogenic_kernels
+git add src/phenotypic/enhance/_focus_edge_phase.py \
+        tests/unit/enhance/test_phase_congruency.py \
+        tests/fixtures/tune/back_compat_pipelines/enhance_features_edges.json \
+        docs/superpowers/specs/2026-07-08-alt-phase-detection/drift-register.md
+git commit -m "refactor(enhance)!: move FocusEdgePhase's frequency helpers into _monogenic_kernels
 
 Bit-identical on load_synth_yeast_plate across all six _phasecong3 outputs.
-Also tightens n_scale to ge=2: _phasecong3 divides by (n_scale - 1), so
-n_scale=1 silently returned an all-zero detect_mat."
+
+BREAKING: tightens n_scale to ge=2. _phasecong3 divides by (n_scale - 1), so
+n_scale=1 returned an all-zero detect_mat (max=0 vs 0.971004 at n_scale=4).
+The back-compat fixture enhance_features_edges.json moves to the new tightest
+legal edge; test_n_scale_one_is_rejected pins the old bound shut. Drift M8."
 ```
 
 ---
@@ -835,10 +893,10 @@ The algorithm itself, driven by the fixture. `phasepack` is **not** reinstalled 
 
 **Files:**
 - Modify: `src/phenotypic/enhance/_monogenic_kernels.py`
-- Move: `docs/superpowers/specs/2026-07-08-alt-phase-detection/golden_phasecongmono.npz` → `tests/fixtures/phasecongmono_golden.npz`
-- Modify: `docs/superpowers/specs/2026-07-08-alt-phase-detection/verify_claims.py`
 - Create: `tests/unit/enhance/_kovesi_synthetic.py`
 - Test: `tests/unit/enhance/test_monogenic_kernels.py` (append)
+
+(The fixture move and `verify_claims.py` rewiring are **no longer part of this task** — see Step 1.)
 
 **Interfaces:**
 - Consumes: everything from Task 1.
@@ -847,7 +905,17 @@ The algorithm itself, driven by the fixture. `phasepack` is **not** reinstalled 
   - `monogenic_phase_congruency(img, *, n_scale=4, min_wavelength=3.0, mult=2.1, sigma_onf=0.55, k=3.0, cutoff=0.5, g=10.0, deviation_gain=1.5, noise_method=-1.0, periodic=False) -> MonogenicResult`
   - `tests/unit/enhance/_kovesi_synthetic.py` exporting `step2line`, `circsine`, `starsine`, `noiseonf`, `unit_variance`, `centred_axis`
 
-- [ ] **Step 1: Move the fixture to its canonical home**
+- [x] **Step 1: Move the fixture to its canonical home — ALREADY DONE, as cluster S0**
+
+> **Do not re-run this step.** It was hoisted out of Task 3 and executed inline by the orchestrator
+> as **S0** (see `# Execution`), because it fails *silently* and everything downstream depends on it.
+> The fixture is already at `tests/fixtures/phasecongmono_golden.npz`; `git mv` will error, and the
+> `sed` below will no-op. The content is kept here as the record of what S0 did and why.
+>
+> **Verified at S0 close:** `21/21 checks passed`, `check_19` reports
+> `max|dpc| 3.52e-14 ... max|dorientation| 0 deg (exact)`, exit `0`. With the fixture moved aside:
+> `20/21`, `FIXTURE MISSING`, exit `1`. With a decoy `.npz` planted in the *parent* checkout and the
+> worktree's copy removed: still `FIXTURE MISSING`, exit `1` — the `.git` bound held.
 
 ```bash
 mkdir -p tests/fixtures
@@ -869,12 +937,32 @@ with:
         if candidate.exists():
             path = candidate
             break
+        if (parent / ".git").exists():
+            break  # checkout root reached; do not escape into an enclosing repository
     if path is None:
-        return Result("19 golden fixture agrees with phasepack (rtol=1e-6)", True,
-                      "SKIPPED: tests/fixtures/phasecongmono_golden.npz absent")
+        # FAIL, do not skip. A skip here reports "21/21 passed" while the only check that
+        # pins the transcription never runs -- and this file is what caught the perfft2 fork.
+        return Result("19 golden fixture agrees with phasepack (rtol=1e-6)", False,
+                      "FIXTURE MISSING: tests/fixtures/phasecongmono_golden.npz not found in any "
+                      "parent of this file. The check did not run; do not read the suite as green.")
 ```
 
-and delete the now-dead `if not path.exists():` block below it.
+Two things here, both load-bearing:
+
+1. `passed=False`, not `True`. Commit `18d856b58` removed a fail-open skip from exactly this check
+   after it let the suite print `21/21 checks passed` and exit `0` while `check_19` never ran. Do not
+   reintroduce it under any refactor.
+2. The ascent **stops at the checkout root** (`.git` — a directory in a clone, a *file* in a worktree,
+   so `.exists()` and not `.is_dir()`). This work happens in a git worktree nested under the main
+   checkout. Without the bound, a worktree whose own fixture went missing climbs into the parent
+   repository and validates against *its* copy — a different tree at a different commit — and
+   `check_19` reports PASS for code it never tested. Verified by planting a decoy `.npz` in the
+   parent checkout, deleting the worktree's copy, and confirming the suite still reports
+   `FIXTURE MISSING` and exits `1`.
+
+Then delete the now-dead `if not path.exists():` block below it, **and** delete the stale docstring
+line `"Skips with a PASS if the fixture is absent, so the file stays runnable from a bare checkout
+of the spec text alone."` — the code has not done that since `18d856b58`.
 
 Update the README table entry's path:
 
@@ -882,8 +970,12 @@ Update the README table entry's path:
 sed -i '' 's#\[`golden_phasecongmono.npz`\](./golden_phasecongmono.npz)#[`tests/fixtures/phasecongmono_golden.npz`](../../../../tests/fixtures/phasecongmono_golden.npz)#' docs/superpowers/specs/2026-07-08-alt-phase-detection/README.md
 ```
 
-Run: `uv run python docs/superpowers/specs/2026-07-08-alt-phase-detection/verify_claims.py | tail -1`
-Expected: `21/21 checks passed.`
+Run: `uv run python docs/superpowers/specs/2026-07-08-alt-phase-detection/verify_claims.py`
+Expected: the last line is `21/21 checks passed.` **and** `check_19`'s line contains `max|dpc|` — not
+`SKIPPED`, not `FIXTURE MISSING`. Assert both. A green suite alone does not prove the check ran.
+
+Then prove the guard is live: `mv` the fixture aside, re-run, confirm the suite exits **non-zero**
+and prints `FIXTURE MISSING`, and `mv` it back.
 
 - [ ] **Step 2: Port Kovesi's generators into the test helper**
 
@@ -2133,22 +2225,50 @@ procedure. This section is the DAG of record.
                                  ▼
                             D  docs                        [Sweep]
                                  ▼
+                            simplify pass                  [quality only, no behaviour change]
+                                 │
+                    ═════════════╪═════════════  THE FINAL GATE  ═════════════
+                                 ▼
                             E  domain-stripped copy        [Sweep, consistency-critical]
+                               code + tests + fixture +
+                               spec + plan + references
                                  ▼
                             F  scoped Fable review         [Judgment, sandboxed]
+                                 ▼
+                            triage: fix / accept+drift-row / refute
+                                 ▼
+                              merge
 ```
 
-**Shared-file matrix** (writes only; reads don't constrain ordering):
+**The final gate is E → F.** A–D and the simplify pass only produce something worth reviewing; they do not close the work. Nothing merges until F's findings are each fixed, consciously accepted with a `drift-register.md` row, or refuted with evidence.
+
+**Shared-file matrix** (writes only; reads don't constrain ordering). Re-derived from each task's
+`Files` block, not copied forward:
 
 | Cluster | Writes |
 |---|---|
-| S0 | `tests/fixtures/phasecongmono_golden.npz`, `verify_claims.py`, spec `README.md` |
+| S0 | `tests/fixtures/phasecongmono_golden.npz`, `verify_claims.py`, spec `README.md`, this plan's Task 3 Step 1 |
 | A | `enhance/_monogenic_kernels.py`, `tests/unit/enhance/_kovesi_synthetic.py`, `tests/unit/enhance/test_monogenic_kernels.py` |
-| B | `enhance/_focus_edge_phase.py`, `tests/unit/enhance/test_phase_congruency.py` |
+| B | `enhance/_focus_edge_phase.py`, `tests/unit/enhance/test_phase_congruency.py`, `tests/fixtures/tune/back_compat_pipelines/enhance_features_edges.json`, spec `drift-register.md` |
 | C | `enhance/_focus_edge_monogenic_phase.py`, `enhance/__init__.py`, `sdk_/typing_.py`, `tests/unit/enhance/test_focus_edge_monogenic_phase.py`, `tests/unit/abc_/test_enhancer_taxonomy.py`, `tests/unit/tune/test_enhance_annotations.py` |
 | D | `enhance/CLAUDE.md`, spec `README.md` + `monogenic-phase-congruency.md` |
 
-**B and C write disjoint sets** — they are the only parallel-worktree pair. B *reads* `_monogenic_kernels.py`; C *reads* it too. Neither writes it after A. C's `TestAgreementWithFocusEdgePhase` calls `FocusEdgePhase()._phasecong3`, which B leaves bit-identical, so C is correct against either side of B.
+**B ∩ C = ∅** — they are the only parallel-worktree pair. Verified, not assumed:
+
+- B's only source write is `_focus_edge_phase.py`. Its three other writes are a test file, a JSON
+  fixture, and a spec doc, none of which C touches.
+- B *reads* `_monogenic_kernels.py`; C *reads* it too. Neither writes it after A.
+- C's `TestAgreementWithFocusEdgePhase` calls `FocusEdgePhase()._phasecong3`, which B leaves
+  bit-identical (that is B's hard gate), so C is correct against either side of B.
+
+**S0 ∩ D = {spec `README.md`}** — sequential and far apart, so harmless; recorded so a future
+parallelisation attempt does not miss it.
+
+**Task 2 (B) consumes only Task 1's helpers, not Task 3's.** In principle B could start as soon as
+Task 1 lands, i.e. against A's first half. We deliberately do **not** do that: Tasks 1 and 3 write the
+*same two files*, so splitting A to unblock B early would force a second agent to re-read and append
+to a half-finished module — paying a full context load to produce an unreviewable intermediate. B
+waits. The cost is bounded because B and C then run concurrently anyway.
 
 ## Clusters
 
@@ -2159,12 +2279,14 @@ Hoisted out of Task 3 Step 1, because it is a **risky tiny wiring point** that t
 `verify_claims.py::check_19` returns `Result(..., passed=True, "SKIPPED")` when the fixture is absent. A botched `git mv` therefore leaves the suite reporting **21/21 passed** while the single check that pins the transcription is not running at all. Isolate it, and gate on the check *executing*, not on the suite being green.
 
 - `git mv` the npz to `tests/fixtures/phasecongmono_golden.npz`
-- Rewrite `check_19`'s path resolution to walk up from `__file__`
+- Rewrite `check_19`'s path resolution to walk up from `__file__`, keeping the **fail-loud** `passed=False` branch
+- Delete `check_19`'s stale docstring line claiming it "Skips with a PASS if the fixture is absent" — untrue since `18d856b58`
 - Fix the spec `README.md` link
+- **Fix this plan's own Task 3 Step 1**, whose code block reintroduced the `passed=True, "SKIPPED"` branch that `18d856b58` removed. Left alone, a future executor of Task 3 would silently undo S0.
 
-**Gate:** the suite prints `21/21`, **and** `check_19`'s detail line contains `max|dpc|`, not `SKIPPED`. Assert both, not just the first.
+**Gate:** the suite prints `21/21`, **and** `check_19`'s detail line contains `max|dpc|`, not `SKIPPED`. Assert both, not just the first. Then move the fixture aside and confirm the suite exits **non-zero** — a fail-loud branch nobody watched fail is not fail-loud.
 
-Under 30 lines across two files — the orchestrator does this directly, no dispatch.
+Under 30 lines across four files — the orchestrator does this directly, no dispatch.
 
 ### A — Keystone: the kernels module
 
@@ -2179,14 +2301,16 @@ Merged, one agent holds the whole picture: extract the four helpers, add `riesz_
 
 ### B — Seam: refactor `FocusEdgePhase`
 
-Small, and the riskiest change in the plan. It touches **shipped, exercised code**, and `detect/_filamentous_fungi_detector.py:424` reaches into `_phasecong3` directly. It also changes a public bound (`n_scale` `ge=1` → `ge=2`) on an operation users already construct.
+Small, and the riskiest change in the plan. It touches **shipped, exercised code**, and `detect/_filamentous_fungi_detector.py:424` reaches into `_phasecong3` directly. It also **breaks a public bound** (`n_scale` `ge=1` → `ge=2`) on an operation users already construct and have serialized.
 
 Isolated for its own gate even though it is ~40 lines. Risk ≠ size.
 
 **Required skill:** `adding-an-operation`, invoked *before* editing. The `n_scale` bound change is an operation-parameter edit: `Field(4, ge=1)` → `Field(4, ge=2)`. Confirm `TuneSpec(3, 6)` stays a subset of the new bound (it does), and that no other field's coverage changes.
 
+**The back-compat lock will fire, and that is expected.** `tests/fixtures/tune/back_compat_pipelines/enhance_features_edges.json` serializes `"n_scale": 1`; `test_annotation_back_compat.py` loads it via `ImagePipeline.from_json`. Measured: the bound edit alone gives `1 failed, 14 passed`. Task 2 Step 6 requires the agent to *observe the failure first*, then move the fixture to the new tightest legal edge (`2`); Step 7 pins the old bound shut with `test_n_scale_one_is_rejected` and proves that test can fail. Do not let an agent "fix" the lock by editing the fixture before it has seen it fail — a guardrail nobody watched fire is not a guardrail.
+
 **Model:** Opus, high effort.
-**Gate:** the bit-identity check against `/tmp/phasecong3_baseline.npz` must report **BIT-IDENTICAL across all six outputs** — captured *before* the edit, in the same tree. Then `test_phase_congruency.py`, `test_enhancer_taxonomy.py`, `test_enhance_annotations.py`, `tests/unit/tune/test_annotation_coverage.py`, `test_annotation_subset_invariant.py`, and `pytest tests/unit/detect -k filamentous`. If bit-identity fails, fix the refactor; **never relax the check**.
+**Gate:** the bit-identity check against the scratchpad `phasecong3_baseline.npz` must report **BIT-IDENTICAL across all six outputs** at `noise_method=-1`, and a *bounded, non-zero* change at `-2` (`0 < dT < 1e-4`, `0 < dpc < 1e-4`; expect `dT = 8.64e-06`, `dpc = 5.58e-06`) — baseline captured *before* the edit, in the same tree. Then `test_phase_congruency.py`, **`test_annotation_back_compat.py` (15 passed)**, `test_enhancer_taxonomy.py`, `test_enhance_annotations.py`, `tests/unit/tune/test_annotation_coverage.py`, `test_annotation_subset_invariant.py`, and `pytest tests/unit/detect -k filamentous`. If bit-identity fails, fix the refactor; **never relax the check**.
 
 ### C — Keystone + folded Leaves: the operation
 
@@ -2212,15 +2336,50 @@ Run in **separate worktrees**, merge after both. Zero write overlap (see matrix)
 
 **Model:** Sonnet, medium effort.
 
-### End gate — simplify
+### Simplify pass (precedes the final gate)
 
 One **simplify pass** (Opus) over everything A–D produced: dedupe, reduce, clarify. Quality only, no behaviour change. If it touches any operation field it must invoke `adding-an-operation` first — "simplifying" a `TuneSpec` away is exactly the failure the annotation-coverage gate exists to catch. Apply, then re-run `pytest tests/unit/enhance tests/unit/abc_ tests/unit/tune` plus `verify_claims.py` as the regression check.
 
+This is **not** the last step. The work is not done until **E** and **F** below have run and their findings are triaged — the simplify pass only makes the corpus worth reviewing.
+
 ---
+
+# The final gate: E → F
+
+**The final gate is the domain-stripped corpus (E) handed to a scoped Fable reviewer (F).** Nothing merges until F's findings are triaged. A–D produce code that passes *our* tests; E and F are what test whether the mathematics is right and the port is faithful, judged by a reader with no stake in our framing and no way to be primed by it.
 
 ## E — The domain-stripped copy
 
 **Goal:** a standalone, self-contained corpus a reviewer can judge on the mathematics alone, with **the code logic bit-for-bit intact** and every trace of the application domain removed.
+
+**Scope — everything F needs, and nothing that leaks the domain.** This is the full manifest; ban-list hit counts measured on the pre-strip files, 2026-07-09:
+
+| Sandbox path | Source | Ban-list hits to fix |
+|---|---|---|
+| `kernels/_monogenic_kernels.py` | `src/phenotypic/enhance/_monogenic_kernels.py` (from A) | — (new file; keep it clean at birth) |
+| `kernels/_focus_edge_phase.py` | `src/phenotypic/enhance/_focus_edge_phase.py` (from B) | **18** |
+| `kernels/_focus_edge_monogenic_phase.py` | `src/phenotypic/enhance/_focus_edge_monogenic_phase.py` (from C) | — (new file) |
+| `kernels/typing_.py` | the `MonogenicOutput` alias from `sdk_/typing_.py` (excerpt, not the module) | — |
+| `tests/test_monogenic_kernels.py`, `tests/_kovesi_synthetic.py`, `tests/test_focus_edge_monogenic_phase.py`, `tests/test_phase_congruency.py` | from A, B, C | check each |
+| `tests/fixtures/phasecongmono_golden.npz` | `tests/fixtures/phasecongmono_golden.npz` | binary; **required by gate 4** |
+| `verify_claims.py` | spec's copy | **1** (see below) |
+| `spec/monogenic-phase-congruency.md` | spec | **6** |
+| `spec/color-phase-congruency.md` | spec | **14** |
+| `spec/conformal-lift.md` | spec | **6** |
+| `spec/references.md` | spec | **21** |
+| `spec/drift-register.md` | spec | **5** |
+| `spec/README.md` | spec | **0** |
+| `plan/plan.md` | this plan | **110** — the largest strip job; do not skip it |
+| `plan/reviews/2026-07-09-plan-review.md` | this plan's review | check |
+| `refs/`, `papers/` | already assembled (see table below) | verbatim, read-only |
+
+The plan and the spec go in because F's charge is to find *shortcuts and unstated assumptions*, and both live in the prose, not only the code. Handing over the kernels alone would ask F to re-derive the reasoning it is meant to audit.
+
+> **Correction to a claim this plan used to make.** `verify_claims.py` is described below as "already
+> domain-free; confirm, don't rewrite." It is not, quite: line 8 reads *"…**not** import
+> ``phenotypic``…"*, and `phenotyp` is on the ban-list, so gate 1 fires on the one file the rule says
+> to copy verbatim. Rewrite that single phrase to "does not import the host package" and leave every
+> other byte alone. Measured: exactly **1** hit, in prose, in a docstring. No code changes.
 
 **Location:** the session scratchpad, at `<scratchpad>/math-review/`. Deliberately **not** in the repo:
 
@@ -2260,38 +2419,60 @@ The reviewer's *report* is what comes back into the repo, under `docs/superpower
 
 **Model:** Opus, high effort. It is a Sweep, but consistency-critical: a wrong call about what is "biological" versus what is load-bearing mathematics silently corrupts the thing being reviewed.
 
-**Gate (mechanical, then human):**
-1. `grep -rniE '<ban-list>' <scratchpad>/math-review/` returns nothing.
-2. `grep -rn 'import phenotypic' <scratchpad>/math-review/` returns nothing.
-3. The stripped `verify_claims.py` runs standalone and prints `21/21 checks passed.`
-4. The stripped kernels reproduce the golden fixture to `rtol=1e-6` — proving the transform preserved the logic and not merely the prose.
-5. A diff of the stripped kernels against `src/phenotypic/enhance/_monogenic_kernels.py` shows **changes confined to docstrings, comments and identifiers** — no expression, constant or control-flow edit.
+**Gate (mechanical, then human).** Every check runs over the **whole** sandbox — code, tests, spec, plan, references — not just the kernels:
 
-Gate 4 is the one that matters. Without it, "keeping the actual code logic intact" is an assertion; with it, it is a measurement.
+1. `grep -rniE '<ban-list>' <scratchpad>/math-review/ --exclude-dir=refs --exclude-dir=papers` returns nothing. `refs/` and `papers/` are excluded because they are third-party and read-only; nothing else is.
+2. `grep -rn 'import phenotypic' <scratchpad>/math-review/` returns nothing.
+3. `grep -rn 'phenotypic\|PhenoTypic' <scratchpad>/math-review/ --exclude-dir=refs --exclude-dir=papers` returns nothing — no repo name, no import path, no URL. Gate 1's `phenotyp` pattern already covers this; run it separately anyway, because a reviewer who learns the project name can search for it.
+4. **Manifest completeness:** every row of the table above exists in the sandbox. A silently-missing `plan/plan.md` is the most likely failure, and it is the file F most needs.
+5. The stripped `verify_claims.py` runs standalone and prints `21/21 checks passed.` **and** `check_19`'s line contains `max|dpc|` — the same two-part assertion S0 established. It must also exit `0`.
+6. The stripped kernels reproduce `tests/fixtures/phasecongmono_golden.npz` to `rtol=1e-6` — proving the transform preserved the logic and not merely the prose.
+7. `diff` of each stripped source against its repo original shows **changes confined to docstrings, comments and identifiers** — no expression, constant, or control-flow edit. Mechanise it: strip comments/docstrings from both sides with `ast` and compare `ast.dump()` of the results. Identical dumps, or the transform touched logic.
+
+Gates 6 and 7 are the ones that matter. Without them, "keeping the actual code logic intact" is an assertion; with them, it is a measurement. Gate 7 catches what gate 6 cannot — a logic edit on a path the fixture never exercises.
+
+**Do not let E strip by regex alone.** The ban-list finds the nouns; it does not find *framing* ("a run of a 96-well array", "the operator was tuned on our imaging rig"). A pass that scores 0 on gate 1 can still hand F an obviously applied paper. Read the prose.
 
 ## F — Scoped Fable review
 
-A fresh reviewer that has never seen this repository, judging the design on mathematics and faithfulness alone.
+A fresh reviewer that has never seen this repository, judging the design on mathematics and faithfulness alone. **This is the last gate; the branch does not merge until F's findings are triaged.**
 
 **Model:** Fable 5 (`claude-fable-5`), high effort. Frontier tier, so it does not review work produced by a stronger model — the rule holds.
 
+**What it receives** — the whole of E's manifest, not just the code:
+
+| Given | Why F needs it |
+|---|---|
+| `kernels/` + `tests/` + `tests/fixtures/phasecongmono_golden.npz` | the implementation, and the oracle that pins it |
+| `verify_claims.py` | 21 executable re-derivations it can run and try to break |
+| `spec/` — all six documents | the *claims*. F's job is to check them against the sources, not to trust them |
+| `plan/plan.md` + `plan/reviews/` | the reasoning and the prior review. Shortcuts hide in the justification, not the diff |
+| `refs/` | Kovesi's Julia + MATLAB, `phasepack`, so every "the reference says X" is checkable at `file:line` |
+| `papers/` | JMIV / DAGM / CMPCM source text |
+| `WebSearch` / `WebFetch` | to consult the literature independently of what our prose asserts |
+
+Handing over the kernels alone would ask F to re-derive the reasoning it is meant to audit. Handing over the spec without `refs/` would make it take our word for what the references say — the exact failure that produced drift lessons S7 and three misattributions.
+
 **Context discipline:**
 - Working directory is `<scratchpad>/math-review/`. The agent is instructed to read **only** files beneath it. No repo paths appear anywhere in its brief.
-- No biological framing in the prompt. The task is described purely as a signal-processing port.
-- Tools: read/grep/glob within the sandbox, `WebSearch` and `WebFetch`, and `Bash` restricted to running the stripped tests (with the same memory ceiling that OOM-killed an earlier reviewer: no array over 5e6 elements, no meshgrid over 2000², total live under 500 MB).
-- It may read `refs/` and `papers/`, and must treat the unlicensed MATLAB as read-only.
+- No biological framing in the prompt. The task is described purely as a signal-processing port. If F names the application domain unprompted in its report, **E leaked** — treat that as an E failure and re-strip before believing the review.
+- Tools: read/grep/glob within the sandbox, `WebSearch` and `WebFetch`, and `Bash` restricted to running the stripped tests (with the same memory ceiling that OOM-killed an earlier reviewer: no array over 5e6 elements, no meshgrid over 2000², total live under 500 MB, scratch runs wrapped in `ulimit -v 4000000`).
+- It may read `refs/` and `papers/`. The unlicensed MATLAB under `refs/cmpcm_matlab/` is **read-only cross-check; never copy its code**. `papers/` is **copyrighted and must never be committed**.
 
-**Charge:** the governing principle, stated to it directly — *faithfulness to validated reference logic beats a convenient shortcut.* Specifically: find shortcuts, unstated assumptions, places where the implementation silently picks a side in a reference disagreement, tolerances that are too loose to catch a plausible bug, and tests that could pass while the code is wrong. It should consult the literature and the reference implementations rather than taking the spec's word for what they say — this spec has already been wrong about that twice.
+**Charge:** the governing principle, stated to it directly — *faithfulness to validated reference logic beats a convenient shortcut.* Specifically: find shortcuts, unstated assumptions, places where the implementation silently picks a side in a reference disagreement, tolerances that are too loose to catch a plausible bug, and tests that could pass while the code is wrong. It should consult the literature and the reference implementations rather than taking the spec's word for what they say — **this spec has already been wrong about that three times**, each time by reading `phasepack` as though it were Kovesi (`perfft2`, the `T` floor, the odd-grid divisor; drift lesson S7).
+
+Give F the mutation-audit table too, and ask the question that table exists to answer: **which of these tests would still pass if the code were wrong?** The audit already found one mutant (`rayleigh_broken`) that survived every behavioural control, and one shipped default (`periodic=False`) that no test pinned at all.
 
 **It does not fix anything.** Findings come back as a report; the orchestrator triages, surfaces design-level conflicts to the user, and only then applies changes to the *real* spec and code.
 
-**Gate:** every finding is either (a) reproduced against the real code and fixed, (b) reproduced and consciously accepted with a new `drift-register.md` row, or (c) refuted with evidence. No finding is closed by assertion.
+**Gate:** every finding is either (a) reproduced against the real code and fixed, (b) reproduced and consciously accepted with a new `drift-register.md` row, or (c) refuted with evidence. **No finding is closed by assertion.** The report lands in `docs/superpowers/plans/2026-07-09-focus-edge-monogenic-phase/reviews/`; the sandbox itself never enters the repo.
 
 ---
 
 ## Notes on ordering
 
-- **Nothing dispatches until the background plan review is triaged.** It may invalidate A's code before it is written.
+- The background plan review was triaged and applied in `3cd894943` (2 blockers, 4 majors, 3 approved design changes). Dispatch is unblocked.
 - The plan's Task 3 Step 1 (the npz move) executes as **S0**, ahead of Task 1, not inside Task 3. Task 3's remaining steps are absorbed into cluster A.
 - The plan's Task 2 and Task 4 map to B and C; Task 5 maps to D.
 - Per-cluster gates are light (diff read + tests). The two **deep** review gates are after A, and after the B∥C merge. Any design-level question a review raises goes to the user before the next cluster starts, not after.
+- **Decided 2026-07-09 (user):** the `n_scale` `ge=1` → `ge=2` narrowing ships *inside* B rather than being split into its own commit, and the back-compat fixture moves to the new edge. The two alternatives considered and rejected were (a) keeping `ge=1` and deferring, and (b) keeping `ge=1` while defining `width = 0.0` at `n_scale == 1`. Recorded because spec §3.3 explicitly left this open ("may be split into its own commit").

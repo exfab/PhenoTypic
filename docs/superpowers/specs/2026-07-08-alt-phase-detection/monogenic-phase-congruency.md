@@ -255,8 +255,8 @@ into the test helper from there rather than re-porting.
 ## 7. The golden fixture — **done**
 
 `phasepack` 1.5 (MIT, unmaintained since 2016) was installed once with the user's approval, used to
-generate `golden_phasecongmono.npz`, and removed. No runtime dep, no CI dep, no reliance on a 2016
-package continuing to install.
+generate `tests/fixtures/phasecongmono_golden.npz`, and removed. No runtime dep, no CI dep, no
+reliance on a 2016 package continuing to install.
 
 The fixture holds `pc`, `ft` and `T` for five 64×64 images — a step edge plus all four of Kovesi's
 generators — at `nscale=4, minWaveLength=3, mult=2.1, sigmaOnf=0.55, k=3.0, cutOff=0.5, g=10.0,

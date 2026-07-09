@@ -14,7 +14,7 @@ source document.
 | [`references.md`](./references.md) | — | Recovered source math, citations, corrected equations, reference implementations. **Read first.** |
 | [`drift-register.md`](./drift-register.md) | — | Every deviation from a validated reference, with its justification and status. |
 | [`verify_claims.py`](./verify_claims.py) | — | **Executable.** 21 checks re-deriving every mathematical claim in this folder, four against Kovesi's own synthetic test images (MIT) and one against a golden fixture. `uv run python <path>`; exits non-zero on failure. |
-| [`golden_phasecongmono.npz`](./golden_phasecongmono.npz) | — | Golden fixture: `phasepack` 1.5's `pc`/`ft`/`T` on five 64×64 images. Generated once, dependency dropped. Backs `check_19`. |
+| [`tests/fixtures/phasecongmono_golden.npz`](../../../../tests/fixtures/phasecongmono_golden.npz) | — | Golden fixture: `phasepack` 1.5's `pc`/`ft`/`T`/`or` on five 64×64 images. Generated once, dependency dropped. Backs `check_19`. Lives under `tests/fixtures/` so this script and `test_monogenic_kernels.py` share one canonical copy. |
 
 ## Why they are split
 
