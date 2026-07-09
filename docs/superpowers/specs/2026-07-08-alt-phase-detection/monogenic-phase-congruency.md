@@ -25,9 +25,24 @@ must not imply we have reproduced the CCDC formulation, which may differ.
 
 ## 2. Algorithm
 
-Per scale `s`, filter the image FFT with the isotropic log-Gabor radial, take the inverse FFT for the
-even channel `f_s`, and apply the packed Riesz multiplier for the two odd channels. Then
-`Aₛ = √(f_s² + h1_s² + h2_s²)`.
+Per scale `s`, filter the **periodic component** of the image FFT (§2.0) with the isotropic log-Gabor
+radial, take the inverse FFT for the even channel `f_s`, and apply the packed Riesz multiplier for the
+two odd channels. Then `Aₛ = √(f_s² + h1_s² + h2_s²)`.
+
+### 2.0 Use `perfft2`, not `fft2` — this is not a detail
+
+```
+IM = perfft2(img)        # Moisan's periodic/smooth decomposition; return F(periodic part)
+```
+
+`fft2` treats the image as tiled, so the intensity jump between opposite borders leaks a cross-shaped
+artifact into **every** log-Gabor band. Every reference implementation bandpasses the periodic
+component. Omitting it moves `pc` by up to **0.67 absolute**, and it is not a border effect: 16 px
+inside every edge the error is still `0.13` on `step2line`.
+
+This is recorded so emphatically because an early revision of `verify_claims.py` omitted it and
+**checks 15, 16 and 17 all still passed** — the behavioural tests are insensitive to it, and only the
+golden fixture caught it. `verify_claims.py::check_18`, `references.md` §10.3.
 
 ### 2.1 The congruency formula is NOT `_phasecong3`'s
 
@@ -52,8 +67,11 @@ phase-deviation term uses `acos(E/ΣA)` scaled by `deviation_gain`, which sharpe
 ```
 tau      = median(sumAn)/√(log 4)                    # at the FIRST scale only
 totalTau = tau · (1 − (1/mult)^n_scale)/(1 − 1/mult)
-T        = totalTau·√(π/2) + k·totalTau·√((4−π)/2)
+T        = max( totalTau·√(π/2) + k·totalTau·√((4−π)/2),  ε )   # floored at ε
 ```
+
+The `max(…, ε)` floor is Kovesi's and is easy to drop by accident: without it a noiseless synthetic
+image gets `T = 0`, and `max(E−T,0)/(E+ε)` stops suppressing anything at all.
 
 `(1/mult)^s` is the log-Gabor instantiation of Kovesi's "relative bandwidths" principle, and it is
 **exact for this bank** (`references.md` §4.4.3: the kernel-norm ratios converge to `1/mult` to six
@@ -219,18 +237,36 @@ into the test helper from there rather than re-porting.
 
 ---
 
-## 7. The golden fixture
+## 7. The golden fixture — **done**
 
-`phasepack` is MIT-licensed but unmaintained since 2016. Installing it was refused by the sandbox as
-an agent-chosen PyPI package, correctly.
+`phasepack` 1.5 (MIT, unmaintained since 2016) was installed once with the user's approval, used to
+generate `golden_phasecongmono.npz`, and removed. No runtime dep, no CI dep, no reliance on a 2016
+package continuing to install.
 
-Plan: with a one-off approved install, run `phasepack.phasecongmono` on a fixed, seeded synthetic
-image at fixed parameters, commit `tests/fixtures/phasecongmono_golden.npz` (inputs, parameters, and
-expected `PC`, `or`, `ft`, `T`), and drop the dependency. The test loads the fixture. No runtime dep,
-no CI dep, no reliance on a 2016 package continuing to install.
+The fixture holds `pc`, `ft` and `T` for five 64×64 images — a step edge plus all four of Kovesi's
+generators — at `nscale=4, minWaveLength=3, mult=2.1, sigmaOnf=0.55, k=3.0, cutOff=0.5, g=10.0,
+deviationGain=1.5`. Sizes are **even** on purpose: the two reference frequency grids diverge at odd
+sizes (§2.0's sibling issue, `verify_claims.py::check_18`), so an odd-sized fixture would silently
+pick a side.
 
-Record in the fixture's metadata: `phasepack` version, its `ε`, its `k` default (`2.0`, not Kovesi's
-`3.0`), and the exact parameters used, so a future reader can regenerate it.
+Current agreement, `verify_claims.py::check_19`: `max|Δpc| = 3.5e-14`, `max|Δft| = 6.7e-13`,
+`max|ΔT| = 4.4e-16`. Eight orders inside the `rtol = 1e-6` target.
+
+**It has already earned its keep.** The fixture is what caught the missing `perfft2` (§2.0). The
+behavioural controls — `step2line`, `noiseonf`, `starsine` — all passed with that bug present. Reuse
+the same fixture for `FocusEdgeMonogenicPhase`'s test suite rather than regenerating it.
+
+Two deliberate departures from `phasepack`, both to be preserved in the operation:
+
+- **Clip `acos`'s argument to `[−1, 1]`.** `phasepack` does not, and would emit `NaN`. Instrument the
+  clamp and assert it never fires (test 4); it never has.
+- **`ε = 1e-4`**, matching `phasepack` and Kovesi — not `FocusEdgePhase`'s `1e-5` (test 3).
+
+Regenerate only with `uv add --group dev phasepack` and a deliberate decision to move the goalposts.
+Per `references.md` §10, `phasepack` ships **no tests of its own**, so this fixture is stronger
+validation than the reference implementation carries — and "it matches the reference" is a claim about
+*transcription*, not about *correctness*. Tests 7–9 and `verify_claims.py::check_09b` are what speak
+to correctness.
 
 ---
 
@@ -250,9 +286,11 @@ Record in the fixture's metadata: `phasepack` version, its `ε`, its `k` default
 
 | Risk | Mitigation |
 |---|---|
-| Transcription error in the port | Golden fixture at `rtol=1e-6`. This is the whole point of §7. |
+| Transcription error in the port | Golden fixture at `rtol=1e-6` — **generated, committed, and already proven** (§7). It is the only thing that caught the missing `perfft2`. |
+| Using `fft2` instead of `perfft2` | §2.0 + `verify_claims.py::check_18`. **No behavioural test catches this** — `pc` shifts by 0.67 and `step2line`/`noiseonf`/`starsine` all still pass. |
+| Dropping the `max(T, ε)` floor | §2.2. A noiseless synthetic then gets `T = 0` and the noise gate stops gating. Fixture-only catch. |
 | `fx`/`fy` axis swap silently rotates orientation by 90° | Test 7. `pc` is invariant to the swap (`1.5e-17`), so nothing else catches it. |
 | `atan2(+sumh2, …)` sign flip mirrors orientation about the x-axis | Test 7's `starsine` arm. **Axis-aligned edges are blind to this one**, in `pc` and `orientation` alike — the bug the obvious test cannot see. |
 | The §3.2 refactor regresses shipped `FocusEdgePhase` | Scope is four helper functions; the existing 292-line test file is the gate. |
 | Someone "unifies" `ε` with `FocusEdgePhase`'s | Test 3, plus a comment naming the three references. |
-| `phasepack` cannot be installed even once | Fall back to hand-transcribing `phasecongruency.jl` and generating the fixture from a careful Julia run, or accept the unit tests alone and record the weaker guarantee. |
+| ~~`phasepack` cannot be installed even once~~ | **Resolved.** Installed once with approval, fixture generated, dependency removed. |

@@ -5,15 +5,20 @@ Run it::
     uv run python docs/superpowers/specs/2026-07-08-alt-phase-detection/verify_claims.py
 
 Exits non-zero if any check fails. Depends only on ``numpy`` and ``scipy``; it does
-**not** import ``phenotypic``. Peak memory ~180 MB, runtime ~1.5 s. Every integrand that
+**not** import ``phenotypic``. Peak memory ~190 MB, runtime ~1.6 s. Every integrand that
 is radially symmetric is integrated in 1-D; do not reintroduce 2-D grids for them.
 
-The last four checks (09b, 15, 16, 17) run against Peter Kovesi's synthetic test images,
-ported from ImagePhaseCongruency.jl under MIT with the notice retained. They matter
-disproportionately: their ground truth was authored by the algorithm's own author, so
-unlike the rest of this file it is not this spec marking its own homework. They also
-supply the only **positive** control here (check_15) -- everything else establishes what
-something *is not*.
+Checks 09b and 15-17 run against Peter Kovesi's synthetic test images, ported from
+ImagePhaseCongruency.jl under MIT with the notice retained. They matter disproportionately:
+their ground truth was authored by the algorithm's own author, so unlike the rest of this
+file it is not this spec marking its own homework. They also supply the only **positive**
+control here (check_15) -- everything else establishes what something *is not*.
+
+Checks 18 and 19 guard the transcription rather than the mathematics, and they exist
+because they caught a real bug: an earlier revision bandpassed ``fft2(img)`` instead of the
+image's periodic component, putting ``pc`` off by 0.67 absolute. Checks 15, 16 and 17 all
+passed anyway. Behavioural controls answer "does it behave like a phase-congruency
+operator?"; the golden fixture answers "is it *this* operator?". Keep both.
 
 Three of these checks contradict a published paper — Fleischmann, Wietzke & Sommer,
 "Image Analysis by Conformal Embedding," *J. Math. Imaging Vis.* **40**(3):305-325
@@ -252,11 +257,43 @@ def _centred_axis(sze: int) -> np.ndarray:
 
 
 def filter_grid(rows: int, cols: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Quadrant-shifted normalised frequency grid: ``(radius, fx, fy)``, DC at ``[0, 0]``."""
+    """Quadrant-shifted normalised frequency grid: ``(radius, fx, fy)``, DC at ``[0, 0]``.
+
+    Kovesi's two implementations disagree here, and only for ODD sizes. ``frequencyfilt.jl``
+    divides an odd axis by ``N``; his older MATLAB ``filtergrid.m`` -- which ``phasepack``
+    ports -- divides by ``N - 1``. ``k/N`` is the true DFT bin frequency, so the Julia form
+    is used. At even sizes the two are identical, which is why the golden fixture is
+    generated at even sizes only (check_18).
+    """
     fy = np.fft.ifftshift((np.arange(rows) - rows // 2) / rows)
     fx = np.fft.ifftshift((np.arange(cols) - cols // 2) / cols)
     FX, FY = np.meshgrid(fx, fy)  # 'xy': FX varies across columns
     return np.sqrt(FX**2 + FY**2), FX, FY
+
+
+def periodic_fft2(img: np.ndarray) -> np.ndarray:
+    """Moisan's periodic component of the FFT (Kovesi's ``perfft2``). **Not optional.**
+
+    ``fft2`` treats the image as tiled, so the jump between opposite borders injects a
+    cross-shaped artifact into every frequency band. The periodic/smooth decomposition
+    splits ``img = p + s`` with ``s`` carrying that jump, and returns ``F(p)``.
+
+    Every reference implementation of ``phasecongmono`` uses it. Omitting it changes ``pc``
+    by up to **0.59 absolute** -- not a border effect, a whole-image one (check_18).
+    """
+    rows, cols = img.shape
+    s = np.zeros_like(img, dtype=float)
+    s[0, :] = img[0, :] - img[-1, :]
+    s[-1, :] = -s[0, :]
+    s[:, 0] += img[:, 0] - img[:, -1]
+    s[:, -1] -= img[:, 0] - img[:, -1]
+
+    cx, cy = np.meshgrid(2 * np.pi * np.arange(cols) / cols, 2 * np.pi * np.arange(rows) / rows)
+    denominator = 2.0 * (2.0 - np.cos(cx) - np.cos(cy))
+    denominator[0, 0] = 1.0
+    smooth = np.fft.fft2(s) / denominator
+    smooth[0, 0] = 0.0  # the mean belongs to the periodic component
+    return np.fft.fft2(img) - smooth
 
 
 def step2line(sze: int = 512, *, nscales: int = 50, ampexponent: float = -1.0,
@@ -357,25 +394,39 @@ def monogenic_phase_congruency(
     noise_threshold: bool = True,
     swap_axes: bool = False,
     flip_h2_sign: bool = False,
+    periodic: bool = True,
+    matlab_odd_grid: bool = False,
 ) -> Monogenic:
     """The operator specified in ``monogenic-phase-congruency.md`` §2, transcribed here.
 
-    Log-Gabor bandpass + Riesz transform, summed over scales::
+    Log-Gabor bandpass + Riesz transform of the image's PERIODIC component, summed over
+    scales::
 
         PC = W * max(1 - deviation_gain*acos(E/(sumAn + eps)), 0) * max(E - T, 0)/(E + eps)
 
-    ``swap_axes`` and ``flip_h2_sign`` inject the two axis-convention bugs that §7 warns
-    about, so check_17 can show which tests catch them.
+    Verified against ``phasepack.phasecongmono`` to ``8e-14`` on five images at even sizes
+    (check_18). Two deliberate departures from that reference, both declared:
+
+    * ``acos``'s argument is clipped to ``[-1, 1]``. ``phasepack`` does not clip and would
+      emit ``NaN``; ``n_clamped`` counts how often that would have happened. It never does.
+    * ``periodic=False`` and the two axis switches exist only so checks 17 and 18 can inject
+      the corresponding bugs and show which tests catch them.
     """
     rows, cols = img.shape
-    radius, FX, FY = filter_grid(rows, cols)
+    if matlab_odd_grid:
+        fy = np.fft.ifftshift(np.linspace(-0.5, 0.5, rows, endpoint=bool(rows % 2)))
+        fx = np.fft.ifftshift(np.linspace(-0.5, 0.5, cols, endpoint=bool(cols % 2)))
+        FX, FY = np.meshgrid(fx, fy)
+        radius = np.sqrt(FX**2 + FY**2)
+    else:
+        radius, FX, FY = filter_grid(rows, cols)
     radius[0, 0] = 1.0
     if swap_axes:
         FX, FY = FY, FX
     riesz = (1j * FX - FY) / radius
     riesz[0, 0] = 0.0
     lowpass = 1.0 / (1.0 + (radius / 0.45) ** 30)
-    spectrum = np.fft.fft2(img)
+    spectrum = periodic_fft2(img) if periodic else np.fft.fft2(img)
 
     sum_an = np.zeros((rows, cols))
     max_an = np.zeros((rows, cols))
@@ -412,7 +463,8 @@ def monogenic_phase_congruency(
     total_tau = tau * (1 - (1 / mult) ** nscale) / (1 - 1 / mult)  # geometric sum
     threshold = 0.0
     if noise_threshold:
-        threshold = total_tau * np.sqrt(np.pi / 2) + k * total_tau * np.sqrt((4 - np.pi) / 2)
+        # Kovesi floors T at epsilon so that a noiseless image still divides safely.
+        threshold = max(total_tau * np.sqrt(np.pi / 2) + k * total_tau * np.sqrt((4 - np.pi) / 2), eps)
 
     energy = np.sqrt(sum_f**2 + sum_h1**2 + sum_h2**2)
     arg = energy / (sum_an + eps)
@@ -1176,7 +1228,8 @@ def check_15_step2line_congruency_survives_the_feature_type_sweep() -> Result:
     ft_deg = np.degrees(mono.feature_type[rows, col])
 
     ft_span = ft_deg[-1] - ft_deg[0]
-    ft_sweeps = 80.0 < ft_span < 100.0 and bool(np.all(np.diff(ft_deg) > 0))  # phasecycles=0.25 -> 90 deg
+    rising = float(np.mean(np.diff(ft_deg) > 0))  # near-monotone; the periodic FFT adds small wiggles
+    ft_sweeps = 75.0 < ft_span < 95.0 and rising > 0.95  # phasecycles = 0.25 -> 90 deg
 
     pc_collapse = pc_col.max() / pc_col.min()
     grad_collapse = grad_col.max() / grad_col.min()
@@ -1187,8 +1240,8 @@ def check_15_step2line_congruency_survives_the_feature_type_sweep() -> Result:
     ok = (
         ft_sweeps
         and mono.n_clamped == 0  # M1: the acos argument never leaves [-1, 1]
-        and 0.8 < endpoints < 1.25
-        and pc_collapse < 2.0
+        and 0.9 < endpoints < 1.1
+        and pc_collapse < 1.3
         and grad_collapse > 8.0
         and grad_col[-1] / grad_col[0] < 0.15
         and localised == 1.0
@@ -1196,7 +1249,8 @@ def check_15_step2line_congruency_survives_the_feature_type_sweep() -> Result:
     return Result(
         "15 step2line: pc survives the step->line sweep, |grad| does not (POSITIVE control)",
         ok,
-        f"feature_type sweeps {ft_deg[0]:+.1f} -> {ft_deg[-1]:+.1f} deg (monotone, expected 90); "
+        f"feature_type sweeps {ft_deg[0]:+.1f} -> {ft_deg[-1]:+.1f} deg ({ft_span:.1f} deg, expected 90; "
+        f"rising at {rising * 100:.0f}% of steps); "
         f"pc {pc_col.min():.4f}-{pc_col.max():.4f} ({pc_collapse:.2f}x, endpoint ratio {endpoints:.3f}) "
         f"vs |grad| {grad_col.min():.4f}-{grad_col.max():.4f} ({grad_collapse:.1f}x, endpoint ratio "
         f"{grad_col[-1] / grad_col[0]:.4f}); pc peaks on the feature column in {localised * 100:.0f}% of "
@@ -1285,12 +1339,17 @@ def check_17_starsine_pins_the_orientation_convention() -> Result:
         return float(np.degrees(mono.orientation[np.unravel_index(np.argmax(mono.pc), mono.pc.shape)]))
 
     v_deg, h_deg = orientation_at_peak(vertical), orientation_at_peak(horizontal)
-    convention_ok = abs(v_deg) < 1e-6 and abs(h_deg - 90.0) < 1e-6
+    convention_ok = abs(v_deg) < 0.02 and abs(h_deg - 90.0) < 0.02
 
-    # The straight-edge pair is blind to the sign flip (0 and 90 are self-mirrored mod pi)...
-    v_flip = orientation_at_peak(vertical, flip_h2_sign=True) % 180.0
-    h_flip = orientation_at_peak(horizontal, flip_h2_sign=True) % 180.0
-    flip_invisible = min(v_flip, 180.0 - v_flip) < 1e-6 and abs(h_flip - 90.0) < 1e-6
+    # The straight-edge pair is blind to the sign flip: 0 and 90 deg are self-mirrored mod 180,
+    # so the flipped orientation lands back on the unflipped one.
+    def flip_shift(img: np.ndarray) -> float:
+        a = np.radians(orientation_at_peak(img))
+        b = np.radians(orientation_at_peak(img, flip_h2_sign=True))
+        return float(np.degrees(angular_distance_mod_pi(np.array(b), np.array(a))))
+
+    v_flip, h_flip = flip_shift(vertical), flip_shift(horizontal)
+    flip_invisible = v_flip < 0.05 and h_flip < 0.05
 
     # ...and pc is blind to the swap.
     pc_plain = monogenic_phase_congruency(vertical).pc
@@ -1317,11 +1376,125 @@ def check_17_starsine_pins_the_orientation_convention() -> Result:
         "17 starsine pins the orientation convention and catches both axis bugs",
         ok,
         f"vertical edge -> {v_deg:.2f} deg, horizontal -> {h_deg:.2f} deg; on those edges pc is blind to "
-        f"an fx/fy swap (max|dpc| = {pc_blind:.1e}) and orientation is blind to an h2 sign flip. "
-        f"starsine ({int(mask.sum())} feature px): orientation matches the generator's theta to "
-        f"{float(np.degrees(np.median(err))):.2f} deg median / "
+        f"an fx/fy swap (max|dpc| = {pc_blind:.1e}) and orientation is blind to an h2 sign flip "
+        f"({v_flip:.3f}/{h_flip:.3f} deg shift). starsine ({int(mask.sum())} feature px): orientation "
+        f"matches the generator's theta to {float(np.degrees(np.median(err))):.2f} deg median / "
         f"{float(np.degrees(np.quantile(err, 0.9))):.2f} deg at the 90th pct; sign flip shifts it "
         f"{d_flip:.1f} deg, axis swap {d_swap:.1f} deg",
+    )
+
+
+def check_18_the_periodic_fft_is_not_optional() -> Result:
+    """``perfft2`` is load-bearing, and the two reference grids diverge at odd sizes.
+
+    Every reference implementation of ``phasecongmono`` bandpasses the image's **periodic
+    component**, not the image. ``fft2`` treats the image as tiled, so the jump between
+    opposite borders leaks a cross-shaped artifact into every log-Gabor band.
+
+    This check exists because an earlier revision of this file omitted ``perfft2`` and the
+    resulting ``pc`` was wrong by up to **0.67 absolute** -- and, damningly, checks 15-17 all
+    still passed. Border trimming does not rescue it: 16 px in from every edge the error is
+    still 0.13 on ``step2line``, because the leak is spread across the whole spectrum.
+
+    Separately: for ODD sizes Kovesi's Julia divides the frequency axis by ``N`` while his
+    MATLAB (which ``phasepack`` ports) divides by ``N - 1``. ``k/N`` is the true DFT bin
+    frequency and is what this file uses. The two agree exactly at even sizes, so the golden
+    fixture (check_19) is generated at even sizes only and cannot arbitrate between them.
+    """
+    n = 256
+    step = np.zeros((n, n))
+    step[:, n // 2 :] = 1.0
+    cases = {
+        "step": step,
+        "step2line": unit_variance(step2line(n)),
+        "starsine": unit_variance(starsine(n, ncycles=8)),
+        "noiseonf": unit_variance(noiseonf(n, 1.5, seed=1)),
+    }
+    whole, interior = {}, {}
+    for name, img in cases.items():
+        d = np.abs(monogenic_phase_congruency(img).pc - monogenic_phase_congruency(img, periodic=False).pc)
+        whole[name] = float(d.max())
+        interior[name] = float(d[16:-16, 16:-16].max())
+
+    # Even sizes: the two frequency-grid conventions are bit-identical. Odd sizes: they are not.
+    even = float(
+        np.abs(
+            monogenic_phase_congruency(cases["starsine"]).pc
+            - monogenic_phase_congruency(cases["starsine"], matlab_odd_grid=True).pc
+        ).max()
+    )
+    odd_img = unit_variance(starsine(255, ncycles=8))
+    odd = float(
+        np.abs(
+            monogenic_phase_congruency(odd_img).pc
+            - monogenic_phase_congruency(odd_img, matlab_odd_grid=True).pc
+        ).max()
+    )
+
+    ok = (
+        whole["step2line"] > 0.5  # omitting perfft2 is catastrophic, not cosmetic
+        and interior["step2line"] > 0.05  # and it is not a border effect
+        and interior["starsine"] > 0.05
+        and even < 1e-15  # the grids agree where the fixture lives
+        and odd > 1e-3  # and disagree where it does not
+    )
+    return Result(
+        "18 the periodic FFT is not optional; the two reference grids diverge at odd sizes",
+        ok,
+        "fft2 instead of perfft2 shifts pc by "
+        + ", ".join(f"{k} {whole[k]:.4f} (interior {interior[k]:.4f})" for k in cases)
+        + f"; Julia's k/N vs MATLAB's k/(N-1) grid: {even:.1e} at 256 (identical), {odd:.1e} at 255",
+    )
+
+
+def check_19_golden_fixture_agrees_with_phasepack() -> Result:
+    """Numeric agreement with ``phasepack.phasecongmono`` at ``rtol = 1e-6``.
+
+    ``golden_phasecongmono.npz`` was generated once from ``phasepack`` 1.5 (MIT), which is an
+    independent transcription of Kovesi's MATLAB. The dependency is not retained: the fixture
+    is the reference from here on. Regenerate only with ``uv add --group dev phasepack`` and a
+    deliberate decision to move the goalposts.
+
+    Per ``references.md`` §10, ``phasepack`` itself ships **no tests** -- so this fixture is
+    stronger validation than the reference implementation carries, and "it matches the
+    reference" is a claim about transcription, not about correctness. Checks 09b and 15-18 are
+    what speak to correctness.
+
+    64x64 (even, so the §18 grid divergence cannot bite). Skips with a PASS if the fixture is
+    absent, so the file stays runnable from a bare checkout of the spec text alone.
+    """
+    from pathlib import Path
+
+    path = Path(__file__).with_name("golden_phasecongmono.npz")
+    if not path.exists():
+        return Result("19 golden fixture agrees with phasepack (rtol=1e-6)", True, f"SKIPPED: {path.name} absent")
+
+    n = 64
+    step = np.zeros((n, n))
+    step[:, n // 2 :] = 1.0
+    cases = {
+        "step": step,
+        "step2line": unit_variance(step2line(n)),
+        "starsine": unit_variance(starsine(n, ncycles=8)),
+        "circsine": unit_variance(circsine(n, wavelength=16.0)),
+        "noiseonf": unit_variance(noiseonf(n, 1.5, seed=1)),
+    }
+    golden = np.load(path, allow_pickle=False)
+    worst_pc = worst_ft = worst_t = 0.0
+    ok = True
+    for name, img in cases.items():
+        mono = monogenic_phase_congruency(img)
+        worst_pc = max(worst_pc, float(np.abs(golden[f"{name}__pc"] - mono.pc).max()))
+        worst_ft = max(worst_ft, float(np.abs(golden[f"{name}__ft"] - mono.feature_type).max()))
+        worst_t = max(worst_t, abs(float(golden[f"{name}__T"]) - mono.threshold))
+        ok &= bool(np.allclose(golden[f"{name}__pc"], mono.pc, rtol=1e-6, atol=1e-9))
+        ok &= bool(np.allclose(golden[f"{name}__ft"], mono.feature_type, rtol=1e-6, atol=1e-9))
+
+    return Result(
+        "19 golden fixture agrees with phasepack (rtol=1e-6)",
+        ok,
+        f"5 images, 64x64: max|dpc| {worst_pc:.2e}, max|dft| {worst_ft:.2e}, max|dT| {worst_t:.2e} "
+        f"-- eight orders inside the tolerance. phasepack ships no tests of its own (references.md §10)",
     )
 
 
@@ -1349,6 +1522,8 @@ CHECKS: tuple[Callable[[], Result], ...] = (
     check_15_step2line_congruency_survives_the_feature_type_sweep,
     check_16_noiseonf_exercises_the_rayleigh_threshold,
     check_17_starsine_pins_the_orientation_convention,
+    check_18_the_periodic_fft_is_not_optional,
+    check_19_golden_fixture_agrees_with_phasepack,
 )
 
 

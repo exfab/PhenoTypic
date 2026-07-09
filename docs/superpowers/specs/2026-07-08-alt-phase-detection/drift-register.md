@@ -121,10 +121,23 @@ orientation and that **no axis-aligned test can detect**, because `0` and `π/2`
 images mod `π`. Four generators, four findings, none of which our own fixtures would have produced.
 `references.md` §10.2.
 
+**S6 — behavioural controls cannot tell you *which* operator you built.** S5's four generators were
+added, all four checks passed, and the work was committed. The very next step — running the newly
+installed `phasepack` against the transcription those checks had just blessed — showed `pc` was wrong
+by up to **0.67 absolute**, because §2 said "filter the image FFT" and every reference filters the
+image's *periodic component* (`perfft2`). The spec had the bug too. Checks 15, 16 and 17 passed with
+it present, and would have kept passing forever: `step2line` still sweeps, `noiseonf` still gets
+thresholded, `starsine` still recovers its orientations. Kovesi's own images tested that the thing
+behaved like *a* phase-congruency operator, not that it was *his*. Only the golden fixture could tell
+the difference, and it did so in one run. A second omission — `T = max(…, ε)` — fell out at the same
+time. **A behavioural control and a golden fixture answer different questions; neither substitutes for
+the other.** `references.md` §10.3.
+
 **The lesson, in one line:** copying a reference's *constants* is not faithfulness. Copying its
 *principle*, correctly instantiated, is — and verifying the principle is part of copying it.
 Where a reference also publishes its *test data*, take that too: it is the only ground truth in the
-loop that this spec cannot have biased.
+loop that this spec cannot have biased. And where it ships runnable code, diff against it — the
+things a behavioural test cannot see are exactly the things that make it the *reference*.
 
 ---
 
@@ -148,3 +161,6 @@ Kept visible so nobody re-derives them.
 | `E ≤ A_Σ` matters for the `[0,1]` bound. | It does not. But `E/A_Σ ≈ 1` was *also* a folded-construction artifact: the real value is `0.999948` at an edge, `0.0` on flat. |
 | `references.md` §6's "80–95% luminance". | Mixed `load_synth_yeast_plate` into one table and `load_yeast_plate` into another. Real plates: 69–80%. |
 | "`pc` is invariant to the `fx`/`fy` swap, so nothing else catches it" (§7). | True but incomplete, and the incompleteness was the dangerous half. There is a **second** axis bug — the `−sumh2` sign — and the vertical/horizontal edge pair is blind to *that* one in `pc` **and** `orientation`. Only an off-axis pattern (`starsine`) catches it. |
+| §2's "filter the image FFT". | Wrong. Every reference filters the image's **periodic component** (`perfft2`). Using `fft2` moves `pc` by up to `0.67` absolute, and `0.13` even 16 px inside the border. §2.0. |
+| §2.2's noise threshold, as written. | Omitted Kovesi's `T = max(…, ε)` floor. A noiseless synthetic then gets `T = 0` and the multiplicative noise gate stops gating. |
+| "Kovesi's Julia, MATLAB and `phasepack` agree verbatim." | Not at **odd** sizes: the Julia frequency grid divides by `N`, the MATLAB by `N − 1` (`8.2e-3` on a 255² `starsine`, `0.0` at even sizes). We follow the Julia — `k/N` is the true DFT bin frequency — and generate the fixture at even sizes so it cannot silently arbitrate. |

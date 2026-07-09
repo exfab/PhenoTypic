@@ -834,3 +834,29 @@ harmonics are summed; Julia's `[f(x,y) for x=l:u, y=l:u]` puts `x` on the **firs
 The `−h₂` sign encodes a **y-up** convention: `starsine`'s recovered orientation equals `+theta`, not
 `−theta`. Flipping it reflects every orientation about the x-axis, which no axis-aligned test can see.
 A test suite built only from horizontal and vertical step edges would ship that bug.
+
+### 10.3 The golden fixture, and what only it could catch
+
+`phasepack` 1.5 was installed once (user-approved), used to generate `golden_phasecongmono.npz`, and
+removed. Agreement: `max|Δpc| = 3.5e-14` across five 64×64 images — eight orders inside the `rtol=1e-6`
+target. `verify_claims.py::check_19`.
+
+It immediately paid for itself by exposing **two omissions in this spec's own §2**, neither of which
+any behavioural control detected:
+
+| Omission | Consequence | Caught by |
+|---|---|---|
+| **`perfft2`, not `fft2`.** Every reference bandpasses the image's *periodic component* (Moisan's periodic/smooth decomposition). | `pc` wrong by up to **0.67 absolute**. Not a border effect: 16 px inside every edge the error is still `0.13` on `step2line`. `fft2` tiles the image, so the border jump leaks a cross into every log-Gabor band. | Fixture only. Checks 15, 16, 17 **all passed with the bug present.** |
+| **`T = max(…, ε)`.** Kovesi floors the noise threshold. | A noiseless synthetic gets `T = 0` and the multiplicative noise gate stops gating. | Fixture only. |
+
+There is also a genuine divergence between Kovesi's own two implementations, at **odd sizes only**:
+`frequencyfilt.jl` divides an odd frequency axis by `N`, while his older MATLAB `filtergrid.m` — which
+`phasepack` ports — divides by `N − 1`. `k/N` is the true DFT bin frequency, so this spec follows the
+Julia. The two are bit-identical at even sizes (`0.0`) and differ by `8.2e-3` on a 255² `starsine`,
+which is why the fixture is generated at even sizes only and cannot arbitrate between them.
+
+**The lesson.** Behavioural controls answer "does it behave like a phase-congruency operator?" A golden
+fixture answers "is it *this* operator?" `step2line`, `noiseonf` and `starsine` all said yes to the
+first question while the second was still no. Both kinds of test are necessary; neither substitutes for
+the other. Note the converse too, from §10: `phasepack` carries no tests at all, so the fixture pins
+*transcription*, not *correctness* — checks `09b` and `15`–`18` are what speak to correctness.
