@@ -2423,6 +2423,12 @@ The plan and the spec go in because F's charge is to find *shortcuts and unstate
 > is reaped, and that is exactly how two paper texts went missing once already. A working copy may
 > live in the scratchpad while a reviewer is using it; the durable copy is the one of record.
 >
+> **Populated and verified 2026-07-09** — 48 files, 11 MB, taken *after* cluster F finished, because
+> F mutation-tests inside the working copy and restores in `finally`; a mid-run snapshot could have
+> enshrined a mutant as the corpus of record. Every `.py` is byte-identical to the working copy, all
+> seven gates pass against the durable path, and its 141 tests run from it. A snapshot that cannot
+> run its own gates is a backup, not a corpus.
+>
 > Re-derive only the files that come from the repo, with the tested tool:
 >
 > ```
