@@ -256,3 +256,58 @@ class TestAssignByCentroidCore:
         b = np.zeros((100, 100), dtype=np.uint16)
         assign_by_centroid_core(tiles, [a, b], (100, 180))
         assert not [w for w in recwarn.list if issubclass(w.category, UserWarning)]
+
+
+class TestAssignByCentroidCoreMemory:
+    """The merge must not scale memory with the *instance* count.
+
+    Materializing one full-image boolean mask per survivor costs H*W bytes each,
+    and all survivors are alive at once for the largest-first sort. On a
+    4000x3000 plate with 1000 colonies that measured 12 GB of peak allocation.
+    Painting from each survivor's tile-local slice instead keeps the working set
+    at one tile plus the output objmap.
+    """
+
+    def test_peak_allocation_does_not_scale_with_instances(self):
+        import tracemalloc
+        import warnings
+
+        import numpy as np
+
+        from phenotypic.detect.nn._tiling import (
+            _plan_tiles,
+            assign_by_centroid_core,
+        )
+
+        h, w, n_inst = 800, 1200, 300
+        tiles = _plan_tiles((h, w), 518, 0.15)
+        rng = np.random.default_rng(0)
+        per_tile = []
+        for t in tiles:
+            om = np.zeros((t.h, t.w), dtype=np.uint16)
+            for lab in range(1, n_inst + 1):
+                cy = int(rng.integers(30, h - 30)) - t.y0
+                cx = int(rng.integers(30, w - 30)) - t.x0
+                ys = slice(max(0, cy - 10), min(t.h, cy + 10))
+                xs = slice(max(0, cx - 10), min(t.w, cx + 10))
+                if ys.stop > ys.start and xs.stop > xs.start:
+                    om[ys, xs] = lab
+            per_tile.append(om)
+
+        tracemalloc.start()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            assign_by_centroid_core(tiles, per_tile, (h, w))
+        _, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+        # Mechanism-derived bound. One full-image bool per survivor would be
+        # n_inst * h * w bytes (~288 MB here); the tile-local form needs only the
+        # uint16 objmap (h*w*2 = 1.9 MB) plus one tile. 20 MB leaves ample slack
+        # for numpy temporaries while still failing by an order of magnitude if
+        # per-instance full-image masks return.
+        one_full_image_mask_per_instance = n_inst * h * w
+        assert peak < 20_000_000, (
+            f"peak {peak/1e6:.0f} MB; per-instance full-image masks would cost "
+            f"{one_full_image_mask_per_instance/1e6:.0f} MB"
+        )

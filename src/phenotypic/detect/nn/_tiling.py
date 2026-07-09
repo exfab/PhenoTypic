@@ -342,31 +342,36 @@ def assign_by_centroid_core(
             f"{len(tile_objmaps)} objmaps"
         )
 
-    kept: list[np.ndarray] = []
+    # Survivors are recorded as (area, diameter, tile_index, label) — never as
+    # full-image masks. Materializing one (H, W) boolean per instance costs
+    # ~12 MB on a 4000x3000 plate, and every survivor is alive at once for the
+    # largest-first sort: ~12 GB for a 1000-colony plate (measured). Painting
+    # instead from each survivor's tile-local slice keeps the working set at one
+    # tile plus the output objmap.
+    kept: list[tuple[int, int, int, int]] = []
     for i, (tile, om) in enumerate(zip(tiles, tile_objmaps)):
         om = np.asarray(om)
         for label in np.unique(om):
             if label == 0:
                 continue
-            local = om == label
-            ys, xs = np.nonzero(local)
+            ys, xs = np.nonzero(om == label)
             cy = ys.mean() + tile.y0
             cx = xs.mean() + tile.x0
             if owning_tile_index(tiles, (cy, cx)) != i:
                 continue
-            full = np.zeros(out_shape, dtype=bool)
-            full[tile.y0:tile.y1, tile.x0:tile.x1] = local
-            kept.append(full)
+            diameter = max(
+                int(ys.max() - ys.min()) + 1, int(xs.max() - xs.min()) + 1
+            )
+            kept.append((int(ys.size), diameter, i, int(label)))
 
     if not kept:
         return np.zeros(out_shape, dtype=np.uint16)
 
-    kept.sort(key=lambda m: int(m.sum()), reverse=True)
+    kept.sort(key=lambda rec: rec[0], reverse=True)
 
     overlap = tile_overlap_px(tiles)
     if overlap:
-        ys, xs = np.nonzero(kept[0])
-        d = max(ys.max() - ys.min() + 1, xs.max() - xs.min() + 1)
+        d = kept[0][1]
         if d > overlap:
             warnings.warn(
                 f"Largest instance is {d} px across but tiles overlap by only "
@@ -386,7 +391,12 @@ def assign_by_centroid_core(
         )
         kept = kept[:max_labels]
 
+    # Paint largest-first, so smaller colonies overwrite at overlaps and keep
+    # their identity. Each survivor is painted through a view onto its own tile
+    # rectangle; no full-image mask is ever built.
     objmap = np.zeros(out_shape, dtype=np.uint16)
-    for idx, mask in enumerate(kept, start=1):
-        objmap[mask] = idx
+    for idx, (_area, _diameter, i, label) in enumerate(kept, start=1):
+        tile = tiles[i]
+        om = np.asarray(tile_objmaps[i])
+        objmap[tile.y0:tile.y1, tile.x0:tile.x1][om == label] = idx
     return objmap
