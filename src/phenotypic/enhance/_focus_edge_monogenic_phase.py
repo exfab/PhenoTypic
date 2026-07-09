@@ -75,6 +75,18 @@ class FocusEdgeMonogenicPhase(FocusEdge):
             horizontal one. For ``"feature_type"``, ``0.5`` is a step edge, ``1.0`` a
             bright line and ``0.0`` a dark line.
 
+            **The two angle maps are diagnostic, not detectable.** An angle is defined
+            everywhere, including where there is no feature, so the output is a noise field
+            wherever ``pc`` is small. On ``load_synth_yeast_plate`` 89.6% of pixels have
+            ``pc < 0.02``; over those, ``"orientation"`` spans the full ``[0, 1]`` with
+            ``std = 0.307`` and only 3.3% lie near the ``0.5`` that means "vertical edge".
+            Kovesi consumes his ``or`` masked by ``pc`` (his comment: *"Quantize to 0 - 180
+            degrees (for NONMAXSUP)"*). Feed ``"pc"`` to a detector; read the angles for
+            inspection, or mask them yourself.
+
+            ``"orientation"``'s true image is ``(0, 1]``, not ``[0, 1]``: the fold is
+            half-open, so ``-pi/2`` is unattainable. ``"feature_type"`` attains both ends.
+
     Returns:
         Image: Input image with ``detect_mat`` replaced by the selected monogenic map,
         clipped to ``[0, 1]``. ``rgb`` and ``gray`` are unchanged.

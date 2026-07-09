@@ -52,6 +52,10 @@ Enhance specific morphological features.
 - **FocusEdgeFrangi** — enhances tubular structures (hyphae, branches)
 - **FocusEdgeSobel** — highlights edges
 - **FocusEdgePhase** — illumination-invariant edge detection
+- **FocusEdgeMonogenicPhase** — the same illumination invariance without the orientation
+  sweep, via the monogenic signal. Cheaper and isotropic; use it when colony edges have no
+  preferred direction. Its `output="orientation"` / `"feature_type"` modes are diagnostic
+  angle maps, not detection inputs.
 
 ## Stacking Enhancers
 

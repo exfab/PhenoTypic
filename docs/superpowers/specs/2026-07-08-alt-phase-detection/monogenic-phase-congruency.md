@@ -1,6 +1,8 @@
 # `FocusEdgeMonogenicPhase` — design
 
-**Status: CLOSED. Buildable now.**
+**Status: BUILT AND SHIPPED.** `src/phenotypic/enhance/_focus_edge_monogenic_phase.py`, on
+`_monogenic_kernels.py`. `FocusEdgePhase` was refactored onto the same kernels and is
+bit-identical to its pre-refactor self at both noise methods. Eleven recorded drifts, `M1`–`M11`.
 **Companion:** [`references.md`](./references.md) §5 and §8.1. **Deviations:** [`drift-register.md`](./drift-register.md).
 
 Phase congruency via an isotropic log-Gabor bandpass and the Riesz transform, instead of Kovesi's
