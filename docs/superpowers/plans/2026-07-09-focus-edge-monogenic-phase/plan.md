@@ -24,7 +24,10 @@
 - **Cite a file and a line, never "the reference".** Three separate claims in this spec were generalised from `phasepack` — the only runnable implementation — and all three were wrong (`drift-register.md` S7). Runnability and authority are unrelated.
 - **`T` is floored at `EPSILON_MONOGENIC`** (drift M5). That floor is `phasepack`'s, not Kovesi's. It is inactive on every non-constant image (smallest measured `T` across the five fixture images is `3.7e-3`, 37× the floor). Keep it; the fixture encodes it.
 - **The `acos` argument is clipped to `[-1, 1]`** (drift M1). No reference clips. Count the clamps and assert the count is zero on all three shipped plates.
-- **Operations are keyword-only pydantic models.** `FocusEdgeMonogenicPhase(n_scale=4)`, never positional. No hand-written `__init__`. Bounds go in `Field(...)`, search hints in `TuneSpec(...)`, and every `TuneSpec` window must be a subset of its `Field` bounds (`tests/unit/tune/test_annotation_subset_invariant.py` enforces this automatically).
+- **Invoke the `adding-an-operation` skill before touching any operation parameter.** This is mandatory for clusters **B** and **C** — B changes `FocusEdgePhase.n_scale`'s bound, C declares ten new fields and a closed value set. Cluster A is exempt: `_monogenic_kernels.py` holds pure functions, not operations. Read the skill first, then write. Its two rules that bite here:
+  - **Annotation-coverage gate.** Every new numeric (`int`/`float`) field on an `enhance/` operation is pulled into `tests/unit/tune/test_annotation_coverage.py` and must be covered by a `TuneSpec` **or** a `Field` bound, or CI fails. Pick by *intent*, not to silence the gate: a fixed sensible window → `TuneSpec(low, high)`; structural/scene-derived → `TuneSpec(tunable=False)`; tunable but range depends on runtime context → bare `TuneSpec()`. Here: `noise_method` is `TuneSpec(tunable=False)` because it selects an estimator, not a magnitude; every other numeric field has a real window.
+  - **Closed value sets.** `MonogenicOutput` is defined **once** as a `TypeAlias` in `sdk_/typing_.py` and reused. Never accept a bare `str`, never derive the `Literal` from a runtime expression. No `Enum` shadow exists, so the enum/literal parity test does not apply.
+- **Operations are keyword-only pydantic models.** `FocusEdgeMonogenicPhase(n_scale=4)`, never positional. No hand-written `__init__`. Put normalization and guards in a `field_validator`, never an `__init__`. Bounds go in `Field(...)`, search hints in `TuneSpec(...)`, and every `TuneSpec` window must be a subset of its `Field` bounds (`tests/unit/tune/test_annotation_subset_invariant.py` enforces this automatically).
 - **`detect_mat ∈ [0, 1]`, float32 on assignment.** Angles must be mapped before writing (drift M2).
 - **Never mutate `image.rgb` or `image.gray`.** The integrity validator on `ImageEnhancer.apply` enforces this.
 - **Docstrings are Google-style, doctests must run** against `load_synth_yeast_plate()`.
@@ -1917,8 +1920,10 @@ Small, and the riskiest change in the plan. It touches **shipped, exercised code
 
 Isolated for its own gate even though it is ~40 lines. Risk ≠ size.
 
+**Required skill:** `adding-an-operation`, invoked *before* editing. The `n_scale` bound change is an operation-parameter edit: `Field(4, ge=1)` → `Field(4, ge=2)`. Confirm `TuneSpec(3, 6)` stays a subset of the new bound (it does), and that no other field's coverage changes.
+
 **Model:** Opus, high effort.
-**Gate:** the bit-identity check against `/tmp/phasecong3_baseline.npz` must report **BIT-IDENTICAL across all six outputs** — captured *before* the edit, in the same tree. Then `test_phase_congruency.py`, `test_enhancer_taxonomy.py`, `test_enhance_annotations.py`, and `pytest tests/unit/detect -k filamentous`. If bit-identity fails, fix the refactor; **never relax the check**.
+**Gate:** the bit-identity check against `/tmp/phasecong3_baseline.npz` must report **BIT-IDENTICAL across all six outputs** — captured *before* the edit, in the same tree. Then `test_phase_congruency.py`, `test_enhancer_taxonomy.py`, `test_enhance_annotations.py`, `tests/unit/tune/test_annotation_coverage.py`, `test_annotation_subset_invariant.py`, and `pytest tests/unit/detect -k filamentous`. If bit-identity fails, fix the refactor; **never relax the check**.
 
 ### C — Keystone + folded Leaves: the operation
 
@@ -1926,8 +1931,13 @@ The operation itself is Keystone. `MonogenicOutput`, the `__init__.py` export, t
 
 The `__init__.py` export is quietly load-bearing: `gui/_operation_registry.py::discover` scans the `phenotypic.enhance` module, so acceptance criterion 6 (GUI dropdown) is satisfied by the export and by nothing else. Gate on it explicitly.
 
+**Required skill:** `adding-an-operation`, invoked *before* writing the operation. This cluster is the skill's central case — ten new pydantic fields, one closed value set, and a new `enhance/` operation that the annotation-coverage gate will discover automatically. In particular:
+- `deviation_gain` is a **new** numeric field with no counterpart on `FocusEdgePhase`. It needs a `TuneSpec` chosen by intent (`TuneSpec(1.0, 2.0)` — Kovesi: "sensible values are from 1 to about 2"), not a `tunable=False` to quiet the gate.
+- `noise_method` selects an estimator (`-1` median, `-2` Rayleigh mode, `>= 0` literal threshold), not a magnitude. It is `TuneSpec(tunable=False)` for that reason, matching `FocusEdgePhase`.
+- `MonogenicOutput` is a `TypeAlias` declared once in `sdk_/typing_.py` beside `FootprintShape` and `DetectMode`, and reused. No `Enum` shadow, so no parity test.
+
 **Model:** Opus, high effort.
-**Gate:** `pytest tests/unit/enhance tests/unit/abc_ tests/unit/tune`; doctests; `FocusEdgeMonogenicPhase in phenotypic.enhance.__all__`.
+**Gate:** `pytest tests/unit/enhance tests/unit/abc_ tests/unit/tune` (which includes `test_annotation_coverage.py` and `test_annotation_subset_invariant.py`, both of which discover the new operation on their own); doctests; `FocusEdgeMonogenicPhase in phenotypic.enhance.__all__`.
 
 ### B ∥ C
 
@@ -1941,7 +1951,7 @@ Run in **separate worktrees**, merge after both. Zero write overlap (see matrix)
 
 ### End gate — simplify
 
-One **simplify pass** (Opus) over everything A–D produced: dedupe, reduce, clarify. Quality only, no behaviour change. Apply, then re-run `pytest tests/unit/enhance tests/unit/abc_ tests/unit/tune` plus `verify_claims.py` as the regression check.
+One **simplify pass** (Opus) over everything A–D produced: dedupe, reduce, clarify. Quality only, no behaviour change. If it touches any operation field it must invoke `adding-an-operation` first — "simplifying" a `TuneSpec` away is exactly the failure the annotation-coverage gate exists to catch. Apply, then re-run `pytest tests/unit/enhance tests/unit/abc_ tests/unit/tune` plus `verify_claims.py` as the regression check.
 
 ---
 
