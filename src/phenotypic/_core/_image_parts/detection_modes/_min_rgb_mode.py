@@ -30,4 +30,16 @@ class MinRGBDetectionMode(DetectionMode):
 
     def compute(self, image: Image) -> np.ndarray:
         assert image._data.rgb is not None
-        return np.min(normalize_rgb_bitdepth(image._data.rgb), axis=2).astype(np.float32)
+        return self.compute_from_rgb(normalize_rgb_bitdepth(image._data.rgb), image=image)
+
+    def compute_from_rgb(self, rgb: np.ndarray, *, image: Image) -> np.ndarray:
+        """Take the per-pixel minimum across the channels of *rgb*.
+
+        Args:
+            rgb: Float RGB array normalized to [0, 1], shape ``(rows, cols, 3)``.
+            image: Unused; this mode needs no colour configuration.
+
+        Returns:
+            A 2-D float32 array normalized to [0, 1].
+        """
+        return np.min(rgb, axis=2).astype(np.float32)

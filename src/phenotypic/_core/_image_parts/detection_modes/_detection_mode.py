@@ -41,6 +41,23 @@ class DetectionMode(ABC):
             A 2-D float32 array normalised to [0, 1].
         """
 
+    @abstractmethod
+    def compute_from_rgb(self, rgb: np.ndarray, *, image: Image) -> np.ndarray:
+        """Project a substitute RGB array to a 2-D detection matrix.
+
+        Unlike :meth:`compute`, the pixel data comes from *rgb* rather than from
+        *image*. ``image`` supplies colour configuration only (``gamma``,
+        ``illuminant``, ``_observer``), which the CIE L*a*b* modes require and the
+        others ignore.
+
+        Args:
+            rgb: Float RGB array normalized to [0, 1], shape ``(rows, cols, 3)``.
+            image: Source image, consulted for colour configuration only.
+
+        Returns:
+            A 2-D float32 array normalized to [0, 1].
+        """
+
 
 def register_detection_mode(cls: type[DetectionMode]) -> type[DetectionMode]:
     """Class decorator that instantiates *cls* and registers it by name.
