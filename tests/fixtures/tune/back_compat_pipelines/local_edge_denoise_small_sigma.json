@@ -1,5 +1,5 @@
 {
-  "version": "0.16.0",
+  "version": "0.18.0",
   "name": "bfff2339-eeb5-450c-97c4-f889e316909f",
   "desc": null,
   "reset": false,
@@ -17,7 +17,7 @@
         "win_size": null,
         "mode": "constant",
         "cval": 0.0,
-        "clip": true
+        "norm": "clip"
       }
     },
     "OtsuDetector": {

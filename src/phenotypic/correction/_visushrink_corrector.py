@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, ClassVar, Literal
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -8,12 +8,12 @@ if TYPE_CHECKING:
 from skimage.restoration import denoise_wavelet
 
 from ..abc_ import ImageCorrector
-from ..sdk_.mixin import _GATSupportMixin
+from ..sdk_.mixin import NormalizedOutputMixin, _GATSupportMixin
 from ..sdk_.typing_ import TuneSpec
 from ._wavelet_rgb import restore_wavelet_rgb_dtype
 
 
-class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
+class VisuShrinkCorrector(NormalizedOutputMixin, _GATSupportMixin, ImageCorrector):
     """Denoise all image components using the near-minimax VisuShrink universal wavelet threshold.
 
     Apply VisuShrink wavelet denoising to RGB (if present), grayscale, and
@@ -74,12 +74,13 @@ class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
             during the gray and detect_mat passes when ``use_gat=True`` to
             prevent double-scaling the stabilized-domain noise level. Default:
             ``True``.
-        clip: Clamp gray and detect_mat outputs to [0, 1] after denoising.
-            Soft thresholding can produce marginally negative values near dark
-            colony edges; clipping eliminates these. Automatically deferred to
-            ``False`` inside the GAT region so the inverse transform operates
-            on the full stabilized signal before the final clamp. Default:
-            ``True``.
+        norm: Output range policy for the gray and detect_mat outputs.
+            ``"clip"`` (default) saturates values outside [0, 1] -- soft
+            thresholding can produce marginally negative values near dark
+            colony edges. ``"rescale"`` remaps the full observed range onto
+            [0, 1]; ``None`` passes values through untouched. Automatically
+            deferred to ``None`` inside the GAT region so the inverse transform
+            operates on the full stabilized signal before the final clamp.
 
         # GAT parameters (active only when use_gat=True)
         use_gat: Wrap gray and detect_mat denoising in the Generalized
@@ -128,7 +129,10 @@ class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
     """
 
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma": 1.0}
-    _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("rescale_sigma", "clip")
+    _GAT_DEFER_VALUES: ClassVar[dict[str, Any]] = {
+        "norm"         : None,
+        "rescale_sigma": False,
+    }
 
     sigma: Annotated[float | None, TuneSpec(0.01, 0.1, log=True)] = None
     wavelet: str = "db2"
@@ -136,7 +140,6 @@ class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
     wavelet_levels: Annotated[int | None, TuneSpec(2, 6)] = None
     convert2ycbcr: bool = True
     rescale_sigma: bool = True
-    clip: bool = True
 
     def _operate(self, image: Image) -> Image:
         """Apply VisuShrink wavelet denoising to all image components."""
@@ -172,9 +175,7 @@ class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
                 channel_axis=None,
                 rescale_sigma=self.rescale_sigma,
         )
-        if self.clip:
-            denoised_gray = denoised_gray.clip(0.0, 1.0)
-        image._data.gray = denoised_gray
+        image._data.gray = self._apply_norm(denoised_gray)
 
     def _denoise_detect_mat(self, image: Image) -> None:
         denoised_enh = denoise_wavelet(
@@ -187,6 +188,4 @@ class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
                 channel_axis=None,
                 rescale_sigma=self.rescale_sigma,
         )
-        if self.clip:
-            denoised_enh = denoised_enh.clip(0.0, 1.0)
-        image._data.detect_mat = denoised_enh
+        image._data.detect_mat = self._apply_norm(denoised_enh)

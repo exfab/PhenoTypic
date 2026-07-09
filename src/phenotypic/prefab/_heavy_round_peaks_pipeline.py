@@ -3,6 +3,7 @@ from typing import Literal
 import numpy as np
 
 from phenotypic.abc_ import PrefabPipeline
+from phenotypic.sdk_.typing_ import NormOut
 from phenotypic.enhance import EnhanceLocalContrast, MedianFilter, EnhanceBlockMatch
 from phenotypic.detect import RoundPeaksDetector
 from phenotypic.correction import GridAligner
@@ -61,7 +62,7 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
             bm3d_sigma: float = 0.02,
             bm3d_block_size: int = 8,
             bm3d_stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
-            bm3d_clip: bool = True,
+            bm3d_norm: NormOut = "clip",
             clahe_kernel_size: int | None = None,
             clahe_clip_limit: float = 0.01,
             median_mode: Literal[
@@ -123,8 +124,10 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
                 comprehensive denoising, potentially enhancing signal uniformity but may result
                 in detail loss. "hard_thresholding" retains more high-frequency details but may
                 leave more background noise intact.
-            bm3d_clip: Whether to clip denoised values to the [0, 1] range. Disabling may
-                preserve subtle intensity variations but can produce out-of-range values.
+            bm3d_norm: Output range policy for the denoised values. ``"clip"`` (default)
+                saturates values outside [0, 1]; ``"rescale"`` remaps the full observed
+                range onto [0, 1]; ``None`` preserves subtle intensity variations but can
+                produce out-of-range values.
             clahe_kernel_size: Determines the size of the kernel used for local contrast enhancement
                 via EnhanceLocalContrast. Larger sizes improve contrast over broader areas, but may over-amplify
                 large background variations. Smaller sizes enhance localized details but may
@@ -238,7 +241,7 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
 
         ops = [
             EnhanceBlockMatch(sigma_psd=bm3d_sigma, block_size=bm3d_block_size,
-                              stage_arg=bm3d_stage_arg, clip=bm3d_clip),
+                              stage_arg=bm3d_stage_arg, norm=bm3d_norm),
             EnhanceLocalContrast(kernel_size=clahe_kernel_size,
                                  clip_limit=clahe_clip_limit),
             MedianFilter(mode=median_mode, shape=median_shape, width=median_radius,

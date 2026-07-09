@@ -4,7 +4,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import ImageEnhancer
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import GaussianBlur, LocalEdgeDenoise
 from phenotypic.sdk_ import NormalizedOutputMixin, NormControlMixin
 
 
@@ -27,6 +27,16 @@ class _Probe(NormalizedOutputMixin, ImageEnhancer):
 
 def test_disable_normalization_sets_norm_none():
     enh = _Probe(sigma=5.0, norm="clip")
+    copied = NormControlMixin._disable_normalization(enh)
+    assert enh.norm == "clip", "original must be untouched"
+    assert copied.norm is None
+
+
+def test_disable_normalization_on_a_real_migrated_operation():
+    """Closes the fail-open gap: before the migration `LocalEdgeDenoise` carried
+    `clip`, not `norm`, so `_disable_normalization` returned it untouched and
+    clipping stayed active inside the GAT region."""
+    enh = LocalEdgeDenoise(sigma_spatial=5, norm="clip")
     copied = NormControlMixin._disable_normalization(enh)
     assert enh.norm == "clip", "original must be untouched"
     assert copied.norm is None

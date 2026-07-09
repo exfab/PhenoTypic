@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, ClassVar, Literal
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -8,11 +8,11 @@ if TYPE_CHECKING:
 from skimage.restoration import denoise_wavelet
 
 from ..abc_ import ImageDenoiser
-from ..sdk_.mixin import _GATSupportMixin
+from ..sdk_.mixin import NormalizedOutputMixin, _GATSupportMixin
 from ..sdk_.typing_ import TuneSpec
 
 
-class BayesShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
+class BayesShrinkEnhancer(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser):
     """Denoise ``detect_mat`` with adaptive per-subband BayesShrink wavelet thresholding.
 
     Decomposes the detection matrix into wavelet subbands and applies a separate
@@ -71,10 +71,11 @@ class BayesShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
             estimation fails. Practical range: 2--8 integers; fewer than 3
             leaves coarse-scale noise untouched; more than ``max - 3`` risks
             over-smoothing broad colony texture. Default: ``None``.
-        clip: Clamp output to [0, 1] after reconstruction. Soft thresholding
-            can produce values marginally outside [0, 1] due to floating-point
-            accumulation. Default: ``True``. Automatically set to ``False``
-            inside the GAT region when ``use_gat=True``.
+        norm: Output range policy. ``"clip"`` (default) saturates values outside
+            [0, 1] -- soft thresholding can drift marginally out of range through
+            floating-point accumulation. ``"rescale"`` remaps the full observed
+            range onto [0, 1]; ``None`` passes values through untouched.
+            Automatically deferred to ``None`` when ``use_gat=True``.
         rescale_sigma: Allow skimage to rescale ``sigma`` to match each
             subband's energy (the statistically correct behaviour for
             orthonormal wavelets). Default: ``True``. Automatically forced to
@@ -134,13 +135,15 @@ class BayesShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
     """
 
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma": 1.0}
-    _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("clip", "rescale_sigma")
+    _GAT_DEFER_VALUES: ClassVar[dict[str, Any]] = {
+        "norm"         : None,
+        "rescale_sigma": False,
+    }
 
     sigma: float | None = None
     wavelet: str = "db2"
     mode: Literal["soft", "hard"] = "soft"
     wavelet_levels: Annotated[int | None, TuneSpec(2, 6)] = None
-    clip: bool = True
     rescale_sigma: bool = True
 
     def _operate(self, image: Image) -> Image:
@@ -159,6 +162,4 @@ class BayesShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
                 channel_axis=None,
                 rescale_sigma=self.rescale_sigma,
         )
-        if self.clip:
-            denoised = denoised.clip(0.0, 1.0)
-        image.detect_mat[:] = denoised
+        image.detect_mat[:] = self._apply_norm(denoised)

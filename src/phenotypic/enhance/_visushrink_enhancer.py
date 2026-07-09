@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, ClassVar, Literal
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -8,11 +8,11 @@ if TYPE_CHECKING:
 from skimage.restoration import denoise_wavelet
 
 from ..abc_ import ImageDenoiser
-from ..sdk_.mixin import _GATSupportMixin
+from ..sdk_.mixin import NormalizedOutputMixin, _GATSupportMixin
 from ..sdk_.typing_ import TuneSpec
 
 
-class VisuShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
+class VisuShrinkEnhancer(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser):
     """Denoise ``detect_mat`` with universal VisuShrink wavelet thresholding.
 
     Decomposes the image into wavelet subbands and zeros all coefficients
@@ -69,10 +69,11 @@ class VisuShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
             denoise at larger spatial scales, risking removal of genuine
             low-contrast colony signal; lower values leave coarse banding
             intact. Valid range: 1 to floor(log2(min_image_dimension)).
-        clip: Clip output to [0, 1]. Default: ``True``. Soft thresholding
-            on float inputs can produce slightly negative values near dark
-            edges; clipping eliminates these. Automatically deferred to
-            ``False`` when ``use_gat=True``.
+        norm: Output range policy. ``"clip"`` (default) saturates values outside
+            [0, 1] -- soft thresholding on float inputs can produce slightly
+            negative values near dark edges. ``"rescale"`` remaps the full
+            observed range onto [0, 1]; ``None`` passes values through
+            untouched. Automatically deferred to ``None`` when ``use_gat=True``.
         rescale_sigma: Allow skimage to rescale the user-supplied sigma
             proportionally when it converts integer-dtype inputs to float
             internally. Default: ``True``. Has no observable effect on the
@@ -122,13 +123,15 @@ class VisuShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
     """
 
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma": 1.0}
-    _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("clip", "rescale_sigma")
+    _GAT_DEFER_VALUES: ClassVar[dict[str, Any]] = {
+        "norm"         : None,
+        "rescale_sigma": False,
+    }
 
     sigma: float | None = None
     wavelet: str = "db2"
     mode: Literal["soft", "hard"] = "soft"
     wavelet_levels: Annotated[int | None, TuneSpec(2, 6)] = None
-    clip: bool = True
     rescale_sigma: bool = True
 
     def _operate(self, image: Image) -> Image:
@@ -147,6 +150,4 @@ class VisuShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
                 channel_axis=None,
                 rescale_sigma=self.rescale_sigma,
         )
-        if self.clip:
-            denoised = denoised.clip(0.0, 1.0)
-        image.detect_mat[:] = denoised
+        image.detect_mat[:] = self._apply_norm(denoised)
