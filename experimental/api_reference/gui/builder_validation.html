@@ -809,7 +809,10 @@
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api/phenotypic.sdk_.html">phenotypic.sdk_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_bytes.html">phenotypic.sdk_.atomic_write_bytes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_json.html">phenotypic.sdk_.atomic_write_json</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_parquet.html">phenotypic.sdk_.atomic_write_parquet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_text.html">phenotypic.sdk_.atomic_write_text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_with_writer.html">phenotypic.sdk_.atomic_write_with_writer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.canonical_metadata_order.html">phenotypic.sdk_.canonical_metadata_order</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.ensure_metadata_prefix.html">phenotypic.sdk_.ensure_metadata_prefix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.is_binary_mask.html">phenotypic.sdk_.is_binary_mask</a></li>
@@ -1010,6 +1013,8 @@
 <li class="toctree-l3"><a class="reference internal" href="../api/phenotypic.sdk_.slurm.submit_drip_feed_start.html">phenotypic.sdk_.slurm.submit_drip_feed_start</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../api/phenotypic.sdk_.slurm.submit_script.html">phenotypic.sdk_.slurm.submit_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../api/phenotypic.sdk_.slurm.validate_array_chunk.html">phenotypic.sdk_.slurm.validate_array_chunk</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/phenotypic.sdk_.slurm.write_slurm_array_script.html">phenotypic.sdk_.slurm.write_slurm_array_script</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/phenotypic.sdk_.slurm.SlurmArrayScriptSpec.html">phenotypic.sdk_.slurm.SlurmArrayScriptSpec</a></li>
 </ul>
 </details></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.slurm_.html">phenotypic.sdk_.slurm_</a></li>
@@ -1172,11 +1177,10 @@ is wired into CI to catch drift.</p>
 <p>The DAG builder’s validation surface is a pure function
 <a class="reference internal" href="generated/phenotypic.gui.builder._validation.validate.html#phenotypic.gui.builder._validation.validate" title="phenotypic.gui.builder._validation.validate"><code class="xref py py-func docutils literal notranslate"><span class="pre">phenotypic.gui.builder._validation.validate()</span></code></a> that walks every
 scope reachable from <code class="docutils literal notranslate"><span class="pre">state.root</span></code> and emits a flat list of
-<a class="reference internal" href="generated/phenotypic.gui.builder._validation.Issue.html#phenotypic.gui.builder._validation.Issue" title="phenotypic.gui.builder._validation.Issue"><code class="xref py py-class docutils literal notranslate"><span class="pre">Issue</span></code></a> records. Six
-<strong>blocking</strong> rules (severity <code class="docutils literal notranslate"><span class="pre">&quot;error&quot;</span></code>) disable
-<code class="docutils literal notranslate"><span class="pre">Run</span> <span class="pre">preview</span></code> and <code class="docutils literal notranslate"><span class="pre">Save</span> <span class="pre">pipeline</span></code>; the advisory hints (severity
-<code class="docutils literal notranslate"><span class="pre">&quot;advisory&quot;</span></code>) decorate the canvas with yellow borders but never
-block.</p>
+<a class="reference internal" href="generated/phenotypic.gui.builder._validation.Issue.html#phenotypic.gui.builder._validation.Issue" title="phenotypic.gui.builder._validation.Issue"><code class="xref py py-class docutils literal notranslate"><span class="pre">Issue</span></code></a> records. Blocking
+issues (severity <code class="docutils literal notranslate"><span class="pre">&quot;error&quot;</span></code>) disable <code class="docutils literal notranslate"><span class="pre">Run</span> <span class="pre">preview</span></code> and
+<code class="docutils literal notranslate"><span class="pre">Save</span> <span class="pre">pipeline</span></code>; advisory hints (severity <code class="docutils literal notranslate"><span class="pre">&quot;advisory&quot;</span></code>) decorate
+the canvas with yellow borders but never block.</p>
 <p>Rules emit in deterministic order:</p>
 <ol class="arabic simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">missing_input</span></code> / <code class="docutils literal notranslate"><span class="pre">duplicate_input</span></code> (Rule 6)</p></li>
@@ -1186,6 +1190,7 @@ block.</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">cycle</span></code> (Rule 4)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">container_mode</span></code> (Rule 5)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">stage_order_hint</span></code> (Rule 7, advisory)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">unsupported_linear</span></code> (fixed linear editor compatibility)</p></li>
 </ol>
 <p>Nested-scope issues are appended after the parent scope’s issues so
 snapshot-style tests stay stable.</p>
@@ -1243,8 +1248,13 @@ snapshot-style tests stay stable.</p>
 </tr>
 <tr class="row-odd"><td><p>—</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">unknown_class</span></code></p></td>
-<td><p>advisory</p></td>
+<td><p>error</p></td>
 <td><p>Class not in the operation registry</p></td>
+</tr>
+<tr class="row-even"><td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">unsupported_linear</span></code></p></td>
+<td><p>error</p></td>
+<td><p>Fixed linear editor cannot represent this DAG shape</p></td>
 </tr>
 </tbody>
 </table>
@@ -1301,12 +1311,19 @@ snapshot-style tests stay stable.</p>
 <p><strong>Mechanic:</strong> Walk each image-flow edge; if the source block’s stage (via <code class="docutils literal notranslate"><span class="pre">_safe_stage(class_name)</span></code>) is later in the canonical order than the target’s, emit a yellow-border advisory. The runtime partitions by <code class="docutils literal notranslate"><span class="pre">isinstance</span></code> so a misordered chain still works — this is a non-blocking nudge.</p>
 <p><strong>Offender:</strong> The <em>source</em> block of the out-of-order edge (yellow border + “?” badge).</p>
 </section>
-<section id="advisory-class-not-in-the-operation-registry">
-<h3>Advisory — Class not in the operation registry<a class="headerlink" href="#advisory-class-not-in-the-operation-registry" title="Link to this heading">#</a></h3>
+<section id="blocking-class-not-in-the-operation-registry">
+<h3>Blocking — Class not in the operation registry<a class="headerlink" href="#blocking-class-not-in-the-operation-registry" title="Link to this heading">#</a></h3>
 <p><strong>Issue kind(s):</strong> <code class="docutils literal notranslate"><span class="pre">unknown_class</span></code></p>
-<p><strong>Severity:</strong> advisory</p>
-<p><strong>Mechanic:</strong> Registry lookup for each non-sentinel block’s <code class="docutils literal notranslate"><span class="pre">class_name</span></code>. A miss emits <code class="docutils literal notranslate"><span class="pre">unknown_class</span></code> as an advisory so the rule-3 walk can skip the block cleanly without raising.</p>
-<p><strong>Offender:</strong> The block whose class is unknown to the registry (yellow border + “?” badge). Typically caused by registry drift (loading a <code class="docutils literal notranslate"><span class="pre">pipeline.json</span></code> saved by a newer build).</p>
+<p><strong>Severity:</strong> error</p>
+<p><strong>Mechanic:</strong> Registry lookup for each non-sentinel block’s <code class="docutils literal notranslate"><span class="pre">class_name</span></code>. A miss emits <code class="docutils literal notranslate"><span class="pre">unknown_class</span></code> as an error because the runtime cannot safely materialize a pipeline from an unknown class. The rule-3 walk skips parameter introspection for that block cleanly.</p>
+<p><strong>Offender:</strong> The block whose class is unknown to the registry (red border). Typically caused by registry drift (loading a <code class="docutils literal notranslate"><span class="pre">pipeline.json</span></code> saved by a newer build).</p>
+</section>
+<section id="blocking-fixed-linear-editor-cannot-represent-this-dag-shape">
+<h3>Blocking — Fixed linear editor cannot represent this DAG shape<a class="headerlink" href="#blocking-fixed-linear-editor-cannot-represent-this-dag-shape" title="Link to this heading">#</a></h3>
+<p><strong>Issue kind(s):</strong> <code class="docutils literal notranslate"><span class="pre">unsupported_linear</span></code></p>
+<p><strong>Severity:</strong> error</p>
+<p><strong>Mechanic:</strong> The fixed linear builder derives a one-spine-plus-side-values model with <code class="docutils literal notranslate"><span class="pre">derive_linear_scope</span></code>. DAG shapes with forks, joins, cycles, dangling edges, shared aux sources, Input Image aux use, or orphan blocks emit <code class="docutils literal notranslate"><span class="pre">unsupported_linear</span></code> so linear edit dispatchers can pause mutation instead of corrupting the graph.</p>
+<p><strong>Offender:</strong> The block reported by the linear-scope derivation, when the unsupported shape can be attributed to one block. The GUI shows an unsupported-state panel with export/reset actions for the raw builder JSON.</p>
 </section>
 </section>
 </section>
@@ -1343,7 +1360,8 @@ snapshot-style tests stay stable.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rule-5-container-left-right-wiring-consistency">Rule 5 — Container left/right wiring consistency</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rule-6-exactly-one-input-image-per-scope">Rule 6 — Exactly one Input Image per scope</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rule-7-stage-ordering-respects-ops-meas-post">Rule 7 — Stage ordering respects ops → meas → post</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#advisory-class-not-in-the-operation-registry">Advisory — Class not in the operation registry</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#blocking-class-not-in-the-operation-registry">Blocking — Class not in the operation registry</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#blocking-fixed-linear-editor-cannot-represent-this-dag-shape">Blocking — Fixed linear editor cannot represent this DAG shape</a></li>
 </ul>
 </li>
 </ul>

@@ -609,16 +609,24 @@
 <span class="sd">The sibling-directory placement matters: :func:`os.replace` is only atomic when</span>
 <span class="sd">the source and destination are on the same filesystem, which a same-directory</span>
 <span class="sd">temp guarantees (a ``/tmp`` temp could land on a different mount and degrade to</span>
-<span class="sd">a non-atomic copy). Mirrors the callable-based</span>
-<span class="sd">:func:`phenotypic._cli._cli_output_manager._atomic_write`, but with a plain</span>
-<span class="sd">``text``/``bytes`` payload for the tune writers.</span>
+<span class="sd">a non-atomic copy). The module supports plain text/bytes payloads, deterministic</span>
+<span class="sd">JSON documents, pandas-style parquet writers, and callback-based writers such as</span>
+<span class="sd">Polars or matplotlib.</span>
 <span class="sd">&quot;&quot;&quot;</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Mapping</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="n">PARQUET_WRITE_OPTIONS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;compression&quot;</span><span class="p">:</span> <span class="s2">&quot;zstd&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;compression_level&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+<span class="p">}</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_atomic_replace</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -666,6 +674,47 @@
         <span class="k">raise</span>
 
 
+<div class="viewcode-block" id="atomic_write_with_writer">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.atomic_write_with_writer.html#phenotypic.sdk_.atomic_write_with_writer">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">atomic_write_with_writer</span><span class="p">(</span>
+    <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+    <span class="n">writer</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Atomically write ``path`` using a callback that receives a temp path.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        path: Final destination path.</span>
+<span class="sd">        writer: Callable that writes complete output to a temporary path string.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        OSError: Propagated from the writer or rename after temp cleanup.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">target</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">tmp_path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">handle</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span>
+            <span class="nb">dir</span><span class="o">=</span><span class="n">target</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span>
+            <span class="n">prefix</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;.</span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span>
+            <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;.tmp&quot;</span><span class="p">,</span>
+            <span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">tmp_path</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">handle</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">writer</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">,</span> <span class="s2">&quot;r+b&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">fsync</span><span class="p">(</span><span class="n">fh</span><span class="o">.</span><span class="n">fileno</span><span class="p">())</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">tmp_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">raise</span></div>
+
+
+
 <div class="viewcode-block" id="atomic_write_text">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.atomic_write_text.html#phenotypic.sdk_.atomic_write_text">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">atomic_write_text</span><span class="p">(</span>
@@ -707,6 +756,60 @@
 <span class="sd">        OSError: If the write or rename fails (the temp file is removed first).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">_atomic_replace</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">data</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="atomic_write_json">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.atomic_write_json.html#phenotypic.sdk_.atomic_write_json">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">atomic_write_json</span><span class="p">(</span>
+    <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+    <span class="n">payload</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">indent</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">sort_keys</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">ensure_ascii</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Atomically write a JSON payload with deterministic formatting.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        path: Destination JSON path.</span>
+<span class="sd">        payload: JSON-serializable mapping or list.</span>
+<span class="sd">        indent: Indentation passed to :func:`json.dumps`.</span>
+<span class="sd">        sort_keys: Whether mapping keys are sorted for deterministic output.</span>
+<span class="sd">        ensure_ascii: Whether non-ASCII characters are escaped.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">atomic_write_text</span><span class="p">(</span>
+        <span class="n">path</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+            <span class="n">payload</span><span class="p">,</span>
+            <span class="n">indent</span><span class="o">=</span><span class="n">indent</span><span class="p">,</span>
+            <span class="n">sort_keys</span><span class="o">=</span><span class="n">sort_keys</span><span class="p">,</span>
+            <span class="n">ensure_ascii</span><span class="o">=</span><span class="n">ensure_ascii</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="atomic_write_parquet">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.atomic_write_parquet.html#phenotypic.sdk_.atomic_write_parquet">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">atomic_write_parquet</span><span class="p">(</span>
+    <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+    <span class="n">frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Atomically write a pandas-like frame with shared parquet defaults.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        path: Destination parquet path.</span>
+<span class="sd">        frame: Object exposing ``to_parquet(path, **kwargs)``.</span>
+<span class="sd">        **kwargs: Per-call parquet writer overrides.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">write_options</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">PARQUET_WRITE_OPTIONS</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">}</span>
+    <span class="n">atomic_write_with_writer</span><span class="p">(</span>
+        <span class="n">path</span><span class="p">,</span>
+        <span class="k">lambda</span> <span class="n">tmp_path</span><span class="p">:</span> <span class="n">frame</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">,</span> <span class="o">**</span><span class="n">write_options</span><span class="p">),</span>
+    <span class="p">)</span></div>
 
 </pre></div>
 

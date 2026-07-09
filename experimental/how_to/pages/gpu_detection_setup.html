@@ -649,6 +649,22 @@
 <h1>GPU-Accelerated Colony Detection<a class="headerlink" href="#gpu-accelerated-colony-detection" title="Link to this heading">#</a></h1>
 <p>Set up and use deep-learning-based colony detectors (SAM2, micro-sam, SAM3,
 DinoSam2) with GPU acceleration.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Behaviour change (this release).</strong> The DINO-backed detectors
+(<code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code>, <code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code>) previously fed every tile to the ViT
+backbone at a fixed 224x224 regardless of <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> – the checkpoint’s
+<em>classification</em> preset, not the tile you asked for. They now feed the
+backbone the tile at its native geometry, so native pixels per patch equal the
+backbone’s <code class="docutils literal notranslate"><span class="pre">patch_size</span></code> (14 for DINOv2, 16 for DINOv3) instead of collapsing to
+whatever 224 implied. Pipelines deserialized from JSON keep their pinned
+<code class="docutils literal notranslate"><span class="pre">tile_px</span></code> (<code class="docutils literal notranslate"><span class="pre">to_json()</span></code> writes every field), but <strong>will produce different,
+higher-resolution masks</strong> and cost substantially more GPU time – re-serialize
+to adopt the new <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> defaults described below. Separately,
+<code class="docutils literal notranslate"><span class="pre">Sam2Detector.crop_n_layers</span></code> moves from <code class="docutils literal notranslate"><span class="pre">0</span></code> to <code class="docutils literal notranslate"><span class="pre">1</span></code> (~5.2x cost) for
+<strong>newly-constructed</strong> detectors only; existing serialized pipelines are
+unaffected.</p>
+</div>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h2>
 <p>The GPU detectors have different packaging constraints:</p>
@@ -811,6 +827,18 @@ resolution.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">model_size</span></code></strong> (default <code class="docutils literal notranslate"><span class="pre">&quot;tiny&quot;</span></code>): <code class="docutils literal notranslate"><span class="pre">&quot;tiny&quot;</span></code> is fastest and sufficient
 for most colony plates. Use <code class="docutils literal notranslate"><span class="pre">&quot;large&quot;</span></code> for maximum mask quality on
 publication figures.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">crop_n_layers</span></code></strong> (default 1): Number of additional crop-pyramid layers.
+SAM2’s encoder resizes the whole image to a fixed 1024x1024 square, so small
+colonies on a multi-megapixel plate can be lost to downsampling; each added
+layer re-tiles the image into nearer-native-resolution crops and merges them
+by NMS that prefers masks from smaller crops. <code class="docutils literal notranslate"><span class="pre">0</span></code> keeps a single full-image
+pass; the default <code class="docutils literal notranslate"><span class="pre">1</span></code> costs 5 encoder passes instead of 1 (~5.2x wall-clock)
+but recovered far more ground-truth colonies in measurement (see the
+behaviour-change notice above).</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">box_nms_thresh</span></code></strong> (default 0.7): Box-IoU cutoff for non-maximum
+suppression between the dense point grid’s redundant proposals <em>within</em> one
+crop – distinct from <code class="docutils literal notranslate"><span class="pre">crop_nms_thresh</span></code>, which deduplicates the same colony
+seen in two different overlapping crops.</p></li>
 </ul>
 </section>
 </section>
@@ -864,18 +892,32 @@ the predicted instance masks into a labelled <code class="docutils literal notra
 <p>SAM3 weights are <strong>gated</strong> (SAM License). Accept the gate and authenticate
 once (see <a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>)
 before the first <code class="docutils literal notranslate"><span class="pre">apply()</span></code>.</p>
-<p><strong>Dense plates.</strong> SAM3 caps at 200 instances per forward and runs at 1008 px
-internally, so <code class="docutils literal notranslate"><span class="pre">Sam3Detector</span></code> tiles large plates into fixed <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> crops
-with <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code>, infers each tile, offsets the masks back to full
-coordinates, and merges cross-tile duplicates by IoU-NMS — all automatically.
-Images that fit one tile run un-tiled.</p>
+<p><strong>Dense plates.</strong> SAM3 caps at 200 instances per forward. <code class="docutils literal notranslate"><span class="pre">facebook/sam3</span></code> is a
+gated repository whose processor config we cannot read (requests return 403),
+so the claim that it runs at 1008 px internally is carried as an
+<strong>assumption</strong>, not a verified fact. <code class="docutils literal notranslate"><span class="pre">Sam3Detector</span></code> tiles large plates into
+fixed <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> crops with <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code>, infers each tile, and merges the
+per-tile instances by <strong>centroid-in-core assignment</strong>
+(<code class="docutils literal notranslate"><span class="pre">~phenotypic.detect.nn._tiling.assign_by_centroid_core</span></code>): each instance is
+kept by the one tile whose core – the Voronoi cell of the tile centres –
+contains its centroid, so a colony straddling a seam is claimed by exactly one
+tile and the fragment a neighbouring tile saw is never kept as its own
+colony. There is no IoU-NMS deduplication step here; duplicates cannot occur
+by construction. Images that fit one tile run un-tiled.</p>
 <p>Key parameters:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">prompt</span></code> — free text describing the target (<code class="docutils literal notranslate"><span class="pre">&quot;colony&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;bacterial</span> <span class="pre">colony&quot;</span></code>).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">score_thresh</span></code> / <code class="docutils literal notranslate"><span class="pre">mask_threshold</span></code> — instance-confidence and mask-probability
 cutoffs.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">min_mask_region_area</span></code> — drop masks smaller than this (default 100).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">tile_px</span></code> / <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code> — dense-plate tiling controls (defaults 1008 / 0.15).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tile_px</span></code> / <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code> — dense-plate tiling controls (default 1008 / 0.15,
+the 1008 figure being the unverified assumption noted above). <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> is a
+compute/context knob, not a fidelity knob: attention cost is quadratic in
+tokens per tile, while the total tokens across the plate are roughly fixed,
+so a larger <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> costs more without segmenting any more finely.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tile_merge_iou</span></code> — <strong>deprecated and ignored.</strong> The cross-tile merge is
+centroid-in-core (above), which needs no IoU threshold. The field is
+retained only so pipelines serialized before this change still deserialize.</p></li>
 </ul>
 </section>
 <section id="using-dinosam2detector">
@@ -906,6 +948,17 @@ tutorial section). The default DINOv3 checkpoint id is
 <li><p><code class="docutils literal notranslate"><span class="pre">sam2_model_size</span></code> — SAM2 variant for the proposal generator.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">similarity_thresh</span></code> — minimum cosine-to-prototype score to keep a proposal.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">merge_iou_thresh</span></code> — IoU above which two survivors are merged.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tile_px</span></code> / <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code> — geometry of the tiles the DINO backbone scores
+proposals against (defaults 518 / 0.15). Each SAM2 proposal is pooled from
+the tile whose core contains its centroid. Scoring against one whole-plate
+feature grid instead would leave every colony smaller than a single patch, so
+each proposal’s pooled feature would collapse to the same zero vector and the
+re-ranking would do no work.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">crop_n_layers</span></code> / <code class="docutils literal notranslate"><span class="pre">crop_nms_thresh</span></code> / <code class="docutils literal notranslate"><span class="pre">crop_overlap_ratio</span></code> /
+<code class="docutils literal notranslate"><span class="pre">crop_n_points_downscale_factor</span></code> — SAM2 crop-pyramid controls for the
+<em>proposal</em> half, forwarded to the same mask generator <code class="docutils literal notranslate"><span class="pre">Sam2Detector</span></code> uses and
+documented under <a class="reference internal" href="#using-sam2detector"><span class="std std-ref">Using Sam2Detector</span></a>. <code class="docutils literal notranslate"><span class="pre">crop_n_layers</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">1</span></code>
+here too.</p></li>
 </ul>
 </section>
 <section id="semantic-few-shot-detectors-insid3detector-fssdinodetector">
@@ -929,6 +982,26 @@ cosine-matches every query patch — but first removes DINOv3’s <strong>positi
 (estimated by SVD and projected out, INSID3’s defining step) so patches match on
 appearance, not position. It is DINOv3-native (gated, <code class="docutils literal notranslate"><span class="pre">dino_version=3</span></code> default);
 a <code class="docutils literal notranslate"><span class="pre">dino_version=2</span></code> opt-in runs gate-free (the debias is then a near-no-op).</p>
+<p>Because <code class="docutils literal notranslate"><span class="pre">dino_version=3</span></code> is the default and DINOv3 weights are gated, the
+constructor now emits a <code class="docutils literal notranslate"><span class="pre">UserWarning</span></code> at construction time (rather than
+deferring the failure to first <code class="docutils literal notranslate"><span class="pre">apply()</span></code>) pointing at the Hugging Face access
+request and <code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE=dinov3</span></code>. Contrast
+<code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code> below, which defaults to the ungated DINOv2 backbone and so
+needs no access request. (Both detectors additionally warn at model-load time
+if <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> is not a multiple of the loaded backbone’s <code class="docutils literal notranslate"><span class="pre">patch_size</span></code> — which
+happens when you flip <code class="docutils literal notranslate"><span class="pre">dino_version</span></code> and leave <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> at the other
+backbone’s default.)</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code> is <strong>weak at its default <code class="docutils literal notranslate"><span class="pre">similarity_thresh=0.5</span></code></strong>. On the
+bundled synthetic plate it recovers only 8 of 96 colonies, and its own
+functional test lowers the floor to <code class="docutils literal notranslate"><span class="pre">similarity_thresh=0.0</span></code> to obtain a
+non-empty mask at all. This is a threshold-calibration problem that predates
+the resolution work described in the behaviour-change notice above, and it is
+independent of <code class="docutils literal notranslate"><span class="pre">tile_px</span></code>: the detection <em>rate</em> is the same on a small plate and
+on a plate twelve times its area. Tune <code class="docutils literal notranslate"><span class="pre">similarity_thresh</span></code> down for your own
+plates before trusting its output.</p>
+</div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Insid3Detector</span>
 
 <span class="c1"># Default: bundled exemplar + gated DINOv3 (accept the DINOv3 License first).</span>
@@ -953,7 +1026,15 @@ the bundled colony exemplar).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">similarity_thresh</span></code> — cosine cutoff binarising the match map.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">svd_components</span></code> — INSID3’s positional-debias strength (leading SVD directions
 removed; default 4 ≈ DINOv3’s register-token count; <code class="docutils literal notranslate"><span class="pre">0</span></code> disables the debias).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">tile_px</span></code> / <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code> — large-plate tiling (defaults 1024 / 0.15).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tile_px</span></code> / <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code> — large-plate tiling (defaults 512 / 0.15). <code class="docutils literal notranslate"><span class="pre">512</span> <span class="pre">=</span> <span class="pre">16</span> <span class="pre">*</span> <span class="pre">32</span></code> is an exact multiple of DINOv3’s patch size (16). Under the native
+processor geometry, native pixels per patch equal the backbone’s
+<code class="docutils literal notranslate"><span class="pre">patch_size</span></code> regardless of <code class="docutils literal notranslate"><span class="pre">tile_px</span></code>, so this is a compute/context choice,
+not a fidelity one: 512 and 1024 both resolve to 16.0 native px/patch, but
+1024 costs 2.6x more (attention is quadratic in tokens per tile, while the
+total tokens across the plate are roughly fixed). Raising it buys no extra
+detail. Note <code class="docutils literal notranslate"><span class="pre">config.image_size</span></code> reports 224 for DINOv3 — that is a
+classification preset, not a native-resolution signal, and is not used to
+pick this default.</p></li>
 </ul>
 </section>
 <section id="fssdinodetector-few-shot-dinov2-default-ungated">
@@ -990,7 +1071,12 @@ is <code class="docutils literal notranslate"><span class="pre">-1</span></code>
 <li><p><code class="docutils literal notranslate"><span class="pre">dino_version</span></code> / <code class="docutils literal notranslate"><span class="pre">dino_size</span></code> — backbone (2 = DINOv2 default/ungated, 3 = DINOv3
 gated opt-in).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">similarity_thresh</span></code> — foreground-score floor on top of the fg-vs-bg argmax.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">tile_px</span></code> / <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code> — large-plate tiling (defaults 512 / 0.15).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tile_px</span></code> / <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code> — large-plate tiling (defaults 518 / 0.15). <code class="docutils literal notranslate"><span class="pre">518</span> <span class="pre">=</span> <span class="pre">14</span> <span class="pre">*</span> <span class="pre">37</span></code> is an exact multiple of DINOv2’s patch size (14). Native pixels per
+patch equal the backbone’s <code class="docutils literal notranslate"><span class="pre">patch_size</span></code> regardless of <code class="docutils literal notranslate"><span class="pre">tile_px</span></code>, so 518 and
+1022 both resolve to 14.0 native px/patch — 1022 just costs 3.3x more
+(attention is quadratic in tokens per tile, while total tokens across the
+plate are roughly fixed). Smaller is cheaper at equal fidelity; raising it
+buys no extra detail.</p></li>
 </ul>
 </section>
 </section>

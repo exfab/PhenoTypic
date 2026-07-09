@@ -24,4 +24,5 @@ DataFrame column labels and descriptions.
    GridLinReg <grid_linreg_stats>
    GridSpread <grid_spread>
    SymZones <symmetric_zones>
+   OrientZones <orientation_zones>
    RadialExpansion <radial_expansion>

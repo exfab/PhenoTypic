@@ -664,6 +664,7 @@
 <span class="sd">    Literal aliases for closed value sets used at public boundaries</span>
 <span class="sd">    (``ExecutionMode``, ``ImageTypeName``, …).</span>
 <span class="sd">&quot;&quot;&quot;</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
@@ -887,7 +888,9 @@
 <span class="c1">#: multi-objective sibling of :data:`PARAM_IMPORTANCE_JSON` — one RF-permutation</span>
 <span class="c1">#: importance report per objective axis. Rendered by :func:`pareto_importance_path`;</span>
 <span class="c1">#: kept private (a parameterized string is not an enumeration).</span>
-<span class="n">_PARETO_IMPORTANCE_FILENAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;param_importance_</span><span class="si">{objective}</span><span class="s2">.json&quot;</span>
+<span class="n">_PARETO_IMPORTANCE_FILENAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">&quot;param_importance_</span><span class="si">{objective}</span><span class="s2">.json&quot;</span>
+<span class="p">)</span>
 
 <span class="c1"># ---------------------------------------------------------------------------</span>
 <span class="c1"># QC artifact filenames (live inside DIR_QC)</span>
@@ -1176,7 +1179,9 @@
 
 
 
-<span class="n">_DEFAULT_OUTPUT_DIR_NAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;phenotypic_results_</span><span class="si">{timestamp}</span><span class="s2">&quot;</span>
+<span class="n">_DEFAULT_OUTPUT_DIR_NAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">&quot;phenotypic_results_</span><span class="si">{timestamp}</span><span class="s2">&quot;</span>
+<span class="p">)</span>
 <span class="n">_DEFAULT_OUTPUT_TIMESTAMP_FORMAT</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span>
 
 
@@ -1216,7 +1221,9 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        Filename relative to ``&lt;progress&gt;/`` (hidden file, leading ``.``).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">_CHECKPOINT_LOCK_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">checkpoint_type</span><span class="o">=</span><span class="n">checkpoint_type</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">_CHECKPOINT_LOCK_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">checkpoint_type</span><span class="o">=</span><span class="n">checkpoint_type</span>
+    <span class="p">)</span></div>
 
 
 
@@ -1263,9 +1270,9 @@
 
 <span class="sd">    Pure path expression; callers are responsible for ``mkdir`` when they</span>
 <span class="sd">    intend to write into it. Writers that go through</span>
-<span class="sd">    :func:`phenotypic._cli._cli_output_manager._atomic_write` get the</span>
-<span class="sd">    ``mkdir`` for free (it creates ``target.parent``); direct</span>
-<span class="sd">    ``write_text``/``write_bytes`` writers must ``mkdir`` explicitly.</span>
+<span class="sd">    :func:`phenotypic.sdk_.atomic_write_with_writer` get the ``mkdir`` for free</span>
+<span class="sd">    (it creates ``target.parent``); direct ``write_text``/``write_bytes``</span>
+<span class="sd">    writers must ``mkdir`` explicitly.</span>
 
 <span class="sd">    Every artifact helper that previously rooted at ``&lt;output&gt;/`` (master /</span>
 <span class="sd">    measurements / per-feature split / analysis / dashboard / report /</span>
@@ -1383,7 +1390,11 @@
     <span class="n">legacy_progress</span> <span class="o">=</span> <span class="n">_legacy_progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
     <span class="n">legacy_state</span> <span class="o">=</span> <span class="n">_legacy_processing_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
     <span class="n">legacy_events</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_EVENTS_LOG</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">legacy_progress</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">or</span> <span class="n">legacy_state</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">or</span> <span class="n">legacy_events</span><span class="o">.</span><span class="n">exists</span><span class="p">()):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span>
+        <span class="n">legacy_progress</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+        <span class="ow">or</span> <span class="n">legacy_state</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+        <span class="ow">or</span> <span class="n">legacy_events</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+    <span class="p">):</span>
         <span class="k">return</span> <span class="kc">False</span>
     <span class="n">cache</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">moved</span> <span class="o">=</span> <span class="kc">False</span>
@@ -1848,9 +1859,9 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        The per-objective best-pipeline path under :func:`pareto_dir`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">pareto_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">_PARETO_BEST_PIPELINE_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-        <span class="n">objective</span><span class="o">=</span><span class="n">objective</span>
-    <span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">pareto_dir</span><span class="p">(</span>
+        <span class="n">output_dir</span>
+    <span class="p">)</span> <span class="o">/</span> <span class="n">_PARETO_BEST_PIPELINE_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">objective</span><span class="p">)</span></div>
 
 
 
@@ -1871,9 +1882,9 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        The per-objective importance-report path under :func:`pareto_dir`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">pareto_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">_PARETO_IMPORTANCE_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-        <span class="n">objective</span><span class="o">=</span><span class="n">objective</span>
-    <span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">pareto_dir</span><span class="p">(</span>
+        <span class="n">output_dir</span>
+    <span class="p">)</span> <span class="o">/</span> <span class="n">_PARETO_IMPORTANCE_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">objective</span><span class="p">)</span></div>
 
 
 
@@ -1995,7 +2006,9 @@
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.task_status_path.html#phenotypic.sdk_.task_status_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">task_status_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">task_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/recompile/status/task_&lt;idx&gt;.json``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">recompile_status_dir</span><span class="p">(</span><span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span> <span class="o">/</span> <span class="n">task_status_filename</span><span class="p">(</span><span class="n">task_index</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">recompile_status_dir</span><span class="p">(</span>
+        <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="p">)</span> <span class="o">/</span> <span class="n">task_status_filename</span><span class="p">(</span><span class="n">task_index</span><span class="p">)</span></div>
 
 
 
@@ -2009,7 +2022,9 @@
 
 <div class="viewcode-block" id="checkpoint_lock_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.checkpoint_lock_path.html#phenotypic.sdk_.checkpoint_lock_path">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">checkpoint_lock_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">checkpoint_type</span><span class="p">:</span> <span class="n">CheckpointType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">checkpoint_lock_path</span><span class="p">(</span>
+    <span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">checkpoint_type</span><span class="p">:</span> <span class="n">CheckpointType</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/.{checkpoint_type}_lock``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">checkpoint_lock_filename</span><span class="p">(</span><span class="n">checkpoint_type</span><span class="p">)</span></div>
 
@@ -2282,7 +2297,9 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
     <span class="k">except</span> <span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">):</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Failed to parse </span><span class="si">%s</span><span class="s2">; treating as missing&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;Failed to parse </span><span class="si">%s</span><span class="s2">; treating as missing&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
         <span class="k">return</span> <span class="kc">None</span></div>
 
 
@@ -2561,7 +2578,10 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>  <span class="c1"># type: ignore[import-untyped]</span>
 
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">Image</span>  <span class="c1"># lazy: avoids circular import at module load</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">GridImage</span><span class="p">,</span>
+        <span class="n">Image</span><span class="p">,</span>
+    <span class="p">)</span>  <span class="c1"># lazy: avoids circular import at module load</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">IMAGE_TYPES</span>
 
     <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">hdf_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
@@ -2631,11 +2651,16 @@
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">path</span> <span class="o">/</span> <span class="n">MASTER_MEASUREMENTS_PARQUET</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
             <span class="n">output_root</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">DIR_DELIVERABLES</span> <span class="ow">and</span> <span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="n">path</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">DIR_DELIVERABLES</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
+            <span class="p">):</span>
                 <span class="n">output_root</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">parent</span>
             <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">deliverables_base</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">output_root</span><span class="o">=</span><span class="n">output_root</span><span class="p">)</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">path</span> <span class="o">/</span> <span class="n">DIR_DELIVERABLES</span> <span class="o">/</span> <span class="n">MASTER_MEASUREMENTS_PARQUET</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
-            <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">deliverables_base</span><span class="o">=</span><span class="n">path</span> <span class="o">/</span> <span class="n">DIR_DELIVERABLES</span><span class="p">,</span> <span class="n">output_root</span><span class="o">=</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+                <span class="n">deliverables_base</span><span class="o">=</span><span class="n">path</span> <span class="o">/</span> <span class="n">DIR_DELIVERABLES</span><span class="p">,</span> <span class="n">output_root</span><span class="o">=</span><span class="n">path</span>
+            <span class="p">)</span>
         <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> is neither a deliverables bundle nor a run output directory &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;containing </span><span class="si">{</span><span class="n">DIR_DELIVERABLES</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">MASTER_MEASUREMENTS_PARQUET</span><span class="si">}</span><span class="s2">. Point the &quot;</span>
@@ -2648,7 +2673,10 @@
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">has_results</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``True`` when a ``results/`` directory exists under the output root.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_root</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_root</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
+        <span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">results_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>

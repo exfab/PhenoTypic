@@ -599,9 +599,11 @@
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">posixpath</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -611,6 +613,138 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">_SAFE_WRITER_LOCK_MARKERS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">&quot;file is already open for write/swmr write&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;file is already open&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;unable to lock file&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;resource temporarily unavailable&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;file locking disabled&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">_SWMR_WRITER_LOCK_MARKERS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="o">*</span><span class="n">_SAFE_WRITER_LOCK_MARKERS</span><span class="p">,</span>
+    <span class="s2">&quot;ring type mismatch&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pinned entry count&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_open_hdf_with_recovery</span><span class="p">(</span>
+    <span class="n">filepath</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">opener</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">context</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">lock_markers</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+    <span class="n">clear_status</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">clear_force</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">max_retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">retry_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Open an HDF5 file with lock-conflict recovery.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        filepath: Path to the HDF5 file being opened.</span>
+<span class="sd">        opener: Callable that opens and returns the file handle.</span>
+<span class="sd">        context: Human-readable context used in log/error messages.</span>
+<span class="sd">        lock_markers: Lowercase substrings that identify recoverable lock or</span>
+<span class="sd">            cache-conflict errors.</span>
+<span class="sd">        clear_status: Whether to run ``h5clear -s`` between attempts.</span>
+<span class="sd">        clear_force: Whether to run ``h5clear -f`` between attempts.</span>
+<span class="sd">        max_retries: Maximum open attempts.</span>
+<span class="sd">        retry_delay: Initial retry delay in seconds. Doubles after each retry.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The opened HDF5 file handle.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RuntimeError: If a recoverable lock conflict persists through the final</span>
+<span class="sd">            attempt.</span>
+<span class="sd">        OSError: Non-lock open errors are re-raised immediately.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+    <span class="n">delay</span> <span class="o">=</span> <span class="n">retry_delay</span>
+    <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">opener</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">error_msg</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="n">is_lock_error</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">marker</span> <span class="ow">in</span> <span class="n">error_msg</span> <span class="k">for</span> <span class="n">marker</span> <span class="ow">in</span> <span class="n">lock_markers</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_lock_error</span><span class="p">:</span>
+                <span class="k">raise</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> access conflict (attempt </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2">): </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">context</span><span class="p">,</span>
+                <span class="n">attempt</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="n">max_retries</span><span class="p">,</span>
+                <span class="n">exc</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">attempt</span> <span class="o">&gt;=</span> <span class="n">max_retries</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                    <span class="s2">&quot;Failed to open </span><span class="si">%s</span><span class="s2"> after </span><span class="si">%d</span><span class="s2"> attempts&quot;</span><span class="p">,</span>
+                    <span class="n">context</span><span class="p">,</span>
+                    <span class="n">max_retries</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">failure_reason</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="s2">&quot;may have cache conflicts&quot;</span>
+                    <span class="k">if</span> <span class="s2">&quot;SWMR&quot;</span> <span class="ow">in</span> <span class="n">context</span>
+                    <span class="k">else</span> <span class="s2">&quot;may be locked by another process&quot;</span>
+                <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Failed to open </span><span class="si">{</span><span class="n">context</span><span class="si">}</span><span class="s2"> after </span><span class="si">{</span><span class="n">max_retries</span><span class="si">}</span><span class="s2"> attempts. &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;The file </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">failure_reason</span><span class="si">}</span><span class="s2">. &quot;</span>
+                    <span class="s2">&quot;Try manually running: &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;h5clear -s </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2"> &amp;&amp; h5clear -f </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+
+            <span class="n">_clear_hdf_consistency_flags</span><span class="p">(</span>
+                <span class="n">filepath</span><span class="p">,</span> <span class="n">clear_status</span><span class="o">=</span><span class="n">clear_status</span><span class="p">,</span> <span class="n">clear_force</span><span class="o">=</span><span class="n">clear_force</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Waiting </span><span class="si">%s</span><span class="s2"> seconds before retry...&quot;</span><span class="p">,</span> <span class="n">delay</span><span class="p">)</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
+            <span class="n">delay</span> <span class="o">*=</span> <span class="mi">2</span>
+
+    <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unexpected error opening HDF5 file </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_clear_hdf_consistency_flags</span><span class="p">(</span>
+    <span class="n">filepath</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">clear_status</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">clear_force</span><span class="p">:</span> <span class="nb">bool</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Best-effort ``h5clear`` recovery for an existing HDF5 file.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">filepath</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span>
+    <span class="n">flags</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">clear_status</span><span class="p">:</span>
+        <span class="n">flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;-s&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">clear_force</span><span class="p">:</span>
+        <span class="n">flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;-f&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">flag</span> <span class="ow">in</span> <span class="n">flags</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;Attempting to clear HDF5 consistency flag </span><span class="si">%s</span><span class="s2"> for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">flag</span><span class="p">,</span>
+                <span class="n">filepath</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                <span class="p">[</span><span class="s2">&quot;h5clear&quot;</span><span class="p">,</span> <span class="n">flag</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">filepath</span><span class="p">)],</span>
+                <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">&quot;Successfully cleared HDF5 consistency flag </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flag</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;h5clear </span><span class="si">%s</span><span class="s2"> failed: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flag</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span>
+            <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">,</span>
+            <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">,</span>
+            <span class="ne">FileNotFoundError</span><span class="p">,</span>
+        <span class="p">)</span> <span class="k">as</span> <span class="n">clear_error</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Could not run h5clear </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flag</span><span class="p">,</span> <span class="n">clear_error</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="HDF">
@@ -696,17 +830,21 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="o">.</span><span class="n">suffix</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">EXT</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;filepath is not an hdf5 file&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-            <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdf</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">):</span>
                 <span class="k">pass</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>
         <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;single&quot;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">root_posix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SINGLE_IMAGE_ROOT_POSIX</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">home_posix</span> <span class="o">=</span> <span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SINGLE_IMAGE_ROOT_POSIX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">home_posix</span> <span class="o">=</span> <span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">SINGLE_IMAGE_ROOT_POSIX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+            <span class="p">)</span>
         <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;set&quot;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">root_posix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">IMAGE_SET_ROOT_POSIX</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">home_posix</span> <span class="o">=</span> <span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">IMAGE_SET_ROOT_POSIX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">home_posix</span> <span class="o">=</span> <span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">IMAGE_SET_ROOT_POSIX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+            <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span> <span class="o">=</span> <span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">home_posix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">IMAGE_SET_DATA_POSIX</span>
             <span class="p">)</span>
@@ -732,82 +870,14 @@
 <span class="sd">        Raises:</span>
 <span class="sd">            OSError: If file cannot be opened after all retry attempts.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-
-        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
-        <span class="n">max_retries</span> <span class="o">=</span> <span class="mi">3</span>
-        <span class="n">retry_delay</span> <span class="o">=</span> <span class="mf">0.5</span>
-
-        <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span><span class="p">):</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="k">return</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">)</span>
-            <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">error_msg</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-                <span class="c1"># Handle various HDF5 locking scenarios</span>
-                <span class="n">is_lock_error</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span>
-                    <span class="p">[</span>
-                        <span class="s2">&quot;file is already open for write/swmr write&quot;</span> <span class="ow">in</span> <span class="n">error_msg</span><span class="p">,</span>
-                        <span class="s2">&quot;file is already open&quot;</span> <span class="ow">in</span> <span class="n">error_msg</span><span class="p">,</span>
-                        <span class="s2">&quot;unable to lock file&quot;</span> <span class="ow">in</span> <span class="n">error_msg</span><span class="p">,</span>
-                        <span class="s2">&quot;resource temporarily unavailable&quot;</span> <span class="ow">in</span> <span class="n">error_msg</span><span class="p">,</span>
-                        <span class="s2">&quot;file locking disabled&quot;</span> <span class="ow">in</span> <span class="n">error_msg</span><span class="p">,</span>
-                    <span class="p">]</span>
-                <span class="p">)</span>
-
-                <span class="k">if</span> <span class="n">is_lock_error</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;HDF5 file access conflict (attempt </span><span class="si">{</span><span class="n">attempt</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">max_retries</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
-                    <span class="p">)</span>
-
-                    <span class="c1"># Try to clear HDF5 consistency flags if h5clear is available</span>
-                    <span class="k">if</span> <span class="n">attempt</span> <span class="o">&lt;</span> <span class="n">max_retries</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># Don&#39;t try h5clear on last attempt</span>
-                        <span class="k">try</span><span class="p">:</span>
-                            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">):</span>
-                                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                                    <span class="sa">f</span><span class="s2">&quot;Attempting to clear HDF5 consistency flags for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span>
-                                <span class="p">)</span>
-                                <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-                                    <span class="p">[</span><span class="s2">&quot;h5clear&quot;</span><span class="p">,</span> <span class="s2">&quot;-s&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">)],</span>
-                                    <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                    <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                    <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
-                                <span class="p">)</span>
-                                <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                                        <span class="s2">&quot;Successfully cleared HDF5 consistency flags&quot;</span>
-                                    <span class="p">)</span>
-                                <span class="k">else</span><span class="p">:</span>
-                                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;h5clear failed: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                        <span class="k">except</span> <span class="p">(</span>
-                            <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">,</span>
-                            <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">,</span>
-                            <span class="ne">FileNotFoundError</span><span class="p">,</span>
-                        <span class="p">)</span> <span class="k">as</span> <span class="n">clear_error</span><span class="p">:</span>
-                            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not run h5clear: </span><span class="si">{</span><span class="n">clear_error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-                        <span class="c1"># Wait before retrying</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Waiting </span><span class="si">{</span><span class="n">retry_delay</span><span class="si">}</span><span class="s2"> seconds before retry...&quot;</span><span class="p">)</span>
-                        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">retry_delay</span><span class="p">)</span>
-                        <span class="n">retry_delay</span> <span class="o">*=</span> <span class="mi">2</span>  <span class="c1"># Exponential backoff</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="c1"># Last attempt failed - provide helpful error message</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;Failed to open HDF5 file after </span><span class="si">{</span><span class="n">max_retries</span><span class="si">}</span><span class="s2"> attempts&quot;</span>
-                        <span class="p">)</span>
-                        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;Failed to open HDF5 file after </span><span class="si">{</span><span class="n">max_retries</span><span class="si">}</span><span class="s2"> attempts. &quot;</span>
-                            <span class="sa">f</span><span class="s2">&quot;The file </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2"> may be locked by another process. &quot;</span>
-                            <span class="sa">f</span><span class="s2">&quot;Try manually running: h5clear -s </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2"> &amp;&amp; h5clear -f </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="c1"># Different OSError, re-raise immediately</span>
-                    <span class="k">raise</span>
-
-        <span class="c1"># This should not be reached due to the raise in the loop</span>
-        <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unexpected error opening HDF5 file </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">_open_hdf_with_recovery</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span>
+            <span class="k">lambda</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">),</span>
+            <span class="n">context</span><span class="o">=</span><span class="s2">&quot;HDF5 file&quot;</span><span class="p">,</span>
+            <span class="n">lock_markers</span><span class="o">=</span><span class="n">_SAFE_WRITER_LOCK_MARKERS</span><span class="p">,</span>
+            <span class="n">clear_status</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">clear_force</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="HDF.swmr_writer">
@@ -827,98 +897,26 @@
 <span class="sd">        Raises:</span>
 <span class="sd">            OSError: If file cannot be opened after all retry attempts.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 
-        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
-        <span class="n">max_retries</span> <span class="o">=</span> <span class="mi">3</span>
-        <span class="n">retry_delay</span> <span class="o">=</span> <span class="mf">0.5</span>
-
-        <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_open_swmr_writer</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
+            <span class="n">file_handle</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">)</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="c1"># Create/open file with proper SWMR settings</span>
-                <span class="n">file_handle</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">)</span>
-                <span class="c1"># Enable SWMR mode immediately after opening</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">file_handle</span><span class="o">.</span><span class="n">swmr_mode</span> <span class="o">=</span> <span class="kc">True</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SWMR mode enabled successfully for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                    <span class="k">return</span> <span class="n">file_handle</span>
-                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">swmr_error</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not enable SWMR mode: </span><span class="si">{</span><span class="n">swmr_error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                    <span class="c1"># Return file handle without SWMR mode as fallback</span>
-                    <span class="k">return</span> <span class="n">file_handle</span>
-
-            <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">error_msg</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-                <span class="c1"># Handle various HDF5 locking scenarios</span>
-                <span class="n">is_lock_error</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span>
-                    <span class="p">[</span>
-                        <span class="s2">&quot;file is already open for write/swmr write&quot;</span> <span class="ow">in</span> <span class="n">error_msg</span><span class="p">,</span>
-                        <span class="s2">&quot;file is already open&quot;</span> <span class="ow">in</span> <span class="n">error_msg</span><span class="p">,</span>
-                        <span class="s2">&quot;unable to lock file&quot;</span> <span class="ow">in</span> <span class="n">error_msg</span><span class="p">,</span>
-                        <span class="s2">&quot;resource temporarily unavailable&quot;</span> <span class="ow">in</span> <span class="n">error_msg</span><span class="p">,</span>
-                        <span class="s2">&quot;file locking disabled&quot;</span> <span class="ow">in</span> <span class="n">error_msg</span><span class="p">,</span>
-                        <span class="s2">&quot;ring type mismatch&quot;</span> <span class="ow">in</span> <span class="n">error_msg</span><span class="p">,</span>
-                        <span class="s2">&quot;pinned entry count&quot;</span> <span class="ow">in</span> <span class="n">error_msg</span><span class="p">,</span>
-                    <span class="p">]</span>
+                <span class="n">file_handle</span><span class="o">.</span><span class="n">swmr_mode</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                    <span class="s2">&quot;SWMR mode enabled successfully for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span>
                 <span class="p">)</span>
+                <span class="k">return</span> <span class="n">file_handle</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">swmr_error</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Could not enable SWMR mode: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">swmr_error</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">file_handle</span>
 
-                <span class="k">if</span> <span class="n">is_lock_error</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;HDF5 SWMR file access conflict (attempt </span><span class="si">{</span><span class="n">attempt</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">max_retries</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
-                    <span class="p">)</span>
-
-                    <span class="c1"># Try to clear HDF5 consistency flags if h5clear is available</span>
-                    <span class="k">if</span> <span class="n">attempt</span> <span class="o">&lt;</span> <span class="n">max_retries</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># Don&#39;t try h5clear on last attempt</span>
-                        <span class="k">try</span><span class="p">:</span>
-                            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">):</span>
-                                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                                    <span class="sa">f</span><span class="s2">&quot;Attempting to clear HDF5 consistency flags for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span>
-                                <span class="p">)</span>
-                                <span class="c1"># Clear both status and force flags for SWMR issues</span>
-                                <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-                                    <span class="p">[</span><span class="s2">&quot;h5clear&quot;</span><span class="p">,</span> <span class="s2">&quot;-s&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">)],</span>
-                                    <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                    <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                    <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
-                                <span class="p">)</span>
-                                <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-                                    <span class="p">[</span><span class="s2">&quot;h5clear&quot;</span><span class="p">,</span> <span class="s2">&quot;-f&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">)],</span>
-                                    <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                    <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                    <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
-                                <span class="p">)</span>
-                                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Cleared HDF5 consistency flags&quot;</span><span class="p">)</span>
-                        <span class="k">except</span> <span class="p">(</span>
-                            <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">,</span>
-                            <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">,</span>
-                            <span class="ne">FileNotFoundError</span><span class="p">,</span>
-                        <span class="p">)</span> <span class="k">as</span> <span class="n">clear_error</span><span class="p">:</span>
-                            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not run h5clear: </span><span class="si">{</span><span class="n">clear_error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-                        <span class="c1"># Wait before retrying</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Waiting </span><span class="si">{</span><span class="n">retry_delay</span><span class="si">}</span><span class="s2"> seconds before retry...&quot;</span><span class="p">)</span>
-                        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">retry_delay</span><span class="p">)</span>
-                        <span class="n">retry_delay</span> <span class="o">*=</span> <span class="mi">2</span>  <span class="c1"># Exponential backoff</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="c1"># Last attempt failed - provide helpful error message</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;Failed to open HDF5 file in SWMR mode after </span><span class="si">{</span><span class="n">max_retries</span><span class="si">}</span><span class="s2"> attempts&quot;</span>
-                        <span class="p">)</span>
-                        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;Failed to open HDF5 file in SWMR mode after </span><span class="si">{</span><span class="n">max_retries</span><span class="si">}</span><span class="s2"> attempts. &quot;</span>
-                            <span class="sa">f</span><span class="s2">&quot;The file </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2"> may have cache conflicts. &quot;</span>
-                            <span class="sa">f</span><span class="s2">&quot;Try manually running: h5clear -s </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2"> &amp;&amp; h5clear -f </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="c1"># Different OSError, re-raise immediately</span>
-                    <span class="k">raise</span>
-
-        <span class="c1"># This should not be reached due to the raise in the loop</span>
-        <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Unexpected error opening HDF5 file in SWMR mode </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="n">_open_hdf_with_recovery</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span>
+            <span class="n">_open_swmr_writer</span><span class="p">,</span>
+            <span class="n">context</span><span class="o">=</span><span class="s2">&quot;HDF5 file in SWMR mode&quot;</span><span class="p">,</span>
+            <span class="n">lock_markers</span><span class="o">=</span><span class="n">_SWMR_WRITER_LOCK_MARKERS</span><span class="p">,</span>
+            <span class="n">clear_status</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">clear_force</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">)</span></div>
 
 
@@ -1000,7 +998,9 @@
             <span class="c1"># Check if file is opened in read-only mode - with error handling</span>
             <span class="c1"># Handle both File and Group objects (Groups have a .file attribute)</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+                    <span class="n">handle</span><span class="p">,</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span>
+                <span class="p">):</span>
                     <span class="c1"># For Group objects, access the parent file</span>
                     <span class="n">file_obj</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">file</span>
                     <span class="n">file_mode</span> <span class="o">=</span> <span class="n">file_obj</span><span class="o">.</span><span class="n">mode</span>
@@ -1061,7 +1061,9 @@
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_data_group">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_data_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">!=</span> <span class="s2">&quot;set&quot;</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;This method is only available for image sets&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+                <span class="s2">&quot;This method is only available for image sets&quot;</span>
+            <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span><span class="p">)</span></div>
 
 
@@ -1084,7 +1086,9 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span>
             <span class="n">handle</span><span class="p">,</span>
             <span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span><span class="p">,</span> <span class="n">image_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">IMAGE_MEASUREMENT_SUBGROUP_KEY</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span><span class="p">,</span>
+                <span class="n">image_name</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">IMAGE_MEASUREMENT_SUBGROUP_KEY</span><span class="p">,</span>
             <span class="p">),</span>
         <span class="p">)</span></div>
 
@@ -1108,7 +1112,9 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span>
             <span class="n">handle</span><span class="o">=</span><span class="n">handle</span><span class="p">,</span>
             <span class="n">posix</span><span class="o">=</span><span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span><span class="p">,</span> <span class="n">image_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PROTECTED_METADATA_SUBGROUP_KEY</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span><span class="p">,</span>
+                <span class="n">image_name</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">PROTECTED_METADATA_SUBGROUP_KEY</span><span class="p">,</span>
             <span class="p">),</span>
         <span class="p">)</span></div>
 
@@ -1121,7 +1127,9 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span>
             <span class="n">handle</span><span class="o">=</span><span class="n">handle</span><span class="p">,</span>
             <span class="n">posix</span><span class="o">=</span><span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span><span class="p">,</span> <span class="n">image_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PUBLIC_METADATA_SUBGROUP_KEY</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span><span class="p">,</span>
+                <span class="n">image_name</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">PUBLIC_METADATA_SUBGROUP_KEY</span><span class="p">,</span>
             <span class="p">),</span>
         <span class="p">)</span></div>
 
@@ -1321,7 +1329,9 @@
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">valid_indices</span><span class="p">)[</span><span class="mi">0</span><span class="p">]:</span>
             <span class="c1"># Ensure we&#39;re working with proper Unicode strings</span>
             <span class="n">original_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
-            <span class="n">processed_str</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_pad_or_truncate_string</span><span class="p">(</span><span class="n">original_str</span><span class="p">,</span> <span class="n">fixed_length</span><span class="p">)</span>
+            <span class="n">processed_str</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_pad_or_truncate_string</span><span class="p">(</span>
+                <span class="n">original_str</span><span class="p">,</span> <span class="n">fixed_length</span>
+            <span class="p">)</span>
             <span class="c1"># Encode to UTF-8 bytes to ensure it fits in fixed-length storage</span>
             <span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">processed_str</span>
         <span class="k">return</span> <span class="n">result</span>
@@ -1340,7 +1350,8 @@
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_decode_fixed_length_strings</span><span class="p">(</span>
-        <span class="n">str_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span> <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span>
+        <span class="n">str_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
+        <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">Any</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Decode fixed-length strings and trim trailing whitespace from valid entries.</span>
 
@@ -1372,7 +1383,10 @@
         <span class="o">*</span><span class="p">,</span>
         <span class="n">string_fixed_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="nb">str</span><span class="p">,</span>
+        <span class="nb">str</span><span class="p">,</span>
     <span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Encode pandas Series values for HDF5 storage.</span>
 
@@ -1389,9 +1403,9 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">orig_dtype</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_numeric_dtype</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="ow">or</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_bool_dtype</span><span class="p">(</span>
+        <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_numeric_dtype</span><span class="p">(</span>
             <span class="n">values</span><span class="o">.</span><span class="n">dtype</span>
-        <span class="p">):</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_bool_dtype</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">dtype</span><span class="p">):</span>
             <span class="c1"># Convert to float64, with NaN for missing values</span>
             <span class="n">encoded</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
             <span class="n">mask</span> <span class="o">=</span> <span class="kc">None</span>
@@ -1418,7 +1432,9 @@
                 <span class="k">if</span> <span class="n">string_fixed_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="c1"># Apply fixed-length padding/truncation</span>
                     <span class="n">str_array</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_apply_fixed_length_to_strings</span><span class="p">(</span>
-                        <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">str_array</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask</span><span class="p">),</span> <span class="n">string_fixed_length</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">str_array</span><span class="p">),</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask</span><span class="p">),</span>
+                        <span class="n">string_fixed_length</span><span class="p">,</span>
                     <span class="p">)</span>
                     <span class="c1"># Create array with explicit UTF-8 encoding for fixed-length</span>
                     <span class="k">try</span><span class="p">:</span>
@@ -1452,7 +1468,9 @@
             <span class="k">if</span> <span class="n">string_fixed_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="c1"># Apply fixed-length padding/truncation</span>
                 <span class="n">str_array</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_apply_fixed_length_to_strings</span><span class="p">(</span>
-                    <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">str_array</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask</span><span class="p">),</span> <span class="n">string_fixed_length</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">str_array</span><span class="p">),</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask</span><span class="p">),</span>
+                    <span class="n">string_fixed_length</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="c1"># Create array with explicit UTF-8 encoding for fixed-length</span>
                 <span class="k">try</span><span class="p">:</span>
@@ -1465,9 +1483,9 @@
                     <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">str_array</span><span class="p">):</span>
                         <span class="k">if</span> <span class="n">mask</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
                             <span class="c1"># Keep only ASCII characters for problematic Unicode</span>
-                            <span class="n">ascii_safe_array</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;ascii&quot;</span><span class="p">,</span> <span class="s2">&quot;ignore&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span>
-                                <span class="s2">&quot;ascii&quot;</span>
-                            <span class="p">)[:</span><span class="n">string_fixed_length</span><span class="p">]</span>
+                            <span class="n">ascii_safe_array</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span>
+                                <span class="s2">&quot;ascii&quot;</span><span class="p">,</span> <span class="s2">&quot;ignore&quot;</span>
+                            <span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;ascii&quot;</span><span class="p">)[:</span><span class="n">string_fixed_length</span><span class="p">]</span>
                     <span class="n">encoded</span> <span class="o">=</span> <span class="n">ascii_safe_array</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
                         <span class="n">HDF</span><span class="o">.</span><span class="n">_get_string_dtype</span><span class="p">(</span><span class="n">string_fixed_length</span><span class="p">)</span>
                     <span class="p">)</span>
@@ -1510,7 +1528,9 @@
 <span class="sd">            - orig_dtype: string representation of original dtype</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">orig_dtype</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="nb">str</span><span class="p">(</span><span class="n">index</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">MultiIndex</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;MultiIndex&quot;</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">index</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">MultiIndex</span><span class="p">)</span>
+            <span class="k">else</span> <span class="s2">&quot;MultiIndex&quot;</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">MultiIndex</span><span class="p">):</span>
@@ -1529,20 +1549,29 @@
                 <span class="k">if</span> <span class="n">string_fixed_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="c1"># Apply fixed-length padding/truncation</span>
                     <span class="n">str_array</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_apply_fixed_length_to_strings</span><span class="p">(</span>
-                        <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">str_array</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask</span><span class="p">),</span> <span class="n">string_fixed_length</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">str_array</span><span class="p">),</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask</span><span class="p">),</span>
+                        <span class="n">string_fixed_length</span><span class="p">,</span>
                     <span class="p">)</span>
                     <span class="n">encoded_arrays</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                        <span class="n">str_array</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">HDF</span><span class="o">.</span><span class="n">_get_string_dtype</span><span class="p">(</span><span class="n">string_fixed_length</span><span class="p">))</span>
+                        <span class="n">str_array</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
+                            <span class="n">HDF</span><span class="o">.</span><span class="n">_get_string_dtype</span><span class="p">(</span><span class="n">string_fixed_length</span><span class="p">)</span>
+                        <span class="p">)</span>
                     <span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">encoded_arrays</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">str_array</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">HDF</span><span class="o">.</span><span class="n">_get_string_dtype</span><span class="p">()))</span>
+                    <span class="n">encoded_arrays</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">str_array</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">HDF</span><span class="o">.</span><span class="n">_get_string_dtype</span><span class="p">())</span>
+                    <span class="p">)</span>
                 <span class="n">mask_arrays</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask</span><span class="p">))</span>
 
             <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="s2">&quot;index_is_multiindex&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
                 <span class="s2">&quot;index_levels&quot;</span><span class="p">:</span> <span class="n">index</span><span class="o">.</span><span class="n">nlevels</span><span class="p">,</span>
                 <span class="s2">&quot;index_names&quot;</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
-                    <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">index</span><span class="o">.</span><span class="n">names</span><span class="p">]</span>
+                    <span class="p">[</span>
+                        <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+                        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">index</span><span class="o">.</span><span class="n">names</span>
+                    <span class="p">]</span>
                 <span class="p">),</span>
             <span class="p">}</span>
             <span class="k">if</span> <span class="n">string_fixed_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -1561,7 +1590,9 @@
             <span class="k">if</span> <span class="n">string_fixed_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="c1"># Apply fixed-length padding/truncation</span>
                 <span class="n">str_array</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_apply_fixed_length_to_strings</span><span class="p">(</span>
-                    <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">str_array</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask</span><span class="p">),</span> <span class="n">string_fixed_length</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">str_array</span><span class="p">),</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask</span><span class="p">),</span>
+                    <span class="n">string_fixed_length</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="n">encoded_arrays</span> <span class="o">=</span> <span class="n">str_array</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
                     <span class="n">HDF</span><span class="o">.</span><span class="n">_get_string_dtype</span><span class="p">(</span><span class="n">string_fixed_length</span><span class="p">)</span>
@@ -1659,7 +1690,9 @@
         <span class="k">if</span> <span class="n">is_multiindex</span><span class="p">:</span>
             <span class="n">levels</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;index_levels&quot;</span><span class="p">]):</span>
-                <span class="n">level_data</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">index_dataset_name</span><span class="si">}</span><span class="s2">/levels/L</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">][:</span><span class="n">logical_length</span><span class="p">]</span>
+                <span class="n">level_data</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">index_dataset_name</span><span class="si">}</span><span class="s2">/levels/L</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">][</span>
+                    <span class="p">:</span><span class="n">logical_length</span>
+                <span class="p">]</span>
                 <span class="n">level_mask</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">index_dataset_name</span><span class="si">}</span><span class="s2">/levels/L</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">_mask&quot;</span><span class="p">][</span>
                     <span class="p">:</span><span class="n">logical_length</span>
                 <span class="p">]</span>
@@ -1682,11 +1715,15 @@
             <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">MultiIndex</span><span class="o">.</span><span class="n">from_arrays</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="n">index_names</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">index_data</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">index_dataset_name</span><span class="si">}</span><span class="s2">/values&quot;</span><span class="p">][:</span><span class="n">logical_length</span><span class="p">]</span>
-            <span class="n">index_mask</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">index_dataset_name</span><span class="si">}</span><span class="s2">/index_mask&quot;</span><span class="p">][:</span><span class="n">logical_length</span><span class="p">]</span>
+            <span class="n">index_mask</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">index_dataset_name</span><span class="si">}</span><span class="s2">/index_mask&quot;</span><span class="p">][</span>
+                <span class="p">:</span><span class="n">logical_length</span>
+            <span class="p">]</span>
 
             <span class="k">if</span> <span class="n">index_kind</span> <span class="o">==</span> <span class="s2">&quot;string_utf8_fixed&quot;</span><span class="p">:</span>
                 <span class="c1"># Decode fixed-length strings and trim trailing whitespace</span>
-                <span class="n">index_values</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_decode_fixed_length_strings</span><span class="p">(</span><span class="n">index_data</span><span class="p">,</span> <span class="n">index_mask</span><span class="p">)</span>
+                <span class="n">index_values</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_decode_fixed_length_strings</span><span class="p">(</span>
+                    <span class="n">index_data</span><span class="p">,</span> <span class="n">index_mask</span>
+                <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># Original variable-length string handling</span>
                 <span class="n">index_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">logical_length</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span>
@@ -1764,7 +1801,9 @@
 
         <span class="c1"># Encode series for schema information using fixed-length strings</span>
         <span class="n">encoded_values</span><span class="p">,</span> <span class="n">values_mask</span><span class="p">,</span> <span class="n">values_kind</span><span class="p">,</span> <span class="n">orig_values_dtype</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">HDF</span><span class="o">.</span><span class="n">_encode_values_for_hdf5</span><span class="p">(</span><span class="n">series</span><span class="p">,</span> <span class="n">string_fixed_length</span><span class="o">=</span><span class="n">string_fixed_length</span><span class="p">)</span>
+            <span class="n">HDF</span><span class="o">.</span><span class="n">_encode_values_for_hdf5</span><span class="p">(</span>
+                <span class="n">series</span><span class="p">,</span> <span class="n">string_fixed_length</span><span class="o">=</span><span class="n">string_fixed_length</span>
+            <span class="p">)</span>
         <span class="p">)</span>
         <span class="n">encoded_index</span><span class="p">,</span> <span class="n">index_masks</span><span class="p">,</span> <span class="n">index_metadata</span><span class="p">,</span> <span class="n">orig_index_dtype</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">HDF</span><span class="o">.</span><span class="n">_encode_index_for_hdf5</span><span class="p">(</span>
@@ -1775,7 +1814,13 @@
         <span class="c1"># Create values dataset</span>
         <span class="k">if</span> <span class="n">values_kind</span> <span class="o">==</span> <span class="s2">&quot;numeric_float64&quot;</span><span class="p">:</span>
             <span class="n">HDF</span><span class="o">.</span><span class="n">_create_resizable_dataset</span><span class="p">(</span>
-                <span class="n">group</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="p">(</span><span class="n">preallocate</span><span class="p">,),</span> <span class="p">(</span><span class="kc">None</span><span class="p">,),</span> <span class="n">chunks</span><span class="p">,</span> <span class="n">compression</span>
+                <span class="n">group</span><span class="p">,</span>
+                <span class="n">dataset</span><span class="p">,</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+                <span class="p">(</span><span class="n">preallocate</span><span class="p">,),</span>
+                <span class="p">(</span><span class="kc">None</span><span class="p">,),</span>
+                <span class="n">chunks</span><span class="p">,</span>
+                <span class="n">compression</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>  <span class="c1"># string_utf8_fixed or string_utf8_vlen</span>
             <span class="k">if</span> <span class="n">values_kind</span> <span class="o">==</span> <span class="s2">&quot;string_utf8_fixed&quot;</span><span class="p">:</span>
@@ -1860,7 +1905,9 @@
             <span class="n">mask_dataset</span><span class="p">[:]</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Initialize to all missing</span>
 
         <span class="c1"># Set attributes</span>
-        <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;series_name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">if</span> <span class="n">series</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;series_name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">if</span> <span class="n">series</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="p">)</span>
         <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;len&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Logical length is 0</span>
         <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;values_kind&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values_kind</span>
         <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;orig_values_dtype&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">orig_values_dtype</span>
@@ -2049,14 +2096,20 @@
 
         <span class="n">index_string_fixed_length</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="n">stored_index_kind</span> <span class="o">==</span> <span class="s2">&quot;string_utf8_fixed&quot;</span><span class="p">:</span>
-            <span class="n">index_string_fixed_length</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;index_string_fixed_length&quot;</span><span class="p">]</span>
+            <span class="n">index_string_fixed_length</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span>
+                <span class="s2">&quot;index_string_fixed_length&quot;</span>
+            <span class="p">]</span>
 
         <span class="c1"># Encode data using stored schema</span>
-        <span class="n">encoded_values</span><span class="p">,</span> <span class="n">values_mask</span><span class="p">,</span> <span class="n">values_kind</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_encode_values_for_hdf5</span><span class="p">(</span>
-            <span class="n">series</span><span class="p">,</span> <span class="n">string_fixed_length</span><span class="o">=</span><span class="n">string_fixed_length</span>
+        <span class="n">encoded_values</span><span class="p">,</span> <span class="n">values_mask</span><span class="p">,</span> <span class="n">values_kind</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">HDF</span><span class="o">.</span><span class="n">_encode_values_for_hdf5</span><span class="p">(</span>
+                <span class="n">series</span><span class="p">,</span> <span class="n">string_fixed_length</span><span class="o">=</span><span class="n">string_fixed_length</span>
+            <span class="p">)</span>
         <span class="p">)</span>
-        <span class="n">encoded_index</span><span class="p">,</span> <span class="n">index_masks</span><span class="p">,</span> <span class="n">index_metadata</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_encode_index_for_hdf5</span><span class="p">(</span>
-            <span class="n">series</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">string_fixed_length</span><span class="o">=</span><span class="n">index_string_fixed_length</span>
+        <span class="n">encoded_index</span><span class="p">,</span> <span class="n">index_masks</span><span class="p">,</span> <span class="n">index_metadata</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">HDF</span><span class="o">.</span><span class="n">_encode_index_for_hdf5</span><span class="p">(</span>
+                <span class="n">series</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">string_fixed_length</span><span class="o">=</span><span class="n">index_string_fixed_length</span>
+            <span class="p">)</span>
         <span class="p">)</span>
 
         <span class="c1"># Validate schema compatibility</span>
@@ -2194,8 +2247,12 @@
             <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([],</span> <span class="n">name</span><span class="o">=</span><span class="n">series_name</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span>
 
         <span class="c1"># Decode values and index</span>
-        <span class="n">values</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_decode_values_from_hdf5</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">logical_length</span><span class="p">)</span>
-        <span class="n">index</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_decode_index_from_hdf5</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">index_dataset</span><span class="p">,</span> <span class="n">logical_length</span><span class="p">)</span>
+        <span class="n">values</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_decode_values_from_hdf5</span><span class="p">(</span>
+            <span class="n">group</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">logical_length</span>
+        <span class="p">)</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_decode_index_from_hdf5</span><span class="p">(</span>
+            <span class="n">group</span><span class="p">,</span> <span class="n">index_dataset</span><span class="p">,</span> <span class="n">logical_length</span>
+        <span class="p">)</span>
 
         <span class="c1"># Get series name</span>
         <span class="n">series_name</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;series_name&quot;</span><span class="p">]</span>
@@ -2275,7 +2332,9 @@
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataframe</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot preallocate layout for DataFrame with no columns&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Cannot preallocate layout for DataFrame with no columns&quot;</span>
+            <span class="p">)</span>
 
         <span class="c1"># Set frame attributes</span>
         <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;column_order&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">dataframe</span><span class="o">.</span><span class="n">columns</span><span class="p">))</span>
@@ -2307,7 +2366,9 @@
                 <span class="c1"># Use first few values to determine the proper schema</span>
                 <span class="n">col_data</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
                 <span class="n">dummy_col_series</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
-                    <span class="p">[</span><span class="n">col_data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">col_data</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">else</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span>
+                    <span class="p">[</span><span class="n">col_data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">col_data</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="k">else</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span>
                     <span class="n">dtype</span><span class="o">=</span><span class="n">col_data</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
                     <span class="n">index</span><span class="o">=</span><span class="n">dataframe</span><span class="o">.</span><span class="n">index</span><span class="p">[:</span><span class="mi">1</span><span class="p">],</span>
                     <span class="n">name</span><span class="o">=</span><span class="n">col_name</span><span class="p">,</span>
@@ -2316,7 +2377,10 @@
                 <span class="c1"># Fallback to dtype for empty dataframe</span>
                 <span class="n">col_dtype</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span>
                 <span class="n">dummy_col_series</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
-                    <span class="p">[],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">col_dtype</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">dataframe</span><span class="o">.</span><span class="n">index</span><span class="p">[:</span><span class="mi">0</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="n">col_name</span>
+                    <span class="p">[],</span>
+                    <span class="n">dtype</span><span class="o">=</span><span class="n">col_dtype</span><span class="p">,</span>
+                    <span class="n">index</span><span class="o">=</span><span class="n">dataframe</span><span class="o">.</span><span class="n">index</span><span class="p">[:</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">col_name</span><span class="p">,</span>
                 <span class="p">)</span>
 
             <span class="n">HDF</span><span class="o">.</span><span class="n">preallocate_series_layout</span><span class="p">(</span>
@@ -2367,7 +2431,9 @@
 
         <span class="c1"># Check if layout already exists (preallocated)</span>
         <span class="k">if</span> <span class="s2">&quot;columns&quot;</span> <span class="ow">in</span> <span class="n">group</span> <span class="ow">and</span> <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;len&quot;</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">HDF</span><span class="o">.</span><span class="n">save_frame_update</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">dataframe</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">require_swmr</span><span class="o">=</span><span class="n">require_swmr</span><span class="p">)</span>
+            <span class="n">HDF</span><span class="o">.</span><span class="n">save_frame_update</span><span class="p">(</span>
+                <span class="n">group</span><span class="p">,</span> <span class="n">dataframe</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">require_swmr</span><span class="o">=</span><span class="n">require_swmr</span>
+            <span class="p">)</span>
             <span class="k">return</span>
 
         <span class="c1"># Creation path: if require_swmr=True, only permit write (no object creation)</span>
@@ -2380,7 +2446,9 @@
                     <span class="s2">&quot;Use preallocate_frame_layout() first, then start SWMR.&quot;</span>
                 <span class="p">)</span>
             <span class="c1"># Use update path</span>
-            <span class="n">HDF</span><span class="o">.</span><span class="n">save_frame_update</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">dataframe</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">require_swmr</span><span class="o">=</span><span class="n">require_swmr</span><span class="p">)</span>
+            <span class="n">HDF</span><span class="o">.</span><span class="n">save_frame_update</span><span class="p">(</span>
+                <span class="n">group</span><span class="p">,</span> <span class="n">dataframe</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">require_swmr</span><span class="o">=</span><span class="n">require_swmr</span>
+            <span class="p">)</span>
             <span class="k">return</span>
 
         <span class="c1"># Create new layout (require_swmr=False for creation phase)</span>
@@ -2395,7 +2463,9 @@
         <span class="p">)</span>
 
         <span class="c1"># Write the data</span>
-        <span class="n">HDF</span><span class="o">.</span><span class="n">save_frame_update</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">dataframe</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">require_swmr</span><span class="o">=</span><span class="n">require_swmr</span><span class="p">)</span></div>
+        <span class="n">HDF</span><span class="o">.</span><span class="n">save_frame_update</span><span class="p">(</span>
+            <span class="n">group</span><span class="p">,</span> <span class="n">dataframe</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">require_swmr</span><span class="o">=</span><span class="n">require_swmr</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="HDF.save_frame_update">
@@ -2550,7 +2620,9 @@
             <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">column_order</span><span class="p">)</span>
 
         <span class="c1"># Load index</span>
-        <span class="n">index</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_decode_index_from_hdf5</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="s2">&quot;index&quot;</span><span class="p">],</span> <span class="s2">&quot;index&quot;</span><span class="p">,</span> <span class="n">logical_length</span><span class="p">)</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">HDF</span><span class="o">.</span><span class="n">_decode_index_from_hdf5</span><span class="p">(</span>
+            <span class="n">group</span><span class="p">[</span><span class="s2">&quot;index&quot;</span><span class="p">],</span> <span class="s2">&quot;index&quot;</span><span class="p">,</span> <span class="n">logical_length</span>
+        <span class="p">)</span>
 
         <span class="c1"># Load columns in order</span>
         <span class="n">column_order_attr</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;column_order&quot;</span><span class="p">]</span>
@@ -2583,7 +2655,9 @@
             <span class="n">handle</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">file</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">)</span> <span class="k">else</span> <span class="n">handle</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">handle</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">valid</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;HDF5 file handle may not have been properly closed&quot;</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="s2">&quot;HDF5 file handle may not have been properly closed&quot;</span>
+                    <span class="p">)</span>
 
                     <span class="c1"># Force close</span>
                     <span class="n">handle</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>

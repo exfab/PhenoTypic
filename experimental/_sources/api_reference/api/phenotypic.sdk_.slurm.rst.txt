@@ -27,10 +27,20 @@ phenotypic.sdk\_.slurm
       submit_drip_feed_start
       submit_script
       validate_array_chunk
+      write_slurm_array_script
    
    
 
    
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      SlurmArrayScriptSpec
    
    
 

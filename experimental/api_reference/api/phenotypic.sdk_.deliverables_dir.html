@@ -809,7 +809,10 @@
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="phenotypic.sdk_.html">phenotypic.sdk_</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_bytes.html">phenotypic.sdk_.atomic_write_bytes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_json.html">phenotypic.sdk_.atomic_write_json</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_parquet.html">phenotypic.sdk_.atomic_write_parquet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_text.html">phenotypic.sdk_.atomic_write_text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_with_writer.html">phenotypic.sdk_.atomic_write_with_writer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.canonical_metadata_order.html">phenotypic.sdk_.canonical_metadata_order</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ensure_metadata_prefix.html">phenotypic.sdk_.ensure_metadata_prefix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_binary_mask.html">phenotypic.sdk_.is_binary_mask</a></li>
@@ -1010,6 +1013,8 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_drip_feed_start.html">phenotypic.sdk_.slurm.submit_drip_feed_start</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_script.html">phenotypic.sdk_.slurm.submit_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.validate_array_chunk.html">phenotypic.sdk_.slurm.validate_array_chunk</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.write_slurm_array_script.html">phenotypic.sdk_.slurm.write_slurm_array_script</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.SlurmArrayScriptSpec.html">phenotypic.sdk_.slurm.SlurmArrayScriptSpec</a></li>
 </ul>
 </details></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.slurm_.html">phenotypic.sdk_.slurm_</a></li>
@@ -1166,9 +1171,9 @@
 <dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/</span></code> — the user-facing-output folder.</p>
 <p>Pure path expression; callers are responsible for <code class="docutils literal notranslate"><span class="pre">mkdir</span></code> when they
 intend to write into it. Writers that go through
-<code class="xref py py-func docutils literal notranslate"><span class="pre">phenotypic._cli._cli_output_manager._atomic_write()</span></code> get the
-<code class="docutils literal notranslate"><span class="pre">mkdir</span></code> for free (it creates <code class="docutils literal notranslate"><span class="pre">target.parent</span></code>); direct
-<code class="docutils literal notranslate"><span class="pre">write_text</span></code>/<code class="docutils literal notranslate"><span class="pre">write_bytes</span></code> writers must <code class="docutils literal notranslate"><span class="pre">mkdir</span></code> explicitly.</p>
+<a class="reference internal" href="phenotypic.sdk_.atomic_write_with_writer.html#phenotypic.sdk_.atomic_write_with_writer" title="phenotypic.sdk_.atomic_write_with_writer"><code class="xref py py-func docutils literal notranslate"><span class="pre">phenotypic.sdk_.atomic_write_with_writer()</span></code></a> get the <code class="docutils literal notranslate"><span class="pre">mkdir</span></code> for free
+(it creates <code class="docutils literal notranslate"><span class="pre">target.parent</span></code>); direct <code class="docutils literal notranslate"><span class="pre">write_text</span></code>/<code class="docutils literal notranslate"><span class="pre">write_bytes</span></code>
+writers must <code class="docutils literal notranslate"><span class="pre">mkdir</span></code> explicitly.</p>
 <p>Every artifact helper that previously rooted at <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/</span></code> (master /
 measurements / per-feature split / analysis / dashboard / report /
 pipeline.json / README) now composes from here, so a future relocation

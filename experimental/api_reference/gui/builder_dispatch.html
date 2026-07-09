@@ -809,7 +809,10 @@
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api/phenotypic.sdk_.html">phenotypic.sdk_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_bytes.html">phenotypic.sdk_.atomic_write_bytes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_json.html">phenotypic.sdk_.atomic_write_json</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_parquet.html">phenotypic.sdk_.atomic_write_parquet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_text.html">phenotypic.sdk_.atomic_write_text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_with_writer.html">phenotypic.sdk_.atomic_write_with_writer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.canonical_metadata_order.html">phenotypic.sdk_.canonical_metadata_order</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.ensure_metadata_prefix.html">phenotypic.sdk_.ensure_metadata_prefix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.is_binary_mask.html">phenotypic.sdk_.is_binary_mask</a></li>
@@ -1010,6 +1013,8 @@
 <li class="toctree-l3"><a class="reference internal" href="../api/phenotypic.sdk_.slurm.submit_drip_feed_start.html">phenotypic.sdk_.slurm.submit_drip_feed_start</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../api/phenotypic.sdk_.slurm.submit_script.html">phenotypic.sdk_.slurm.submit_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../api/phenotypic.sdk_.slurm.validate_array_chunk.html">phenotypic.sdk_.slurm.validate_array_chunk</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/phenotypic.sdk_.slurm.write_slurm_array_script.html">phenotypic.sdk_.slurm.write_slurm_array_script</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/phenotypic.sdk_.slurm.SlurmArrayScriptSpec.html">phenotypic.sdk_.slurm.SlurmArrayScriptSpec</a></li>
 </ul>
 </details></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.slurm_.html">phenotypic.sdk_.slurm_</a></li>
@@ -1252,6 +1257,29 @@ and this page never diverge.</p>
 <p>Remove the slot at <code class="docutils literal notranslate"><span class="pre">slot</span></code> from the consumer’s <code class="docutils literal notranslate"><span class="pre">aux_ports</span></code> list and reindex remaining slots.</p>
 </section>
 </section>
+<section id="legacy-aux-port-mutation">
+<h2>Legacy aux-port mutation<a class="headerlink" href="#legacy-aux-port-mutation" title="Link to this heading">#</a></h2>
+<section id="wire-create">
+<h3><code class="docutils literal notranslate"><span class="pre">wire_create</span></code><a class="headerlink" href="#wire-create" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{target_node_id:</span> <span class="pre">str,</span> <span class="pre">param:</span> <span class="pre">str,</span> <span class="pre">slot:</span> <span class="pre">int,</span> <span class="pre">class_name:</span> <span class="pre">str}</span></code></p>
+<p>Embed a fresh aux <code class="docutils literal notranslate"><span class="pre">StepNode</span></code> under <code class="docutils literal notranslate"><span class="pre">consumer.aux_ports[param][slot]</span></code>. The dispatcher validates the target node, registry class, and operation-type compatibility before writing, then sets <code class="docutils literal notranslate"><span class="pre">inspector_focus_aux</span></code> to the filled slot. Retained for legacy inspector aux-wire payloads; the fixed linear map routes side-value creation through <code class="docutils literal notranslate"><span class="pre">linear_palette_add</span></code>.</p>
+</section>
+<section id="wire-delete">
+<h3><code class="docutils literal notranslate"><span class="pre">wire_delete</span></code><a class="headerlink" href="#wire-delete" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{target_node_id:</span> <span class="pre">str,</span> <span class="pre">param:</span> <span class="pre">str,</span> <span class="pre">slot:</span> <span class="pre">int}</span></code></p>
+<p>Clear one legacy aux slot by setting <code class="docutils literal notranslate"><span class="pre">consumer.aux_ports[param][slot]</span> <span class="pre">=</span> <span class="pre">None</span></code>. If <code class="docutils literal notranslate"><span class="pre">inspector_focus_aux</span></code> points at the same slot, it is cleared too.</p>
+</section>
+<section id="drill-in-aux">
+<h3><code class="docutils literal notranslate"><span class="pre">drill_in_aux</span></code><a class="headerlink" href="#drill-in-aux" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{target_node_id:</span> <span class="pre">str,</span> <span class="pre">param:</span> <span class="pre">str,</span> <span class="pre">slot:</span> <span class="pre">int}</span></code></p>
+<p>Push an aux-slot breadcrumb segment for an occupied legacy aux slot and clear <code class="docutils literal notranslate"><span class="pre">inspector_focus_aux</span></code>. Empty slots and missing target nodes are no-ops.</p>
+</section>
+<section id="set-inspector-focus">
+<h3><code class="docutils literal notranslate"><span class="pre">set_inspector_focus</span></code><a class="headerlink" href="#set-inspector-focus" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{focus:</span> <span class="pre">&quot;aux&quot;</span> <span class="pre">|</span> <span class="pre">&quot;consumer&quot;,</span> <span class="pre">target_node_id:</span> <span class="pre">str,</span> <span class="pre">param:</span> <span class="pre">str,</span> <span class="pre">slot:</span> <span class="pre">int}</span></code></p>
+<p>Set <code class="docutils literal notranslate"><span class="pre">inspector_focus_aux</span></code> to an occupied legacy aux slot when <code class="docutils literal notranslate"><span class="pre">focus</span> <span class="pre">==</span> <span class="pre">&quot;aux&quot;</span></code>; any other focus clears it. Missing nodes or empty slots are rejected without mutation.</p>
+</section>
+</section>
 <section id="dag-canvas-palette-drag-and-drop">
 <h2>DAG canvas: palette drag-and-drop<a class="headerlink" href="#dag-canvas-palette-drag-and-drop" title="Link to this heading">#</a></h2>
 <section id="block-create">
@@ -1332,6 +1360,59 @@ and this page never diverge.</p>
 <p>Second stage (or single stage if no confirmation was needed). Atomically removes the block, its <code class="docutils literal notranslate"><span class="pre">nested</span></code> scope (if any) including every inner block + edge, and every edge in the containing scope whose source or target is the block. Clears <code class="docutils literal notranslate"><span class="pre">selected_block_id</span></code> / <code class="docutils literal notranslate"><span class="pre">selected_edge_id</span></code> / <code class="docutils literal notranslate"><span class="pre">pending_delete_block_id</span></code> when they pointed at the deleted block or one of its edges.</p>
 </section>
 </section>
+<section id="fixed-linear-port-map">
+<h2>Fixed linear port map<a class="headerlink" href="#fixed-linear-port-map" title="Link to this heading">#</a></h2>
+<section id="target-select">
+<h3><code class="docutils literal notranslate"><span class="pre">target_select</span></code><a class="headerlink" href="#target-select" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{target:</span> <span class="pre">LinearTarget,</span> <span class="pre">open_menu:</span> <span class="pre">bool}</span></code> or a serialized <code class="docutils literal notranslate"><span class="pre">LinearTarget</span></code> payload directly</p>
+<p>Persist the selected insertion/fill target for the current linear scope and optionally open the port menu. The fan-in callback emits this from linear port clicks and parameter replace actions.</p>
+</section>
+<section id="target-menu-close">
+<h3><code class="docutils literal notranslate"><span class="pre">target_menu_close</span></code><a class="headerlink" href="#target-menu-close" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{}</span></code></p>
+<p>Close the fixed linear target menu without changing selection.</p>
+</section>
+<section id="linear-palette-add">
+<h3><code class="docutils literal notranslate"><span class="pre">linear_palette_add</span></code><a class="headerlink" href="#linear-palette-add" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{class_name:</span> <span class="pre">str}</span></code></p>
+<p>Add <code class="docutils literal notranslate"><span class="pre">class_name</span></code> at the selected fixed-linear target. Continuation/image-output/image-input targets insert on the image spine; parameter targets fill scalar or list aux ports. <code class="docutils literal notranslate"><span class="pre">InputImage</span></code> is rejected because each scope owns exactly one auto-seeded input. Unsupported linear shapes pause the edit and queue a warning toast.</p>
+</section>
+<section id="linear-delete-node-request">
+<h3><code class="docutils literal notranslate"><span class="pre">linear_delete_node_request</span></code><a class="headerlink" href="#linear-delete-node-request" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{block_id:</span> <span class="pre">str}</span></code></p>
+<p>Stage deletion by setting a linear pending-delete token for any string <code class="docutils literal notranslate"><span class="pre">block_id</span></code>. Unsupported shapes are no-ops here; existence and spine validation happen in <code class="docutils literal notranslate"><span class="pre">linear_delete_node_confirm</span></code>.</p>
+</section>
+<section id="linear-delete-node-confirm">
+<h3><code class="docutils literal notranslate"><span class="pre">linear_delete_node_confirm</span></code><a class="headerlink" href="#linear-delete-node-confirm" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{block_id:</span> <span class="pre">str}</span></code></p>
+<p>Delete a fixed-linear spine block, reconnecting the image spine and removing side values owned by that block. This branch performs the existence and spine validation; missing or non-spine ids leave the graph unchanged. Clears the pending delete token afterward.</p>
+</section>
+<section id="linear-node-move">
+<h3><code class="docutils literal notranslate"><span class="pre">linear_node_move</span></code><a class="headerlink" href="#linear-node-move" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{block_id:</span> <span class="pre">str,</span> <span class="pre">direction:</span> <span class="pre">&quot;left&quot;</span> <span class="pre">|</span> <span class="pre">&quot;right&quot;}</span></code></p>
+<p>Move a fixed-linear spine block one position left or right. Unsupported shapes, invalid block ids, and invalid directions are no-ops.</p>
+</section>
+<section id="linear-clear-param">
+<h3><code class="docutils literal notranslate"><span class="pre">linear_clear_param</span></code><a class="headerlink" href="#linear-clear-param" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{target:</span> <span class="pre">LinearTarget}</span></code></p>
+<p>Clear one scalar side value or one list-slot side value at a fixed-linear parameter target. If clearing would remove an embedded <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> source, the dispatcher stages a confirmation token instead of deleting immediately.</p>
+</section>
+<section id="linear-clear-param-confirm">
+<h3><code class="docutils literal notranslate"><span class="pre">linear_clear_param_confirm</span></code><a class="headerlink" href="#linear-clear-param-confirm" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{target:</span> <span class="pre">LinearTarget}</span></code></p>
+<p>Confirm a previously staged fixed-linear parameter clear, remove the side-value edge(s), reset the scope target to continuation, and clear the pending-delete token.</p>
+</section>
+<section id="linear-drill-param-pipeline">
+<h3><code class="docutils literal notranslate"><span class="pre">linear_drill_param_pipeline</span></code><a class="headerlink" href="#linear-drill-param-pipeline" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{target:</span> <span class="pre">LinearTarget,</span> <span class="pre">source_block_id:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None}</span></code></p>
+<p>Drill into an aux <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> source selected from a fixed-linear parameter target. When <code class="docutils literal notranslate"><span class="pre">source_block_id</span></code> is omitted, the dispatcher resolves the source from the target’s current aux edge.</p>
+</section>
+<section id="linear-select-aux-value">
+<h3><code class="docutils literal notranslate"><span class="pre">linear_select_aux_value</span></code><a class="headerlink" href="#linear-select-aux-value" title="Link to this heading">#</a></h3>
+<p><strong>Payload schema:</strong> <code class="docutils literal notranslate"><span class="pre">{source_block_id:</span> <span class="pre">str}</span></code></p>
+<p>Select an existing aux source block in the current fixed-linear scope and clear edge selection. Missing source ids are no-ops. This retained dispatcher branch is not emitted by the current fixed-linear UI, whose side-value controls route through replace, clear, and drill actions.</p>
+</section>
+</section>
 </section>
 
 
@@ -1372,6 +1453,13 @@ and this page never diverge.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#port-slot-remove"><code class="docutils literal notranslate"><span class="pre">port_slot_remove</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#legacy-aux-port-mutation">Legacy aux-port mutation</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#wire-create"><code class="docutils literal notranslate"><span class="pre">wire_create</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#wire-delete"><code class="docutils literal notranslate"><span class="pre">wire_delete</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#drill-in-aux"><code class="docutils literal notranslate"><span class="pre">drill_in_aux</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#set-inspector-focus"><code class="docutils literal notranslate"><span class="pre">set_inspector_focus</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dag-canvas-palette-drag-and-drop">DAG canvas: palette drag-and-drop</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#block-create"><code class="docutils literal notranslate"><span class="pre">block_create</span></code></a></li>
 </ul>
@@ -1398,6 +1486,19 @@ and this page never diverge.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#drill-to-scope"><code class="docutils literal notranslate"><span class="pre">drill_to_scope</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#block-delete-request"><code class="docutils literal notranslate"><span class="pre">block_delete_request</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#block-delete-confirm"><code class="docutils literal notranslate"><span class="pre">block_delete_confirm</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed-linear-port-map">Fixed linear port map</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#target-select"><code class="docutils literal notranslate"><span class="pre">target_select</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#target-menu-close"><code class="docutils literal notranslate"><span class="pre">target_menu_close</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#linear-palette-add"><code class="docutils literal notranslate"><span class="pre">linear_palette_add</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#linear-delete-node-request"><code class="docutils literal notranslate"><span class="pre">linear_delete_node_request</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#linear-delete-node-confirm"><code class="docutils literal notranslate"><span class="pre">linear_delete_node_confirm</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#linear-node-move"><code class="docutils literal notranslate"><span class="pre">linear_node_move</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#linear-clear-param"><code class="docutils literal notranslate"><span class="pre">linear_clear_param</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#linear-clear-param-confirm"><code class="docutils literal notranslate"><span class="pre">linear_clear_param_confirm</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#linear-drill-param-pipeline"><code class="docutils literal notranslate"><span class="pre">linear_drill_param_pipeline</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#linear-select-aux-value"><code class="docutils literal notranslate"><span class="pre">linear_select_aux_value</span></code></a></li>
 </ul>
 </li>
 </ul>

@@ -17,7 +17,10 @@
       :nosignatures:
    
       atomic_write_bytes
+      atomic_write_json
+      atomic_write_parquet
       atomic_write_text
+      atomic_write_with_writer
       canonical_metadata_order
       ensure_metadata_prefix
       is_binary_mask
