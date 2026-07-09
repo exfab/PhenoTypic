@@ -215,18 +215,17 @@ from ._metadata_helpers import (
     order_measurement_columns,
 )
 from .mixin import (
-    ClipControlMixin,
     FootprintMixin,
     GridInferenceMixin,
     InputLayerMixin,
     LazyWidgetMixin,
+    NormControlMixin,
     NormalizedOutputMixin,
 )
 from .typing_ import InputLayer, NormOut, ProcessOnlyLayer
 
 __all__ = [
     # Mixins / utilities (existing)
-    "ClipControlMixin",
     "ColumnRef",
     "ColumnRefList",
     "ColumnSource",
@@ -235,6 +234,7 @@ __all__ = [
     "HDF",
     "InputLayerMixin",
     "LazyWidgetMixin",
+    "NormControlMixin",
     "NormalizedOutputMixin",
     "atomic_write_bytes",
     "atomic_write_text",

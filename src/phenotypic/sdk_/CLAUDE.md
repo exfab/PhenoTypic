@@ -21,10 +21,13 @@ Auto-generates Jupyter widgets for parameter tuning from the operation's pydanti
 Included in all `ImageOperation` subclasses automatically.
 Location: `mixin/_lazy_widget_mixin.py`.
 
-### ClipControlMixin
-Controls output clipping in composite operations. Provides `_disable_clipping(operation)`
-for operations in non-normalized domains.
-Location: `mixin/_clip_control_mixin.py`.
+### NormControlMixin
+Disables output normalization in composite operations. Provides
+`_disable_normalization(operation)`, which duck-types on `norm` and returns a shallow
+copy with `norm=None` — for inner operations running in non-normalized domains (e.g.
+inside a Generalized Anscombe Transform region). Operations with no `norm` field are
+returned unchanged. Renamed from `ClipControlMixin` in 0.18.0; the old name is gone.
+Location: `mixin/_norm_control_mixin.py`.
 
 ---
 
