@@ -364,21 +364,88 @@ and `do_center_crop=False` reach all three `extract_*` functions.
 
 ## Accuracy budget
 
-`load_synth_yeast_plate()` is 600×800 and ships a populated ground-truth `objmap` with
-`num_objects == 96`. So accuracy is measurable, not assumed.
+**Measured.** `scripts/accuracy_gate_gpu_detectors.py` replicates
+`load_synth_yeast_plate()` 3×4 into an 1800×3200 plate with 1152 relabelled
+ground-truth colonies. Colony diameters stay 32–44 px; only the plate grows, so it
+exceeds SAM2's 1024 encoder and the detectors face real downsampling. The pre-fix
+baseline restores the 224 classification preset by emptying `NATIVE_PROCESSOR_KWARGS`
+— after the fix `tile_px` no longer controls resolution, so `512` vs `518` would
+measure nothing. Both arms plan the same 32 tiles; only the per-tile resize differs.
 
-**Every accuracy claim in this document is an inference from resolution until this
-gate runs.** We have measured `px/patch`, token counts, and wall-clock — not IoU.
+Run: `PHENOTYPIC_ACCEPT_MODEL_LICENSE=dinov3 uv run python
+scripts/accuracy_gate_gpu_detectors.py` (DINO `small`, `device="auto"`, Apple MPS).
 
-- The three defects (F2, F3, F5) assert correctness via unit tests and make **no
-  accuracy claim**. They ship regardless.
-- The two costly changes — DINO 1:1 (6.6× / 26×) and `crop_n_layers: 0 → 1` (~5×) —
-  ship with the **new defaults only if measured objmask IoU improves** against the 96
-  ground-truth colonies. The code change lands either way (it makes `tile_px` mean
-  what it says); only the default is gated.
+| Arm | objmask IoU | objects / 1152 | wall-clock |
+|---|---|---|---|
+| FssDino — 224 preset (pre-fix) | 0.1961 | 31 | 4.4 s |
+| **FssDino — 1:1 native (post-fix)** | **0.5877** | **942** | 2.3 s |
+| Insid3 — 224 preset (pre-fix) | 0.0000 | 0 | 1.2 s |
+| **Insid3 — 1:1 native (post-fix)** | **0.0043** | **103** | 2.0 s |
+| Sam2 — `crop_n_layers=0` (old default) | 0.4076 | 481 | 18.2 s |
+| **Sam2 — `crop_n_layers=1` (new default)** | **0.8722** | **1079** | 152.8 s |
 
-Record before/after IoU and colony count for FssDino and Insid3 in this document
-before merge.
+**Branch taken: the new defaults ship.** Every new default scores ≥ its predecessor,
+so no default is reverted. FssDino (0.1961 → 0.5877, 31 → 942 colonies) and Sam2
+(0.4076 → 0.8722, 481 → 1079 colonies) both improve decisively, and their object
+counts rise toward 1152 rather than overshooting — the gain is recovered colonies, not
+over-segmentation.
+
+**The gate does not validate Insid3's 26× cost.** Insid3 scores near-zero in *both*
+arms; the 0.0000 → 0.0043 delta is noise, not evidence. A follow-up probe with the
+`base` backbone returned **0 objects in both arms**, so the failure is neither a
+backbone-size nor a processor-policy artifact. On the *un*-replicated 600×800 plate
+Insid3 finds 8–9 of 96 colonies at its default `similarity_thresh=0.5`, and its own
+functional test asserts only a *non-empty* mask at a permissive `similarity_thresh=0.0`
+("a plumbing floor, not accuracy"). So Insid3 is weak at its default threshold
+**independently of this change**. That needs its own investigation; it is out of scope
+here.
+
+**The decision rule in the plan was wrong for the DINO arms, and it matters.**
+"If 1:1 loses, revert the default" cannot work: the 6.6× / 26× cost comes from
+`NATIVE_PROCESSOR_KWARGS`, which is **code applied unconditionally**, not from
+`tile_px`. Reverting `Insid3.tile_px` 512 → 1024 would *keep* 1:1 (still 16.0
+px/patch) while quadrupling tile area — 13.4 s/plate instead of 5.2 s. Strictly worse
+on both axes. The only lever that could undo the DINO cost is making the processor
+policy opt-in, which is a code revert, not a default revert.
+
+So Insid3's `tile_px = 512` is kept on **compute and patch-alignment grounds**
+(`512 = 16×32`, exact; and it is the cheap end of a curve where resolution is already
+pinned at `patch_size`), not on accuracy grounds. FssDino exercises the *identical*
+processor-policy code path and improves 3× on IoU, which is the evidence that the
+policy itself is sound.
+
+Caveats on the numbers above:
+
+- **Wall-clock is not cost evidence.** The first `evaluate()` per detector absorbs
+  lazy model construction and MPS warmup, and each detector's pre-fix arm runs first.
+  That is why FssDino's 224 arm (4.4 s) appears *slower* than its 1:1 arm (2.3 s),
+  which contradicts its token counts. The 6.6× / 26× / ~5× cost figures elsewhere in
+  this document come from separate measurements, not this table.
+- **IoU is blind to the fragment bug.** A colony split into two labels preserves the
+  mask union. Task 5's unit regressions cover the tiling merge; this gate does not.
+- Object count is reported alongside IoU precisely because IoU cannot see
+  over-segmentation.
+- **Independently reproduced** by the orchestrator, outside the script, on the two
+  decision-critical detectors. With the backbone warmed first (so wall-clock excludes
+  model load):
+
+  ```
+  FssDino 224 preset (pre-fix)   IoU 0.1961  objects   31 / 1152    1.4s
+  FssDino 1:1 native (post-fix)  IoU 0.5877  objects  942 / 1152    2.5s
+  Sam2    crop_n_layers=0        IoU 0.4076  objects  481 / 1152   28.6s
+  Sam2    crop_n_layers=1        IoU 0.8722  objects 1079 / 1152  149.3s
+  ```
+
+  IoU and object counts match the table exactly. Warmed, FssDino's 1:1 arm is the
+  slower one (1.4 s → 2.5 s), as its token counts predict. Sam2's `crop_n_layers=1`
+  costs **5.2×** here (28.6 s → 149.3 s), close to its 5-encoder-pass prediction.
+- The script's `evaluate()` reads `objmask` from the value **returned** by `apply()`,
+  not from the input image. `apply()` defaults to `inplace=False` and returns a copy;
+  reading the input back yields 0 objects for every arm. The plan's original script had
+  this bug.
+
+The three defects (F2, F3, F5) assert correctness via unit tests, make **no** accuracy
+claim, and ship regardless.
 
 ## Risks and unverified assumptions
 

@@ -1655,8 +1655,10 @@ def evaluate(detector, label: str, *, legacy: bool = False) -> float:
     truth = truth_om > 0
     ctx = legacy_processor_policy() if legacy else contextlib.nullcontext()
     with ctx:
-        detector.apply(image)
-    pred = np.asarray(image.objmask[:])
+        # apply() defaults to inplace=False and returns a COPY. Reading objmask
+        # back off `image` yields 0 objects for every arm.
+        result = detector.apply(image)
+    pred = np.asarray(result.objmask[:])
     iou = mask_iou(pred, truth)
     print(
         f"{label:<40} IoU {iou:.4f}  "
