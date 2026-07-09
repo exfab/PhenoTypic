@@ -400,6 +400,17 @@ functional test asserts only a *non-empty* mask at a permissive `similarity_thre
 **independently of this change**. That needs its own investigation; it is out of scope
 here.
 
+**It is not a scale bug.** The 1800×3200 plate is literally 12 copies of the 600×800
+one, so "works small, fails large" would have implied a tiling or coordinate defect.
+It doesn't: Insid3's detection *rate* is the same at both scales — 8 of 96 colonies
+(8.3%) on the small plate, 103 of 1152 (8.9%) on the large one. Per-tile probing
+confirms the behaviour is positional, not size-dependent: some tiles fire (1357, 983
+foreground px), most return 0–21 px. The prototype is unit-norm and the positional
+basis is `(384, 4)` as expected, so the pipeline is wired correctly. What fails is the
+`similarity_thresh = 0.5` cosine floor against a DINOv3-small prototype — the same
+conclusion its own functional test reached when it lowered the floor to `0.0` to get a
+non-empty mask.
+
 **The decision rule in the plan was wrong for the DINO arms, and it matters.**
 "If 1:1 loses, revert the default" cannot work: the 6.6× / 26× cost comes from
 `NATIVE_PROCESSOR_KWARGS`, which is **code applied unconditionally**, not from
