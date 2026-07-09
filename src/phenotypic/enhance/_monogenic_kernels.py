@@ -411,6 +411,22 @@ def monogenic_phase_congruency(
     rows, cols = img.shape
     epsilon = EPSILON_MONOGENIC
 
+    # The docstring above promises "must be at least 2"; nothing enforced it, and both
+    # illegal values fail *silently*. Measured on a 64x64 step edge: n_scale=1 divides by
+    # `n_scale - 1 == 0` inside spread_weight and returns an all-zero `pc` with only a
+    # RuntimeWarning; n_scale=0 skips the scale loop entirely, leaving max_amplitude all
+    # zero, and returns an all-zero `pc` with **no warning at all**. Callers reaching this
+    # function directly -- FocusEdgeColorPhase will -- would get a plausible array of zeros.
+    # The operations guard themselves with Field(ge=2); the kernel must too. Drift M9.
+    #
+    # No reference validates this: Kovesi's phasecongmono divides by (nscale-1) unguarded.
+    if n_scale < 2:
+        raise ValueError(
+                f"n_scale must be at least 2; got {n_scale!r}. spread_weight divides by "
+                f"(n_scale - 1), so n_scale=1 returns an all-zero pc with a RuntimeWarning "
+                f"and n_scale=0 returns an all-zero pc silently."
+        )
+
     if noise_method < 0 and not (
             abs(noise_method + 1.0) < epsilon or abs(noise_method + 2.0) < epsilon
     ):

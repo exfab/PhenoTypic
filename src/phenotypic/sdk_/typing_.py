@@ -27,6 +27,12 @@ FootprintShape = Literal["disk", "square", "diamond"]
 
 DetectMode = Literal["gray", "red", "green", "blue", "MinRGB", "LabL", "LabA", "LabB", "HsvS", "HsvV", "InvS"]
 
+#: Which of ``phasecongmono``'s three maps :class:`FocusEdgeMonogenicPhase` writes to
+#: ``detect_mat``. ``orientation`` and ``feature_type`` are angles and are mapped from
+#: radians into ``[0, 1]`` by ``(theta + pi/2)/pi`` before being written. Type-only
+#: closed set (no Enum / documentation surface needed), matching ``DetectMode``.
+MonogenicOutput = Literal["pc", "orientation", "feature_type"]
+
 #: Image layer a process-mode CLI run exports. A closed
 #: subset of the layers exposed as Image accessors; ``rgb``/``gray``/
 #: ``detect_mat`` save as TIFF, ``objmap`` as a raw-label PNG.

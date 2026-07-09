@@ -447,6 +447,32 @@ class TestNoiseThreshold:
         with pytest.raises(ValueError, match="noise_method"):
             monogenic_phase_congruency(np.zeros((32, 32)), noise_method=bad)
 
+    @pytest.mark.parametrize("bad", [0, 1, -3])
+    def test_n_scale_below_two_raises(self, bad):
+        """The kernel promises "at least 2" and used to break that promise silently.
+
+        Measured on a 64x64 step edge before the guard existed:
+
+        * ``n_scale=1`` divides by ``n_scale - 1 == 0`` in ``spread_weight`` and returns an
+          all-zero ``pc`` with only a ``RuntimeWarning``;
+        * ``n_scale=0`` skips the scale loop, leaves ``max_amplitude`` all zero, and returns
+          an all-zero ``pc`` with **no warning at all**.
+
+        ``FocusEdgeMonogenicPhase`` and ``FocusEdgePhase`` both guard themselves with
+        ``Field(ge=2)``, but this is a public-ish pure function and ``FocusEdgeColorPhase``
+        will call it directly. A plausible array of zeros is the worst possible answer.
+        No reference validates this -- Kovesi divides by ``(nscale-1)`` unguarded. Drift M9.
+        """
+        with pytest.raises(ValueError, match="n_scale"):
+            monogenic_phase_congruency(np.zeros((32, 32)), n_scale=bad)
+
+    def test_n_scale_two_is_accepted(self):
+        """The boundary is inclusive, so the guard cannot be off by one."""
+        step = np.zeros((32, 32))
+        step[:, 16:] = 1.0
+        result = monogenic_phase_congruency(step, n_scale=2)
+        assert result.pc.max() > 0.0  # not the degenerate all-zero output
+
 
 class TestThePeriodicDefaultIsPinned:
     """Nothing else pins it, and flipping it changes what the operation computes.
