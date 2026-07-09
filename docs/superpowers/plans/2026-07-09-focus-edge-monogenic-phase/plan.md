@@ -1834,3 +1834,183 @@ git commit -m "docs(enhance): document _monogenic_kernels; mark the monogenic sp
 **Type consistency.** `monogenic_phase_congruency` returns `MonogenicResult` with `.pc`, `.orientation`, `.feature_type`, `.threshold`, `.n_clamped` — used under exactly those names in Tasks 3, 4 and 5. `spread_weight` takes `epsilon` as its sixth positional parameter in both call sites (`_phasecong3` passes `1e-5`, `monogenic_phase_congruency` passes `EPSILON_MONOGENIC`). `construct_filter_grids` returns a 4-tuple `(radius, sintheta, costheta, freq)` and both callers unpack four. `_kovesi_synthetic.centred_axis` is public (the spec's `verify_claims.py` keeps it private as `_centred_axis`); Task 4's `starsine` test imports the public name.
 
 **One risk the plan cannot retire.** `phasepack` ships no tests of its own, so `TestGoldenFixture` pins *transcription*, not *correctness*. The behavioural controls (`TestBehaviouralControls`, `TestAxisConvention`) are what speak to correctness, and they are blind to the things the fixture catches. Keep both; neither substitutes for the other.
+
+---
+
+# Execution
+
+Derived from the per-task `Files`/`Interfaces` blocks above via the `orchestration-clustering`
+procedure. This section is the DAG of record.
+
+## Dependency DAG
+
+```
+  S0  fixture move + verify_claims path resolution        [Seam, orchestrator, inline]
+      │
+      ▼
+  A   _monogenic_kernels.py (helpers + algorithm)          [Keystone]
+      _kovesi_synthetic.py, test_monogenic_kernels.py
+      │
+      ├───────────────┬──────────  zero write-overlap → parallel worktrees
+      ▼               ▼
+  B  FocusEdgePhase  C  FocusEdgeMonogenicPhase           [Seam]  [Keystone + Leaves]
+     refactor           operation + exports + registration
+      └───────────────┴──────────┐
+                                 ▼
+                            D  docs                        [Sweep]
+                                 ▼
+                            E  domain-stripped copy        [Sweep, consistency-critical]
+                                 ▼
+                            F  scoped Fable review         [Judgment, sandboxed]
+```
+
+**Shared-file matrix** (writes only; reads don't constrain ordering):
+
+| Cluster | Writes |
+|---|---|
+| S0 | `tests/fixtures/phasecongmono_golden.npz`, `verify_claims.py`, spec `README.md` |
+| A | `enhance/_monogenic_kernels.py`, `tests/unit/enhance/_kovesi_synthetic.py`, `tests/unit/enhance/test_monogenic_kernels.py` |
+| B | `enhance/_focus_edge_phase.py`, `tests/unit/enhance/test_phase_congruency.py` |
+| C | `enhance/_focus_edge_monogenic_phase.py`, `enhance/__init__.py`, `sdk_/typing_.py`, `tests/unit/enhance/test_focus_edge_monogenic_phase.py`, `tests/unit/abc_/test_enhancer_taxonomy.py`, `tests/unit/tune/test_enhance_annotations.py` |
+| D | `enhance/CLAUDE.md`, spec `README.md` + `monogenic-phase-congruency.md` |
+
+**B and C write disjoint sets** — they are the only parallel-worktree pair. B *reads* `_monogenic_kernels.py`; C *reads* it too. Neither writes it after A. C's `TestAgreementWithFocusEdgePhase` calls `FocusEdgePhase()._phasecong3`, which B leaves bit-identical, so C is correct against either side of B.
+
+## Clusters
+
+### S0 — Seam (orchestrator, inline)
+
+Hoisted out of Task 3 Step 1, because it is a **risky tiny wiring point** that the rest of the work depends on and that fails *silently*.
+
+`verify_claims.py::check_19` returns `Result(..., passed=True, "SKIPPED")` when the fixture is absent. A botched `git mv` therefore leaves the suite reporting **21/21 passed** while the single check that pins the transcription is not running at all. Isolate it, and gate on the check *executing*, not on the suite being green.
+
+- `git mv` the npz to `tests/fixtures/phasecongmono_golden.npz`
+- Rewrite `check_19`'s path resolution to walk up from `__file__`
+- Fix the spec `README.md` link
+
+**Gate:** the suite prints `21/21`, **and** `check_19`'s detail line contains `max|dpc|`, not `SKIPPED`. Assert both, not just the first.
+
+Under 30 lines across two files — the orchestrator does this directly, no dispatch.
+
+### A — Keystone: the kernels module
+
+Tasks 1 + 3 merged. They write the *same two files*; splitting them means a second agent re-reads and appends to the first agent's module and test file, paying a full context load to produce a half-module in between.
+
+Merged, one agent holds the whole picture: extract the four helpers, add `riesz_multiplier` / `periodic_fft2` / `lowpass_filter` / `log_gabor_scale`, then `monogenic_phase_congruency`. `_kovesi_synthetic.py` is a **Leaf** — folded in, since A's tests are its only consumer.
+
+*Cluster rule check:* shares intent (one module), one reviewable diff (~350 src + ~400 test lines), and **self-verifies in a single pass** — the golden fixture is a hard numeric oracle, so "did I finish correctly" is answerable by the agent itself. Passes.
+
+**Model:** Opus, high effort. This is the mathematical core.
+**Gate:** `pytest tests/unit/enhance/test_monogenic_kernels.py` green; the `load_bearing` test green; `verify_claims.py` still 21/21; then a **deep code-review agent** (Opus, high) over A's diff before anything is built on it.
+
+### B — Seam: refactor `FocusEdgePhase`
+
+Small, and the riskiest change in the plan. It touches **shipped, exercised code**, and `detect/_filamentous_fungi_detector.py:424` reaches into `_phasecong3` directly. It also changes a public bound (`n_scale` `ge=1` → `ge=2`) on an operation users already construct.
+
+Isolated for its own gate even though it is ~40 lines. Risk ≠ size.
+
+**Model:** Opus, high effort.
+**Gate:** the bit-identity check against `/tmp/phasecong3_baseline.npz` must report **BIT-IDENTICAL across all six outputs** — captured *before* the edit, in the same tree. Then `test_phase_congruency.py`, `test_enhancer_taxonomy.py`, `test_enhance_annotations.py`, and `pytest tests/unit/detect -k filamentous`. If bit-identity fails, fix the refactor; **never relax the check**.
+
+### C — Keystone + folded Leaves: the operation
+
+The operation itself is Keystone. `MonogenicOutput`, the `__init__.py` export, the taxonomy tuple and the two tune-annotation cases are **Leaves** — each is 1–5 lines, none is independently reviewable, and all four exist only to make the operation reachable. Folded in.
+
+The `__init__.py` export is quietly load-bearing: `gui/_operation_registry.py::discover` scans the `phenotypic.enhance` module, so acceptance criterion 6 (GUI dropdown) is satisfied by the export and by nothing else. Gate on it explicitly.
+
+**Model:** Opus, high effort.
+**Gate:** `pytest tests/unit/enhance tests/unit/abc_ tests/unit/tune`; doctests; `FocusEdgeMonogenicPhase in phenotypic.enhance.__all__`.
+
+### B ∥ C
+
+Run in **separate worktrees**, merge after both. Zero write overlap (see matrix). After the merge, a single **deep code-review agent** (Opus, high) over the combined B+C diff, then `mypy` + `ruff` + the full affected suite.
+
+### D — Sweep: documentation
+
+`enhance/CLAUDE.md`, the spec's status line and `README.md` next-steps. Mechanical, no judgment, no test surface.
+
+**Model:** Sonnet, medium effort.
+
+### End gate — simplify
+
+One **simplify pass** (Opus) over everything A–D produced: dedupe, reduce, clarify. Quality only, no behaviour change. Apply, then re-run `pytest tests/unit/enhance tests/unit/abc_ tests/unit/tune` plus `verify_claims.py` as the regression check.
+
+---
+
+## E — The domain-stripped copy
+
+**Goal:** a standalone, self-contained corpus a reviewer can judge on the mathematics alone, with **the code logic bit-for-bit intact** and every trace of the application domain removed.
+
+**Location:** the session scratchpad, at `<scratchpad>/math-review/`. Deliberately **not** in the repo:
+
+- it would be a second, drifting copy of shipped code;
+- it must never be importable, or someone will `from math_review import ...`;
+- the reviewer is told to read nothing outside its own directory, which a repo path makes impossible to enforce.
+
+The reviewer's *report* is what comes back into the repo, under `docs/superpowers/plans/2026-07-09-focus-edge-monogenic-phase/reviews/`.
+
+**Transform rules — what must survive verbatim:**
+
+- Every numeric constant, formula, tolerance, and threshold.
+- Every reference citation (Kovesi, Felsberg & Sommer, Fleischmann/Wietzke/Sommer, Shi et al.), every line-number reference into the reference implementations, and the whole `perfft2` / odd-grid divergence record.
+- The drift register rows M1–M5 and the C-series, with their evidence.
+- `verify_claims.py` in full — it is already domain-free; confirm, don't rewrite.
+- The MIT notice on Kovesi's generators.
+
+**What is removed:**
+
+- All domain nouns and framing. Ban-list, checked mechanically: `colony`, `colonies`, `agar`, `plate`, `yeast`, `fungi`, `fungal`, `hypha`, `hyphal`, `mycel`, `septa`, `microbe`, `microbio`, `phenotyp`, `petri`, `culture`, `biolog`, `organism`.
+- `import phenotypic` anywhere. The stripped kernels stand alone on numpy/scipy.
+- `load_synth_yeast_plate()` and friends → a deterministic synthetic-array generator, so the doctests and tests still run.
+- The spec's `references.md` §1 (provenance) and §3 (what the field notebook gets wrong) — pure domain narrative.
+
+**What is renamed, not deleted:** `FocusEdgeMonogenicPhase` → the operator's mathematical description; "colony boundary" → "step edge"; "hyphal ridge" → "line feature". The *structure* of every docstring stays, so the reviewer sees the same claims.
+
+**Also assembled into the sandbox** (the reviewer cannot fetch these itself, and two of them are gone from disk):
+
+| Artifact | Provenance | Handling |
+|---|---|---|
+| `refs/phasecongruency.jl` | fetch from `peterkovesi/ImagePhaseCongruency.jl` | MIT, read-only |
+| `refs/frequencyfilt.jl`, `refs/syntheticimages.jl` | same | MIT, read-only |
+| `refs/phasecongmono.m`, `refs/phasecong3.m` | fetch from `peterkovesi.com/matlabfns` | read-only |
+| `refs/phasepack_phasecongmono.py` | fetch from `alimuldal/phasepack` | MIT, read-only. **Do not reinstall the package.** |
+| `refs/cmpcm_matlab/` | `Vivianyuwei/…-Conformal-Phase` | **No licence — all rights reserved.** Read-only cross-check. **Never copy its code.** |
+| `papers/*.txt` | extracted text of the JMIV / DAGM / CMPCM PDFs | **Copyrighted. Must never be committed.** |
+
+**Model:** Opus, high effort. It is a Sweep, but consistency-critical: a wrong call about what is "biological" versus what is load-bearing mathematics silently corrupts the thing being reviewed.
+
+**Gate (mechanical, then human):**
+1. `grep -rniE '<ban-list>' <scratchpad>/math-review/` returns nothing.
+2. `grep -rn 'import phenotypic' <scratchpad>/math-review/` returns nothing.
+3. The stripped `verify_claims.py` runs standalone and prints `21/21 checks passed.`
+4. The stripped kernels reproduce the golden fixture to `rtol=1e-6` — proving the transform preserved the logic and not merely the prose.
+5. A diff of the stripped kernels against `src/phenotypic/enhance/_monogenic_kernels.py` shows **changes confined to docstrings, comments and identifiers** — no expression, constant or control-flow edit.
+
+Gate 4 is the one that matters. Without it, "keeping the actual code logic intact" is an assertion; with it, it is a measurement.
+
+## F — Scoped Fable review
+
+A fresh reviewer that has never seen this repository, judging the design on mathematics and faithfulness alone.
+
+**Model:** Fable 5 (`claude-fable-5`), high effort. Frontier tier, so it does not review work produced by a stronger model — the rule holds.
+
+**Context discipline:**
+- Working directory is `<scratchpad>/math-review/`. The agent is instructed to read **only** files beneath it. No repo paths appear anywhere in its brief.
+- No biological framing in the prompt. The task is described purely as a signal-processing port.
+- Tools: read/grep/glob within the sandbox, `WebSearch` and `WebFetch`, and `Bash` restricted to running the stripped tests (with the same memory ceiling that OOM-killed an earlier reviewer: no array over 5e6 elements, no meshgrid over 2000², total live under 500 MB).
+- It may read `refs/` and `papers/`, and must treat the unlicensed MATLAB as read-only.
+
+**Charge:** the governing principle, stated to it directly — *faithfulness to validated reference logic beats a convenient shortcut.* Specifically: find shortcuts, unstated assumptions, places where the implementation silently picks a side in a reference disagreement, tolerances that are too loose to catch a plausible bug, and tests that could pass while the code is wrong. It should consult the literature and the reference implementations rather than taking the spec's word for what they say — this spec has already been wrong about that twice.
+
+**It does not fix anything.** Findings come back as a report; the orchestrator triages, surfaces design-level conflicts to the user, and only then applies changes to the *real* spec and code.
+
+**Gate:** every finding is either (a) reproduced against the real code and fixed, (b) reproduced and consciously accepted with a new `drift-register.md` row, or (c) refuted with evidence. No finding is closed by assertion.
+
+---
+
+## Notes on ordering
+
+- **Nothing dispatches until the background plan review is triaged.** It may invalidate A's code before it is written.
+- The plan's Task 3 Step 1 (the npz move) executes as **S0**, ahead of Task 1, not inside Task 3. Task 3's remaining steps are absorbed into cluster A.
+- The plan's Task 2 and Task 4 map to B and C; Task 5 maps to D.
+- Per-cluster gates are light (diff read + tests). The two **deep** review gates are after A, and after the B∥C merge. Any design-level question a review raises goes to the user before the next cluster starts, not after.
