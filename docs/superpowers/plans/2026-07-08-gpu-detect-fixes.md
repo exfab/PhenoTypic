@@ -48,6 +48,55 @@
 
 ---
 
+## Execution: cluster DAG
+
+Derived from each task's `Files`/`Interfaces` blocks. **Shared-file edges** are what
+constrain parallelism:
+
+- `_dino_support.py` — T1, T2, **T7**
+- `_sam3_detector.py` — **T5**, T6
+
+```
+T1 → T2 → {T3, T4, T7}
+T5 → {T6, T7}
+T8  (independent)
+{T3, T4, T8} → T10 → T9
+```
+
+| # | Tasks | Shape | Files | Model / effort | Depends |
+|---|---|---|---|---|---|
+| **C1** | T1, T2 | Keystone | `_dino_support.py` | Opus, high | — |
+| **C2** | T3, T4 | Leaf-pair | `_fssdino`, `_insid3` | Sonnet, medium | C1 |
+| **C3** | T5 | Keystone | `_tiling.py`, `_sam3` (deletes) | Opus, high | — |
+| **C4** | T6 | **Seam** | `_sam3_detector.py` | Opus, high | C3 |
+| **C5** | T7 | Keystone | `_dino_support`, `_dinosam2` | Opus, high | C1, C3 |
+| **C6** | T8 | Leaf | `_sam2_detector.py` | Sonnet, medium | — |
+| **C7** | T9 | Sweep | docs, tune gate | Sonnet, medium | all code |
+| **C8** | T10 | Gate | `scripts/`, spec | Opus, high | C2, C6 |
+
+**C1 = T1+T2** because T2's `upsample_grid_to_image` is meaningless without T1's
+`covered_hw`; same file, same intent, one reviewable diff.
+
+**C4 is isolated despite being one task** — risk ≠ size. It is the only place the
+objmap coordinate contract flips (full-image-offset → tile-local). A coordinate error
+here is silent and yields plausible-looking objmaps.
+
+**C8 precedes C7** — if the accuracy gate says 1:1 loses, C8 reverts the *defaults*,
+and C7's docs describe those defaults.
+
+**Waves.** Zero-file-overlap sets: wave 1 `{C1, C3, C6}`, wave 2 `{C2, C4, C5}`.
+Agents in a wave run concurrently but **must not run git commands** — the plan's
+per-task commits would contend on one git index. The orchestrator commits each
+cluster after its gate. This supersedes the per-task "Commit" steps below: they
+describe *what* to commit, not who runs it.
+
+**Gates.** Light gate after each cluster (read diff, run that cluster's tests). Deep
+gate after wave 2 over the combined `{C2, C4, C5}` diff with a frontier code-review
+agent. Simplify pass at the end, then `uv run pytest tests/unit/detect/nn`.
+Never review with a model weaker than the implementer.
+
+---
+
 ## Task 1: Native processor kwargs + patch geometry
 
 **Files:**
@@ -1511,18 +1560,68 @@ Tasks 3, 4, and 8 lands regardless; only the defaults are gated.
 
 - [ ] **Step 1: Write the gate script**
 
-```python
-"""Measure objmask IoU against synth_plate's 96 ground-truth colonies.
+Two traps this script has to avoid, both discovered while drafting it:
 
-Run before/after the resolution fixes to decide whether the new tile_px and
-crop_n_layers defaults ship. Spec: docs/superpowers/specs/2026-07-08-gpu-detect-fixes/
+1. **After the fix, `tile_px` no longer controls resolution** — that is the finding.
+   Comparing `tile_px=512` vs `518` on the fixed code measures nothing; both give
+   14.0 px/patch. The real before/after is the **processor policy**: the 224
+   classification preset versus native geometry. The baseline is produced by
+   monkeypatching `NATIVE_PROCESSOR_KWARGS` to `{}`.
+2. **`synth_plate` is 600×800, smaller than SAM2's 1024 encoder**, so SAM2 *upsamples*
+   it and the crop pyramid has no downsampling to recover — `crop_n_layers` would
+   measure as noise. The gate builds a larger plate by replicating `synth_plate` 3×4
+   into 1800×3200 with 1152 relabelled ground-truth colonies. Colony sizes are
+   unchanged (32–44 px); only the plate exceeds the encoder, which is the regime the
+   fixes target (1.76× × 3.13× native px per encoder px).
+
+```python
+"""Measure objmask IoU against a synthetic plate with known ground truth.
+
+Decides whether the costly defaults ship: the DINO 1:1 processor policy
+(FssDino, Insid3) and Sam2's crop_n_layers. The code changes land regardless;
+only the defaults are gated.
+
+Spec: docs/superpowers/specs/2026-07-08-gpu-detect-fixes/
+
+Insid3 needs the gated DINOv3 weights:
+    PHENOTYPIC_ACCEPT_MODEL_LICENSE=dinov3 uv run python scripts/accuracy_gate_gpu_detectors.py
 """
 
 from __future__ import annotations
 
+import contextlib
+
 import numpy as np
 
+from phenotypic import Image
 from phenotypic.data import load_synth_yeast_plate
+
+
+def tiled_plate(rows: int = 3, cols: int = 4) -> tuple[Image, np.ndarray]:
+    """Replicate synth_plate into a plate larger than SAM2's 1024 encoder.
+
+    Colony diameters stay 32-44 px; only the plate grows, so the detectors face
+    real downsampling instead of upsampling. Labels are offset per block so the
+    ground truth stays instance-correct.
+
+    Returns:
+        ``(Image, truth_objmap)`` — the image carries only RGB.
+    """
+    src = load_synth_yeast_plate()
+    rgb = np.asarray(src.rgb[:])
+    om = np.asarray(src.objmap[:])
+    h, w = om.shape
+    n = int(om.max())
+
+    big_om = np.zeros((h * rows, w * cols), dtype=np.uint16)
+    k = 0
+    for r in range(rows):
+        for c in range(cols):
+            blk = om.astype(np.uint16).copy()
+            blk[blk > 0] += k
+            big_om[r * h:(r + 1) * h, c * w:(c + 1) * w] = blk
+            k += n
+    return Image(np.tile(rgb, (rows, cols, 1))), big_om
 
 
 def mask_iou(pred: np.ndarray, truth: np.ndarray) -> float:
@@ -1532,28 +1631,63 @@ def mask_iou(pred: np.ndarray, truth: np.ndarray) -> float:
     return float((pred & truth).sum() / union) if union else 0.0
 
 
-def evaluate(detector, label: str) -> None:
-    image = load_synth_yeast_plate()
-    truth = np.asarray(image.objmap[:]) > 0
-    n_truth = int(image.num_objects)
+@contextlib.contextmanager
+def legacy_processor_policy():
+    """Restore the pre-fix 224 classification preset for the baseline run."""
+    import phenotypic.detect.nn._dino_support as ds
 
-    detector.apply(image)
+    saved = dict(ds.NATIVE_PROCESSOR_KWARGS)
+    ds.NATIVE_PROCESSOR_KWARGS.clear()
+    try:
+        yield
+    finally:
+        ds.NATIVE_PROCESSOR_KWARGS.update(saved)
+
+
+def evaluate(detector, label: str, *, legacy: bool = False) -> float:
+    image, truth_om = tiled_plate()
+    truth = truth_om > 0
+    ctx = legacy_processor_policy() if legacy else contextlib.nullcontext()
+    with ctx:
+        detector.apply(image)
     pred = np.asarray(image.objmask[:])
+    iou = mask_iou(pred, truth)
     print(
-        f"{label:<34} IoU {mask_iou(pred, truth):.4f}  "
-        f"objects {image.num_objects:>4} / {n_truth}"
+        f"{label:<40} IoU {iou:.4f}  "
+        f"objects {image.num_objects:>5} / {int(truth_om.max())}"
     )
+    return iou
 
 
 if __name__ == "__main__":
-    from phenotypic.detect.nn import FssDinoDetector, Insid3Detector
+    from phenotypic.detect.nn import FssDinoDetector, Insid3Detector, Sam2Detector
 
-    # Baseline reproduces the pre-fix geometry by forcing the old tile_px.
-    evaluate(FssDinoDetector(dino_version=2, dino_size="small", tile_px=512,
-                             device="cpu"), "FssDino  tile_px=512 (old default)")
-    evaluate(FssDinoDetector(dino_version=2, dino_size="small", tile_px=518,
-                             device="cpu"), "FssDino  tile_px=518 (new default)")
+    print("plate: 1800x3200, 1152 ground-truth colonies\n")
+
+    evaluate(FssDinoDetector(dino_version=2, dino_size="small", device="auto"),
+             "FssDino  224 preset (pre-fix)", legacy=True)
+    evaluate(FssDinoDetector(dino_version=2, dino_size="small", device="auto"),
+             "FssDino  1:1 native (post-fix)")
+
+    evaluate(Insid3Detector(dino_size="small", device="auto"),
+             "Insid3   224 preset (pre-fix)", legacy=True)
+    evaluate(Insid3Detector(dino_size="small", device="auto"),
+             "Insid3   1:1 native (post-fix)")
+
+    # Sam2's crop_n_layers is the one costly default with no measurement behind
+    # it — it ships on the strength of SAM2's four documented defenses (edge
+    # rejection, crop overlap, full-image fallback, resolution-preferring NMS),
+    # not on evidence. SAM2 is ungated and installed, so measure it.
+    evaluate(Sam2Detector(model_size="tiny", crop_n_layers=0, device="auto"),
+             "Sam2     crop_n_layers=0 (old default)")
+    evaluate(Sam2Detector(model_size="tiny", crop_n_layers=1, device="auto"),
+             "Sam2     crop_n_layers=1 (new default)")
 ```
+
+This exercises the tiling path too: `_plan_tiles((1800, 3200), 518, 0.15)` returns
+many tiles, so a merge regression would show up as a depressed IoU or a wrong object
+count. It does **not** substitute for Task 5's unit regressions on the fragment bug —
+IoU is insensitive to a colony being split into two labels.
 
 - [ ] **Step 2: Run the gate**
 
