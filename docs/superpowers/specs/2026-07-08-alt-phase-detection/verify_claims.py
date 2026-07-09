@@ -1500,7 +1500,10 @@ def check_19_golden_fixture_agrees_with_phasepack() -> Result:
 
     path = Path(__file__).with_name("golden_phasecongmono.npz")
     if not path.exists():
-        return Result("19 golden fixture agrees with phasepack (rtol=1e-6)", True, f"SKIPPED: {path.name} absent")
+        # FAIL, do not skip. A skip here reports "21/21 passed" while the only check that
+        # pins the transcription never runs -- and this file is what caught the perfft2 fork.
+        return Result("19 golden fixture agrees with phasepack (rtol=1e-6)", False,
+                      f"FIXTURE MISSING: {path.name}. The check did not run; do not read the suite as green.")
 
     n = 64
     step = np.zeros((n, n))
@@ -1513,7 +1516,7 @@ def check_19_golden_fixture_agrees_with_phasepack() -> Result:
         "noiseonf": unit_variance(noiseonf(n, 1.5, seed=1)),
     }
     golden = np.load(path, allow_pickle=False)
-    worst_pc = worst_ft = worst_t = 0.0
+    worst_pc = worst_ft = worst_t = worst_or = 0.0
     ok = True
     for name, img in cases.items():
         mono = monogenic_phase_congruency(img, periodic=True)
@@ -1523,11 +1526,24 @@ def check_19_golden_fixture_agrees_with_phasepack() -> Result:
         ok &= bool(np.allclose(golden[f"{name}__pc"], mono.pc, rtol=1e-6, atol=1e-9))
         ok &= bool(np.allclose(golden[f"{name}__ft"], mono.feature_type, rtol=1e-6, atol=1e-9))
 
+        # phasepack stores `ori` as np.fix((atan(-h2/h1) % pi)/pi*180): integer degrees in
+        # [0, 180). Ours is already mod pi, so the same quantisation applies. Without this,
+        # the fixture is blind to BOTH axis bugs -- an fx/fy swap and the -sumh2 sign flip
+        # leave pc, ft and T untouched (check_17).
+        gold_or = golden[f"{name}__or"]
+        finite = np.isfinite(gold_or)
+        ours_or = np.fix(mono.orientation / np.pi * 180.0)
+        delta = np.abs(ours_or[finite] - gold_or[finite])
+        delta = np.minimum(delta, 180.0 - delta)  # circular, mod 180
+        worst_or = max(worst_or, float(delta.max()))
+        ok &= bool(delta.max() == 0.0)
+
     return Result(
         "19 golden fixture agrees with phasepack (rtol=1e-6)",
         ok,
-        f"5 images, 64x64: max|dpc| {worst_pc:.2e}, max|dft| {worst_ft:.2e}, max|dT| {worst_t:.2e} "
-        f"-- eight orders inside the tolerance. phasepack ships no tests of its own (references.md §10)",
+        f"5 images, 64x64: max|dpc| {worst_pc:.2e}, max|dft| {worst_ft:.2e}, max|dT| {worst_t:.2e}, "
+        f"max|dorientation| {worst_or:.0f} deg (exact). pc clears rtol=1e-6 by 7.5 orders. "
+        f"phasepack ships no tests of its own (references.md §10)",
     )
 
 
