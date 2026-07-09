@@ -111,8 +111,20 @@ corrections are necessary" (true, but shown at a point where the two errors canc
 tests even **cherry-picked its own slice** to pass. `verify_claims.py` exists so that every number in
 these documents is re-derived on demand, and so that a claim which stops being true fails loudly.
 
+**S5 — marking our own homework.** Every check in `verify_claims.py` up to `14` used a test signal this
+spec wrote, against a ground truth this spec derived. That is exactly the arrangement under which S3
+and S4 happened. Porting Kovesi's four MIT test-image generators fixed it: `circsine` re-convicts `κ`
+on the algorithm author's own image (`10.59×`), `step2line` supplied the spec's **first positive
+control**, `noiseonf` showed that congruency alone cannot reject `1/f` noise (only the threshold `T`
+can), and `starsine` exposed a trap the spec's own §7 had missed — an `h₂` sign flip that mirrors every
+orientation and that **no axis-aligned test can detect**, because `0` and `π/2` are their own mirror
+images mod `π`. Four generators, four findings, none of which our own fixtures would have produced.
+`references.md` §10.2.
+
 **The lesson, in one line:** copying a reference's *constants* is not faithfulness. Copying its
 *principle*, correctly instantiated, is — and verifying the principle is part of copying it.
+Where a reference also publishes its *test data*, take that too: it is the only ground truth in the
+loop that this spec cannot have biased.
 
 ---
 
@@ -135,3 +147,4 @@ Kept visible so nobody re-derives them.
 | `κ ∝ 1/r` is the whole gate. | The gate was never on the edge detector. Contrast `0.995`, affine-invariance bit-identical. Only `κ` was blocked. |
 | `E ≤ A_Σ` matters for the `[0,1]` bound. | It does not. But `E/A_Σ ≈ 1` was *also* a folded-construction artifact: the real value is `0.999948` at an edge, `0.0` on flat. |
 | `references.md` §6's "80–95% luminance". | Mixed `load_synth_yeast_plate` into one table and `load_yeast_plate` into another. Real plates: 69–80%. |
+| "`pc` is invariant to the `fx`/`fy` swap, so nothing else catches it" (§7). | True but incomplete, and the incompleteness was the dangerous half. There is a **second** axis bug — the `−sumh2` sign — and the vertical/horizontal edge pair is blind to *that* one in `pc` **and** `orientation`. Only an off-axis pattern (`starsine`) catches it. |

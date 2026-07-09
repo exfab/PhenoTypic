@@ -787,6 +787,9 @@ downstream would catch them.
 
 ### 10.1 What IS reusable: Kovesi's synthetic test images (MIT)
 
+> **Adopted 2026-07-09.** All four are ported into `verify_claims.py` (MIT notice retained) and
+> back checks `09b`, `15`, `16`, `17`. What each one bought is recorded in §10.2.
+
 `src/syntheticimages.jl` exports four generators, all under MIT and portable with attribution. They
 supply ground-truth controls this spec currently lacks:
 
@@ -805,3 +808,29 @@ one knob that separates "is this a step or a line" from "is this congruent", and
 them for: the monogenic port's behavioural tests (positive + negative controls, alongside the golden
 fixture); a three-channel congruent/incongruent pair for `color-phase-congruency.md` §7's fusion
 sanity; and `circsine` as a second, author-provided oracle in `verify_claims.py::check_09`.
+
+### 10.2 What the port actually bought
+
+Done. Three faithfulness details bite during the port, all recorded in `verify_claims.py`: only **odd**
+harmonics are summed; Julia's `[f(x,y) for x=l:u, y=l:u]` puts `x` on the **first** axis (so
+`theta = atan2(Y, X)` with `X` the row coordinate); and `circsine`'s `trim` flag multiplies by
+`(r < c) + (r >= c) ≡ 1`, a no-op, so it is not ported.
+
+| Check | Generator | Result |
+|---|---|---|
+| `09b` | `circsine` | **Confirms `κ` is not curvature, on the author's own image.** At fixed geometry (`r=40`, `σ=16`, `R=48`) and a fixed feature type — the probe sits at `r = m·λ/2`, a simultaneous zero crossing of every odd harmonic — the isophote is an exact circle of curvature `1/40` for every setting. `κ·r` nonetheless ranges `0.351–0.597` across radial waveforms (1.70×) and `0.056–0.597` across wavelengths (**10.59×**). Curvature predicts `1.0000`; not one of the eight settings comes within 30%. |
+| `15` | `step2line` | **The spec's first positive control.** `pc` at the congruency column varies `1.47×` (step-row vs line-row endpoint ratio `1.077`) while `feature_type` sweeps `−4.3° → +86.9°` monotonically. Gradient magnitude *localises* the feature in 100% of rows but its **value** collapses `18.1×` (endpoint ratio `0.055`), so any fixed threshold on it drops the line rows. The `acos` argument never leaves `[−1,1]` (drift-register M1). |
+| `16` | `noiseonf` | **The Rayleigh threshold `T` is load-bearing, and `T` alone.** With `T` disabled, `1/f` noise reaches `pc₀.₉₉₉ = 0.72–0.76` against `0.954` for a congruent image — a 1.3× margin, useless. `T` is estimated from the image's own amplitude median, so noise gets a `T` **6–61×** larger than `step2line`'s: it cuts noise `1.4–2.6×` and the signal `1.013×`. Honest caveat: `T` does not drive noise to zero (`0.29–0.41` survives). `k` counts standard deviations; it does not guarantee. |
+| `17` | `starsine` | **Pins the orientation convention and exposes a trap §7 missed.** Recovered orientation matches the generator's own `theta` field to `0.98°` median / `6.04°` at the 90th percentile. |
+
+**New trap, found by `starsine` (§7 of `monogenic-phase-congruency.md` must be amended).** There are
+*two* axis bugs, not one, and the axis-aligned edge pair catches only the first:
+
+| Bug | Vertical/horizontal edge pair sees | `starsine` sees |
+|---|---|---|
+| `fx`/`fy` swapped | `pc` identical to `1.5e-17` (blind); orientation `0° ↔ 90°` — **caught** | orientation shifts `44.2°` median |
+| `atan2(+h₂, h₁)` instead of `−h₂` | `0°` and `90°` are their own mirror images mod `π` — **completely blind, `pc` and orientation both** | orientation shifts `45.8°` median |
+
+The `−h₂` sign encodes a **y-up** convention: `starsine`'s recovered orientation equals `+theta`, not
+`−theta`. Flipping it reflects every orientation about the x-axis, which no axis-aligned test can see.
+A test suite built only from horizontal and vertical step edges would ship that bug.

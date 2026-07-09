@@ -192,13 +192,30 @@ Test-first, per `superpowers:test-driven-development`.
    The defining property of phase congruency.
 6. `detect_mat` output in `[0,1]`; `rgb`/`gray` unmutated (free from the integrity validator);
    `to_json`/`from_json` round-trip; constructible with no arguments; 90° rotation equivariance.
-7. **Axis convention.** A vertical edge and a horizontal edge must produce `orientation` values
-   `π/2` apart. Guards against an `fx`/`fy` swap between our grids and Kovesi's, which would rotate
-   every orientation by 90° while leaving `pc` untouched — i.e. would pass every other test.
-8. `FocusEdgeMonogenicPhase` and `FocusEdgePhase` localize a synthetic step edge to within 1 px of
-   each other.
-9. Doctests on `load_synth_yeast_plate()`, per the repo rule.
-10. `ValidationError` on out-of-bounds fields; `n_scale=1` rejected.
+7. **Axis convention — two bugs, and axis-aligned edges catch only one.** A vertical edge must give
+   `orientation = 0` and a horizontal edge `π/2`. That guards an `fx`/`fy` swap, which rotates every
+   orientation by 90° while leaving `pc` untouched (measured: `max|Δpc| = 1.5e-17`).
+   It does **not** guard the sign of `−sumh2`, which encodes a y-up convention. Writing
+   `atan2(+sumh2, sumh1)` reflects every orientation about the x-axis, and `0` and `π/2` are their
+   own mirror images mod `π` — so an axis-aligned test pair is blind to it in both `pc` *and*
+   `orientation`. **Test both bugs on `starsine`**, whose rays span every orientation at once:
+   recovered orientation must match the generator's own `theta` field to `< 2°` median. Each bug
+   shifts it by ~45°. See `references.md` §10.2 and `verify_claims.py::check_17`.
+8. **Feature-type invariance (the positive control).** On `step2line`, `pc` at the congruency column
+   must stay within `~1.5×` while `feature_type` sweeps `0 → π/2`. Gradient magnitude collapses
+   `18×` over the same sweep — that gap is the operator's reason to exist.
+   `verify_claims.py::check_15`.
+9. **Noise rejection.** On `noiseonf(sze, 1.5)`, `pc₀.₉₉₉ < 0.5` with the threshold on and `> 0.5`
+   with it off. Congruency alone does not reject `1/f` noise; `T` does.
+   `verify_claims.py::check_16`.
+10. `FocusEdgeMonogenicPhase` and `FocusEdgePhase` localize a synthetic step edge to within 1 px of
+    each other.
+11. Doctests on `load_synth_yeast_plate()`, per the repo rule.
+12. `ValidationError` on out-of-bounds fields; `n_scale=1` rejected.
+
+Tests 7–9 use Peter Kovesi's synthetic image generators (`step2line`, `circsine`, `starsine`,
+`noiseonf`), MIT-licensed and already ported — with the notice — in `verify_claims.py`. Lift them
+into the test helper from there rather than re-porting.
 
 ---
 
@@ -234,7 +251,8 @@ Record in the fixture's metadata: `phasepack` version, its `ε`, its `k` default
 | Risk | Mitigation |
 |---|---|
 | Transcription error in the port | Golden fixture at `rtol=1e-6`. This is the whole point of §7. |
-| `fx`/`fy` axis swap silently rotates orientation by 90° | Test 7. `pc` is invariant to the swap, so nothing else catches it. |
+| `fx`/`fy` axis swap silently rotates orientation by 90° | Test 7. `pc` is invariant to the swap (`1.5e-17`), so nothing else catches it. |
+| `atan2(+sumh2, …)` sign flip mirrors orientation about the x-axis | Test 7's `starsine` arm. **Axis-aligned edges are blind to this one**, in `pc` and `orientation` alike — the bug the obvious test cannot see. |
 | The §3.2 refactor regresses shipped `FocusEdgePhase` | Scope is four helper functions; the existing 292-line test file is the gate. |
 | Someone "unifies" `ε` with `FocusEdgePhase`'s | Test 3, plus a comment naming the three references. |
 | `phasepack` cannot be installed even once | Fall back to hand-transcribing `phasecongruency.jl` and generating the fixture from a careful Julia run, or accept the unit tests alone and record the weaker guarantee. |

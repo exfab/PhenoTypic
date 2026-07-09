@@ -5,8 +5,15 @@ Run it::
     uv run python docs/superpowers/specs/2026-07-08-alt-phase-detection/verify_claims.py
 
 Exits non-zero if any check fails. Depends only on ``numpy`` and ``scipy``; it does
-**not** import ``phenotypic``. Peak memory ~270 MB, runtime ~5 s. Every integrand that
+**not** import ``phenotypic``. Peak memory ~180 MB, runtime ~1.5 s. Every integrand that
 is radially symmetric is integrated in 1-D; do not reintroduce 2-D grids for them.
+
+The last four checks (09b, 15, 16, 17) run against Peter Kovesi's synthetic test images,
+ported from ImagePhaseCongruency.jl under MIT with the notice retained. They matter
+disproportionately: their ground truth was authored by the algorithm's own author, so
+unlike the rest of this file it is not this spec marking its own homework. They also
+supply the only **positive** control here (check_15) -- everything else establishes what
+something *is not*.
 
 Three of these checks contradict a published paper — Fleischmann, Wietzke & Sommer,
 "Image Analysis by Conformal Embedding," *J. Math. Imaging Vis.* **40**(3):305-325
@@ -32,10 +39,10 @@ Eq. (89) fails in three independent ways, in decreasing order of robustness:
      ``Q^i = g0*mu_i + s*(M omega)_i`` with ``M = diag(A, A, B)``. Eq. (89) requires
      ``A == B``, true at exactly one ``s`` (``s0* = 0.19269068``) and nowhere else.
      **Conditional on ``s != s0*``.**
-  3. **The claimed frequency-independence fails** (check_09). Eq. (89) implies
+  3. **The claimed frequency-independence fails** (check_09, check_09b). Eq. (89) implies
      ``Q^3 / sqrt(Q^1^2 + Q^2^2) = cot(phi_m)``, independent of the signal's radial
      frequency. It is not: on JMIV's own oscillatory circular signal, ``kappa*r`` varies
-     3x with wavelength at fixed ``r``.
+     3x with wavelength at fixed ``r``, and 10.6x on Kovesi's ``circsine``.
 
 Consequence for the design (``conformal-lift.md`` §5): ``kappa`` is scale-*covariant* —
 ``kappa*r`` depends only on ``(r/sigma, R/sigma)`` — but it is **not isophote
@@ -191,6 +198,241 @@ def kappa_r_on_profile(profile: Callable[[np.ndarray], np.ndarray], r: int, sigm
     """``kappa * r`` for a radial profile, probed at radius ``r``. Should be 1 if kappa is curvature."""
     img, c = radial_image(profile, 2 * (r + R) + 41)
     return curvature_estimate(img, c + r, c, R, sigma) * r
+
+
+# --------------------------------------------------------------------------------
+# Kovesi's synthetic test images
+#
+# Ported from ``src/syntheticimages.jl`` of ImagePhaseCongruency.jl. The originals
+# describe themselves as images that "cause considerable grief for gradient based
+# operators", which is exactly why they are the right controls for a congruency
+# measure: an independent, adversarial ground truth authored by the algorithm's own
+# author rather than by this spec.
+#
+#   Copyright (c) 2015-2017 Peter Kovesi -- peterkovesi.com
+#
+#   MIT License:
+#
+#   Permission is hereby granted, free of charge, to any person obtaining a copy of
+#   this software and associated documentation files (the "Software"), to deal in the
+#   Software without restriction, including without limitation the rights to use, copy,
+#   modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+#   and to permit persons to whom the Software is furnished to do so, subject to the
+#   following conditions:
+#
+#   The above copyright notice and this permission notice shall be included in all
+#   copies or substantial portions of the Software.
+#
+#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+#   INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+#   PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+#   HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+#   CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+#   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# Faithfulness notes, in the order they bite:
+#
+#   * Only ODD harmonics are summed (``1:2:(2*nscales-1)``). Even harmonics would break
+#     the half-wave symmetry that makes the feature type well defined.
+#   * ``ampexponent = -1`` sums ``1/k`` -> a square wave (step features). ``-2`` with
+#     ``offset = pi/2`` sums ``cos(k x)/k^2`` -> a triangle wave (line features).
+#   * Julia's ``[f(x, y) for x = l:u, y = l:u]`` puts ``x`` on the FIRST axis, so the
+#     ports use ``indexing="ij"`` and ``theta = arctan2(Y, X)`` with ``X`` the row
+#     coordinate. Getting this backwards transposes every image.
+#   * ``circsine``'s ``trim`` option is not ported: in the original it multiplies by
+#     ``(r < c) + (r >= c)``, which is identically 1.
+# --------------------------------------------------------------------------------
+
+
+def _centred_axis(sze: int) -> np.ndarray:
+    """Kovesi's ``l:u``: ``-sze/2 : sze/2-1`` when even, ``-(sze-1)/2 : (sze-1)/2`` when odd."""
+    if sze % 2 == 0:
+        return np.arange(-sze // 2, sze // 2, dtype=float)
+    return np.arange(-(sze - 1) // 2, (sze - 1) // 2 + 1, dtype=float)
+
+
+def filter_grid(rows: int, cols: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Quadrant-shifted normalised frequency grid: ``(radius, fx, fy)``, DC at ``[0, 0]``."""
+    fy = np.fft.ifftshift((np.arange(rows) - rows // 2) / rows)
+    fx = np.fft.ifftshift((np.arange(cols) - cols // 2) / cols)
+    FX, FY = np.meshgrid(fx, fy)  # 'xy': FX varies across columns
+    return np.sqrt(FX**2 + FY**2), FX, FY
+
+
+def step2line(sze: int = 512, *, nscales: int = 50, ampexponent: float = -1.0,
+              ncycles: float = 1.5, phasecycles: float = 0.25) -> np.ndarray:
+    """A phase-congruent image whose FEATURE TYPE sweeps step -> line down the rows.
+
+    Every row is the same odd-harmonic series with a growing phase offset. The congruency
+    points sit at fixed columns ``x = m*pi`` for every row -- at ``x = m*pi`` each odd
+    harmonic ``sin(k x + phi)`` has the same phase ``m*pi + phi``, so they align whatever
+    ``phi`` is. Congruency is therefore constant down the image while the feature morphs
+    from a step into a line. Gradient magnitude is not (check_15).
+    """
+    x = np.arange(sze) / (sze - 1) * ncycles * 2 * np.pi
+    offsets = phasecycles * 2 * np.pi * np.arange(sze) / sze
+    img = np.zeros((sze, sze))
+    for scale in range(1, 2 * nscales, 2):  # ODD harmonics only
+        img += float(scale) ** ampexponent * np.sin(scale * x[None, :] + offsets[:, None])
+    return img
+
+
+def circsine(sze: int = 512, *, wavelength: float = 40.0, nscales: int = 50,
+             ampexponent: float = -1.0, offset: float = 0.0, p: int = 2) -> np.ndarray:
+    """Concentric circular waveform. Isophotes are exact circles: curvature ``1/r``, always.
+
+    Only the RADIAL frequency content changes with ``nscales``/``ampexponent``/
+    ``wavelength``; the geometry does not. That makes it an oracle for any quantity
+    claiming to be isophote curvature (check_09b).
+    """
+    if p % 2:
+        raise ValueError("p should be an even number")
+    ax = _centred_axis(sze)
+    X, Y = np.meshgrid(ax, ax, indexing="ij")
+    r = (X**p + Y**p) ** (1.0 / p)
+    img = np.zeros_like(r)
+    for scale in range(1, 2 * nscales, 2):
+        img += float(scale) ** ampexponent * np.sin(scale * r * 2 * np.pi / wavelength + offset)
+    return img
+
+
+def starsine(sze: int = 512, *, ncycles: float = 10.0, nscales: int = 50,
+             ampexponent: float = -1.0, offset: float = 0.0) -> np.ndarray:
+    """An angular waveform: radial rays at every orientation at once (check_17)."""
+    ax = _centred_axis(sze)
+    X, Y = np.meshgrid(ax, ax, indexing="ij")
+    theta = np.arctan2(Y, X)  # Julia: atan(y, x), y on the SECOND axis
+    img = np.zeros_like(theta)
+    for scale in range(1, 2 * nscales, 2):
+        img += float(scale) ** ampexponent * np.sin(scale * ncycles * theta + offset)
+    return img
+
+
+def noiseonf(sze: int, p: float, *, seed: int = 0) -> np.ndarray:
+    """``1/f^p`` noise: random phase, amplitude spectrum replaced by ``1/radius^p``.
+
+    The phase spectrum is pure noise, so there is no congruency anywhere -- the negative
+    control for the Rayleigh threshold ``T`` (check_16). ``p = 1.5`` is roughly the
+    amplitude falloff of natural images.
+    """
+    rng = np.random.default_rng(seed)
+    spectrum = np.fft.fft2(rng.normal(size=(sze, sze)))
+    magnitude = np.abs(spectrum)
+    magnitude[magnitude == 0.0] = 1.0
+    radius = filter_grid(sze, sze)[0] * sze + 1.0
+    return np.real(np.fft.ifft2((spectrum / magnitude) / radius**p))
+
+
+def unit_variance(img: np.ndarray) -> np.ndarray:
+    """Zero mean, unit standard deviation. ``epsilon = 1e-4`` is absolute, so scale matters."""
+    return (img - img.mean()) / img.std()
+
+
+# --------------------------------------------------------------------------------
+# monogenic phase congruency (monogenic-phase-congruency.md §2)
+# --------------------------------------------------------------------------------
+
+
+@dataclass
+class Monogenic:
+    pc: np.ndarray
+    orientation: np.ndarray  # mod pi; 0 == vertical edge
+    feature_type: np.ndarray  # 0 == step, +-pi/2 == line
+    threshold: float
+    n_clamped: int  # how often acos's argument left [-1, 1] (must be 0)
+
+
+def monogenic_phase_congruency(
+    img: np.ndarray,
+    *,
+    nscale: int = 4,
+    min_wavelength: float = 3.0,
+    mult: float = 2.1,
+    sigma_onf: float = 0.55,
+    k: float = 3.0,
+    cutoff: float = 0.5,
+    g: float = 10.0,
+    deviation_gain: float = 1.5,
+    eps: float = 1e-4,
+    noise_threshold: bool = True,
+    swap_axes: bool = False,
+    flip_h2_sign: bool = False,
+) -> Monogenic:
+    """The operator specified in ``monogenic-phase-congruency.md`` §2, transcribed here.
+
+    Log-Gabor bandpass + Riesz transform, summed over scales::
+
+        PC = W * max(1 - deviation_gain*acos(E/(sumAn + eps)), 0) * max(E - T, 0)/(E + eps)
+
+    ``swap_axes`` and ``flip_h2_sign`` inject the two axis-convention bugs that §7 warns
+    about, so check_17 can show which tests catch them.
+    """
+    rows, cols = img.shape
+    radius, FX, FY = filter_grid(rows, cols)
+    radius[0, 0] = 1.0
+    if swap_axes:
+        FX, FY = FY, FX
+    riesz = (1j * FX - FY) / radius
+    riesz[0, 0] = 0.0
+    lowpass = 1.0 / (1.0 + (radius / 0.45) ** 30)
+    spectrum = np.fft.fft2(img)
+
+    sum_an = np.zeros((rows, cols))
+    max_an = np.zeros((rows, cols))
+    sum_f = np.zeros((rows, cols))
+    sum_h1 = np.zeros((rows, cols))
+    sum_h2 = np.zeros((rows, cols))
+    tau = 0.0
+    for s in range(nscale):
+        f0 = 1.0 / (min_wavelength * mult**s)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            log_gabor = np.exp(-(np.log(radius / f0) ** 2) / (2 * np.log(sigma_onf) ** 2))
+        log_gabor[0, 0] = 0.0
+        log_gabor *= lowpass
+
+        even = np.real(np.fft.ifft2(spectrum * log_gabor))
+        odd = np.fft.ifft2(spectrum * log_gabor * riesz)
+        h1, h2 = odd.real, odd.imag
+        an = np.sqrt(even * even + h1 * h1 + h2 * h2)
+
+        sum_an += an
+        sum_f += even
+        sum_h1 += h1
+        sum_h2 += h2
+        if s == 0:
+            # noiseMethod = -1: the Rayleigh parameter from the smallest scale's median.
+            tau = float(np.median(sum_an)) / np.sqrt(np.log(4.0))
+            max_an = an.copy()
+        else:
+            max_an = np.maximum(max_an, an)
+
+    width = (sum_an / (max_an + eps) - 1.0) / (nscale - 1)
+    weight = 1.0 / (1.0 + np.exp(g * (cutoff - width)))
+
+    total_tau = tau * (1 - (1 / mult) ** nscale) / (1 - 1 / mult)  # geometric sum
+    threshold = 0.0
+    if noise_threshold:
+        threshold = total_tau * np.sqrt(np.pi / 2) + k * total_tau * np.sqrt((4 - np.pi) / 2)
+
+    energy = np.sqrt(sum_f**2 + sum_h1**2 + sum_h2**2)
+    arg = energy / (sum_an + eps)
+    n_clamped = int(np.count_nonzero((arg > 1.0) | (arg < -1.0)))
+    pc = (
+        weight
+        * np.maximum(1 - deviation_gain * np.arccos(np.clip(arg, -1.0, 1.0)), 0)
+        * np.maximum(energy - threshold, 0)
+        / (energy + eps)
+    )
+    # Kovesi writes atan(-sumh2/sumh1); atan2 is equal mod pi and never divides by zero.
+    h2_signed = sum_h2 if flip_h2_sign else -sum_h2
+    orientation = np.arctan2(h2_signed, sum_h1) % np.pi
+    feature_type = np.arctan2(sum_f, np.hypot(sum_h1, sum_h2))
+    return Monogenic(pc, orientation, feature_type, threshold, n_clamped)
+
+
+def angular_distance_mod_pi(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Smallest angle between two undirected orientations."""
+    return np.abs(((a - b) + np.pi / 2) % np.pi - np.pi / 2)
 
 
 # --------------------------------------------------------------------------------
@@ -618,6 +860,55 @@ def check_09_kappa_is_scale_covariant_but_is_not_curvature() -> Result:
     )
 
 
+def check_09b_circsine_confirms_kappa_is_not_curvature() -> Result:
+    """The same verdict as check_09, on a test image authored by the algorithm's own author.
+
+    ``circsine``'s isophotes are exact circles for every parameter setting, so the isophote
+    curvature at radius ``r`` is ``1/r`` by construction and ``kappa*r == 1`` is the only
+    admissible answer. check_09 built its own radial profiles; this one uses Kovesi's
+    published generator, so the ground truth is not ours to get wrong.
+
+    Two sweeps, both at **fixed geometry** (``r = 40``, ``sigma = 16``, ``R = 48``) -- necessary
+    because check_09 established that ``kappa*r`` depends on ``(r/sigma, R/sigma)``, so varying
+    ``r`` alongside the frequency would confound the two effects.
+
+    Both sweeps probe ``r = m*wavelength/2``, where ``sin(k*2*pi*r/wavelength) = sin(k*m*pi) = 0``
+    for every odd harmonic ``k`` -- a zero crossing of all harmonics at once, i.e. a phase-congruent
+    step edge. The feature type is therefore identical across the sweep too; only the spectrum moves.
+    """
+    sigma, mask_r, r = 16.0, 48, 40
+
+    def kappa_r(**kwargs: object) -> float:
+        n = 2 * (r + mask_r) + 41
+        img = circsine(n, **kwargs)  # type: ignore[arg-type]
+        c = n // 2
+        return curvature_estimate(img, c + r, c, mask_r, sigma) * r
+
+    waveform = [
+        kappa_r(wavelength=80.0, nscales=1, ampexponent=-1.0),   # pure sine
+        kappa_r(wavelength=80.0, nscales=50, ampexponent=-1.0),  # square wave
+        kappa_r(wavelength=80.0, nscales=50, ampexponent=-2.0),
+        kappa_r(wavelength=80.0, nscales=50, ampexponent=-3.0),
+    ]
+    # r = m*wavelength/2 keeps the probe on a congruent zero crossing as the wavelength shrinks.
+    frequency = [kappa_r(wavelength=2.0 * r / m, nscales=1, ampexponent=-1.0) for m in (1, 2, 3, 5)]
+
+    waveform_spread = max(waveform) / min(waveform)
+    frequency_spread = max(frequency) / min(frequency)
+    # Not one setting recovers the true value, and both spreads are far outside float noise.
+    never_unity = all(abs(v - 1.0) > 0.3 for v in waveform + frequency)
+    ok = waveform_spread > 1.4 and frequency_spread > 4.0 and never_unity
+
+    return Result(
+        "09b circsine (Kovesi's own generator) confirms kappa is not curvature",
+        ok,
+        f"identical isophotes (circle r={r}, curvature 1/{r}) and identical feature type; "
+        f"radial waveform sweep gives kappa*r = {['%.4f' % v for v in waveform]} "
+        f"({waveform_spread:.2f}x); wavelength sweep at fixed r gives {['%.4f' % v for v in frequency]} "
+        f"({frequency_spread:.2f}x). Curvature predicts 1.0000 for all eight; none is within 30%",
+    )
+
+
 def check_10_fz_is_an_even_channel() -> Result:
     """``f_z`` is even -- a Laplacian -- not an odd quadrature channel.
 
@@ -858,6 +1149,182 @@ def check_14_kernel_norm_rule_does_not_reduce_to_kovesi() -> Result:
     )
 
 
+def check_15_step2line_congruency_survives_the_feature_type_sweep() -> Result:
+    """POSITIVE control. Congruency is invariant to feature type; gradient magnitude is not.
+
+    Until now this file had no positive control -- every check said what something *is not*.
+    ``step2line`` supplies one, and it is the claim the whole operator rests on: the same
+    physical feature, seen as a step at the top of the image and as a line at the bottom,
+    must score the same.
+
+    The congruency column is ``x = 2*pi`` (col 170 of 256). ``pc`` is read down that column
+    while ``feature_type`` sweeps from a step (``ft = 0``) to a line (``ft = +-pi/2``).
+
+    Gradient magnitude *localises* the feature at every row -- its argmax lands on the same
+    column -- but its VALUE collapses ~18x, so any fixed threshold on it misses the line
+    rows. That is the failure mode phase congruency exists to fix.
+    """
+    n, col = 256, 170
+    img = unit_variance(step2line(n))
+    mono = monogenic_phase_congruency(img)
+    gy, gx = np.gradient(img)
+    grad = np.hypot(gx, gy)
+
+    rows = np.arange(8, n - 8)  # trim the FFT wrap-around
+    pc_col = mono.pc[rows, col]
+    grad_col = grad[rows, col]
+    ft_deg = np.degrees(mono.feature_type[rows, col])
+
+    ft_span = ft_deg[-1] - ft_deg[0]
+    ft_sweeps = 80.0 < ft_span < 100.0 and bool(np.all(np.diff(ft_deg) > 0))  # phasecycles=0.25 -> 90 deg
+
+    pc_collapse = pc_col.max() / pc_col.min()
+    grad_collapse = grad_col.max() / grad_col.min()
+    endpoints = pc_col[-1] / pc_col[0]  # step row vs line row
+
+    localised = np.mean([abs(int(np.argmax(mono.pc[i, col - 20 : col + 21])) - 20) <= 2 for i in rows])
+
+    ok = (
+        ft_sweeps
+        and mono.n_clamped == 0  # M1: the acos argument never leaves [-1, 1]
+        and 0.8 < endpoints < 1.25
+        and pc_collapse < 2.0
+        and grad_collapse > 8.0
+        and grad_col[-1] / grad_col[0] < 0.15
+        and localised == 1.0
+    )
+    return Result(
+        "15 step2line: pc survives the step->line sweep, |grad| does not (POSITIVE control)",
+        ok,
+        f"feature_type sweeps {ft_deg[0]:+.1f} -> {ft_deg[-1]:+.1f} deg (monotone, expected 90); "
+        f"pc {pc_col.min():.4f}-{pc_col.max():.4f} ({pc_collapse:.2f}x, endpoint ratio {endpoints:.3f}) "
+        f"vs |grad| {grad_col.min():.4f}-{grad_col.max():.4f} ({grad_collapse:.1f}x, endpoint ratio "
+        f"{grad_col[-1] / grad_col[0]:.4f}); pc peaks on the feature column in {localised * 100:.0f}% of "
+        f"rows; acos clamped {mono.n_clamped} times",
+    )
+
+
+def check_16_noiseonf_exercises_the_rayleigh_threshold() -> Result:
+    """NEGATIVE control. ``T`` is what separates signal from noise -- congruency alone does not.
+
+    ``noiseonf`` has a pure-noise phase spectrum, so it contains no congruent features. Yet with
+    the noise threshold disabled its 99.9th-percentile ``pc`` reaches ~0.72-0.76, against ~0.95 for
+    a genuinely congruent image: a 1.3x margin, useless as a detector. This restates check_11's
+    lesson (``E/A`` is high even for noise) on an image built to be adversarial.
+
+    Switching ``T`` on cuts the noise 1.4-2.6x while touching the signal by ~1%, because ``tau`` is
+    estimated from the image's own amplitude median: 1/f noise has a high noise floor and a high
+    ``T``, while ``step2line`` is mostly flat and gets a ``T`` 5-60x smaller. The threshold adapts.
+
+    Honest note: ``T`` does not drive 1/f noise to zero (0.29-0.41 remains at the 99.9th percentile).
+    Kovesi's ``k`` is a standard-deviation count, not a guarantee.
+    """
+    n = 256
+    signal = unit_variance(step2line(n))
+    sig_on = monogenic_phase_congruency(signal)
+    sig_off = monogenic_phase_congruency(signal, noise_threshold=False)
+
+    def tail(mono: Monogenic) -> float:
+        return float(np.quantile(mono.pc, 0.999))
+
+    rows = []
+    ok = True
+    for p in (1.0, 1.5, 2.0):
+        noise = unit_variance(noiseonf(n, p, seed=1))
+        off = monogenic_phase_congruency(noise, noise_threshold=False)
+        on = monogenic_phase_congruency(noise)
+        rows.append((p, on.threshold, tail(off), tail(on)))
+        ok &= tail(off) > 0.5  # congruency alone cannot reject noise
+        ok &= tail(on) < 0.5  # the threshold can
+        ok &= tail(off) / tail(on) > 1.35  # and it bites
+        ok &= on.threshold / sig_on.threshold > 3.0  # T adapts to the image's noise floor
+
+    ok &= tail(sig_on) > 0.9  # the signal is essentially untouched
+    ok &= tail(sig_off) / tail(sig_on) < 1.05
+
+    detail = "; ".join(
+        f"p={p}: T={t:.4f} ({t / sig_on.threshold:.0f}x signal's), pc.999 {a:.4f} -> {b:.4f}"
+        for p, t, a, b in rows
+    )
+    return Result(
+        "16 noiseonf: the Rayleigh threshold T does the work (NEGATIVE control)",
+        ok,
+        f"{detail}; signal T={sig_on.threshold:.4f}, pc.999 {tail(sig_off):.4f} -> {tail(sig_on):.4f} "
+        f"(cut {tail(sig_off) / tail(sig_on):.3f}x). Without T, 1/f noise scores within 1.3x of a "
+        f"congruent image",
+    )
+
+
+def check_17_starsine_pins_the_orientation_convention() -> Result:
+    """``starsine`` catches both axis bugs of §7. Axis-aligned edges catch neither reliably.
+
+    The star's intensity depends only on the polar angle, so its edge normals sweep every
+    orientation. The ground truth is the generator's own ``theta`` field -- no separate
+    derivation to get wrong.
+
+    Two injectable bugs, and what each test sees:
+
+    ``swap_axes`` (fx/fy transposed)
+        On a straight edge ``pc`` is identical to ``1.5e-17`` -- a ``pc`` test is blind. An
+        orientation test on a vertical/horizontal pair *does* catch it (0 deg <-> 90 deg).
+
+    ``flip_h2_sign`` (``atan2(+h2, h1)`` instead of ``-h2``)
+        Reflects every orientation about the x-axis. On axis-aligned edges 0 and 90 deg are
+        their own mirror images mod pi, so a vertical/horizontal pair is **blind to it**. Only a
+        pattern with off-axis orientations catches it. The ``-h2`` sign encodes a y-UP
+        convention; ``starsine``'s recovered orientation equals ``+theta``, not ``-theta``.
+    """
+    n = 128
+    vertical = np.zeros((n, n))
+    vertical[:, n // 2 :] = 1.0  # intensity varies across COLUMNS
+    horizontal = np.zeros((n, n))
+    horizontal[n // 2 :, :] = 1.0
+
+    def orientation_at_peak(img: np.ndarray, **kw: bool) -> float:
+        mono = monogenic_phase_congruency(img, **kw)
+        return float(np.degrees(mono.orientation[np.unravel_index(np.argmax(mono.pc), mono.pc.shape)]))
+
+    v_deg, h_deg = orientation_at_peak(vertical), orientation_at_peak(horizontal)
+    convention_ok = abs(v_deg) < 1e-6 and abs(h_deg - 90.0) < 1e-6
+
+    # The straight-edge pair is blind to the sign flip (0 and 90 are self-mirrored mod pi)...
+    v_flip = orientation_at_peak(vertical, flip_h2_sign=True) % 180.0
+    h_flip = orientation_at_peak(horizontal, flip_h2_sign=True) % 180.0
+    flip_invisible = min(v_flip, 180.0 - v_flip) < 1e-6 and abs(h_flip - 90.0) < 1e-6
+
+    # ...and pc is blind to the swap.
+    pc_plain = monogenic_phase_congruency(vertical).pc
+    pc_swapped = monogenic_phase_congruency(vertical, swap_axes=True).pc
+    pc_blind = float(np.abs(pc_plain - pc_swapped).max())
+
+    star = unit_variance(starsine(256, ncycles=8))
+    ax = _centred_axis(256)
+    X, Y = np.meshgrid(ax, ax, indexing="ij")
+    theta, r = np.arctan2(Y, X), np.hypot(X, Y)
+
+    mono = monogenic_phase_congruency(star)
+    mask = (mono.pc > 0.4) & (r > 30) & (r < 256 // 2 - 10)
+    err = angular_distance_mod_pi(mono.orientation[mask], theta[mask] % np.pi)
+    accurate = float(np.degrees(np.median(err))) < 2.0 and float(np.degrees(np.quantile(err, 0.9))) < 8.0
+
+    flipped = monogenic_phase_congruency(star, flip_h2_sign=True)
+    swapped = monogenic_phase_congruency(star, swap_axes=True)
+    d_flip = float(np.degrees(np.median(angular_distance_mod_pi(flipped.orientation[mask], mono.orientation[mask]))))
+    d_swap = float(np.degrees(np.median(angular_distance_mod_pi(swapped.orientation[mask], mono.orientation[mask]))))
+
+    ok = convention_ok and flip_invisible and pc_blind < 1e-12 and accurate and d_flip > 30.0 and d_swap > 30.0
+    return Result(
+        "17 starsine pins the orientation convention and catches both axis bugs",
+        ok,
+        f"vertical edge -> {v_deg:.2f} deg, horizontal -> {h_deg:.2f} deg; on those edges pc is blind to "
+        f"an fx/fy swap (max|dpc| = {pc_blind:.1e}) and orientation is blind to an h2 sign flip. "
+        f"starsine ({int(mask.sum())} feature px): orientation matches the generator's theta to "
+        f"{float(np.degrees(np.median(err))):.2f} deg median / "
+        f"{float(np.degrees(np.quantile(err, 0.9))):.2f} deg at the 90th pct; sign flip shifts it "
+        f"{d_flip:.1f} deg, axis swap {d_swap:.1f} deg",
+    )
+
+
 # --------------------------------------------------------------------------------
 # runner
 # --------------------------------------------------------------------------------
@@ -873,11 +1340,15 @@ CHECKS: tuple[Callable[[], Result], ...] = (
     check_07_s0_degeneracy_bound,
     check_08_both_corrections_are_necessary,
     check_09_kappa_is_scale_covariant_but_is_not_curvature,
+    check_09b_circsine_confirms_kappa_is_not_curvature,
     check_10_fz_is_an_even_channel,
     check_11_pipeline_is_dc_free_and_exactly_affine_invariant,
     check_12_fusion_numerator_must_match_denominator,
     check_13_congruency_functional_properties,
     check_14_kernel_norm_rule_does_not_reduce_to_kovesi,
+    check_15_step2line_congruency_survives_the_feature_type_sweep,
+    check_16_noiseonf_exercises_the_rayleigh_threshold,
+    check_17_starsine_pins_the_orientation_convention,
 )
 
 

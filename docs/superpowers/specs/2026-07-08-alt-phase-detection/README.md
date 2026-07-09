@@ -13,7 +13,7 @@ source document.
 | [`conformal-lift.md`](./conformal-lift.md) | `lift="conformal"` | **Gated. May never ship.** The maths is corrected, but `f_z` is an even channel (a Laplacian) that contributes nothing to `pc`. Gated on a three-arm junction experiment. |
 | [`references.md`](./references.md) | — | Recovered source math, citations, corrected equations, reference implementations. **Read first.** |
 | [`drift-register.md`](./drift-register.md) | — | Every deviation from a validated reference, with its justification and status. |
-| [`verify_claims.py`](./verify_claims.py) | — | **Executable.** 15 checks re-deriving every mathematical claim in this folder. `uv run python <path>`; exits non-zero on failure. |
+| [`verify_claims.py`](./verify_claims.py) | — | **Executable.** 19 checks re-deriving every mathematical claim in this folder, four of them against Kovesi's own synthetic test images (MIT). `uv run python <path>`; exits non-zero on failure. |
 
 ## Why they are split
 
