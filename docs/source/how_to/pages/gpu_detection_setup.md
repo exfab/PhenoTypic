@@ -431,10 +431,9 @@ python -m phenotypic --pipeline sam2_pipeline.json --input /plates/ -o /output/ 
     --gpu-slurm slurm_partition=gpu --gpu-shards 2
 ```
 
-The resource nesting is three levels: `--gpu-shards` (whole GPUs, across nodes)
-→ `--gpu-workers-per-gpu` (replicas packed per GPU for small models) →
-`--gpu-batch-size` (images per forward pass; batchable models, `auto` in
-Spec 2). `--gpu-slurm` inherits/deltas over `--slurm`, so shared keys
+The resource nesting is two levels: `--gpu-shards` (whole GPUs, across nodes)
+→ `--gpu-workers-per-gpu` (replicas packed per GPU for small models).
+`--gpu-slurm` inherits/deltas over `--slurm`, so shared keys
 (account, qos, time) carry over and only the GPU partition/account need
 restating; one GPU is requested automatically.
 

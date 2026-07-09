@@ -153,10 +153,6 @@ resident-model GPU detect → CPU measure). These flags tune Stage 2.
    Model replicas packed per physical GPU, to fill a GPU with a small model.
    Default: 1.
 
-``--gpu-batch-size N``
-   Images per GPU forward pass. Integer, or ``auto`` (VRAM-probe, not yet
-   implemented). Effective only for batchable detectors. Default: 1.
-
 Output Options
 --------------
 

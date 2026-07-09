@@ -54,8 +54,6 @@
     - `--gpu-shards N` (default 1) — parallel whole-GPU Stage-2 tasks (SLURM-only).
     - `--gpu-workers-per-gpu W` (default 1) — replicas packed per GPU (small-model
       fill).
-    - `--gpu-batch-size N|auto` (default 1) — images/forward (batchable models; `auto`
-      VRAM-probe lands in Spec 2).
 - `uv run python -m phenotypic.tune run spec.json -i <images> -o <out>` —
   hyperparameter tuning (grid/random + Optuna), distributed via `--slurm`/
   `--storage-url`

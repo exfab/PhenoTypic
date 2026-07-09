@@ -132,7 +132,7 @@ import logging
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, List, Optional, Sequence, Union, cast
+from typing import Any, List, Optional, Sequence, cast
 
 import click
 import yaml
@@ -240,16 +240,6 @@ def _parse_slurm_args(slurm_args: Sequence[str]) -> dict:
     kept for backward compatibility within this module.
     """
     return parse_slurm_args(slurm_args)
-
-
-def _parse_gpu_batch_size(ctx, param, value):
-    """--gpu-batch-size: integer images-per-forward, or the literal ``auto``."""
-    if value == "auto":
-        return "auto"
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        raise click.BadParameter("--gpu-batch-size must be an integer or 'auto'")
 
 
 def _validate_resume_input_images(state, current_datasets) -> tuple[bool, Optional[str]]:
@@ -670,15 +660,6 @@ def _print_process_only_dry_run_plan(
     "standard SBATCH directives, or use convenience params like mem_gb and time.",
 )
 @click.option(
-    "--gpu-batch-size",
-    "gpu_batch_size",
-    default="1",
-    show_default=True,
-    callback=_parse_gpu_batch_size,
-    help="Images per GPU forward pass (Stage 2). Integer, or 'auto' (VRAM-probe). "
-    "Effective only for batchable detectors; the 'auto' probe lands in Spec 2.",
-)
-@click.option(
     "--gpu-workers-per-gpu",
     "gpu_workers_per_gpu",
     type=int,
@@ -833,7 +814,6 @@ def phenotypic_cli(
     detect_mode: str,
     n_jobs: int,
     slurm_args: Sequence[str],
-    gpu_batch_size: Union[int, str],
     gpu_workers_per_gpu: int,
     gpu_shards: int,
     gpu_slurm_args: Sequence[str],
@@ -1149,7 +1129,6 @@ def phenotypic_cli(
             checkpoint_interval=checkpoint_interval,
             measure_only=measure_only,
             process_only_layer=process_only_layer,  # type: ignore[arg-type]
-            gpu_batch_size=gpu_batch_size,
             gpu_workers_per_gpu=gpu_workers_per_gpu,
             gpu_shards=gpu_shards,
             gpu_slurm_args=_parse_slurm_args(gpu_slurm_args),

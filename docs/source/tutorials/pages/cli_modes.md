@@ -301,7 +301,6 @@ HDF. You do not opt in; you only tune it:
   Set it to your concurrent-GPU count.
 - `--gpu-workers-per-gpu W` — model replicas packed onto one physical GPU, to
   fill a large card with a small model.
-- `--gpu-batch-size N` — images per forward pass, for detectors that batch.
 
 ```bash
 python -m phenotypic --pipeline gpu_pipe.json --input ./plates --output ./out \
@@ -310,11 +309,10 @@ python -m phenotypic --pipeline gpu_pipe.json --input ./plates --output ./out \
     --gpu-shards 4
 ```
 
-```{note}
-`--gpu-batch-size auto` is accepted, but the VRAM probe behind it is not
-implemented yet — it currently behaves as a placeholder. Pass an explicit
-integer.
-```
+GPU fill is therefore two levels: `--gpu-shards` distributes whole GPUs across
+nodes, and `--gpu-workers-per-gpu` packs replicas onto each one. There is no
+per-forward batching knob — the segmentation models PhenoTypic targets do not
+broadly support batched inference.
 
 ### Shaping the output
 
