@@ -9,6 +9,7 @@ import numpy as np
 from pydantic import ValidationError
 
 from phenotypic import Image
+from phenotypic.data import load_synth_yeast_plate
 from phenotypic.enhance import FocusEdgePhase
 
 
@@ -113,6 +114,61 @@ class TestPhaseCongruencyEnhancerParameterValidation:
         assert enhancer.g == 10.0
         assert enhancer.noise_method == -1
         assert enhancer.output == "pc_sum"
+
+
+class TestSigmaOnfOneIsRejectedAtApplyTime:
+    """`FocusEdgePhase(sigma_onf=1.0)` used to return an all-zero / all-NaN detect_mat.
+
+    It reaches `log_gabor_radial` directly and never passes through
+    `monogenic_phase_congruency`, so the guard that drift M10 added there did not cover it.
+    Measured before the guard moved to `log_gabor_scale`: on a 64x64 step edge every
+    log-Gabor filter was identically zero and `.apply()` returned an all-zero map that
+    passes a naive `0 <= x <= 1` check; on a real plate it returned all-NaN. Neither raised.
+
+    `FloatRange` appends `high` exactly (`tune/_search_space/_domains.py:86`), so a grid tune
+    over the old `TuneSpec(0.1, 1.0)` evaluated exactly 1.0 and scored a dead enhancer.
+
+    The `Field` bound stays `le=1.0` on purpose: `ImagePipeline.from_json` must keep loading
+    `enhance_features_sigma_onf_high.json`, which pins `sigma_onf: 1.0`. So construction
+    succeeds and `.apply()` raises. Drift M10.
+    """
+
+    def test_construction_still_succeeds(self):
+        """Legacy pipelines must keep deserialising."""
+        assert FocusEdgePhase(sigma_onf=1.0).sigma_onf == 1.0
+
+    def test_apply_raises_rather_than_returning_a_dead_map(self):
+        """`.apply()` surfaces a bare `Exception`, not the `ValueError` the kernel raises.
+
+        `ImageOperation` wraps **twice** -- `_apply_to_single_image` at
+        `abc_/_image_operation.py:422` and `apply` again at `:469` -- each doing
+        `raise Exception(f"{cls_name} failed on image {name}: {e}") from e`. The exception
+        *type* is destroyed at both levels; only the message and the `__cause__` chain
+        survive. So walk the chain to the original.
+
+        Matching a bare `Exception` alone would pass against anything, which is why this
+        asserts on the root cause's type and message too.
+        """
+        image = load_synth_yeast_plate()
+        with pytest.raises(Exception, match="sigma_onf") as excinfo:
+            FocusEdgePhase(sigma_onf=1.0).apply(image)
+
+        root = excinfo.value
+        while root.__cause__ is not None:
+            root = root.__cause__
+        assert isinstance(root, ValueError), f"expected a ValueError root cause, got {root!r}"
+        assert "sigma_onf must lie strictly in (0, 1)" in str(root)
+
+    def test_the_tune_window_stops_short_of_the_degenerate_point(self):
+        """Guard the guard: a grid run must never reach the value that raises."""
+        from phenotypic.sdk_.typing_ import TuneSpec
+
+        spec = next(
+                a for a in FocusEdgePhase.model_fields["sigma_onf"].metadata
+                if isinstance(a, TuneSpec)
+        )
+        assert spec.high == 0.99
+        assert spec.high < 1.0  # the raising value
 
 
 class TestTheEpsilonSeamIsLocked:

@@ -119,8 +119,9 @@ class TestOperationContract:
         This is the assertion aimed at that regression. Two others catch it incidentally --
         injecting `periodic=True` into `_operate` also reddens both
         `test_operation_*_is_the_affine_map_of_*` tests, since they recompute the kernel
-        without it. Verified: 3 failed, 248 passed. An earlier version of this docstring
-        said "the only assertion", which was false.
+        without it. Verified by re-running the mutant: 3 failed, 251 passed. An earlier
+        version of this docstring said "the only assertion", which was false, and a later
+        one quoted counts (248) that had already drifted.
         """
         arr = np.zeros((64, 64), dtype=np.float32)
         arr[:, 32:] = 1.0
@@ -161,7 +162,9 @@ class TestAngleToUnitMap:
     """The affine map ``(theta + pi/2)/pi`` that carries the angle outputs into [0, 1].
 
     This map is a bijection onto ``(0, 1]`` **only** because the kernel folds
-    orientation into ``(-pi/2, pi/2]`` (``_monogenic_kernels.py`` lines 488-489). A
+    orientation into ``(-pi/2, pi/2]`` (the two ``np.where`` folds at the end of
+    ``_monogenic_kernels.monogenic_phase_congruency``; cited by symbol, not by line, because
+    the line numbers have already rotted twice). A
     ``(-pi, pi]`` input would need ``(theta + pi)/(2*pi)`` instead; feeding it to this
     map would send half the range past 1.0, where the clip flattens it.
 

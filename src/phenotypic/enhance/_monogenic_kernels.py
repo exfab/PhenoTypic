@@ -124,10 +124,29 @@ def log_gabor_scale(
         lowpass: Precomputed :func:`lowpass_filter` output.
         wavelength: Centre wavelength in pixels; the centre frequency is its reciprocal.
         sigma_onf: Ratio of the filter's Gaussian sigma to its centre frequency.
+            Must lie strictly in ``(0, 1)``.
+
+    Raises:
+        ValueError: If ``sigma_onf`` is outside ``(0, 1)``. Drift ``M10``.
 
     Returns:
         The transfer function, same shape as ``radius``.
     """
+    # The guard lives HERE, at the division, and not in `monogenic_phase_congruency`, because
+    # `FocusEdgePhase._phasecong3` calls `log_gabor_radial` directly and never passes through
+    # that function. Guarding only the monogenic entry point left `FocusEdgePhase(sigma_onf=1.0)`
+    # constructing happily and returning an all-NaN detect_mat on a real image, or an ALL-ZERO
+    # one on a step edge -- which passes a naive `0 <= x <= 1` check, because that is what a
+    # zero does. `FloatRange` appends `high` exactly (`tune/_search_space/_domains.py:86`), so a
+    # grid tune over `TuneSpec(0.1, 1.0)` reached exactly 1.0 and silently scored a dead
+    # enhancer. Neither reference validates this; Kovesi divides by `log(sigmaOnf)` unguarded.
+    if not 0.0 < sigma_onf < 1.0:
+        raise ValueError(
+                f"sigma_onf must lie strictly in (0, 1); got {sigma_onf!r}. It is the "
+                f"log-Gabor's Gaussian width via log(sigma_onf), so sigma_onf=1.0 divides "
+                f"by zero and sigma_onf<=0 takes the log of a non-positive number."
+        )
+
     f0 = 1.0 / wavelength
 
     with np.errstate(divide="ignore", invalid="ignore"):
@@ -444,19 +463,15 @@ def monogenic_phase_congruency(
                 f"and n_scale=0 returns an all-zero pc silently."
         )
 
-    # Two more silent-NaN holes, same family as the n_scale guard. Drift M10.
-    #   sigma_onf == 1.0  =>  log(1.0) == 0  =>  log_gabor_scale divides by 2*0**2 == 0
-    #   mult      == 1.0  =>  every scale collapses onto min_wavelength, and the geometric
-    #                         noise sum divides by (1 - 1/mult) == 0
-    # Both return an all-NaN `pc`, which is strictly worse than an all-zero one: it survives
-    # `detect_mat in [0,1]` checks by never comparing true. Neither reference validates
-    # these; Kovesi divides unguarded.
-    if sigma_onf >= 1.0:
-        raise ValueError(
-                f"sigma_onf must be < 1.0; got {sigma_onf!r}. log(sigma_onf) is the "
-                f"log-Gabor's Gaussian width, so sigma_onf=1.0 divides by zero and returns "
-                f"an all-NaN pc."
-        )
+    # `sigma_onf` is guarded inside `log_gabor_scale`, at the division itself -- not here.
+    # A guard on this function alone would miss `FocusEdgePhase`, which reaches
+    # `log_gabor_radial` directly. Drift M10.
+    #
+    # `mult` is guarded here because this is where it divides: the geometric noise sum below
+    # divides by `(1 - 1/mult)`, which is zero at mult == 1. `mult == 1` also collapses every
+    # scale onto `min_wavelength`. Returns an all-NaN `pc`, strictly worse than an all-zero
+    # one: NaN survives a `detect_mat in [0,1]` check by never comparing true. No reference
+    # validates it; Kovesi divides unguarded.
     if mult <= 1.0:
         raise ValueError(
                 f"mult must be > 1.0; got {mult!r}. The geometric noise sum divides by "

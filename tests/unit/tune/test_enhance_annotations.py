@@ -66,7 +66,9 @@ def _excluded(op, field_name: str):
             (LocalEdgeDenoise(), "sigma_spatial", FloatRange, (1.0, 50.0, True)),
             (FocusEdgePhase(), "n_scale", IntRange, (3, 6)),
             (FocusEdgePhase(), "min_wavelength", FloatRange, (2.0, 10.0, False)),
-            (FocusEdgePhase(), "sigma_onf", FloatRange, (0.1, 1.0, False)),
+            # 0.99, not 1.0: log_gabor_scale raises at sigma_onf == 1.0 (drift M10) and
+            # FloatRange appends `high` exactly, so a grid run would hit the raise.
+            (FocusEdgePhase(), "sigma_onf", FloatRange, (0.1, 0.99, False)),
             (FocusEdgePhase(), "k", FloatRange, (0.5, 20.0, False)),
             (FocusEdgeMonogenicPhase(), "n_scale", IntRange, (3, 6)),
             (FocusEdgeMonogenicPhase(), "min_wavelength", FloatRange, (2.0, 10.0, False)),

@@ -178,7 +178,14 @@ class FocusEdgePhase(FocusEdge):
     n_orient: Annotated[int, TuneSpec(4, 8)] = Field(6, ge=1)
     min_wavelength: Annotated[float, TuneSpec(2.0, 10.0)] = Field(3.0, ge=2.0)
     mult: Annotated[float, TuneSpec(1.5, 3.0)] = Field(2.1, gt=1.0)
-    sigma_onf: Annotated[float, TuneSpec(0.1, 1.0)] = Field(0.55, ge=0.1, le=1.0)
+    # TuneSpec high is 0.99, not 1.0. `log_gabor_scale` raises at sigma_onf == 1.0 (drift M10),
+    # and `FloatRange` appends `high` exactly (tune/_search_space/_domains.py:86) -- so a grid
+    # tune over a 1.0 window would evaluate the degenerate point on every run. The `Field`
+    # bound stays `le=1.0` so `ImagePipeline.from_json` still loads legacy pipelines;
+    # `tests/fixtures/tune/back_compat_pipelines/enhance_features_sigma_onf_high.json` pins
+    # exactly that value. Construction succeeds; `.apply()` raises. A TuneSpec is a search
+    # window, not a validity bound, and narrowing it breaks nothing that deserializes.
+    sigma_onf: Annotated[float, TuneSpec(0.1, 0.99)] = Field(0.55, ge=0.1, le=1.0)
     # Lower search bound 0.5 (not 0.0). k=0 does NOT disable noise thresholding -- it
     # drops the standard-deviation term, leaving T = totalTau*sqrt(pi/2), the noise MEAN
     # (measured on load_synth_yeast_plate: T = 4.19e-04 at k=0 versus 1.08e-03 at k=3).
