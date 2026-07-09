@@ -68,7 +68,6 @@ def test_read_rgb_returns_3d_float32_unit_range():
     assert 0.0 <= arr.min() and arr.max() <= 1.0
 
 
-@pytest.mark.xfail(reason="compute_from_rgb lands in Phase 3", strict=True)
 def test_project_collapses_3d_via_detect_mode():
     image = load_synth_yeast_plate()
     image.set_detect_mode("MinRGB")
@@ -104,3 +103,86 @@ def test_guard_skipped_when_norm_is_none():
     op = _Probe(norm=None)
     arr = np.array([1.9185, 2.3065], dtype=np.float32)
     assert op._guard_input_range(arr) is arr
+
+
+# --- Regressions from the cluster A review gate -----------------------------------
+
+
+def test_rgb_on_grayscale_image_raises_rather_than_returning_degenerate_array():
+    """`rgb.normed()` silently returns a (0, 3) array on a 2-D image.
+
+    That array has ``ndim == 2``, so `_project_to_detect_mat` would take its
+    identity path, the op would compute on an empty array, and a shape-mismatched
+    result would reach `detect_mat` -- with no exception anywhere on the path.
+    """
+    from phenotypic import Image
+    from phenotypic.sdk_.exceptions_ import NoArrayError
+
+    gray_only = Image(np.zeros((8, 8), dtype=np.uint8))
+    with pytest.raises(NoArrayError):
+        _Probe(input_layer="rgb")._read_input_layer(gray_only)
+
+
+def test_guard_raises_on_nan_rather_than_silently_passing_it_through():
+    """`nan < 0` and `nan > 1` are both False, so NaN slips past a naive guard.
+
+    The negatives alongside it would then reach skimage and raise its opaque
+    'non-negative values' error -- the exact failure the guard exists to prevent,
+    surfacing only when a NaN happens to be present.
+    """
+    op = _Probe(norm="clip")
+    arr = np.array([np.nan, -5.0, 3.0], dtype=np.float32)
+    with pytest.raises(ValueError, match="non-finite"):
+        op._guard_input_range(arr)
+
+
+@pytest.mark.parametrize("bad", [np.inf, -np.inf])
+def test_guard_raises_on_infinity(bad):
+    op = _Probe(norm="clip")
+    with pytest.raises(ValueError, match="non-finite"):
+        op._guard_input_range(np.array([0.5, bad], dtype=np.float32))
+
+
+def test_guard_still_skips_non_finite_when_norm_is_none():
+    """norm=None means 'do not touch the array' -- including the finiteness check."""
+    op = _Probe(norm=None)
+    arr = np.array([np.nan, -5.0], dtype=np.float32)
+    assert op._guard_input_range(arr) is arr
+
+
+def test_both_input_layers_return_read_only_arrays():
+    """Asymmetric writeability would make in-place ops work under one layer only."""
+    image = load_synth_yeast_plate()
+    dm = _Probe(input_layer="detect_mat")._read_input_layer(image)
+    rgb = _Probe(input_layer="rgb")._read_input_layer(image)
+    assert not dm.flags.writeable
+    assert not rgb.flags.writeable
+    for arr in (dm, rgb):
+        with pytest.raises(ValueError, match="read-only"):
+            arr *= 2.0
+
+
+def test_read_rgb_does_not_allocate_float64_intermediate():
+    """`normed()` chains uint8 -> float64 -> float32, peaking at 3x its own result."""
+    import tracemalloc
+
+    from phenotypic import Image
+
+    image = Image(np.zeros((512, 512, 3), dtype=np.uint8))
+    result_bytes = 512 * 512 * 3 * 4  # float32
+
+    tracemalloc.start()
+    tracemalloc.reset_peak()
+    arr = _Probe(input_layer="rgb")._read_input_layer(image)
+    peak = tracemalloc.get_traced_memory()[1]
+    tracemalloc.stop()
+
+    assert arr.nbytes == result_bytes
+    # A float64 intermediate would double the peak; the uint8 copy adds a quarter more.
+    assert peak < result_bytes * 1.6, f"peak {peak} bytes vs result {result_bytes}"
+
+
+def test_project_rejects_a_non_rgb_3d_array():
+    image = load_synth_yeast_plate()
+    with pytest.raises(ValueError, match="rows, cols, 3"):
+        _Probe()._project_to_detect_mat(image, np.zeros((4, 4, 5), dtype=np.float32))
