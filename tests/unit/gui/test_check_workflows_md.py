@@ -68,6 +68,30 @@ def test_real_repo_passes(validator):
     assert rc == 0
 
 
+def test_parse_workflows_table_keeps_escaped_pipe_inside_cell(validator):
+    """Workflow table cells may document text containing literal pipes."""
+    rows = validator._parse_workflows_table(
+        "\n".join(
+            [
+                "| ID | Title | Description | Capture function | Tutorial page | Status |",
+                "| -- | ----- | ----------- | ---------------- | ------------- | ------ |",
+                r"| setup | Setup | Uses A \| B filter | `_capture_setup` | `gui/01_setup.md` | 🔭 planned |",
+            ]
+        )
+    )
+
+    assert rows == [
+        {
+            "ID": "setup",
+            "Title": "Setup",
+            "Description": "Uses A | B filter",
+            "Capture function": "`_capture_setup`",
+            "Tutorial page": "`gui/01_setup.md`",
+            "Status": "🔭 planned",
+        }
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Failure modes
 # ---------------------------------------------------------------------------

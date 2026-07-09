@@ -15,8 +15,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Sequence, TypeVar
 
 from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
-from phenotypic.sdk_.slurm import _sbatch, get_slurm_array_limit
-from phenotypic.sdk_.slurm._sbatch import format_sbatch_directives
+from phenotypic.sdk_.slurm import (
+    SlurmArrayScriptSpec,
+    _sbatch,
+    get_slurm_array_limit,
+    write_slurm_array_script,
+)
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_execution_strategies import ExecutionStrategy
@@ -41,13 +45,14 @@ def partition_shards(items: List[_T], n_shards: int) -> List[List[_T]]:
     start = 0
     for i in range(n):
         size = k + (1 if i < r else 0)
-        shards.append(items[start:start + size])
+        shards.append(items[start : start + size])
         start += size
     return shards
 
 
 def resolve_stage_slurm_args(
-    gpu_slurm_args: Dict[str, Any], cpu_slurm_args: Dict[str, Any] | None = None
+    gpu_slurm_args: Dict[str, Any],
+    cpu_slurm_args: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """GPU-stage (Stage 2) SBATCH args: inherit/delta over the CPU profile.
 
@@ -113,38 +118,24 @@ def _write_stage_script(
     """Render + write one stage SBATCH array script (returns its path)."""
     out_log = log_dir / f"{stage_name}_%A_%a.log"
     err_log = log_dir / f"{stage_name}_%A_%a.err"
-    directives = format_sbatch_directives(job_name, slurm_args, out_log, err_log)
-    array_directive = f"#SBATCH --array=0-{max(0, array_size - 1)}"
-    signal_directive = (
-        f"\n#SBATCH --signal=B:TERM@{signal_grace}" if signal_grace else ""
-    )
+    path = script_dir / f"{stage_name}.sh"
     # ``--requeue`` lets the Stage-2 worker requeue its own array task on the
     # pre-walltime SIGTERM (so Stage 3's afterany dependency waits for it).
-    requeue_directive = "\n#SBATCH --requeue" if requeue else ""
-    script_content = f"""#!/bin/bash
-{directives}
-{array_directive}{signal_directive}{requeue_directive}
-
-set -e
-set -u
-
-{SLURM_THREAD_PIN_BASH}
-
-echo "===== {stage_name} task ${{SLURM_ARRAY_TASK_ID:-?}} (job ${{SLURM_JOB_ID:-?}}) on ${{SLURMD_NODENAME:-$(hostname)}} ====="
-echo "Start: $(date)"
-
-set +e
-{body}
-EXIT_CODE=$?
-set -e
-
-echo "===== {stage_name} exit $EXIT_CODE at $(date) ====="
-exit $EXIT_CODE
-"""
-    path = script_dir / f"{stage_name}.sh"
-    path.write_text(script_content, encoding="utf-8")
-    path.chmod(0o755)
-    return path
+    return write_slurm_array_script(
+        path,
+        SlurmArrayScriptSpec(
+            job_name=job_name,
+            slurm_args=slurm_args,
+            log_path=out_log,
+            error_log_path=err_log,
+            task_indices=list(range(max(1, array_size))),
+            body=body,
+            prelude=SLURM_THREAD_PIN_BASH,
+            comments=[f"# Stage: {stage_name}"],
+            signal_grace=signal_grace,
+            requeue=requeue,
+        ),
+    )
 
 
 def generate_staged_scripts(
@@ -183,29 +174,57 @@ def generate_staged_scripts(
 
     return {
         "stage1": _write_stage_script(
-            script_dir, log_dir, "stage1", "phenotypic-stage1", cpu_slurm_args,
+            script_dir,
+            log_dir,
+            "stage1",
+            "phenotypic-stage1",
+            cpu_slurm_args,
             n_images,
             _stage_worker_body(
-                python_str, 1, pipeline_path, output_dir, image_type,
-                manifest_path, ext,
+                python_str,
+                1,
+                pipeline_path,
+                output_dir,
+                image_type,
+                manifest_path,
+                ext,
             ),
         ),
         "stage2": _write_stage_script(
-            script_dir, log_dir, "stage2", "phenotypic-stage2", gpu_args,
+            script_dir,
+            log_dir,
+            "stage2",
+            "phenotypic-stage2",
+            gpu_args,
             n_shards,
             _stage_worker_body(
-                python_str, 2, pipeline_path, output_dir, image_type,
-                manifest_path, ext, n_shards=n_shards,
+                python_str,
+                2,
+                pipeline_path,
+                output_dir,
+                image_type,
+                manifest_path,
+                ext,
+                n_shards=n_shards,
             ),
             signal_grace=signal_grace,
             requeue=True,
         ),
         "stage3": _write_stage_script(
-            script_dir, log_dir, "stage3", "phenotypic-stage3", cpu_slurm_args,
+            script_dir,
+            log_dir,
+            "stage3",
+            "phenotypic-stage3",
+            cpu_slurm_args,
             n_images,
             _stage_worker_body(
-                python_str, 3, pipeline_path, output_dir, image_type,
-                manifest_path, ext,
+                python_str,
+                3,
+                pipeline_path,
+                output_dir,
+                image_type,
+                manifest_path,
+                ext,
             ),
         ),
     }
@@ -231,7 +250,9 @@ class StagedSlurmStrategy(ExecutionStrategy):
                 "staged SLURM work-list (%d images / %d shards) exceeds the "
                 "array limit (%d); per-stage chunking is not implemented — "
                 "submit fewer items or raise MaxArraySize.",
-                len(manifest), cfg.gpu_shards, array_limit,
+                len(manifest),
+                cfg.gpu_shards,
+                array_limit,
             )
 
         scripts = generate_staged_scripts(
@@ -254,13 +275,18 @@ class StagedSlurmStrategy(ExecutionStrategy):
         self.submitted_job_ids = [job1, job2, job3]
         logger.info(
             "Submitted staged GPU chain: stage1=%s -> stage2=%s -> stage3=%s",
-            job1, job2, job3,
+            job1,
+            job2,
+            job3,
         )
 
         return ExecutionResults(
             datasets={
                 ds.name: DatasetResults(
-                    name=ds.name, total=len(ds.images), completed=0, failed=0,
+                    name=ds.name,
+                    total=len(ds.images),
+                    completed=0,
+                    failed=0,
                     failures=[],
                 )
                 for ds in datasets

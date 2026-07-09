@@ -30,7 +30,7 @@ _GROUPS: dict[str, tuple[str, ...]] = {
         "SIZE", "SHAPE", "BBOX", "INTENSITY", "TEXTURE", "ColorLab", "ColorHSV",
         "Colorxy", "ColorXYZ", "ColorComposition", "OBJECT", "GRID",
         "NEIGHBOR_DIST", "GRID_LINREG_STATS", "GRID_SPREAD", "SYMMETRIC_ZONES",
-        "RADIAL_EXPANSION",
+        "ORIENTATION_ZONES", "RADIAL_EXPANSION",
     ),
     "Models & Analysis": (
         "LOG_GROWTH_MODEL", "LINEAR_LAG_MODEL", "LINEAR_CAP_AND_LAG_MODEL",

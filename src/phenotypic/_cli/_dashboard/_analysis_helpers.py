@@ -7,24 +7,30 @@ plugins use in their ``prepare_data`` methods.
 
 from __future__ import annotations
 
-import json
 import math
-import os
-import tempfile
 from pathlib import Path
 from typing import Any, Dict, List
 
 import polars as pl
 
 from phenotypic.schema import EXPERIMENT_METADATA
-from phenotypic.sdk_ import metadata_category_prefixes
-
-from .._cli_output_manager import _atomic_write
+from phenotypic.sdk_ import (
+    PARQUET_WRITE_OPTIONS,
+    atomic_write_json,
+    atomic_write_with_writer,
+    metadata_category_prefixes,
+)
 
 # Prefix priority for column selection in scatter data.  Derived from the
 # centralized helper so the list tracks the metadata namespace automatically
 # (today ``Metadata_``; after B2 flip: ``MetadataGenetic_`` etc.).
-SCATTER_PREFIX_PRIORITY = (*metadata_category_prefixes(), "Grid_", "Shape_", "Intensity_", "Color_")
+SCATTER_PREFIX_PRIORITY = (
+    *metadata_category_prefixes(),
+    "Grid_",
+    "Shape_",
+    "Intensity_",
+    "Color_",
+)
 
 # Column used to identify datasets throughout analysis plugins.
 DATASET_COL = str(EXPERIMENT_METADATA.DATASET)
@@ -87,52 +93,28 @@ def to_columnar(
 def write_json_atomic(payload: dict, target_path: Path) -> None:
     """Write *payload* as JSON to *target_path* atomically.
 
-    Uses a temporary file in the same directory followed by
-    :func:`os.replace` to avoid partial reads.
+    Uses the shared SDK same-directory temp file and replace helper to avoid
+    partial reads.
 
     Args:
         payload: JSON-serialisable dict to write.
         target_path: Destination file path.
     """
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-
-    fd = tempfile.NamedTemporaryFile(
-        mode="w",
-        dir=target_path.parent,
-        prefix=f".{target_path.stem}_",
-        suffix=".tmp",
-        delete=False,
-        encoding="utf-8",
-    )
-    try:
-        json.dump(payload, fd, indent=2, ensure_ascii=False)
-        fd.write("\n")
-        fd.flush()
-        os.fsync(fd.fileno())
-        fd.close()
-        os.replace(fd.name, target_path)
-    except BaseException:
-        fd.close()
-        try:
-            os.unlink(fd.name)
-        except OSError:
-            pass
-        raise
+    atomic_write_json(target_path, payload, sort_keys=False)
 
 
 def write_parquet_sidecar(merged_df: pl.DataFrame, target_path: Path) -> None:
     """Write the merged measurement DataFrame as a Parquet sidecar file.
 
-    Writes with zstd compression using an atomic write pattern
-    (tempfile + :func:`os.replace`).
+    Writes with the shared parquet compression policy and an atomic replace.
 
     Args:
         merged_df: Merged measurement DataFrame (Polars).
         target_path: Destination file path for the Parquet sidecar.
     """
-    _atomic_write(
+    atomic_write_with_writer(
         target_path,
-        lambda p: merged_df.write_parquet(p, compression="zstd", compression_level=3),
+        lambda p: merged_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
     )
 
 
@@ -214,7 +196,9 @@ def stratified_sample(
     return result
 
 
-def select_scatter_columns(all_columns: List[str], max_cols: int = 25) -> List[str]:
+def select_scatter_columns(
+    all_columns: List[str], max_cols: int = 25
+) -> List[str]:
     """Select up to *max_cols* columns for scatter data, prioritised by prefix.
 
     Excludes columns starting with ``Texture`` (too numerous).

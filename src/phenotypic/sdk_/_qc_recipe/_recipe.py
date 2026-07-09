@@ -34,7 +34,7 @@ is safe. It must **not** import ``_core``/``_cli``/``gui`` at module load —
 ``_core`` imports :class:`QcRecipeEntry` from here, so a back-edge would
 create a cycle. The path helpers (``pipeline_json_path`` /
 ``resolve_pipeline_config_path``) are lazy-imported inside :meth:`QcRecipe.load`
-and the atomic-write helper inside :meth:`QcRecipe._write_qc_array`.
+        and the atomic-write helper inside :meth:`QcRecipe._write_qc_array`.
 """
 
 from __future__ import annotations
@@ -293,9 +293,7 @@ class QcRecipe:
     seed_mtime_ns: int | None = None
     source_path: Path | None = None
     load_warnings: list[QcRecipeLoadWarning] = field(default_factory=list)
-    _lock: threading.RLock = field(
-        default_factory=threading.RLock, repr=False
-    )
+    _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     # ------------------------------------------------------------------ #
     # Load
@@ -325,7 +323,10 @@ class QcRecipe:
         Returns:
             A :class:`QcRecipe` ready for in-place mutation.
         """
-        from phenotypic.sdk_ import pipeline_json_path, resolve_pipeline_config_path
+        from phenotypic.sdk_ import (
+            pipeline_json_path,
+            resolve_pipeline_config_path,
+        )
 
         pipeline_path = pipeline_json_path(Path(output_root_path))
         read_path = resolve_pipeline_config_path(Path(output_root_path))
@@ -353,7 +354,9 @@ class QcRecipe:
         )
 
     @classmethod
-    def _load_from_paths(cls, read_path: Path, pipeline_path: Path) -> "QcRecipe":
+    def _load_from_paths(
+        cls, read_path: Path, pipeline_path: Path
+    ) -> "QcRecipe":
         """Build a recipe from explicit read + canonical-write paths.
 
         Shared core of :meth:`load` and :meth:`from_layout`. ``read_path`` is
@@ -509,7 +512,7 @@ class QcRecipe:
             :meth:`reload` first) or the atomic write failed. Failures
             other than staleness are logged at WARNING.
         """
-        from phenotypic._cli._cli_output_manager import _atomic_write
+        from phenotypic.sdk_ import atomic_write_json
 
         with self._lock:
             if self.is_stale():
@@ -525,9 +528,7 @@ class QcRecipe:
             read_path = self._document_read_path()
             if read_path.exists():
                 try:
-                    loaded = json.loads(
-                        read_path.read_text(encoding="utf-8")
-                    )
+                    loaded = json.loads(read_path.read_text(encoding="utf-8"))
                     if isinstance(loaded, dict):
                         document = loaded
                 except (json.JSONDecodeError, OSError):
@@ -538,14 +539,9 @@ class QcRecipe:
                         exc_info=True,
                     )
 
-            document[_QC_KEY] = [entry.to_dict() for entry in self.entries]
-            payload = json.dumps(document, indent=2)
-
-            def _write(p: str) -> None:
-                Path(p).write_text(payload, encoding="utf-8")
-
             try:
-                _atomic_write(self.path, _write)
+                document[_QC_KEY] = [entry.to_dict() for entry in self.entries]
+                atomic_write_json(self.path, document, sort_keys=False)
             except Exception:
                 logger.warning(
                     "Atomic write of qc array failed for %s",
@@ -826,6 +822,7 @@ class QcRecipe:
             sidecar.replace(sidecar.with_suffix(sidecar.suffix + ".migrated"))
         except OSError:
             logger.warning(
-                "Could not retire migrated QC sidecar %s", sidecar,
+                "Could not retire migrated QC sidecar %s",
+                sidecar,
                 exc_info=True,
             )

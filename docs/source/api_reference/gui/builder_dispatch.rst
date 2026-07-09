@@ -121,6 +121,38 @@ Append a ``None`` slot to the consumer's ``aux_ports`` list for a list-typed par
 Remove the slot at ``slot`` from the consumer's ``aux_ports`` list and reindex remaining slots.
 
 
+Legacy aux-port mutation
+------------------------
+
+``wire_create``
+~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{target_node_id: str, param: str, slot: int, class_name: str}``
+
+Embed a fresh aux ``StepNode`` under ``consumer.aux_ports[param][slot]``. The dispatcher validates the target node, registry class, and operation-type compatibility before writing, then sets ``inspector_focus_aux`` to the filled slot. Retained for legacy inspector aux-wire payloads; the fixed linear map routes side-value creation through ``linear_palette_add``.
+
+``wire_delete``
+~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{target_node_id: str, param: str, slot: int}``
+
+Clear one legacy aux slot by setting ``consumer.aux_ports[param][slot] = None``. If ``inspector_focus_aux`` points at the same slot, it is cleared too.
+
+``drill_in_aux``
+~~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{target_node_id: str, param: str, slot: int}``
+
+Push an aux-slot breadcrumb segment for an occupied legacy aux slot and clear ``inspector_focus_aux``. Empty slots and missing target nodes are no-ops.
+
+``set_inspector_focus``
+~~~~~~~~~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{focus: "aux" | "consumer", target_node_id: str, param: str, slot: int}``
+
+Set ``inspector_focus_aux`` to an occupied legacy aux slot when ``focus == "aux"``; any other focus clears it. Missing nodes or empty slots are rejected without mutation.
+
+
 DAG canvas: palette drag-and-drop
 ---------------------------------
 
@@ -230,3 +262,77 @@ First stage of the two-stage container delete. Rejects ``InputImage`` block_ids 
 **Payload schema:** ``{block_id: str, ts: int}``
 
 Second stage (or single stage if no confirmation was needed). Atomically removes the block, its ``nested`` scope (if any) including every inner block + edge, and every edge in the containing scope whose source or target is the block. Clears ``selected_block_id`` / ``selected_edge_id`` / ``pending_delete_block_id`` when they pointed at the deleted block or one of its edges.
+
+
+Fixed linear port map
+---------------------
+
+``target_select``
+~~~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{target: LinearTarget, open_menu: bool}`` or a serialized ``LinearTarget`` payload directly
+
+Persist the selected insertion/fill target for the current linear scope and optionally open the port menu. The fan-in callback emits this from linear port clicks and parameter replace actions.
+
+``target_menu_close``
+~~~~~~~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{}``
+
+Close the fixed linear target menu without changing selection.
+
+``linear_palette_add``
+~~~~~~~~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{class_name: str}``
+
+Add ``class_name`` at the selected fixed-linear target. Continuation/image-output/image-input targets insert on the image spine; parameter targets fill scalar or list aux ports. ``InputImage`` is rejected because each scope owns exactly one auto-seeded input. Unsupported linear shapes pause the edit and queue a warning toast.
+
+``linear_delete_node_request``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{block_id: str}``
+
+Stage deletion by setting a linear pending-delete token for any string ``block_id``. Unsupported shapes are no-ops here; existence and spine validation happen in ``linear_delete_node_confirm``.
+
+``linear_delete_node_confirm``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{block_id: str}``
+
+Delete a fixed-linear spine block, reconnecting the image spine and removing side values owned by that block. This branch performs the existence and spine validation; missing or non-spine ids leave the graph unchanged. Clears the pending delete token afterward.
+
+``linear_node_move``
+~~~~~~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{block_id: str, direction: "left" | "right"}``
+
+Move a fixed-linear spine block one position left or right. Unsupported shapes, invalid block ids, and invalid directions are no-ops.
+
+``linear_clear_param``
+~~~~~~~~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{target: LinearTarget}``
+
+Clear one scalar side value or one list-slot side value at a fixed-linear parameter target. If clearing would remove an embedded ``ImagePipeline`` source, the dispatcher stages a confirmation token instead of deleting immediately.
+
+``linear_clear_param_confirm``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{target: LinearTarget}``
+
+Confirm a previously staged fixed-linear parameter clear, remove the side-value edge(s), reset the scope target to continuation, and clear the pending-delete token.
+
+``linear_drill_param_pipeline``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{target: LinearTarget, source_block_id: str | None}``
+
+Drill into an aux ``ImagePipeline`` source selected from a fixed-linear parameter target. When ``source_block_id`` is omitted, the dispatcher resolves the source from the target's current aux edge.
+
+``linear_select_aux_value``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{source_block_id: str}``
+
+Select an existing aux source block in the current fixed-linear scope and clear edge selection. Missing source ids are no-ops. This retained dispatcher branch is not emitted by the current fixed-linear UI, whose side-value controls route through replace, clear, and drill actions.

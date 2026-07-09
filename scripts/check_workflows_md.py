@@ -32,6 +32,11 @@ import re
 import sys
 from pathlib import Path
 
+try:
+    from scripts._markdown_table import split_markdown_row_cells
+except ModuleNotFoundError:  # pragma: no cover - path-script execution
+    from _markdown_table import split_markdown_row_cells
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS_MD = REPO_ROOT / "src" / "phenotypic" / "gui" / "WORKFLOWS.md"
 CAPTURE_SCRIPT = REPO_ROOT / "scripts" / "capture_gui_tutorial_screenshots.py"
@@ -74,7 +79,7 @@ def _parse_workflows_table(text: str) -> list[dict[str, str]]:
             headers = None
             in_table = False
             continue
-        cells = [c.strip() for c in m.group(1).split("|")]
+        cells = split_markdown_row_cells(m.group(1))
         if headers is None:
             if "ID" in cells and "Capture function" in cells:
                 headers = cells

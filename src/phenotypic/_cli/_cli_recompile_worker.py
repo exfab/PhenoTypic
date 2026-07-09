@@ -21,6 +21,9 @@ from phenotypic.sdk_ import (
     DIR_RECOMPILE_SHARDS,
     DIR_RESULTS,
     JobMetadataKey,
+    PARQUET_WRITE_OPTIONS,
+    atomic_write_json,
+    atomic_write_with_writer,
     load_image_from_hdf,
     master_measurements_csv_path,
     master_measurements_parquet_path,
@@ -117,17 +120,9 @@ def _write_status(
     output_dir: Path, task_index: int, task_type: str, fields: dict[str, Any]
 ) -> None:
     """Atomically write one recompile task status JSON."""
-    from ._cli_output_manager import _atomic_write
-
     status_path = task_status_path(output_dir, task_index)
     payload = {"task_type": task_type, **fields}
-
-    def _writer(path: str) -> None:
-        Path(path).write_text(
-            json.dumps(payload, indent=2) + "\n", encoding="utf-8"
-        )
-
-    _atomic_write(status_path, _writer)
+    atomic_write_json(status_path, payload, sort_keys=False)
 
 
 def _run_measurement_task(output_dir: Path, task: dict[str, Any]) -> None:
@@ -135,7 +130,6 @@ def _run_measurement_task(output_dir: Path, task: dict[str, Any]) -> None:
     import polars as pl
 
     from ._cli_parquet_agg import aggregate_parquet_files
-    from ._cli_output_manager import _atomic_write
 
     files = [Path(path) for path in task.get("files", [])]
     path_to_dataset = {
@@ -170,11 +164,9 @@ def _run_measurement_task(output_dir: Path, task: dict[str, Any]) -> None:
         / DIR_RECOMPILE_SHARDS
         / shard_parquet_filename(shard_id)
     )
-    _atomic_write(
+    atomic_write_with_writer(
         shard_path,
-        lambda p: shard_df.write_parquet(
-            p, compression="zstd", compression_level=3
-        ),
+        lambda p: shard_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
     )
 
 
@@ -317,9 +309,10 @@ def _write_master_outputs_from_shards(output_dir: Path) -> Any | None:
     """Concatenate shard Parquets and write master CSV/Parquet outputs."""
     import polars as pl
 
-    from ._cli_output_manager import _atomic_write
-
-    shard_dir = recompile_dir_helper(progress_dir_helper(output_dir)) / DIR_RECOMPILE_SHARDS
+    shard_dir = (
+        recompile_dir_helper(progress_dir_helper(output_dir))
+        / DIR_RECOMPILE_SHARDS
+    )
     shard_files = sorted(shard_dir.glob("shard_*.parquet"))
     if not shard_files:
         return None
@@ -333,16 +326,16 @@ def _write_master_outputs_from_shards(output_dir: Path) -> Any | None:
     # what the per-image workers measured.
 
     try:
-        _atomic_write(master_measurements_csv_path(output_dir), master_df.write_csv)
+        atomic_write_with_writer(
+            master_measurements_csv_path(output_dir), master_df.write_csv
+        )
     except Exception:
         logger.error("Failed to save master CSV during recompile finalize")
         raise
     try:
-        _atomic_write(
+        atomic_write_with_writer(
             master_measurements_parquet_path(output_dir),
-            lambda p: master_df.write_parquet(
-                p, compression="zstd", compression_level=3
-            ),
+            lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
     except Exception:
         logger.warning(
@@ -385,11 +378,16 @@ def _run_post_master_steps(
         # GUI viewer see.
         pipeline = _load_pipeline_from_output_dir(output_dir)
         metadata_csv_str = task.get(JobMetadataKey.METADATA_CSV)
-        metadata_csv = Path(str(metadata_csv_str)) if metadata_csv_str else None
+        metadata_csv = (
+            Path(str(metadata_csv_str)) if metadata_csv_str else None
+        )
         no_qc = bool(task.get(JobMetadataKey.NO_QC, False))
         plugin_df = finalize_post_master_outputs(
-            output_dir, merged_df, pipeline,
-            metadata_csv=metadata_csv, no_qc=no_qc,
+            output_dir,
+            merged_df,
+            pipeline,
+            metadata_csv=metadata_csv,
+            no_qc=no_qc,
         )
 
     try:
