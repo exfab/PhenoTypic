@@ -57,9 +57,17 @@ def construct_filter_grids(
         - ``fx``, ``fy``: the raw signed frequency grids, for :func:`riesz_multiplier`
 
     Note:
-        ``radius`` is bit-equal to the ``freq_safe`` used to build ``sintheta``/``costheta``
-        -- both are ``freq`` with ``[0, 0]`` set to 1. So ``sintheta == fx / radius``
-        exactly, and :func:`riesz_multiplier` can take ``(fx, fy, radius)`` and divide once.
+        ``sintheta``/``costheta`` are divided by ``radius`` itself, so ``sintheta ==
+        fx / radius`` bit-exactly and :func:`riesz_multiplier` can take ``(fx, fy, radius)``
+        and divide once. ``TestRieszMultiplier`` relies on that.
+
+        **This is not how Kovesi builds them, and the gap is recorded as drift ``M12``.**
+        He takes ``theta = atan2(-u2, u1)`` and then ``sintheta = sin(theta)``,
+        ``costheta = cos(theta)`` (``phasecong3.m`` l.189-190). Mathematically identical;
+        numerically not -- ``sin(atan2(-fy, fx))`` and ``-fy / radius`` differ on 55% of
+        bins at 64x64, by up to ``2.22e-16``. Also note the ``radius(1,1) = 1`` fudge is
+        done by the *callers* (``phasecong3.m`` l.185, ``phasecongmono.m`` l.170; Julia sets
+        ``f[1,1] = 1`` at ``frequencyfilt.jl`` l.180), **not** inside ``filtergrid.m``.
     """
     if cols % 2 == 1:  # odd
         fx_range = np.arange(-(cols - 1) / 2, (cols - 1) / 2 + 1) / cols
@@ -79,12 +87,10 @@ def construct_filter_grids(
     freq = np.sqrt(fx ** 2 + fy ** 2)
 
     radius = freq.copy()
-    radius[0, 0] = 1.0
+    radius[0, 0] = 1.0  # so log(radius) and fx/radius never see zero
 
-    freq_safe = freq.copy()
-    freq_safe[0, 0] = 1.0
-    sintheta = fx / freq_safe
-    costheta = fy / freq_safe
+    sintheta = fx / radius
+    costheta = fy / radius
 
     sintheta[0, 0] = 0.0
     costheta[0, 0] = 0.0

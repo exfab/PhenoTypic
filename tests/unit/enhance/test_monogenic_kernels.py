@@ -1,7 +1,12 @@
 """Unit tests for the shared frequency-domain kernels.
 
-These functions are pure: no ``Image``, no fixtures, no I/O. Every assertion here
-is a property of the maths, checkable by hand.
+The kernels themselves are pure functions -- no ``Image``, no accessor, no I/O -- and most
+assertions here are properties of the maths, checkable by hand on synthetic arrays.
+
+Two classes are the exception and load real plates on purpose: ``TestAcosClampIsInert``
+(drift ``M1``, which claims the clamp *never fires* and must therefore be checked against
+real data, not a step edge) and ``TestContrastAndIlluminationInvariance``. An earlier
+version of this docstring said "no fixtures, no I/O" while the file loaded three plates.
 """
 
 from pathlib import Path
@@ -10,6 +15,7 @@ import numpy as np
 import pytest
 from numpy.fft import fft2, ifft2
 
+from phenotypic.data import load_fungi_plate, load_synth_yeast_plate, load_yeast_plate
 from phenotypic.enhance._monogenic_kernels import (
     EPSILON_MONOGENIC,
     construct_filter_grids,
@@ -33,17 +39,19 @@ _GOLDEN_PARAMS = dict(
 )
 
 
-def _sum_riesz_channels(
+def _sum_monogenic_channels(
         img: np.ndarray,
-        n_scale: int = 4,
-        min_wavelength: float = 3.0,
-        mult: float = 2.1,
-        sigma_onf: float = 0.55,
-) -> tuple[np.ndarray, np.ndarray]:
-    """``(sum_h1, sum_h2)`` rebuilt from the primitives, independent of the final block.
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """``(sum_even, sum_h1, sum_h2)`` rebuilt from the primitives.
 
-    Lets a test compare the kernel's folded ``orientation`` against the raw
-    ``arctan2(-sum_h2, sum_h1)`` without trusting the kernel to report it.
+    Independent of the kernel's final block, so a test can compare the folded
+    ``orientation`` against the raw ``arctan2(-sum_h2, sum_h1)``, and ``feature_type``
+    against the raw ``arctan2(sum_even, sqrt(...))``, without trusting the kernel to
+    report either.
+
+    The filter parameters are written out rather than imported from
+    ``monogenic_phase_congruency``: this must be an *independent* restatement of the
+    defaults, so that changing a default reddens the tests instead of moving with them.
     """
     rows, cols = img.shape
     radius, _, _, _, fx, fy = construct_filter_grids(rows, cols)
@@ -51,16 +59,16 @@ def _sum_riesz_channels(
     lowpass = lowpass_filter(radius)
     spectrum = fft2(img)  # periodic=False, the shipped default
 
+    sum_even = np.zeros((rows, cols))
     sum_h1 = np.zeros((rows, cols))
     sum_h2 = np.zeros((rows, cols))
-    for s in range(n_scale):
-        band = spectrum * log_gabor_scale(
-                radius, lowpass, min_wavelength * (mult ** s), sigma_onf
-        )
+    for s in range(4):  # n_scale=4, min_wavelength=3.0, mult=2.1, sigma_onf=0.55
+        band = spectrum * log_gabor_scale(radius, lowpass, 3.0 * 2.1 ** s, 0.55)
+        sum_even += ifft2(band).real
         odd = ifft2(band * riesz)
         sum_h1 += odd.real
         sum_h2 += odd.imag
-    return sum_h1, sum_h2
+    return sum_even, sum_h1, sum_h2
 
 
 def _golden_cases() -> dict[str, np.ndarray]:
@@ -271,9 +279,9 @@ class TestRayleighMode:
         of this test asserted both in one place and could distinguish neither.
         """
         data = np.concatenate([np.zeros(1000), np.full(10, 10.0)])
-        # 1000 zeros dominate the first bin. Dropping them leaves only the 10.0s -> 10.05.
+        # 1000 zeros dominate the first bin, [0, 1) -> centre 0.5. Dropping them would
+        # leave only the 10.0s, and the mode would be 10.05.
         assert rayleigh_mode(data, n_bins=10) == pytest.approx(0.5)
-        assert rayleigh_mode(data, n_bins=10) < 1.0
 
     def test_bins_are_anchored_at_the_minimum_not_at_zero(self):
         """The references disagree, and we ship Julia's. Drift M6.
@@ -447,7 +455,7 @@ class TestNoiseThreshold:
         `rayleigh_mode` itself -- double the estimator and both sides double. Verified:
         this test PASSES under a doubled-mode mutant. That mutant is killed by
         `TestRayleighMode::test_recovers_the_scale_of_a_rayleigh_sample` and
-        `::test_bins_are_anchored_at_zero_and_zeros_are_retained`, which compare against
+        `::test_bins_are_anchored_at_the_minimum_not_at_zero`, which compare against
         independently known values.
         """
         img = unit_variance(noiseonf(64, 1.5, seed=1))
@@ -509,18 +517,14 @@ class TestNoiseThreshold:
         An all-NaN detect_mat is strictly worse than an all-zero one: it passes a naive
         ``0 <= x <= 1`` range check, because NaN compares false to everything. Drift M10.
         """
-        step = np.zeros((32, 32))
-        step[:, 16:] = 1.0
         with pytest.raises(ValueError, match="sigma_onf"):
-            monogenic_phase_congruency(step, sigma_onf=bad)
+            monogenic_phase_congruency(np.zeros((32, 32)), sigma_onf=bad)
 
     @pytest.mark.parametrize("bad", [1.0, 0.5])
     def test_mult_at_or_below_one_raises(self, bad):
         """The geometric noise sum divides by ``(1 - 1/mult)``. Drift M10."""
-        step = np.zeros((32, 32))
-        step[:, 16:] = 1.0
         with pytest.raises(ValueError, match="mult"):
-            monogenic_phase_congruency(step, mult=bad)
+            monogenic_phase_congruency(np.zeros((32, 32)), mult=bad)
 
     def test_sigma_onf_just_below_one_is_accepted(self):
         """The boundary is exclusive, so the guard cannot be off by one."""
@@ -581,7 +585,7 @@ class TestOrientationIsFoldedIntoTheHalfOpenHalfPlane:
         img = unit_variance(starsine(64, ncycles=8))
         orientation = monogenic_phase_congruency(img).orientation
 
-        sum_h1, sum_h2 = _sum_riesz_channels(img)
+        _, sum_h1, sum_h2 = _sum_monogenic_channels(img)
         raw = np.arctan2(-sum_h2, sum_h1)  # (-pi, pi]
 
         # A fold shifts each pixel by exactly 0 or exactly +/-pi. A clamp would park
@@ -616,21 +620,7 @@ class TestFeatureTypeUsesTheReferenceRadicand:
         img = rng.normal(size=(64, 64))
         result = monogenic_phase_congruency(img)
 
-        rows, cols = img.shape
-        radius, _, _, _, fx, fy = construct_filter_grids(rows, cols)
-        riesz = riesz_multiplier(fx, fy, radius)
-        lowpass = lowpass_filter(radius)
-        spectrum = fft2(img)
-        sum_even = np.zeros((rows, cols))
-        sum_h1 = np.zeros((rows, cols))
-        sum_h2 = np.zeros((rows, cols))
-        for s in range(4):
-            band = spectrum * log_gabor_scale(radius, lowpass, 3.0 * 2.1 ** s, 0.55)
-            sum_even += ifft2(band).real
-            odd = ifft2(band * riesz)
-            sum_h1 += odd.real
-            sum_h2 += odd.imag
-
+        sum_even, sum_h1, sum_h2 = _sum_monogenic_channels(img)
         faithful = np.arctan2(sum_even, np.sqrt(sum_h1 ** 2 + sum_h2 ** 2))
         hypot_form = np.arctan2(sum_even, np.hypot(sum_h1, sum_h2))
 
@@ -645,15 +635,19 @@ class TestAcosClampIsInert:
     We clamp, and assert the clamp never fires on any real plate.
     """
 
-    @pytest.mark.parametrize("loader_name", ["load_synth_yeast_plate", "load_yeast_plate", "load_fungi_plate"])
-    def test_clamp_never_fires_on_a_shipped_plate(self, loader_name):
-        import phenotypic.data as data
-        img = getattr(data, loader_name)()
-        mat = np.asarray(img.detect_mat[:], dtype=np.float64)
+    # Parametrise over the loader callables, not their names. A stringly-typed
+    # `getattr(module, name)` turns a renamed loader into a runtime AttributeError inside
+    # the test, and hides the dependency from grep; this way a rename fails at collection.
+    @pytest.mark.parametrize(
+            "loader",
+            [load_synth_yeast_plate, load_yeast_plate, load_fungi_plate],
+            ids=lambda f: f.__name__,
+    )
+    def test_clamp_never_fires_on_a_shipped_plate(self, loader):
+        mat = np.asarray(loader().detect_mat[:], dtype=np.float64)
         assert monogenic_phase_congruency(mat).n_clamped == 0
 
     def test_no_nans_or_infs_in_the_output(self):
-        from phenotypic.data import load_synth_yeast_plate
         mat = np.asarray(load_synth_yeast_plate().detect_mat[:], dtype=np.float64)
         result = monogenic_phase_congruency(mat)
         assert np.isfinite(result.pc).all()
@@ -671,7 +665,6 @@ class TestContrastAndIlluminationInvariance:
 
     @pytest.mark.parametrize("a, b", [(3.0, 7.0), (0.5, -0.2), (10.0, 0.0)])
     def test_pc_is_invariant_to_an_affine_intensity_change(self, a, b):
-        from phenotypic.data import load_synth_yeast_plate
         mat = np.asarray(load_synth_yeast_plate().detect_mat[:], dtype=np.float64)
         base = monogenic_phase_congruency(mat).pc
         shifted = monogenic_phase_congruency(a * mat + b).pc
@@ -681,7 +674,6 @@ class TestContrastAndIlluminationInvariance:
 
     def test_a_pure_dc_offset_is_removed_exactly(self):
         """The log-Gabor DC bin is zeroed, so ``+b`` cannot survive the bandpass."""
-        from phenotypic.data import load_synth_yeast_plate
         mat = np.asarray(load_synth_yeast_plate().detect_mat[:], dtype=np.float64)
         base = monogenic_phase_congruency(mat).pc
         offset = monogenic_phase_congruency(mat + 7.0).pc

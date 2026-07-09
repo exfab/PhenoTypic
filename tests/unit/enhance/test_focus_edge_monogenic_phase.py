@@ -12,6 +12,9 @@ from pydantic import ValidationError
 from phenotypic import Image, ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.enhance import FocusEdgeMonogenicPhase, FocusEdgePhase
+from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
+
+from ._kovesi_synthetic import centred_axis, noiseonf, starsine, step2line, unit_variance
 
 
 class TestParameterValidation:
@@ -119,8 +122,6 @@ class TestOperationContract:
         without it. Verified: 3 failed, 248 passed. An earlier version of this docstring
         said "the only assertion", which was false.
         """
-        from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
-
         arr = np.zeros((64, 64), dtype=np.float32)
         arr[:, 32:] = 1.0
         image = _image_from(arr)
@@ -151,8 +152,6 @@ class TestOperationContract:
 
         # The float64 kernel, where the residual actually lives. Tolerance from a mechanism:
         # a 96x96 FFT round-trip accumulates O(N log N) ~ 6e2 roundings at ~1.1e-16 each.
-        from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
-
         ks = monogenic_phase_congruency(arr.astype(np.float64)).pc
         kr = monogenic_phase_congruency(np.rot90(arr).astype(np.float64)).pc
         assert np.abs(np.rot90(ks) - kr).max() < 1e-14
@@ -207,8 +206,6 @@ class TestAngleToUnitMap:
         This ties the endpoints/bijection above to the code that runs: mutating the
         constant in ``_operate`` (e.g. ``pi/2`` -> ``pi``) breaks this assertion.
         """
-        from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
-
         mat = np.asarray(load_synth_yeast_plate().detect_mat[:], dtype=np.float64)
         kernel_orientation = monogenic_phase_congruency(mat).orientation
         expected = np.clip((kernel_orientation + np.pi / 2) / np.pi, 0.0, 1.0)
@@ -227,8 +224,6 @@ class TestAngleToUnitMap:
         stays green because ``(ft + pi)/(2*pi)`` lands in ``[0.25, 0.75] subset [0, 1]`` --
         a range check cannot see a wrong-but-in-range map.
         """
-        from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
-
         mat = np.asarray(load_synth_yeast_plate().detect_mat[:], dtype=np.float64)
         kernel_ft = monogenic_phase_congruency(mat).feature_type
         expected = np.clip((kernel_ft + np.pi / 2) / np.pi, 0.0, 1.0)
@@ -252,7 +247,6 @@ class TestAxisConvention:
 
     @staticmethod
     def _orientation_at_peak(arr):
-        from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
         result = monogenic_phase_congruency(arr)
         peak = np.unravel_index(np.argmax(result.pc), result.pc.shape)
         return float(np.degrees(result.orientation[peak]))
@@ -286,9 +280,6 @@ class TestAxisConvention:
         because 0 and 90 degrees are their own mirror images mod pi. That is why this
         generator exists. Stating the narrow truth beats overstating it.
         """
-        from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
-        from ._kovesi_synthetic import centred_axis, starsine, unit_variance
-
         n = 256
         img = unit_variance(starsine(n, ncycles=8))
         ax = centred_axis(n)
@@ -318,9 +309,6 @@ class TestBehaviouralControls:
 
         That gap is the operator's entire reason to exist.
         """
-        from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
-        from ._kovesi_synthetic import step2line, unit_variance
-
         n, col = 256, 170  # the congruency column x = 2*pi
         img = unit_variance(step2line(n))
         result = monogenic_phase_congruency(img)
@@ -348,9 +336,6 @@ class TestBehaviouralControls:
         Congruency alone does not reject it -- with T off, its 99.9th percentile reaches
         0.72 against 0.95 for a genuinely congruent image. T is what separates them.
         """
-        from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
-        from ._kovesi_synthetic import noiseonf, step2line, unit_variance
-
         noise = unit_variance(noiseonf(256, 1.5, seed=1))
         with_threshold = monogenic_phase_congruency(noise)
         without = monogenic_phase_congruency(noise, noise_method=0.0)
@@ -369,8 +354,6 @@ class TestAgreementWithFocusEdgePhase:
         """Spec test 10. Search a window around the true edge: on a bare step both
         operators peak just as hard on the FFT wrap-around edge at column 0, so a
         global argmax is genuinely ambiguous for *both* of them."""
-        from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
-
         n, edge = 128, 64
         arr = np.zeros((n, n))
         arr[:, edge:] = 1.0

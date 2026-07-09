@@ -221,8 +221,8 @@ class FocusEdgePhase(FocusEdge):
         epsilon = 1e-5  # Julia uses 1e-5
 
         # Construct filter grids (quadrant-shifted, DC at corners).
-        # Shared kernel returns six values; fx/fy are unused by phasecong3.
-        radius, sintheta, costheta, freq, _, _ = construct_filter_grids(rows, cols)
+        # Shared kernel returns six values; freq/fx/fy are unused by phasecong3.
+        radius, sintheta, costheta, _, _, _ = construct_filter_grids(rows, cols)
 
         # Construct radial component of log-Gabor filters
         log_gabor_list = log_gabor_radial(
@@ -295,18 +295,17 @@ class FocusEdgePhase(FocusEdge):
             # Compute noise threshold T for this orientation
             if self.noise_method >= 0:
                 T = self.noise_method
-            else:
+            elif tau > 0:
                 # Total tau across scales (geometric series)
-                if tau > 0:
-                    total_tau = tau * (1 - (1 / self.mult) ** self.n_scale) / (
-                            1 - 1 / self.mult
-                    )
-                    # Expected noise energy from Rayleigh distribution
-                    mean_energy = total_tau * np.sqrt(np.pi / 2)
-                    sigma_energy = total_tau * np.sqrt((4 - np.pi) / 2)
-                    T = mean_energy + self.k * sigma_energy
-                else:
-                    T = 0.0
+                total_tau = tau * (1 - (1 / self.mult) ** self.n_scale) / (
+                        1 - 1 / self.mult
+                )
+                # Expected noise energy from Rayleigh distribution
+                mean_energy = total_tau * np.sqrt(np.pi / 2)
+                sigma_energy = total_tau * np.sqrt((4 - np.pi) / 2)
+                T = mean_energy + self.k * sigma_energy
+            else:
+                T = 0.0
 
             # Compute unit-normalized mean direction (Julia reference: XEnergy normalization)
             # MeanE and MeanO form a unit vector pointing in mean phase direction
