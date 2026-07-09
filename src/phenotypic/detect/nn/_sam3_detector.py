@@ -9,10 +9,16 @@ from pydantic import PrivateAttr
 from phenotypic.abc_ import GpuDetector
 from phenotypic.detect.nn._checkpoint_manager import Device
 
-# Shared fixed-geometric tiling (extracted to _tiling.py so the semantic
-# detectors reuse it). Re-exported here for back-compat with callers/tests that
-# import _Tile / _plan_tiles from _sam3_detector.
-from phenotypic.detect.nn._tiling import _plan_tiles, _Tile, _tile_starts
+# Shared fixed-geometric tiling and the cross-tile instance merge, both owned by
+# _tiling.py so the semantic detectors reuse the tiling. Re-exported here for
+# back-compat with callers/tests that import these names from _sam3_detector.
+from phenotypic.detect.nn._tiling import (
+    _iou,
+    _merge_tiles_iou_nms,
+    _plan_tiles,
+    _Tile,
+    _tile_starts,
+)
 from phenotypic.sdk_.typing_ import GpuInputLayer, GpuOutputKind, TuneSpec
 
 if TYPE_CHECKING:
@@ -21,75 +27,7 @@ if TYPE_CHECKING:
 __all__ = ["Sam3Detector"]
 
 # Silence "imported but unused" — these are intentional back-compat re-exports.
-_ = (_Tile, _tile_starts)
-
-
-def _iou(mask_a: "np.ndarray", mask_b: "np.ndarray") -> float:
-    """Intersection-over-union of two boolean masks (0.0 if both empty)."""
-    inter = int((mask_a & mask_b).sum())
-    if inter == 0:
-        return 0.0
-    union = int((mask_a | mask_b).sum())
-    return inter / union if union else 0.0
-
-
-def _merge_tiles_iou_nms(
-    objmaps: List["np.ndarray"], iou_thresh: float
-) -> "np.ndarray":
-    """Greedy IoU-NMS merge of per-tile objmaps into one contiguous objmap.
-
-    Each input objmap is already offset into full-image coordinates (same
-    shape). Instances are collected across all tiles, sorted largest-first,
-    and greedily kept unless they overlap an already-kept instance by more than
-    ``iou_thresh`` (a cross-tile duplicate). Survivors are relabelled ``1..N``
-    largest-first so smaller colonies overwrite at overlaps, preserving
-    small-colony identity (mirrors ``Sam2Detector``'s painting order).
-
-    Args:
-        objmaps: Per-tile uint16 objmaps, each in full-image coordinates.
-        iou_thresh: IoU above which two instances are treated as duplicates.
-
-    Returns:
-        A single uint16 objmap with contiguous labels ``1..N``.
-    """
-    import numpy as np
-
-    if not objmaps:
-        raise ValueError("_merge_tiles_iou_nms requires at least one objmap")
-    shape = objmaps[0].shape
-
-    masks: list[np.ndarray] = []
-    for objmap in objmaps:
-        for label in np.unique(objmap):
-            if label == 0:
-                continue
-            masks.append(objmap == label)
-    if not masks:
-        return np.zeros(shape, dtype=np.uint16)
-
-    masks.sort(key=lambda m: int(m.sum()), reverse=True)
-    kept: list[np.ndarray] = []
-    for cand in masks:
-        if any(_iou(cand, k) > iou_thresh for k in kept):
-            continue
-        kept.append(cand)
-
-    max_labels = int(np.iinfo(np.uint16).max)
-    if len(kept) > max_labels:
-        import warnings
-
-        warnings.warn(
-            f"SAM3 merged {len(kept)} instances, exceeding uint16 range. "
-            f"Only the first {max_labels} (largest) will be labeled.",
-            UserWarning,
-            stacklevel=2,
-        )
-        kept = kept[:max_labels]
-
-    objmap = np.zeros(shape, dtype=np.uint16)
-    for idx, mask in enumerate(kept, start=1):
-        objmap[mask] = idx
-    return objmap
+_ = (_Tile, _tile_starts, _iou, _merge_tiles_iou_nms)
 
 
 class Sam3Detector(GpuDetector):
