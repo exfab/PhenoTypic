@@ -40,17 +40,46 @@ reports were reassembled from recovered claims in follow-up workflows.
 ## 2. Citations
 
 **Monogenic / Riesz phase congruency.**
-Wang Lijuan, Zhang Changsheng, Liu Ziyu, et al. "Image feature detection based on phase congruency by
-Monogenic filters." *The 26th Chinese Control and Decision Conference (2014 CCDC)*, IEEE, 2014,
-pp. 2033–2038. DOI [10.1109/CCDC.2014.6852502](https://doi.org/10.1109/CCDC.2014.6852502).
-(Author names taken from the CMPCM paper's reference [13], surname-first.) **Not read directly.**
+Wang Lijuan, Zhang Changsheng, Liu Ziyu, Sun Bin, Tian Haiyong. "Image feature detection based on
+phase congruency by Monogenic filters." *The 26th Chinese Control and Decision Conference (2014
+CCDC)*, IEEE, 2014, pp. 2033–2038. DOI [10.1109/CCDC.2014.6852502](https://doi.org/10.1109/CCDC.2014.6852502).
+**Still not read directly.** The author names were originally reconstructed from the CMPCM paper's
+reference [13] (surname-first); they are now **confirmed** against IEEE Xplore's own author list
+(2026-07-09), which also supplies the two names the reconstruction had abbreviated to "et al."
+The full text remains unobtained: IEEE Xplore serves `502` to every non-browser client, and the
+paper is not open access. Nothing in `_monogenic_kernels.py` rests on it — the port's oracle is
+Kovesi's three implementations plus the golden fixture — but no one has checked this spec's
+monogenic-PC prose against its nominal source.
 
 **CMPCM.**
 Shi, Meihong; Zhao, Xueqing; Qiao, Dongdong; Xu, Bugao; Li, Chunmei. "Conformal monogenic phase
 congruency model-based edge detection in color images." *Multimedia Tools and Applications* **78**,
 10701–10716 (2019). DOI [10.1007/s11042-018-6617-x](https://doi.org/10.1007/s11042-018-6617-x).
-**Read in full** (Springer HTML, institutional access). Tables 1–3 render as images; we have the
-PFOM *ordering* only, not the numbers.
+**Read in full.** Originally read as Springer HTML, in which Tables 1–3 render as images — hence the
+long-standing note that we had "the PFOM *ordering* only, not the numbers." **Superseded 2026-07-09:**
+the PDF was obtained and carries Table 1 as machine-readable text.
+
+> `Table 1  PFOM performance evaluation of different edge detection algorithms`
+> | Method | Canny | Log | VPMM | PC | MPC | CMPCM |
+> |---|---|---|---|---|---|---|
+> | FOM | 0.8888 | 0.9008 | 0.9934 | 0.9099 | 0.9321 | **0.9989** |
+
+Read off the row, then checked against the paper's own prose, which states the PFOM of Canny is the
+minimum and CMPCM the maximum, "followed by VPMM and then MPC, PC and Log." Sorting the numbers
+descending gives CMPCM > VPMM > MPC > PC > Log > Canny — the stated ordering exactly. That agreement
+is the evidence the numbers came from the right row; without it they would be six digits copied out
+of a PDF.
+
+> **These numbers are not reproduction targets, and `color-phase-congruency.md` §7.1 must not be
+> rewritten to treat them as such.** They are the PFOM of six operators on the paper's Fig. 4a
+> "geometry image", which is `176 × 298` (the PDF states that size exactly once, confirming §7.1's
+> claim) and **whose pixels are published nowhere**. Knowing the answer does not give us the input.
+> §7.1's design — synthesise a geometric colour image with known ideal edges and regress the
+> *ranking* — is unchanged and remains correct. What the table adds is a sharper ordering (the gap
+> `CMPCM 0.9989` vs `VPMM 0.9934` is 0.0055, so a ranking regression that resolves them must be
+> better than ~0.5% in PFOM) and a record of the claim we are testing.
+
+Tables 2–3 have not yet been transcribed.
 
 **Foundations.**
 

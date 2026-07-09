@@ -2406,16 +2406,49 @@ The reviewer's *report* is what comes back into the repo, under `docs/superpower
 
 **What is renamed, not deleted:** `FocusEdgeMonogenicPhase` → the operator's mathematical description; "colony boundary" → "step edge"; "hyphal ridge" → "line feature". The *structure* of every docstring stays, so the reviewer sees the same claims.
 
-**Also assembled into the sandbox** (the reviewer cannot fetch these itself, and two of them are gone from disk):
+**Also assembled into the sandbox** (the reviewer cannot fetch these itself).
 
-| Artifact | Provenance | Handling |
-|---|---|---|
-| `refs/phasecongruency.jl` | fetch from `peterkovesi/ImagePhaseCongruency.jl` | MIT, read-only |
-| `refs/frequencyfilt.jl`, `refs/syntheticimages.jl` | same | MIT, read-only |
-| `refs/phasecongmono.m`, `refs/phasecong3.m` | fetch from `peterkovesi.com/matlabfns` | read-only |
-| `refs/phasepack_phasecongmono.py` | fetch from `alimuldal/phasepack` | MIT, read-only. **Do not reinstall the package.** |
-| `refs/cmpcm_matlab/` | `Vivianyuwei/…-Conformal-Phase` | **No licence — all rights reserved.** Read-only cross-check. **Never copy its code.** |
-| `papers/*.txt` | extracted text of the JMIV / DAGM / CMPCM PDFs | **Copyrighted. Must never be committed.** |
+> **Durable master:** `~/.claude/refs/phenotypic-alt-phase-detection/{refs,papers,refimpl}/`.
+> Verified 2026-07-09 to lie outside every git work tree, so the copyrighted PDFs **cannot** be
+> committed even by accident. `~/.claude` is not a repository; the repo's own `.claude/` is only
+> `.gitignore`d, which is one `git add -f` away from a licence problem. E **copies** from the master
+> into the sandbox; it does not symlink, so the sandbox stays self-contained for a reviewer told to
+> read nothing above its own root. The previous home was the session scratchpad under `/private/tmp`,
+> which is reaped — that is why two paper texts went missing once already.
+
+Status audited 2026-07-09. **Present** means verified on disk by extracting text and matching the
+title/authors/pages against `references.md` — not by trusting the filename.
+
+| Artifact | Provenance | Status | Handling |
+|---|---|---|---|
+| `refs/phasecongruency.jl`, `frequencyfilt.jl`, `syntheticimages.jl` | `peterkovesi/ImagePhaseCongruency.jl` | **present** | MIT, read-only |
+| `refs/phasecongmono.m`, `phasecong3.m`, `perfft2.m`, `filtergrid.m`, `lowpassfilter.m` | `peterkovesi.com/matlabfns` | **present** | read-only |
+| `refs/phasepack_phasecongmono.py`, `phasepack_tools.py`, `phasepack_filtergrid.py` | `alimuldal/phasepack` | **present** | MIT, read-only. **Do not reinstall the package.** |
+| `refimpl/test_phasecongruency.jl`, `test_syntheticimages.jl`, `runtests.jl` | Kovesi's own Julia test suite | **present** | MIT, read-only. Note `references.md:775`: **0 assertions** — it only checks the functions run. |
+| `papers/felsberg2001_monogenic_signal.pdf` + `.txt` | IEEE TSP 49(12) 3136–3144 (2001), author-hosted copy | **present** | **Copyrighted. Never commit.** |
+| `papers/felsberg2004_monogenic_scale_space.pdf` + `.txt` | JMIV 21(1–2) 5–26 (2004) | **present** | **Copyrighted. Never commit.** |
+| `papers/wietzke2008_conformal_monogenic_signal_DAGM.pdf` + `.txt` | DAGM 2008, LNCS 5096, 527–536 | **present** | **Copyrighted. Never commit.** |
+| `papers/fleischmann2011_conformal_embedding.pdf` + `.txt` | JMIV, "Image Analysis by Conformal Embedding" | **present** | **Copyrighted. Never commit.** |
+| `papers/shi2019_cmpcm_color_edge_detection.pdf` + `.txt` | MTAP 78, 10701–10716 (2019) — **the CMPCM paper** | **present** | **Copyrighted. Never commit.** |
+| `papers/wang2014_monogenic_phase_congruency_CCDC.pdf` | 26th CCDC (2014) 2033–2038, IEEE | **ABSENT** — IEEE returns `502` to every non-browser client | See below. |
+| `refs/cmpcm_matlab/` | `Vivianyuwei/…-Conformal-Phase` | **ABSENT** — never fetched | **No licence — all rights reserved.** Read-only cross-check if obtained. **Never copy its code.** |
+
+**Two artifacts are absent, and F must be told so explicitly rather than left to infer it:**
+
+1. **Wang Lijuan et al. (2014), the monogenic-PC paper.** `references.md:46` already flags it *"Not read directly"* — the author names were reconstructed from CMPCM's reference [13]. Those names are now **confirmed correct** against IEEE Xplore's own author list (Wang Lijuan; Zhang Changsheng; Liu Ziyu; Sun Bin; Tian Haiyong), but the text has still never been read. Nothing in `_monogenic_kernels.py` depends on it — the port's oracle is Kovesi's code plus the golden fixture — so this does **not** block A/B/C. It does mean no one has checked our monogenic-PC prose against its nominal source.
+2. **The unlicensed CMPCM MATLAB.** `references.md:709` records that it implements a *precursor grayscale paper*, not CMPCM, and contradicts our reading on the one structural question that matters. Its absence costs a cross-check, not a reference.
+
+If either is later obtained, add it to the master and re-run E. Do **not** let E's gate 4 (manifest completeness) pass by deleting these rows — mark them absent and carry the mark into F's brief.
+
+**What the CMPCM PDF unblocked.** `color-phase-congruency.md` and `references.md` both record that CMPCM's "Tables 1–3 render as images; we have the PFOM *ordering* only, not the numbers." That was true of the Springer **HTML**. The **PDF** carries Table 1 as text:
+
+> `Table 1 PFOM performance evaluation of different edge detection algorithms`
+> `Methods  Canny   Log     VPMM    PC      MPC     CMPCM`
+> `FOM      0.8888  0.9008  0.9934  0.9099  0.9321  0.9989`
+
+These reproduce the paper's own stated ordering (CMPCM > VPMM > MPC > PC > Log > Canny) exactly, which is the check that they were read off the right row.
+
+**They are not reproduction targets.** The table's PFOM is measured on the paper's Fig. 4a "geometry image" (`176 × 298` — the PDF states that size exactly once, confirming `color-phase-congruency.md` §7.1), and that image's pixels are published nowhere. Knowing the answer does not give us the input. §7.1's design — synthesise a geometric colour image with known ideal edges, regress the *ranking* — stands unchanged. What the numbers add is a tolerance: the `CMPCM 0.9989` / `VPMM 0.9934` gap is `0.0055`, so any ranking regression that must separate them needs better than ~0.5% PFOM resolution. Recorded in `references.md`; out of scope for this plan.
 
 **Model:** Opus, high effort. It is a Sweep, but consistency-critical: a wrong call about what is "biological" versus what is load-bearing mathematics silently corrupts the thing being reviewed.
 
@@ -2447,9 +2480,11 @@ A fresh reviewer that has never seen this repository, judging the design on math
 | `verify_claims.py` | 21 executable re-derivations it can run and try to break |
 | `spec/` — all six documents | the *claims*. F's job is to check them against the sources, not to trust them |
 | `plan/plan.md` + `plan/reviews/` | the reasoning and the prior review. Shortcuts hide in the justification, not the diff |
-| `refs/` | Kovesi's Julia + MATLAB, `phasepack`, so every "the reference says X" is checkable at `file:line` |
-| `papers/` | JMIV / DAGM / CMPCM source text |
+| `refs/` + `refimpl/` | Kovesi's Julia + MATLAB, `phasepack`, and Kovesi's own (assertion-free) test suite, so every "the reference says X" is checkable at `file:line` |
+| `papers/` | Felsberg & Sommer 2001 + 2004, Wietzke & Sommer 2008 (DAGM), Fleischmann 2011 (JMIV), **Shi et al. 2019 (CMPCM)** — five full texts |
 | `WebSearch` / `WebFetch` | to consult the literature independently of what our prose asserts |
+
+**Tell F what it does NOT have.** Two artifacts are absent (see E's table): Wang Lijuan et al. (2014), the nominal monogenic-PC source, which *nobody has ever read* — and the unlicensed CMPCM MATLAB. F must not treat their absence as their non-existence, and must not "verify" a claim whose source it cannot open. Any finding that turns on Wang 2014 should be reported as **unverifiable**, not as confirmed or refuted.
 
 Handing over the kernels alone would ask F to re-derive the reasoning it is meant to audit. Handing over the spec without `refs/` would make it take our word for what the references say — the exact failure that produced drift lessons S7 and three misattributions.
 
