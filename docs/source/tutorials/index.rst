@@ -2,12 +2,12 @@ Tutorials
 =========
 
 Whether you're installing PhenoTypic for the first time, working through the
-notebook learning path, or taking a screenshot tour of the GUI hub, the
-tutorials are organized into three tracks. Pick the one that matches how you
-plan to use PhenoTypic.
+notebook learning path, batch-processing a directory of plates from the shell,
+or taking a screenshot tour of the GUI hub, the tutorials are organized into
+four tracks. Pick the one that matches how you plan to use PhenoTypic.
 
 
-.. grid:: 1 2 3 3
+.. grid:: 1 2 2 2
    :gutter: 4
    :padding: 2 2 0 0
    :class-container: sd-text-center
@@ -46,6 +46,23 @@ plan to use PhenoTypic.
 
          Start the learning path
 
+   .. grid-item-card:: Command Line
+      :class-card: intro-card
+      :shadow: md
+
+      The four ``--mode`` execution modes, the parameters that matter, and how
+      to batch-process a directory of plates locally or on SLURM.
+
+      +++
+
+      .. button-ref:: cli
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Run from the shell
+
    .. grid-item-card:: GUI
       :class-card: intro-card
       :shadow: md
@@ -70,4 +87,5 @@ plan to use PhenoTypic.
 
    getting_started
    python_api
+   cli
    gui/index

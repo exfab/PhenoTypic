@@ -3,6 +3,9 @@ CLI Reference
 
 PhenoTypic provides a command-line interface for batch processing plate images.
 
+For a guided walkthrough of the execution modes and the parameters worth
+knowing, see the :doc:`CLI Execution Modes tutorial </tutorials/pages/cli_modes>`.
+
 Usage
 -----
 
@@ -31,22 +34,27 @@ Image Options
 -------------
 
 ``--image-type {Image,GridImage}``
-   Image class to use for loading. Default: ``Image``.
+   Image class to use for loading. Case-insensitive. Default: ``GridImage``.
 
 ``--nrows N``
-   Number of grid rows (GridImage only). Default: 8.
+   Number of grid rows (GridImage only). Overrides any pipeline-level preset;
+   when omitted, the pipeline preset is used, falling back to 8.
 
 ``--ncols N``
-   Number of grid columns (GridImage only). Default: 12.
+   Number of grid columns (GridImage only). Overrides any pipeline-level preset;
+   when omitted, the pipeline preset is used, falling back to 12.
 
 ``--bit-depth {8,16}``
    Force bit depth. Default: auto-detect.
 
 ``--detect-mode MODE``
-   Detection matrix source channel. Default: ``gray``.
+   Detection matrix source channel. One of ``gray``, ``red``, ``green``,
+   ``blue``, ``MinRGB``, ``HsvS``, ``HsvV``, ``InvS``, ``LabL``, ``LabA``,
+   ``LabB``. Default: ``gray``.
 
 ``--ext EXT``
-   File extension filter (e.g., ``.png``, ``.jpg``). Default: all supported formats.
+   Deprecated for HDF output. Forward runs write a single ``.h5`` per image;
+   only overlay PNG rendering still consults this value. Default: ``tiff``.
 
 Execution Options
 -----------------
@@ -59,21 +67,27 @@ Execution Options
 
    ``measure``
       Re-run measurements from HDF files in an existing output root. Requires
-      ``--pipeline`` and ``--output``. Rejects ``--input`` and ``--dry-run``.
+      ``--pipeline`` and ``--output``. Rejects ``--input``, ``--dry-run``,
+      ``--resume``, ``--restart``, ``--retry-failures``, ``--overwrite``, and
+      ``--sample``.
 
    ``recompile``
       Rebuild aggregate deliverables from an existing output root. Requires
       ``--output``. Rejects ``--pipeline``, ``--input``, and ``--dry-run``.
 
    ``process``
-      Apply the pipeline and export one image layer per input. Requires
-      ``--pipeline``, ``--input``, ``--output``, and ``--layer``.
+      Apply the pipeline and export one image layer per input, mirroring the
+      input tree. Requires ``--pipeline``, ``--input``, ``--output``, and
+      ``--layer``. Warns that ``--metadata``, ``--no-qc``, and
+      ``--no-dataset-column`` are ignored.
 
 ``--layer {rgb,gray,detect_mat,objmap}``
-   Image layer exported by ``--mode process``. Rejected in other modes.
+   Image layer exported by ``--mode process``; required there and rejected in
+   other modes. ``rgb`` writes an integer TIFF at the source bit depth,
+   ``gray``/``detect_mat`` a float TIFF, ``objmap`` a 16-bit raw-label PNG.
 
 ``--njobs N``
-   Number of parallel worker processes. Default: all available CPUs.
+   Number of parallel jobs for local execution. Default: ``-1`` (all cores).
 
 ``--force-local``
    Run locally even if SLURM is available.
@@ -83,7 +97,7 @@ Execution Options
    ``full`` and ``process`` modes; rejected by ``measure`` and ``recompile``.
 
 ``--sample N``
-   Process only N random images (for testing).
+   Process only N random images per dataset (for testing).
 
 ``--random-seed SEED``
    Random seed for ``--sample`` reproducibility.
@@ -104,29 +118,68 @@ Resume and Recovery
    Reprocess all images. Mutually exclusive with ``--resume``.
 
 ``--checkpoint-interval N``
-   Save checkpoint state every N images. Default: 100.
+   Insert checkpoint tasks every N images in SLURM arrays. Default:
+   auto-estimate.
 
 SLURM Options
 -------------
 
 ``--slurm KEY=VALUE``
    Pass SLURM scheduling parameters as repeated key-value pairs (e.g.,
-   ``--slurm time=04:00:00 --slurm partition=gpu``).
+   ``--slurm slurm_partition=compute --slurm mem_gb=16 --slurm time=120``).
+   Use the ``slurm_`` prefix for standard SBATCH directives, or the convenience
+   keys ``mem_gb`` and ``time``. ``time`` is an **integer number of minutes**.
+   The deprecated ``time_min`` key is auto-migrated to ``time``.
 
 ``--wait``
-   Wait for SLURM jobs to complete before returning.
+   Wait for SLURM jobs to complete before returning. Without it, the CLI returns
+   as soon as the jobs are submitted.
+
+GPU Staging Options
+-------------------
+
+A pipeline containing a ``GpuDetector`` runs as three stages (CPU preprocess →
+resident-model GPU detect → CPU measure). These flags tune Stage 2.
+
+``--gpu-slurm KEY=VALUE``
+   Stage-2 SBATCH resources. Inherits and deltas over ``--slurm`` (the CPU
+   profile for Stages 1 and 3); auto-adds ``slurm_gpus_per_node=1``.
+
+``--gpu-shards N``
+   Parallel Stage-2 GPU tasks, one whole GPU each. SLURM-only; ignored locally.
+   Default: 1.
+
+``--gpu-workers-per-gpu W``
+   Model replicas packed per physical GPU, to fill a GPU with a small model.
+   Default: 1.
+
+``--gpu-batch-size N``
+   Images per GPU forward pass. Integer, or ``auto`` (VRAM-probe, not yet
+   implemented). Effective only for batchable detectors. Default: 1.
 
 Output Options
 --------------
 
 ``--overlay-alpha FLOAT``
-   Opacity of detection overlay in saved images. Default: 0.3.
+   Alpha transparency of the label overlay (0.0-1.0). Default: 0.3.
 
-``--include-dataset-column``
-   Add a dataset column to measurement CSV output.
+``--no-dataset-column``
+   Exclude the ``MetadataExperiment_Dataset`` column from
+   ``master_measurements.csv``. The column is included by default.
 
-``--metadata-csv PATH``
-   Path to a CSV file with additional metadata to merge into results.
+``--metadata PATH``
+   CSV file to inner-join onto ``master_measurements.csv`` on shared columns.
+
+``--study PATH``
+   Optional ``study.yaml`` of REMBI Study-level fields (Title, License, Author,
+   ...) folded into ``deliverables/rembi.yaml``; overrides constant
+   ``Metadata_*`` columns. Applies to ``full`` and ``measure`` modes only —
+   it is silently ignored by ``--mode recompile``.
+
+``--no-qc``
+   Skip the QC compute step in finalize. QC otherwise runs whenever the pipeline
+   has a non-empty ``qc`` section, writing the ``qc/`` artifact and resetting
+   GUI review progress.
 
 ``--skip-validation``
    Skip pipeline validation before processing.
