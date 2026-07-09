@@ -24,6 +24,15 @@
 - **Target version: `0.18.0`.** The migration error message must name `0.18.0` verbatim.
 - **A test that cannot run must fail, not skip.** Derive tolerances from a mechanism, never a guess. Prove each new test can fail before trusting it.
 - Lint/typecheck gates: `uv run ruff check --fix` and `uv run mypy src/phenotypic`.
+- **Never run bare `uv run ruff check --fix` from the repo root.** It auto-fixes files
+  outside your scope — observed rewriting `scripts/diagnostics/polars_vs_duckdb/*.py`
+  during cluster A. **Always scope it to the files you own:**
+  `uv run ruff check --fix path/to/your/file.py ...`. With clusters running in parallel
+  worktrees, an out-of-scope autofix becomes a spurious merge conflict.
+- **mypy is not gated in CI** (no mypy step in `.github/workflows/`; 417 pre-existing
+  errors across 125 files). Treat a *new* mypy error in a file you touched as a signal,
+  but do not add `# type: ignore` to silence a gap that a later cluster will close —
+  a stale ignore outlives the gap it hides.
 
 ### Type aliases introduced (used across many tasks)
 
@@ -88,10 +97,15 @@ No consumers yet. Nothing else can proceed without this.
 
 **Files:**
 - Modify: `src/phenotypic/sdk_/typing_.py` (near `DetectMode`, line ~28)
-- Test: `tests/unit/sdk_/test_typing_aliases.py`
+- Modify: `src/phenotypic/sdk_/__init__.py` (re-export both aliases)
+- Test: `tests/unit/sdk_/test_typing_aliases.py` — **this file already exists** with four
+  tests (`ProcessOnlyLayer`, `DinoVersion`, `DinoSize`, accessor-existence). **Append** to
+  it; do not create it fresh or you delete that coverage.
 
 **Interfaces:**
-- Produces: `InputLayer`, `NormOut` — importable from `phenotypic.sdk_.typing_`.
+- Produces: `InputLayer`, `NormOut` — importable from `phenotypic.sdk_.typing_` **and**
+  re-exported from `phenotypic.sdk_`. Task 2.3 needs `NormOut` at the latter path for
+  `CompositeEnhance`'s `norm: NormOut = None` override.
 
 - [ ] **Step 1: Write the failing test**
 
