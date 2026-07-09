@@ -9,8 +9,8 @@ from pydantic import PrivateAttr
 from phenotypic.abc_ import GpuDetector
 from phenotypic.detect.nn._checkpoint_manager import Device
 
-# Shared fixed-geometric tiling and the cross-tile instance merge, both owned by
-# _tiling.py so the semantic detectors reuse the tiling. Re-exported here for
+# Shared fixed-geometric tiling and the cross-tile instance merges, both owned
+# by _tiling.py so the semantic detectors reuse the tiling. Re-exported here for
 # back-compat with callers/tests that import these names from _sam3_detector.
 from phenotypic.detect.nn._tiling import (
     _iou,
@@ -18,6 +18,7 @@ from phenotypic.detect.nn._tiling import (
     _plan_tiles,
     _Tile,
     _tile_starts,
+    assign_by_centroid_core,
 )
 from phenotypic.sdk_.typing_ import GpuInputLayer, GpuOutputKind, TuneSpec
 
@@ -56,8 +57,12 @@ class Sam3Detector(GpuDetector):
 
     **Dense plates.** SAM3 caps at 200 instances per forward and runs at
     1008 px internally, so dense plates are tiled (fixed ~:attr:`tile_px`
-    tiles with :attr:`tile_overlap`), each tile inferred and offset back to
-    full coordinates, then merged across tiles by IoU-NMS.
+    tiles with :attr:`tile_overlap`) and each tile is inferred separately.
+    The tiles are merged by *centroid-in-core* assignment
+    (:func:`~phenotypic.detect.nn._tiling.assign_by_centroid_core`): each
+    instance is kept by the one tile whose core contains its centroid, so a
+    colony straddling a seam cannot be duplicated, nor can the fragment a
+    neighbouring tile saw survive as its own colony.
 
     Args:
         prompt: Free-text description of what to segment.  Override per run
@@ -76,9 +81,13 @@ class Sam3Detector(GpuDetector):
             resolution).
         tile_overlap: Fractional overlap between neighbouring tiles.  Default
             0.15.
-        tile_merge_iou: IoU above which the same colony detected in the overlap
-            of two adjacent tiles is merged into one instance (cross-tile NMS).
-            Default 0.5.
+        tile_merge_iou: **Deprecated and ignored.** The cross-tile merge is now
+            centroid-in-core
+            (:func:`~phenotypic.detect.nn._tiling.assign_by_centroid_core`),
+            which assigns each instance to exactly one tile and therefore needs
+            no IoU threshold. The field is retained only so pipelines
+            serialised before the change keep deserialising; setting it has no
+            effect. Default 0.5.
         max_instances_per_tile: SAM3's hard 200-instance-per-forward cap;
             structural, not tuned.
         device: PyTorch device for inference.  ``"auto"`` probes accelerators
@@ -152,8 +161,9 @@ class Sam3Detector(GpuDetector):
     # Tiling (Task 5) — fixed geometric tiles, no grid awareness.
     tile_px: Annotated[int, TuneSpec(512, 2048)] = 1008
     tile_overlap: Annotated[float, TuneSpec(0.0, 0.4)] = 0.15
-    # IoU above which the same colony detected in the overlap of two adjacent
-    # tiles is merged into one instance (cross-tile NMS).
+    # Deprecated: the tiled instance merge is centroid-in-core
+    # (_tiling.assign_by_centroid_core), which needs no IoU threshold. Retained
+    # so existing serialized pipelines keep deserializing.
     tile_merge_iou: Annotated[float, TuneSpec(0.0, 1.0)] = 0.5
     # SAM3's hard num_queries cap per forward — structural, never tuned.
     max_instances_per_tile: Annotated[int, TuneSpec(tunable=False)] = 200
@@ -276,9 +286,14 @@ class Sam3Detector(GpuDetector):
         """Run SAM3 over a collated batch; one uint16 objmap per sample.
 
         Each sample is tiled into fixed ~:attr:`tile_px` crops; all crops from
-        all samples are regrouped and forwarded per tile-batch (C4), each
-        crop's objmap is offset back to full-image coordinates, and per-sample
-        crops are merged by IoU-NMS. Samples that fit one tile run un-tiled.
+        all samples are regrouped and forwarded in one tile-batch (C4). The
+        per-crop objmaps stay **tile-local** all the way to
+        :func:`~phenotypic.detect.nn._tiling.assign_by_centroid_core`, which
+        owns the offset into full-image coordinates: it needs each instance's
+        tile-local centroid to decide which tile's core claims it. Offsetting
+        the crops here would make the merge add ``tile.y0``/``tile.x0`` a
+        second time. Samples that fit one tile run un-tiled (the merge then
+        just relabels contiguously).
         """
         import numpy as np
 
@@ -303,32 +318,24 @@ class Sam3Detector(GpuDetector):
         # One true-batch forward over every crop.
         crop_objmaps = self._forward_tiles(flat_crops) if flat_crops else []
 
-        # Offset each crop objmap into full-image coords, group by sample.
-        per_sample_full: list[list[np.ndarray]] = [[] for _ in batch]
+        # Group the tile-local objmaps by sample — no offsetting here; the
+        # merge maps each instance into full-image coordinates itself.
+        per_sample_local: list[list[np.ndarray]] = [[] for _ in batch]
         cursor = 0
         for s_idx in range(len(batch)):
-            full_shape = full_shapes[s_idx]
-            for t in plans[s_idx]:
-                crop_obj = crop_objmaps[cursor]
+            for _t in plans[s_idx]:
+                per_sample_local[s_idx].append(crop_objmaps[cursor])
                 cursor += 1
-                full = np.zeros(full_shape, dtype=np.uint16)
-                full[t.y0:t.y1, t.x0:t.x1] = crop_obj
-                per_sample_full[s_idx].append(full)
 
         results: list[np.ndarray] = []
         for s_idx in range(len(batch)):
-            tile_objmaps = per_sample_full[s_idx]
-            if len(tile_objmaps) == 1:
-                # Single-tile path — relabel contiguously, no merge needed.
-                results.append(
-                    _merge_tiles_iou_nms(tile_objmaps, iou_thresh=1.0)
-                )
-            elif not tile_objmaps:
+            tile_objmaps = per_sample_local[s_idx]
+            if not tile_objmaps:
                 results.append(np.zeros(full_shapes[s_idx], dtype=np.uint16))
             else:
                 results.append(
-                    _merge_tiles_iou_nms(
-                        tile_objmaps, iou_thresh=self.tile_merge_iou
+                    assign_by_centroid_core(
+                        plans[s_idx], tile_objmaps, full_shapes[s_idx]
                     )
                 )
         return results
