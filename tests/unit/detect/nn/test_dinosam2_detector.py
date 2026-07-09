@@ -281,7 +281,10 @@ class TestDinoSam2Tiling:
         mask[1000:1030, 1200:1230] = True  # a 30 px colony
 
         whole_grid = np.ones((16, 16, 4), dtype=np.float32)  # the 224 preset
-        assert not np.any(pool_prototype(whole_grid, mask))
+        # proc_hw is the geometry the plate actually reached the ViT at.
+        assert not np.any(
+            pool_prototype(whole_grid, mask, proc_hw=(224, 224), patch=14)
+        )
 
         tiles = _plan_tiles(shape, 518, 0.15)
         dense = [np.ones((37, 37, 4), dtype=np.float32) for _ in tiles]

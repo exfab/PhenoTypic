@@ -341,6 +341,7 @@ class Insid3Detector(GpuDetector):
 
         from phenotypic.detect.nn._checkpoint_manager import resolve_device
         from phenotypic.detect.nn._dino_support import (
+            backbone_patch_size,
             extract_reference_features,
             load_dino_backbone,
             pool_prototype,
@@ -351,7 +352,7 @@ class Insid3Detector(GpuDetector):
             self.dino_version, self.dino_size, self._device
         )
 
-        patch = int(getattr(self._model.config, "patch_size", 16))
+        patch = backbone_patch_size(self._model)
         if self.tile_px % patch:
             warnings.warn(
                 f"tile_px={self.tile_px} is not a multiple of the backbone's "
@@ -379,7 +380,7 @@ class Insid3Detector(GpuDetector):
         # grid describes only 208x288 -- omitting `patch` stretches the reference
         # mask over 12 rows the ViT never saw (a 5.5% scale error on the very
         # mask that defines the prototype).
-        ref_patch = int(getattr(self._model.config, "patch_size", 16))
+        ref_patch = backbone_patch_size(self._model)
         proto = pool_prototype(
             ref_deb, ref_mask, proc_hw=ref_proc_hw, patch=ref_patch
         )
@@ -453,6 +454,7 @@ class Insid3Detector(GpuDetector):
     def _match_crop(self, rgb: "np.ndarray") -> "np.ndarray":
         """Debias + cosine-match one crop to the prototype → boolean mask."""
         from phenotypic.detect.nn._dino_support import (
+            backbone_patch_size,
             cosine_match_to_mask,
             extract_patch_features,
         )
@@ -461,7 +463,7 @@ class Insid3Detector(GpuDetector):
             self._model, self._processor, rgb, device=self._device
         )
         feats_deb = debias_features(feats, self._basis)
-        patch = int(getattr(self._model.config, "patch_size", 16))
+        patch = backbone_patch_size(self._model)
         return cosine_match_to_mask(
             feats_deb,
             self._prototype,

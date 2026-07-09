@@ -399,7 +399,7 @@ class DinoSam2Detector(GpuDetector):
         from phenotypic.detect.nn import _dino_support
         from phenotypic.detect.nn._tiling import _plan_tiles
 
-        patch = int(getattr(self._dino_model.config, "patch_size", 14))
+        patch = _dino_support.backbone_patch_size(self._dino_model)
         tiles = _plan_tiles(rgb.shape[:2], self.tile_px, self.tile_overlap)
         dense_by_tile = [
             _dino_support.extract_patch_features(

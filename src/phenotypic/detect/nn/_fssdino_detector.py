@@ -449,6 +449,7 @@ class FssDinoDetector(GpuDetector):
         from phenotypic.detect.nn._checkpoint_manager import resolve_device
         from phenotypic.detect.nn._dino_support import (
             align_mask_to_grid,
+            backbone_patch_size,
             extract_reference_features,
             load_dino_backbone,
         )
@@ -458,7 +459,7 @@ class FssDinoDetector(GpuDetector):
             self.dino_version, self.dino_size, self._device
         )
 
-        patch = int(getattr(self._model.config, "patch_size", 14))
+        patch = backbone_patch_size(self._model)
         if self.tile_px % patch:
             warnings.warn(
                 f"tile_px={self.tile_px} is not a multiple of the backbone's "
@@ -489,7 +490,7 @@ class FssDinoDetector(GpuDetector):
             # grid describes only 210x294 -- omitting `patch` stretches the
             # support mask over 10 rows the ViT never saw (a 4.5% scale error on
             # the very mask that defines the prototype).
-            patch = int(getattr(self._model.config, "patch_size", 14))
+            patch = backbone_patch_size(self._model)
             grid_mask = align_mask_to_grid(mask, proc_hw, (hp, wp), patch)
             flat = dense.reshape(hp * wp, dense.shape[-1])
             fg_idx = grid_mask.reshape(-1)
@@ -570,6 +571,7 @@ class FssDinoDetector(GpuDetector):
     def _segment_crop(self, rgb: "np.ndarray") -> "np.ndarray":
         """Run the FSSDINO scoring on one crop → full-res boolean mask."""
         from phenotypic.detect.nn._dino_support import (
+            backbone_patch_size,
             extract_hidden_layer_features,
             upsample_grid_to_image,
         )
@@ -587,7 +589,7 @@ class FssDinoDetector(GpuDetector):
         # through the covered extent (the grid never saw the truncated
         # bottom/right remainder — see upsample_grid_to_image).
         grid_mask = assign_foreground(fg_score, bg_score, self.similarity_thresh)
-        patch = int(getattr(self._model.config, "patch_size", 14))
+        patch = backbone_patch_size(self._model)
         return upsample_grid_to_image(
             grid_mask.astype(bool), (rgb.shape[0], rgb.shape[1]), patch
         )

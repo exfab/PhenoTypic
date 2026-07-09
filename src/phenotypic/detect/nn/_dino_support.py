@@ -58,6 +58,35 @@ NATIVE_PROCESSOR_KWARGS: dict[str, bool] = {
 }
 
 
+def backbone_patch_size(model: Any) -> int:
+    """Return the loaded backbone's ViT patch size, refusing to guess.
+
+    Every geometry helper here needs the patch size, and getting it wrong is a
+    **silent** sub-patch scale error rather than a crash. A ``getattr(...,
+    "patch_size", 14)``-style fallback is therefore worse than useless: DINOv2 is
+    patch-14 and DINOv3 is patch-16, so a per-call-site default can disagree with
+    itself within one run (the detector guessing 14 while this module guesses
+    16). Read it from the model, or fail loudly.
+
+    Args:
+        model: A loaded ``AutoModel`` (DINOv2/DINOv3).
+
+    Returns:
+        ``model.config.patch_size``.
+
+    Raises:
+        ValueError: If the backbone exposes no ``config.patch_size``.
+    """
+    patch = getattr(getattr(model, "config", None), "patch_size", None)
+    if patch is None:
+        raise ValueError(
+            f"{type(model).__name__} exposes no config.patch_size; the patch "
+            "grid cannot be derived and guessing it would silently rescale "
+            "every mask. Load a DINOv2/DINOv3 backbone."
+        )
+    return int(patch)
+
+
 def patch_grid_hw(pixel_hw: Tuple[int, int], patch: int) -> Tuple[int, int]:
     """Return the ``(Hp, Wp)`` patch grid a ViT produces for ``pixel_hw``.
 
@@ -284,7 +313,7 @@ def extract_patch_features(
 
     pixel = inputs["pixel_values"]
     in_h, in_w = int(pixel.shape[-2]), int(pixel.shape[-1])
-    patch = int(getattr(model.config, "patch_size", 16))
+    patch = backbone_patch_size(model)
     grid_hw = patch_grid_hw((in_h, in_w), patch)
     n_reg = int(getattr(model.config, "num_register_tokens", 0))
     return reshape_patch_tokens(tokens, grid_hw, n_reg)
@@ -333,7 +362,7 @@ def extract_reference_features(
 
     pixel = inputs["pixel_values"]
     proc_hw = (int(pixel.shape[-2]), int(pixel.shape[-1]))
-    patch = int(getattr(model.config, "patch_size", 16))
+    patch = backbone_patch_size(model)
     grid_hw = patch_grid_hw(proc_hw, patch)
     n_reg = int(getattr(model.config, "num_register_tokens", 0))
     feats = reshape_patch_tokens(tokens, grid_hw, n_reg)
@@ -379,7 +408,7 @@ def extract_hidden_layer_features(
 
     pixel = inputs["pixel_values"]
     in_h, in_w = int(pixel.shape[-2]), int(pixel.shape[-1])
-    patch = int(getattr(model.config, "patch_size", 16))
+    patch = backbone_patch_size(model)
     grid_hw = patch_grid_hw((in_h, in_w), patch)
     n_reg = int(getattr(model.config, "num_register_tokens", 0))
     return reshape_patch_tokens(tokens, grid_hw, n_reg)
@@ -391,22 +420,27 @@ def extract_hidden_layer_features(
 
 
 def resize_mask_to_grid(
-    mask: "np.ndarray", grid_hw: Tuple[int, int], patch: int | None = None
+    mask: "np.ndarray", grid_hw: Tuple[int, int], patch: int
 ) -> "np.ndarray":
     """Downsample a full-resolution boolean mask onto the patch grid.
 
-    Nearest-neighbour (``order=0``) so labels are not interpolated. When
-    ``patch`` is given the mask is first cropped to
-    ``covered_hw(grid_hw, patch)`` — the extent the grid actually describes —
-    so the truncated bottom/right remainder cannot leak into a patch. The
-    caller is responsible for first aligning the mask to the same geometry the
-    image went through the processor (W4); this is the final patch-grid step.
+    Nearest-neighbour (``order=0``) so labels are not interpolated. The mask is
+    first cropped to ``covered_hw(grid_hw, patch)`` — the extent the grid
+    actually describes — so the truncated bottom/right remainder cannot leak
+    into a patch. The caller is responsible for first aligning the mask to the
+    same geometry the image went through the processor (W4); this is the final
+    patch-grid step.
+
+    ``patch`` is **required**. It was once optional, defaulting to mapping the
+    whole mask, and omitting it produced a silent sub-patch scale error rather
+    than a crash — a bug that reached both the query path and, later, the
+    exemplar path (where the buggy and corrected prototypes had cosine 0.44).
+    Get the value from :func:`backbone_patch_size`.
 
     Args:
         mask: ``(H, W)`` boolean (or 0/1) mask.
         grid_hw: ``(Hp, Wp)`` target patch grid.
-        patch: ``model.config.patch_size``. When *None*, the whole mask is
-            resized (legacy behaviour; introduces a sub-patch scale error).
+        patch: ``model.config.patch_size``.
 
     Returns:
         ``(Hp, Wp)`` boolean mask.
@@ -415,10 +449,8 @@ def resize_mask_to_grid(
     from skimage.transform import resize
 
     hp, wp = int(grid_hw[0]), int(grid_hw[1])
-    arr = np.asarray(mask)
-    if patch is not None:
-        ch, cw = covered_hw((hp, wp), patch)
-        arr = arr[:ch, :cw]
+    ch, cw = covered_hw((hp, wp), patch)
+    arr = np.asarray(mask)[:ch, :cw]
     small = (
         resize(
             arr.astype(np.float32),
@@ -436,7 +468,7 @@ def align_mask_to_grid(
     mask: "np.ndarray",
     proc_hw: Tuple[int, int],
     grid_hw: Tuple[int, int],
-    patch: int | None = None,
+    patch: int,
 ) -> "np.ndarray":
     """Align a full-resolution mask to the patch grid via the processor geometry.
 
@@ -457,8 +489,8 @@ def align_mask_to_grid(
         proc_hw: ``(H_proc, W_proc)`` processed pixel geometry
             (``inputs.pixel_values.shape[-2:]``).
         grid_hw: ``(Hp, Wp)`` patch grid.
-        patch: ``model.config.patch_size``. When *None*, the whole processed
-            mask is resized (legacy behaviour; sub-patch scale error).
+        patch: ``model.config.patch_size`` (**required** — omitting it used to
+            be a silent scale error; see :func:`resize_mask_to_grid`).
 
     Returns:
         ``(Hp, Wp)`` boolean mask aligned with the patch features.
@@ -488,8 +520,9 @@ def align_mask_to_grid(
 def pool_prototype(
     features: "np.ndarray",
     mask: "np.ndarray",
+    *,
+    patch: int,
     proc_hw: Tuple[int, int] | None = None,
-    patch: int | None = None,
 ) -> "np.ndarray":
     """Masked-mean an exemplar prototype from dense patch features.
 
@@ -502,12 +535,13 @@ def pool_prototype(
     Args:
         features: ``(Hp, Wp, D)`` dense patch features.
         mask: ``(Hm, Wm)`` boolean mask (any resolution; resized to the grid).
+        patch: ``model.config.patch_size`` (**required**). The mask is cropped
+            to the extent the grid actually covers before downsampling, so the
+            truncated bottom/right remainder cannot contaminate the prototype.
+            Omitting it was once permitted and silently corrupted the exemplar
+            prototype; see :func:`resize_mask_to_grid`.
         proc_hw: Optional ``(H_proc, W_proc)`` processed geometry for the W4
             two-step alignment (from :func:`extract_reference_features`).
-        patch: ``model.config.patch_size``. Given, the mask is cropped to the
-            extent the grid actually covers before downsampling, so the
-            truncated bottom/right remainder cannot contaminate the prototype.
-            When *None*, the whole extent is used (legacy behaviour).
 
     Returns:
         ``(D,)`` mean-pooled prototype (zero vector if the mask is empty —
@@ -609,47 +643,35 @@ def cosine_match_to_mask(
     prototype: "np.ndarray",
     thresh: float,
     out_shape: Tuple[int, int],
-    patch: int | None = None,
+    patch: int,
 ) -> "np.ndarray":
     """Cosine-match query patches to a prototype → an upsampled boolean mask.
 
-    Computes the per-patch cosine map, bilinearly upsamples it to
-    ``out_shape``, and thresholds at ``thresh``. A zero prototype (empty
-    reference mask) yields an all-False mask (fail-safe).
+    Computes the per-patch cosine map, upsamples it through the extent the grid
+    actually covers (:func:`upsample_grid_to_image`), and thresholds at
+    ``thresh``. A zero prototype (empty reference mask) yields an all-False mask
+    (fail-safe).
 
     Args:
         features: ``(Hp, Wp, D)`` query dense patch features.
         prototype: ``(D,)`` exemplar prototype.
         thresh: Cosine-similarity cutoff (foreground where ``sim > thresh``).
         out_shape: ``(H, W)`` of the full-resolution output mask.
-        patch: ``model.config.patch_size``. Given, the score map is upsampled
-            through the extent the grid actually covers
-            (:func:`upsample_grid_to_image`) rather than stretched over
-            ``out_shape``, which would displace every object by up to
-            ``(patch - 1) / H``. When *None*, the legacy whole-extent stretch
-            is used.
+        patch: ``model.config.patch_size`` (**required**). Stretching the score
+            map over ``out_shape`` instead would displace every object by up to
+            ``(patch - 1) / H``; see :func:`resize_mask_to_grid`.
 
     Returns:
         ``(H, W)`` boolean ``objmask``.
     """
     import numpy as np
-    from skimage.transform import resize
 
     proto = np.asarray(prototype, dtype=np.float64)
     if not np.any(proto):  # degenerate zero-prototype → fail safe
         return np.zeros(out_shape, dtype=bool)
 
     sim = cosine_similarity_map(features, proto)
-    if patch is None:
-        sim_full = resize(
-            sim.astype(np.float32),
-            out_shape,
-            order=1,
-            preserve_range=True,
-            anti_aliasing=False,
-        )
-    else:
-        sim_full = upsample_grid_to_image(
-            sim.astype(np.float32), out_shape, patch, order=1
-        )
+    sim_full = upsample_grid_to_image(
+        sim.astype(np.float32), out_shape, patch, order=1
+    )
     return (sim_full > thresh).astype(bool)
