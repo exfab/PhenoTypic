@@ -49,6 +49,7 @@ Attribution: clean-room from arXiv:2602.07550 (CC BY-NC-SA); NO code vendored.
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, List
 
@@ -298,8 +299,10 @@ class FssDinoDetector(GpuDetector):
         similarity_thresh: Foreground-score floor on top of the fg-vs-bg
             ``argmax`` (the documented binary-case deviation). Default 0.5.
         tile_px: Nominal tile size in pixels for large-plate tiling; images that
-            fit one tile run un-tiled. Default 512 (FSSDINO's default
-            resolution).
+            fit one tile run un-tiled. Default 518 (``14 * 37``, an exact
+            DINOv2 patch multiple). Resolution is pinned at the backbone's
+            ``patch_size`` regardless of ``tile_px``, so this is purely a
+            compute/context knob — smaller is cheaper at equal fidelity.
         tile_overlap: Fractional overlap between neighbouring tiles. Default
             0.15.
         device: PyTorch device for inference. ``"auto"`` probes accelerators and
@@ -383,7 +386,12 @@ class FssDinoDetector(GpuDetector):
     similarity_thresh: Annotated[float, TuneSpec(0.0, 1.0)] = 0.5
 
     # Tiling (shared with the instance detectors via _tiling).
-    tile_px: Annotated[int, TuneSpec(512, 2048)] = 512
+    # 518 = 14 * 37 — an exact DINOv2 patch multiple. Under the native
+    # processor kwargs the resolution is pinned at patch_size (14.0 native
+    # px/patch) regardless of tile_px, so this is a COMPUTE choice, not a
+    # fidelity one: 518 and 1022 both give 14.0 px/patch, but 1022 costs 3.3x
+    # more (attention is quadratic in tokens per tile). Smaller wins.
+    tile_px: Annotated[int, TuneSpec(256, 1024)] = 518
     tile_overlap: Annotated[float, TuneSpec(0.0, 0.4)] = 0.15
 
     device: Device = "auto"
@@ -449,6 +457,17 @@ class FssDinoDetector(GpuDetector):
         self._model, self._processor = load_dino_backbone(
             self.dino_version, self.dino_size, self._device
         )
+
+        patch = int(getattr(self._model.config, "patch_size", 14))
+        if self.tile_px % patch:
+            warnings.warn(
+                f"tile_px={self.tile_px} is not a multiple of the backbone's "
+                f"patch_size={patch}; the ViT will silently drop "
+                f"{self.tile_px % patch} px off each tile's bottom and right. "
+                f"Use {(self.tile_px // patch) * patch}.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         fg_feats: list[np.ndarray] = []
         bg_feats: list[np.ndarray] = []
@@ -544,11 +563,9 @@ class FssDinoDetector(GpuDetector):
 
     def _segment_crop(self, rgb: "np.ndarray") -> "np.ndarray":
         """Run the FSSDINO scoring on one crop → full-res boolean mask."""
-        import numpy as np
-        from skimage.transform import resize
-
         from phenotypic.detect.nn._dino_support import (
             extract_hidden_layer_features,
+            upsample_grid_to_image,
         )
 
         dense = extract_hidden_layer_features(
@@ -560,16 +577,14 @@ class FssDinoDetector(GpuDetector):
         )
         fg_score = self._class_score(dense, self._fg_prototypes, self._fg_gram)
         bg_score = self._class_score(dense, self._bg_prototypes, self._bg_gram)
-        # Argmax over classes (+ fg floor) on the patch grid, then upsample.
+        # Argmax over classes (+ fg floor) on the patch grid, then upsample
+        # through the covered extent (the grid never saw the truncated
+        # bottom/right remainder — see upsample_grid_to_image).
         grid_mask = assign_foreground(fg_score, bg_score, self.similarity_thresh)
-        full = resize(
-            grid_mask.astype(np.float32),
-            (rgb.shape[0], rgb.shape[1]),
-            order=0,
-            preserve_range=True,
-            anti_aliasing=False,
+        patch = int(getattr(self._model.config, "patch_size", 14))
+        return upsample_grid_to_image(
+            grid_mask.astype(bool), (rgb.shape[0], rgb.shape[1]), patch
         )
-        return (full > 0.5).astype(bool)
 
     def _class_score(
         self,

@@ -44,10 +44,11 @@ Built with DINOv3 when ``dino_version=3`` (per the DINOv3 License §1.b.i).
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, List, Optional
 
-from pydantic import PrivateAttr
+from pydantic import PrivateAttr, field_validator
 
 from phenotypic.abc_ import GpuDetector
 from phenotypic.detect.nn._checkpoint_manager import Device
@@ -185,8 +186,10 @@ class Insid3Detector(GpuDetector):
             positional component (INSID3's debiasing strength). Default 4
             (matches DINOv3's register-token count). ``0`` disables the debias.
         tile_px: Nominal tile size in pixels for large-plate tiling; images that
-            fit one tile run un-tiled. Default 1024 (INSID3's default
-            resolution).
+            fit one tile run un-tiled. Default 512 (``16 * 32``, an exact
+            DINOv3 patch multiple). Resolution is pinned at the backbone's
+            ``patch_size`` regardless of ``tile_px``, so this is purely a
+            compute/context knob — smaller is cheaper at equal fidelity.
         tile_overlap: Fractional overlap between neighbouring tiles. Default
             0.15.
         device: PyTorch device for inference. ``"auto"`` probes accelerators and
@@ -263,7 +266,12 @@ class Insid3Detector(GpuDetector):
     svd_components: Annotated[int, TuneSpec()] = 4
 
     # Tiling (shared with the instance detectors via _tiling).
-    tile_px: Annotated[int, TuneSpec(512, 2048)] = 1024
+    # 512 = 16 * 32 — an exact DINOv3 patch multiple. Resolution is pinned at
+    # patch_size (16.0 native px/patch) regardless of tile_px, so this is a
+    # COMPUTE choice: 512 and 1024 both give 16.0 px/patch, but 1024 costs
+    # 2.6x more. NOTE: DINOv3's config.image_size reports 224 (a
+    # classification preset) and must NOT be used to pick this default.
+    tile_px: Annotated[int, TuneSpec(256, 1024)] = 512
     tile_overlap: Annotated[float, TuneSpec(0.0, 0.4)] = 0.15
 
     device: Device = "auto"
@@ -274,6 +282,23 @@ class Insid3Detector(GpuDetector):
     _device: Any = PrivateAttr(default=None)
     _prototype: Any = PrivateAttr(default=None)
     _basis: Any = PrivateAttr(default=None)
+
+    @field_validator("dino_version")
+    @classmethod
+    def _warn_gated_default(cls, v: int) -> int:
+        """DINOv3 is gated; surface that at construction, not at first apply()."""
+        if v == 3:
+            warnings.warn(
+                "Insid3Detector defaults to dino_version=3 (DINOv3), whose "
+                "weights are gated: request access at "
+                "https://huggingface.co/facebook/dinov3-vitb16-pretrain-lvd1689m, "
+                "run `uv run hf auth login`, and set "
+                "PHENOTYPIC_ACCEPT_MODEL_LICENSE=dinov3. "
+                "Pass dino_version=2 for the ungated DINOv2 backbone.",
+                UserWarning,
+                stacklevel=2,
+            )
+        return v
 
     def model_post_init(self, __context: Any) -> None:
         """Fill in the bundled colony exemplar default when no reference is set.
@@ -325,6 +350,17 @@ class Insid3Detector(GpuDetector):
         self._model, self._processor = load_dino_backbone(
             self.dino_version, self.dino_size, self._device
         )
+
+        patch = int(getattr(self._model.config, "patch_size", 16))
+        if self.tile_px % patch:
+            warnings.warn(
+                f"tile_px={self.tile_px} is not a multiple of the backbone's "
+                f"patch_size={patch}; the ViT will silently drop "
+                f"{self.tile_px % patch} px off each tile's bottom and right. "
+                f"Use {(self.tile_px // patch) * patch}.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         ref_rgb = self._read_rgb(self.reference_image)
         ref_mask = self._read_mask(self.reference_mask)
@@ -417,11 +453,13 @@ class Insid3Detector(GpuDetector):
             self._model, self._processor, rgb, device=self._device
         )
         feats_deb = debias_features(feats, self._basis)
+        patch = int(getattr(self._model.config, "patch_size", 16))
         return cosine_match_to_mask(
             feats_deb,
             self._prototype,
             thresh=self.similarity_thresh,
             out_shape=(rgb.shape[0], rgb.shape[1]),
+            patch=patch,
         )
 
 # Expose the class docstring on .apply() for Sphinx autodoc
