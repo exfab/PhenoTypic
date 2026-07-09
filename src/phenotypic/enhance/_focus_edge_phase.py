@@ -36,8 +36,18 @@ class _PhaseCong3Result:
     Attributes:
         M: Maximum moment of phase congruency covariance (edge strength).
         m: Minimum moment of phase congruency covariance (corner strength).
-        orientation: Feature orientation in radians [-pi/2, pi/2]. 0 corresponds
-            to a vertical edge, pi/2 is horizontal. Positive is anticlockwise.
+        orientation: Feature orientation in radians ``(-pi/2, pi/2]``. ``0`` is a
+            vertical edge, ``pi/2`` horizontal; positive is anticlockwise. Measured,
+            not assumed: a vertical step edge reads ``0.0`` degrees and a horizontal
+            one ``90.0``. Agrees with
+            :attr:`FocusEdgeMonogenicPhase`'s orientation to ``1.64`` degrees mean
+            (the residual is this operator's angular quantisation across ``n_orient``
+            filters; the monogenic one is continuous).
+
+            **This required a reflection of Kovesi's Julia output** -- see drift ``M13``.
+            His ``phasecong3`` reports ``pi/2 - phi``, contradicting its own docstring
+            *and* his ``phasecongmono``. Only ``orientation`` is affected; ``M``, ``m``,
+            ``pc_sum`` and ``feature_type`` are untouched.
         feature_type: Local weighted mean phase angle. pi/2 corresponds to a
             bright line, 0 to a step edge, -pi/2 to a dark line.
         T: Calculated noise threshold.
@@ -383,6 +393,32 @@ class FocusEdgePhase(FocusEdge):
         # Handle NaN/Inf from division by zero (vertical edges)
         orientation = np.nan_to_num(orientation, nan=0.0, posinf=np.pi / 2,
                                     neginf=-np.pi / 2)
+
+        # Reflect: `pi/2 - orientation`, folded back into (-pi/2, pi/2]. Drift M13.
+        #
+        # Julia's `gridangles` (frequencyfilt.jl:430-431) builds `sintheta = fx/freq`,
+        # `costheta = fy/freq` -- which is `(cos(theta), -sin(theta))` of the angle MATLAB
+        # uses (`phasecong3.m:189`, `sin/cos` of `atan2(-y, x)`). That rotates the oriented
+        # bank 90 degrees, so the angle accumulated into `energy_v` is `pi/2 - phi`, not `phi`.
+        #
+        # Verified by RUNNING Kovesi's code, not by reading it. `phasecong3` from
+        # ImagePhaseCongruency.jl reports -86.35 deg on a vertical edge and -0.06 deg on a
+        # horizontal one -- while its own docstring says "0 corresponds to a vertical edge",
+        # and his `phasecongmono` in the same package reports -0.03 deg on that vertical edge.
+        # Kovesi's Julia contradicts itself. His MATLAB `phasecong3` satisfies "0 = vertical"
+        # but reports `-phi`, i.e. clockwise, violating the other half of the same docstring.
+        #
+        # We reflect so this operation reports `phi`. It then matches our own docstring, matches
+        # `FocusEdgeMonogenicPhase.orientation` (mean disagreement 35.89 deg -> 1.64 deg, the
+        # residual being the oriented bank's angular quantisation), and matches Kovesi's MATLAB
+        # at 0 and 90 degrees.
+        #
+        # `orientation` is a pure OUTPUT -- nothing downstream consumes it -- so `M`, `m`,
+        # `pc_sum` and `feature_type` are bit-identical either way. Switching the *grid* instead
+        # would move `pc_sum` by 2.2e-04 at n_orient=6 and 5.1e-02 at n_orient=5, and would
+        # still leave the two operations 35.89 deg apart. The cheap lever is the right one.
+        orientation = np.pi / 2 - orientation
+        orientation = np.where(orientation > np.pi / 2, orientation - np.pi, orientation)
 
         # Feature type (Julia reference)
         odd_v = np.sqrt(energy_v[:, :, 1] ** 2 + energy_v[:, :, 2] ** 2)

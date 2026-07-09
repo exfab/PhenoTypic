@@ -8,9 +8,16 @@ import pytest
 import numpy as np
 from pydantic import ValidationError
 
+from pathlib import Path
+
 from phenotypic import Image
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.enhance import FocusEdgePhase
+from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
+
+_CHARACTERIZATION = (
+    Path(__file__).resolve().parents[2] / "fixtures" / "phasecong3_characterization.npz"
+)
 
 
 class TestPhaseCongruencyEnhancerParameterValidation:
@@ -114,6 +121,135 @@ class TestPhaseCongruencyEnhancerParameterValidation:
         assert enhancer.g == 10.0
         assert enhancer.noise_method == -1
         assert enhancer.output == "pc_sum"
+
+
+def _characterization_scene() -> np.ndarray:
+    """The exact image the fixture was generated from. No data loaders, no I/O."""
+    rng = np.random.default_rng(20260709)
+    n = 64
+    img = np.zeros((n, n), dtype=np.float64)
+    img[:, n // 2:] = 1.0                       # vertical step edge
+    img[14:26, 14:26] = 0.5                     # square -> corners, so `m` is non-trivial
+    yy, xx = np.mgrid[0:n, 0:n]
+    img[np.abs(yy - xx) < 2] = 0.75             # diagonal -> an off-axis orientation
+    img += 0.02 * rng.standard_normal((n, n))   # noise floor -> exercises the T path
+    return img
+
+
+def _edge_at(theta_deg: float, n: int = 128) -> np.ndarray:
+    yy, xx = np.mgrid[0:n, 0:n]
+    c = (n - 1) / 2
+    t = np.deg2rad(theta_deg)
+    return ((xx - c) * np.sin(t) - (yy - c) * np.cos(t) > 0).astype(np.float64)
+
+
+def _median_angle_deg(angles_rad: np.ndarray, mask: np.ndarray) -> float:
+    """Circular median on a 180-degree period, so wrap-around cannot skew it."""
+    v = np.rad2deg(angles_rad[mask]) % 180.0
+    best, spread = np.nan, np.inf
+    for shift in range(0, 180, 3):
+        r = (v + shift) % 180.0
+        if r.std() < spread:
+            spread, best = r.std(), (np.median(r) - shift) % 180.0
+    return float(best)
+
+
+class TestPhaseCong3Characterization:
+    """A numeric oracle for `_phasecong3`. Before this existed, there was none.
+
+    A mutation audit against the whole 585-test suite found that **five of seven**
+    single-line mutations to this function survived, including one that moves `pc_sum` by
+    `0.81` (most of its range) and one that shifts `M` by `0.025`. Nothing in the repository
+    could see them: `test_phase_congruency.py` asserted properties (ranges, shapes,
+    monotonicity), never values. The bit-identity check that protected the kernels refactor
+    was run by hand and never committed.
+
+    This is a **characterization** fixture, not a golden one. It pins what this code does
+    today so a refactor cannot change it silently. It does *not* claim agreement with
+    Kovesi -- `phasecong3` has no reference fixture, and drift `M13` records where our
+    `orientation` deliberately departs from his Julia. Regenerate only with a conscious
+    decision, and say why in the drift register.
+
+    `n_orient=5` is included because it is **odd**: the oriented bank at odd `n_orient` is
+    not the even one permuted, and `TuneSpec(4, 8)` admits it.
+    """
+
+    # Mechanism, not taste: a 64x64 FFT round-trip accumulates O(N log N) ~ 2.5e4 roundings
+    # at ~1.1e-16 each, so ~1e-12 relative. 1e-9 leaves three orders of margin for a
+    # different BLAS or FFT backend, and is still eight orders tighter than the smallest
+    # surviving mutant (`pc3_covxy_2_over_n`, which moves `M` by 2.5e-02).
+    RTOL = 1e-9
+    ATOL = 1e-12
+
+    @pytest.mark.parametrize("n_orient", [6, 5])
+    @pytest.mark.parametrize("field", ["M", "m", "orientation", "feature_type", "pc_sum"])
+    def test_output_matches_the_characterization_fixture(self, n_orient, field):
+        golden = np.load(_CHARACTERIZATION, allow_pickle=False)
+        result = FocusEdgePhase(n_orient=n_orient)._phasecong3(_characterization_scene())
+        np.testing.assert_allclose(
+                getattr(result, field), golden[f"o{n_orient}_{field}"],
+                rtol=self.RTOL, atol=self.ATOL,
+        )
+
+    @pytest.mark.parametrize("n_orient", [6, 5])
+    def test_threshold_matches_the_characterization_fixture(self, n_orient):
+        golden = np.load(_CHARACTERIZATION, allow_pickle=False)
+        result = FocusEdgePhase(n_orient=n_orient)._phasecong3(_characterization_scene())
+        assert result.T == pytest.approx(float(golden[f"o{n_orient}_T"]), rel=self.RTOL)
+
+
+class TestOrientationConvention:
+    """Drift `M13`. `0` is a vertical edge, `pi/2` horizontal, positive anticlockwise.
+
+    Kovesi's Julia `phasecong3` reports `pi/2 - phi`, contradicting its own docstring and
+    his `phasecongmono` in the same package. Verified by running it: a vertical edge reads
+    `-86.35` degrees from `phasecong3` and `-0.03` from `phasecongmono`. His MATLAB
+    `phasecong3` satisfies "0 = vertical" but reports `-phi`, violating "anticlockwise".
+
+    We reflect the reported angle. `orientation` is a pure output, so `M`, `m`, `pc_sum` and
+    `feature_type` are bit-identical to the unreflected code.
+    """
+
+    def test_a_vertical_edge_reads_zero_and_a_horizontal_edge_reads_ninety(self):
+        vertical = np.zeros((96, 96))
+        vertical[:, 48:] = 1.0
+        horizontal = np.zeros((96, 96))
+        horizontal[48:, :] = 1.0
+
+        rv = FocusEdgePhase(n_orient=8)._phasecong3(vertical)
+        rh = FocusEdgePhase(n_orient=8)._phasecong3(horizontal)
+
+        ov = _median_angle_deg(rv.orientation, rv.pc_sum > 0.4 * rv.pc_sum.max())
+        oh = _median_angle_deg(rh.orientation, rh.pc_sum > 0.4 * rh.pc_sum.max())
+
+        assert ov == pytest.approx(0.0, abs=1.0), f"vertical edge read {ov} deg, expected 0"
+        assert oh == pytest.approx(90.0, abs=1.0), f"horizontal edge read {oh} deg, expected 90"
+
+    def test_it_agrees_with_the_monogenic_operator_across_angles(self):
+        """Both report `phi`. Before the M13 reflection they disagreed by 35.89 deg mean.
+
+        The residual is this operator's angular quantisation over `n_orient=8` filters; the
+        monogenic estimator is continuous. Tolerance from that mechanism: half the angular
+        spacing is 11.25 deg, and the observed mean is 1.64 -- so 5 deg is loose enough to
+        survive a backend change and tight enough that the 35.89 deg pre-fix state fails.
+        """
+        errors = []
+        for theta in range(0, 180, 30):
+            img = _edge_at(theta)
+            r3 = FocusEdgePhase(n_orient=8)._phasecong3(img)
+            o3 = _median_angle_deg(r3.orientation, r3.pc_sum > 0.4 * r3.pc_sum.max())
+
+            rm = monogenic_phase_congruency(img)
+            om = _median_angle_deg(rm.orientation, rm.pc > 0.4 * rm.pc.max())
+
+            errors.append(min(abs(o3 - om), 180.0 - abs(o3 - om)))
+
+        assert np.mean(errors) < 5.0, f"mean disagreement {np.mean(errors):.2f} deg"
+
+    def test_the_range_is_the_half_open_half_plane(self):
+        r = FocusEdgePhase()._phasecong3(_edge_at(37))
+        assert r.orientation.min() > -np.pi / 2 - 1e-9
+        assert r.orientation.max() <= np.pi / 2 + 1e-9
 
 
 class TestSigmaOnfOneIsRejectedAtApplyTime:
