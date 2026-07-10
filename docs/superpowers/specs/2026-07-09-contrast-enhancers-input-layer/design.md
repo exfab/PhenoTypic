@@ -20,10 +20,34 @@
 `adjust_gamma`, `adjust_log`, and `adjust_sigmoid` are **pointwise** intensity
 curves. Applying such a curve to a 3-channel RGB image and *then* projecting to a
 1-channel detection matrix is **not** the same as projecting first and applying the
-curve to the result — precisely because the curve is non-linear and projection is
-(for most detect modes) linear. Gamma-correcting the red channel before taking
-`MinRGB` gives a different, and often better, colony/background separation than
-gamma-correcting `MinRGB` itself.
+curve to the result — whenever the projection **mixes** channels. Gamma-correcting
+the three channels before converting to `LabA` gives a different, and often better,
+colony/background separation than gamma-correcting `LabA` itself.
+
+> **CORRECTION (measured during execution).** An earlier draft of this section used
+> `MinRGB` as the motivating example. That is **mathematically wrong**, and the code
+> now proves it: `input_layer="rgb"` and `input_layer="detect_mat"` are **bit-identical**
+> under `MinRGB` (`max|Δ| = 0.000000`).
+>
+> A monotonically **increasing** pointwise curve `f` commutes with any per-pixel
+> *selection*: `min(f(r), f(g), f(b)) = f(min(r, g, b))`. So `input_layer` is a no-op for
+> the selection modes — `red`, `green`, `blue` (channel pick), `MinRGB` (per-pixel min),
+> and `HsvV` (per-pixel max).
+>
+> It is meaningful only for **mixing** modes, which form a genuine combination of all
+> three channels: `gray` (luma), `LabL`/`LabA`/`LabB`, `HsvS`, `InvS`. Measured on the
+> synth plate with `gamma=2.5`: `LabA` → `0.3395`, `HsvS` → `0.1198`, `gray` → `0.0004`
+> (small because that plate is nearly achromatic; the divergence is data-dependent).
+>
+> Sharper still: commutation depends on the monotonic **direction**, not merely on
+> monotonicity. `inv=True` makes the curve *decreasing*, so it anti-commutes —
+> `min(f(r), f(g), f(b)) = f(max(r, g, b))` — and `input_layer` becomes meaningful even
+> under a selection mode. Pinned by
+> `test_contrast_sigmoid_inv_breaks_selection_mode_commutation`.
+>
+> Both facts are pinned by `tests/unit/enhance/test_contrast_ops.py`
+> (`SELECTION_MODES` vs `MIXING_MODE`), and documented in each op's `input_layer`
+> `Args:` entry. The feature is real, but its benefit is confined to mixing modes.
 
 Today every `ImageEnhancer` reads `detect_mat` and only `detect_mat`. This spec adds
 an opt-in second input domain — the pristine `rgb` layer — while leaving the output

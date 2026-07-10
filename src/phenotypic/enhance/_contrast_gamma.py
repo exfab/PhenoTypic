@@ -70,13 +70,18 @@ class ContrastGamma(InputLayerMixin, NormalizedOutputMixin, ContrastAdjustment):
         >>> float(enhanced.detect_mat[:].max()) <= 1.0
         True
 
-        Apply the curve in colour space before deriving the detection matrix:
+        Apply the curve in colour space before deriving the detection matrix.
+        Use a channel-*mixing* ``detect_mode`` such as ``'LabA'`` — under a
+        selection mode (``'MinRGB'``, ``'red'``, ...) the curve commutes with the
+        projection and ``input_layer='rgb'`` changes nothing:
 
+        >>> import numpy as np
         >>> plate = load_synth_yeast_plate()
-        >>> plate.set_detect_mode('MinRGB')
-        >>> enhanced = ContrastGamma(gamma=2.0, input_layer='rgb').apply(plate)
-        >>> enhanced.detect_mat[:].ndim
-        2
+        >>> plate.set_detect_mode('LabA')
+        >>> via_rgb = ContrastGamma(gamma=2.0, input_layer='rgb').apply(plate)
+        >>> via_dm = ContrastGamma(gamma=2.0, input_layer='detect_mat').apply(plate)
+        >>> bool(np.abs(via_rgb.detect_mat[:] - via_dm.detect_mat[:]).max() > 1e-3)
+        True
     """
 
     gamma: Annotated[float, TuneSpec(0.1, 5.0, log=True)] = 1.0
