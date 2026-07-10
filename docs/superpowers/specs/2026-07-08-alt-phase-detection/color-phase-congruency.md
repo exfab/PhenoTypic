@@ -88,7 +88,7 @@ An L2 numerator over an L1 denominator is **wrong**, and badly so. For a perfect
 |---|---|---|---|---|
 | one only | 1.0000 | **1.0000** | 1.0000 | 1.0000 |
 | all three, equally | 0.5774 | **0.0000** | 1.0000 | 1.0000 |
-| `(0.804, 0.013, 0.183)` | 0.8247 | **0.0983** | 1.0000 | 1.0000 |
+| `(0.804, 0.013, 0.183)` | 0.8247 | **0.0982** | 1.0000 | 1.0000 |
 
 A coherent edge in *all three channels* is annihilated **exactly**; a **single-channel** response
 passes at full strength. That inverts §7.2's CA acceptance criterion: under chromatic aberration the
@@ -100,8 +100,21 @@ to attack.
 > `0.1425`, which **no single `deviation_gain` produces** — row 2 would need `1.0373`, row 3 would
 > need `1.4265`. At the shipped `1.5`, `max(1 − 1.5·acos(0.5774), 0)` clamps to zero. The `ratio`
 > column was always right; only the `response` column drifted. The conclusion is unchanged and
-> strengthened. Re-derived on demand by
-> `logic_validation_scripts/2026-07-09-focus-edge-color-phase/fusion_algebra.py`, checks 01 and 02.
+> strengthened.
+>
+> **And the first correction was itself wrong**, in the third row. It printed `0.0983`, obtained by
+> feeding the *displayed, four-decimal* ratio `0.8247` back through the formula. The exact ratio is
+> `0.824665992993527` and the exact response is `0.0982226557669601`. Since
+> `d(response)/d(ratio) = deviation_gain/√(1 − ratio²) = 2.6520` here, and `0.8247` is already
+> rounded by `3.4e-05`, the round-trip shifts the response by `9.0e-05` — enough to change the fourth
+> decimal. **A four-decimal intermediate cannot determine a four-decimal result.** Caught within
+> minutes by `fusion_algebra.py`, which is why it exists. Only the third row moves; rows 1 and 2 are
+> exact (`1.0` and, by clamping, `0.0`).
+>
+> Re-derived on demand by
+> `logic_validation_scripts/2026-07-09-focus-edge-color-phase/fusion_algebra.py`, checks 01 and 02,
+> whose expected values are literals at full `float64` precision with a `1e-12` tolerance — tight
+> enough that reintroducing `0.0983` reddens it (verified).
 
 ### 3.2 Why `joint` is the default
 
@@ -271,11 +284,16 @@ is doing the most work.
   therefore walk the whole `__cause__` chain.
 - Everything else is ordinary pydantic bounds. `ε = 1e-4`, inherited from the monogenic port.
 
-The `acos` in every fusion mode is safe without a clamp firing: `E_total ≤ A_total` holds for both
-`joint` (`Σwᵢ‖vᵢ‖ ≤ Σwᵢ A_Σ,ᵢ` by the triangle inequality per channel) and `coherent`
-(`‖Σwᵢvᵢ‖ ≤ Σwᵢ‖vᵢ‖`). Measured maxima of `E_total/(A_total + ε)` over 200 000 random draws:
-`0.996436` and `0.970076`. So `n_clamped == 0` is an assertable invariant, as it is for
-`FocusEdgeMonogenicPhase` (drift `M1`). `fusion_algebra.py` check 03.
+The `acos` in every fusion mode is safe without a clamp firing. **The bound is analytic**, not
+empirical: `E_joint = Σᵢwᵢ‖vᵢ‖ ≤ Σᵢwᵢ A_Σ,ᵢ` because `‖Σₛvᵢₛ‖ ≤ Σₛ‖vᵢₛ‖` in each channel, and
+`E_coherent = ‖Σᵢwᵢvᵢ‖ ≤ Σᵢwᵢ‖vᵢ‖ = E_joint`. So `n_clamped == 0` is an assertable invariant, as it
+is for `FocusEdgeMonogenicPhase` (drift `M1`).
+
+`fusion_algebra.py` check 03 confirms it over 200 000 random draws and reports how close the sampled
+maximum of `E_total/(A_total + ε)` gets: `0.996808` (joint) and `0.966120` (coherent) **at seed
+`20260709`**. Those two figures are *sampled*, so cite them with the seed or not at all — an earlier
+revision of this paragraph quoted `0.996436`/`0.970076` from a different, uncommitted seed, which no
+reader could have reproduced.
 
 ---
 

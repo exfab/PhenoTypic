@@ -51,8 +51,22 @@ implicitly include this section.
 - Worktree rules: never `cd` to the original repo root; **never** use bare `git stash` /
   `git stash pop` (the stash stack is shared across worktrees).
 - **Reviewer memory ceiling** (an earlier reviewer OOM-killed the machine): no numpy array above
-  `5e6` elements, no meshgrid above `2000 × 2000`, total live memory under 500 MB. Wrap scratch runs
-  in `ulimit -v 4000000`.
+  `5e6` elements, no meshgrid above `2000 × 2000`, total live memory under 500 MB.
+
+  > **`ulimit -v 4000000` does not work on this machine, and never did.** Measured on
+  > `Darwin 25.5.0`: `ulimit -v` and `ulimit -d` both fail with
+  > `setrlimit: invalid argument`, print to stderr, and **do not abort the command chain** — so
+  > `ulimit -v 4000000 && python foo.py` runs `foo.py` with no limit whatsoever. Python's
+  > `resource.setrlimit(RLIMIT_AS, …)` fails too (`ValueError: current limit exceeds maximum
+  > limit`), even though `getrlimit` reports `INF/INF`. macOS does not enforce an address-space
+  > rlimit. Every brief on this branch that said "wrap scratch runs in `ulimit -v 4000000`" was
+  > mandating a **no-op that looks like a guard** — including the one added *because* a reviewer
+  > OOM-killed the machine.
+  >
+  > The ceiling is therefore a **discipline, enforced in the script and at review**, not by the
+  > shell: assert `arr.size <= 5_000_000` before allocating, never build a meshgrid above
+  > `2000 × 2000`, and bound every scratch run with `timeout`. On Linux, `ulimit -v 4000000` does
+  > work and remains worth using.
 
 ### Constants that must not drift
 
@@ -75,7 +89,7 @@ otherwise build against them.
 **1. §3.1's `response` column is wrong.** The `ratio` column is exact — `1.0000 / 0.5774 / 0.8247`
 reproduce to four digits. The `response` column does not, at any single `deviation_gain`: row 2
 would need `dg = 1.0373`, row 3 would need `dg = 1.4265`, and the shipped `dg = 1.5` gives
-`0.0000` and `0.0983`. The argument survives and gets **stronger**: at the shipped gain, an
+`0.0000` and `0.0982`. The argument survives and gets **stronger**: at the shipped gain, an
 L2-numerator-over-L1-denominator annihilates a coherent three-channel edge *exactly*, not to
 `0.0091`.
 
@@ -83,7 +97,13 @@ L2-numerator-over-L1-denominator annihilates a coherent three-channel edge *exac
 |---|---|---|---|---|
 | one only | 1.0000 | **1.0000** | 1.0000 | 1.0000 |
 | all three, equally | 0.5774 | **0.0000** | 1.0000 | 1.0000 |
-| `(0.804, 0.013, 0.183)` | 0.8247 | **0.0983** | 1.0000 | 1.0000 |
+| `(0.804, 0.013, 0.183)` | 0.8247 | **0.0982** | 1.0000 | 1.0000 |
+
+> An earlier revision of this very plan printed `0.0983` in that last cell, from round-tripping the
+> displayed four-decimal ratio. Exact: `ratio = 0.824665992993527`,
+> `response = 0.0982226557669601`. `d(response)/d(ratio) = 2.6520`, and `0.8247` is rounded by
+> `3.4e-05`, so the round-trip shifts the fourth decimal. Caught by `fusion_algebra.py` on its first
+> run. **Publish the full-precision literal, or publish only the digits the mechanism supports.**
 
 **2. §4.2's "invariant up to `O(ε/A_total)` — ~1%" is false at the shipped `ε`.** The `ε` that
 breaks 1-homogeneity is **not** the one in `E_total + ε`. It is the one in `A_max + ε`, which sits
@@ -101,10 +121,12 @@ So §7's test 4 (*"weight-vector scale invariance to `rtol=2e-2`"*) is, as writt
 vacuous depending on whether it masks low-response pixels. Task 6 restates it over a masked pixel
 set with a tolerance derived from `ε/(c·A_total)` and the sigmoid's local Lipschitz constant.
 
-**3. `E_total/(A_total + ε) ≤ 1` holds for both `joint` and `coherent`** — max `0.996436` and
-`0.970076` over 200 000 random draws (3 channels, 2–6 scales, weights in `[0, 8]`). So the `acos` is
-safe and `n_clamped == 0` is assertable, exactly as it is for `FocusEdgeMonogenicPhase`. This was
-never stated; it is now a test.
+**3. `E_total/(A_total + ε) ≤ 1` holds for both `joint` and `coherent`,** analytically:
+`‖Σₛvᵢₛ‖ ≤ Σₛ‖vᵢₛ‖` per channel gives `E_joint ≤ A_total`, and `‖Σᵢwᵢvᵢ‖ ≤ Σᵢwᵢ‖vᵢ‖` gives
+`E_coherent ≤ E_joint`. So the `acos` is safe and `n_clamped == 0` is assertable, exactly as for
+`FocusEdgeMonogenicPhase`. Never previously stated; now a test. `fusion_algebra.py` confirms it over
+200 000 draws, with sampled maxima `0.996808` and `0.966120` **at seed `20260709`** — sampled
+figures, so they travel with their seed or not at all.
 
 **4. §3 and §4.2 contradict each other on HSV channel order.** §3 says `w = (1, chroma_weight_1,
 chroma_weight_2)` *"in `color_space` channel order"*. The `hsv` accessor's native order is
@@ -755,8 +777,9 @@ class TestZeroChromaReducesToTheMonogenicPort:
 class TestTheAcosArgumentNeverLeavesTheUnitInterval:
     """E_total <= A_total for joint and coherent, so `n_clamped` must be 0.
 
-    Verified independently over 200_000 random draws by `fusion_algebra.py`:
-    max E/(A+eps) is 0.996436 (joint) and 0.970076 (coherent).
+    Analytic, not empirical: ||sum_s v_is|| <= sum_s ||v_is|| per channel gives
+    E_joint <= A_total, and ||sum_i w_i v_i|| <= sum_i w_i ||v_i|| gives
+    E_coherent <= E_joint. `fusion_algebra.py` check 03 confirms it over 200_000 draws.
     """
 
     @pytest.mark.parametrize("fusion", ["joint", "coherent", "l2"])
@@ -1070,23 +1093,34 @@ def _response(ratio: float, dg: float = DEVIATION_GAIN) -> float:
 
 
 def check_01_l2_over_l1_annihilates_a_coherent_edge() -> None:
-    """§3.1. An L2 numerator over an L1 denominator inverts the CA acceptance criterion."""
+    """§3.1. An L2 numerator over an L1 denominator inverts the CA acceptance criterion.
+
+    Expected responses are FULL-PRECISION literals at 1e-12, not the four decimals the
+    spec table prints. d(response)/d(ratio) = dg/sqrt(1 - ratio**2) = 2.6520 at row 3,
+    and the printed ratio 0.8247 is itself rounded by 3.4e-05, so round-tripping it
+    through the formula yields 0.0983 where the true value is 0.0982. That is how a
+    wrong number entered this spec. A 4-dp intermediate cannot determine a 4-dp result.
+    """
     rows = [
-        ("one only", np.ones(3), np.array([1.0, 0.0, 0.0]), 1.0000, 1.0000),
-        ("all three", np.ones(3), np.ones(3), 0.5774, 0.0000),
-        ("real prior", np.array([0.804, 0.013, 0.183]), np.ones(3), 0.8247, 0.0983),
+        # label,      weights,                        firing,               ratio, response
+        ("one only",  np.ones(3), np.array([1.0, 0.0, 0.0]), 1.0, 1.0),
+        ("all three", np.ones(3), np.ones(3), 0.5773502691896258, 0.0),
+        ("real prior", np.array([0.804, 0.013, 0.183]), np.ones(3),
+         0.824665992993527, 0.0982226557669601),
     ]
     ok = True
     for label, w, fires, want_ratio, want_resp in rows:
         e = a = fires
         ratio = float(np.sqrt(np.sum((w * e) ** 2)) / np.sum(w * a))
         resp = _response(ratio)
-        ok &= abs(ratio - want_ratio) < 5e-5 and abs(resp - want_resp) < 5e-5
-        print(f"      {label:12s} ratio={ratio:.4f} response={resp:.4f}")
+        ok &= abs(ratio - want_ratio) < 1e-12 and abs(resp - want_resp) < 1e-12
+        print(f"      {label:12s} ratio={ratio:.6f} response={resp:.6f}")
         # The L1/L1 form must pass every row at full strength.
         ok &= abs(_response(float(np.sum(w * e) / np.sum(w * a))) - 1.0) < 1e-12
+    # The load-bearing claim: the annihilation is EXACT, not merely small.
+    ok &= _response(float(np.sqrt(3.0)) / 3.0) == 0.0
     check("01 l2-over-l1 annihilates a coherent edge", ok,
-          "single-channel 1.0000, three-channel 0.0000 at deviation_gain=1.5")
+          "single-channel 1.000000, three-channel exactly 0.0 at deviation_gain=1.5")
 
 
 def check_02_no_single_deviation_gain_reproduces_the_old_table() -> None:
@@ -1158,20 +1192,32 @@ if __name__ == "__main__":
 
 ```bash
 cd docs/superpowers/logic_validation_scripts/2026-07-09-focus-edge-color-phase
-ulimit -v 4000000 && uv run --no-project --with numpy python fusion_algebra.py
+# `ulimit -v` is a no-op on Darwin (see Global Constraints). `timeout` is the real bound.
+timeout 900 uv run --no-project --with numpy python fusion_algebra.py; echo "exit=$?"
 ```
 Expected: `4/4 checks passed.`, exit `0`.
 
-- [ ] **Step 3: Prove it can fail**
+- [ ] **Step 3: Prove it can fail — twice**
 
-Change `DEVIATION_GAIN` to `1.0369`. Expected: `check_01` **FAILS** (the three-channel response
-becomes `0.0094`, not `0.0000`), exit `1`. Revert.
+```bash
+# (a) the physics: at dg=1.0369 the three-channel response is 0.0094, not exactly 0.
+sed -i '' 's/^DEVIATION_GAIN = 1.5$/DEVIATION_GAIN = 1.0369/' fusion_algebra.py
+uv run --no-project --with numpy python fusion_algebra.py; echo "exit=$?"   # -> check_01 FAIL, exit 1
+
+# (b) the rounding trap: reintroduce the wrong literal the tolerance exists to catch.
+sed -i '' 's/0.824665992993527, 0.0982226557669601/0.8247, 0.0983/' fusion_algebra.py
+uv run --no-project --with numpy python fusion_algebra.py; echo "exit=$?"   # -> check_01 FAIL, exit 1
+```
+Revert both. Both are verified to redden it.
 
 - [ ] **Step 4: Prove it never imports `phenotypic`**
 
 ```bash
-grep -c 'phenotypic' fusion_algebra.py   # -> 0
+grep -Ec '^[[:space:]]*(import|from)[[:space:]]+phenotypic' fusion_algebra.py   # -> 0
 ```
+
+**Not** `grep -c 'phenotypic'`. The module docstring says *"Never imports `phenotypic`"*, so a bare
+substring grep matches its own disclaimer and can never return `0`. Match an actual import statement.
 
 - [ ] **Step 5: Commit**
 
@@ -1627,8 +1673,8 @@ Print a `4 × 5` table of mean error in pixels, and write it to
 - [ ] **Step 2: Run it**
 
 ```bash
-ulimit -v 4000000
-uv run python docs/superpowers/plans/2026-07-09-focus-edge-color-phase/experiments/chromatic_aberration.py
+# `ulimit -v` is a no-op on Darwin. Bound with `timeout`; keep arrays under 5e6 elements.
+timeout 1800 uv run python docs/superpowers/plans/2026-07-09-focus-edge-color-phase/experiments/chromatic_aberration.py
 ```
 
 - [ ] **Step 3: Read the result against the stated prediction**
@@ -1957,8 +2003,8 @@ sandbox is stdlib + numpy + pytest.
 - [ ] **Step 5: Run all eight gates**
 
 ```bash
-ulimit -v 4000000
-uv run python docs/superpowers/logic_validation_scripts/2026-07-09-focus-edge-monogenic-phase/math_review_corpus.py \
+# `ulimit -v` is a no-op on Darwin. Bound with `timeout`.
+timeout 1800 uv run python docs/superpowers/logic_validation_scripts/2026-07-09-focus-edge-monogenic-phase/math_review_corpus.py \
     refresh --sandbox ~/.claude/refs/phenotypic-alt-phase-detection/math-review --repo .
 uv run python docs/superpowers/logic_validation_scripts/2026-07-09-focus-edge-monogenic-phase/math_review_corpus.py \
     verify  --sandbox ~/.claude/refs/phenotypic-alt-phase-detection/math-review --repo .
@@ -2008,8 +2054,10 @@ that every *"the reference says X"* is checkable at `file:line` · `refimpl/` ·
   obtained, read-only; **never copy its code.** `references.md:709` records that it implements a
   *precursor grayscale* paper, not CMPCM.
 
-**Constraints:** memory ceiling (no array above `5e6` elements, no meshgrid above `2000 × 2000`,
-under 500 MB live, `ulimit -v 4000000`). `papers/` is copyrighted — never commit it.
+**Constraints:** memory ceiling — no array above `5e6` elements, no meshgrid above `2000 × 2000`,
+under 500 MB live. **Do not rely on `ulimit -v`**: it is a silent no-op on macOS and does not abort
+the command chain (Global Constraints). Assert `arr.size <= 5_000_000` before allocating, and bound
+every run with `timeout`. `papers/` is copyrighted — never commit it.
 
 **Charge.** *Faithfulness to validated reference logic beats a convenient shortcut.* Find shortcuts,
 unstated assumptions, silent side-picking where the references disagree, tolerances too loose to
