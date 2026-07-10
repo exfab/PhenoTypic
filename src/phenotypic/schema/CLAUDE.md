@@ -77,7 +77,8 @@ override + class `kind()` > class `kind()`/`tier()`. A primary member with no ti
 
 Example straddler: `class SHAPE(PrimaryMeasure)` overrides `tier()` to return `2`
 (form descriptors default to Descriptive trait); its size-magnitude members carry
-`Entry(..., tier=1)` (e.g. `AREA`, `PERIMETER`, radii, Feret diameters) so they
+`Entry(..., tier=1)` (e.g. `AREA`, `PERIMETER`, boundary distances, radii,
+Feret diameters) so they
 resolve to Direct phenotype while `CIRCULARITY`/`ECCENTRICITY` take the class
 default of 2.
 

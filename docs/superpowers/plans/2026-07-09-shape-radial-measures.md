@@ -348,7 +348,9 @@ In `src/phenotypic/measure/_measure_shape.py`, add this method to `MeasureShape`
         Returns:
             dict[str, float]: Mapping of ``SHAPE`` column header to value.
         """
-        edt = distance_transform_edt(np.pad(obj_mask, 1))[1:-1, 1:-1]
+        # asarray narrows the scipy stub's tuple-or-ndarray return union; with
+        # return_indices=False the call yields an ndarray and copies nothing.
+        edt = np.asarray(distance_transform_edt(np.pad(obj_mask, 1)))[1:-1, 1:-1]
         interior = edt[obj_mask]
         return {
             str(SHAPE.MEAN_RADIUS): float(interior.mean()),
@@ -906,7 +908,9 @@ Add to `MeasureShape`, immediately before `_measure_radial_profile`:
 Replace its body with:
 
 ```python
-        edt = distance_transform_edt(np.pad(obj_mask, 1))[1:-1, 1:-1]
+        # asarray narrows the scipy stub's tuple-or-ndarray return union; with
+        # return_indices=False the call yields an ndarray and copies nothing.
+        edt = np.asarray(distance_transform_edt(np.pad(obj_mask, 1)))[1:-1, 1:-1]
         interior = edt[obj_mask]
         values = {
             str(SHAPE.MEAN_BOUNDARY_DIST): float(interior.mean()),
@@ -1010,12 +1014,22 @@ Feret diameters)
 
 - [ ] **Step 2: Confirm no stale references survive**
 
+Use `git grep`, not `grep -r`. Much of `docs/` is generated, untracked build output
+(`docs/build/`, `docs/source/measurements_ref/`, and the `_static/gui_images/_dataset/`
+sample run) which still carries the old column names and is regenerated on the next build.
+Only tracked files matter. Also anchor on the old *member* names, since the substring
+`MeanRadius` legitimately appears inside the new `RobustMeanRadius`.
+
 ```bash
-grep -rn "MeanRadius\|MedianRadius\|MaxRadius\|MEAN_RADIUS\|MEDIAN_RADIUS\|MAX_RADIUS" \
-  --include="*.py" --include="*.md" --include="*.rst" src/ tests/ docs/source/
+git grep -n "MEAN_RADIUS\|MEDIAN_RADIUS\|MAX_RADIUS" -- src tests docs/source
+git grep -n "Shape_MeanRadius\|Shape_MedianRadius\|Shape_MaxRadius" -- src tests docs/source
 ```
 
-Expected output: only `src/phenotypic/schema/_radial_expansion.py` (a different enum, `RADIAL_EXPANSION`, whose `MEAN_RADIUS` / `MEDIAN_RADIUS` refer to branch path lengths and are not affected) and `tests/unit/analysis/test_edge_correction.py` (a fabricated column name in a synthetic DataFrame). No hits under `src/phenotypic/measure/` or `src/phenotypic/schema/_shape.py`.
+Expected from the first: only `src/phenotypic/schema/_radial_expansion.py` (a different
+enum, `RADIAL_EXPANSION`, whose `MEAN_RADIUS` / `MEDIAN_RADIUS` refer to branch path
+lengths and are not affected). Expected from the second: only
+`tests/unit/measure/test_measure_shape.py`, in the guard test that asserts those columns
+are *absent*. No hits under `src/phenotypic/measure/` or `src/phenotypic/schema/_shape.py`.
 
 - [ ] **Step 3: Run the affected test suites**
 
@@ -1050,6 +1064,119 @@ git commit -m "docs(schema): note boundary-distance members in the straddler exa
 ```
 
 ---
+
+---
+
+### Task 6: Recapture the `measure.MeasureShape` migration golden
+
+Added during execution. The Task-3 Seam gate found `tests/migration/_goldens/measure.MeasureShape.parquet`
+(552x18) carries `Shape_MedianRadius` / `Shape_MeanRadius` / `Shape_MaxRadius` and
+`ConvexArea` / `Solidity` values computed with the perimeter bug. `tests/migration/test_equivalence.py`
+compares via `assert_frame_equal(check_dtype=True)`, so it will fail once it runs.
+
+It does **not** run on macOS: `_GOLDEN_PLATFORM = "linux"` (`test_equivalence.py:78`) and
+`test_operation_matches_golden` calls `pytest.skip()` before any comparison when
+`sys.platform != "linux"`. The stale golden is therefore invisible locally and fails only
+on Linux CI.
+
+**Do NOT run `scripts/capture_migration_goldens.py`.** It takes no arguments, recaptures
+the frozen inputs, and rewrites **all 142** scenario goldens. Its own docstring says it
+"must be run before any operation class is migrated" — it is a one-shot bootstrap, not a
+refresh tool. Running it here would replace 141 unrelated Linux-captured goldens with
+macOS floats against a `_FLOAT_RTOL = 1e-6` comparison.
+
+**Files:**
+- Modify: `tests/migration/_goldens/measure.MeasureShape.parquet` (binary, regenerated)
+
+- [ ] **Step 1: Confirm the golden is stale and the suite skips locally**
+
+```bash
+uv run pytest tests/migration -k "MeasureShape" -q
+```
+
+Expected: `1 skipped` (platform gate), NOT a pass. Then:
+
+```bash
+uv run python -c "
+import pandas as pd
+df = pd.read_parquet('tests/migration/_goldens/measure.MeasureShape.parquet')
+print(sorted(c for c in df.columns if 'Radius' in c))
+"
+```
+
+Expected: `['Shape_MaxRadius', 'Shape_MeanRadius', 'Shape_MedianRadius']`.
+
+- [ ] **Step 2: Recapture that one scenario only**
+
+```bash
+uv run python -c "
+import sys; sys.path.insert(0, '.')
+from tests.migration._scenarios import build_scenarios
+from tests.migration._runner import run_scenario, golden_path
+
+target = next(s for s in build_scenarios() if s.scenario_id == 'measure.MeasureShape')
+result = run_scenario(target)
+result.save(golden_path(target))
+print('rewrote', golden_path(target))
+"
+```
+
+- [ ] **Step 3: Verify the new golden's schema**
+
+```bash
+uv run python -c "
+import pandas as pd
+df = pd.read_parquet('tests/migration/_goldens/measure.MeasureShape.parquet')
+cols = list(df.columns)
+assert 'Shape_MeanRadius' not in cols and 'Shape_MaxRadius' not in cols
+for c in ('Shape_MeanBoundaryDist','Shape_MedianBoundaryDist','Shape_InscribedRadius',
+          'Shape_RobustMeanRadius','Shape_ReachRadius'):
+    assert c in cols, c
+assert (df['Shape_Solidity'] <= 1.0).all()
+print('rows', len(df), 'cols', len(cols), 'OK')
+"
+```
+
+Expected: `rows 552 cols 20 OK`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add tests/migration/_goldens/measure.MeasureShape.parquet
+git commit -m "test(migration): recapture the MeasureShape golden
+
+The golden held Shape_{Mean,Median}Radius/Shape_MaxRadius and ConvexArea/
+Solidity values from before the hull-perimeter and per-object-EDT fixes.
+Recaptured for measure.MeasureShape only; the capture script rewrites all
+142 goldens and must not be run here."
+```
+
+**Known limitation, stated plainly.** This golden is captured on macOS, but the suite only
+compares it on Linux (`_GOLDEN_PLATFORM`). Its float values are therefore unverified on
+the one platform that checks them. If Linux CI reports a mismatch beyond `rtol=1e-6`, the
+golden must be recaptured there. The column *names* and the `Solidity <= 1` invariant are
+platform-independent and are verified above.
+
+---
+
+## Out-of-plan findings from execution
+
+Recorded so the next reader does not rediscover them.
+
+1. **`scripts/capture_migration_goldens.py` is a bootstrap, not a refresh tool.** See Task 6.
+2. **The shipped sample CSVs cannot be regenerated.** `src/phenotypic/data/meas/all_meas.csv`
+   and `area_meas.csv` reference 96 source images across 5 timepoints (dataset `S 30C`) that
+   do not ship with the package (11 image files total, none matching). Their
+   `Shape_MeanRadius` / `Shape_MedianRadius` headers were renamed in place (the values are
+   mean/median EDT, exactly what the new names denote, so no value changed). Their
+   `Shape_ConvexArea` / `Shape_Solidity` values remain wrong and cannot be fixed without the
+   original images — tracked separately.
+3. **`np.asarray` is required around `distance_transform_edt`** before subscripting, or mypy
+   reports a `call-overload` error from the scipy stub's tuple-or-ndarray return union.
+4. **`_measure_shape.py` has 4 pre-existing mypy errors** (`_operate` override, an
+   assignment, a dict `.insert`, a return-value). The "25 errors in 6 files" that mypy
+   prints for this file mostly come from imported modules. Do not use the larger number to
+   justify adding a new one.
 
 ## Self-Review
 
