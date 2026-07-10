@@ -16,6 +16,17 @@ Infers grid structure from binary masks via peak detection. Provides
 Used by detectors/refiners on gridded plate images.
 Location: `mixin/_grid_inference_mixin.py`.
 
+### InputLayerMixin
+Adds an appended `input_layer: InputLayer` field selecting the operation's source
+array. Provides `_read_input_layer(image)` (read-only `detect_mat` view, or a
+read-only float32 `rgb` array normalized to [0, 1]), `_project_to_detect_mat(image,
+arr)` (collapses a 3-D result via the image's own `detect_mode`; 2-D passes through),
+and `_guard_input_range(arr)` (rescales into [0, 1] only when the input strays out,
+raises on NaN/inf, and is skipped entirely when `norm is None`). An operation that
+mixes this in without `NormalizedOutputMixin` has no `norm` field and is guarded as
+if `norm="clip"`. The only layer written is still `detect_mat`.
+Location: `mixin/_input_layer_mixin.py`.
+
 ### LazyWidgetMixin
 Auto-generates Jupyter widgets for parameter tuning from the operation's pydantic `model_fields`.
 Included in all `ImageOperation` subclasses automatically.
@@ -28,6 +39,30 @@ copy with `norm=None` — for inner operations running in non-normalized domains
 inside a Generalized Anscombe Transform region). Operations with no `norm` field are
 returned unchanged. Renamed from `ClipControlMixin` in 0.18.0; the old name is gone.
 Location: `mixin/_norm_control_mixin.py`.
+
+**Fail-open hazard.** Because the check is a duck-type on `.norm`, an operation that
+normalizes its output but never inherits `NormalizedOutputMixin` — so carries no
+`norm` field — is returned **unchanged, with no error**. Its normalization stays
+active inside the GAT region, where the signal is deliberately outside [0, 1]:
+the stabilized values run to ~30, and either policy (`clip` saturating or `rescale`
+remapping) drives the inverse transform to all zeros. Declare the policy through
+`NormalizedOutputMixin`, and list its inert value in `_GAT_DEFER_VALUES`.
+
+### NormalizedOutputMixin
+Supplies the appended `norm: NormOut` field (`"clip"` default / `"rescale"` / `None`)
+and `_apply_norm(arr)`, upholding `detect_mat`'s [0, 1] contract. `"clip"` saturates
+and preserves absolute intensity; `"rescale"` remaps the observed range and therefore
+**divides out any purely multiplicative `gain`**; `None` passes through. A
+`model_validator` rejects the legacy `clip=` key with a 0.18.0 migration message
+rather than pydantic's opaque extra-inputs error.
+Location: `mixin/_normalized_output_mixin.py`.
+
+**Field-append pattern.** Both `NormalizedOutputMixin` and `InputLayerMixin` move
+their field to the end of the subclass's field order in `__pydantic_init_subclass__`,
+so an operation's own parameters keep their natural position in `model_json_schema()`
+and `to_json()`. Each hook calls `super()` before popping, so the mixin **earliest in
+the MRO ends up last**: `class ContrastGamma(InputLayerMixin, NormalizedOutputMixin,
+ContrastAdjustment)` yields `['gamma', 'gain', 'norm', 'input_layer']`.
 
 ---
 
@@ -49,7 +84,7 @@ Location: `mixin/_norm_control_mixin.py`.
 - `typing_.py` — Literal type aliases for closed value sets used at public
   boundaries (`FootprintShape`, `DetectMode`, `ExecutionMode`,
   `ImageTypeName`, `ProcessingStatus`, `RecompileTaskType`,
-  `CheckpointType`, `FailureSource`).
+  `CheckpointType`, `FailureSource`, `NormOut`, `InputLayer`).
 - `funcs_.py` — timing decorators, mask validation.
 - `hdf_.py` — HDF5 storage utilities.
 - `slurm_.py` / `submitit_.py` / `monitor_slurm_jobs.py` — SLURM integration.

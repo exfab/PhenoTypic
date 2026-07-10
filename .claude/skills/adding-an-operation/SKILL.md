@@ -69,7 +69,7 @@ root `CLAUDE.md` (Code Style + Gotchas) and the contributing guide.
 dispatch keys, internal mode flags), a `Literal[...]` `TypeAlias` in
 `phenotypic.sdk_.typing_` is sufficient — no Enum needed. Examples:
 `FootprintShape`, `DetectMode`, `ExecutionMode`, `ImageTypeName`,
-`ProcessingStatus`.
+`ProcessingStatus`, `NormOut`, `InputLayer`.
 
 Pair an Enum with a `Literal` alias **only** when both forms are used at boundary
 code (string-typed external input + enum-typed internal storage). Canonical
@@ -79,6 +79,66 @@ alignment test:
 **Parameterized strings are not enumerations:** keep the template as a private
 `Final[str]` and expose a typed render function whose parameters are the public
 API.
+
+## Output-range guards use `norm`, never `clip: bool`
+
+Any operation that clamps or normalizes its output declares `norm: NormOut`
+(from `phenotypic.sdk_.typing_`) by inheriting `NormalizedOutputMixin`, and
+applies it via `self._apply_norm(arr)`:
+
+- `"clip"` (default) saturates — the identity in-range, so absolute intensity
+  and cross-batch comparability survive.
+- `"rescale"` remaps the full observed range onto [0, 1]. Ordering survives,
+  absolute scale does not: a single specular highlight sets the max.
+- `None` passes through — the escape hatch GAT regions and `CompositeEnhance`
+  depend on, and what `NormControlMixin._disable_normalization` sets.
+
+**`"rescale"` divides out any purely multiplicative `gain`.** `rescale_intensity`
+maps `[k·min, k·max]` onto [0, 1], so a post-curve factor `k` cancels exactly.
+With `norm="rescale"`, `ContrastGamma` and `ContrastLog` give the same output for
+`gain=1` and `gain=3` (max abs difference of order 1e-7, i.e. float32 rounding); the
+knob is a no-op. `ContrastSigmoid` escapes this because its `gain` sits *inside* the
+exponent rather than after the curve. Before adding a multiplicative parameter to
+an operation that can rescale, check the parameter still does something.
+
+A bare `clip: bool` cannot express `"rescale"`, and the attribute name is claimed
+by `NormControlMixin`, which duck-types on it. Removed in 0.18.0 — the mixin's
+`_reject_legacy_clip` validator turns a stale `clip=` key into a migration error
+instead of pydantic's opaque "Extra inputs are not permitted".
+
+Skimage passthrough parameters that merely *sound* like range guards
+(`rescale_sigma`, forwarded to `denoise_wavelet`) are **not** `norm` and stay as
+they are.
+
+Inside a GAT region, declare the inert value in `_GAT_DEFER_VALUES` (a
+`ClassVar[dict[str, Any]]` mapping attribute name to inert value):
+`{"norm": None, "rescale_sigma": False}`. This is not a rounding concern — the
+stabilized signal runs to ~30, so leaving *either* policy active drives the
+inverse transform to all zeros.
+
+## Cross-cutting fields append; they do not frontload
+
+Pydantic collects fields in reverse-MRO order, so a mixin's field lands *before*
+the operation's own parameters — wrong for both `model_json_schema()` and
+`to_json()`. A field-append mixin fixes this in `__pydantic_init_subclass__`:
+
+```python
+@classmethod
+def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+    super().__pydantic_init_subclass__(**kwargs)  # cooperative: BaseOperation's runs
+    fields = cls.__pydantic_fields__
+    if "norm" in fields and list(fields)[-1] != "norm":
+        fields["norm"] = fields.pop("norm")
+        cls.model_rebuild(force=True)
+```
+
+`TuneSpec` metadata survives the forced rebuild. With two such mixins the order is
+deterministic — each hook calls `super()` *before* popping, so the mixin **earliest
+in the MRO ends up last**. `class ContrastGamma(InputLayerMixin,
+NormalizedOutputMixin, ContrastAdjustment)` yields field order
+`['gamma', 'gain', 'norm', 'input_layer']`.
+
+Canonical: `sdk_/mixin/_normalized_output_mixin.py`, `sdk_/mixin/_input_layer_mixin.py`.
 
 ## Tunable numeric fields — the annotation-coverage gate
 
