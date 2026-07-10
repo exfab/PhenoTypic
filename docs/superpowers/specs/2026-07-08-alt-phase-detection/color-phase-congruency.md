@@ -309,24 +309,65 @@ reader could have reproduced.
 3. **The `[0,1]` bound**, all three fusion modes, random non-negative chroma weights. Assert
    `np.isfinite` as well: an all-NaN map passes a naive `0 <= x <= 1` check, because NaN compares
    false to everything (drift `M10`). And `n_clamped == 0` (§6).
-4. **Weight-vector scale invariance, over a masked pixel set, with a derived tolerance.** Compare
-   `out(w)` against `out(c·w)` for `c ∈ {0.01, 100}` on `load_synth_yeast_plate()`, restricted to
-   pixels where `out(w) > 0.05`. The tolerance is **derived, not chosen**: `ε/(c·A_total)` bounds the
-   `E_total + ε` term and `|dW/d(width)| ≤ g/4` bounds the sigmoid term. Assert the measured
-   deviation against that bound, **and** assert the bound is tighter than the `0.05` mask floor on
-   this image — otherwise the test cannot fail. **Unmasked, this comparison moves by up to 779%**
-   (§4.2, drift `C17`). The retracted `rtol=2e-2` was a guess, and a guess loose enough that the
-   anchor did no work.
+4. **Weight-vector scale invariance — on the kernel, not on the operation.** The operation **pins
+   `w₀ = 1.0`**, so a global rescale `w → c·w` cannot be expressed through its fields at all; that
+   is precisely what §4.2's two-degrees-of-freedom argument buys. The invariance is a property of
+   `color_phase_congruency`, where `weights` is a free vector, and is tested there. *An earlier
+   revision of this list instructed the reader to compare `out(w)` against `out(c·w)` on
+   `load_synth_yeast_plate()` through the operation. That is not implementable.*
+
+   Compare over pixels where `pc > 0.05`. Measured at `w = (1, 2, 3)`:
+
+   | mask | `c = 0.01` | `c = 100` |
+   |---|---|---|
+   | none | `1.00` | `22.3` |
+   | `pc > 0.05` | `6.88e-02` | `7.13e-04` |
+   | `pc > 0.2` | `4.16e-02` | `4.25e-04` |
+
+   The retracted `rtol=2e-2` fails at `c = 0.01` **even masked**. Assert the measured bounds, assert
+   the unmasked comparison fails outright (or the mask does no work), and assert the **asymmetry** —
+   shrinking the weights hurts ~100× more than growing them, because `ε/(c·A_max)` grows as `c → 0`.
+   A test that only asserted "both are small" would still pass if `ε` were moved into `E + ε`, which
+   is where drift `C17` records the spec wrongly put it.
 5. `detect_mat` in `[0,1]`; `rgb`/`gray` unmutated; `to_json`/`from_json` round-trip; constructible
-   with no arguments; 90° rotation equivariance at `rtol=1e-8` (the FFT's own reproducibility, not a
-   guess).
+   with no arguments; **90° rotation equivariance to `atol = 3e-3` on a square crop**.
+
+   > It does **not** commute exactly, and the reason is structural rather than round-off. At even
+   > sizes the frequency grid is `arange(-N/2, N/2)/N` — it contains `-N/2` and omits `+N/2`, so it
+   > is not symmetric under a quarter turn, and a rotation maps a sampled frequency onto one that is
+   > not sampled. Measured on a 256×256 crop: `max|Δ| = 1.0e-03` at `k=1`, `1.4e-03` at `k=2`. Use a
+   > **square** crop, or the image shape itself changes and the grids differ for a second reason.
+   > The retracted `rtol=1e-8` ("the FFT's own reproducibility") was a guess, wrong by five orders.
 6. `ValueError` on achromatic input — walking the `__cause__` chain, per §6 — and
    `NotImplementedError` on `lift="conformal"`, at construction.
 7. **The hue-wrap artefact is demonstrated, not asserted.** Build a flat image of constant `S` and
    `V` whose hue ramps smoothly *through* red. There is no edge in it. `color_space="hsv"` must
    respond anyway; `color_space="lab"` must not. Drift `C16`. If this test ever goes green on `hsv`,
    someone has started unwrapping hue and has silently diverged from CMPCM.
-8. Doctests on `load_synth_yeast_plate()`. **They must not assert chroma behaviour** (§4.3).
+
+   > **Exclude a border ring** (24 px on a 128² image). The FFT treats the image as tiled, so
+   > wrap-around at the frame edge dominates `pc.max` and swamps the effect entirely. A first
+   > attempt compared global maxima, measured `hsv/lab = 0.99×`, and would have concluded `C16` was
+   > false. Interior only: the `hsv` seam response is `0.5887` against a background of `0.0051` —
+   > **115.7×** — and peaks exactly at the seam columns. `lab` gives `1.44×`, i.e. nothing. The
+   > `hsv`-to-`lab` seam ratio is `20.6×`.
+   >
+   > Also assert the input really has no luminance edge (`ptp(S) < 0.02`, `ptp(V) < 0.02`), or both
+   > colour spaces would respond and the comparison would prove nothing.
+
+8. **Every field must be shown to reach the kernel.** A mutation sweep found that hardcoding
+   `n_scale=4` at the fusion call site, dropping `deviation_gain`, swapping the two chroma weights,
+   and un-pinning luminance **all survived** a bit-identity test against a hand-rolled kernel call
+   with every field off its default — because whether a call-site desync is *visible* depends on the
+   parameter regime. At `cutoff=0.35, g=14, deviation_gain=1.2` the frequency-spread sigmoid is
+   saturated wherever the phase-deviation term survives, so the fusion's `n_scale` moves `pc` by
+   **exactly `0.0`**.
+
+   Test the forwarding directly, with a spy on the kernel call, asserting the keyword arguments
+   equal the operation's fields. That check is independent of the image and of the parameter regime.
+   Keep the numeric bit-identity test too, but **assert that its configuration is sensitive** to the
+   parameters it claims to pin.
+9. Doctests on `load_synth_yeast_plate()`. **They must not assert chroma behaviour** (§4.3).
 
 ### 7.1 Ranking regression
 
