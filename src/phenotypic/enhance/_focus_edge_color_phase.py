@@ -53,13 +53,18 @@ class FocusEdgeColorPhase(FocusEdge):
     edge the luminance channel would otherwise assert.
 
     Best For:
-        - Pigmented colonies whose rims are stronger in chroma than in lightness
-        - Plates where agar texture produces spurious luminance edges that carry no
-          matching chromatic structure
-        - Any case where :class:`FocusEdgeMonogenicPhase` on luminance alone over-responds
-          to grain
+        - **Filamentous plates.** This is where the measured benefit lives. Under lateral
+          chromatic aberration on ``load_synth_filamentous_plate``, ``fusion="joint"``
+          localizes boundaries to ``1.008`` px against ``FocusEdgeMonogenicPhase``'s
+          ``1.158`` px, and its error is flat in the aberration.
+        - Plates where agar texture produces spurious luminance edges that carry no matching
+          chromatic structure, so an incoherent chroma channel can veto them.
 
     Consider Also:
+        - :class:`FocusEdgeMonogenicPhase` on **round-colony plates**. Measured: on
+          ``load_synth_yeast_plate`` under the same aberration it beats *every* fusion mode
+          (``1.143`` px, against ``joint`` ``1.375``, ``coherent`` ``1.700``, ``l2``
+          ``1.776``). **On round colonies, colour buys nothing under chromatic aberration.**
         - :class:`FocusEdgeMonogenicPhase` when the plate is near-achromatic, which this
           operation rejects outright.
         - :class:`FocusEdgePhase` when you also want corner strength from the moment tensor.
@@ -132,6 +137,19 @@ class FocusEdgeColorPhase(FocusEdge):
         defined on colour, and ``rgb`` is not a supported ``detect_mat`` layer. This is
         legal under ``@validate_operation_integrity``, which forbids *mutating* ``rgb`` and
         ``gray`` and says nothing about reading them.
+
+    Warning:
+        **Colour is not free, and on round colonies it is not even useful.** The
+        chromatic-aberration experiment behind this operation
+        (``docs/superpowers/plans/2026-07-09-focus-edge-color-phase/experiments/``) measured
+        boundary localization under a radial R/B misregistration. On the *filamentous* plate
+        ``fusion="joint"`` wins. On the *yeast* plate, plain
+        :class:`FocusEdgeMonogenicPhase` on luminance beats all three fusion modes at every
+        aberration level. Lateral CA **creates** chromatic edges, and ``joint`` asserts them
+        coherently -- so its detected edge follows the displaced chroma rather than merging
+        it, and its error grows five times faster than luminance-only's. Reach for this
+        operation when the structure you want is filamentous, not merely because the plate
+        is coloured.
 
     Warning:
         ``color_space="hsv"`` band-passes **raw hue across its wrap discontinuity**. Hue is

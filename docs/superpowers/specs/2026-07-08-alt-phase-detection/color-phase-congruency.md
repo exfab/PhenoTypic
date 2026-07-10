@@ -134,9 +134,13 @@ Stated plainly, because the field notebook claims otherwise (`references.md` §3
   the other channels' edges. Real, and useful in the low-SNR regime.
 - A channel's coherent structure enters the **numerator**, so it can **assert** an edge.
 - Joint fusion does **not** suppress chromatic-aberration fringes. Lateral CA is the same edge
-  misregistered across channels, not a single-channel artefact. Coherent summation *merges* the
+  misregistered across channels, not a single-channel artefact. ~~Coherent summation *merges* the
   displaced edges into one response near the amplitude-weighted centroid — useful, but a different
-  mechanism.
+  mechanism.~~ **RETRACTED 2026-07-10, measured (§7.2.2).** It does not merge them; it *follows*
+  them. CA creates chromatic edges, `joint` asserts them coherently, and its detected edge moves with
+  the displaced chroma. On the yeast plate joint's localization error grows at `+0.0942` per unit `δ`
+  against luminance-only's `+0.0177` — **five times faster.** On the filamentous plate it is flat
+  (`−0.0271`). The merging story was never measured.
 - Joint fusion does **not** suppress an isolated single-channel feature over a flat background. If the
   other channels are locally flat, `A_total ≈ A₁` and `out ≈ E₁/A₁`. A colony pigmented in one channel
   only survives.
@@ -392,6 +396,66 @@ and `fusion ∈ {l2, joint, coherent}`.
 **Prediction:** `joint` merges the displaced edges, so its error stays roughly flat in `δ`, while `l2`
 degrades. **If this fails, ship `l2`.** Record the result either way; a null result must not be buried.
 
+### 7.2.1 Result — run 2026-07-10
+
+Full table and method in
+[`plans/2026-07-09-focus-edge-color-phase/experiments/chromatic_aberration_results.md`](../../plans/2026-07-09-focus-edge-color-phase/experiments/chromatic_aberration_results.md).
+
+**Two corrections to §7.2's method, both forced.**
+
+1. **`δ` is the displacement at the image corner**, not at the object. The aberration is radial, so an
+   edge at radius `r` moves by `δ·r/r_max`. Verified on a synthetic annulus.
+2. **The metric had to be band-restricted.** The first version thresholded each response at its Otsu
+   level and averaged the distance-to-truth over the surviving pixels. That measures *detection
+   density*: a response spread uniformly over the filamentous plate scores `26.3` px, and every
+   method scored `21`–`38`. `coherent` "won" at `δ=0` (`7.3`) purely by firing on fewer pixels. The
+   filamentous `objmap` labels only the colony **cores** (median area 482 px, radius ≈ 12 px) while
+   hyphae radiate far beyond, so most of a *correct* response is legitimately far from any labelled
+   boundary. Restricting to a 6 px band around the true boundary and taking the response-weighted
+   mean distance measures where the response concentrates. **Controls:** the G channel is CA's
+   reference and must be flat in `δ` — it is, to `1e-16` — while R and B degrade by construction.
+   The script exits non-zero if either control misbehaves.
+
+**Slopes (error growth per unit `δ`, lower is better):**
+
+| plate | `joint` | `l2` | rule says |
+|---|---|---|---|
+| filamentous | `−0.0271` | `+0.0058` | keep `joint` |
+| yeast | `+0.0942` | `+0.0428` | ship `l2` |
+
+**The prediction failed on the yeast plate and held on the filamentous plate.** But `joint` is better
+localized than `l2` at **every** `δ` on **both** plates (worst case `1.3748` vs `1.7759`). `l2`'s flat
+slope is largely an artifact of its already-poor localization (`1.60`–`1.78`), which leaves little
+room to degrade — the slope test rewards a method for starting badly.
+
+**Decided 2026-07-10 (user): keep `fusion="joint"`, and scope the operation to filamentous plates.**
+A *scoping* decision, not a post-hoc swap of the test statistic: on the plate the operation is for,
+the prediction held on the slope **and** on the absolute error.
+
+### 7.2.2 The null result, recorded rather than buried
+
+At `δ = 3` on the **yeast** plate, plain `FocusEdgeMonogenicPhase` on luminance scores **`1.1433`**
+and beats *every* fusion mode:
+
+| method | filamentous `δ=3` | yeast `δ=3` |
+|---|---|---|
+| `FocusEdgePhase` (baseline) | 1.7223 | 1.7196 |
+| `FocusEdgeMonogenicPhase` (luminance) | 1.1579 | **1.1433** |
+| `FocusEdgeColorPhase` (`l2`) | 1.6251 | 1.7759 |
+| `FocusEdgeColorPhase` (`joint`) | **1.0083** | 1.3748 |
+| `FocusEdgeColorPhase` (`coherent`) | 1.0890 | 1.7003 |
+
+**On round-colony plates, colour buys nothing under chromatic aberration.** This is spec risk #2
+coming true and it must stay visible. The measured benefit of `FocusEdgeColorPhase` is confined to
+the filamentous plate, where `joint` reaches `1.0083` against luminance's `1.1579`.
+
+The mechanism is plain. Lateral CA **creates chromatic edges** — that is what it is. `joint` asserts
+them coherently, so its detected edge follows the displaced chroma; `l2` combines three finished maps
+and its undisturbed luminance term survives the root-sum-of-squares. **§3.3's claim that joint's
+coherent summation "merges the displaced edges into one response near the amplitude-weighted
+centroid" is not what the measurement shows**: on the yeast plate joint's error grows five times
+faster than luminance-only's (`+0.0942` against `+0.0177`). That sentence is retracted below.
+
 ---
 
 ## 8. Acceptance criteria
@@ -401,8 +465,11 @@ degrades. **If this fails, ship `l2`.** Record the result either way; a null res
 2. **§7 test 2** (fusion sanity) passes for `joint` and `coherent`.
 3. The `[0,1]` bound holds for all three fusion modes under random weights, the output is **finite**,
    and `n_clamped == 0`.
-4. **§7.2's** CA experiment has been *run and recorded*, and the shipped `fusion` default matches it.
-   A null result is acceptable and must not be buried.
+4. **§7.2's** CA experiment has been *run and recorded* (§7.2.1), and the shipped `fusion` default
+   matches it. **Done, 2026-07-10.** The slope prediction failed on the yeast plate and held on the
+   filamentous plate; the default stays `joint` and the operation is scoped to filamentous plates
+   (user decision). The null result — luminance-only beats every colour mode on the yeast plate — is
+   recorded in §7.2.2 and in the class docstring, not buried.
 5. `lift="conformal"` raises `NotImplementedError`.
 6. `uv run mypy src/phenotypic` and `uv run ruff check` introduce no new errors.
 7. The operation appears in the GUI builder's enhancer dropdown (the registry walks
