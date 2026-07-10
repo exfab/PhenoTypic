@@ -164,6 +164,14 @@ class MeasureShape(MeasureFeatures):
                 denom / numer if numer != 0 else np.nan
             )
 
+            # ConvexArea and Solidity come from regionprops, which counts the
+            # pixels of the convex image. scipy's ConvexHull is retained only
+            # for the Feret calipers below: in 2D its `.area` is the hull
+            # perimeter and its `.volume` is the hull area, and even `.volume`
+            # undercounts because the hull passes through pixel centres.
+            measurements[str(SHAPE.CONVEX_AREA)][idx] = current_props.area_convex
+            measurements[str(SHAPE.SOLIDITY)][idx] = current_props.solidity
+
             try:
                 with warnings.catch_warnings():
                     warnings.filterwarnings("ignore", message="Qhull")
@@ -171,13 +179,6 @@ class MeasureShape(MeasureFeatures):
 
             except QhullError:
                 convex_hull = None
-
-            measurements[str(SHAPE.CONVEX_AREA)][idx] = (
-                convex_hull.area if convex_hull else np.nan
-            )
-            measurements[str(SHAPE.SOLIDITY)][idx] = (
-                (current_props.area / convex_hull.area) if convex_hull else np.nan
-            )
 
             # Calculate Feret diameters using convex hull vertices if available
             # Feret diameter is the distance between two parallel tangent lines
