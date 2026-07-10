@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
+from pydantic import Field
 from skimage.exposure import adjust_gamma
 
 from ..abc_ import ContrastAdjustment
@@ -42,10 +43,16 @@ class ContrastGamma(InputLayerMixin, NormalizedOutputMixin, ContrastAdjustment):
         gamma: Power-law exponent. Below 1 brightens midtones; above 1 darkens them.
             ``1.0`` is the identity. Typical range: 0.5--2.5. Default: 1.0.
         gain: Constant multiplier applied after the curve. Default: 1.0.
-            Has no effect when ``norm="rescale"``, which divides it back out.
+            Has no effect when ``norm="rescale"`` **on the**
+            ``input_layer="detect_mat"`` **path**: a full-range rescale divides a
+            uniform post-curve factor straight back out. Under
+            ``input_layer="rgb"`` the rescale runs *after* the ``detect_mode``
+            projection, so it only cancels when that projection is homogeneous.
+            A nonlinear mixing mode such as ``"LabA"`` leaves a small residual.
         norm: Output range policy. ``"clip"`` (default) saturates values outside
             [0, 1]; ``"rescale"`` remaps the full observed range onto [0, 1];
-            ``None`` passes values through untouched.
+            ``None`` passes values through untouched **and disables the
+            input-side range guard**, so a signed input reaches skimage and raises.
         input_layer: Source layer. ``"detect_mat"`` (default) applies the curve to
             the 2-D detection matrix. ``"rgb"`` applies it to all three colour
             channels, then collapses the result to 2-D through the image's own
@@ -59,6 +66,13 @@ class ContrastGamma(InputLayerMixin, NormalizedOutputMixin, ContrastAdjustment):
         Image: Input image with ``detect_mat`` gamma-corrected. ``rgb`` and ``gray``
         are unchanged. With ``input_layer="rgb"``, any enhancement a prior operation
         wrote to ``detect_mat`` is discarded, as with :class:`SetDetectMode`.
+
+    Note:
+        When the source layer strays outside [0, 1] -- as after a signed filter such
+        as :class:`FocusEdgeLaplace` -- it is rescaled into [0, 1] *before* the curve
+        is applied (unless ``norm=None``). The curve is therefore applied to a
+        **shifted** signal, so the result depends on the upstream filter's output
+        range, not only on its shape.
 
     Examples:
         Darken the background to sharpen bright yeast colonies:
@@ -84,8 +98,8 @@ class ContrastGamma(InputLayerMixin, NormalizedOutputMixin, ContrastAdjustment):
         True
     """
 
-    gamma: Annotated[float, TuneSpec(0.1, 5.0, log=True)] = 1.0
-    gain: Annotated[float, TuneSpec(0.5, 2.0)] = 1.0
+    gamma: Annotated[float, TuneSpec(0.1, 5.0, log=True)] = Field(1.0, ge=0.0)
+    gain: Annotated[float, TuneSpec(0.5, 2.0)] = Field(1.0, gt=0.0)
 
     def _operate(self, image: Image) -> Image:
         src = self._guard_input_range(self._read_input_layer(image))

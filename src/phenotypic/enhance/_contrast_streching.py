@@ -55,11 +55,20 @@ class ContrastStretching(InputLayerMixin, ContrastAdjustment):
             collapses the result to 2-D through the image's own ``detect_mode``.
 
     Returns:
-        Image: Input image with ``detect_mat`` rescaled to the full dynamic
-        range. ``rgb`` and ``gray`` are unchanged. The output always fills
-        [0, 1] by construction, so no ``norm`` field is offered. With
-        ``input_layer="rgb"``, any enhancement a prior operation wrote to
+        Image: Input image with ``detect_mat`` rescaled. ``rgb`` and ``gray``
+        are unchanged. The output is always *within* [0, 1], so no ``norm``
+        field is offered.
+
+        It only *fills* [0, 1] on the ``input_layer="detect_mat"`` path. Under
+        ``input_layer="rgb"`` each channel is stretched to [0, 1] and the
+        ``detect_mode`` projection then compresses them: e.g. ``'LabA'`` yields
+        roughly ``[0.48, 0.53]``, and ``'MinRGB'`` roughly ``[0.00, 0.96]``.
+
+        With ``input_layer="rgb"``, any enhancement a prior operation wrote to
         ``detect_mat`` is discarded, as with :class:`SetDetectMode`.
+
+    Raises:
+        ValueError: If the source layer contains NaN or infinity.
 
     Examples:
         Stretch the detection matrix across the full dynamic range:
@@ -92,7 +101,13 @@ class ContrastStretching(InputLayerMixin, ContrastAdjustment):
     keep_colors: bool = True
 
     def _operate(self, image: Image) -> Image:
-        src = self._read_input_layer(image)
+        # The guard rejects non-finite input. Without it a single NaN reaches
+        # ``np.percentile`` -> ``rescale_intensity(in_range=(nan, nan))`` and smears
+        # NaN across the entire detect_mat, with only a skimage UserWarning.
+        # For finite input it is behaviour-preserving: percentiles are equivariant
+        # under the guard's affine rescale, so the stretched result is unchanged
+        # to float32 rounding.
+        src = self._guard_input_range(self._read_input_layer(image))
         if src.ndim == 3 and not self.keep_colors:
             adjusted = np.empty_like(src)
             for channel in range(src.shape[2]):

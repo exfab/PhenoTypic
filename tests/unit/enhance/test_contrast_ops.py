@@ -18,10 +18,16 @@ Three families of assertion carry the design:
 
 import numpy as np
 import pytest
+from pydantic import ValidationError
 from skimage.exposure import adjust_gamma
 
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.enhance import ContrastGamma
+from phenotypic.enhance import (
+    ContrastGamma,
+    ContrastLog,
+    ContrastSigmoid,
+    ContrastStretching,
+)
 
 # ``detect_mode``s whose projection is a per-pixel *selection* (an order
 # statistic or a single channel). Any monotonically increasing pointwise curve
@@ -520,3 +526,68 @@ def test_stretching_defaults_unchanged_by_retrofit():
     expected = rescale_intensity(image=src, in_range=(p_lower, p_upper), out_range=(0, 1))
     actual = ContrastStretching().apply(image).detect_mat[:]
     np.testing.assert_allclose(actual, expected, atol=1e-6)
+
+
+# --- Regressions from the cluster G review gate (gate-3) ---------------------------
+
+
+def test_stretching_raises_on_nan_rather_than_smearing_it():
+    """A single NaN reached np.percentile -> rescale_intensity(in_range=(nan, nan))
+    and smeared NaN across the ENTIRE detect_mat, with only a skimage UserWarning.
+
+    ContrastStretching was the one op that never called `_guard_input_range`.
+    """
+    from phenotypic import Image
+
+    image = Image(np.full((32, 32), 0.5, dtype=np.float32))
+    image.detect_mat[0, 0] = np.nan
+    with pytest.raises((ValueError, RuntimeError), match="non-finite"):
+        ContrastStretching().apply(image)
+
+
+def test_stretching_guard_is_behaviour_preserving_for_finite_input():
+    """Percentiles are equivariant under the guard's affine rescale, so adding the
+    guard must not change the result for any finite input -- only reject NaN/inf."""
+    from phenotypic.enhance import FocusEdgeLaplace
+
+    signed = FocusEdgeLaplace(norm=None).apply(load_synth_yeast_plate())
+    assert signed.detect_mat[:].min() < 0
+    out = ContrastStretching().apply(signed).detect_mat[:]
+    assert abs(float(out.min())) < 1e-6 and abs(float(out.max()) - 1.0) < 1e-6
+
+
+@pytest.mark.parametrize(
+    ("cls", "kwargs"),
+    [
+        (ContrastGamma, {"gamma": -0.5}),
+        (ContrastGamma, {"gain": 0.0}),
+        (ContrastGamma, {"gain": -1.0}),
+        (ContrastLog, {"gain": 0.0}),
+        (ContrastLog, {"gain": -1.0}),
+        (ContrastSigmoid, {"cutoff": 5.0}),
+        (ContrastSigmoid, {"cutoff": -3.0}),
+        (ContrastSigmoid, {"gain": 0.0}),
+        (ContrastSigmoid, {"gain": -10.0}),
+    ],
+)
+def test_out_of_domain_parameters_are_rejected(cls, kwargs):
+    """Without Field bounds these were accepted and produced silent garbage:
+    cutoff=5.0 -> uniformly 0.0; cutoff=-3.0 -> uniformly 1.0;
+    ContrastGamma(gain=-1.0, norm=None) -> detect_mat in [-0.95, -0.55],
+    violating the [0, 1] contract the invariant gate enforces.
+    """
+    with pytest.raises(ValidationError):
+        cls(**kwargs)
+
+
+def test_contrast_log_inv_still_commutes_under_selection_modes():
+    """skimage's inverse-log, (2**x - 1)*gain, is still monotonically INCREASING.
+
+    Only ContrastSigmoid's `inv` flips the curve's direction. Pins the distinction
+    against a plausible over-generalization.
+    """
+    image = load_synth_yeast_plate()
+    image.set_detect_mode("MinRGB")
+    via_dm = ContrastLog(inv=True, input_layer="detect_mat").apply(image).detect_mat[:]
+    via_rgb = ContrastLog(inv=True, input_layer="rgb").apply(image).detect_mat[:]
+    np.testing.assert_allclose(via_rgb, via_dm, atol=1e-6)

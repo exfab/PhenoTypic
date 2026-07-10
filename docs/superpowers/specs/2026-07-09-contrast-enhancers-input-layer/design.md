@@ -40,10 +40,17 @@ colony/background separation than gamma-correcting `LabA` itself.
 > (small because that plate is nearly achromatic; the divergence is data-dependent).
 >
 > Sharper still: commutation depends on the monotonic **direction**, not merely on
-> monotonicity. `inv=True` makes the curve *decreasing*, so it anti-commutes —
-> `min(f(r), f(g), f(b)) = f(max(r, g, b))` — and `input_layer` becomes meaningful even
-> under a selection mode. Pinned by
-> `test_contrast_sigmoid_inv_breaks_selection_mode_commutation`.
+> monotonicity. A *decreasing* curve anti-commutes with a selection —
+> `min(f(r), f(g), f(b)) = f(max(r, g, b))` — so `input_layer` becomes meaningful even
+> under a selection mode.
+>
+> **This applies to `ContrastSigmoid(inv=True)` only.** Its `inv` genuinely reflects the
+> sigmoid (measured under `MinRGB`: `0.05634207`). `ContrastLog(inv=True)` is skimage's
+> inverse-*log*, `(2**x − 1)·gain`, which is still monotonically **increasing** and
+> therefore still commutes (measured: `0.00000000`). `ContrastGamma` has no `inv` at all.
+> An earlier draft of this note over-generalized. Pinned from both sides by
+> `test_contrast_sigmoid_inv_breaks_selection_mode_commutation` and
+> `test_contrast_log_inv_still_commutes_under_selection_modes`.
 >
 > Both facts are pinned by `tests/unit/enhance/test_contrast_ops.py`
 > (`SELECTION_MODES` vs `MIXING_MODE`), and documented in each op's `input_layer`
@@ -250,7 +257,7 @@ def _project_to_detect_mat(self, image: Image, arr: np.ndarray) -> np.ndarray:
 `normalize_rgb_bitdepth` returns float64; on a 5000×5000 plate the cast halves a 600 MB
 intermediate to 300 MB — the "be mindful of memory" rule).
 
-An `input_layer="rgb"` read on a grayscale-only image raises `EmptyImageError` from the
+An `input_layer="rgb"` read on a grayscale-only image raises `NoArrayError` from the
 `rgb` accessor. No extra guard is added; the accessor's error is already correct and
 specific.
 

@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
+from pydantic import Field
 from skimage.exposure import adjust_sigmoid
 
 from ..abc_ import ContrastAdjustment
@@ -48,15 +49,29 @@ class ContrastSigmoid(InputLayerMixin, NormalizedOutputMixin, ContrastAdjustment
             Default: ``False``.
         norm: Output range policy. ``"clip"`` (default) saturates values outside
             [0, 1]; ``"rescale"`` remaps the full observed range onto [0, 1];
-            ``None`` passes values through untouched.
+            ``None`` passes values through untouched **and disables the input-side
+            range guard**, so a signed input (e.g. from ``FocusEdgeLaplace(norm=None)``)
+            reaches skimage and raises.
         input_layer: Source layer. ``"detect_mat"`` (default) applies the curve to
             the 2-D detection matrix. ``"rgb"`` applies it to all three colour
             channels, then collapses the result to 2-D through the image's own
             ``detect_mode``. Because the curve is non-linear, the two routes
             generally differ -- except under a ``detect_mode`` that is a per-pixel
             selection (``"red"``/``"green"``/``"blue"``/``"MinRGB"``/``"HsvV"``),
-            which commutes with any monotonically increasing curve and so yields
-            an identical result. Default: ``"detect_mat"``.
+            which commutes with any monotonically *increasing* curve and so yields
+            an identical result.
+
+            ``inv=True`` inverts the sigmoid, making it *decreasing*. A decreasing
+            curve **anti**-commutes with a selection
+            (``min(f(r), f(g), f(b)) == f(max(r, g, b))``), so ``input_layer``
+            becomes meaningful even under those modes. Default: ``"detect_mat"``.
+
+    Note:
+        When the source layer strays outside [0, 1] -- as after a signed filter such
+        as :class:`FocusEdgeLaplace` -- it is rescaled into [0, 1] *before* the
+        curve is applied (unless ``norm=None``). The sigmoid is therefore applied to
+        a **shifted** signal, so the result depends on the upstream filter's output
+        range, not only on its shape.
 
     Returns:
         Image: Input image with ``detect_mat`` sigmoid-corrected. ``rgb`` and
@@ -76,8 +91,8 @@ class ContrastSigmoid(InputLayerMixin, NormalizedOutputMixin, ContrastAdjustment
         True
     """
 
-    cutoff: Annotated[float, TuneSpec(0.0, 1.0)] = 0.5
-    gain: Annotated[float, TuneSpec(1.0, 20.0)] = 10.0
+    cutoff: Annotated[float, TuneSpec(0.0, 1.0)] = Field(0.5, ge=0.0, le=1.0)
+    gain: Annotated[float, TuneSpec(1.0, 20.0)] = Field(10.0, gt=0.0)
     inv: bool = False
 
     def _operate(self, image: Image) -> Image:
