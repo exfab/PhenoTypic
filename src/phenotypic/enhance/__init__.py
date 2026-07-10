@@ -19,6 +19,7 @@ from ._structure_smoothing import StructureSmoothing
 from ._contrast_streching import ContrastStretching
 from ._contrast_gamma import ContrastGamma
 from ._contrast_log import ContrastLog
+from ._contrast_sigmoid import ContrastSigmoid
 from ._focus_edge_frangi import FocusEdgeFrangi
 from ._gaussian_blur import GaussianBlur
 from ._focus_edge_hessian import FocusEdgeHessian
@@ -53,6 +54,7 @@ __all__ = [
     "ContrastStretching",
     "ContrastGamma",
     "ContrastLog",
+    "ContrastSigmoid",
     "FocusEdgeFrangi",
     "GaussianBlur",
     "SubtractGaussian",

@@ -263,3 +263,108 @@ def test_contrast_log_rgb_path_differs_from_detect_mat_path():
     rgb_image.set_detect_mode(MIXING_MODE)
     via_rgb = ContrastLog(input_layer="rgb").apply(rgb_image).detect_mat[:]
     assert np.abs(via_dm - via_rgb).max() > 1e-3
+
+
+# --------------------------------------------------------------------------- #
+# ContrastSigmoid
+# --------------------------------------------------------------------------- #
+def test_contrast_sigmoid_field_order():
+    from phenotypic.enhance import ContrastSigmoid
+
+    assert list(ContrastSigmoid.model_fields) == [
+        "cutoff",
+        "gain",
+        "inv",
+        "norm",
+        "input_layer",
+    ]
+
+
+def test_contrast_sigmoid_defaults_match_skimage():
+    from phenotypic.enhance import ContrastSigmoid
+
+    assert ContrastSigmoid().cutoff == 0.5
+    assert ContrastSigmoid().gain == 10.0
+
+
+def test_contrast_sigmoid_gain_survives_rescale():
+    """Contrast with ContrastGamma: sigmoid's gain is inside exp(), so it reshapes."""
+    from phenotypic.enhance import ContrastSigmoid
+
+    a = ContrastSigmoid(gain=5.0, norm="rescale").apply(load_synth_yeast_plate())
+    b = ContrastSigmoid(gain=15.0, norm="rescale").apply(load_synth_yeast_plate())
+    assert np.abs(a.detect_mat[:] - b.detect_mat[:]).max() > 1e-2
+
+
+def test_contrast_sigmoid_increases_contrast_about_cutoff():
+    from phenotypic.enhance import ContrastSigmoid
+
+    image = load_synth_yeast_plate()
+    before = image.detect_mat[:].copy()
+    after = (
+        ContrastSigmoid(cutoff=float(before.mean()), gain=10.0)
+        .apply(image)
+        .detect_mat[:]
+    )
+    assert after.std() > before.std()
+
+
+def test_contrast_sigmoid_matches_skimage():
+    from skimage.exposure import adjust_sigmoid
+
+    from phenotypic.enhance import ContrastSigmoid
+
+    image = load_synth_yeast_plate()
+    src = image.detect_mat[:].copy()
+    expected = np.clip(adjust_sigmoid(src, cutoff=0.4, gain=8.0, inv=False), 0.0, 1.0)
+    actual = ContrastSigmoid(cutoff=0.4, gain=8.0).apply(image).detect_mat[:]
+    np.testing.assert_allclose(actual, expected, atol=1e-6)
+
+
+def test_contrast_sigmoid_rgb_path_differs_from_detect_mat_path():
+    from phenotypic.enhance import ContrastSigmoid
+
+    dm_image = load_synth_yeast_plate()
+    dm_image.set_detect_mode(MIXING_MODE)
+    via_dm = (
+        ContrastSigmoid(cutoff=0.4, gain=8.0, input_layer="detect_mat")
+        .apply(dm_image)
+        .detect_mat[:]
+        .copy()
+    )
+
+    rgb_image = load_synth_yeast_plate()
+    rgb_image.set_detect_mode(MIXING_MODE)
+    via_rgb = (
+        ContrastSigmoid(cutoff=0.4, gain=8.0, input_layer="rgb")
+        .apply(rgb_image)
+        .detect_mat[:]
+    )
+    assert np.abs(via_dm - via_rgb).max() > 1e-3
+
+
+def test_contrast_sigmoid_inv_breaks_selection_mode_commutation():
+    """``inv=True`` makes the sigmoid *decreasing*, so it stops commuting with min.
+
+    ``min(f(r), f(g), f(b)) == f(max(r, g, b))`` for a decreasing ``f``, which is
+    not ``f(min(r, g, b))``. The mirror image of
+    :func:`test_rgb_and_detect_mat_agree_under_selection_modes`, and the reason
+    that test's equality is a property of the *curve*, not of the plumbing.
+    """
+    from phenotypic.enhance import ContrastSigmoid
+
+    dm_image = load_synth_yeast_plate()
+    dm_image.set_detect_mode("MinRGB")
+    via_dm = (
+        ContrastSigmoid(inv=True, input_layer="detect_mat")
+        .apply(dm_image)
+        .detect_mat[:]
+        .copy()
+    )
+
+    rgb_image = load_synth_yeast_plate()
+    rgb_image.set_detect_mode("MinRGB")
+    via_rgb = (
+        ContrastSigmoid(inv=True, input_layer="rgb").apply(rgb_image).detect_mat[:]
+    )
+    assert np.abs(via_dm - via_rgb).max() > 1e-3
