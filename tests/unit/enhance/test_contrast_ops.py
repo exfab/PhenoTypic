@@ -189,3 +189,77 @@ def test_rgb_on_grayscale_image_raises():
     with pytest.raises(RuntimeError) as excinfo:
         op.apply(gray_only)
     assert isinstance(excinfo.value.__cause__.__cause__, NoArrayError)
+
+
+# --------------------------------------------------------------------------- #
+# ContrastLog
+# --------------------------------------------------------------------------- #
+def test_contrast_log_field_order():
+    from phenotypic.enhance import ContrastLog
+
+    assert list(ContrastLog.model_fields) == ["gain", "inv", "norm", "input_layer"]
+
+
+def test_contrast_log_brightens_dark_regions():
+    """log compresses highlights and expands shadows -> mean rises."""
+    from phenotypic.enhance import ContrastLog
+
+    image = load_synth_yeast_plate()
+    before = image.detect_mat[:].copy()
+    after = ContrastLog().apply(image).detect_mat[:]
+    assert after.mean() > before.mean()
+
+
+def test_contrast_log_inv_is_the_inverse_curve():
+    from phenotypic.enhance import ContrastLog
+
+    image = load_synth_yeast_plate()
+    fwd = ContrastLog(inv=False).apply(load_synth_yeast_plate()).detect_mat[:]
+    inv = ContrastLog(inv=True).apply(image).detect_mat[:]
+    assert np.abs(fwd - inv).max() > 1e-2
+
+
+def test_contrast_log_matches_skimage():
+    from skimage.exposure import adjust_log
+
+    from phenotypic.enhance import ContrastLog
+
+    image = load_synth_yeast_plate()
+    src = image.detect_mat[:].copy()
+    expected = np.clip(adjust_log(src, gain=1.0, inv=False), 0.0, 1.0)
+    actual = ContrastLog().apply(image).detect_mat[:]
+    np.testing.assert_allclose(actual, expected, atol=1e-6)
+
+
+def test_contrast_log_gain_is_meaningful_under_clip():
+    from phenotypic.enhance import ContrastLog
+
+    image = load_synth_yeast_plate()
+    a = ContrastLog(gain=1.0, norm="clip").apply(image).detect_mat[:].copy()
+    b = ContrastLog(gain=1.9, norm="clip").apply(image).detect_mat[:]
+    assert np.abs(a - b).max() > 1e-2
+
+
+def test_contrast_log_gain_is_absorbed_under_rescale():
+    """``adjust_log`` scales by ``gain`` after the curve, so rescale removes it."""
+    from phenotypic.enhance import ContrastLog
+
+    image = load_synth_yeast_plate()
+    a = ContrastLog(gain=1.0, norm="rescale").apply(image).detect_mat[:].copy()
+    b = ContrastLog(gain=1.9, norm="rescale").apply(image).detect_mat[:]
+    np.testing.assert_allclose(a, b, atol=1e-6)
+
+
+def test_contrast_log_rgb_path_differs_from_detect_mat_path():
+    from phenotypic.enhance import ContrastLog
+
+    dm_image = load_synth_yeast_plate()
+    dm_image.set_detect_mode(MIXING_MODE)
+    via_dm = (
+        ContrastLog(input_layer="detect_mat").apply(dm_image).detect_mat[:].copy()
+    )
+
+    rgb_image = load_synth_yeast_plate()
+    rgb_image.set_detect_mode(MIXING_MODE)
+    via_rgb = ContrastLog(input_layer="rgb").apply(rgb_image).detect_mat[:]
+    assert np.abs(via_dm - via_rgb).max() > 1e-3
