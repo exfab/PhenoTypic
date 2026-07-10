@@ -591,3 +591,25 @@ def test_contrast_log_inv_still_commutes_under_selection_modes():
     via_dm = ContrastLog(inv=True, input_layer="detect_mat").apply(image).detect_mat[:]
     via_rgb = ContrastLog(inv=True, input_layer="rgb").apply(image).detect_mat[:]
     np.testing.assert_allclose(via_rgb, via_dm, atol=1e-6)
+
+
+def test_invs_commutes_with_gamma_but_not_log_or_sigmoid():
+    """``InvS`` is ``min/max``, and a power law commutes with a ratio:
+
+        min(r**g, g**g, b**g) / max(...) == (min/max)**g
+
+    So ``ContrastGamma`` is a no-op under ``InvS`` despite it being a channel-mixing
+    mode. No other curve has this property -- ``log`` and ``sigmoid`` do not commute
+    with a ratio. Documented in ``enhance/CLAUDE.md``; pinned here so a future author
+    cannot "fix" the mixing-mode list by adding ``InvS`` to it wholesale.
+    """
+    def paths(cls, **kw):
+        image = load_synth_yeast_plate()
+        image.set_detect_mode("InvS")
+        via_dm = cls(input_layer="detect_mat", **kw).apply(image).detect_mat[:]
+        via_rgb = cls(input_layer="rgb", **kw).apply(image).detect_mat[:]
+        return np.abs(via_dm - via_rgb).max()
+
+    assert paths(ContrastGamma, gamma=2.5) < 1e-6
+    assert paths(ContrastLog) > 1e-3
+    assert paths(ContrastSigmoid) > 1e-3
