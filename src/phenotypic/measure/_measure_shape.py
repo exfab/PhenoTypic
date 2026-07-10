@@ -117,6 +117,33 @@ class MeasureShape(MeasureFeatures):
 
         return (max_feret, min_feret)
 
+    def _measure_radial_profile(self, obj_mask: np.ndarray) -> dict[str, float]:
+        """Compute distance-transform measures for one cropped object.
+
+        The Euclidean distance transform binarizes its input, so it must be
+        given a single object's mask rather than the whole labelled objmap;
+        otherwise two touching colonies see no background between them and
+        both report inflated distances. The mask is padded by one pixel so
+        that the transform sees background on every side of the bounding box.
+
+        Args:
+            obj_mask (np.ndarray): Boolean mask of a single object within its
+                bounding box, as produced by ``regionprops.image``. Already
+                isolated from neighbouring labels.
+
+        Returns:
+            dict[str, float]: Mapping of ``SHAPE`` column header to value.
+        """
+        # asarray narrows the scipy stub's tuple-or-ndarray return union; with
+        # return_indices=False the call yields an ndarray and copies nothing.
+        edt = np.asarray(distance_transform_edt(np.pad(obj_mask, 1)))[1:-1, 1:-1]
+        interior = edt[obj_mask]
+        return {
+            str(SHAPE.MEAN_RADIUS): float(interior.mean()),
+            str(SHAPE.MEDIAN_RADIUS): float(np.median(interior)),
+            str(SHAPE.MAX_RADIUS): float(edt.max()),
+        }
+
     def _operate(self, image: Image) -> pd.DataFrame:
         # Create empty numpy arrays to store measurements
         measurements = {
@@ -125,22 +152,13 @@ class MeasureShape(MeasureFeatures):
             if feature != SHAPE.CATEGORY
         }
 
-        # Calculate width-based measurements using distance transform
-        # Distance transform gives the distance from each object pixel to the nearest background pixel
-        dist_matrix = distance_transform_edt(image.objmap[:])
-        measurements[str(SHAPE.MEAN_RADIUS)] = self._calculate_mean(
-                array=dist_matrix, objmap=image.objmap[:]
-        )
-        measurements[str(SHAPE.MEDIAN_RADIUS)] = self._calculate_median(
-                array=dist_matrix, objmap=image.objmap[:]
-        )
-        measurements[str(SHAPE.MAX_RADIUS)] = self._calculate_maximum(
-                array=dist_matrix, objmap=image.objmap[:]
-        )
-
         obj_props = image.objects.props
         for idx, obj_image in enumerate(image.objects):
             current_props = obj_props[idx]
+            for header, value in self._measure_radial_profile(
+                    current_props.image
+            ).items():
+                measurements[header][idx] = value
             measurements[str(SHAPE.AREA)][idx] = current_props.area
             measurements[str(SHAPE.PERIMETER)][idx] = current_props.perimeter
             measurements[str(SHAPE.ECCENTRICITY)][idx] = current_props.eccentricity
