@@ -25,6 +25,16 @@ class FocusEdge(ImageEnhancer, ABC):
     ``image.gray`` from mutation. Edge isolation is therefore confined to
     ``image.detect_mat``.
 
+    **One subclass sources from ``rgb``.**
+    :class:`~phenotypic.enhance.FocusEdgeColorPhase` *reads* ``image.rgb``
+    (through ``image.color.Lab`` / ``image.color.hsv``) because colour phase
+    congruency is defined on colour, and ``rgb`` is not a supported
+    ``detect_mat`` layer. It still writes only ``detect_mat``, so the
+    integrity check holds and the class remains a :class:`FocusEdge`. The
+    user-visible consequence is that it behaves as a pipeline **source**, like
+    ``SetDetectMode``: any enhancer placed before it in an ``ImagePipeline``
+    has no effect on its output.
+
     **Quick Decision Guide:**
 
     - **FocusEdge (this class):** Output is an edge/ridge response map.
