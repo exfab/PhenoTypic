@@ -383,6 +383,25 @@ Instead: build a synthetic geometric colour image with known ideal edges, comput
 Merit on the **un-normalized** `l2` output, and assert the *ranking* `colour PC > PC > Canny`, with
 `color_space="hsv", fusion="l2"`.
 
+**Result, 2026-07-10.** The ranking holds:
+
+| method | PFOM |
+|---|---|
+| `FocusEdgeColorPhase` (`hsv`, `l2`) | **0.9517** |
+| `FocusEdgeMonogenicPhase` | 0.9509 |
+| `FocusEdgePhase` (`pc_sum`) | 0.9490 |
+| Canny (`sigma=1.0`) | 0.6977 |
+
+The `PC`-to-`Canny` gap is `0.25` and robust. **The `colour PC`-to-`PC` gap is `0.0027`** — real
+and reproducible, but *half* of CMPCM's own reported margin over VPMM (`0.0055`), which is the very
+resolution `references.md` says this kind of regression cannot deliver. *Colour PC wins* is true;
+*colour PC wins by much* is not, and the test asserts the margin's order of magnitude so that no one
+reads it that way.
+
+The metric itself is checked against closed forms rather than trusted (lesson `S5`): a perfect
+detector scores exactly `1.0`, an edge displaced by one pixel exactly `0.9` (`1/(1 + 1/9)`), an empty
+detection `0.0`, and firing on every pixel `0.1825` — *not* the `< 0.1` a first draft guessed.
+
 ### 7.2 The CA experiment — acceptance criterion for the colour design
 
 `load_synth_filamentous_plate()` returns a `GridImage` (600×800) with an `objmap` of 60 objects. Inject
