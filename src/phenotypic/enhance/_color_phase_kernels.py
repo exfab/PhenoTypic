@@ -26,9 +26,6 @@ from ._monogenic_kernels import (
     congruency_from_accumulators,
 )
 
-#: The three fusion rules. ``l2`` is CMPCM's; the other two are ours.
-FUSIONS = ("joint", "coherent", "l2")
-
 
 @dataclass(frozen=True)
 class ColorPhaseResult:
@@ -48,9 +45,11 @@ class ColorPhaseResult:
         threshold: ``T_total = sum_i w_i * T_i`` (drift ``C10``). Under ``l2`` each channel
             applied its **own** ``T_i``, so this value is then *informational only* and does
             not appear anywhere in ``pc``.
-        n_clamped: Pixels whose ``acos`` argument needed clipping into ``[-1, 1]``. Must be
-            ``0``: with non-negative weights ``E_total <= A_total`` holds analytically for
-            every mode. Drift ``M1``.
+        n_clamped: Pixels whose ``acos`` argument needed clipping into ``[-1, 1]``. Under
+            ``l2`` the congruency runs once per channel, so this is the **sum over the
+            three channels** and counts pixel-channel incidences, not pixels. Must be
+            ``0`` either way: with non-negative weights ``E_total <= A_total`` holds
+            analytically for every mode. Drift ``M1``.
     """
 
     pc: np.ndarray
@@ -58,6 +57,19 @@ class ColorPhaseResult:
     feature_type: np.ndarray
     threshold: float
     n_clamped: int
+
+
+def _weighted_threshold(
+        channels: Sequence[MonogenicChannel], weights: np.ndarray
+) -> float:
+    """``T_total = sum_i w_i * T_i`` (drift ``C10``).
+
+    Split out of :func:`_weighted_scalars` because ``fuse_l2`` wants *only* this scalar:
+    it thresholds each channel with its own ``T_i``, and reports ``T_total`` for the
+    record. Calling the full triple there built ``A_total`` and ``A_max_total`` -- two
+    image-sized arrays -- purely to discard them.
+    """
+    return float(sum(w * c.threshold for w, c in zip(weights, channels)))
 
 
 def _weighted_scalars(
@@ -70,7 +82,7 @@ def _weighted_scalars(
     two-degrees-of-freedom argument intact.
     """
     a_total = sum(w * c.sum_amplitude for w, c in zip(weights, channels))
-    t_total = float(sum(w * c.threshold for w, c in zip(weights, channels)))
+    t_total = _weighted_threshold(channels, weights)
     a_max = sum(w * c.max_amplitude for w, c in zip(weights, channels))
     return a_total, t_total, a_max
 
@@ -168,7 +180,9 @@ def fuse_coherent(
     """
     v_even, v_h1, v_h2 = _fused_vector(channels, weights)
     # sqrt(a**2 + b**2 + c**2), never np.hypot: `hypot` appears in no reference and rounds
-    # differently on 4.5% of elements. Same substitution the golden fixture cannot see.
+    # differently on ~21% of elements (21.4% on load_synth_yeast_plate's L*). Same
+    # substitution the golden fixture cannot see. NB 4.5% is the *two*-component
+    # feature_type figure and does not apply to this three-component norm.
     energy = np.sqrt(v_even ** 2 + v_h1 ** 2 + v_h2 ** 2)
     a_total, t_total, a_max = _weighted_scalars(channels, weights)
     pc, n_clamped = congruency_from_accumulators(
@@ -223,7 +237,8 @@ def fuse_l2(
         total = total + (w * pc_i) ** 2
         n_clamped += clamped_i
 
-    _, t_total, _ = _weighted_scalars(channels, weights)
+    # Only the scalar T_total is wanted here: no fused denominator exists under `l2`.
+    t_total = _weighted_threshold(channels, weights)
     return np.sqrt(total), t_total, n_clamped
 
 
@@ -232,6 +247,14 @@ _DISPATCH: dict[str, Callable[..., tuple[np.ndarray, float, int]]] = {
     "coherent": fuse_coherent,
     "l2": fuse_l2,
 }
+
+#: The three fusion rules -- ``("joint", "coherent", "l2")``. ``l2`` is CMPCM's; the other
+#: two are ours. **Derived from** :data:`_DISPATCH` rather than spelled again, so the name
+#: a caller is told to pass and the name that actually dispatches cannot diverge: a fourth
+#: entry in the dict is a fourth entry here, and the rejection message below stays true.
+#: ``sdk_.typing_.PhaseFusion`` is the third copy of these names and is pinned against this
+#: tuple by ``test_focus_edge_color_phase.py``.
+FUSIONS: tuple[str, ...] = tuple(_DISPATCH)
 
 
 def color_phase_congruency(
@@ -255,7 +278,8 @@ def color_phase_congruency(
             the operation; the two chromatic axes carry the two real degrees of freedom.
         fusion: One of :data:`FUSIONS`.
         n_scale: Must match the ``n_scale`` used to build ``channels``. Passed through to
-            ``spread_weight``'s ``n_scale - 1`` divisor, which raises below 2 (drift ``M9``).
+            ``spread_weight``'s ``n_scale - 1`` divisor. ``spread_weight`` itself does not
+            validate; :func:`congruency_from_accumulators` raises below 2 (drift ``M9``).
         cutoff: Frequency-spread sigmoid centre.
         g: Frequency-spread sigmoid sharpness.
         deviation_gain: Scales the phase-deviation term.

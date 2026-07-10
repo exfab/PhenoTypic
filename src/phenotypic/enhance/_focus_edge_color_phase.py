@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 #: is always the axis whose weight is pinned at ``1.0``. Read literally, an earlier spec
 #: (*"in color_space channel order"*) pinned ``H`` under ``hsv`` -- the one channel that is
 #: circular, ill-conditioned at low saturation, and carries no luminance at all.
-_LUMINANCE_FIRST: dict[str, tuple[int, int, int]] = {
+_LUMINANCE_FIRST: dict[ColorSpaceName, tuple[int, int, int]] = {
     "lab": (0, 1, 2),
     "hsv": (2, 0, 1),
 }

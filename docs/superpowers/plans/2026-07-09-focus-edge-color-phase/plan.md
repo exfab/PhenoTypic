@@ -548,7 +548,9 @@ class MonogenicChannel:
         """``||(sum_even, sum_h1, sum_h2)||``.
 
         ``sqrt(a**2 + b**2 + c**2)``, never ``np.hypot`` -- ``hypot`` appears in no
-        reference and rounds differently on 4.5% of elements.
+        reference and rounds differently on **~21%** of elements (21.4% on
+        ``load_synth_yeast_plate``'s ``L*``, 19.3% on 64x64 gaussian noise). Not 4.5%:
+        that is the *two*-component ``sqrt(h1**2+h2**2)`` figure, which does not transfer.
         """
         return np.sqrt(self.sum_even ** 2 + self.sum_h1 ** 2 + self.sum_h2 ** 2)
 

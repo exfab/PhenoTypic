@@ -390,7 +390,12 @@ class MonogenicChannel:
         """``||(sum_even, sum_h1, sum_h2)||``.
 
         ``sqrt(a**2 + b**2 + c**2)``, never ``np.hypot`` -- ``hypot`` appears in no
-        reference and rounds differently on 4.5% of elements.
+        reference and rounds differently on **~21%** of elements (21.4% on
+        ``load_synth_yeast_plate``'s ``L*``, 19.3% on 64x64 gaussian noise).
+
+        Not 4.5%: that is the *two*-component ``sqrt(h1**2 + h2**2)`` figure from
+        ``feature_type`` below, which does not transfer to this three-component norm.
+        A chained ``np.hypot(np.hypot(a, b), c)`` rounds twice.
         """
         return np.sqrt(self.sum_even ** 2 + self.sum_h1 ** 2 + self.sum_h2 ** 2)
 
@@ -683,7 +688,11 @@ def monogenic_phase_congruency(
         A :class:`MonogenicResult`.
 
     Raises:
-        ValueError: If ``noise_method`` is negative but is neither ``-1`` nor ``-2``.
+        ValueError: If ``n_scale < 2`` (M9), ``mult <= 1`` (M10), ``sigma_onf`` is outside
+            ``(0, 1)`` (M10), or ``noise_method`` is negative but is neither ``-1`` nor
+            ``-2`` (M7). All four are raised by the callees this function delegates to --
+            :func:`monogenic_channel_response`, :func:`log_gabor_scale`, and
+            :func:`congruency_from_accumulators` -- each at the division it guards.
 
     References:
         Kovesi, P. "Image features from phase congruency." *Videre* 1(3), 1--26 (1999).
