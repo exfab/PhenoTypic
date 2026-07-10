@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import ClassVar, TYPE_CHECKING
+from typing import ClassVar, TYPE_CHECKING, cast
 
 from phenotypic.schema import OBJECT
 
@@ -9,8 +9,11 @@ if TYPE_CHECKING:
 
 import warnings
 import pandas as pd
+from pydantic import Field
 from scipy.spatial import ConvexHull, QhullError
-from scipy.ndimage import distance_transform_edt
+from scipy.ndimage import distance_transform_edt, label as ndi_label
+from scipy.stats import trim_mean
+from skimage.measure import find_contours
 import numpy as np
 
 from phenotypic.abc_ import MeasureFeatures
@@ -26,6 +29,24 @@ class MeasureShape(MeasureFeatures):
     DataFrame provides a full morphological profile for phenotypic
     classification and growth-pattern analysis.
 
+    Args:
+        angular_bins: Number of equally spaced directions at which the
+            radial signature is sampled. Higher values reduce the
+            outermost-crossing bias but leave more empty bins to
+            interpolate across on small colonies. Typical range: 180--720.
+            Default: 360.
+        trim_proportion: Fraction of the radial signature trimmed from each
+            tail before averaging, which sets the breakdown point of
+            RobustMeanRadius. At 0.2 the estimate tolerates up to 20% of
+            directions being contaminated by protrusions. Setting it to 0.0
+            gives the plain arithmetic mean. Typical range: 0.0--0.3.
+            Default: 0.2.
+        plateau_tolerance: Relative tolerance defining the near-maximal
+            plateau of the distance transform. Its centroid is the colony
+            center. Values near 0 make the center an argmax, whose location
+            is arbitrary among exact ties; the default averages over the
+            plateau instead. Default: 0.01.
+
     Returns:
         pd.DataFrame: Object-level morphological measurements with
         columns:
@@ -34,7 +55,8 @@ class MeasureShape(MeasureFeatures):
               ConvexArea, Solidity, Extent, BboxArea.
             - MeanBoundaryDist, MedianBoundaryDist (mean/median depth from
               the boundary; not radii).
-            - InscribedRadius (largest inscribed circle).
+            - InscribedRadius, RobustMeanRadius, ReachRadius (smallest,
+              typical, and largest radius from the colony center).
             - MinFeretDiameter, MaxFeretDiameter (caliper diameters).
             - MajorAxisLength, MinorAxisLength, Eccentricity,
               Orientation.
@@ -64,6 +86,10 @@ class MeasureShape(MeasureFeatures):
     """
 
     _measurement_infoclass: ClassVar[type] = SHAPE
+
+    angular_bins: int = Field(360, ge=8, le=3600)
+    trim_proportion: float = Field(0.2, ge=0.0, lt=0.5)
+    plateau_tolerance: float = Field(0.01, gt=0.0, lt=1.0)
 
     @staticmethod
     def _calculate_feret_diameters(hull_points: np.ndarray) -> tuple[float, float]:
@@ -118,6 +144,71 @@ class MeasureShape(MeasureFeatures):
 
         return (max_feret, min_feret)
 
+    def _trace_radial_signature(
+            self, obj_mask: np.ndarray, edt: np.ndarray
+    ) -> np.ndarray | None:
+        """Sample the colony boundary's distance from its center, uniformly by angle.
+
+        The center is the centroid of the distance-transform's near-maximal
+        plateau, not its argmax: the transform's values are square roots of
+        exact integers, so exact ties are common and an argmax would resolve
+        them by raster order. The boundary is the subpixel marching-squares
+        contour at the 0.5 iso-level. Sampling is by angle rather than along
+        the contour so that a narrow protrusion contributes only its angular
+        width, which is what keeps the trimmed mean inside its breakdown point.
+
+        Args:
+            obj_mask (np.ndarray): Boolean mask of a single object within its
+                bounding box (``regionprops.image``).
+            edt (np.ndarray): Euclidean distance transform of *obj_mask*,
+                computed with one pixel of background padding on every side.
+
+        Returns:
+            np.ndarray | None: Radii at ``self.angular_bins`` equally spaced
+            angles, or None when the object has no interior or no contour.
+        """
+        peak = float(edt.max())
+        if peak <= 0.0:
+            return None
+
+        plateau = edt >= (1.0 - self.plateau_tolerance) * peak
+        # ndi_label returns int | tuple[ndarray, int]; with no output arg the
+        # runtime value is always the tuple, so narrow the stub's union.
+        components = cast("tuple[np.ndarray, int]", ndi_label(plateau))[0]
+        dominant = components[np.unravel_index(np.argmax(edt), edt.shape)]
+        center = np.argwhere(components == dominant).mean(axis=0)
+
+        contours = find_contours(np.pad(obj_mask, 1).astype(float), 0.5)
+        if not contours:
+            return None
+        outline = max(contours, key=len) - 1.0
+
+        offsets = outline - center
+        radii = np.hypot(offsets[:, 0], offsets[:, 1])
+        angles = np.arctan2(offsets[:, 0], offsets[:, 1])
+
+        n_bins = self.angular_bins
+        bins = ((angles + np.pi) / (2.0 * np.pi) * n_bins).astype(int) % n_bins
+        signature = np.full(n_bins, -np.inf)
+        np.maximum.at(signature, bins, radii)
+
+        empty = np.isinf(signature)
+        if empty.all():
+            return None
+        signature[empty] = np.nan
+        if empty.any():
+            # Circular interpolation: bins with no contour vertex are not
+            # missing at random. They cluster where the contour is angularly
+            # sparse, so dropping them biases the mean upward.
+            index = np.arange(n_bins)
+            filled = ~empty
+            signature[empty] = np.interp(
+                    index[empty],
+                    np.concatenate([index[filled] - n_bins, index[filled], index[filled] + n_bins]),
+                    np.tile(signature[filled], 3),
+            )
+        return signature
+
     def _measure_radial_profile(self, obj_mask: np.ndarray) -> dict[str, float]:
         """Compute distance-transform measures for one cropped object.
 
@@ -133,17 +224,29 @@ class MeasureShape(MeasureFeatures):
                 isolated from neighbouring labels.
 
         Returns:
-            dict[str, float]: Mapping of ``SHAPE`` column header to value.
+            dict[str, float]: Mapping of ``SHAPE`` column header to value,
+            with keys MeanBoundaryDist, MedianBoundaryDist, InscribedRadius,
+            RobustMeanRadius, and ReachRadius.
         """
         # asarray narrows the scipy stub's tuple-or-ndarray return union; with
         # return_indices=False the call yields an ndarray and copies nothing.
         edt = np.asarray(distance_transform_edt(np.pad(obj_mask, 1)))[1:-1, 1:-1]
         interior = edt[obj_mask]
-        return {
+        values = {
             str(SHAPE.MEAN_BOUNDARY_DIST): float(interior.mean()),
             str(SHAPE.MEDIAN_BOUNDARY_DIST): float(np.median(interior)),
             str(SHAPE.INSCRIBED_RADIUS): float(edt.max()),
+            str(SHAPE.ROBUST_MEAN_RADIUS): np.nan,
+            str(SHAPE.REACH_RADIUS): np.nan,
         }
+
+        signature = self._trace_radial_signature(obj_mask, edt)
+        if signature is not None:
+            values[str(SHAPE.ROBUST_MEAN_RADIUS)] = float(
+                    trim_mean(signature, self.trim_proportion)
+            )
+            values[str(SHAPE.REACH_RADIUS)] = float(signature.max())
+        return values
 
     def _operate(self, image: Image) -> pd.DataFrame:
         # Create empty numpy arrays to store measurements

@@ -77,6 +77,26 @@ class SHAPE(PrimaryMeasure):
         "radius. Formerly reported under the name MaxRadius.",
         tier=1,
     )
+    ROBUST_MEAN_RADIUS = Entry(
+        "RobustMeanRadius",
+        "Symmetrically trimmed mean of the colony's radial signature: the distance "
+        "from the colony center to its boundary, resampled uniformly over a fixed "
+        "number of directions. The center is the centroid of the distance-transform "
+        "peak plateau, which always lies inside the colony. Because the signature is "
+        "sampled by angle rather than along the boundary, a narrow protrusion "
+        "contributes only its angular width, so a single runner or spur cannot "
+        "dominate the estimate. For an ideal disk this equals the disk radius. "
+        "Compare InscribedRadius (the smallest radius) and ReachRadius (the largest).",
+        tier=1,
+    )
+    REACH_RADIUS = Entry(
+        "ReachRadius",
+        "Maximum of the colony's radial signature: the distance from the colony "
+        "center to the furthest point on its boundary. A ReachRadius much larger "
+        "than RobustMeanRadius indicates a protrusion, spur, or runner extending "
+        "from an otherwise compact colony.",
+        tier=1,
+    )
     MIN_FERET_DIAMETER = Entry(
         "MinFeretDiameter",
         "Minimum caliper diameter - the shortest distance between two parallel tangent lines touching opposite sides of the colony. Represents the narrowest dimension of the colony regardless of orientation. Useful for detecting elongated or irregular colony morphologies and measuring colony width.",
