@@ -49,19 +49,32 @@ class SHAPE(PrimaryMeasure):
         'Area of the smallest convex polygon that completely contains the colony. Represents the colony\'s "filled-in" appearance if all indentations and holes were removed. Useful for detecting colony spreading patterns or invasive growth characteristics.',
         tier=1,
     )
-    MEDIAN_RADIUS = Entry(
-        "MedianRadius",
-        "Median distance from colony center to edge across all directions. Provides a robust measure of typical colony size that is less sensitive to outliers than mean width. Particularly useful for colonies with uneven growth or sectoring.",
+    MEDIAN_BOUNDARY_DIST = Entry(
+        "MedianBoundaryDist",
+        "Median Euclidean distance from each colony pixel to the nearest background "
+        "pixel, computed on the object in isolation. This is a measure of interior "
+        "thickness, not a radius: for an ideal disk of radius R it equals "
+        r":math:`R(1 - 1/\sqrt{2}) \approx 0.293R`. More robust to boundary raggedness "
+        "than MeanBoundaryDist. See InscribedRadius and RobustMeanRadius for the "
+        "colony's actual radial extent.",
         tier=1,
     )
-    MEAN_RADIUS = Entry(
-        "MeanRadius",
-        "Average distance from colony center to edge across all directions. Represents overall colony expansion rate. In arrayed growth assays, this correlates with microbial fitness and growth kinetics under controlled conditions.",
+    MEAN_BOUNDARY_DIST = Entry(
+        "MeanBoundaryDist",
+        "Mean Euclidean distance from each colony pixel to the nearest background "
+        "pixel, computed on the object in isolation. This is a measure of interior "
+        "thickness, not a radius: for an ideal disk of radius R it equals "
+        r":math:`R/3`. High values relative to InscribedRadius indicate a compact, "
+        "convex colony; low values indicate a thin or filamentous one.",
         tier=1,
     )
-    MAX_RADIUS = Entry(
-        "MaxRadius",
-        "Maximum distance from colony center to edge across all directions. Represents the furthest extent of colony growth from its center. In arrayed microbial assays, this measurement helps identify asymmetric growth patterns or colonies extending toward neighboring positions.",
+    INSCRIBED_RADIUS = Entry(
+        "InscribedRadius",
+        "Radius of the largest circle that fits entirely inside the colony, equal to "
+        "the maximum of the object's Euclidean distance transform. Attained at the "
+        "colony's distance-transform peak, which is the center used for "
+        "RobustMeanRadius and ReachRadius. For an ideal disk it equals the disk "
+        "radius. Formerly reported under the name MaxRadius.",
         tier=1,
     )
     MIN_FERET_DIAMETER = Entry(

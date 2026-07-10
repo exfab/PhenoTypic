@@ -52,14 +52,14 @@ def test_touching_labels_do_not_inflate_each_others_radii(split_rectangle_image)
     # Exact: the EDT of an axis-aligned rectangle is exact integer arithmetic
     # (scipy reconstructs distances from an int32 feature transform), so the
     # inscribed radius of a rectangle of even width is exactly half that width.
-    assert measurements["Shape_MaxRadius"].iloc[0] == 10.0
-    assert measurements["Shape_MaxRadius"].iloc[1] == 11.0
+    assert measurements["Shape_InscribedRadius"].iloc[0] == 10.0
+    assert measurements["Shape_InscribedRadius"].iloc[1] == 11.0
 
     # Mean depth-from-boundary. Tolerance 1e-3 is far below the 2.56-pixel
     # error the merged EDT produces, so this assertion cannot pass by accident.
-    assert measurements["Shape_MeanRadius"].iloc[0] == pytest.approx(4.6951, abs=1e-3)
-    assert measurements["Shape_MeanRadius"].iloc[1] == pytest.approx(4.8676, abs=1e-3)
-    assert measurements["Shape_MedianRadius"].iloc[0] == pytest.approx(4.0, abs=1e-9)
+    assert measurements["Shape_MeanBoundaryDist"].iloc[0] == pytest.approx(4.6951, abs=1e-3)
+    assert measurements["Shape_MeanBoundaryDist"].iloc[1] == pytest.approx(4.8676, abs=1e-3)
+    assert measurements["Shape_MedianBoundaryDist"].iloc[0] == pytest.approx(4.0, abs=1e-9)
 
 
 def test_merged_edt_would_fail_this_test():
@@ -78,3 +78,19 @@ def test_merged_edt_would_fail_this_test():
     merged = distance_transform_edt(objmap)
     assert merged[objmap == 1].max() == 20.0  # not 10.0
     assert merged[objmap == 2].max() == 21.0  # not 11.0
+
+
+def test_radius_columns_are_named_for_what_they_measure():
+    """MeanRadius/MedianRadius were means of the distance transform, i.e. depth
+    from the boundary, not radii. MaxRadius was the inscribed radius. All three
+    are renamed; the old names must be gone.
+    """
+    from phenotypic.schema import SHAPE
+
+    headers = set(SHAPE.get_headers())
+    assert "Shape_MeanBoundaryDist" in headers
+    assert "Shape_MedianBoundaryDist" in headers
+    assert "Shape_InscribedRadius" in headers
+    assert "Shape_MeanRadius" not in headers
+    assert "Shape_MedianRadius" not in headers
+    assert "Shape_MaxRadius" not in headers

@@ -32,8 +32,9 @@ class MeasureShape(MeasureFeatures):
 
             - Label, Area, Perimeter, Circularity, Compactness,
               ConvexArea, Solidity, Extent, BboxArea.
-            - MeanRadius, MedianRadius, MaxRadius (distance-transform
-              based).
+            - MeanBoundaryDist, MedianBoundaryDist (mean/median depth from
+              the boundary; not radii).
+            - InscribedRadius (largest inscribed circle).
             - MinFeretDiameter, MaxFeretDiameter (caliper diameters).
             - MajorAxisLength, MinorAxisLength, Eccentricity,
               Orientation.
@@ -139,9 +140,9 @@ class MeasureShape(MeasureFeatures):
         edt = np.asarray(distance_transform_edt(np.pad(obj_mask, 1)))[1:-1, 1:-1]
         interior = edt[obj_mask]
         return {
-            str(SHAPE.MEAN_RADIUS): float(interior.mean()),
-            str(SHAPE.MEDIAN_RADIUS): float(np.median(interior)),
-            str(SHAPE.MAX_RADIUS): float(edt.max()),
+            str(SHAPE.MEAN_BOUNDARY_DIST): float(interior.mean()),
+            str(SHAPE.MEDIAN_BOUNDARY_DIST): float(np.median(interior)),
+            str(SHAPE.INSCRIBED_RADIUS): float(edt.max()),
         }
 
     def _operate(self, image: Image) -> pd.DataFrame:
