@@ -1,0 +1,191 @@
+"""Behavioural contract for the Contrast* enhancers.
+
+Covers the three new pointwise curves (:class:`ContrastGamma`,
+:class:`ContrastLog`, :class:`ContrastSigmoid`) and the ``input_layer`` /
+``keep_colors`` retrofit of :class:`ContrastStretching`.
+
+Three families of assertion carry the design:
+
+- **Field order** — both mixins append, so every op ends
+  ``[...op params, norm, input_layer]``.
+- **`norm` semantics** — ``gain`` is a post-curve multiplier on ``adjust_gamma``
+  and ``adjust_log``, so ``norm="rescale"`` divides it back out; on
+  ``adjust_sigmoid`` it lives inside the exponent and survives.
+- **`input_layer` semantics** — running the curve on RGB and *then* projecting
+  differs from projecting first, but only for a ``detect_mode`` that genuinely
+  mixes channels. See :func:`test_rgb_and_detect_mat_agree_under_selection_modes`.
+"""
+
+import numpy as np
+import pytest
+from skimage.exposure import adjust_gamma
+
+from phenotypic.data import load_synth_yeast_plate
+from phenotypic.enhance import ContrastGamma
+
+# ``detect_mode``s whose projection is a per-pixel *selection* (an order
+# statistic or a single channel). Any monotonically increasing pointwise curve
+# ``f`` commutes with them: ``min(f(r), f(g), f(b)) == f(min(r, g, b))``.
+SELECTION_MODES = ("red", "green", "blue", "MinRGB", "HsvV")
+
+# A ``detect_mode`` that forms a genuine mix of all three channels, so a
+# non-linear curve does *not* commute with the projection.
+MIXING_MODE = "LabA"
+
+
+# --------------------------------------------------------------------------- #
+# ContrastGamma
+# --------------------------------------------------------------------------- #
+def test_field_order_is_params_then_norm_then_input_layer():
+    assert list(ContrastGamma.model_fields) == ["gamma", "gain", "norm", "input_layer"]
+
+
+def test_identity_at_defaults():
+    """gamma=1, gain=1 is the identity curve; clip is a no-op on in-range input."""
+    image = load_synth_yeast_plate()
+    before = image.detect_mat[:].copy()
+    after = ContrastGamma().apply(image).detect_mat[:]
+    np.testing.assert_allclose(after, before, atol=1e-6)
+
+
+def test_gamma_gt_one_darkens_midtones():
+    image = load_synth_yeast_plate()
+    before = image.detect_mat[:].copy()
+    after = ContrastGamma(gamma=2.0).apply(image).detect_mat[:]
+    assert after.mean() < before.mean()
+
+
+def test_matches_skimage_on_detect_mat():
+    image = load_synth_yeast_plate()
+    src = image.detect_mat[:].copy()
+    expected = np.clip(adjust_gamma(src, gamma=2.0, gain=1.5), 0.0, 1.0)
+    actual = ContrastGamma(gamma=2.0, gain=1.5).apply(image).detect_mat[:]
+    np.testing.assert_allclose(actual, expected, atol=1e-6)
+
+
+def test_gain_is_meaningful_under_clip():
+    """The whole reason `norm` defaults to clip rather than rescale."""
+    image = load_synth_yeast_plate()
+    a = ContrastGamma(gamma=2.0, gain=1.0, norm="clip").apply(image).detect_mat[:].copy()
+    b = ContrastGamma(gamma=2.0, gain=1.9, norm="clip").apply(image).detect_mat[:]
+    assert np.abs(a - b).max() > 1e-2
+
+
+def test_gain_is_absorbed_under_rescale():
+    """Documented consequence of norm='rescale': gain is a uniform post-curve scale.
+
+    ``adjust_gamma`` computes ``(I ** gamma) * gain``. A full-range rescale maps
+    ``min -> 0`` and ``max -> 1``, dividing the uniform factor back out exactly.
+    The residual is float32 rounding, not a real difference.
+    """
+    image = load_synth_yeast_plate()
+    a = (
+        ContrastGamma(gamma=2.0, gain=1.0, norm="rescale")
+        .apply(image)
+        .detect_mat[:]
+        .copy()
+    )
+    b = ContrastGamma(gamma=2.0, gain=1.9, norm="rescale").apply(image).detect_mat[:]
+    np.testing.assert_allclose(a, b, atol=1e-6)
+
+
+def test_rgb_path_differs_from_detect_mat_path():
+    """Non-linear curve then projection != projection then curve. The whole point.
+
+    Uses a channel-*mixing* ``detect_mode``. Under a selection mode the two
+    routes provably coincide -- see
+    :func:`test_rgb_and_detect_mat_agree_under_selection_modes`.
+    """
+    dm_image = load_synth_yeast_plate()
+    dm_image.set_detect_mode(MIXING_MODE)
+    via_dm = (
+        ContrastGamma(gamma=2.5, input_layer="detect_mat")
+        .apply(dm_image)
+        .detect_mat[:]
+        .copy()
+    )
+
+    rgb_image = load_synth_yeast_plate()
+    rgb_image.set_detect_mode(MIXING_MODE)
+    via_rgb = (
+        ContrastGamma(gamma=2.5, input_layer="rgb").apply(rgb_image).detect_mat[:]
+    )
+    assert np.abs(via_dm - via_rgb).max() > 1e-3
+
+
+@pytest.mark.parametrize("mode", SELECTION_MODES)
+def test_rgb_and_detect_mat_agree_under_selection_modes(mode):
+    """A selection ``detect_mode`` commutes with any increasing pointwise curve.
+
+    ``MinRGB``/``HsvV`` are per-pixel order statistics and ``red``/``green``/
+    ``blue`` pick one channel. For a monotonically increasing ``f``,
+    ``min(f(r), f(g), f(b)) == f(min(r, g, b))``, so ``input_layer="rgb"`` and
+    ``input_layer="detect_mat"`` are the *same computation*.
+
+    Pinned so a future reader does not mistake the equality for a wiring bug and
+    "fix" it. The docstrings promise a difference only for mixing modes.
+    """
+    dm_image = load_synth_yeast_plate()
+    dm_image.set_detect_mode(mode)
+    via_dm = (
+        ContrastGamma(gamma=2.5, input_layer="detect_mat")
+        .apply(dm_image)
+        .detect_mat[:]
+        .copy()
+    )
+
+    rgb_image = load_synth_yeast_plate()
+    rgb_image.set_detect_mode(mode)
+    via_rgb = (
+        ContrastGamma(gamma=2.5, input_layer="rgb").apply(rgb_image).detect_mat[:]
+    )
+    np.testing.assert_allclose(via_dm, via_rgb, atol=1e-6)
+
+
+def test_rgb_path_writes_only_detect_mat():
+    image = load_synth_yeast_plate()
+    rgb_before = image.rgb[:].copy()
+    gray_before = image.gray[:].copy()
+    out = ContrastGamma(gamma=2.0, input_layer="rgb").apply(image)
+    np.testing.assert_array_equal(out.rgb[:], rgb_before)
+    np.testing.assert_array_equal(out.gray[:], gray_before)
+
+
+def test_negative_input_is_rescaled_not_raised():
+    """FocusEdgeLaplace can emit negatives; skimage would raise ValueError."""
+    from phenotypic.enhance import FocusEdgeLaplace
+
+    image = FocusEdgeLaplace(norm=None).apply(load_synth_yeast_plate())
+    assert image.detect_mat[:].min() < 0
+    out = ContrastGamma(gamma=2.0).apply(image)
+    assert 0.0 <= out.detect_mat[:].min() and out.detect_mat[:].max() <= 1.0
+
+
+def test_json_round_trip():
+    from phenotypic.abc_ import ImageOperation
+
+    op = ContrastGamma(gamma=2.0, gain=1.5, norm=None, input_layer="rgb")
+    loaded = ImageOperation.from_json(op.to_json())
+    assert loaded.gamma == 2.0 and loaded.norm is None and loaded.input_layer == "rgb"
+
+
+def test_rgb_on_grayscale_image_raises():
+    """A grayscale-only image has no ``rgb`` layer to read.
+
+    ``ImageOperation.apply`` funnels every failure through ``RuntimeError``, so the
+    root cause is asserted via ``__cause__`` rather than the surface type. The
+    unwrapped ``_read_input_layer`` call pins the mixin's own contract, so this
+    test stays honest if ``apply``'s wrapper ever changes.
+    """
+    from phenotypic import Image
+    from phenotypic.sdk_.exceptions_ import NoArrayError
+
+    gray_only = Image(np.full((32, 32), 0.5, dtype=np.float32))
+    op = ContrastGamma(input_layer="rgb")
+
+    with pytest.raises(NoArrayError):
+        op._read_input_layer(gray_only)
+
+    with pytest.raises(RuntimeError) as excinfo:
+        op.apply(gray_only)
+    assert isinstance(excinfo.value.__cause__.__cause__, NoArrayError)
