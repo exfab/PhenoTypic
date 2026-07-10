@@ -26,6 +26,7 @@ from ._focus_edge_laplace import FocusEdgeLaplace
 from ._median_filter import MedianFilter
 from ._focus_edge_phase import FocusEdgePhase
 from ._focus_edge_monogenic_phase import FocusEdgeMonogenicPhase
+from ._focus_edge_color_phase import FocusEdgeColorPhase
 from ._focus_edge_meijering import FocusEdgeMeijering
 from ._non_local_means import NonLocalMeansDenoiser
 from ._subtract_opening import SubtractOpening
@@ -65,6 +66,7 @@ __all__ = [
     "SubtractOpening",
     "FocusEdgePhase",
     "FocusEdgeMonogenicPhase",
+    "FocusEdgeColorPhase",
     "RankMedianEnhancer",
     "SubtractRollingBall",
     "FocusEdgeSato",
