@@ -599,6 +599,84 @@ class TestNoiseThreshold:
         result = monogenic_phase_congruency(step, n_scale=2)
         assert result.pc.max() > 0.0  # not the degenerate all-zero output
 
+
+class TestCongruencyFromAccumulatorsGuardsItsOwnDivisor:
+    """The accumulator seam opened a **third** public door onto ``n_scale - 1``.
+
+    ``monogenic_phase_congruency`` and ``monogenic_channel_response`` already raise (M9).
+    ``congruency_from_accumulators`` is the one ``_color_phase_kernels`` calls directly,
+    once per fusion mode, so it must raise too.
+
+    **It fails worse than the other two, and in the opposite direction.** Given accumulators
+    from a *valid* ``n_scale=4`` channel:
+
+    * ``n_scale=1`` -> ``width = (A/(A_max + eps) - 1)/0``. Here ``A > A_max`` (four scales
+      summed against their elementwise max), so the numerator is positive, ``width -> +inf``,
+      and the sigmoid **saturates to 1.0 everywhere**. The frequency-spread penalty is
+      silently switched off and ``pc`` comes back finite, in ``[0, 1]``, and *larger* than
+      the truth: ``0.578872`` against ``0.561266``. One ``RuntimeWarning``, no exception.
+    * ``n_scale=0`` -> all-zero ``pc``, **no warning at all**.
+
+    Both survive a naive ``0 <= pc <= 1`` check. Contrast ``M9``'s original measurement on
+    the *whole* function at ``n_scale=1``, which reported an all-**zero** map: there the
+    scale loop runs once, so ``A == A_max``, the numerator is ``-eps/(A + eps) < 0``,
+    ``width -> -inf``, and the sigmoid collapses to ``0`` instead. Same divisor, opposite
+    limit, depending on which accumulators reach it. The two docstrings do not contradict
+    each other, and neither should be "reconciled" away.
+
+    No reference validates this: Kovesi divides by ``nscale-1`` unguarded. Drift ``M9``.
+    """
+
+    @staticmethod
+    def _valid_accumulators():
+        img = np.add.outer(np.zeros(64), np.arange(64) > 31).astype(float)
+        return monogenic_channel_response(img, n_scale=4)
+
+    @pytest.mark.parametrize("bad", [1, 0, -3])
+    def test_n_scale_below_two_raises(self, bad):
+        channel = self._valid_accumulators()
+        with pytest.raises(ValueError, match="n_scale"):
+            congruency_from_accumulators(
+                    channel.energy, channel.sum_amplitude, channel.max_amplitude,
+                    channel.threshold, n_scale=bad, cutoff=0.5, g=10.0, deviation_gain=1.5,
+            )
+
+    def test_n_scale_two_is_accepted(self):
+        """Inclusive boundary; the guard cannot be off by one."""
+        channel = self._valid_accumulators()
+        pc, n_clamped = congruency_from_accumulators(
+                channel.energy, channel.sum_amplitude, channel.max_amplitude,
+                channel.threshold, n_scale=2, cutoff=0.5, g=10.0, deviation_gain=1.5,
+        )
+        assert np.isfinite(pc).all()
+        assert n_clamped == 0
+
+    def test_the_unguarded_failure_is_plausible_not_obvious(self):
+        """Pin *why* the guard exists: without it, the wrong answer looks right.
+
+        This is the assertion that would have to be deleted, not merely adjusted, if
+        someone removed the guard on the grounds that "it returns zeros anyway".
+        """
+        channel = self._valid_accumulators()
+        correct, _ = congruency_from_accumulators(
+                channel.energy, channel.sum_amplitude, channel.max_amplitude,
+                channel.threshold, n_scale=4, cutoff=0.5, g=10.0, deviation_gain=1.5,
+        )
+        # Reproduce what n_scale=1 *would* compute, by calling the primitive directly.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            rogue_weight = spread_weight(
+                    channel.sum_amplitude, channel.max_amplitude, 1, 0.5, 10.0,
+                    EPSILON_MONOGENIC,
+            )
+        assert np.allclose(rogue_weight, 1.0), (
+            "n_scale=1 must saturate the spread weight to 1.0, not zero it -- that is "
+            "precisely what makes the unguarded output plausible instead of obviously dead."
+        )
+        assert correct.max() < 0.57, (
+            "the correct n_scale=4 response is ~0.5613; if this drifts, re-measure the "
+            "0.5789 figure in the guard's comment rather than loosening the bound"
+        )
+
     @pytest.mark.parametrize("bad", [1.0, 1.5])
     def test_sigma_onf_at_or_above_one_raises(self, bad):
         """``log(1.0) == 0`` makes log_gabor_scale divide by zero -> an all-NaN pc.

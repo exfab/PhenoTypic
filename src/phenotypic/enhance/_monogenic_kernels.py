@@ -556,7 +556,8 @@ def congruency_from_accumulators(
         sum_amplitude: ``A_Sigma``.
         max_amplitude: Elementwise max over scales.
         threshold: ``T``.
-        n_scale: Number of scales; ``spread_weight`` divides by ``n_scale - 1``.
+        n_scale: Number of scales. Must be at least 2 -- ``spread_weight`` divides by
+            ``n_scale - 1``.
         cutoff: Frequency-spread sigmoid centre.
         g: Frequency-spread sigmoid sharpness.
         deviation_gain: Scales the phase-deviation term.
@@ -565,7 +566,34 @@ def congruency_from_accumulators(
     Returns:
         ``(pc, n_clamped)``. ``n_clamped`` counts pixels whose ``acos`` argument had to be
         clipped into ``[-1, 1]``; it must be ``0`` (drift ``M1``).
+
+    Raises:
+        ValueError: If ``n_scale`` is below 2. Drift ``M9``, third entry point.
     """
+    # The seam that let `FocusEdgeColorPhase` fuse channels also opened a THIRD public door
+    # onto `spread_weight`'s `n_scale - 1` divisor -- and this one fails worse than the two
+    # M9 already guards. Measured on a 64x64 step edge, with accumulators from a valid
+    # `n_scale=4` channel:
+    #
+    #   n_scale=1 -> `width` divides by zero, goes +inf, and the sigmoid saturates: `weight`
+    #                becomes 1.0 EVERYWHERE, silently disabling the frequency-spread penalty.
+    #                Returns a plausible, finite, in-range map whose max is 0.578872 against
+    #                the correct 0.561266. Not zeros. Not NaN. A *different operator wearing
+    #                the right answer's clothes*, behind one RuntimeWarning.
+    #   n_scale=0 -> returns all-zero `pc` with NO warning at all.
+    #
+    # Both pass a naive `0 <= pc <= 1` check. `monogenic_phase_congruency` and
+    # `monogenic_channel_response` already raise here (M9); this function is the one the
+    # fusion kernels call directly, so it must too. No reference validates this: Kovesi
+    # divides by `nscale-1` unguarded.
+    if n_scale < 2:
+        raise ValueError(
+                f"n_scale must be at least 2; got {n_scale!r}. spread_weight divides by "
+                f"(n_scale - 1), so n_scale=1 drives the frequency-spread weight to 1.0 "
+                f"everywhere -- returning a plausible, in-range map with the spread penalty "
+                f"silently disabled -- and n_scale=0 returns an all-zero pc with no warning."
+        )
+
     weight = spread_weight(sum_amplitude, max_amplitude, n_scale, cutoff, g, epsilon)
 
     ratio = energy / (sum_amplitude + epsilon)
