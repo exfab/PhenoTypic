@@ -429,6 +429,88 @@ class TestL2AppliesEachChannelsOwnThresholdAndSumsTheClampCounts:
         assert seen[0] == pytest.approx(expected)
 
 
+class TestWeightVectorScaleInvariance:
+    """Spec §7 test 4, and it **cannot live on the operation**.
+
+    ``FocusEdgeColorPhase`` pins ``weights[0] = 1.0``, so a *global* rescale ``w -> c*w`` is
+    not expressible through its fields at all -- that is the whole point of §4.2's
+    two-degrees-of-freedom argument. The invariance is a property of
+    :func:`color_phase_congruency`, where ``weights`` is a free vector, and it is tested
+    here. The spec said to test it on ``load_synth_yeast_plate()`` through the operation;
+    that instruction is not implementable.
+
+    The invariance is **approximate, direction-dependent, and only holds on a masked set**.
+    ``eps`` sits inside ``A_max + eps``, which is fed to a sigmoid of sharpness ``g``. Under
+    ``w -> c*w`` the relative perturbation of ``width`` grows like ``eps/(c * A_max)``, so
+    **shrinking** the weights (``c < 1``) hurts and growing them helps. Measured on
+    ``load_synth_yeast_plate`` at ``w = (1, 2, 3)``:
+
+    | mask | ``c = 0.01`` | ``c = 100`` |
+    |---|---|---|
+    | none | ``1.0`` | ``22.3`` |
+    | ``pc > 0.05`` | ``6.88e-02`` | ``7.13e-04`` |
+    | ``pc > 0.2`` | ``4.16e-02`` | ``4.25e-04`` |
+
+    The retracted ``rtol=2e-2`` would fail at ``c = 0.01`` even masked. Drift ``C17``.
+    """
+
+    WEIGHTS = np.array([1.0, 2.0, 3.0])
+    MASK_FLOOR = 0.05
+
+    @staticmethod
+    def _plate_channels():
+        from phenotypic.data import load_synth_yeast_plate
+        from phenotypic.enhance import FocusEdgeColorPhase
+
+        image = load_synth_yeast_plate()
+        return [
+            monogenic_channel_response(channel)
+            for channel in FocusEdgeColorPhase()._extract_channels(image)
+        ]
+
+    def _deviation(self, channels, c, floor):
+        base = color_phase_congruency(channels, self.WEIGHTS, fusion="joint", n_scale=4).pc
+        scaled = color_phase_congruency(
+            channels, c * self.WEIGHTS, fusion="joint", n_scale=4
+        ).pc
+        mask = base > floor
+        return float((np.abs(scaled[mask] - base[mask]) / base[mask]).max())
+
+    def test_unmasked_the_invariance_fails_outright(self):
+        """If it held unmasked, the mask would be doing no work and the test no thinking."""
+        channels = self._plate_channels()
+        assert self._deviation(channels, 0.01, 0.0) > 0.5
+        assert self._deviation(channels, 100.0, 0.0) > 0.5
+
+    def test_masked_the_invariance_holds_within_the_measured_bound(self):
+        channels = self._plate_channels()
+        assert self._deviation(channels, 0.01, self.MASK_FLOOR) < 0.10
+        assert self._deviation(channels, 100.0, self.MASK_FLOOR) < 2e-3
+
+    def test_shrinking_the_weights_hurts_far_more_than_growing_them(self):
+        """The mechanism, not just the magnitude. ``eps/(c*A_max)`` grows as ``c -> 0``.
+
+        A test that only asserted "both are small" would pass if ``eps`` moved into
+        ``E + eps`` instead -- which is where drift ``C17`` records the spec wrongly put it.
+        """
+        channels = self._plate_channels()
+        shrunk = self._deviation(channels, 0.01, self.MASK_FLOOR)
+        grown = self._deviation(channels, 100.0, self.MASK_FLOOR)
+        assert shrunk > 10.0 * grown, f"shrunk {shrunk:.3e} vs grown {grown:.3e}"
+
+    def test_the_ratio_itself_is_exactly_one_homogeneous(self):
+        """What §4.2 actually needs: ``E_total/A_total`` is scale-free. No ``eps``."""
+        from phenotypic.enhance._color_phase_kernels import _weighted_scalars
+
+        channels = self._plate_channels()
+        for c in (0.01, 100.0):
+            a_base, t_base, m_base = _weighted_scalars(channels, self.WEIGHTS)
+            a_sc, t_sc, m_sc = _weighted_scalars(channels, c * self.WEIGHTS)
+            np.testing.assert_allclose(a_sc, c * a_base, rtol=1e-12)
+            np.testing.assert_allclose(m_sc, c * m_base, rtol=1e-12)
+            assert t_sc == pytest.approx(c * t_base, rel=1e-12)
+
+
 class TestArgumentValidation:
     def test_unknown_fusion_raises(self):
         with pytest.raises(ValueError, match="fusion must be one of"):
