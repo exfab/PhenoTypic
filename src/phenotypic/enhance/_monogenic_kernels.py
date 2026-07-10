@@ -361,32 +361,41 @@ def spread_weight(
 
 
 @dataclass(frozen=True)
-class MonogenicResult:
-    """Output of :func:`monogenic_phase_congruency`.
+class MonogenicChannel:
+    """Per-channel monogenic accumulators, before the congruency formula is applied.
+
+    Split out of :func:`monogenic_phase_congruency` so that ``FocusEdgeColorPhase`` can
+    fuse three channels *before* evaluating the congruency once, rather than evaluating
+    it three times and combining after (which is what ``fusion="l2"`` does, and is a
+    different operator).
 
     Attributes:
-        pc: Phase congruency in ``[0, 1]``. High where the log-Gabor components are
-            maximally in phase, independent of their amplitude.
-        orientation: Feature orientation in radians, ``(-pi/2, pi/2]``. ``0`` is a
-            vertical edge (intensity varying across columns), ``pi/2`` a horizontal one.
-            Measured with y increasing upward -- that is what the sign on ``sum_h2``
-            encodes.
-        feature_type: Local weighted mean phase angle in radians, ``[-pi/2, pi/2]``.
-            ``0`` is a step edge, ``+pi/2`` a bright line, ``-pi/2`` a dark line.
-        threshold: The Rayleigh noise threshold ``T`` actually applied.
-        n_clamped: How many pixels needed the ``acos`` argument clipped into
-            ``[-1, 1]``. Must be ``0``; a non-zero value means roundoff escaped the
-            ``epsilon`` guard.
+        sum_even: Sum over scales of the even (log-Gabor) response.
+        sum_h1: Sum over scales of the first Riesz (odd) response.
+        sum_h2: Sum over scales of the second Riesz (odd) response.
+        sum_amplitude: ``A_Sigma``, sum over scales of the monogenic amplitude.
+        max_amplitude: Elementwise maximum over scales of the monogenic amplitude.
+        threshold: The Rayleigh noise threshold ``T`` for this channel.
     """
 
-    pc: np.ndarray
-    orientation: np.ndarray
-    feature_type: np.ndarray
+    sum_even: np.ndarray
+    sum_h1: np.ndarray
+    sum_h2: np.ndarray
+    sum_amplitude: np.ndarray
+    max_amplitude: np.ndarray
     threshold: float
-    n_clamped: int
+
+    @property
+    def energy(self) -> np.ndarray:
+        """``||(sum_even, sum_h1, sum_h2)||``.
+
+        ``sqrt(a**2 + b**2 + c**2)``, never ``np.hypot`` -- ``hypot`` appears in no
+        reference and rounds differently on 4.5% of elements.
+        """
+        return np.sqrt(self.sum_even ** 2 + self.sum_h1 ** 2 + self.sum_h2 ** 2)
 
 
-def monogenic_phase_congruency(
+def monogenic_channel_response(
         img: np.ndarray,
         *,
         n_scale: int = 4,
@@ -394,54 +403,33 @@ def monogenic_phase_congruency(
         mult: float = 2.1,
         sigma_onf: float = 0.55,
         k: float = 3.0,
-        cutoff: float = 0.5,
-        g: float = 10.0,
-        deviation_gain: float = 1.5,
         noise_method: float = -1.0,
         periodic: bool = False,
-) -> MonogenicResult:
-    """Kovesi's ``phasecongmono``: phase congruency from the monogenic signal.
+) -> MonogenicChannel:
+    """Run the monogenic scale loop and return its accumulators.
 
-    An isotropic log-Gabor bandpass supplies the even channel; the Riesz transform
-    supplies the two odd channels. There is no orientation sweep -- orientation falls
-    out of the odd pair::
-
-        PC = W * max(1 - deviation_gain*acos(E/(sumAn + eps)), 0) * max(E - T, 0)/(E + eps)
-
-    This is **not** ``phasecong3``'s formula. The noise threshold is applied as a
-    multiplicative fraction rather than subtracted from the numerator (Kovesi: subtracting
-    it early "would interfere with the phase deviation computation"), and the phase
-    deviation term is ``acos(E/sumAn)`` scaled by ``deviation_gain``.
+    Everything :func:`monogenic_phase_congruency` computes *before* the congruency
+    formula. Guards (``n_scale``, ``mult``, ``noise_method``) live here, because this is
+    where their divisions are; ``sigma_onf`` is guarded inside :func:`log_gabor_scale`,
+    at its own division.
 
     Args:
-        img: Real 2-D array. Not required to lie in any particular range.
+        img: Real 2-D array.
         n_scale: Number of log-Gabor scales. Must be at least 2.
         min_wavelength: Wavelength of the finest scale, in pixels.
-        mult: Wavelength multiplier between successive scales.
+        mult: Wavelength multiplier between successive scales. Must exceed 1.
         sigma_onf: Ratio of each filter's Gaussian sigma to its centre frequency.
-        k: Number of noise standard deviations above the mean at which ``T`` is set.
-            ``phasecongmono``'s default is ``3.0``, not ``phasecong3``'s ``2.0``.
-        cutoff: Fractional frequency-spread below which ``W`` penalizes the response.
-        g: Sharpness of ``W``'s sigmoid.
-        deviation_gain: Scales the phase-deviation term. Kovesi: "sensible values are
-            from 1 to about 2."
-        noise_method: ``-1`` estimates the Rayleigh parameter from the median of the
-            finest scale's amplitude; ``-2`` from its histogram mode; any value ``>= 0``
-            is used verbatim as ``T`` (so ``0.0`` disables thresholding).
-        periodic: Bandpass the image's periodic component (Moisan's decomposition,
-            Kovesi's ``perfft2``) rather than the raw FFT. Kovesi's MATLAB does this;
-            his Julia explicitly does not, and we follow the Julia. **Leave this
-            ``False``** except when reproducing the golden fixture, which was generated
-            from ``phasepack`` (a MATLAB transcription).
+        k: Number of noise standard deviations above the mean at which ``T`` sits.
+        noise_method: ``-1`` median, ``-2`` Rayleigh mode, ``>= 0`` a literal ``T``.
+        periodic: Bandpass the periodic component (Kovesi's MATLAB) rather than the raw
+            FFT (his Julia, which we ship). Drift ``M4``.
 
     Returns:
-        A :class:`MonogenicResult`.
+        A :class:`MonogenicChannel`.
 
     Raises:
-        ValueError: If ``noise_method`` is negative but is neither ``-1`` nor ``-2``.
-
-    References:
-        Kovesi, P. "Image features from phase congruency." *Videre* 1(3), 1--26 (1999).
+        ValueError: If ``n_scale < 2`` (M9), ``mult <= 1`` (M10), or ``noise_method`` is
+            negative and neither ``-1`` nor ``-2`` (M7).
     """
     img = np.asarray(img, dtype=np.float64)
     rows, cols = img.shape
@@ -528,8 +516,6 @@ def monogenic_phase_congruency(
         else:
             max_amplitude = np.maximum(max_amplitude, amplitude)
 
-    weight = spread_weight(sum_amplitude, max_amplitude, n_scale, cutoff, g, epsilon)
-
     if noise_method >= 0:
         threshold = float(noise_method)
     else:
@@ -540,7 +526,47 @@ def monogenic_phase_congruency(
         # The epsilon floor is phasepack's, not Kovesi's. Inactive unless img is constant.
         threshold = float(max(noise_mean + k * noise_sigma, epsilon))
 
-    energy = np.sqrt(sum_even ** 2 + sum_h1 ** 2 + sum_h2 ** 2)
+    return MonogenicChannel(
+            sum_even, sum_h1, sum_h2, sum_amplitude, max_amplitude, threshold
+    )
+
+
+def congruency_from_accumulators(
+        energy: np.ndarray,
+        sum_amplitude: np.ndarray,
+        max_amplitude: np.ndarray,
+        threshold: float,
+        *,
+        n_scale: int,
+        cutoff: float,
+        g: float,
+        deviation_gain: float,
+        epsilon: float = EPSILON_MONOGENIC,
+) -> tuple[np.ndarray, int]:
+    """Kovesi's ``phasecongmono`` congruency, given accumulators from any source.
+
+    ``PC = W * max(1 - deviation_gain*acos(E/(A + eps)), 0) * max(E - T, 0)/(E + eps)``
+
+    The accumulators may come from one channel (:func:`monogenic_channel_response`) or
+    from a weighted fusion of several (``_color_phase_kernels``). The formula does not
+    care, which is the entire reason for the split.
+
+    Args:
+        energy: ``E``, the monogenic energy.
+        sum_amplitude: ``A_Sigma``.
+        max_amplitude: Elementwise max over scales.
+        threshold: ``T``.
+        n_scale: Number of scales; ``spread_weight`` divides by ``n_scale - 1``.
+        cutoff: Frequency-spread sigmoid centre.
+        g: Frequency-spread sigmoid sharpness.
+        deviation_gain: Scales the phase-deviation term.
+        epsilon: Division guard. ``1e-4`` for ``phasecongmono``.
+
+    Returns:
+        ``(pc, n_clamped)``. ``n_clamped`` counts pixels whose ``acos`` argument had to be
+        clipped into ``[-1, 1]``; it must be ``0`` (drift ``M1``).
+    """
+    weight = spread_weight(sum_amplitude, max_amplitude, n_scale, cutoff, g, epsilon)
 
     ratio = energy / (sum_amplitude + epsilon)
     n_clamped = int(np.count_nonzero((ratio > 1.0) | (ratio < -1.0)))
@@ -548,10 +574,106 @@ def monogenic_phase_congruency(
             1.0 - deviation_gain * np.arccos(np.clip(ratio, -1.0, 1.0)), 0.0
     )
     pc = weight * phase_deviation * np.maximum(energy - threshold, 0.0) / (energy + epsilon)
+    return pc, n_clamped
+
+
+@dataclass(frozen=True)
+class MonogenicResult:
+    """Output of :func:`monogenic_phase_congruency`.
+
+    Attributes:
+        pc: Phase congruency in ``[0, 1]``. High where the log-Gabor components are
+            maximally in phase, independent of their amplitude.
+        orientation: Feature orientation in radians, ``(-pi/2, pi/2]``. ``0`` is a
+            vertical edge (intensity varying across columns), ``pi/2`` a horizontal one.
+            Measured with y increasing upward -- that is what the sign on ``sum_h2``
+            encodes.
+        feature_type: Local weighted mean phase angle in radians, ``[-pi/2, pi/2]``.
+            ``0`` is a step edge, ``+pi/2`` a bright line, ``-pi/2`` a dark line.
+        threshold: The Rayleigh noise threshold ``T`` actually applied.
+        n_clamped: How many pixels needed the ``acos`` argument clipped into
+            ``[-1, 1]``. Must be ``0``; a non-zero value means roundoff escaped the
+            ``epsilon`` guard.
+    """
+
+    pc: np.ndarray
+    orientation: np.ndarray
+    feature_type: np.ndarray
+    threshold: float
+    n_clamped: int
+
+
+def monogenic_phase_congruency(
+        img: np.ndarray,
+        *,
+        n_scale: int = 4,
+        min_wavelength: float = 3.0,
+        mult: float = 2.1,
+        sigma_onf: float = 0.55,
+        k: float = 3.0,
+        cutoff: float = 0.5,
+        g: float = 10.0,
+        deviation_gain: float = 1.5,
+        noise_method: float = -1.0,
+        periodic: bool = False,
+) -> MonogenicResult:
+    """Kovesi's ``phasecongmono``: phase congruency from the monogenic signal.
+
+    An isotropic log-Gabor bandpass supplies the even channel; the Riesz transform
+    supplies the two odd channels. There is no orientation sweep -- orientation falls
+    out of the odd pair::
+
+        PC = W * max(1 - deviation_gain*acos(E/(sumAn + eps)), 0) * max(E - T, 0)/(E + eps)
+
+    This is **not** ``phasecong3``'s formula. The noise threshold is applied as a
+    multiplicative fraction rather than subtracted from the numerator (Kovesi: subtracting
+    it early "would interfere with the phase deviation computation"), and the phase
+    deviation term is ``acos(E/sumAn)`` scaled by ``deviation_gain``.
+
+    Args:
+        img: Real 2-D array. Not required to lie in any particular range.
+        n_scale: Number of log-Gabor scales. Must be at least 2.
+        min_wavelength: Wavelength of the finest scale, in pixels.
+        mult: Wavelength multiplier between successive scales.
+        sigma_onf: Ratio of each filter's Gaussian sigma to its centre frequency.
+        k: Number of noise standard deviations above the mean at which ``T`` is set.
+            ``phasecongmono``'s default is ``3.0``, not ``phasecong3``'s ``2.0``.
+        cutoff: Fractional frequency-spread below which ``W`` penalizes the response.
+        g: Sharpness of ``W``'s sigmoid.
+        deviation_gain: Scales the phase-deviation term. Kovesi: "sensible values are
+            from 1 to about 2."
+        noise_method: ``-1`` estimates the Rayleigh parameter from the median of the
+            finest scale's amplitude; ``-2`` from its histogram mode; any value ``>= 0``
+            is used verbatim as ``T`` (so ``0.0`` disables thresholding).
+        periodic: Bandpass the image's periodic component (Moisan's decomposition,
+            Kovesi's ``perfft2``) rather than the raw FFT. Kovesi's MATLAB does this;
+            his Julia explicitly does not, and we follow the Julia. **Leave this
+            ``False``** except when reproducing the golden fixture, which was generated
+            from ``phasepack`` (a MATLAB transcription).
+
+    Returns:
+        A :class:`MonogenicResult`.
+
+    Raises:
+        ValueError: If ``noise_method`` is negative but is neither ``-1`` nor ``-2``.
+
+    References:
+        Kovesi, P. "Image features from phase congruency." *Videre* 1(3), 1--26 (1999).
+    """
+    channel = monogenic_channel_response(
+            img, n_scale=n_scale, min_wavelength=min_wavelength, mult=mult,
+            sigma_onf=sigma_onf, k=k, noise_method=noise_method, periodic=periodic,
+    )
+    energy = channel.energy
+    pc, n_clamped = congruency_from_accumulators(
+            energy, channel.sum_amplitude, channel.max_amplitude, channel.threshold,
+            n_scale=n_scale, cutoff=cutoff, g=g, deviation_gain=deviation_gain,
+            epsilon=EPSILON_MONOGENIC,
+    )
 
     # Kovesi writes atan(-sumh2/sumh1). arctan2 is equal mod pi and never divides by
     # zero; fold it back into (-pi/2, pi/2] so the [0,1] map is a straight affine one.
-    orientation = np.arctan2(-sum_h2, sum_h1)
+    orientation = np.arctan2(-channel.sum_h2, channel.sum_h1)
     orientation = np.where(orientation > np.pi / 2, orientation - np.pi, orientation)
     orientation = np.where(orientation <= -np.pi / 2, orientation + np.pi, orientation)
 
@@ -562,6 +684,8 @@ def monogenic_phase_congruency(
     # of elements and `feature_type` on 2.6%. Same species as M8 -- a numpy convenience
     # substituted beneath identical-looking source text. The fixture's rtol=1e-6 on `ft` has
     # 6.7 orders of slack and cannot see it.
-    feature_type = np.arctan2(sum_even, np.sqrt(sum_h1 ** 2 + sum_h2 ** 2))
+    feature_type = np.arctan2(
+            channel.sum_even, np.sqrt(channel.sum_h1 ** 2 + channel.sum_h2 ** 2)
+    )
 
-    return MonogenicResult(pc, orientation, feature_type, threshold, n_clamped)
+    return MonogenicResult(pc, orientation, feature_type, channel.threshold, n_clamped)

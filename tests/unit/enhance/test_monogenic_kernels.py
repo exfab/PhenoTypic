@@ -18,10 +18,12 @@ from numpy.fft import fft2, ifft2
 from phenotypic.data import load_fungi_plate, load_synth_yeast_plate, load_yeast_plate
 from phenotypic.enhance._monogenic_kernels import (
     EPSILON_MONOGENIC,
+    congruency_from_accumulators,
     construct_filter_grids,
     log_gabor_radial,
     log_gabor_scale,
     lowpass_filter,
+    monogenic_channel_response,
     monogenic_phase_congruency,
     periodic_fft2,
     rayleigh_mode,
@@ -69,6 +71,93 @@ def _sum_monogenic_channels(
         sum_h1 += odd.real
         sum_h2 += odd.imag
     return sum_even, sum_h1, sum_h2
+
+
+def _monogenic_pc_from_primitives(
+        img: np.ndarray, n_scale: int, noise_method: float,
+) -> tuple[np.ndarray, float, int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """The **pre-refactor** body of ``monogenic_phase_congruency``, rebuilt from primitives.
+
+    An independent restatement, in the manner of :func:`_sum_monogenic_channels`. It is
+    what makes ``TestTheRefactorMovesNoBits`` an oracle rather than a tautology: comparing
+    ``monogenic_phase_congruency`` against ``monogenic_channel_response`` +
+    ``congruency_from_accumulators`` compares the composed function against *itself*, since
+    that is exactly what it now calls. Substituting ``np.hypot`` into
+    ``MonogenicChannel.energy`` moves both sides equally and such a comparison stays green.
+
+    Statement order is the pre-refactor order, including ``weight`` before ``threshold`` and
+    the ``if s == 0`` branch reading ``sum_amplitude`` rather than ``amplitude`` (Kovesi
+    reads the accumulator; at ``s == 0`` they are equal).
+
+    Scope: this pins the accumulator seam and the congruency block. It shares
+    ``log_gabor_scale`` / ``riesz_multiplier`` / ``spread_weight`` / ``rayleigh_mode`` with
+    the code under test, so a mutation *inside a primitive* is invisible here -- each of
+    those has its own test class above.
+
+    Returns:
+        ``(pc, threshold, n_clamped, sum_even, sum_h1, sum_h2, sum_amplitude, max_amplitude)``.
+    """
+    min_wavelength, mult, sigma_onf, k = 3.0, 2.1, 0.55, 3.0  # the shipped defaults
+    cutoff, g, deviation_gain = 0.5, 10.0, 1.5
+    epsilon = EPSILON_MONOGENIC
+
+    img = np.asarray(img, dtype=np.float64)
+    rows, cols = img.shape
+    radius, _, _, _, fx, fy = construct_filter_grids(rows, cols)
+    riesz = riesz_multiplier(fx, fy, radius)
+    lowpass = lowpass_filter(radius)
+    spectrum = fft2(img)  # periodic=False, the shipped default
+
+    sum_amplitude = np.zeros((rows, cols), dtype=np.float64)
+    max_amplitude = np.zeros((rows, cols), dtype=np.float64)
+    sum_even = np.zeros((rows, cols), dtype=np.float64)
+    sum_h1 = np.zeros((rows, cols), dtype=np.float64)
+    sum_h2 = np.zeros((rows, cols), dtype=np.float64)
+    tau = 0.0
+
+    for s in range(n_scale):
+        band = spectrum * log_gabor_scale(
+                radius, lowpass, min_wavelength * (mult ** s), sigma_onf
+        )
+        even = np.real(ifft2(band))
+        odd = ifft2(band * riesz)
+        h1, h2 = odd.real, odd.imag
+        amplitude = np.sqrt(even * even + h1 * h1 + h2 * h2)
+
+        sum_amplitude += amplitude
+        sum_even += even
+        sum_h1 += h1
+        sum_h2 += h2
+
+        if s == 0:
+            if abs(noise_method + 1.0) < epsilon:
+                tau = float(np.median(sum_amplitude)) / np.sqrt(np.log(4.0))
+            elif abs(noise_method + 2.0) < epsilon:
+                tau = rayleigh_mode(sum_amplitude)
+            max_amplitude = amplitude.copy()
+        else:
+            max_amplitude = np.maximum(max_amplitude, amplitude)
+
+    weight = spread_weight(sum_amplitude, max_amplitude, n_scale, cutoff, g, epsilon)
+
+    if noise_method >= 0:
+        threshold = float(noise_method)
+    else:
+        total_tau = tau * (1.0 - (1.0 / mult) ** n_scale) / (1.0 - 1.0 / mult)
+        noise_mean = total_tau * np.sqrt(np.pi / 2.0)
+        noise_sigma = total_tau * np.sqrt((4.0 - np.pi) / 2.0)
+        threshold = float(max(noise_mean + k * noise_sigma, epsilon))
+
+    energy = np.sqrt(sum_even ** 2 + sum_h1 ** 2 + sum_h2 ** 2)  # not np.hypot
+
+    ratio = energy / (sum_amplitude + epsilon)
+    n_clamped = int(np.count_nonzero((ratio > 1.0) | (ratio < -1.0)))
+    phase_deviation = np.maximum(
+            1.0 - deviation_gain * np.arccos(np.clip(ratio, -1.0, 1.0)), 0.0
+    )
+    pc = weight * phase_deviation * np.maximum(energy - threshold, 0.0) / (energy + epsilon)
+
+    return pc, threshold, n_clamped, sum_even, sum_h1, sum_h2, sum_amplitude, max_amplitude
 
 
 def _golden_cases() -> dict[str, np.ndarray]:
@@ -678,3 +767,68 @@ class TestContrastAndIlluminationInvariance:
         base = monogenic_phase_congruency(mat).pc
         offset = monogenic_phase_congruency(mat + 7.0).pc
         assert np.abs(offset - base).max() < 1e-12
+
+
+class TestTheRefactorMovesNoBits:
+    """`monogenic_phase_congruency` must be bit-identical across the accumulator split.
+
+    Not `rtol`. Bit-identical. The golden fixture's `rtol=1e-6` has orders of slack and has
+    already hidden two substitutions on this branch (`np.hypot` for `sqrt(a**2+b**2)`, and
+    numpy's reciprocal-multiply for a componentwise divide). A refactor that reordered a
+    float accumulation would sail straight through it.
+
+    The oracle is :func:`_monogenic_pc_from_primitives`, an independent restatement of the
+    pre-refactor body. It must be, because the obvious comparison -- ``pc`` against
+    ``monogenic_channel_response`` + ``congruency_from_accumulators`` -- is a tautology:
+    that composition *is* the refactored function. Measured: substituting
+    ``np.hypot(np.hypot(even, h1), h2)`` into :attr:`MonogenicChannel.energy` leaves such a
+    comparison green, moves ``pc`` on 6.7% of a real plate's pixels by up to ``4.1e-15``
+    absolute (``8.5e-11`` relative), and is invisible to ``phasecongmono_golden.npz``.
+    """
+
+    @pytest.mark.parametrize("noise_method", [-1.0, -2.0, 0.0])
+    @pytest.mark.parametrize("n_scale", [2, 4, 5])
+    def test_pc_orientation_feature_type_and_T_are_bit_identical(self, n_scale, noise_method):
+        rng = np.random.default_rng(20260709)
+        img = rng.normal(size=(64, 64))
+        img += np.add.outer(np.arange(64) > 31, np.zeros(64))  # a step, so T is non-degenerate
+
+        result = monogenic_phase_congruency(
+                img, n_scale=n_scale, noise_method=noise_method
+        )
+
+        (expected_pc, expected_threshold, expected_n_clamped, sum_even, sum_h1, sum_h2,
+         sum_amplitude, max_amplitude) = _monogenic_pc_from_primitives(
+                img, n_scale, noise_method
+        )
+
+        assert np.array_equal(result.pc, expected_pc), "pc moved"
+        assert result.threshold == expected_threshold, "T moved"
+        assert result.n_clamped == expected_n_clamped
+
+        orientation = np.arctan2(-sum_h2, sum_h1)
+        orientation = np.where(orientation > np.pi / 2, orientation - np.pi, orientation)
+        orientation = np.where(orientation <= -np.pi / 2, orientation + np.pi, orientation)
+        assert np.array_equal(result.orientation, orientation), "orientation moved"
+
+        feature_type = np.arctan2(sum_even, np.sqrt(sum_h1 ** 2 + sum_h2 ** 2))
+        assert np.array_equal(result.feature_type, feature_type), "feature_type moved"
+
+        # The seam itself: the two exported functions must expose exactly the accumulators
+        # the monolith held, and compose back to the same `pc`.
+        channel = monogenic_channel_response(
+                img, n_scale=n_scale, noise_method=noise_method
+        )
+        assert np.array_equal(channel.sum_even, sum_even)
+        assert np.array_equal(channel.sum_h1, sum_h1)
+        assert np.array_equal(channel.sum_h2, sum_h2)
+        assert np.array_equal(channel.sum_amplitude, sum_amplitude)
+        assert np.array_equal(channel.max_amplitude, max_amplitude)
+        assert channel.threshold == expected_threshold
+
+        pc, n_clamped = congruency_from_accumulators(
+                channel.energy, channel.sum_amplitude, channel.max_amplitude,
+                channel.threshold, n_scale=n_scale, cutoff=0.5, g=10.0, deviation_gain=1.5,
+        )
+        assert np.array_equal(expected_pc, pc), "the composition does not rebuild pc"
+        assert expected_n_clamped == n_clamped
