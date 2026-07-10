@@ -431,11 +431,26 @@ parameters, not *accumulator* parameters — they never touch the scale loop. `k
 `noise_method` are needed for `threshold`, so they stay with the accumulators. Fusion needs the
 accumulators of three channels and one congruency evaluation, so the seam must fall exactly here.
 
-- [ ] **Step 1: Write the bit-identity test first — and watch it pass on the unrefactored code**
+- [ ] **Step 1: Write the bit-identity test first — against an INDEPENDENT oracle**
 
-This is the oracle for the whole task. It must pass **before** the refactor (trivially, since
-`monogenic_phase_congruency` is unchanged) and **after** it (non-trivially). Append to
-`tests/unit/enhance/test_monogenic_kernels.py`:
+> **The version of this step that shipped in the first draft of this plan was a tautology.** It
+> compared `monogenic_phase_congruency` against `monogenic_channel_response` +
+> `congruency_from_accumulators` — which is exactly what the refactored function *calls*. Both sides
+> move together. **Measured: with `np.hypot` substituted into `MonogenicChannel.energy`, that test
+> passes 9/9.** It could not fail.
+>
+> The oracle must be an **independent restatement of the pre-refactor body** —
+> `_monogenic_pc_from_primitives`, built only from `construct_filter_grids`, `log_gabor_scale`,
+> `riesz_multiplier`, `spread_weight` and `rayleigh_mode`, calling none of the refactored API
+> (assert this with `ast`, not by reading). Under the same mutation it fails **8/9**. Its scope is
+> the accumulator seam and the congruency block; a mutation *inside* a shared primitive is invisible
+> to it, and each primitive has its own test class.
+
+This is the oracle for the whole task. Append to `tests/unit/enhance/test_monogenic_kernels.py` a
+`_monogenic_pc_from_primitives(img, n_scale, noise_method)` helper returning
+`(pc, threshold, n_clamped, sum_even, sum_h1, sum_h2, sum_amplitude, max_amplitude)`, reproducing the
+pre-refactor statement order exactly — `weight` before `threshold`, and the `if s == 0:` branch
+reading `sum_amplitude` rather than `amplitude`. Then compare against it:
 
 ```python
 class TestTheRefactorMovesNoBits:
@@ -458,18 +473,35 @@ class TestTheRefactorMovesNoBits:
             img, n_scale=n_scale, noise_method=noise_method
         )
 
-        channel = monogenic_channel_response(
-            img, n_scale=n_scale, noise_method=noise_method
-        )
-        pc, n_clamped = congruency_from_accumulators(
-            channel.energy, channel.sum_amplitude, channel.max_amplitude,
-            channel.threshold, n_scale=n_scale, cutoff=0.5, g=10.0, deviation_gain=1.5,
+        # INDEPENDENT oracle. Never `monogenic_channel_response` + `congruency_from_
+        # accumulators` -- that composition IS the function under test.
+        (expected_pc, expected_threshold, expected_n_clamped, sum_even, sum_h1, sum_h2,
+         sum_amplitude, max_amplitude) = _monogenic_pc_from_primitives(
+            img, n_scale, noise_method
         )
 
-        assert np.array_equal(result.pc, pc), "pc moved"
-        assert result.threshold == channel.threshold, "T moved"
-        assert result.n_clamped == n_clamped
+        assert np.array_equal(result.pc, expected_pc), "pc moved"
+        assert result.threshold == expected_threshold, "T moved"
+        assert result.n_clamped == expected_n_clamped
+
+        orientation = np.arctan2(-sum_h2, sum_h1)
+        orientation = np.where(orientation > np.pi / 2, orientation - np.pi, orientation)
+        orientation = np.where(orientation <= -np.pi / 2, orientation + np.pi, orientation)
+        assert np.array_equal(result.orientation, orientation), "orientation moved"
+
+        feature_type = np.arctan2(sum_even, np.sqrt(sum_h1 ** 2 + sum_h2 ** 2))
+        assert np.array_equal(result.feature_type, feature_type), "feature_type moved"
+
+        # The seam itself: the exported functions expose exactly the accumulators the
+        # monolith held.
+        channel = monogenic_channel_response(img, n_scale=n_scale, noise_method=noise_method)
+        assert np.array_equal(channel.sum_even, sum_even)
+        assert np.array_equal(channel.sum_amplitude, sum_amplitude)
 ```
+
+**Keep all nine parametrisations.** Under the `np.hypot` mutation, `[n_scale=2,
+noise_method=-2.0]` stays **green** even against the independent oracle. A single-configuration
+version of this test would have missed the mutation entirely.
 
 - [ ] **Step 2: Run it against the un-refactored tree — it must fail with `NameError`**
 
@@ -1242,7 +1274,12 @@ Blocking. Dispatch a fresh review agent, **Opus/high** (never weaker than the im
 Charge:
 1. Reproduce the bit-identity claim independently. Do not trust `TestTheRefactorMovesNoBits`; write
    your own comparison against `git show HEAD~1:src/phenotypic/enhance/_monogenic_kernels.py`
-   loaded into a temp module, on all three shipped plates and both noise methods.
+   loaded into a temp module, on all three shipped plates and both noise methods. **Done — 27
+   configurations, zero mismatches.**
+1b. Confirm the test's oracle is not the function under test. Parse `_monogenic_pc_from_primitives`
+   with `ast` and assert it calls **none** of `monogenic_channel_response`,
+   `congruency_from_accumulators`, `MonogenicChannel`, `monogenic_phase_congruency`. The first draft
+   of this plan specified an oracle that failed exactly this check.
 2. Confirm `weight` is still computed as its own statement, not folded into the `pc` expression
    (folding changes float association).
 3. Confirm the `if s == 0:` branch still reads `sum_amplitude`, not `amplitude`.
@@ -1932,7 +1969,10 @@ git commit -m "docs(enhance): document FocusEdgeColorPhase's rgb sourcing and th
 ## GATE D, then the simplify pass
 
 - [ ] `uv run pytest tests/unit/enhance/ tests/unit/abc_/ tests/unit/tune/ tests/unit/detect/ -q`
-- [ ] `uv run mypy src/phenotypic` — no **new** errors (418 pre-existing at HEAD)
+- [ ] `uv run mypy --no-incremental src/phenotypic` — no **new** errors (**422** in 128 files at
+      HEAD on a clean cache). **Use `--no-incremental`**: the incremental cache reports `418` and
+      the count drifts as files are touched, so a stale cache can invent or hide a regression. To
+      attribute an error, `grep` for the changed filename rather than trusting the total.
 - [ ] `uv run ruff check src/phenotypic` — no **new** errors (31 pre-existing, none in files this
       branch owns)
 - [ ] `git diff main --stat` — no change to `pyproject.toml`, `uv.lock`, `tests/fixtures/*.npz`
