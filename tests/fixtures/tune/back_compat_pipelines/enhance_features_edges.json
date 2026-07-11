@@ -7,7 +7,7 @@
     "FocusEdgePhase": {
       "class": "FocusEdgePhase",
       "params": {
-        "n_scale": 1,
+        "n_scale": 2,
         "n_orient": 1,
         "min_wavelength": 2.0,
         "mult": 2.1,

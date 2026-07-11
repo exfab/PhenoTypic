@@ -27,6 +27,38 @@ FootprintShape = Literal["disk", "square", "diamond"]
 
 DetectMode = Literal["gray", "red", "green", "blue", "MinRGB", "LabL", "LabA", "LabB", "HsvS", "HsvV", "InvS"]
 
+#: Which of ``phasecongmono``'s three maps :class:`FocusEdgeMonogenicPhase` writes to
+#: ``detect_mat``. ``orientation`` and ``feature_type`` are angles and are mapped from
+#: radians into ``[0, 1]`` by ``(theta + pi/2)/pi`` before being written. Type-only
+#: closed set (no Enum / documentation surface needed), matching ``DetectMode``.
+MonogenicOutput = Literal["pc", "orientation", "feature_type"]
+
+#: Colour space whose channels feed :class:`FocusEdgeColorPhase`. The operation reorders
+#: them into **luminance-first** order -- ``lab`` is natively ``(L*, a*, b*)`` and needs no
+#: change, ``hsv`` is natively ``(H, S, V)`` and is permuted to ``(V, H, S)`` -- so that
+#: index ``0`` is always the axis whose weight is pinned at ``1.0``.
+ColorSpaceName = Literal["lab", "hsv"]
+
+#: Cross-channel fusion rule for :class:`FocusEdgeColorPhase`. ``l2`` is the CMPCM paper's
+#: root-sum-of-squares over three *independent* per-channel congruencies; ``joint`` and
+#: ``coherent`` share one denominator across channels and are ours (drift ``C7``, ``C8``).
+PhaseFusion = Literal["joint", "coherent", "l2"]
+
+#: Signal lift. ``conformal`` is gated on ``conformal-lift.md`` §4's three-arm junction
+#: experiment and currently raises :exc:`NotImplementedError` at construction. The member
+#: exists so the field surface is stable; the code path does not exist yet.
+PhaseLift = Literal["monogenic", "conformal"]
+
+#: What :class:`FocusEdgeColorPhase` writes to ``detect_mat``. **Only ``pc``.** Of the three
+#: fusion rules only ``coherent`` builds a fused monogenic vector -- ``joint`` sums scalar
+#: energies, ``l2`` sums finished congruency maps -- so a cross-channel ``orientation`` or
+#: ``feature_type`` would describe a quantity the response never touched under the shipped
+#: default. Both are still computed and returned by the protected helper
+#: ``FocusEdgeColorPhase._color_phase_congruency()``, mirroring
+#: ``FocusEdgePhase._phasecong3()``, so a future consumer can reach them without a breaking
+#: change. Drift ``C15``.
+ColorPhaseOutput = Literal["pc"]
+
 #: Image layer a process-mode CLI run exports. A closed
 #: subset of the layers exposed as Image accessors; ``rgb``/``gray``/
 #: ``detect_mat`` save as TIFF, ``objmap`` as a raw-label PNG.

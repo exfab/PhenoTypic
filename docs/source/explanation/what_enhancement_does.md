@@ -52,11 +52,29 @@ Enhance specific morphological features.
 - **FocusEdgeFrangi** — enhances tubular structures (hyphae, branches)
 - **FocusEdgeSobel** — highlights edges
 - **FocusEdgePhase** — illumination-invariant edge detection
+- **FocusEdgeMonogenicPhase** — the same illumination invariance without the orientation
+  sweep, via the monogenic signal. Cheaper and isotropic; use it when colony edges have no
+  preferred direction. Its `output="orientation"` / `"feature_type"` modes are diagnostic
+  angle maps, not detection inputs.
+- **FocusEdgeColorPhase** — runs the monogenic chain on three colour channels and fuses
+  them, so a channel with amplitude but no phase agreement can *veto* a spurious luminance
+  edge. **It reads `rgb`, not `detect_mat`**, which makes it a pipeline *source*: any
+  enhancer placed before it has no effect. Reach for it on **filamentous** plates. On
+  round-colony plates, `FocusEdgeMonogenicPhase` on luminance measurably localizes
+  boundaries better than any of its fusion modes, so colour buys nothing there. Rejects
+  achromatic images outright.
 
 ## Stacking Enhancers
 
 Enhancers compose linearly — each reads `detect_mat`, modifies it, and
 writes it back. Order matters:
+
+```{note}
+**One exception.** `FocusEdgeColorPhase` reads `image.rgb`, not `detect_mat`, because
+colour phase congruency is defined on colour. It is a *source*: it discards whatever
+`detect_mat` held and writes a fresh map. Anything upstream of it in the chain is wasted
+work. Put it first, or not at all.
+```
 
 1. **Denoise first** — reduce noise before amplifying contrast
 2. **Correct illumination** — normalize brightness before thresholding
