@@ -101,10 +101,10 @@ Five things that will cost you time otherwise:
   `joint` asserts them coherently — so its edge follows the displaced chroma rather than
   merging it. Spec §7.2.1–§7.2.2.
 - **Only `coherent` builds a fused monogenic vector.** `joint` sums scalar energies; `l2`
-  sums three finished congruency maps. The `orientation` / `feature_type` on
-  `ColorPhaseResult` are therefore computed from a vector that, under two of three modes, did
-  not produce `pc`. They are deliberately **not** exposed via `output`, which is
-  `Literal["pc"]`. Drift `C15`.
+  sums three finished congruency maps. `output="orientation"` and
+  `output="feature_type"` are available for all fusion modes, but under `joint` and `l2`
+  they are diagnostic maps from the weighted fused vector, not maps that produced `pc`.
+  Prefer `output="pc"` for detection. Drift `C15`.
 - **`color_space="hsv"` band-passes raw hue across its wrap discontinuity** and manufactures a
   phantom edge at near-red boundaries — `115.7×` its own background, interior of the frame.
   Retained because CMPCM uses HSV; `lab` is the default and has no seam. Drift `C16`.

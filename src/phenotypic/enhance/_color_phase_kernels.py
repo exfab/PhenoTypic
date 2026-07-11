@@ -36,8 +36,8 @@ class ColorPhaseResult:
             ``l2`` lands in ``[0, ||w||]``. The caller clips at the write site, because the
             PFOM regression must see the paper's actual quantity (drift ``C3``).
         orientation: Feature orientation in radians, ``(-pi/2, pi/2]``, from the fused
-            vector ``sum_i w_i * v_i``. ``0`` is a vertical edge. **Not exposed by**
-            :class:`FocusEdgeColorPhase` -- drift ``C15``. Only ``coherent`` builds this
+            vector ``sum_i w_i * v_i``. ``0`` is a vertical edge. Exposed as a normalized
+            diagnostic map by :class:`FocusEdgeColorPhase`. Only ``coherent`` builds this
             vector natively; under ``joint`` (which sums scalar energies) and ``l2`` (which
             sums finished congruency maps) it is *not* what produced ``pc``.
         feature_type: Local weighted mean phase angle, ``[-pi/2, pi/2]``, from the same
@@ -326,7 +326,7 @@ def color_phase_congruency(
     )
 
     # Angles always come from the fused vector, in every mode. Under `joint` and `l2` that
-    # vector is not what produced `pc`. They are returned, never exposed. Drift C15.
+    # vector is not what produced `pc`, so the public angle maps are diagnostic. Drift C15.
     v_even, v_h1, v_h2 = _fused_vector(channels, weights)
     orientation = np.arctan2(-v_h2, v_h1)
     orientation = np.where(orientation > np.pi / 2, orientation - np.pi, orientation)

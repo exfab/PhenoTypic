@@ -8,6 +8,7 @@ behavioural properties that a transcription check cannot see.
 import numpy as np
 import pytest
 from pydantic import ValidationError
+from skimage.exposure import rescale_intensity
 
 from phenotypic import Image, ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
@@ -24,6 +25,7 @@ class TestParameterValidation:
         assert op.k == 3.0  # phasecongmono's default, not phasecong3's 2.0
         assert op.deviation_gain == 1.5
         assert op.output == "pc"
+        assert op.norm == "clip"
 
     def test_positional_arguments_are_rejected(self):
         with pytest.raises(TypeError):
@@ -108,6 +110,37 @@ class TestOperationContract:
             load_synth_yeast_plate()
         ).detect_mat[:]
         assert not np.allclose(pc, orient)
+
+    @pytest.mark.parametrize("output", ["orientation", "feature_type"])
+    @pytest.mark.parametrize("norm", ["rescale", None])
+    def test_norm_does_not_change_angle_maps(self, output, norm):
+        baseline = FocusEdgeMonogenicPhase(output=output, norm="clip").apply(
+            load_synth_yeast_plate()
+        ).detect_mat[:]
+        altered = FocusEdgeMonogenicPhase(output=output, norm=norm).apply(
+            load_synth_yeast_plate()
+        ).detect_mat[:]
+        np.testing.assert_array_equal(altered, baseline)
+
+    def test_pc_norm_policies_follow_the_selected_response(self):
+        raw = monogenic_phase_congruency(
+            np.asarray(load_synth_yeast_plate().detect_mat[:], dtype=np.float64)
+        ).pc
+        clipped = FocusEdgeMonogenicPhase(norm="clip").apply(
+            load_synth_yeast_plate()
+        ).detect_mat[:]
+        rescaled = FocusEdgeMonogenicPhase(norm="rescale").apply(
+            load_synth_yeast_plate()
+        ).detect_mat[:]
+        unbounded = FocusEdgeMonogenicPhase(norm=None).apply(
+            load_synth_yeast_plate()
+        ).detect_mat[:]
+
+        np.testing.assert_allclose(clipped, np.clip(raw, 0.0, 1.0), atol=1e-6)
+        np.testing.assert_allclose(
+            rescaled, rescale_intensity(raw, out_range=(0.0, 1.0)), atol=1e-6
+        )
+        np.testing.assert_allclose(unbounded, raw, atol=1e-6)
 
     def test_the_operation_uses_the_fft2_branch(self):
         """The operation must not quietly pass periodic=True.

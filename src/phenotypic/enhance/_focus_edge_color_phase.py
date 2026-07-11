@@ -21,6 +21,7 @@ from pydantic import Field, model_validator
 from ._color_phase_kernels import ColorPhaseResult, color_phase_congruency
 from ._monogenic_kernels import monogenic_channel_response
 from ..abc_ import FocusEdge
+from ..sdk_.mixin import NormalizedOutputMixin
 from ..sdk_.typing_ import (
     ColorPhaseOutput,
     ColorSpaceName,
@@ -43,7 +44,7 @@ _LUMINANCE_FIRST: dict[ColorSpaceName, tuple[int, int, int]] = {
 }
 
 
-class FocusEdgeColorPhase(FocusEdge):
+class FocusEdgeColorPhase(NormalizedOutputMixin, FocusEdge):
     """Enhance colony edges using colour phase congruency across three channels.
 
     Runs :class:`FocusEdgeMonogenicPhase`'s monogenic chain independently on each of three
@@ -112,15 +113,20 @@ class FocusEdgeColorPhase(FocusEdge):
         noise_method: ``-1`` estimates the Rayleigh parameter from the median of the finest
             scale's amplitude; ``-2`` uses its histogram mode; any value ``>= 0`` is the
             threshold verbatim, so ``0.0`` disables it.
-        output: Only ``"pc"``, the fused congruency in ``[0, 1]``. The fused ``orientation``
-            and ``feature_type`` are computed and returned by
-            :meth:`_color_phase_congruency`, but **not exposed**: of the three fusion modes
-            only ``"coherent"`` builds a fused monogenic vector, so under the default they
-            would describe a quantity the response never touched.
+        output: Response map to write to ``detect_mat``. ``"pc"`` is the fused congruency;
+            ``"orientation"`` and ``"feature_type"`` are normalized from radians into
+            [0, 1] by ``(theta + pi/2) / pi``. The two angle maps are diagnostic for
+            ``"joint"`` and ``"l2"``: their weighted fused vector does not directly produce
+            those modes' scalar PC response. They are most meaningful where PC is high.
+        norm: Output-range policy for ``output="pc"``. ``"clip"`` (default) saturates to
+            [0, 1], ``"rescale"`` remaps the observed PC range to [0, 1], and ``None``
+            preserves it. ``norm`` does not affect angle maps, whose fixed [0, 1] encoding
+            would otherwise lose its physical meaning.
 
     Returns:
-        Image: Input image with ``detect_mat`` replaced by the fused congruency map, clipped
-        to ``[0, 1]``. ``rgb`` and ``gray`` are unchanged.
+        Image: Input image with ``detect_mat`` replaced by the selected response map. PC
+        output follows ``norm``; angle outputs retain their normalized [0, 1] encoding.
+        ``rgb`` and ``gray`` are unchanged.
 
     Raises:
         NotImplementedError: If ``lift="conformal"``, at construction time.
@@ -249,13 +255,12 @@ class FocusEdgeColorPhase(FocusEdge):
         ]
 
     def _color_phase_congruency(self, image: Image) -> ColorPhaseResult:
-        """Fuse three channels' monogenic accumulators. **``pc`` is un-clipped.**
+        """Fuse three channels' monogenic accumulators. **``pc`` is un-normalized.**
 
-        Protected, and returns more than :meth:`_operate` exposes: ``orientation`` and
-        ``feature_type`` ride along on the result so a future consumer can reach them
-        without a breaking change -- mirroring :meth:`FocusEdgePhase._phasecong3`, whose
-        result carries both angles while ``output`` exposes only ``M``/``m``/``pc_sum``.
-        Drift ``C15``.
+        Protected so numeric tests can assert the raw fusion. ``orientation`` and
+        ``feature_type`` are also returned and exposed as diagnostic outputs. Under
+        ``joint`` and ``l2`` they derive from the weighted fused vector rather than the
+        scalar calculation that produced PC. Drift ``C15``.
 
         The PFOM ranking regression consumes this rather than :meth:`apply`, because
         ``fusion="l2"`` ranges over ``[0, ||w||]`` and clipping would truncate the paper's
@@ -285,17 +290,13 @@ class FocusEdgeColorPhase(FocusEdge):
         )
 
     def _operate(self, image: Image) -> Image:
-        """Replace the detection matrix with the fused congruency map."""
+        """Replace the detection matrix with the selected color-phase response map."""
         result = self._color_phase_congruency(image)
-        # The clip is load-bearing for `l2`, whose range is [0, ||w||], and redundant for
-        # the other two. Keep it in all three cases: `detect_mat.__setitem__` enforces
-        # float32 but does **not** clamp -- verified by writing 2.5 and reading 2.5 back.
-        #
-        # Note for a future reader: the `adding-an-operation` skill asks output-clamping
-        # operations to declare `norm: NormOut` via `NormalizedOutputMixin`. That machinery
-        # does not exist on this branch -- no `NormOut`, no `NormalizedOutputMixin`, no
-        # `_apply_norm`, and `sdk_/mixin/` still ships `_clip_control_mixin.py`. Every
-        # `FocusEdge` sibling clips inline. Follow the code that exists; adopt `norm` when
-        # the branch that introduces it lands, alongside the other thirty enhancers.
-        image.detect_mat[:] = np.clip(result.pc, 0.0, 1.0)
+        if self.output == "pc":
+            selected = self._apply_norm(result.pc)
+        elif self.output == "orientation":
+            selected = np.clip((result.orientation + np.pi / 2) / np.pi, 0.0, 1.0)
+        else:
+            selected = np.clip((result.feature_type + np.pi / 2) / np.pi, 0.0, 1.0)
+        image.detect_mat[:] = selected
         return image
