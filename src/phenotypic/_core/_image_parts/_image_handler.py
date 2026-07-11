@@ -714,7 +714,11 @@ class ImageHandler(ImageDataManager):
         self._accessors.objmap.reset()
 
     def show(
-            self, figsize: Tuple[int, int] | None = None, **kwargs
+            self,
+            figsize: Tuple[int, int] | None = None,
+            *,
+            ax: plt.Axes | None = None,
+            **kwargs,
     ) -> tuple[plt.Figure, plt.Axes]:
         """Display the image using matplotlib.
 
@@ -724,6 +728,8 @@ class ImageHandler(ImageDataManager):
         Args:
             figsize: Figure size in inches (width, height). If None,
                 auto-calculated from array aspect ratio.
+            ax: Existing Matplotlib axes to plot into. If None, a new
+                figure and axes are created.
             **kwargs: Additional keyword arguments passed to the
                 accessor's ``show()`` method.
 
@@ -731,9 +737,9 @@ class ImageHandler(ImageDataManager):
             A ``(matplotlib.figure.Figure, matplotlib.axes.Axes)`` tuple.
         """
         if not self.rgb.isempty():
-            return self.rgb.show(figsize=figsize, **kwargs)
+            return self.rgb.show(figsize=figsize, ax=ax, **kwargs)
         else:
-            return self.gray.show(figsize=figsize, **kwargs)
+            return self.gray.show(figsize=figsize, ax=ax, **kwargs)
 
     def dash(
             self, figsize: Tuple[int, int] | None = None, **kwargs
