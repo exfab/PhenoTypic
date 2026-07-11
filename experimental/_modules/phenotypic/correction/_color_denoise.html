@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.3" />
+  <meta name="docsearch:version" content="0.18.0" />
   </head>
   
   
@@ -608,6 +608,7 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">NormalizedOutputMixin</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_._anscombe</span><span class="w"> </span><span class="kn">import</span> <span class="n">gat_forward</span><span class="p">,</span> <span class="n">gat_inverse</span><span class="p">,</span> <span class="n">resolve_scale_factor</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.colourspace</span><span class="w"> </span><span class="kn">import</span> <span class="n">decode_srgb</span><span class="p">,</span> <span class="n">encode_srgb</span>
@@ -615,7 +616,7 @@
 
 <div class="viewcode-block" id="ColorDenoise">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.correction.ColorDenoise.html#phenotypic.correction.ColorDenoise">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ColorDenoise</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorDenoise</span><span class="p">(</span><span class="n">NormalizedOutputMixin</span><span class="p">,</span> <span class="n">ImageCorrector</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise an RGB plate image using color block-matching 3D filtering (CBM3D).</span>
 
 <span class="sd">    Apply the color extension of BM3D jointly across the three sRGB channels</span>
@@ -659,10 +660,12 @@
 <span class="sd">            stage block sizes. Larger values capture more spatial context</span>
 <span class="sd">            and improve denoising of uniform agar backgrounds but increase</span>
 <span class="sd">            computation quadratically. Typical range: 4--16. Default: ``8``.</span>
-<span class="sd">        clip: Clamp the sRGB-re-encoded result to [0, 1] before rescaling to</span>
-<span class="sd">            the original integer dtype, preventing rare BM3D overshoot near</span>
-<span class="sd">            high-contrast colony edges from causing integer wraparound.</span>
-<span class="sd">            Default: ``True``.</span>
+<span class="sd">        norm: Output range policy applied to the sRGB-re-encoded result before</span>
+<span class="sd">            rescaling to the original integer dtype. ``&quot;clip&quot;`` (default)</span>
+<span class="sd">            saturates values outside [0, 1], preventing rare BM3D overshoot</span>
+<span class="sd">            near high-contrast colony edges from causing integer wraparound.</span>
+<span class="sd">            ``&quot;rescale&quot;`` remaps the full observed range onto [0, 1]; ``None``</span>
+<span class="sd">            passes values through untouched.</span>
 
 <span class="sd">        # GAT parameters (active only when use_gat=True)</span>
 <span class="sd">        use_gat: Wrap the per-channel CBM3D call in the Generalized Anscombe</span>
@@ -724,7 +727,6 @@
 
     <span class="n">sigma_psd</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.02</span>
     <span class="n">block_size</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">))]</span> <span class="o">=</span> <span class="mi">8</span>
-    <span class="n">clip</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="n">use_gat</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="c1"># GAT noise-model parameters are sensor-calibration constants, not search</span>
     <span class="c1"># targets — keep their Field bounds, exclude from tuning.</span>
@@ -813,10 +815,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">denoised</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_denoise_plain</span><span class="p">(</span><span class="n">rgb_lin</span><span class="p">)</span>
 
-        <span class="n">denoised</span> <span class="o">=</span> <span class="n">encode_srgb</span><span class="p">(</span><span class="n">denoised</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">clip</span><span class="p">:</span>
-            <span class="n">denoised</span> <span class="o">=</span> <span class="n">denoised</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">denoised</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_norm</span><span class="p">(</span><span class="n">encode_srgb</span><span class="p">(</span><span class="n">denoised</span><span class="p">))</span>
 
         <span class="c1"># Always clamp to the dtype range to avoid integer wraparound.</span>
         <span class="n">rescaled</span> <span class="o">=</span> <span class="p">(</span><span class="n">denoised</span> <span class="o">*</span> <span class="n">vmax</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">()</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>

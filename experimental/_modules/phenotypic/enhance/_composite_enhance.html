@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.3" />
+  <meta name="docsearch:version" content="0.18.0" />
   </head>
   
   
@@ -607,7 +607,8 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationField</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">NormalizedOutputMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NormOut</span><span class="p">,</span> <span class="n">OperationField</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._gaussian_blur</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._median_filter</span><span class="w"> </span><span class="kn">import</span> <span class="n">MedianFilter</span>
 
@@ -616,7 +617,7 @@
 
 <div class="viewcode-block" id="CompositeEnhance">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.enhance.CompositeEnhance.html#phenotypic.enhance.CompositeEnhance">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">CompositeEnhance</span><span class="p">(</span><span class="n">ImageEnhancer</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CompositeEnhance</span><span class="p">(</span><span class="n">NormalizedOutputMixin</span><span class="p">,</span> <span class="n">ImageEnhancer</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance ``detect_mat`` by combining several enhancers&#39; response maps pixel-wise.</span>
 
 <span class="sd">    Apply two or more enhancers (or preprocessing pipelines ending in an</span>
@@ -660,10 +661,11 @@
 <span class="sd">            ``&#39;mean&#39;`` averages all branches. ``&#39;median&#39;`` takes the per-pixel</span>
 <span class="sd">            median (robust to a single outlier branch; most useful with three</span>
 <span class="sd">            or more enhancers). Default: ``&#39;max&#39;``.</span>
-<span class="sd">        clip: When ``True``, clamp the combined result into ``[0.0, 1.0]``</span>
-<span class="sd">            after reduction. Leave ``False`` (default) when ``detect_mat`` is</span>
-<span class="sd">            not unit-normalised, since clipping an arbitrarily-scaled map would</span>
-<span class="sd">            distort it.</span>
+<span class="sd">        norm: Output range policy applied after reduction. ``None`` (default)</span>
+<span class="sd">            passes values through untouched, which is what an arbitrarily-scaled</span>
+<span class="sd">            (non unit-normalised) response map needs. ``&quot;clip&quot;`` saturates</span>
+<span class="sd">            values outside [0, 1]; ``&quot;rescale&quot;`` remaps the full observed range</span>
+<span class="sd">            onto [0, 1].</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` set to the combined response</span>
@@ -696,7 +698,7 @@
 <span class="sd">        &gt;&gt;&gt; combiner = CompositeEnhance(</span>
 <span class="sd">        ...     ops=[GaussianBlur(), MedianFilter(), EnhanceLocalContrast()],</span>
 <span class="sd">        ...     mode=&quot;mean&quot;,</span>
-<span class="sd">        ...     clip=True,</span>
+<span class="sd">        ...     norm=&quot;clip&quot;,</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; enhanced = combiner.apply(load_synth_yeast_plate())</span>
 <span class="sd">        &gt;&gt;&gt; float(enhanced.detect_mat[:].max()) &lt;= 1.0</span>
@@ -712,7 +714,7 @@
         <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianBlur</span><span class="p">(),</span> <span class="n">MedianFilter</span><span class="p">()]</span>
     <span class="p">)</span>
     <span class="n">mode</span><span class="p">:</span> <span class="n">CombineMode</span> <span class="o">=</span> <span class="s2">&quot;max&quot;</span>
-    <span class="n">clip</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">norm</span><span class="p">:</span> <span class="n">NormOut</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;ops&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
@@ -749,10 +751,7 @@
                 <span class="s2">&quot;At least one enhancer must be provided to CompositeEnhance&quot;</span>
             <span class="p">)</span>
 
-        <span class="n">combined</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_combine</span><span class="p">(</span><span class="n">response_maps</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">clip</span><span class="p">:</span>
-            <span class="n">combined</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">combined</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">combined</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_combine</span><span class="p">(</span><span class="n">response_maps</span><span class="p">))</span>
 
         <span class="n">original</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span>
         <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">combined</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">original</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>

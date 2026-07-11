@@ -1,0 +1,66 @@
+phenotypic.enhance.ContrastGamma
+================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: ContrastGamma
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ContrastGamma.__init__
+      ~ContrastGamma.apply
+      ~ContrastGamma.construct
+      ~ContrastGamma.copy
+      ~ContrastGamma.dict
+      ~ContrastGamma.from_json
+      ~ContrastGamma.from_orm
+      ~ContrastGamma.json
+      ~ContrastGamma.model_construct
+      ~ContrastGamma.model_copy
+      ~ContrastGamma.model_dump
+      ~ContrastGamma.model_dump_json
+      ~ContrastGamma.model_json_schema
+      ~ContrastGamma.model_parametrized_name
+      ~ContrastGamma.model_post_init
+      ~ContrastGamma.model_rebuild
+      ~ContrastGamma.model_validate
+      ~ContrastGamma.model_validate_json
+      ~ContrastGamma.model_validate_strings
+      ~ContrastGamma.parse_file
+      ~ContrastGamma.parse_obj
+      ~ContrastGamma.parse_raw
+      ~ContrastGamma.schema
+      ~ContrastGamma.schema_json
+      ~ContrastGamma.to_json
+      ~ContrastGamma.update_forward_refs
+      ~ContrastGamma.validate
+      ~ContrastGamma.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ContrastGamma.model_computed_fields
+      ~ContrastGamma.model_config
+      ~ContrastGamma.model_extra
+      ~ContrastGamma.model_fields
+      ~ContrastGamma.model_fields_set
+      ~ContrastGamma.gamma
+      ~ContrastGamma.gain
+      ~ContrastGamma.input_layer
+      ~ContrastGamma.norm
+   
+   

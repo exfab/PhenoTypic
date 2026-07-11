@@ -18,6 +18,7 @@ phenotypic.abc\_.DetectionMode
    
       ~DetectionMode.__init__
       ~DetectionMode.compute
+      ~DetectionMode.compute_from_rgb
    
    
 

@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.3" />
+  <meta name="docsearch:version" content="0.18.0" />
   </head>
   
   
@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.enhance._local_edge_denoise</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -607,13 +607,13 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.restoration</span><span class="w"> </span><span class="kn">import</span> <span class="n">denoise_bilateral</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageDenoiser</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">_GATSupportMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">NormalizedOutputMixin</span><span class="p">,</span> <span class="n">_GATSupportMixin</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
 <div class="viewcode-block" id="LocalEdgeDenoise">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.enhance.LocalEdgeDenoise.html#phenotypic.enhance.LocalEdgeDenoise">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">LocalEdgeDenoise</span><span class="p">(</span><span class="n">_GATSupportMixin</span><span class="p">,</span> <span class="n">ImageDenoiser</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">LocalEdgeDenoise</span><span class="p">(</span><span class="n">NormalizedOutputMixin</span><span class="p">,</span> <span class="n">_GATSupportMixin</span><span class="p">,</span> <span class="n">ImageDenoiser</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise ``detect_mat`` with local edge-preserving bilateral filtering.</span>
 
 <span class="sd">    Weights each pixel by both spatial proximity and intensity similarity</span>
@@ -666,8 +666,10 @@
 <span class="sd">        cval: Fill value used when ``mode=&#39;constant&#39;``. Set to the mean</span>
 <span class="sd">            background intensity to suppress spurious dark-band artefacts at</span>
 <span class="sd">            plate edges. Default: 0.0.</span>
-<span class="sd">        clip: Clip output to [0, 1]. Default: ``True``. Automatically</span>
-<span class="sd">            deferred to ``False`` when ``use_gat=True``.</span>
+<span class="sd">        norm: Output range policy. ``&quot;clip&quot;`` (default) saturates values outside</span>
+<span class="sd">            [0, 1]; ``&quot;rescale&quot;`` remaps the full observed range onto [0, 1];</span>
+<span class="sd">            ``None`` passes values through untouched. Automatically deferred to</span>
+<span class="sd">            ``None`` when ``use_gat=True``.</span>
 
 <span class="sd">        # GAT parameters (active only when use_gat=True)</span>
 <span class="sd">        use_gat: Wrap denoising in the Generalized Anscombe Transform to</span>
@@ -708,7 +710,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">_GAT_NOISE_PARAMS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sigma_color&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
-    <span class="n">_GAT_DEFER_ATTRS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;clip&quot;</span><span class="p">,)</span>
+    <span class="n">_GAT_DEFER_VALUES</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;norm&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
 
     <span class="c1"># Categorical (not a float range) so the optimizer can try ``None`` — the</span>
     <span class="c1"># auto-estimate (noise-std) mode — alongside representative explicit sigmas.</span>
@@ -721,7 +723,6 @@
     <span class="n">win_size</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="s2">&quot;edge&quot;</span><span class="p">,</span> <span class="s2">&quot;symmetric&quot;</span><span class="p">,</span> <span class="s2">&quot;reflect&quot;</span><span class="p">,</span> <span class="s2">&quot;wrap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;constant&quot;</span>
     <span class="n">cval</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">clip</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;sigma_color&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
@@ -747,9 +748,7 @@
                 <span class="n">cval</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cval</span><span class="p">,</span>
                 <span class="n">channel_axis</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">clip</span><span class="p">:</span>
-            <span class="n">result</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-        <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">result</span></div>
+        <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_norm</span><span class="p">(</span><span class="n">result</span><span class="p">)</span></div>
 
 </pre></div>
 

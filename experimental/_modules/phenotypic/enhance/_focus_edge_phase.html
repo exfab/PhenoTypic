@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.3" />
+  <meta name="docsearch:version" content="0.18.0" />
   </head>
   
   
@@ -611,9 +611,15 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">numpy.fft</span><span class="w"> </span><span class="kn">import</span> <span class="n">fft2</span><span class="p">,</span> <span class="n">ifft2</span><span class="p">,</span> <span class="n">ifftshift</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numpy.fft</span><span class="w"> </span><span class="kn">import</span> <span class="n">fft2</span><span class="p">,</span> <span class="n">ifft2</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">._monogenic_kernels</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">construct_filter_grids</span><span class="p">,</span>
+    <span class="n">log_gabor_radial</span><span class="p">,</span>
+    <span class="n">rayleigh_mode</span><span class="p">,</span>
+    <span class="n">spread_weight</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">FocusEdge</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
@@ -628,8 +634,18 @@
 <span class="sd">    Attributes:</span>
 <span class="sd">        M: Maximum moment of phase congruency covariance (edge strength).</span>
 <span class="sd">        m: Minimum moment of phase congruency covariance (corner strength).</span>
-<span class="sd">        orientation: Feature orientation in radians [-pi/2, pi/2]. 0 corresponds</span>
-<span class="sd">            to a vertical edge, pi/2 is horizontal. Positive is anticlockwise.</span>
+<span class="sd">        orientation: Feature orientation in radians ``(-pi/2, pi/2]``. ``0`` is a</span>
+<span class="sd">            vertical edge, ``pi/2`` horizontal; positive is anticlockwise. Measured,</span>
+<span class="sd">            not assumed: a vertical step edge reads ``0.0`` degrees and a horizontal</span>
+<span class="sd">            one ``90.0``. Agrees with</span>
+<span class="sd">            :attr:`FocusEdgeMonogenicPhase`&#39;s orientation to ``1.64`` degrees mean</span>
+<span class="sd">            (the residual is this operator&#39;s angular quantisation across ``n_orient``</span>
+<span class="sd">            filters; the monogenic one is continuous).</span>
+
+<span class="sd">            **This required a reflection of Kovesi&#39;s Julia output** -- see drift ``M13``.</span>
+<span class="sd">            His ``phasecong3`` reports ``pi/2 - phi``, contradicting its own docstring</span>
+<span class="sd">            *and* his ``phasecongmono``. Only ``orientation`` is affected; ``M``, ``m``,</span>
+<span class="sd">            ``pc_sum`` and ``feature_type`` are untouched.</span>
 <span class="sd">        feature_type: Local weighted mean phase angle. pi/2 corresponds to a</span>
 <span class="sd">            bright line, 0 to a step edge, -pi/2 to a dark line.</span>
 <span class="sd">        T: Calculated noise threshold.</span>
@@ -739,7 +755,7 @@
 <span class="sd">        congruency map, clipped to [0, 1]. ``rgb`` and ``gray`` are unchanged.</span>
 
 <span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If ``n_scale`` &lt; 1, ``n_orient`` &lt; 1,</span>
+<span class="sd">        ValueError: If ``n_scale`` &lt; 2, ``n_orient`` &lt; 1,</span>
 <span class="sd">            ``min_wavelength`` &lt; 2, ``mult`` &lt;= 1, ``sigma_onf`` outside</span>
 <span class="sd">            [0.1, 1.0], ``k`` &lt; 0, ``cutoff`` outside (0, 1), or ``g`` &lt;= 0.</span>
 
@@ -766,13 +782,26 @@
 <span class="sd">        phase congruency and the Local Energy Model.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">n_scale</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># ge=2: _phasecong3 divides by (n_scale - 1). At n_scale=1 that is a</span>
+    <span class="c1"># divide-by-zero which silently yields an all-zero detect_mat.</span>
+    <span class="n">n_scale</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="n">n_orient</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
     <span class="n">min_wavelength</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">3.0</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
     <span class="n">mult</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">2.1</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
-    <span class="n">sigma_onf</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">0.55</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
-    <span class="c1"># Lower bound 0.5 (not 0.0): k=0 disables noise thresholding, a degenerate</span>
-    <span class="c1"># search anchor that the optimizer should never spend trials on.</span>
+    <span class="c1"># TuneSpec high is 0.99, not 1.0. `log_gabor_scale` raises at sigma_onf == 1.0 (drift M10),</span>
+    <span class="c1"># and `FloatRange` appends `high` exactly (tune/_search_space/_domains.py:86) -- so a grid</span>
+    <span class="c1"># tune over a 1.0 window would evaluate the degenerate point on every run. The `Field`</span>
+    <span class="c1"># bound stays `le=1.0` so `ImagePipeline.from_json` still loads legacy pipelines;</span>
+    <span class="c1"># `tests/fixtures/tune/back_compat_pipelines/enhance_features_sigma_onf_high.json` pins</span>
+    <span class="c1"># exactly that value. Construction succeeds; `.apply()` raises. A TuneSpec is a search</span>
+    <span class="c1"># window, not a validity bound, and narrowing it breaks nothing that deserializes.</span>
+    <span class="n">sigma_onf</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">0.55</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="c1"># Lower search bound 0.5 (not 0.0). k=0 does NOT disable noise thresholding -- it</span>
+    <span class="c1"># drops the standard-deviation term, leaving T = totalTau*sqrt(pi/2), the noise MEAN</span>
+    <span class="c1"># (measured on load_synth_yeast_plate: T = 4.19e-04 at k=0 versus 1.08e-03 at k=3).</span>
+    <span class="c1"># `noise_method=0.0` is what sets T = 0.0 exactly. k=0 is still a degenerate anchor --</span>
+    <span class="c1"># every response above the noise mean survives -- so the optimizer should not spend</span>
+    <span class="c1"># trials there, but the reason is not the one this comment used to give.</span>
     <span class="n">k</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
     <span class="n">cutoff</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">lt</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
     <span class="n">g</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
@@ -808,11 +837,14 @@
         <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span>
         <span class="n">epsilon</span> <span class="o">=</span> <span class="mf">1e-5</span>  <span class="c1"># Julia uses 1e-5</span>
 
-        <span class="c1"># Construct filter grids (quadrant-shifted, DC at corners)</span>
-        <span class="n">radius</span><span class="p">,</span> <span class="n">sintheta</span><span class="p">,</span> <span class="n">costheta</span><span class="p">,</span> <span class="n">freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_construct_filter_grids</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">)</span>
+        <span class="c1"># Construct filter grids (quadrant-shifted, DC at corners).</span>
+        <span class="c1"># Shared kernel returns six values; freq/fx/fy are unused by phasecong3.</span>
+        <span class="n">radius</span><span class="p">,</span> <span class="n">sintheta</span><span class="p">,</span> <span class="n">costheta</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">construct_filter_grids</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">)</span>
 
         <span class="c1"># Construct radial component of log-Gabor filters</span>
-        <span class="n">log_gabor_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_construct_log_gabor_filters</span><span class="p">(</span><span class="n">radius</span><span class="p">)</span>
+        <span class="n">log_gabor_list</span> <span class="o">=</span> <span class="n">log_gabor_radial</span><span class="p">(</span>
+                <span class="n">radius</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_wavelength</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mult</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_onf</span>
+        <span class="p">)</span>
 
         <span class="c1"># Construct angular components using cosine filter (Julia reference)</span>
         <span class="n">angular_spread</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_angular_spread</span><span class="p">(</span><span class="n">sintheta</span><span class="p">,</span> <span class="n">costheta</span><span class="p">)</span>
@@ -875,23 +907,22 @@
                         <span class="n">tau</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">amplitude</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">4</span><span class="p">)))</span>
                     <span class="k">elif</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_method</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">epsilon</span><span class="p">:</span>
                         <span class="c1"># Mode-based Rayleigh estimation</span>
-                        <span class="n">tau</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rayleigh_mode</span><span class="p">(</span><span class="n">amplitude</span><span class="p">)</span>
+                        <span class="n">tau</span> <span class="o">=</span> <span class="n">rayleigh_mode</span><span class="p">(</span><span class="n">amplitude</span><span class="p">)</span>
 
             <span class="c1"># Compute noise threshold T for this orientation</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_method</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_method</span>
-            <span class="k">else</span><span class="p">:</span>
+            <span class="k">elif</span> <span class="n">tau</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="c1"># Total tau across scales (geometric series)</span>
-                <span class="k">if</span> <span class="n">tau</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">total_tau</span> <span class="o">=</span> <span class="n">tau</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">mult</span><span class="p">)</span> <span class="o">**</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span>
-                            <span class="mi">1</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">mult</span>
-                    <span class="p">)</span>
-                    <span class="c1"># Expected noise energy from Rayleigh distribution</span>
-                    <span class="n">mean_energy</span> <span class="o">=</span> <span class="n">total_tau</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
-                    <span class="n">sigma_energy</span> <span class="o">=</span> <span class="n">total_tau</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="mi">4</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
-                    <span class="n">T</span> <span class="o">=</span> <span class="n">mean_energy</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">*</span> <span class="n">sigma_energy</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">T</span> <span class="o">=</span> <span class="mf">0.0</span>
+                <span class="n">total_tau</span> <span class="o">=</span> <span class="n">tau</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">mult</span><span class="p">)</span> <span class="o">**</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span>
+                        <span class="mi">1</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">mult</span>
+                <span class="p">)</span>
+                <span class="c1"># Expected noise energy from Rayleigh distribution</span>
+                <span class="n">mean_energy</span> <span class="o">=</span> <span class="n">total_tau</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+                <span class="n">sigma_energy</span> <span class="o">=</span> <span class="n">total_tau</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="mi">4</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+                <span class="n">T</span> <span class="o">=</span> <span class="n">mean_energy</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">*</span> <span class="n">sigma_energy</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">T</span> <span class="o">=</span> <span class="mf">0.0</span>
 
             <span class="c1"># Compute unit-normalized mean direction (Julia reference: XEnergy normalization)</span>
             <span class="c1"># MeanE and MeanO form a unit vector pointing in mean phase direction</span>
@@ -916,9 +947,12 @@
             <span class="n">energy_v</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">*</span> <span class="n">sum_odd</span>
 
             <span class="c1"># Frequency spread weighting (Julia reference)</span>
-            <span class="c1"># Width measures how spread out the frequency responses are</span>
-            <span class="n">width</span> <span class="o">=</span> <span class="p">(</span><span class="n">sum_amplitude</span> <span class="o">/</span> <span class="p">(</span><span class="n">max_amplitude</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="n">weight</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span> <span class="o">-</span> <span class="n">width</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">g</span><span class="p">))</span>
+            <span class="c1"># Width measures how spread out the frequency responses are.</span>
+            <span class="c1"># epsilon = 1e-5 is phasecong3&#39;s value; pass it explicitly so the</span>
+            <span class="c1"># shared kernel does not substitute phasecongmono&#39;s 1e-4.</span>
+            <span class="n">weight</span> <span class="o">=</span> <span class="n">spread_weight</span><span class="p">(</span>
+                    <span class="n">sum_amplitude</span><span class="p">,</span> <span class="n">max_amplitude</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">g</span><span class="p">,</span> <span class="n">epsilon</span>
+            <span class="p">)</span>
 
             <span class="c1"># Phase congruency for this orientation (local variable, not stored</span>
             <span class="c1"># in a 3D array — saves ~0.58 GB at 3000x4000)</span>
@@ -960,6 +994,32 @@
         <span class="n">orientation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">orientation</span><span class="p">,</span> <span class="n">nan</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">posinf</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
                                     <span class="n">neginf</span><span class="o">=-</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
 
+        <span class="c1"># Reflect: `pi/2 - orientation`, folded back into (-pi/2, pi/2]. Drift M13.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Julia&#39;s `gridangles` (frequencyfilt.jl:430-431) builds `sintheta = fx/freq`,</span>
+        <span class="c1"># `costheta = fy/freq` -- which is `(cos(theta), -sin(theta))` of the angle MATLAB</span>
+        <span class="c1"># uses (`phasecong3.m:189`, `sin/cos` of `atan2(-y, x)`). That rotates the oriented</span>
+        <span class="c1"># bank 90 degrees, so the angle accumulated into `energy_v` is `pi/2 - phi`, not `phi`.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Verified by RUNNING Kovesi&#39;s code, not by reading it. `phasecong3` from</span>
+        <span class="c1"># ImagePhaseCongruency.jl reports -86.35 deg on a vertical edge and -0.06 deg on a</span>
+        <span class="c1"># horizontal one -- while its own docstring says &quot;0 corresponds to a vertical edge&quot;,</span>
+        <span class="c1"># and his `phasecongmono` in the same package reports -0.03 deg on that vertical edge.</span>
+        <span class="c1"># Kovesi&#39;s Julia contradicts itself. His MATLAB `phasecong3` satisfies &quot;0 = vertical&quot;</span>
+        <span class="c1"># but reports `-phi`, i.e. clockwise, violating the other half of the same docstring.</span>
+        <span class="c1">#</span>
+        <span class="c1"># We reflect so this operation reports `phi`. It then matches our own docstring, matches</span>
+        <span class="c1"># `FocusEdgeMonogenicPhase.orientation` (mean disagreement 35.89 deg -&gt; 1.64 deg, the</span>
+        <span class="c1"># residual being the oriented bank&#39;s angular quantisation), and matches Kovesi&#39;s MATLAB</span>
+        <span class="c1"># at 0 and 90 degrees.</span>
+        <span class="c1">#</span>
+        <span class="c1"># `orientation` is a pure OUTPUT -- nothing downstream consumes it -- so `M`, `m`,</span>
+        <span class="c1"># `pc_sum` and `feature_type` are bit-identical either way. Switching the *grid* instead</span>
+        <span class="c1"># would move `pc_sum` by 2.2e-04 at n_orient=6 and 5.1e-02 at n_orient=5, and would</span>
+        <span class="c1"># still leave the two operations 35.89 deg apart. The cheap lever is the right one.</span>
+        <span class="n">orientation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">-</span> <span class="n">orientation</span>
+        <span class="n">orientation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">orientation</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">orientation</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">orientation</span><span class="p">)</span>
+
         <span class="c1"># Feature type (Julia reference)</span>
         <span class="n">odd_v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">energy_v</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">energy_v</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
         <span class="n">feature_type</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">energy_v</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">odd_v</span><span class="p">)</span>
@@ -975,98 +1035,6 @@
                 <span class="n">T</span><span class="o">=</span><span class="n">T</span><span class="p">,</span>
                 <span class="n">pc_sum</span><span class="o">=</span><span class="n">pc_sum</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_orient</span><span class="p">,</span>
         <span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_construct_filter_grids</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span> <span class="n">rows</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">cols</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Construct frequency domain grids for filter construction.</span>
-
-<span class="sd">        Grids are quadrant-shifted so DC component is at [0, 0].</span>
-<span class="sd">        Follows Julia filtergrids() implementation for odd/even handling.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            rows: Number of rows in image.</span>
-<span class="sd">            cols: Number of columns in image.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Tuple of (radius, sintheta, costheta, freq) where:</span>
-<span class="sd">            - radius: Radial frequency normalized [0, 0.5] with DC=1 to avoid div/0</span>
-<span class="sd">            - sintheta: fx/freq grid for angular filter (Julia gridangles)</span>
-<span class="sd">            - costheta: fy/freq grid for angular filter (Julia gridangles)</span>
-<span class="sd">            - freq: Original radial frequency with DC=0</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Frequency coordinates - Julia handles odd/even differently</span>
-        <span class="k">if</span> <span class="n">cols</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># odd</span>
-            <span class="n">fx_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">cols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">cols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">cols</span>
-        <span class="k">else</span><span class="p">:</span>  <span class="c1"># even</span>
-            <span class="n">fx_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="n">cols</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">cols</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">cols</span>
-
-        <span class="k">if</span> <span class="n">rows</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># odd</span>
-            <span class="n">fy_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">rows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">rows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">rows</span>
-        <span class="k">else</span><span class="p">:</span>  <span class="c1"># even</span>
-            <span class="n">fy_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="n">rows</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">rows</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">rows</span>
-
-        <span class="c1"># Quadrant shift so DC is at [0,0]</span>
-        <span class="n">fx_range</span> <span class="o">=</span> <span class="n">ifftshift</span><span class="p">(</span><span class="n">fx_range</span><span class="p">)</span>
-        <span class="n">fy_range</span> <span class="o">=</span> <span class="n">ifftshift</span><span class="p">(</span><span class="n">fy_range</span><span class="p">)</span>
-
-        <span class="n">fx</span><span class="p">,</span> <span class="n">fy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">fx_range</span><span class="p">,</span> <span class="n">fy_range</span><span class="p">)</span>
-
-        <span class="c1"># Radial frequency</span>
-        <span class="n">freq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fx</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">fy</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
-
-        <span class="c1"># For log-Gabor, need radius with DC=1 to avoid log(0)</span>
-        <span class="n">radius</span> <span class="o">=</span> <span class="n">freq</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">radius</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
-
-        <span class="c1"># Compute sintheta and costheta for angular filters (Julia gridangles)</span>
-        <span class="c1"># Temporarily set freq DC to 1 to avoid divide by zero</span>
-        <span class="n">freq_safe</span> <span class="o">=</span> <span class="n">freq</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">freq_safe</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
-        <span class="n">sintheta</span> <span class="o">=</span> <span class="n">fx</span> <span class="o">/</span> <span class="n">freq_safe</span>
-        <span class="n">costheta</span> <span class="o">=</span> <span class="n">fy</span> <span class="o">/</span> <span class="n">freq_safe</span>
-
-        <span class="c1"># Restore DC values</span>
-        <span class="n">sintheta</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
-        <span class="n">costheta</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
-
-        <span class="k">return</span> <span class="n">radius</span><span class="p">,</span> <span class="n">sintheta</span><span class="p">,</span> <span class="n">costheta</span><span class="p">,</span> <span class="n">freq</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_construct_log_gabor_filters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Construct log-Gabor filters for each scale.</span>
-
-<span class="sd">        Log-Gabor filters have Gaussian transfer functions on a logarithmic</span>
-<span class="sd">        frequency scale, providing constant shape ratio across scales.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            radius: Radial frequency grid.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            List of n_scale log-Gabor filter arrays.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">log_gabor_list</span> <span class="o">=</span> <span class="p">[]</span>
-
-        <span class="c1"># Lowpass filter depends only on radius, not scale — compute once</span>
-        <span class="n">lowpass</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="p">(</span><span class="n">radius</span> <span class="o">/</span> <span class="mf">0.45</span><span class="p">)</span> <span class="o">**</span> <span class="mi">30</span><span class="p">)</span>
-
-        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span><span class="p">):</span>
-            <span class="n">wavelength</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_wavelength</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mult</span> <span class="o">**</span> <span class="n">s</span><span class="p">)</span>
-            <span class="n">f0</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">wavelength</span>  <span class="c1"># Center frequency</span>
-
-            <span class="c1"># Log-Gabor transfer function</span>
-            <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">):</span>
-                <span class="n">log_rad_over_f0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">radius</span> <span class="o">/</span> <span class="n">f0</span><span class="p">)</span>
-
-            <span class="n">log_gabor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
-                    <span class="o">-</span><span class="p">(</span><span class="n">log_rad_over_f0</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma_onf</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
-            <span class="p">)</span>
-
-            <span class="c1"># Zero out DC component</span>
-            <span class="n">log_gabor</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-
-            <span class="n">log_gabor_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">log_gabor</span> <span class="o">*</span> <span class="n">lowpass</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">log_gabor_list</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_compute_angular_spread</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span> <span class="n">sintheta</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">costheta</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
@@ -1107,39 +1075,7 @@
 
             <span class="n">angular_spread_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spread</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">angular_spread_list</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_rayleigh_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">amplitude</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Estimate Rayleigh distribution parameter from amplitude data.</span>
-
-<span class="sd">        For filter responses to Gaussian noise, amplitudes follow a Rayleigh</span>
-<span class="sd">        distribution. The mode of a Rayleigh distribution equals sigma.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            amplitude: Array of amplitude values.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Estimated Rayleigh sigma parameter.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Flatten and remove zeros</span>
-        <span class="n">amp_flat</span> <span class="o">=</span> <span class="n">amplitude</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
-        <span class="n">amp_flat</span> <span class="o">=</span> <span class="n">amp_flat</span><span class="p">[</span><span class="n">amp_flat</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
-
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">amp_flat</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">return</span> <span class="mf">0.0</span>
-
-        <span class="c1"># Histogram-based mode estimation</span>
-        <span class="c1"># Match Julia: uses 50 bins</span>
-        <span class="n">n_bins</span> <span class="o">=</span> <span class="mi">50</span>
-        <span class="n">hist</span><span class="p">,</span> <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">amp_flat</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">n_bins</span><span class="p">)</span>
-        <span class="n">bin_centers</span> <span class="o">=</span> <span class="p">(</span><span class="n">bin_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">bin_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span>
-
-        <span class="c1"># Find mode (peak of histogram)</span>
-        <span class="n">mode_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">hist</span><span class="p">)</span>
-        <span class="n">mode_value</span> <span class="o">=</span> <span class="n">bin_centers</span><span class="p">[</span><span class="n">mode_idx</span><span class="p">]</span>
-
-        <span class="c1"># For Rayleigh distribution, mode = sigma</span>
-        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">mode_value</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">angular_spread_list</span></div>
 
 </pre></div>
 

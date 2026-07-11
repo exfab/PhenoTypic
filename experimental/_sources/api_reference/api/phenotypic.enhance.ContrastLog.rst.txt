@@ -1,0 +1,66 @@
+phenotypic.enhance.ContrastLog
+==============================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: ContrastLog
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ContrastLog.__init__
+      ~ContrastLog.apply
+      ~ContrastLog.construct
+      ~ContrastLog.copy
+      ~ContrastLog.dict
+      ~ContrastLog.from_json
+      ~ContrastLog.from_orm
+      ~ContrastLog.json
+      ~ContrastLog.model_construct
+      ~ContrastLog.model_copy
+      ~ContrastLog.model_dump
+      ~ContrastLog.model_dump_json
+      ~ContrastLog.model_json_schema
+      ~ContrastLog.model_parametrized_name
+      ~ContrastLog.model_post_init
+      ~ContrastLog.model_rebuild
+      ~ContrastLog.model_validate
+      ~ContrastLog.model_validate_json
+      ~ContrastLog.model_validate_strings
+      ~ContrastLog.parse_file
+      ~ContrastLog.parse_obj
+      ~ContrastLog.parse_raw
+      ~ContrastLog.schema
+      ~ContrastLog.schema_json
+      ~ContrastLog.to_json
+      ~ContrastLog.update_forward_refs
+      ~ContrastLog.validate
+      ~ContrastLog.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ContrastLog.model_computed_fields
+      ~ContrastLog.model_config
+      ~ContrastLog.model_extra
+      ~ContrastLog.model_fields
+      ~ContrastLog.model_fields_set
+      ~ContrastLog.gain
+      ~ContrastLog.inv
+      ~ContrastLog.input_layer
+      ~ContrastLog.norm
+   
+   

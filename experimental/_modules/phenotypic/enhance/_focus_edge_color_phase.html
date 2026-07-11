@@ -1,0 +1,971 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.enhance._focus_edge_color_phase &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/enhance/_focus_edge_color_phase';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/enhance/_focus_edge_color_phase.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.18.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.enhance._focus_edge_color_phase</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.enhance._focus_edge_color_phase</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Colour phase congruency: per-channel monogenic PC, then a cross-channel fusion.</span>
+
+<span class="sd">Reuses :mod:`_monogenic_kernels` verbatim and adds no new signal theory. The ``l2`` fusion</span>
+<span class="sd">is the CMPCM paper&#39;s rule; ``joint`` and ``coherent`` are ours.</span>
+
+<span class="sd">References:</span>
+<span class="sd">    Shi, Y., Zhang, X., Liu, X., et al. &quot;Color edge detection based on the fusion of</span>
+<span class="sd">    monogenic phase congruency and color morphology.&quot; *Multimed. Tools Appl.* 78,</span>
+<span class="sd">    10701--10716 (2019).</span>
+
+<span class="sd">    Kovesi, P. &quot;Image features from phase congruency.&quot; *Videre* 1(3), 1--26 (1999).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">model_validator</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._color_phase_kernels</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorPhaseResult</span><span class="p">,</span> <span class="n">color_phase_congruency</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._monogenic_kernels</span><span class="w"> </span><span class="kn">import</span> <span class="n">monogenic_channel_response</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">FocusEdge</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">NormalizedOutputMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ColorPhaseOutput</span><span class="p">,</span>
+    <span class="n">ColorSpaceName</span><span class="p">,</span>
+    <span class="n">PhaseFusion</span><span class="p">,</span>
+    <span class="n">PhaseLift</span><span class="p">,</span>
+    <span class="n">TuneSpec</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="c1">#: Accessor channel indices in **luminance-first** order (spec §4.2). ``Lab`` is natively</span>
+<span class="c1">#: ``(L*, a*, b*)``; ``hsv`` is natively ``(H, S, V)`` and must be permuted so index ``0``</span>
+<span class="c1">#: is always the axis whose weight is pinned at ``1.0``. Read literally, an earlier spec</span>
+<span class="c1">#: (*&quot;in color_space channel order&quot;*) pinned ``H`` under ``hsv`` -- the one channel that is</span>
+<span class="c1">#: circular, ill-conditioned at low saturation, and carries no luminance at all.</span>
+<span class="n">_LUMINANCE_FIRST</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">ColorSpaceName</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;lab&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+    <span class="s2">&quot;hsv&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="FocusEdgeColorPhase">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.enhance.FocusEdgeColorPhase.html#phenotypic.enhance.FocusEdgeColorPhase">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FocusEdgeColorPhase</span><span class="p">(</span><span class="n">NormalizedOutputMixin</span><span class="p">,</span> <span class="n">FocusEdge</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance colony edges using colour phase congruency across three channels.</span>
+
+<span class="sd">    Runs :class:`FocusEdgeMonogenicPhase`&#39;s monogenic chain independently on each of three</span>
+<span class="sd">    colour channels, then fuses the results. Phase congruency is already invariant to</span>
+<span class="sd">    illumination level; fusing across colour additionally lets a channel with amplitude but</span>
+<span class="sd">    no phase agreement -- pigment speckle, agar grain, Bayer demosaic noise -- **veto** an</span>
+<span class="sd">    edge the luminance channel would otherwise assert.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - **Filamentous plates.** This is where the measured benefit lives. Under lateral</span>
+<span class="sd">          chromatic aberration on ``load_synth_filamentous_plate``, ``fusion=&quot;joint&quot;``</span>
+<span class="sd">          localizes boundaries to ``1.008`` px against ``FocusEdgeMonogenicPhase``&#39;s</span>
+<span class="sd">          ``1.158`` px, and its error is flat in the aberration.</span>
+<span class="sd">        - Plates where agar texture produces spurious luminance edges that carry no matching</span>
+<span class="sd">          chromatic structure, so an incoherent chroma channel can veto them.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`FocusEdgeMonogenicPhase` on **round-colony plates**. Measured: on</span>
+<span class="sd">          ``load_synth_yeast_plate`` under the same aberration it beats *every* fusion mode</span>
+<span class="sd">          (``1.143`` px, against ``joint`` ``1.375``, ``coherent`` ``1.700``, ``l2``</span>
+<span class="sd">          ``1.776``). **On round colonies, colour buys nothing under chromatic aberration.**</span>
+<span class="sd">        - :class:`FocusEdgeMonogenicPhase` when the plate is near-achromatic, which this</span>
+<span class="sd">          operation rejects outright.</span>
+<span class="sd">        - :class:`FocusEdgePhase` when you also want corner strength from the moment tensor.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        color_space: ``&quot;lab&quot;`` (default) or ``&quot;hsv&quot;``. Channels are taken in</span>
+<span class="sd">            **luminance-first** order: ``lab`` gives ``(L*, a*, b*)``, ``hsv`` gives</span>
+<span class="sd">            ``(V, H, S)``. Raw CIELAB is already the perceptual common scale -- CIE76&#39;s</span>
+<span class="sd">            ``dE*ab`` is the Euclidean norm over raw ``L*a*b*`` -- so no per-axis rescaling</span>
+<span class="sd">            is applied; dividing by nominal axis ranges would corrupt an already-normalized</span>
+<span class="sd">            space and bias against chroma by ``128/100``.</span>
+<span class="sd">        fusion: ``&quot;joint&quot;`` (default) shares one denominator across channels, so incoherent</span>
+<span class="sd">            chroma amplitude vetoes a spurious luminance edge. ``&quot;l2&quot;`` is CMPCM&#39;s rule --</span>
+<span class="sd">            three independent congruencies combined by root-sum-of-squares -- and has **no**</span>
+<span class="sd">            cross-channel interaction whatsoever. ``&quot;coherent&quot;`` sums the monogenic vectors</span>
+<span class="sd">            before taking their norm; it cancels opposite-phase responses, **including a</span>
+<span class="sd">            genuine anti-correlated chromatic edge** where lightness falls as yellowness</span>
+<span class="sd">            rises. Opt-in, never default.</span>
+<span class="sd">        chroma_weight_1: Weight on the first chromatic axis (``a*`` under ``lab``, ``H``</span>
+<span class="sd">            under ``hsv``). Luminance is pinned at ``1.0``, so there are two degrees of</span>
+<span class="sd">            freedom, not three. At ``0.0`` the axis is switched off entirely and, with</span>
+<span class="sd">            ``chroma_weight_2`` also ``0.0``, the operation reduces **bit-for-bit** to</span>
+<span class="sd">            :class:`FocusEdgeMonogenicPhase` on the luminance channel.</span>
+<span class="sd">        chroma_weight_2: Weight on the second chromatic axis (``b*`` / ``S``). The search</span>
+<span class="sd">            bound of ``8.0`` brackets &quot;chroma off&quot; through &quot;chroma dominates&quot; for the axis</span>
+<span class="sd">            that carries signal on real plates -- ``b*`` reaches parity with ``L*`` at</span>
+<span class="sd">            ``2.6`` (Rhodotorula) and ``4.4`` (Neurospora) -- and deliberately refuses to</span>
+<span class="sd">            let ``a*`` reach parity, which needs ``19`` to ``61``.</span>
+<span class="sd">        lift: ``&quot;monogenic&quot;`` (default). ``&quot;conformal&quot;`` raises</span>
+<span class="sd">            :exc:`NotImplementedError` **at construction** -- the field exists so the</span>
+<span class="sd">            surface is stable, but the path is gated on an experiment it may well fail.</span>
+<span class="sd">        n_scale: Number of log-Gabor scales. Must be at least 2; the frequency-spread weight</span>
+<span class="sd">            divides by ``n_scale - 1``.</span>
+<span class="sd">        min_wavelength: Wavelength of the finest scale, in pixels.</span>
+<span class="sd">        mult: Wavelength multiplier between successive scales.</span>
+<span class="sd">        sigma_onf: Ratio of each filter&#39;s Gaussian sigma to its centre frequency. Strictly</span>
+<span class="sd">            below ``1.0``: at exactly ``1.0`` the log-Gabor&#39;s Gaussian width is</span>
+<span class="sd">            ``log(1.0) = 0`` and the filter bank divides by zero.</span>
+<span class="sd">        k: Noise standard deviations above the mean at which the threshold sits.</span>
+<span class="sd">            ``phasecongmono``&#39;s default is ``3.0``, not :class:`FocusEdgePhase`&#39;s ``2.0``.</span>
+<span class="sd">        deviation_gain: Scales the phase-deviation term. Kovesi: &quot;sensible values are from</span>
+<span class="sd">            1 to about 2.&quot;</span>
+<span class="sd">        cutoff: Fractional frequency-spread below which the response is penalized.</span>
+<span class="sd">        g: Sharpness of the frequency-spread sigmoid.</span>
+<span class="sd">        noise_method: ``-1`` estimates the Rayleigh parameter from the median of the finest</span>
+<span class="sd">            scale&#39;s amplitude; ``-2`` uses its histogram mode; any value ``&gt;= 0`` is the</span>
+<span class="sd">            threshold verbatim, so ``0.0`` disables it.</span>
+<span class="sd">        output: Response map to write to ``detect_mat``. ``&quot;pc&quot;`` is the fused congruency;</span>
+<span class="sd">            ``&quot;orientation&quot;`` and ``&quot;feature_type&quot;`` are normalized from radians into</span>
+<span class="sd">            [0, 1] by ``(theta + pi/2) / pi``. The two angle maps are diagnostic for</span>
+<span class="sd">            ``&quot;joint&quot;`` and ``&quot;l2&quot;``: their weighted fused vector does not directly produce</span>
+<span class="sd">            those modes&#39; scalar PC response. They are most meaningful where PC is high.</span>
+<span class="sd">        norm: Output-range policy for ``output=&quot;pc&quot;``. ``&quot;clip&quot;`` (default) saturates to</span>
+<span class="sd">            [0, 1], ``&quot;rescale&quot;`` remaps the observed PC range to [0, 1], and ``None``</span>
+<span class="sd">            preserves it. ``norm`` does not affect angle maps, whose fixed [0, 1] encoding</span>
+<span class="sd">            would otherwise lose its physical meaning.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``detect_mat`` replaced by the selected response map. PC</span>
+<span class="sd">        output follows ``norm``; angle outputs retain their normalized [0, 1] encoding.</span>
+<span class="sd">        ``rgb`` and ``gray`` are unchanged.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        NotImplementedError: If ``lift=&quot;conformal&quot;``, at construction time.</span>
+<span class="sd">        ValueError: If the image is achromatic -- all three RGB channels identical -- since</span>
+<span class="sd">            ``a*`` and ``b*`` are then identically zero and ``joint`` degenerates to a</span>
+<span class="sd">            luminance congruency divided by itself. Raised inside ``_operate``, so</span>
+<span class="sd">            :meth:`ImageOperation.apply` wraps it; walk the ``__cause__`` chain to catch it.</span>
+<span class="sd">        ValidationError: On any out-of-range field.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        **This operation reads ``image.rgb``, not ``detect_mat``.** It is a pipeline</span>
+<span class="sd">        *source*, like :class:`SetDetectMode`: **any enhancer placed before it in an**</span>
+<span class="sd">        :class:`ImagePipeline` **has no effect on its output.** Colour phase congruency is</span>
+<span class="sd">        defined on colour, and ``rgb`` is not a supported ``detect_mat`` layer. This is</span>
+<span class="sd">        legal under ``@validate_operation_integrity``, which forbids *mutating* ``rgb`` and</span>
+<span class="sd">        ``gray`` and says nothing about reading them.</span>
+
+<span class="sd">    Warning:</span>
+<span class="sd">        **Colour is not free, and on round colonies it is not even useful.** The</span>
+<span class="sd">        chromatic-aberration experiment behind this operation</span>
+<span class="sd">        (``docs/superpowers/plans/2026-07-09-focus-edge-color-phase/experiments/``) measured</span>
+<span class="sd">        boundary localization under a radial R/B misregistration. On the *filamentous* plate</span>
+<span class="sd">        ``fusion=&quot;joint&quot;`` wins. On the *yeast* plate, plain</span>
+<span class="sd">        :class:`FocusEdgeMonogenicPhase` on luminance beats all three fusion modes at every</span>
+<span class="sd">        aberration level. Lateral CA **creates** chromatic edges, and ``joint`` asserts them</span>
+<span class="sd">        coherently -- so its detected edge follows the displaced chroma rather than merging</span>
+<span class="sd">        it, and its error grows five times faster than luminance-only&#39;s. Reach for this</span>
+<span class="sd">        operation when the structure you want is filamentous, not merely because the plate</span>
+<span class="sd">        is coloured.</span>
+
+<span class="sd">    Warning:</span>
+<span class="sd">        ``color_space=&quot;hsv&quot;`` band-passes **raw hue across its wrap discontinuity**. Hue is</span>
+<span class="sd">        circular on ``[0, 1)``, so a log-Gabor filter sees a unit step at the ``0.99 -&gt;</span>
+<span class="sd">        0.01`` seam where the colour is in fact continuous, and a near-red boundary</span>
+<span class="sd">        manufactures a phantom edge. We do not unwrap, because the CMPCM paper does not and</span>
+<span class="sd">        ``(&quot;hsv&quot;, &quot;l2&quot;)`` is the configuration its ranking regression reproduces. Prefer the</span>
+<span class="sd">        ``&quot;lab&quot;`` default, which has no seam.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Fuse three channels of a synthetic yeast plate. The output is a congruency map in</span>
+<span class="sd">        ``[0, 1]``, like every other :class:`FocusEdge`:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import FocusEdgeColorPhase</span>
+<span class="sd">        &gt;&gt;&gt; enhanced = FocusEdgeColorPhase().apply(load_synth_yeast_plate())</span>
+<span class="sd">        &gt;&gt;&gt; bool(0.0 &lt;= enhanced.detect_mat[:].min() &lt;= enhanced.detect_mat[:].max() &lt;= 1.0)</span>
+<span class="sd">        True</span>
+
+<span class="sd">        Switch chroma off and recover the luminance-only monogenic port exactly:</span>
+
+<span class="sd">        &gt;&gt;&gt; luminance_only = FocusEdgeColorPhase(chroma_weight_1=0.0, chroma_weight_2=0.0)</span>
+<span class="sd">        &gt;&gt;&gt; bool(luminance_only.apply(load_synth_yeast_plate()).detect_mat[:].max() &gt; 0.5)</span>
+<span class="sd">        True</span>
+
+<span class="sd">    See Also:</span>
+<span class="sd">        :class:`FocusEdgeMonogenicPhase`, which this reduces to when both chroma weights are</span>
+<span class="sd">        ``0.0``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">color_space</span><span class="p">:</span> <span class="n">ColorSpaceName</span> <span class="o">=</span> <span class="s2">&quot;lab&quot;</span>
+    <span class="n">fusion</span><span class="p">:</span> <span class="n">PhaseFusion</span> <span class="o">=</span> <span class="s2">&quot;joint&quot;</span>
+    <span class="n">chroma_weight_1</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">chroma_weight_2</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">lift</span><span class="p">:</span> <span class="n">PhaseLift</span> <span class="o">=</span> <span class="s2">&quot;monogenic&quot;</span>
+
+    <span class="c1"># Ported verbatim from FocusEdgeMonogenicPhase. Duplicated rather than inherited or</span>
+    <span class="c1"># mixed in: a shared BaseModel mixin would put two pydantic bases in the MRO of a class</span>
+    <span class="c1"># that the operation registry and `from_json` both walk, and subclassing the monogenic</span>
+    <span class="c1"># operation would make `isinstance(colour_op, FocusEdgeMonogenicPhase)` true, which it</span>
+    <span class="c1"># is not. `TestFieldParityWithTheMonogenicPort` pins them against drift -- a checkable</span>
+    <span class="c1"># oracle, where a mixin would only have been an assertion.</span>
+    <span class="n">n_scale</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">min_wavelength</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">3.0</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+    <span class="n">mult</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">2.1</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">sigma_onf</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">0.55</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">lt</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">k</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">3.0</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">deviation_gain</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">cutoff</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">lt</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">g</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">noise_method</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>
+
+    <span class="n">output</span><span class="p">:</span> <span class="n">ColorPhaseOutput</span> <span class="o">=</span> <span class="s2">&quot;pc&quot;</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_reject_the_gated_conformal_lift</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;FocusEdgeColorPhase&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;``lift=&quot;conformal&quot;`` raises at construction, not at apply.</span>
+
+<span class="sd">        pydantic v2 traps ``ValueError`` and ``AssertionError`` and re-raises them as a</span>
+<span class="sd">        ``ValidationError``; it lets everything else propagate. ``NotImplementedError``</span>
+<span class="sd">        therefore reaches the caller with its type intact -- unlike a ``ValueError`` raised</span>
+<span class="sd">        inside ``_operate``, which :meth:`ImageOperation.apply` wraps **twice**, into a</span>
+<span class="sd">        ``RuntimeError`` (``abc_/_image_operation.py:423``) and then a bare ``Exception``</span>
+<span class="sd">        (``:470``). Verified, not assumed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lift</span> <span class="o">==</span> <span class="s2">&quot;conformal&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                    <span class="s2">&quot;lift=&#39;conformal&#39; is gated on conformal-lift.md §4&#39;s three-arm junction &quot;</span>
+                    <span class="s2">&quot;experiment and is not implemented. The field exists so the operation&#39;s &quot;</span>
+                    <span class="s2">&quot;surface is stable. Use lift=&#39;monogenic&#39;.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Three scalar channels from ``rgb``, in luminance-first order.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the image is not 3-channel RGB, or is achromatic. Drift ``C11``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rgb</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="p">[:]</span>
+        <span class="k">if</span> <span class="n">rgb</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">3</span> <span class="ow">or</span> <span class="n">rgb</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;FocusEdgeColorPhase needs a 3-channel RGB image; got shape </span><span class="si">{</span><span class="n">rgb</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">rgb</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">rgb</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;FocusEdgeColorPhase requires a chromatic image: all three RGB channels &quot;</span>
+                    <span class="s2">&quot;are identical, so a* and b* are identically zero and fusion=&#39;joint&#39; &quot;</span>
+                    <span class="s2">&quot;degenerates to a luminance congruency divided by itself. Use &quot;</span>
+                    <span class="s2">&quot;FocusEdgeMonogenicPhase on a greyscale image.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">stack</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">Lab</span><span class="p">[:]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">color_space</span> <span class="o">==</span> <span class="s2">&quot;lab&quot;</span> <span class="k">else</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">hsv</span><span class="p">[:]</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">stack</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">index</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="n">_LUMINANCE_FIRST</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">color_space</span><span class="p">]</span>
+        <span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_color_phase_congruency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorPhaseResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fuse three channels&#39; monogenic accumulators. **``pc`` is un-normalized.**</span>
+
+<span class="sd">        Protected so numeric tests can assert the raw fusion. ``orientation`` and</span>
+<span class="sd">        ``feature_type`` are also returned and exposed as diagnostic outputs. Under</span>
+<span class="sd">        ``joint`` and ``l2`` they derive from the weighted fused vector rather than the</span>
+<span class="sd">        scalar calculation that produced PC. Drift ``C15``.</span>
+
+<span class="sd">        The PFOM ranking regression consumes this rather than :meth:`apply`, because</span>
+<span class="sd">        ``fusion=&quot;l2&quot;`` ranges over ``[0, ||w||]`` and clipping would truncate the paper&#39;s</span>
+<span class="sd">        actual quantity (drift ``C3``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">channels</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">monogenic_channel_response</span><span class="p">(</span>
+                    <span class="n">channel</span><span class="p">,</span>
+                    <span class="n">n_scale</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span><span class="p">,</span>
+                    <span class="n">min_wavelength</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_wavelength</span><span class="p">,</span>
+                    <span class="n">mult</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mult</span><span class="p">,</span>
+                    <span class="n">sigma_onf</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma_onf</span><span class="p">,</span>
+                    <span class="n">k</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">,</span>
+                    <span class="n">noise_method</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_method</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_channels</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">chroma_weight_1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">chroma_weight_2</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">color_phase_congruency</span><span class="p">(</span>
+                <span class="n">channels</span><span class="p">,</span>
+                <span class="n">weights</span><span class="p">,</span>
+                <span class="n">fusion</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fusion</span><span class="p">,</span>
+                <span class="n">n_scale</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span><span class="p">,</span>
+                <span class="n">cutoff</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span><span class="p">,</span>
+                <span class="n">g</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">g</span><span class="p">,</span>
+                <span class="n">deviation_gain</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">deviation_gain</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Replace the detection matrix with the selected color-phase response map.&quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_color_phase_congruency</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">==</span> <span class="s2">&quot;pc&quot;</span><span class="p">:</span>
+            <span class="n">selected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_norm</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">pc</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">==</span> <span class="s2">&quot;orientation&quot;</span><span class="p">:</span>
+            <span class="n">selected</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">((</span><span class="n">result</span><span class="o">.</span><span class="n">orientation</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">selected</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">((</span><span class="n">result</span><span class="o">.</span><span class="n">feature_type</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">selected</span>
+        <span class="k">return</span> <span class="n">image</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

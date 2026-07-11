@@ -60,11 +60,11 @@ phenotypic.correction.ColorDenoise
       ~ColorDenoise.model_fields_set
       ~ColorDenoise.sigma_psd
       ~ColorDenoise.block_size
-      ~ColorDenoise.clip
       ~ColorDenoise.use_gat
       ~ColorDenoise.gat_gain
       ~ColorDenoise.gat_mu
       ~ColorDenoise.gat_read_sigma
       ~ColorDenoise.gat_scale_factor
+      ~ColorDenoise.norm
    
    

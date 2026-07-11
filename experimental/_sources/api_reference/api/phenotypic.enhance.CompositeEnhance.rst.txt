@@ -60,6 +60,6 @@ phenotypic.enhance.CompositeEnhance
       ~CompositeEnhance.model_fields_set
       ~CompositeEnhance.ops
       ~CompositeEnhance.mode
-      ~CompositeEnhance.clip
+      ~CompositeEnhance.norm
    
    

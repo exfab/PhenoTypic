@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../_static/documentation_options.js?v=eec840cd"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="phenotypic.sdk_.processing_report_html_path" href="phenotypic.sdk_.processing_report_html_path.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.3" />
+  <meta name="docsearch:version" content="0.18.0" />
   </head>
   
   
@@ -719,6 +719,9 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceLocalContrast.html">phenotypic.enhance.EnhanceLocalContrast</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.StructureSmoothing.html">phenotypic.enhance.StructureSmoothing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ContrastStretching.html">phenotypic.enhance.ContrastStretching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ContrastGamma.html">phenotypic.enhance.ContrastGamma</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ContrastLog.html">phenotypic.enhance.ContrastLog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ContrastSigmoid.html">phenotypic.enhance.ContrastSigmoid</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeFrangi.html">phenotypic.enhance.FocusEdgeFrangi</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GaussianBlur.html">phenotypic.enhance.GaussianBlur</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractGaussian.html">phenotypic.enhance.SubtractGaussian</a></li>
@@ -733,6 +736,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.NonLocalMeansDenoiser.html">phenotypic.enhance.NonLocalMeansDenoiser</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractOpening.html">phenotypic.enhance.SubtractOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgePhase.html">phenotypic.enhance.FocusEdgePhase</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeMonogenicPhase.html">phenotypic.enhance.FocusEdgeMonogenicPhase</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeColorPhase.html">phenotypic.enhance.FocusEdgeColorPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractRollingBall.html">phenotypic.enhance.SubtractRollingBall</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSato.html">phenotypic.enhance.FocusEdgeSato</a></li>
@@ -916,11 +921,13 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.tune_cache_study_db_path.html">phenotypic.sdk_.tune_cache_study_db_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.tuning_spec_path.html">phenotypic.sdk_.tuning_spec_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.verified_parquet_path.html">phenotypic.sdk_.verified_parquet_path</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ClipControlMixin.html">phenotypic.sdk_.ClipControlMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.FootprintMixin.html">phenotypic.sdk_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.GridInferenceMixin.html">phenotypic.sdk_.GridInferenceMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.HDF.html">phenotypic.sdk_.HDF</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.InputLayerMixin.html">phenotypic.sdk_.InputLayerMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.LazyWidgetMixin.html">phenotypic.sdk_.LazyWidgetMixin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.NormControlMixin.html">phenotypic.sdk_.NormControlMixin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.NormalizedOutputMixin.html">phenotypic.sdk_.NormalizedOutputMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ChunkManifestKey.html">phenotypic.sdk_.ChunkManifestKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ChunkStateKey.html">phenotypic.sdk_.ChunkStateKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.DashboardManifestKey.html">phenotypic.sdk_.DashboardManifestKey</a></li>

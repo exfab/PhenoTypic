@@ -64,7 +64,7 @@ phenotypic.correction.VisuShrinkCorrector
       ~VisuShrinkCorrector.wavelet_levels
       ~VisuShrinkCorrector.convert2ycbcr
       ~VisuShrinkCorrector.rescale_sigma
-      ~VisuShrinkCorrector.clip
+      ~VisuShrinkCorrector.norm
       ~VisuShrinkCorrector.use_gat
       ~VisuShrinkCorrector.gat_gain
       ~VisuShrinkCorrector.gat_mu

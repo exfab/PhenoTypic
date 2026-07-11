@@ -62,8 +62,8 @@ phenotypic.enhance.BayesShrinkEnhancer
       ~BayesShrinkEnhancer.wavelet
       ~BayesShrinkEnhancer.mode
       ~BayesShrinkEnhancer.wavelet_levels
-      ~BayesShrinkEnhancer.clip
       ~BayesShrinkEnhancer.rescale_sigma
+      ~BayesShrinkEnhancer.norm
       ~BayesShrinkEnhancer.use_gat
       ~BayesShrinkEnhancer.gat_gain
       ~BayesShrinkEnhancer.gat_mu

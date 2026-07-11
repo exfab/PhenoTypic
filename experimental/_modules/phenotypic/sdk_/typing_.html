@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.3" />
+  <meta name="docsearch:version" content="0.18.0" />
   </head>
   
   
@@ -608,6 +608,7 @@
     <span class="n">Literal</span><span class="p">,</span>
     <span class="n">Optional</span><span class="p">,</span>
     <span class="n">Tuple</span><span class="p">,</span>
+    <span class="n">TypeAlias</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -624,6 +625,48 @@
 <span class="n">FootprintShape</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;disk&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">]</span>
 
 <span class="n">DetectMode</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="s2">&quot;MinRGB&quot;</span><span class="p">,</span> <span class="s2">&quot;LabL&quot;</span><span class="p">,</span> <span class="s2">&quot;LabA&quot;</span><span class="p">,</span> <span class="s2">&quot;LabB&quot;</span><span class="p">,</span> <span class="s2">&quot;HsvS&quot;</span><span class="p">,</span> <span class="s2">&quot;HsvV&quot;</span><span class="p">,</span> <span class="s2">&quot;InvS&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Source layer an ``InputLayerMixin`` operation reads from. ``&quot;detect_mat&quot;``</span>
+<span class="c1">#: is the 2-D detection matrix; ``&quot;rgb&quot;`` is the pristine 3-D colour layer,</span>
+<span class="c1">#: collapsed back to 2-D via the image&#39;s own ``detect_mode``. Literal-only —</span>
+<span class="c1">#: no Enum partner, mirroring ``DetectMode`` / ``ExecutionMode``.</span>
+<span class="n">InputLayer</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;detect_mat&quot;</span><span class="p">,</span> <span class="s2">&quot;rgb&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Output-range policy for operations that guard ``detect_mat``&#39;s [0, 1]</span>
+<span class="c1">#: contract. ``&quot;clip&quot;`` saturates, ``&quot;rescale&quot;`` normalizes the full</span>
+<span class="c1">#: histogram, ``None`` passes values through untouched (the escape hatch</span>
+<span class="c1">#: GAT regions and ``CompositeEnhance`` depend on). Replaces the former</span>
+<span class="c1">#: ``clip: bool`` field as of 0.18.0.</span>
+<span class="n">NormOut</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;clip&quot;</span><span class="p">,</span> <span class="s2">&quot;rescale&quot;</span><span class="p">]]</span>
+
+<span class="c1">#: Which of ``phasecongmono``&#39;s three maps :class:`FocusEdgeMonogenicPhase` writes to</span>
+<span class="c1">#: ``detect_mat``. ``orientation`` and ``feature_type`` are angles and are mapped from</span>
+<span class="c1">#: radians into ``[0, 1]`` by ``(theta + pi/2)/pi`` before being written. Type-only</span>
+<span class="c1">#: closed set (no Enum / documentation surface needed), matching ``DetectMode``.</span>
+<span class="n">MonogenicOutput</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;pc&quot;</span><span class="p">,</span> <span class="s2">&quot;orientation&quot;</span><span class="p">,</span> <span class="s2">&quot;feature_type&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Colour space whose channels feed :class:`FocusEdgeColorPhase`. The operation reorders</span>
+<span class="c1">#: them into **luminance-first** order -- ``lab`` is natively ``(L*, a*, b*)`` and needs no</span>
+<span class="c1">#: change, ``hsv`` is natively ``(H, S, V)`` and is permuted to ``(V, H, S)`` -- so that</span>
+<span class="c1">#: index ``0`` is always the axis whose weight is pinned at ``1.0``.</span>
+<span class="n">ColorSpaceName</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;lab&quot;</span><span class="p">,</span> <span class="s2">&quot;hsv&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Cross-channel fusion rule for :class:`FocusEdgeColorPhase`. ``l2`` is the CMPCM paper&#39;s</span>
+<span class="c1">#: root-sum-of-squares over three *independent* per-channel congruencies; ``joint`` and</span>
+<span class="c1">#: ``coherent`` share one denominator across channels and are ours (drift ``C7``, ``C8``).</span>
+<span class="n">PhaseFusion</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;joint&quot;</span><span class="p">,</span> <span class="s2">&quot;coherent&quot;</span><span class="p">,</span> <span class="s2">&quot;l2&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Signal lift. ``conformal`` is gated on ``conformal-lift.md`` §4&#39;s three-arm junction</span>
+<span class="c1">#: experiment and currently raises :exc:`NotImplementedError` at construction. The member</span>
+<span class="c1">#: exists so the field surface is stable; the code path does not exist yet.</span>
+<span class="n">PhaseLift</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;monogenic&quot;</span><span class="p">,</span> <span class="s2">&quot;conformal&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Which :class:`FocusEdgeColorPhase` response map writes to ``detect_mat``. Mirrors</span>
+<span class="c1">#: :data:`MonogenicOutput`: ``&quot;pc&quot;`` is the fused congruency, and ``&quot;orientation&quot;`` /</span>
+<span class="c1">#: ``&quot;feature_type&quot;`` are normalized diagnostic angle maps. Under ``joint`` and ``l2`` the</span>
+<span class="c1">#: latter come from the weighted fused vector rather than the scalar calculation producing</span>
+<span class="c1">#: PC, so they are not a substitute for PC when detecting edges. Drift ``C15``.</span>
+<span class="n">ColorPhaseOutput</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;pc&quot;</span><span class="p">,</span> <span class="s2">&quot;orientation&quot;</span><span class="p">,</span> <span class="s2">&quot;feature_type&quot;</span><span class="p">]</span>
 
 <span class="c1">#: Image layer a process-mode CLI run exports. A closed</span>
 <span class="c1">#: subset of the layers exposed as Image accessors; ``rgb``/``gray``/</span>

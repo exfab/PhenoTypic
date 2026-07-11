@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../../_static/documentation_options.js?v=eec840cd"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.3" />
+  <meta name="docsearch:version" content="0.18.0" />
   </head>
   
   
@@ -624,6 +624,16 @@
 <span class="sd">    :meth:`ImageEnhancer.apply`, which protects ``image.rgb`` and</span>
 <span class="sd">    ``image.gray`` from mutation. Edge isolation is therefore confined to</span>
 <span class="sd">    ``image.detect_mat``.</span>
+
+<span class="sd">    **One subclass sources from ``rgb``.**</span>
+<span class="sd">    :class:`~phenotypic.enhance.FocusEdgeColorPhase` *reads* ``image.rgb``</span>
+<span class="sd">    (through ``image.color.Lab`` / ``image.color.hsv``) because colour phase</span>
+<span class="sd">    congruency is defined on colour, and ``rgb`` is not a supported</span>
+<span class="sd">    ``detect_mat`` layer. It still writes only ``detect_mat``, so the</span>
+<span class="sd">    integrity check holds and the class remains a :class:`FocusEdge`. The</span>
+<span class="sd">    user-visible consequence is that it behaves as a pipeline **source**, like</span>
+<span class="sd">    ``SetDetectMode``: any enhancer placed before it in an ``ImagePipeline``</span>
+<span class="sd">    has no effect on its output.</span>
 
 <span class="sd">    **Quick Decision Guide:**</span>
 

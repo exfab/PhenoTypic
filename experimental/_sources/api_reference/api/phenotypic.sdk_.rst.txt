@@ -136,11 +136,13 @@
       :template: class.rst
       :nosignatures:
    
-      ClipControlMixin
       FootprintMixin
       GridInferenceMixin
       HDF
+      InputLayerMixin
       LazyWidgetMixin
+      NormControlMixin
+      NormalizedOutputMixin
       ChunkManifestKey
       ChunkStateKey
       DashboardManifestKey

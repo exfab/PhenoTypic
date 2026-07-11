@@ -63,7 +63,7 @@ phenotypic.enhance.LocalEdgeDenoise
       ~LocalEdgeDenoise.win_size
       ~LocalEdgeDenoise.mode
       ~LocalEdgeDenoise.cval
-      ~LocalEdgeDenoise.clip
+      ~LocalEdgeDenoise.norm
       ~LocalEdgeDenoise.use_gat
       ~LocalEdgeDenoise.gat_gain
       ~LocalEdgeDenoise.gat_mu

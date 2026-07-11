@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../_static/documentation_options.js?v=eec840cd"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Grid vs Non-Grid Detection" href="grid_vs_non_grid_detection.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.3" />
+  <meta name="docsearch:version" content="0.18.0" />
   </head>
   
   
@@ -692,6 +692,17 @@ and reflectance</p></li>
 <li><p><strong>FocusEdgeFrangi</strong> — enhances tubular structures (hyphae, branches)</p></li>
 <li><p><strong>FocusEdgeSobel</strong> — highlights edges</p></li>
 <li><p><strong>FocusEdgePhase</strong> — illumination-invariant edge detection</p></li>
+<li><p><strong>FocusEdgeMonogenicPhase</strong> — the same illumination invariance without the orientation
+sweep, via the monogenic signal. Cheaper and isotropic; use it when colony edges have no
+preferred direction. Its <code class="docutils literal notranslate"><span class="pre">output=&quot;orientation&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;feature_type&quot;</span></code> modes are diagnostic
+angle maps, not detection inputs.</p></li>
+<li><p><strong>FocusEdgeColorPhase</strong> — runs the monogenic chain on three colour channels and fuses
+them, so a channel with amplitude but no phase agreement can <em>veto</em> a spurious luminance
+edge. <strong>It reads <code class="docutils literal notranslate"><span class="pre">rgb</span></code>, not <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code></strong>, which makes it a pipeline <em>source</em>: any
+enhancer placed before it has no effect. Reach for it on <strong>filamentous</strong> plates. On
+round-colony plates, <code class="docutils literal notranslate"><span class="pre">FocusEdgeMonogenicPhase</span></code> on luminance measurably localizes
+boundaries better than any of its fusion modes, so colour buys nothing there. Rejects
+achromatic images outright.</p></li>
 </ul>
 </section>
 </section>
@@ -699,6 +710,13 @@ and reflectance</p></li>
 <h2>Stacking Enhancers<a class="headerlink" href="#stacking-enhancers" title="Link to this heading">#</a></h2>
 <p>Enhancers compose linearly — each reads <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>, modifies it, and
 writes it back. Order matters:</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>One exception.</strong> <code class="docutils literal notranslate"><span class="pre">FocusEdgeColorPhase</span></code> reads <code class="docutils literal notranslate"><span class="pre">image.rgb</span></code>, not <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>, because
+colour phase congruency is defined on colour. It is a <em>source</em>: it discards whatever
+<code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> held and writes a fresh map. Anything upstream of it in the chain is wasted
+work. Put it first, or not at all.</p>
+</div>
 <ol class="arabic simple">
 <li><p><strong>Denoise first</strong> — reduce noise before amplifying contrast</p></li>
 <li><p><strong>Correct illumination</strong> — normalize brightness before thresholding</p></li>

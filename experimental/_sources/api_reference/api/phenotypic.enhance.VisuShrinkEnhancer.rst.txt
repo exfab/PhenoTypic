@@ -62,8 +62,8 @@ phenotypic.enhance.VisuShrinkEnhancer
       ~VisuShrinkEnhancer.wavelet
       ~VisuShrinkEnhancer.mode
       ~VisuShrinkEnhancer.wavelet_levels
-      ~VisuShrinkEnhancer.clip
       ~VisuShrinkEnhancer.rescale_sigma
+      ~VisuShrinkEnhancer.norm
       ~VisuShrinkEnhancer.use_gat
       ~VisuShrinkEnhancer.gat_gain
       ~VisuShrinkEnhancer.gat_mu

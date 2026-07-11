@@ -60,5 +60,6 @@ phenotypic.enhance.FocusEdgeLaplace
       ~FocusEdgeLaplace.model_fields_set
       ~FocusEdgeLaplace.kernel_size
       ~FocusEdgeLaplace.mask
+      ~FocusEdgeLaplace.norm
    
    

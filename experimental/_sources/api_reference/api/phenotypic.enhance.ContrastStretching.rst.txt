@@ -60,5 +60,7 @@ phenotypic.enhance.ContrastStretching
       ~ContrastStretching.model_fields_set
       ~ContrastStretching.lower_percentile
       ~ContrastStretching.upper_percentile
+      ~ContrastStretching.keep_colors
+      ~ContrastStretching.input_layer
    
    

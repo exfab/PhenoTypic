@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.3" />
+  <meta name="docsearch:version" content="0.18.0" />
   </head>
   
   
@@ -606,12 +606,13 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Optional</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">FocusEdge</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span><span class="p">,</span> <span class="n">TuneSpec</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NormalizedOutputMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span><span class="p">,</span> <span class="n">NormOut</span><span class="p">,</span> <span class="n">TuneSpec</span>
 
 
 <div class="viewcode-block" id="FocusEdgeLaplace">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.enhance.FocusEdgeLaplace.html#phenotypic.enhance.FocusEdgeLaplace">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">FocusEdgeLaplace</span><span class="p">(</span><span class="n">FocusEdge</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FocusEdgeLaplace</span><span class="p">(</span><span class="n">NormalizedOutputMixin</span><span class="p">,</span> <span class="n">FocusEdge</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance colony edges in ``detect_mat`` with a discrete Laplacian operator.</span>
 
 <span class="sd">    Applies a discrete second-derivative Laplacian that responds strongly to</span>
@@ -646,10 +647,27 @@
 <span class="sd">        mask: Boolean or 0/1 array restricting processing to a region of</span>
 <span class="sd">            interest (e.g., the circular plate area). ``None`` processes the</span>
 <span class="sd">            full image. Default: ``None``.</span>
+<span class="sd">        norm: Output range policy applied to the raw Laplacian response.</span>
+<span class="sd">            ``&quot;rescale&quot;`` (default) linearly remaps the full signed response</span>
+<span class="sd">            onto [0, 1], preserving the bipolar edge structure. ``&quot;clip&quot;``</span>
+<span class="sd">            saturates the negative lobe to 0, discarding roughly half the edge</span>
+<span class="sd">            response; ``None`` passes the raw signed values through untouched.</span>
+<span class="sd">            Default: ``&quot;rescale&quot;``.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` replaced by the Laplacian edge</span>
-<span class="sd">        response. ``rgb`` and ``gray`` are unchanged.</span>
+<span class="sd">        response, range-guarded into [0, 1] per ``norm``. ``rgb`` and ``gray``</span>
+<span class="sd">        are unchanged.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Changed in 0.18.0: the raw Laplacian is signed by construction (on the</span>
+<span class="sd">        synthetic yeast plate it spans roughly [-1.52, +1.48] with ~114k</span>
+<span class="sd">        negative pixels), which violated the ``detect_mat`` [0, 1] contract.</span>
+<span class="sd">        Output is now range-guarded, defaulting to ``norm=&quot;rescale&quot;`` so the</span>
+<span class="sd">        full bipolar edge response is preserved inside [0, 1] rather than</span>
+<span class="sd">        having its negative half clipped away. This is a breaking change:</span>
+<span class="sd">        downstream thresholds tuned against the old raw response must be</span>
+<span class="sd">        re-tuned. Pass ``norm=None`` to recover the pre-0.18.0 signed output.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a visual</span>
@@ -660,13 +678,15 @@
 
     <span class="n">kernel_size</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">2</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">3</span>
     <span class="n">mask</span><span class="p">:</span> <span class="n">NdArrayField</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">norm</span><span class="p">:</span> <span class="n">NormOut</span> <span class="o">=</span> <span class="s2">&quot;rescale&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
-        <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">laplace</span><span class="p">(</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">laplace</span><span class="p">(</span>
             <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:],</span>
             <span class="n">ksize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span><span class="p">,</span>
             <span class="n">mask</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">,</span>
         <span class="p">)</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_norm</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">image</span></div>
 
 </pre></div>

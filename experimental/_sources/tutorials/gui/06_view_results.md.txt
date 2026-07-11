@@ -82,5 +82,7 @@ a promise about RSS.
   store, and admonition in the hub.
 - [SLURM Pipelines](../../how_to/pages/slurm_pipelines.md) — chunk sizing, resume
   semantics, recompile flags.
-- [CLI Batch Processing](../../how_to/pages/cli_batch_processing.md) — every CLI flag the
+- [CLI Batch Processing](../pages/cli_batch_processing.md) — every CLI flag the
   Run console form exposes (and a few more).
+- [CLI Execution Modes](../pages/cli_modes.md) — what `full`, `measure`,
+  `recompile`, and `process` each produce.

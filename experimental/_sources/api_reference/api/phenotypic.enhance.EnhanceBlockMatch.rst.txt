@@ -61,7 +61,7 @@ phenotypic.enhance.EnhanceBlockMatch
       ~EnhanceBlockMatch.sigma_psd
       ~EnhanceBlockMatch.block_size
       ~EnhanceBlockMatch.stage_arg
-      ~EnhanceBlockMatch.clip
+      ~EnhanceBlockMatch.norm
       ~EnhanceBlockMatch.use_gat
       ~EnhanceBlockMatch.gat_gain
       ~EnhanceBlockMatch.gat_mu

@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.3" />
+  <meta name="docsearch:version" content="0.18.0" />
   </head>
   
   
@@ -607,12 +607,13 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.exposure</span><span class="w"> </span><span class="kn">import</span> <span class="n">rescale_intensity</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContrastAdjustment</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">InputLayerMixin</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
 <div class="viewcode-block" id="ContrastStretching">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.enhance.ContrastStretching.html#phenotypic.enhance.ContrastStretching">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ContrastStretching</span><span class="p">(</span><span class="n">ContrastAdjustment</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ContrastStretching</span><span class="p">(</span><span class="n">InputLayerMixin</span><span class="p">,</span> <span class="n">ContrastAdjustment</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Stretch the intensity range of ``detect_mat`` to fill the full dynamic range.</span>
 
 <span class="sd">    Rescales pixel values by clipping at lower and upper percentiles, then</span>
@@ -643,10 +644,41 @@
 <span class="sd">            are mapped to 0. Typical range: 1--5. Default: 2.</span>
 <span class="sd">        upper_percentile: Bright clipping point. Pixels above this percentile</span>
 <span class="sd">            are mapped to 1. Typical range: 95--99. Default: 98.</span>
+<span class="sd">        keep_colors: When ``input_layer=&quot;rgb&quot;``, take a single pair of percentiles</span>
+<span class="sd">            jointly across all three colour channels and rescale them together,</span>
+<span class="sd">            preserving channel balance and hue. When ``False``, compute percentiles</span>
+<span class="sd">            per channel and rescale each independently -- effectively a white</span>
+<span class="sd">            balance, which removes colour casts but shifts hue. Ignored for 2-D</span>
+<span class="sd">            input. Default: ``True``.</span>
+<span class="sd">        input_layer: Source layer. ``&quot;detect_mat&quot;`` (default) stretches the 2-D</span>
+<span class="sd">            detection matrix. ``&quot;rgb&quot;`` stretches all three colour channels, then</span>
+<span class="sd">            collapses the result to 2-D through the image&#39;s own ``detect_mode``.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` rescaled to the full dynamic</span>
-<span class="sd">        range. ``rgb`` and ``gray`` are unchanged.</span>
+<span class="sd">        range. ``rgb`` and ``gray`` are unchanged. The output always fills</span>
+<span class="sd">        [0, 1] by construction, so no ``norm`` field is offered. With</span>
+<span class="sd">        ``input_layer=&quot;rgb&quot;``, any enhancement a prior operation wrote to</span>
+<span class="sd">        ``detect_mat`` is discarded, as with :class:`SetDetectMode`.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Stretch the detection matrix across the full dynamic range:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import ContrastStretching</span>
+<span class="sd">        &gt;&gt;&gt; plate = load_synth_yeast_plate()</span>
+<span class="sd">        &gt;&gt;&gt; enhanced = ContrastStretching().apply(plate)</span>
+<span class="sd">        &gt;&gt;&gt; float(enhanced.detect_mat[:].min()), float(enhanced.detect_mat[:].max())</span>
+<span class="sd">        (0.0, 1.0)</span>
+
+<span class="sd">        Stretch in colour space, holding channel balance fixed, before the</span>
+<span class="sd">        detection matrix is derived:</span>
+
+<span class="sd">        &gt;&gt;&gt; plate = load_synth_yeast_plate()</span>
+<span class="sd">        &gt;&gt;&gt; plate.set_detect_mode(&#39;MinRGB&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; enhanced = ContrastStretching(input_layer=&#39;rgb&#39;).apply(plate)</span>
+<span class="sd">        &gt;&gt;&gt; enhanced.detect_mat[:].ndim</span>
+<span class="sd">        2</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/enhance_low_contrast` for a comparison of</span>
@@ -657,16 +689,31 @@
 
     <span class="n">lower_percentile</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">2</span>
     <span class="n">upper_percentile</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">95</span><span class="p">,</span> <span class="mi">99</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">98</span>
+    <span class="n">keep_colors</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
-        <span class="n">p_lower</span><span class="p">,</span> <span class="n">p_upper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span>
-                <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:],</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lower_percentile</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">upper_percentile</span><span class="p">)</span>
-        <span class="p">)</span>
-        <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">rescale_intensity</span><span class="p">(</span>
-                <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:],</span>
-                <span class="n">in_range</span><span class="o">=</span><span class="p">(</span><span class="n">p_lower</span><span class="p">,</span> <span class="n">p_upper</span><span class="p">),</span>
-                <span class="n">out_range</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-        <span class="p">)</span>
+        <span class="n">src</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_input_layer</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">src</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_colors</span><span class="p">:</span>
+            <span class="n">adjusted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]):</span>
+                <span class="n">p_lower</span><span class="p">,</span> <span class="n">p_upper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span>
+                        <span class="n">src</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">channel</span><span class="p">],</span>
+                        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lower_percentile</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">upper_percentile</span><span class="p">),</span>
+                <span class="p">)</span>
+                <span class="n">adjusted</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">channel</span><span class="p">]</span> <span class="o">=</span> <span class="n">rescale_intensity</span><span class="p">(</span>
+                        <span class="n">image</span><span class="o">=</span><span class="n">src</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">channel</span><span class="p">],</span>
+                        <span class="n">in_range</span><span class="o">=</span><span class="p">(</span><span class="n">p_lower</span><span class="p">,</span> <span class="n">p_upper</span><span class="p">),</span>
+                        <span class="n">out_range</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">p_lower</span><span class="p">,</span> <span class="n">p_upper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span>
+                    <span class="n">src</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lower_percentile</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">upper_percentile</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">adjusted</span> <span class="o">=</span> <span class="n">rescale_intensity</span><span class="p">(</span>
+                    <span class="n">image</span><span class="o">=</span><span class="n">src</span><span class="p">,</span> <span class="n">in_range</span><span class="o">=</span><span class="p">(</span><span class="n">p_lower</span><span class="p">,</span> <span class="n">p_upper</span><span class="p">),</span> <span class="n">out_range</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">collapsed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_project_to_detect_mat</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">adjusted</span><span class="p">)</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">collapsed</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">image</span></div>
 
 </pre></div>

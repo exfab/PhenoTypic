@@ -64,7 +64,7 @@ phenotypic.correction.BayesShrinkCorrector
       ~BayesShrinkCorrector.wavelet_levels
       ~BayesShrinkCorrector.convert2ycbcr
       ~BayesShrinkCorrector.rescale_sigma
-      ~BayesShrinkCorrector.clip
+      ~BayesShrinkCorrector.norm
       ~BayesShrinkCorrector.use_gat
       ~BayesShrinkCorrector.gat_gain
       ~BayesShrinkCorrector.gat_mu

@@ -1,0 +1,78 @@
+phenotypic.enhance.FocusEdgeColorPhase
+======================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: FocusEdgeColorPhase
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FocusEdgeColorPhase.__init__
+      ~FocusEdgeColorPhase.apply
+      ~FocusEdgeColorPhase.construct
+      ~FocusEdgeColorPhase.copy
+      ~FocusEdgeColorPhase.dict
+      ~FocusEdgeColorPhase.from_json
+      ~FocusEdgeColorPhase.from_orm
+      ~FocusEdgeColorPhase.json
+      ~FocusEdgeColorPhase.model_construct
+      ~FocusEdgeColorPhase.model_copy
+      ~FocusEdgeColorPhase.model_dump
+      ~FocusEdgeColorPhase.model_dump_json
+      ~FocusEdgeColorPhase.model_json_schema
+      ~FocusEdgeColorPhase.model_parametrized_name
+      ~FocusEdgeColorPhase.model_post_init
+      ~FocusEdgeColorPhase.model_rebuild
+      ~FocusEdgeColorPhase.model_validate
+      ~FocusEdgeColorPhase.model_validate_json
+      ~FocusEdgeColorPhase.model_validate_strings
+      ~FocusEdgeColorPhase.parse_file
+      ~FocusEdgeColorPhase.parse_obj
+      ~FocusEdgeColorPhase.parse_raw
+      ~FocusEdgeColorPhase.schema
+      ~FocusEdgeColorPhase.schema_json
+      ~FocusEdgeColorPhase.to_json
+      ~FocusEdgeColorPhase.update_forward_refs
+      ~FocusEdgeColorPhase.validate
+      ~FocusEdgeColorPhase.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FocusEdgeColorPhase.model_computed_fields
+      ~FocusEdgeColorPhase.model_config
+      ~FocusEdgeColorPhase.model_extra
+      ~FocusEdgeColorPhase.model_fields
+      ~FocusEdgeColorPhase.model_fields_set
+      ~FocusEdgeColorPhase.color_space
+      ~FocusEdgeColorPhase.fusion
+      ~FocusEdgeColorPhase.chroma_weight_1
+      ~FocusEdgeColorPhase.chroma_weight_2
+      ~FocusEdgeColorPhase.lift
+      ~FocusEdgeColorPhase.n_scale
+      ~FocusEdgeColorPhase.min_wavelength
+      ~FocusEdgeColorPhase.mult
+      ~FocusEdgeColorPhase.sigma_onf
+      ~FocusEdgeColorPhase.k
+      ~FocusEdgeColorPhase.deviation_gain
+      ~FocusEdgeColorPhase.cutoff
+      ~FocusEdgeColorPhase.g
+      ~FocusEdgeColorPhase.noise_method
+      ~FocusEdgeColorPhase.output
+      ~FocusEdgeColorPhase.norm
+   
+   

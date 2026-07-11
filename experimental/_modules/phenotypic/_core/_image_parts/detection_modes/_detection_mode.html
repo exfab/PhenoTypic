@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../../../_static/documentation_options.js?v=eec840cd"></script>
     <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.3" />
+  <meta name="docsearch:version" content="0.18.0" />
   </head>
   
   
@@ -641,6 +641,26 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            A 2-D float32 array normalised to [0, 1].</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="DetectionMode.compute_from_rgb">
+<a class="viewcode-back" href="../../../../../api_reference/api/phenotypic.abc_.DetectionMode.html#phenotypic.abc_.DetectionMode.compute_from_rgb">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_from_rgb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rgb</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Project a substitute RGB array to a 2-D detection matrix.</span>
+
+<span class="sd">        Unlike :meth:`compute`, the pixel data comes from *rgb* rather than from</span>
+<span class="sd">        *image*. ``image`` supplies colour configuration only (``gamma``,</span>
+<span class="sd">        ``illuminant``, ``_observer``), which the CIE L*a*b* modes require and the</span>
+<span class="sd">        others ignore.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rgb: Float RGB array normalized to [0, 1], shape ``(rows, cols, 3)``.</span>
+<span class="sd">            image: Source image, consulted for colour configuration only.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A 2-D float32 array normalized to [0, 1].</span>
 <span class="sd">        &quot;&quot;&quot;</span></div>
 </div>
 
