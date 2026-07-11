@@ -126,8 +126,8 @@ the images that would be processed without writing any output. The log tail
 shows the result.
 
 **Run (Local)** spawns `python -m phenotypic ...` as a subprocess of the GUI
-process. See [CLI Batch Processing](cli_batch_processing.md) for the full list
-of CLI flags that the form exposes. Only one local run can be active at a time;
+process. See [CLI Batch Processing](../../tutorials/pages/cli_batch_processing.md) for
+the full list of CLI flags that the form exposes. Only one local run can be active at a time;
 the Run button is disabled while a local subprocess is live. SLURM submissions
 have no equivalent cap.
 

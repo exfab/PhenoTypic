@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set
 from datetime import datetime
 
 from phenotypic.sdk_.typing_ import ExecutionMode, ImageTypeName, ProcessOnlyLayer
@@ -138,9 +138,6 @@ class ExecutionConfig:
     process_only_layer: Optional[ProcessOnlyLayer] = None
 
     # --- Staged GPU detection (Spec 1 §7/§10) ---------------------------------
-    # Images per GPU forward pass (Stage 2). Int, or "auto" (VRAM-probe; the
-    # probe is effective only for batchable detectors and lands in Spec 2).
-    gpu_batch_size: Union[int, str] = 1
     # Model replicas packed per physical GPU (Stage 2 fill for small models).
     gpu_workers_per_gpu: int = 1
     # Parallel Stage-2 GPU tasks (one whole GPU each; SLURM-only, ignored local).

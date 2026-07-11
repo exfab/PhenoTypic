@@ -1,10 +1,8 @@
 """The staged-GPU CLI flags are exposed and parse (Spec 1 §10, Plan 3 Task 3)."""
 
-import click
-import pytest
 from click.testing import CliRunner
 
-from phenotypic.phenotypicCLI import _parse_gpu_batch_size, phenotypic_cli
+from phenotypic.phenotypicCLI import phenotypic_cli
 
 
 def test_gpu_flags_listed_in_help():
@@ -12,7 +10,6 @@ def test_gpu_flags_listed_in_help():
     result = runner.invoke(phenotypic_cli, ["--help"])
     assert result.exit_code == 0
     for opt in (
-        "--gpu-batch-size",
         "--gpu-workers-per-gpu",
         "--gpu-shards",
         "--gpu-slurm",
@@ -20,11 +17,19 @@ def test_gpu_flags_listed_in_help():
         assert opt in result.output
 
 
-def test_gpu_batch_size_callback_accepts_int_and_auto():
-    assert _parse_gpu_batch_size(None, None, "auto") == "auto"
-    assert _parse_gpu_batch_size(None, None, "4") == 4
+def test_gpu_batch_size_flag_is_removed():
+    """--gpu-batch-size was never wired into Stage 2; it must not be accepted.
 
+    Batching is not widely supported by the segmentation models PhenoTypic
+    targets, so the flag was removed rather than left as a silent no-op. Click
+    must reject it outright instead of ignoring it.
+    """
+    runner = CliRunner()
+    result = runner.invoke(phenotypic_cli, ["--help"])
+    assert "--gpu-batch-size" not in result.output
 
-def test_gpu_batch_size_callback_rejects_garbage():
-    with pytest.raises(click.BadParameter):
-        _parse_gpu_batch_size(None, None, "banana")
+    result = runner.invoke(
+        phenotypic_cli, ["-o", "out", "--gpu-batch-size", "4"]
+    )
+    assert result.exit_code != 0
+    assert "no such option" in result.output.lower()
