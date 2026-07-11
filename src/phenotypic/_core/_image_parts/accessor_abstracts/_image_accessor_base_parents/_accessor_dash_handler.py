@@ -380,6 +380,7 @@ class AccessorDashHandler(AccessorMplHandler):
             *,
             has_objects: bool,
             object_label: int | None = None,
+            show_overlay_notice: bool = True,
             show_labels: bool = False,
             show_grid: bool = True,
             label_settings: dict | None = None,
@@ -390,6 +391,7 @@ class AccessorDashHandler(AccessorMplHandler):
             fig: Plotly figure to decorate.
             has_objects: Whether the image has detected objects.
             object_label: Specific object label being highlighted.
+            show_overlay_notice: Whether to display the overlay notice.
             show_labels: Whether to add centroid labels.
             show_grid: Whether to add gridlines and section boxes
                 (GridImage only).
@@ -397,6 +399,8 @@ class AccessorDashHandler(AccessorMplHandler):
         """
         if label_settings is None:
             label_settings = {}
+        if show_overlay_notice:
+            self._add_plotly_overlay_notice(fig)
         if show_labels:
             self._add_plotly_obj_labels(
                     fig=fig,
@@ -421,3 +425,21 @@ class AccessorDashHandler(AccessorMplHandler):
                         fig=fig, min_rr=min_rr, max_rr=max_rr,
                         min_cc=min_cc, max_cc=max_cc,
                 )
+
+    @staticmethod
+    def _add_plotly_overlay_notice(fig: go.Figure) -> None:
+        """Add a compact notice that the displayed image includes an overlay."""
+        fig.add_annotation(
+            x=0.01,
+            y=0.99,
+            xref="x domain",
+            yref="y domain",
+            xanchor="left",
+            yanchor="top",
+            text="Overlay",
+            showarrow=False,
+            font={"color": "white", "size": 12},
+            bgcolor="rgba(26, 26, 26, 1)",
+            bordercolor="rgba(0, 0, 0, 0)",
+            borderpad=3,
+        )

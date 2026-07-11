@@ -429,6 +429,7 @@ class AccessorMplHandler(AccessorIOHandler):
         *,
         has_objects: bool,
         object_label: int | None = None,
+        show_overlay_notice: bool = True,
         show_labels: bool = False,
         show_grid: bool = True,
         label_settings: dict | None = None,
@@ -439,6 +440,7 @@ class AccessorMplHandler(AccessorIOHandler):
             ax: Matplotlib axes to decorate.
             has_objects: Whether the image has detected objects.
             object_label: Specific object label being highlighted.
+            show_overlay_notice: Whether to display the overlay notice.
             show_labels: Whether to add centroid labels.
             show_grid: Whether to add gridlines and section boxes
                 (GridImage only).
@@ -446,6 +448,8 @@ class AccessorMplHandler(AccessorIOHandler):
         """
         if label_settings is None:
             label_settings = {}
+        if show_overlay_notice:
+            self._add_mpl_overlay_notice(ax)
         if show_labels:
             self._plot_obj_labels(
                 ax=ax,
@@ -458,6 +462,27 @@ class AccessorMplHandler(AccessorIOHandler):
             self._add_gridlines(ax)
             if has_objects:
                 self._add_section_boxes(ax)
+
+    @staticmethod
+    def _add_mpl_overlay_notice(ax: plt.Axes) -> None:
+        """Add a compact notice that the displayed image includes an overlay."""
+        ax.text(
+            0.01,
+            0.99,
+            "Overlay",
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            color="white",
+            fontsize=10,
+            zorder=100,
+            bbox={
+                "boxstyle": "round,pad=0.2",
+                "facecolor": "#1a1a1a",
+                "edgecolor": "none",
+                "alpha": 1.0,
+            },
+        )
 
     # ------------------------------------------------------------------
     # Grid visualisation (matplotlib)

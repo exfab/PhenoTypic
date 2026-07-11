@@ -123,6 +123,7 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             overlay: bool = True,
             *,
             ax: plt.Axes | None = None,
+            show_overlay_notice: bool = True,
             object_label: int | None = None,
             show_labels: bool = False,
             show_grid: bool = True,
@@ -143,6 +144,8 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
                 Falls back to plain image when no objects are detected.
             ax: Existing Matplotlib axes to plot into. If None, a new
                 figure and axes are created.
+            show_overlay_notice: If True, display an ``Overlay`` notice when
+                an object overlay is rendered.
             object_label: Specific object label to highlight. If None,
                 shows all detected objects. Only used when overlay is True.
             show_labels: If True, displays numeric labels at object centroids.
@@ -176,6 +179,9 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             )
             self._decorate_mpl_overlay(
                     ax, has_objects=has_objects, object_label=object_label,
+                    show_overlay_notice=(
+                        show_overlay_notice and bool(objmap.any())
+                    ),
                     show_labels=show_labels, show_grid=show_grid,
                     label_settings=label_settings,
             )
@@ -198,6 +204,7 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             foreground_only: bool = False,
             overlay: bool = True,
             *,
+            show_overlay_notice: bool = True,
             object_label: int | None = None,
             show_labels: bool = False,
             show_grid: bool = True,
@@ -217,6 +224,8 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             foreground_only: If True, only foreground is displayed.
             overlay: If True, overlay the object map on the image.
                 Falls back to plain image when no objects are detected.
+            show_overlay_notice: If True, display an ``Overlay`` notice when
+                an object overlay is rendered.
             object_label: Specific object label to highlight. If None,
                 shows all detected objects. Only used when overlay is True.
             show_labels: If True, displays numeric labels at object centroids.
@@ -264,6 +273,9 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             )
             self._decorate_plotly_overlay(
                     fig, has_objects=has_objects, object_label=object_label,
+                    show_overlay_notice=(
+                        show_overlay_notice and bool(objmap.any())
+                    ),
                     show_labels=show_labels, show_grid=show_grid,
                     label_settings=label_settings,
             )
