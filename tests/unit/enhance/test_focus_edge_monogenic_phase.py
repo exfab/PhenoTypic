@@ -369,3 +369,69 @@ class TestAgreementWithFocusEdgePhase:
             pc3_col = lo + int(np.argmax(pc3[row, lo:hi]))
             assert abs(mono_col - pc3_col) <= 1
             assert abs(mono_col - edge) <= 1
+
+
+class TestEveryFieldReachesTheKernel:
+    """Every parameter must (a) be forwarded to ``monogenic_phase_congruency`` and (b)
+    actually move the output.
+
+    Found by the Fable review of the stripped corpus: hardcoding ``deviation_gain`` to its
+    default ``1.5`` inside ``monogenic_phase_congruency`` survived the entire 123-test
+    monogenic suite, because **no test varied it off its default** -- and the same held for
+    ``cutoff`` and ``min_wavelength``. The parameter is live (it shifts ``pc`` by ``0.287``
+    on ``load_synth_yeast_plate``); it was simply never exercised. This is the monogenic
+    analogue of the colour operation's ``TestTheOperationForwardsItsFieldsVerbatim``.
+
+    A spy on the kernel call is the robust check: it is independent of the image and of the
+    parameter regime (a numeric comparison can be blind where the spread sigmoid saturates,
+    exactly as it was for the colour operation's ``n_scale``).
+    """
+
+    def test_the_kernel_receives_exactly_the_operations_fields(self, monkeypatch):
+        import phenotypic.enhance._focus_edge_monogenic_phase as module
+
+        real = module.monogenic_phase_congruency
+        seen: dict = {}
+
+        def spy(img, **kwargs):
+            seen.update(kwargs)
+            return real(img, **kwargs)
+
+        monkeypatch.setattr(module, "monogenic_phase_congruency", spy)
+        op = FocusEdgeMonogenicPhase(
+            n_scale=5, min_wavelength=4.0, mult=2.5, sigma_onf=0.4, k=6.0,
+            deviation_gain=1.2, cutoff=0.35, g=14.0, noise_method=-2.0,
+        )
+        op.apply(load_synth_yeast_plate())
+
+        assert seen == {
+            "n_scale": 5, "min_wavelength": 4.0, "mult": 2.5, "sigma_onf": 0.4,
+            "k": 6.0, "deviation_gain": 1.2, "cutoff": 0.35, "g": 14.0,
+            "noise_method": -2.0,
+        }
+
+    @pytest.mark.parametrize(
+        "field,alternative,least_change",
+        [
+            ("n_scale", 6, 0.3),
+            ("min_wavelength", 5.0, 0.3),
+            ("mult", 2.5, 0.3),
+            ("sigma_onf", 0.4, 0.3),
+            ("k", 8.0, 0.2),
+            ("deviation_gain", 1.0, 0.3),
+            ("cutoff", 0.35, 0.3),
+            ("g", 14.0, 0.05),
+            ("noise_method", -2.0, 0.3),
+        ],
+    )
+    def test_every_field_actually_moves_the_output(self, field, alternative, least_change):
+        """A field that changes nothing is a field that is not being passed through."""
+        baseline = FocusEdgeMonogenicPhase().apply(load_synth_yeast_plate()).detect_mat[:]
+        altered = FocusEdgeMonogenicPhase(**{field: alternative}).apply(
+            load_synth_yeast_plate()
+        ).detect_mat[:]
+        moved = float(np.abs(altered.astype(float) - baseline.astype(float)).max())
+        assert moved >= least_change, (
+            f"{field}={alternative!r} moved the output by only {moved:.3e}; it is probably "
+            f"not reaching the kernel"
+        )
