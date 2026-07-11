@@ -41,6 +41,7 @@ class SingleChannelAccessor(ImageAccessorBase, ABC):
             foreground_only: bool = False,
             overlay: bool = True,
             *,
+            ax: plt.Axes | None = None,
             object_label: int | None = None,
             show_labels: bool = False,
             show_grid: bool = True,
@@ -57,6 +58,8 @@ class SingleChannelAccessor(ImageAccessorBase, ABC):
             foreground_only: If True, display only foreground elements.
             overlay: If True, overlay the object map on the image.
                 Falls back to plain image when no objects are detected.
+            ax: Existing Matplotlib axes to plot into. If None, a new
+                figure and axes are created.
             object_label: Specific object label to highlight. If None,
                 shows all detected objects. Only used when overlay is True.
             show_labels: If True, displays numeric labels at object centroids.
@@ -77,6 +80,7 @@ class SingleChannelAccessor(ImageAccessorBase, ABC):
             objmap = self._get_filtered_objmap(object_label)
             fig, ax = self._plot_overlay(
                     arr=arr, objmap=objmap, figsize=figsize, title=title,
+                    ax=ax,
                     overlay_settings=overlay_settings,
             )
             self._decorate_mpl_overlay(
@@ -87,7 +91,7 @@ class SingleChannelAccessor(ImageAccessorBase, ABC):
             return fig, ax
 
         return self._mpl_plot(
-                arr=arr, figsize=figsize, title=title, cmap=cmap or "gray",
+                arr=arr, figsize=figsize, title=title, cmap=cmap or "gray", ax=ax,
         )
 
     def dash(

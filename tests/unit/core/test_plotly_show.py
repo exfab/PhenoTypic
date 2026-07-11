@@ -49,6 +49,14 @@ class TestRGBShow:
         assert isinstance(fig, plt.Figure)
         plt.close(fig)
 
+    @pytest.mark.parametrize("overlay", [False, True])
+    def test_rgb_show_reuses_existing_axes(self, grid_image, overlay):
+        fig, ax = plt.subplots()
+        returned_fig, returned_ax = grid_image.rgb.show(ax=ax, overlay=overlay)
+        assert returned_fig is fig
+        assert returned_ax is ax
+        plt.close(fig)
+
 
 class TestGrayShow:
     """Tests for image.gray.show() returning matplotlib tuple."""
@@ -69,6 +77,14 @@ class TestGrayShow:
         assert isinstance(fig, plt.Figure)
         plt.close(fig)
 
+    @pytest.mark.parametrize("overlay", [False, True])
+    def test_gray_show_reuses_existing_axes(self, grid_image, overlay):
+        fig, ax = plt.subplots()
+        returned_fig, returned_ax = grid_image.gray.show(ax=ax, overlay=overlay)
+        assert returned_fig is fig
+        assert returned_ax is ax
+        plt.close(fig)
+
 
 class TestDetectMatShow:
     """Tests for image.detect_mat.show() returning matplotlib tuple."""
@@ -77,6 +93,16 @@ class TestDetectMatShow:
         fig, ax = grid_image.detect_mat.show()
         assert isinstance(fig, plt.Figure)
         assert isinstance(ax, plt.Axes)
+        plt.close(fig)
+
+    @pytest.mark.parametrize("overlay", [False, True])
+    def test_detect_mat_show_reuses_existing_axes(self, grid_image, overlay):
+        fig, ax = plt.subplots()
+        returned_fig, returned_ax = grid_image.detect_mat.show(
+            ax=ax, overlay=overlay
+        )
+        assert returned_fig is fig
+        assert returned_ax is ax
         plt.close(fig)
 
 
@@ -225,6 +251,14 @@ class TestImageShow:
         fig, ax = grid_image.show()
         assert isinstance(fig, plt.Figure)
         assert isinstance(ax, plt.Axes)
+        plt.close(fig)
+
+    @pytest.mark.parametrize("overlay", [False, True])
+    def test_grid_image_show_reuses_existing_axes(self, grid_image, overlay):
+        fig, ax = plt.subplots()
+        returned_fig, returned_ax = grid_image.show(ax=ax, overlay=overlay)
+        assert returned_fig is fig
+        assert returned_ax is ax
         plt.close(fig)
 
     def test_image_show_with_title(self, grid_image):

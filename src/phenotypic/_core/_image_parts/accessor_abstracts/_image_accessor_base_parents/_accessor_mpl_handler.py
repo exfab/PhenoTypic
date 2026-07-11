@@ -393,6 +393,7 @@ class AccessorMplHandler(AccessorIOHandler):
         figsize: tuple[int, int] | None = None,
         title: str | bool | None = None,
         *,
+        ax: plt.Axes | None = None,
         overlay_settings: dict | None = None,
     ) -> tuple[plt.Figure, plt.Axes]:
         """Plot an array with object map overlay using matplotlib.
@@ -405,6 +406,8 @@ class AccessorMplHandler(AccessorIOHandler):
                 auto-calculated from array aspect ratio.
             title: Title of the plot. If None, defaults to the parent
                 image name.
+            ax: Existing Matplotlib axes to plot into. If None, a new
+                figure and axes are created.
             overlay_settings: Parameters passed to
                 ``skimage.color.label2rgb`` for overlay customization.
 
@@ -412,7 +415,9 @@ class AccessorMplHandler(AccessorIOHandler):
             A ``(plt.Figure, plt.Axes)`` tuple.
         """
         overlay_arr = self._compose_overlay(arr, objmap, overlay_settings)
-        return self._mpl_plot(arr=overlay_arr, figsize=figsize, title=title)
+        return self._mpl_plot(
+            arr=overlay_arr, figsize=figsize, title=title, ax=ax
+        )
 
     # ------------------------------------------------------------------
     # Matplotlib overlay decoration

@@ -122,6 +122,7 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             foreground_only: bool = False,
             overlay: bool = True,
             *,
+            ax: plt.Axes | None = None,
             object_label: int | None = None,
             show_labels: bool = False,
             show_grid: bool = True,
@@ -140,6 +141,8 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             foreground_only: If True, only foreground is displayed.
             overlay: If True, overlay the object map on the image.
                 Falls back to plain image when no objects are detected.
+            ax: Existing Matplotlib axes to plot into. If None, a new
+                figure and axes are created.
             object_label: Specific object label to highlight. If None,
                 shows all detected objects. Only used when overlay is True.
             show_labels: If True, displays numeric labels at object centroids.
@@ -168,6 +171,7 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             objmap = self._get_filtered_objmap(object_label)
             fig, ax = self._plot_overlay(
                     arr=plot_arr, objmap=objmap, figsize=figsize, title=title,
+                    ax=ax,
                     overlay_settings=overlay_settings,
             )
             self._decorate_mpl_overlay(
@@ -179,11 +183,11 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
 
         if channel is None:
             return self._mpl_plot(
-                    arr=arr, figsize=figsize, title=title,
+                    arr=arr, figsize=figsize, title=title, ax=ax,
             )
         return self._mpl_plot(
                 arr=arr[:, :, channel], figsize=figsize, title=title,
-                cmap="gray",
+                cmap="gray", ax=ax,
         )
 
     def dash(
