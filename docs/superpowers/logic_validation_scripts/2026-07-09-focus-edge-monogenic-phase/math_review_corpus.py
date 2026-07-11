@@ -69,6 +69,7 @@ EXCLUDE_DIRS = {"papers", "__pycache__", ".pytest_cache"}
 RENAMES: list[tuple[str, str]] = [
     # 1. exact symbols
     (r"phenotypic\._core\._image\.Image", "Image"),
+    (r"\bFocusEdgeColorPhase\b", "ColorPhaseCongruencyEnhancer"),
     (r"\bFocusEdgeMonogenicPhase\b", "MonogenicPhaseCongruencyEnhancer"),
     (r"\bFocusEdgePhase\b", "OrientedPhaseCongruencyEnhancer"),
     (r"\bFocusEdge\b", "EdgeResponseEnhancer"),   # the marker ABC; \b spares FocusEdgeFrangi etc.
@@ -77,6 +78,7 @@ RENAMES: list[tuple[str, str]] = [
     (r"\bload_fungi_plate\b", "load_sample_image_c"),
     # 2. snake_case identifier fragments -- the lookbehind requires a word character, so
     #    prose ("the plate") never matches here, only identifiers ("_plate").
+    (r"_plate_channels\b", "_sample_channels"),
     (r"(?<=[A-Za-z0-9])_plates\b", "_sample_images"),
     (r"(?<=[A-Za-z0-9])_plate\b", "_sample_image"),
     (r"(?<=[A-Za-z0-9])_colonies\b", "_objects"),
@@ -146,6 +148,16 @@ IMPORT_REWRITES: dict[str, list[tuple[str, str]]] = {
     "verify_claims.py": [
         ("**not** import ``phenotypic``", "**not** import the host package"),
     ],
+    "kernels/_focus_edge_color_phase.py": [
+        ("from ..abc_ import EdgeResponseEnhancer", "from ._standalone import EdgeResponseEnhancer"),
+        # Relative host imports: invisible to gates 1-3 (no banned word), fatal at import time.
+        ("from ..sdk_.typing_ import (", "from .typing_ import ("),
+        ("    from phenotypic._core._image import Image", "    from ._standalone import Image"),
+    ],
+    "tests/test_color_phase_kernels.py": [
+        ("from phenotypic.enhance._monogenic_kernels import congruency_from_accumulators",
+         "from kernels._monogenic_kernels import congruency_from_accumulators"),
+    ],
 }
 
 # Prose the rename table cannot derive: sentences whose *framing*, not merely whose nouns,
@@ -166,8 +178,53 @@ PROSE_PATCHES: dict[str, list[tuple[str, str]]] = {
         ('    """Enhance colony edges in ``detect_mat`` using monogenic phase congruency.\n\n    Detects features where the log-Gabor Fourier components are maximally in phase,\n    producing an edge response that depends on phase agreement rather than amplitude.\n    The result is invariant to local illumination level and scanner vignetting, so\n    faint or translucent colony boundaries stay visible where intensity-gradient\n    methods fail.\n\n    Unlike :class:`FocusEdgePhase`, which sweeps a bank of oriented filters, this uses\n    the **Riesz transform** to obtain the two odd (quadrature) channels isotropically.\n    Orientation falls out of that pair instead of being searched for, so there is no\n    ``n_orient`` parameter and the filter bank is ``n_orient`` times smaller.\n\n    Best For:\n        - Colony boundaries that vary in opacity or contrast across the plate\n        - Filamentous edges where an oriented bank\'s angular quantization blurs the\n          response between two adjacent orientations\n        - Plates where you want a cheaper, isotropic alternative to\n          :class:`FocusEdgePhase`\n\n    Args:\n        n_scale: Number of log-Gabor scales. Must be at least 2 -- the frequency-spread\n            weight divides by ``n_scale - 1``. More scales widen the frequency coverage\n            at linear cost.\n        min_wavelength: Wavelength of the finest scale, in pixels. Raise it to ignore\n            fine texture such as agar speckle.\n        mult: Wavelength multiplier between successive scales. ``2.1`` with\n            ``sigma_onf=0.55`` gives roughly two-octave filter bandwidths.\n        sigma_onf: Ratio of each filter\'s Gaussian sigma to its centre frequency.\n            Smaller means narrower bandwidth, more scales needed for coverage.\n        k: Number of noise standard deviations above the mean at which the noise\n            threshold sits. **``phasecongmono``\'s default is 3.0**, not\n            :class:`FocusEdgePhase`\'s 2.0. Raise it on noisy scans.\n        deviation_gain: Scales the phase-deviation term, sharpening edge localization.\n            Kovesi: "sensible values are from 1 to about 2." Above ~2 the response\n            becomes very sparse.\n        cutoff: Fractional frequency-spread below which the response is penalized, so\n            that a feature excited at a single scale scores lower than a broadband one.\n        g: Sharpness of the frequency-spread sigmoid.\n        noise_method: ``-1`` estimates the Rayleigh noise parameter from the median of\n            the finest scale\'s amplitude; ``-2`` uses its histogram mode. Any value\n            ``>= 0`` is used verbatim as the threshold, so ``0.0`` disables it.\n        output: Which map to write to ``detect_mat``. ``"pc"`` is the congruency in\n            ``[0, 1]``. ``"orientation"`` and ``"feature_type"`` are angles in\n            ``[-pi/2, pi/2]``, mapped to ``[0, 1]`` by ``(theta + pi/2)/pi``, since\n            ``detect_mat`` must lie in the unit interval; invert the map to recover\n            radians. For ``"orientation"``, ``0.5`` is a vertical edge and ``1.0`` a\n            horizontal one. For ``"feature_type"``, ``0.5`` is a step edge, ``1.0`` a\n            bright line and ``0.0`` a dark line.\n\n            **The two angle maps are diagnostic, not detectable.** An angle is defined\n            everywhere, including where there is no feature, so the output is a noise field\n            wherever ``pc`` is small. On ``load_synth_yeast_plate`` 89.6% of pixels have\n            ``pc < 0.02``; over those, ``"orientation"`` spans the full ``[0, 1]`` with\n            ``std = 0.307`` and only 3.3% lie near the ``0.5`` that means "vertical edge".\n            Kovesi consumes his ``or`` masked by ``pc`` (his comment: *"Quantize to 0 - 180\n            degrees (for NONMAXSUP)"*). Feed ``"pc"`` to a detector; read the angles for\n            inspection, or mask them yourself.\n\n            ``"orientation"``\'s true image is ``(0, 1]``, not ``[0, 1]``: the fold is\n            half-open, so ``-pi/2`` is unattainable. ``"feature_type"`` attains both ends.\n\n    Returns:\n        Image: Input image with ``detect_mat`` replaced by the selected monogenic map,\n        clipped to ``[0, 1]``. ``rgb`` and ``gray`` are unchanged.\n\n    Raises:\n        ValidationError: If ``n_scale`` < 2, ``min_wavelength`` < 2, ``mult`` <= 1,\n            ``sigma_onf`` outside ``[0.1, 1.0]``, ``k`` < 0, ``deviation_gain`` <= 0,\n            ``cutoff`` outside ``(0, 1)``, ``g`` <= 0, or ``output`` is not one of\n            ``"pc"``, ``"orientation"``, ``"feature_type"``.\n\n    Examples:\n        Enhance colony boundaries on a synthetic yeast plate. Phase congruency responds\n        at colony rims regardless of how opaque each colony is:\n\n        >>> from phenotypic.data import load_synth_yeast_plate\n        >>> from phenotypic.enhance import FocusEdgeMonogenicPhase\n        >>> image = load_synth_yeast_plate()\n        >>> enhanced = FocusEdgeMonogenicPhase().apply(image)\n        >>> bool(enhanced.detect_mat[:].max() > 0.5)\n        True\n\n        Ask instead whether each feature is a step (a colony rim) or a line (a hypha or\n        a scratch). ``0.5`` is a step edge:\n\n        >>> feature_type = FocusEdgeMonogenicPhase(output="feature_type")\n        >>> classified = feature_type.apply(load_synth_yeast_plate())\n        >>> bool(0.0 <= classified.detect_mat[:].min() <= classified.detect_mat[:].max() <= 1.0)\n        True\n\n    Note:\n        This is a port of Kovesi\'s ``phasecongmono``. The field notebook attributes\n        monogenic phase congruency to Wang Lijuan et al., CCDC 2014; that paper was not\n        consulted and this operation does not claim to reproduce its formulation.\n\n    See Also:\n        :class:`FocusEdgePhase` for the oriented log-Gabor bank, which additionally\n        yields corner strength via the moment tensor.\n    """\n',
          '    """Enhance step edges in ``detect_mat`` using monogenic phase congruency.\n\n    Detects features where the log-Gabor Fourier components are maximally in phase,\n    producing an edge response that depends on phase agreement rather than amplitude.\n    The result is invariant to local illumination level and slowly varying sensor gain,\n    so faint, low-contrast step edges stay visible where intensity-gradient\n    methods fail.\n\n    Unlike :class:`OrientedPhaseCongruencyEnhancer`, which sweeps a bank of oriented\n    filters, this uses the **Riesz transform** to obtain the two odd (quadrature)\n    channels isotropically. Orientation falls out of that pair instead of being searched\n    for, so there is no ``n_orient`` parameter and the filter bank is ``n_orient`` times\n    smaller.\n\n    Best For:\n        - Step edges whose contrast varies across the field of view\n        - Line features where an oriented bank\'s angular quantization blurs the\n          response between two adjacent orientations\n        - Images where you want a cheaper, isotropic alternative to\n          :class:`OrientedPhaseCongruencyEnhancer`\n\n    Args:\n        n_scale: Number of log-Gabor scales. Must be at least 2 -- the frequency-spread\n            weight divides by ``n_scale - 1``. More scales widen the frequency coverage\n            at linear cost.\n        min_wavelength: Wavelength of the finest scale, in pixels. Raise it to ignore\n            fine texture such as sensor speckle.\n        mult: Wavelength multiplier between successive scales. ``2.1`` with\n            ``sigma_onf=0.55`` gives roughly two-octave filter bandwidths.\n        sigma_onf: Ratio of each filter\'s Gaussian sigma to its centre frequency.\n            Smaller means narrower bandwidth, more scales needed for coverage.\n        k: Number of noise standard deviations above the mean at which the noise\n            threshold sits. **``phasecongmono``\'s default is 3.0**, not\n            :class:`OrientedPhaseCongruencyEnhancer`\'s 2.0. Raise it on noisy inputs.\n        deviation_gain: Scales the phase-deviation term, sharpening edge localization.\n            Kovesi: "sensible values are from 1 to about 2." Above ~2 the response\n            becomes very sparse.\n        cutoff: Fractional frequency-spread below which the response is penalized, so\n            that a feature excited at a single scale scores lower than a broadband one.\n        g: Sharpness of the frequency-spread sigmoid.\n        noise_method: ``-1`` estimates the Rayleigh noise parameter from the median of\n            the finest scale\'s amplitude; ``-2`` uses its histogram mode. Any value\n            ``>= 0`` is used verbatim as the threshold, so ``0.0`` disables it.\n        output: Which map to write to ``detect_mat``. ``"pc"`` is the congruency in\n            ``[0, 1]``. ``"orientation"`` and ``"feature_type"`` are angles in\n            ``[-pi/2, pi/2]``, mapped to ``[0, 1]`` by ``(theta + pi/2)/pi``, since\n            ``detect_mat`` must lie in the unit interval; invert the map to recover\n            radians. For ``"orientation"``, ``0.5`` is a vertical edge and ``1.0`` a\n            horizontal one. For ``"feature_type"``, ``0.5`` is a step edge, ``1.0`` a\n            bright line and ``0.0`` a dark line.\n\n            **The two angle maps are diagnostic, not detectable.** An angle is defined\n            everywhere, including where there is no feature, so the output is a noise field\n            wherever ``pc`` is small. On ``load_sample_image_a`` 89.7% of pixels have\n            ``pc < 0.02``; over those, ``"orientation"`` spans the full ``[0, 1]`` with\n            ``std = 0.292``; only 4.3% lie within ``0.02`` of the ``0.5`` that means\n            "vertical edge", and 10.5% within ``0.05`` -- the latter is what a *uniform*\n            angle would give, which is the point.\n            Kovesi consumes his ``or`` masked by ``pc`` (his comment: *"Quantize to 0 - 180\n            degrees (for NONMAXSUP)"*). Feed ``"pc"`` to a detector; read the angles for\n            inspection, or mask them yourself.\n\n            ``"orientation"``\'s true image is ``(0, 1]``, not ``[0, 1]``: the fold is\n            half-open, so ``-pi/2`` is unattainable. ``"feature_type"`` attains both ends.\n\n    Returns:\n        Image: Input image with ``detect_mat`` replaced by the selected monogenic map,\n        clipped to ``[0, 1]``. ``rgb`` and ``gray`` are unchanged.\n\n    Raises:\n        ValidationError: If ``n_scale`` < 2, ``min_wavelength`` < 2, ``mult`` <= 1,\n            ``sigma_onf`` outside ``[0.1, 1.0]``, ``k`` < 0, ``deviation_gain`` <= 0,\n            ``cutoff`` outside ``(0, 1)``, ``g`` <= 0, or ``output`` is not one of\n            ``"pc"``, ``"orientation"``, ``"feature_type"``.\n\n    Examples:\n        Enhance step edges on a synthetic sample image. Phase congruency responds\n        at disc rims regardless of how much contrast each rim carries:\n\n        >>> from kernels._data import load_sample_image_a\n        >>> from kernels._focus_edge_monogenic_phase import MonogenicPhaseCongruencyEnhancer\n        >>> image = load_sample_image_a()\n        >>> enhanced = MonogenicPhaseCongruencyEnhancer().apply(image)\n        >>> bool(enhanced.detect_mat[:].max() > 0.5)\n        True\n\n        Ask instead whether each feature is a step (a disc rim) or a line (a thin ridge\n        or a scratch). ``0.5`` is a step edge:\n\n        >>> feature_type = MonogenicPhaseCongruencyEnhancer(output="feature_type")\n        >>> classified = feature_type.apply(load_sample_image_a())\n        >>> bool(0.0 <= classified.detect_mat[:].min() <= classified.detect_mat[:].max() <= 1.0)\n        True\n\n    Note:\n        This is a port of Kovesi\'s ``phasecongmono``. The field notebook attributes\n        monogenic phase congruency to Wang Lijuan et al., CCDC 2014; that paper was not\n        consulted and this operation does not claim to reproduce its formulation.\n\n    See Also:\n        :class:`OrientedPhaseCongruencyEnhancer` for the oriented log-Gabor bank, which\n        additionally yields corner strength via the moment tensor.\n    """\n'),
     ],
-}
 
+    # ---- colour phase congruency (added 2026-07-10) ----
+    'fusion_algebra.py': [
+        ('Never imports `phenotypic`: the point is to check',
+         'Never imports the host package: the point is to check'),
+    ],
+    'tests/test_color_phase_pfom.py': [
+        ('import phenotypic\nfrom phenotypic.enhance import (\n    FocusEdgeColorPhase,\n    FocusEdgeMonogenicPhase,\n    FocusEdgePhase,\n)\n',
+         'from kernels import (\n    FocusEdgeColorPhase,\n    FocusEdgeMonogenicPhase,\n    FocusEdgePhase,\n)\nfrom kernels._standalone import Image\n'),
+        ('tuple[phenotypic.Image, np.ndarray]',
+         'tuple[Image, np.ndarray]'),
+        ('return phenotypic.Image((rgb * 255).round().astype(np.uint8)), ideal',
+         'return Image((rgb * 255).round().astype(np.uint8)), ideal'),
+        ('FocusEdgePhase().apply(phenotypic.Image(rgb)).detect_mat[:].astype(float)',
+         'FocusEdgePhase().apply(Image(rgb)).detect_mat[:].astype(float)'),
+        ('.apply(phenotypic.Image(rgb))',
+         '.apply(Image(rgb))'),
+    ],
+    'tests/test_color_phase_kernels.py': [
+        ('    @staticmethod\n    def _plate_channels():\n        from phenotypic.data import load_synth_yeast_plate\n        from phenotypic.enhance import FocusEdgeColorPhase\n\n        image = load_synth_yeast_plate()\n        return [\n            monogenic_channel_response(channel)\n            for channel in FocusEdgeColorPhase()._extract_channels(image)\n        ]\n',
+         '    @staticmethod\n    def _plate_channels():\n        from kernels._data import load_sample_image_d\n        from kernels._focus_edge_color_phase import FocusEdgeColorPhase\n\n        image = load_sample_image_d()\n        return [\n            monogenic_channel_response(channel)\n            for channel in FocusEdgeColorPhase()._extract_channels(image)\n        ]\n'),
+        ('from phenotypic.enhance._color_phase_kernels import (',
+         'from kernels._color_phase_kernels import ('),
+        ('from phenotypic.enhance._monogenic_kernels import (',
+         'from kernels._monogenic_kernels import ('),
+        ('import phenotypic.enhance._color_phase_kernels as cpk',
+         'import kernels._color_phase_kernels as cpk'),
+        ('from phenotypic.enhance._color_phase_kernels import _weighted_scalars',
+         'from kernels._color_phase_kernels import _weighted_scalars'),
+        ('from phenotypic.enhance._color_phase_kernels import _fused_vector',
+         'from kernels._color_phase_kernels import _fused_vector'),
+        ('``load_synth_yeast_plate`` at ``w = (1, 2, 3)``',
+         'the chromatic sample image at ``w = (1, 2, 3)``'),
+        ('Measured on\n    ``load_synth_yeast_plate``',
+         'Measured on\n    the chromatic sample image'),
+    ],
+    'kernels/_focus_edge_color_phase.py': [
+        ('no phase agreement -- pigment speckle, agar grain, Bayer demosaic noise -- **veto** an',
+         'no phase agreement -- sensor grain, surface texture, demosaic noise -- **veto** an'),
+        ('    Best For:\n        - **Filamentous plates.** This is where the measured benefit lives. Under lateral\n          chromatic aberration on ``load_synth_filamentous_plate``, ``fusion="joint"``\n          localizes boundaries to ``1.008`` px against ``FocusEdgeMonogenicPhase``\'s\n          ``1.158`` px, and its error is flat in the aberration.\n        - Plates where agar texture produces spurious luminance edges that carry no matching\n          chromatic structure, so an incoherent chroma channel can veto them.\n\n    Consider Also:\n        - :class:`FocusEdgeMonogenicPhase` on **round-colony plates**. Measured: on\n          ``load_synth_yeast_plate`` under the same aberration it beats *every* fusion mode\n          (``1.143`` px, against ``joint`` ``1.375``, ``coherent`` ``1.700``, ``l2``\n          ``1.776``). **On round colonies, colour buys nothing under chromatic aberration.**\n        - :class:`FocusEdgeMonogenicPhase` when the plate is near-achromatic, which this\n          operation rejects outright.\n        - :class:`FocusEdgePhase` when you also want corner strength from the moment tensor.\n',
+         '    Best For:\n        - **Images whose structure is filamentous.** This is where the measured benefit\n          lives. Under lateral chromatic aberration on a filamentous test image,\n          ``fusion="joint"`` localizes boundaries to ``1.008`` px against\n          :class:`FocusEdgeMonogenicPhase`\'s ``1.158`` px, and its error is flat in the\n          aberration.\n        - Images where surface texture produces spurious luminance edges that carry no\n          matching chromatic structure, so an incoherent chroma channel can veto them.\n\n    Consider Also:\n        - :class:`FocusEdgeMonogenicPhase` on images of **compact, convex objects**.\n          Measured: under the same aberration it beats *every* fusion mode (``1.143`` px,\n          against ``joint`` ``1.375``, ``coherent`` ``1.700``, ``l2`` ``1.776``). **On\n          compact objects, colour buys nothing under chromatic aberration.**\n        - :class:`FocusEdgeMonogenicPhase` when the image is near-achromatic, which this\n          operation rejects outright.\n        - :class:`FocusEdgePhase` when you also want corner strength from the moment tensor.\n'),
+        ('        **Colour is not free, and on round colonies it is not even useful.** The\n        chromatic-aberration experiment behind this operation\n        (``docs/superpowers/plans/2026-07-09-focus-edge-color-phase/experiments/``) measured\n        boundary localization under a radial R/B misregistration. On the *filamentous* plate\n        ``fusion="joint"`` wins. On the *yeast* plate, plain\n        :class:`FocusEdgeMonogenicPhase` on luminance beats all three fusion modes at every\n        aberration level. Lateral CA **creates** chromatic edges, and ``joint`` asserts them\n        coherently -- so its detected edge follows the displaced chroma rather than merging\n        it, and its error grows five times faster than luminance-only\'s. Reach for this\n        operation when the structure you want is filamentous, not merely because the plate\n        is coloured.\n',
+         '        **Colour is not free, and on compact objects it is not even useful.** The\n        chromatic-aberration experiment behind this operation measured boundary localization\n        under a radial R/B misregistration. On the *filamentous* test image\n        ``fusion="joint"`` wins. On the *compact-object* test image, plain\n        :class:`FocusEdgeMonogenicPhase` on luminance beats all three fusion modes at every\n        aberration level. Lateral CA **creates** chromatic edges, and ``joint`` asserts them\n        coherently -- so its detected edge follows the displaced chroma rather than merging\n        it, and its error grows five times faster than luminance-only\'s. Reach for this\n        operation when the structure you want is filamentous, not merely because the image\n        is coloured.\n'),
+        ('    Examples:\n        Fuse three channels of a synthetic yeast plate. The output is a congruency map in\n        ``[0, 1]``, like every other :class:`FocusEdge`:\n\n        >>> from phenotypic.data import load_synth_yeast_plate\n        >>> from phenotypic.enhance import FocusEdgeColorPhase\n        >>> enhanced = FocusEdgeColorPhase().apply(load_synth_yeast_plate())\n        >>> bool(0.0 <= enhanced.detect_mat[:].min() <= enhanced.detect_mat[:].max() <= 1.0)\n        True\n\n        Switch chroma off and recover the luminance-only monogenic port exactly:\n\n        >>> luminance_only = FocusEdgeColorPhase(chroma_weight_1=0.0, chroma_weight_2=0.0)\n        >>> bool(luminance_only.apply(load_synth_yeast_plate()).detect_mat[:].max() > 0.5)\n        True\n',
+         '    Examples:\n        Fuse three channels of a synthetic chromatic image. The output is a congruency map\n        in ``[0, 1]``, like every other :class:`FocusEdge`:\n\n        >>> from kernels._data import load_sample_image_d\n        >>> from kernels import FocusEdgeColorPhase\n        >>> enhanced = FocusEdgeColorPhase().apply(load_sample_image_d())\n        >>> bool(0.0 <= enhanced.detect_mat[:].min() <= enhanced.detect_mat[:].max() <= 1.0)\n        True\n\n        Switch chroma off and recover the luminance-only monogenic port exactly:\n\n        >>> luminance_only = FocusEdgeColorPhase(chroma_weight_1=0.0, chroma_weight_2=0.0)\n        >>> bool(luminance_only.apply(load_sample_image_d()).detect_mat[:].max() > 0.5)\n        True\n'),
+    ],
+}
 # repo path -> sandbox path. Only these are re-derived by `refresh`.
 DERIVED: dict[str, str] = {
     "src/phenotypic/enhance/_monogenic_kernels.py": "kernels/_monogenic_kernels.py",
@@ -178,6 +235,25 @@ DERIVED: dict[str, str] = {
     "tests/unit/enhance/test_focus_edge_monogenic_phase.py": "tests/test_focus_edge_monogenic_phase.py",
     "tests/unit/enhance/test_phase_congruency.py": "tests/test_phase_congruency.py",
     "docs/superpowers/specs/2026-07-08-alt-phase-detection/verify_claims.py": "verify_claims.py",
+    "src/phenotypic/enhance/_color_phase_kernels.py": "kernels/_color_phase_kernels.py",
+    "src/phenotypic/enhance/_focus_edge_color_phase.py": "kernels/_focus_edge_color_phase.py",
+    "tests/unit/enhance/test_color_phase_kernels.py": "tests/test_color_phase_kernels.py",
+    "tests/unit/enhance/test_color_phase_pfom.py": "tests/test_color_phase_pfom.py",
+    "docs/superpowers/logic_validation_scripts/2026-07-09-focus-edge-color-phase/fusion_algebra.py": "fusion_algebra.py",
+}
+
+#: Repo files deliberately **kept out** of the corpus, and why. Recorded so that the
+#: reviewer is told what it cannot see rather than left to infer that it does not exist.
+EXCLUDED: dict[str, str] = {
+    "tests/unit/enhance/test_focus_edge_color_phase.py": (
+        "107 tests, of which 25 load one of the host application's fixed sample images and "
+        "assert constants measured against those exact pixels (a 115.7x seam ratio, a 1.0989 "
+        "un-clipped maximum, a 3e-3 rotation residual). Those pixels cannot enter this corpus "
+        "without disclosing the application domain, and the constants are meaningless against "
+        "the synthetic images that stand in for them. The FILE IS ABSENT; the operation it "
+        "tests is present as `kernels/_focus_edge_color_phase.py`. Do not infer from its "
+        "absence that the operation is untested upstream."
+    ),
 }
 
 # Hand-authored or third-party. `refresh` must never touch these.
@@ -197,6 +273,9 @@ MANIFEST = [
     "plan/plan.md", "plan/reviews", "spec/README.md", "spec/references.md",
     "spec/drift-register.md", "spec/monogenic-phase-congruency.md",
     "spec/color-phase-congruency.md", "spec/conformal-lift.md",
+    "kernels/_color_phase_kernels.py", "kernels/_focus_edge_color_phase.py",
+    "tests/test_color_phase_kernels.py", "tests/test_color_phase_pfom.py",
+    "fusion_algebra.py",
     "refs", "refimpl", "papers",
 ]
 
@@ -206,6 +285,8 @@ MANIFEST = [
 MUST_BE_AST_IDENTICAL = [
     ("src/phenotypic/enhance/_monogenic_kernels.py", "kernels/_monogenic_kernels.py"),
     ("docs/superpowers/specs/2026-07-08-alt-phase-detection/verify_claims.py", "verify_claims.py"),
+    ("src/phenotypic/enhance/_color_phase_kernels.py", "kernels/_color_phase_kernels.py"),
+    ("docs/superpowers/logic_validation_scripts/2026-07-09-focus-edge-color-phase/fusion_algebra.py", "fusion_algebra.py"),
 ]
 
 # `parents[2]` in the repo test becomes `parent` in the flat sandbox: a directory depth,
@@ -388,6 +469,40 @@ def verify(sandbox: pathlib.Path, repo: pathlib.Path, python: list[str]) -> int:
     print(f"GATE 6  golden fixture           {tail or proc.stderr.strip()[:50]}  {'PASS' if ok6 else 'FAIL'}")
     if not ok6:
         failures.append("gate 6")
+
+    # ---- gate 6b: the colour op reduces to the monogenic port at zero chroma -----------
+    # The corpus's own version of §7 test 1, run against the *stripped* kernels: with both
+    # chroma weights at 0 the fused vector collapses to the luminance channel, so every
+    # fusion mode must return `monogenic_phase_congruency` on that channel, bit-for-bit.
+    snippet_c = (
+        "import sys,numpy as np;sys.path.insert(0,'.')\n"
+        "from kernels import ColorPhaseCongruencyEnhancer as C\n"
+        "from kernels._data import load_sample_image_d\n"
+        "from kernels._monogenic_kernels import monogenic_phase_congruency as f\n"
+        "from kernels._standalone import _rgb_to_lab\n"
+        "im=load_sample_image_d()\n"
+        "lum=np.asarray(_rgb_to_lab(im.rgb[:])[...,0],dtype=np.float64)\n"
+        "ref=f(lum);ok=True\n"
+        "for mode in ('joint','coherent','l2'):\n"
+        "    r=C(fusion=mode,chroma_weight_1=0.0,chroma_weight_2=0.0)._color_phase_congruency(im)\n"
+        "    ok&=bool(np.array_equal(r.pc,ref.pc) and np.array_equal(r.orientation,ref.orientation))\n"
+        "print(ok)\n"
+    )
+    proc = subprocess.run(python + ["-c", snippet_c], cwd=sandbox, capture_output=True, text=True)
+    tail = proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
+    ok6b = proc.returncode == 0 and tail == "True"
+    print(f"GATE 6b zero-chroma == port      {tail or proc.stderr.strip()[:60]}  {'PASS' if ok6b else 'FAIL'}")
+    if not ok6b:
+        failures.append("gate 6b")
+
+    # ---- gate 8: the stripped numeric oracle runs standalone ----------------------------
+    proc = subprocess.run(python + ["fusion_algebra.py"], cwd=sandbox, capture_output=True, text=True)
+    out8 = proc.stdout + proc.stderr
+    last8 = out8.strip().splitlines()[-1] if out8.strip() else "<no output>"
+    ok8 = proc.returncode == 0 and "4/4 checks passed" in out8
+    print(f"GATE 8  fusion_algebra standalone exit={proc.returncode}  '{last8[:40]}'  {'PASS' if ok8 else 'FAIL'}")
+    if not ok8:
+        failures.append("gate 8")
 
     # ---- gate 7: the transform touched no logic -----------------------------------------
     tool = pathlib.Path(__file__).with_name("ast_structural_equivalence.py")
