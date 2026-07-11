@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from tests._support.xdist_workers import resolve_xdist_auto_workers
+
 # matplotlib/plotly are guarded so this conftest stays importable in
 # dependency-light pytest invocations (e.g. the packaging-integrity CI job,
 # which runs the build-artifact tests in a bare ``pytest``-only env). When the
@@ -98,12 +100,14 @@ def pytest_xdist_auto_num_workers(config) -> int:
     installed (e.g. the packaging-integrity CI job's bare ``pytest``-only env),
     where pluggy would otherwise reject the unknown ``pytest_xdist_*`` hook.
     """
-    slurm_cpus = os.environ.get("SLURM_CPUS_PER_TASK")
-    if slurm_cpus is not None:
-        return int(slurm_cpus)
     # Affinity mask respects cgroups/containers; cpu_count() does not
     try:
-        return len(os.sched_getaffinity(0))
+        affinity_count = len(os.sched_getaffinity(0))
     except AttributeError:
         # sched_getaffinity not available on macOS/Windows
-        return os.cpu_count() or 1
+        affinity_count = None
+    return resolve_xdist_auto_workers(
+        os.environ,
+        affinity_count=affinity_count,
+        cpu_count=os.cpu_count() or 1,
+    )

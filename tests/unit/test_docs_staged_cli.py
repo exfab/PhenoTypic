@@ -25,9 +25,9 @@ def test_claude_md_documents_gpu_flags():
         "--gpu-slurm",
         "--gpu-shards",
         "--gpu-workers-per-gpu",
-        "--gpu-batch-size",
     ):
         assert flag in txt
+    assert "--gpu-batch-size" not in txt
 
 
 def test_how_to_documents_slurm_staging():

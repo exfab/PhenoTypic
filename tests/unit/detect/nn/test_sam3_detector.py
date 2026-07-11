@@ -114,7 +114,7 @@ class TestSam3Tiling:
     def test_merge_dedups_overlapping_instances(self):
         import numpy as np
 
-        from phenotypic.detect.nn._sam3_detector import _merge_tiles_iou_nms
+        from phenotypic.detect.nn._tiling import _merge_tiles_iou_nms
 
         a = np.zeros((10, 10), np.uint16)
         a[2:6, 2:6] = 1
@@ -126,7 +126,7 @@ class TestSam3Tiling:
     def test_merge_keeps_distinct_instances(self):
         import numpy as np
 
-        from phenotypic.detect.nn._sam3_detector import _merge_tiles_iou_nms
+        from phenotypic.detect.nn._tiling import _merge_tiles_iou_nms
 
         a = np.zeros((10, 10), np.uint16)
         a[1:3, 1:3] = 1
@@ -134,6 +134,89 @@ class TestSam3Tiling:
         b[7:9, 7:9] = 1  # disjoint blob
         merged = _merge_tiles_iou_nms([a, b], iou_thresh=0.5)
         assert merged.max() == 2  # two distinct instances survive
+
+
+class TestSam3UsesCentroidCore:
+    """Task 6: ``_infer_batch`` hands **tile-local** objmaps to the merge."""
+
+    def test_infer_batch_merges_by_centroid_core(self, monkeypatch):
+        """A colony straddling a tile seam must yield one instance, not a
+        colony plus its fragment."""
+        import numpy as np
+
+        det = Sam3Detector(tile_px=100, tile_overlap=0.2)
+        monkeypatch.setattr(det, "_ensure_model_loaded", lambda: None)
+
+        # _plan_tiles((100, 180), 100, 0.2) -> [(0,0,100,100), (0,80,100,180)].
+        # Tile 0 sees the whole colony at global cols 70..90; tile 1 sees only
+        # its fragment at global cols 80..90.
+        def fake_forward(crops):
+            out = []
+            for i, c in enumerate(crops):
+                om = np.zeros(c.shape[:2], dtype=np.uint16)
+                if i == 0:
+                    om[40:60, 70:90] = 1  # whole colony, tile-local
+                else:
+                    om[40:60, 0:10] = 1  # fragment, tile-local
+                out.append(om)
+            return out
+
+        monkeypatch.setattr(det, "_forward_tiles", fake_forward)
+        sample = np.zeros((100, 180, 3), dtype=np.uint8)
+        (result,) = det._infer_batch([sample])
+        assert result.shape == (100, 180)
+        labels = [lab for lab in np.unique(result) if lab]
+        assert len(labels) == 1  # not colony + fragment
+        assert int((result == labels[0]).sum()) == 20 * 20  # area uncorrupted
+
+    def test_infer_batch_does_not_double_offset(self, monkeypatch):
+        """The merge receives tile-local maps, so a colony seen only by the
+        second tile must land at its true global coordinates.
+
+        Offsetting the crop objmaps before the merge would make
+        ``assign_by_centroid_core`` add ``tile.x0`` a second time — one
+        plausible-looking instance, wrong place.
+        """
+        import numpy as np
+
+        det = Sam3Detector(tile_px=100, tile_overlap=0.2)
+        monkeypatch.setattr(det, "_ensure_model_loaded", lambda: None)
+
+        # Tile 1 spans global cols 80..180; the colony sits at tile-local
+        # cols 40..60 -> global cols 120..140, rows 40..60.
+        def fake_forward(crops):
+            out = []
+            for i, c in enumerate(crops):
+                om = np.zeros(c.shape[:2], dtype=np.uint16)
+                if i == 1:
+                    om[40:60, 40:60] = 1
+                out.append(om)
+            return out
+
+        monkeypatch.setattr(det, "_forward_tiles", fake_forward)
+        (result,) = det._infer_batch([np.zeros((100, 180, 3), dtype=np.uint8)])
+        ys, xs = np.nonzero(result)
+        assert (ys.min(), ys.max()) == (40, 59)
+        assert (xs.min(), xs.max()) == (120, 139)
+
+    def test_empty_batch_yields_no_results(self, monkeypatch):
+        det = Sam3Detector()
+        monkeypatch.setattr(det, "_ensure_model_loaded", lambda: None)
+        assert det._infer_batch([]) == []
+
+
+class TestSam3TileMergeIouDeprecated:
+    def test_field_survives_json_round_trip(self):
+        pipe = ImagePipeline(ops=[Sam3Detector(tile_merge_iou=0.25)])
+        det = ImagePipeline.from_json(pipe.to_json()).get_ops()["Sam3Detector"]
+        assert det.tile_merge_iou == 0.25
+
+    def test_docstring_marks_it_deprecated(self):
+        doc = Sam3Detector.__doc__ or ""
+        arg_line = next(
+            (ln for ln in doc.splitlines() if "tile_merge_iou:" in ln), ""
+        )
+        assert "Deprecated" in arg_line
 
 
 class TestSam3TilingBatchInteraction:

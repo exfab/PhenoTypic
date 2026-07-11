@@ -9,21 +9,23 @@ silent SLURM failures that would otherwise go unreported.
 
 from __future__ import annotations
 
-import json
 import logging
-import os
 import subprocess
-import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from .._cli_failure_tracker import append_failure, categorize_failures, read_failures
+from .._cli_failure_tracker import (
+    append_failure,
+    categorize_failures,
+    read_failures,
+)
 from .._cli_update_state import aggregate_state_from_events, append_event
 from phenotypic.sdk_ import (
     MANIFEST_JSON,
     DashboardManifestKey,
     DashboardManifestSlurmInfoKey,
+    atomic_write_json,
     analysis_scatter_json_path,
     analysis_full_parquet_path,
     chunks_dir,
@@ -35,25 +37,29 @@ from phenotypic.sdk_.typing_ import ExecutionMode
 logger = logging.getLogger(__name__)
 
 # SLURM states that indicate a terminal (finished) job.
-_TERMINAL_STATES = frozenset({
-    "COMPLETED",
-    "FAILED",
-    "OUT_OF_MEMORY",
-    "TIMEOUT",
-    "CANCELLED",
-    "NODE_FAIL",
-    "PREEMPTED",
-})
+_TERMINAL_STATES = frozenset(
+    {
+        "COMPLETED",
+        "FAILED",
+        "OUT_OF_MEMORY",
+        "TIMEOUT",
+        "CANCELLED",
+        "NODE_FAIL",
+        "PREEMPTED",
+    }
+)
 
 # SLURM states indicating a failure of some kind.
-_FAILURE_STATES = frozenset({
-    "FAILED",
-    "OUT_OF_MEMORY",
-    "TIMEOUT",
-    "CANCELLED",
-    "NODE_FAIL",
-    "PREEMPTED",
-})
+_FAILURE_STATES = frozenset(
+    {
+        "FAILED",
+        "OUT_OF_MEMORY",
+        "TIMEOUT",
+        "CANCELLED",
+        "NODE_FAIL",
+        "PREEMPTED",
+    }
+)
 
 # Module-level cache for jobs that have reached a terminal state.
 # Once a job is COMPLETED/FAILED/etc. it will never change, so we avoid
@@ -84,7 +90,8 @@ def query_sacct_job_states(job_id: str) -> Optional[Dict[str, str]]:
         result = subprocess.run(
             [
                 "sacct",
-                "-j", str(job_id),
+                "-j",
+                str(job_id),
                 "--noheader",
                 "--parsable2",
                 "--format=JobID,State,ExitCode,MaxRSS",
@@ -151,7 +158,8 @@ def query_sacct_batch(
         result = subprocess.run(
             [
                 "sacct",
-                "-j", ",".join(str(jid) for jid in job_ids),
+                "-j",
+                ",".join(str(jid) for jid in job_ids),
                 "--noheader",
                 "--parsable2",
                 "--format=JobID,State,ExitCode,MaxRSS",
@@ -167,7 +175,9 @@ def query_sacct_batch(
         logger.debug("sacct: permission denied")
         return None
     except subprocess.TimeoutExpired:
-        logger.warning("sacct timed out after 30s for batch query (%d jobs)", len(job_ids))
+        logger.warning(
+            "sacct timed out after 30s for batch query (%d jobs)", len(job_ids)
+        )
         return None
 
     if result.returncode != 0:
@@ -247,7 +257,10 @@ def query_sacct_chunk_states(
                         _terminal_job_cache[job_id] = task_states
 
     # Merge cached and fresh results, then classify each chunk.
-    all_results: Dict[str, Dict[str, str]] = {**fresh_results, **cached_results}
+    all_results: Dict[str, Dict[str, str]] = {
+        **fresh_results,
+        **cached_results,
+    }
 
     for chunk_idx_str, job_id in chunk_job_ids.items():
         chunk_idx = int(chunk_idx_str)
@@ -268,7 +281,9 @@ def query_sacct_chunk_states(
             completed.append(chunk_idx)
         elif state_values == {"PENDING"}:
             pending.append(chunk_idx)
-        elif "PENDING" in state_values and state_values <= (_TERMINAL_STATES | {"PENDING"}):
+        elif "PENDING" in state_values and state_values <= (
+            _TERMINAL_STATES | {"PENDING"}
+        ):
             active.append(chunk_idx)
         else:
             active.append(chunk_idx)
@@ -488,9 +503,7 @@ def build_manifest(
         event_completed = sum(
             len(ds.completed) for ds in dataset_states.values()
         )
-        event_failed = sum(
-            len(ds.failed) for ds in dataset_states.values()
-        )
+        event_failed = sum(len(ds.failed) for ds in dataset_states.values())
         if (event_completed + event_failed) >= total_images_for_check:
             completed_chunks = sorted(int(k) for k in slurm_job_ids)
         else:
@@ -539,7 +552,9 @@ def build_manifest(
             global_failed += ds_failed
             global_in_progress += ds_in_progress
 
-    global_pending = total_images - global_completed - global_failed - global_in_progress
+    global_pending = (
+        total_images - global_completed - global_failed - global_in_progress
+    )
 
     if (global_completed + global_failed) > 0:
         success_rate = global_completed / (global_completed + global_failed)
@@ -550,7 +565,9 @@ def build_manifest(
 
     manifest: dict = {
         DashboardManifestKey.VERSION: 1,
-        DashboardManifestKey.LAST_UPDATED: datetime.now().isoformat(timespec="milliseconds"),
+        DashboardManifestKey.LAST_UPDATED: datetime.now().isoformat(
+            timespec="milliseconds"
+        ),
         DashboardManifestKey.EXECUTION_MODE: execution_mode,
         DashboardManifestKey.TOTAL_IMAGES: total_images,
         DashboardManifestKey.COMPLETED: global_completed,
@@ -563,14 +580,18 @@ def build_manifest(
         DashboardManifestKey.INPUT_PATH: input_path,
         DashboardManifestKey.DATASETS: per_dataset,
         DashboardManifestKey.FAILURE_CATEGORIES: failure_categories,
-        DashboardManifestKey.ANALYSIS_DATA_VERSION: _get_analysis_data_version(progress_dir),
+        DashboardManifestKey.ANALYSIS_DATA_VERSION: _get_analysis_data_version(
+            progress_dir
+        ),
     }
 
     # Add SLURM info when in SLURM mode.
     if is_slurm:
         manifest[DashboardManifestKey.SLURM_INFO] = {
             DashboardManifestSlurmInfoKey.CHUNK_SCRIPTS: chunk_scripts or [],
-            DashboardManifestSlurmInfoKey.TOTAL_CHUNKS: len(slurm_job_ids) if slurm_job_ids else 0,
+            DashboardManifestSlurmInfoKey.TOTAL_CHUNKS: len(slurm_job_ids)
+            if slurm_job_ids
+            else 0,
             DashboardManifestSlurmInfoKey.CHUNK_JOB_IDS: slurm_job_ids or {},
             DashboardManifestSlurmInfoKey.ACTIVE_CHUNKS: active_chunks,
             DashboardManifestSlurmInfoKey.COMPLETED_CHUNKS: completed_chunks,
@@ -578,32 +599,8 @@ def build_manifest(
         }
 
     # 6. Write manifest atomically.
-    progress_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = progress_dir / MANIFEST_JSON
-
-    fd = tempfile.NamedTemporaryFile(
-        mode="w",
-        dir=progress_dir,
-        prefix=".manifest_",
-        suffix=".tmp",
-        delete=False,
-        encoding="utf-8",
-    )
-    try:
-        json.dump(manifest, fd, indent=2, ensure_ascii=False)
-        fd.write("\n")
-        fd.flush()
-        os.fsync(fd.fileno())
-        fd.close()
-        os.replace(fd.name, manifest_path)
-    except BaseException:
-        fd.close()
-        # Clean up temp file on failure.
-        try:
-            os.unlink(fd.name)
-        except OSError:
-            pass
-        raise
+    atomic_write_json(manifest_path, manifest, sort_keys=False)
 
     logger.debug(
         "Wrote manifest: %d/%d completed, %d failed, %d pending",

@@ -9,6 +9,7 @@ import numpy as np
 from pydantic import BaseModel
 from skimage.exposure import rescale_intensity
 
+from phenotypic.sdk_.funcs_ import normalize_rgb_bitdepth
 from phenotypic.sdk_.typing_ import InputLayer
 
 if TYPE_CHECKING:
@@ -69,10 +70,17 @@ class InputLayerMixin(BaseModel):
         if self.input_layer == "rgb":
             # ``image.rgb[:]`` raises NoArrayError on a grayscale-only image, where
             # ``rgb.normed()`` would silently hand back a degenerate ``(0, 3)`` array.
-            # Normalizing straight into float32 also avoids the uint->float64->float32
-            # chain in ``normed()``, which peaks at 3x the size of its own result.
+            # Integer RGB takes the allocation-efficient float32 path. Float RGB is
+            # already a supported image representation, including normalized [0, 1]
+            # arrays, and needs the shared range-aware normalizer instead of
+            # ``rgb.vmax()`` (which is defined only for integer dtypes).
             raw = image.rgb[:]
-            arr = np.asarray(raw, dtype=np.float32) / np.float32(image.rgb.vmax())
+            if np.issubdtype(raw.dtype, np.integer):
+                arr = np.asarray(raw, dtype=np.float32) / np.float32(
+                    np.iinfo(raw.dtype).max
+                )
+            else:
+                arr = normalize_rgb_bitdepth(raw)
             arr.flags.writeable = False
             return arr
         return image.detect_mat[:]

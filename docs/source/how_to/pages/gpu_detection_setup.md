@@ -3,6 +3,22 @@
 Set up and use deep-learning-based colony detectors (SAM2, micro-sam, SAM3,
 DinoSam2) with GPU acceleration.
 
+```{warning}
+**Behaviour change (this release).** The DINO-backed detectors
+(`FssDinoDetector`, `Insid3Detector`) previously fed every tile to the ViT
+backbone at a fixed 224x224 regardless of `tile_px` -- the checkpoint's
+*classification* preset, not the tile you asked for. They now feed the
+backbone the tile at its native geometry, so native pixels per patch equal the
+backbone's `patch_size` (14 for DINOv2, 16 for DINOv3) instead of collapsing to
+whatever 224 implied. Pipelines deserialized from JSON keep their pinned
+`tile_px` (`to_json()` writes every field), but **will produce different,
+higher-resolution masks** and cost substantially more GPU time -- re-serialize
+to adopt the new `tile_px` defaults described below. Separately,
+`Sam2Detector.crop_n_layers` moves from `0` to `1` (~5.2x cost) for
+**newly-constructed** detectors only; existing serialized pipelines are
+unaffected.
+```
+
 ## Installation
 
 The GPU detectors have different packaging constraints:
@@ -109,6 +125,18 @@ print(result.num_objects)
 - **`model_size`** (default `"tiny"`): `"tiny"` is fastest and sufficient
   for most colony plates. Use `"large"` for maximum mask quality on
   publication figures.
+- **`crop_n_layers`** (default 1): Number of additional crop-pyramid layers.
+  SAM2's encoder resizes the whole image to a fixed 1024x1024 square, so small
+  colonies on a multi-megapixel plate can be lost to downsampling; each added
+  layer re-tiles the image into nearer-native-resolution crops and merges them
+  by NMS that prefers masks from smaller crops. `0` keeps a single full-image
+  pass; the default `1` costs 5 encoder passes instead of 1 (~5.2x wall-clock)
+  but recovered far more ground-truth colonies in measurement (see the
+  behaviour-change notice above).
+- **`box_nms_thresh`** (default 0.7): Box-IoU cutoff for non-maximum
+  suppression between the dense point grid's redundant proposals *within* one
+  crop -- distinct from `crop_nms_thresh`, which deduplicates the same colony
+  seen in two different overlapping crops.
 
 ## Using MicroSamDetector
 
@@ -163,11 +191,18 @@ SAM3 weights are **gated** (SAM License). Accept the gate and authenticate
 once (see {ref}`Deep Learning Detectors`)
 before the first `apply()`.
 
-**Dense plates.** SAM3 caps at 200 instances per forward and runs at 1008 px
-internally, so `Sam3Detector` tiles large plates into fixed `tile_px` crops
-with `tile_overlap`, infers each tile, offsets the masks back to full
-coordinates, and merges cross-tile duplicates by IoU-NMS — all automatically.
-Images that fit one tile run un-tiled.
+**Dense plates.** SAM3 caps at 200 instances per forward. `facebook/sam3` is a
+gated repository whose processor config we cannot read (requests return 403),
+so the claim that it runs at 1008 px internally is carried as an
+**assumption**, not a verified fact. `Sam3Detector` tiles large plates into
+fixed `tile_px` crops with `tile_overlap`, infers each tile, and merges the
+per-tile instances by **centroid-in-core assignment**
+(`~phenotypic.detect.nn._tiling.assign_by_centroid_core`): each instance is
+kept by the one tile whose core -- the Voronoi cell of the tile centres --
+contains its centroid, so a colony straddling a seam is claimed by exactly one
+tile and the fragment a neighbouring tile saw is never kept as its own
+colony. There is no IoU-NMS deduplication step here; duplicates cannot occur
+by construction. Images that fit one tile run un-tiled.
 
 Key parameters:
 
@@ -175,7 +210,14 @@ Key parameters:
 - `score_thresh` / `mask_threshold` — instance-confidence and mask-probability
   cutoffs.
 - `min_mask_region_area` — drop masks smaller than this (default 100).
-- `tile_px` / `tile_overlap` — dense-plate tiling controls (defaults 1008 / 0.15).
+- `tile_px` / `tile_overlap` — dense-plate tiling controls (default 1008 / 0.15,
+  the 1008 figure being the unverified assumption noted above). `tile_px` is a
+  compute/context knob, not a fidelity knob: attention cost is quadratic in
+  tokens per tile, while the total tokens across the plate are roughly fixed,
+  so a larger `tile_px` costs more without segmenting any more finely.
+- `tile_merge_iou` — **deprecated and ignored.** The cross-tile merge is
+  centroid-in-core (above), which needs no IoU threshold. The field is
+  retained only so pipelines serialized before this change still deserialize.
 
 ## Using DinoSam2Detector
 
@@ -208,6 +250,17 @@ Key parameters:
 - `sam2_model_size` — SAM2 variant for the proposal generator.
 - `similarity_thresh` — minimum cosine-to-prototype score to keep a proposal.
 - `merge_iou_thresh` — IoU above which two survivors are merged.
+- `tile_px` / `tile_overlap` — geometry of the tiles the DINO backbone scores
+  proposals against (defaults 518 / 0.15). Each SAM2 proposal is pooled from
+  the tile whose core contains its centroid. Scoring against one whole-plate
+  feature grid instead would leave every colony smaller than a single patch, so
+  each proposal's pooled feature would collapse to the same zero vector and the
+  re-ranking would do no work.
+- `crop_n_layers` / `crop_nms_thresh` / `crop_overlap_ratio` /
+  `crop_n_points_downscale_factor` — SAM2 crop-pyramid controls for the
+  *proposal* half, forwarded to the same mask generator `Sam2Detector` uses and
+  documented under {ref}`Using Sam2Detector`. `crop_n_layers` defaults to `1`
+  here too.
 
 ## Semantic few-shot detectors (`Insid3Detector`, `FssDinoDetector`)
 
@@ -232,6 +285,27 @@ cosine-matches every query patch — but first removes DINOv3's **positional bia
 (estimated by SVD and projected out, INSID3's defining step) so patches match on
 appearance, not position. It is DINOv3-native (gated, `dino_version=3` default);
 a `dino_version=2` opt-in runs gate-free (the debias is then a near-no-op).
+
+Because `dino_version=3` is the default and DINOv3 weights are gated, the
+constructor now emits a `UserWarning` at construction time (rather than
+deferring the failure to first `apply()`) pointing at the Hugging Face access
+request and `PHENOTYPIC_ACCEPT_MODEL_LICENSE=dinov3`. Contrast
+`FssDinoDetector` below, which defaults to the ungated DINOv2 backbone and so
+needs no access request. (Both detectors additionally warn at model-load time
+if `tile_px` is not a multiple of the loaded backbone's `patch_size` — which
+happens when you flip `dino_version` and leave `tile_px` at the other
+backbone's default.)
+
+```{warning}
+`Insid3Detector` is **weak at its default `similarity_thresh=0.5`**. On the
+bundled synthetic plate it recovers only 8 of 96 colonies, and its own
+functional test lowers the floor to `similarity_thresh=0.0` to obtain a
+non-empty mask at all. This is a threshold-calibration problem that predates
+the resolution work described in the behaviour-change notice above, and it is
+independent of `tile_px`: the detection *rate* is the same on a small plate and
+on a plate twelve times its area. Tune `similarity_thresh` down for your own
+plates before trusting its output.
+```
 
 ```python
 from phenotypic.detect.nn import Insid3Detector
@@ -258,7 +332,16 @@ Key parameters:
 - `similarity_thresh` — cosine cutoff binarising the match map.
 - `svd_components` — INSID3's positional-debias strength (leading SVD directions
   removed; default 4 ≈ DINOv3's register-token count; `0` disables the debias).
-- `tile_px` / `tile_overlap` — large-plate tiling (defaults 1024 / 0.15).
+- `tile_px` / `tile_overlap` — large-plate tiling (defaults 512 / 0.15). `512 =
+  16 * 32` is an exact multiple of DINOv3's patch size (16). Under the native
+  processor geometry, native pixels per patch equal the backbone's
+  `patch_size` regardless of `tile_px`, so this is a compute/context choice,
+  not a fidelity one: 512 and 1024 both resolve to 16.0 native px/patch, but
+  1024 costs 2.6x more (attention is quadratic in tokens per tile, while the
+  total tokens across the plate are roughly fixed). Raising it buys no extra
+  detail. Note `config.image_size` reports 224 for DINOv3 — that is a
+  classification preset, not a native-resolution signal, and is not used to
+  pick this default.
 
 ### `FssDinoDetector` — few-shot (DINOv2 default, ungated)
 
@@ -296,7 +379,13 @@ Key parameters:
 - `dino_version` / `dino_size` — backbone (2 = DINOv2 default/ungated, 3 = DINOv3
   gated opt-in).
 - `similarity_thresh` — foreground-score floor on top of the fg-vs-bg argmax.
-- `tile_px` / `tile_overlap` — large-plate tiling (defaults 512 / 0.15).
+- `tile_px` / `tile_overlap` — large-plate tiling (defaults 518 / 0.15). `518 =
+  14 * 37` is an exact multiple of DINOv2's patch size (14). Native pixels per
+  patch equal the backbone's `patch_size` regardless of `tile_px`, so 518 and
+  1022 both resolve to 14.0 native px/patch — 1022 just costs 3.3x more
+  (attention is quadratic in tokens per tile, while total tokens across the
+  plate are roughly fixed). Smaller is cheaper at equal fidelity; raising it
+  buys no extra detail.
 
 ## Pipeline Integration
 
@@ -431,10 +520,9 @@ python -m phenotypic --pipeline sam2_pipeline.json --input /plates/ -o /output/ 
     --gpu-slurm slurm_partition=gpu --gpu-shards 2
 ```
 
-The resource nesting is three levels: `--gpu-shards` (whole GPUs, across nodes)
-→ `--gpu-workers-per-gpu` (replicas packed per GPU for small models) →
-`--gpu-batch-size` (images per forward pass; batchable models, `auto` in
-Spec 2). `--gpu-slurm` inherits/deltas over `--slurm`, so shared keys
+The resource nesting is two levels: `--gpu-shards` (whole GPUs, across nodes)
+→ `--gpu-workers-per-gpu` (replicas packed per GPU for small models).
+`--gpu-slurm` inherits/deltas over `--slurm`, so shared keys
 (account, qos, time) carry over and only the GPU partition/account need
 restating; one GPU is requested automatically.
 

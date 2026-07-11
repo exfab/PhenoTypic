@@ -1,9 +1,11 @@
 import json
 import logging
 import posixpath
+import subprocess
+import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 import h5py
 import numpy as np
@@ -13,6 +15,138 @@ from packaging.version import Version
 import phenotypic
 
 logger = logging.getLogger(__name__)
+
+_SAFE_WRITER_LOCK_MARKERS = (
+    "file is already open for write/swmr write",
+    "file is already open",
+    "unable to lock file",
+    "resource temporarily unavailable",
+    "file locking disabled",
+)
+
+_SWMR_WRITER_LOCK_MARKERS = (
+    *_SAFE_WRITER_LOCK_MARKERS,
+    "ring type mismatch",
+    "pinned entry count",
+)
+
+
+def _open_hdf_with_recovery(
+    filepath: Path,
+    opener: Callable[[], h5py.File],
+    *,
+    context: str,
+    lock_markers: tuple[str, ...],
+    clear_status: bool,
+    clear_force: bool,
+    max_retries: int = 3,
+    retry_delay: float = 0.5,
+) -> h5py.File:
+    """Open an HDF5 file with lock-conflict recovery.
+
+    Args:
+        filepath: Path to the HDF5 file being opened.
+        opener: Callable that opens and returns the file handle.
+        context: Human-readable context used in log/error messages.
+        lock_markers: Lowercase substrings that identify recoverable lock or
+            cache-conflict errors.
+        clear_status: Whether to run ``h5clear -s`` between attempts.
+        clear_force: Whether to run ``h5clear -f`` between attempts.
+        max_retries: Maximum open attempts.
+        retry_delay: Initial retry delay in seconds. Doubles after each retry.
+
+    Returns:
+        The opened HDF5 file handle.
+
+    Raises:
+        RuntimeError: If a recoverable lock conflict persists through the final
+            attempt.
+        OSError: Non-lock open errors are re-raised immediately.
+    """
+    filepath = Path(filepath)
+    delay = retry_delay
+    for attempt in range(max_retries):
+        try:
+            return opener()
+        except OSError as exc:
+            error_msg = str(exc).lower()
+            is_lock_error = any(marker in error_msg for marker in lock_markers)
+            if not is_lock_error:
+                raise
+
+            logger.warning(
+                "%s access conflict (attempt %d/%d): %s",
+                context,
+                attempt + 1,
+                max_retries,
+                exc,
+            )
+
+            if attempt >= max_retries - 1:
+                logger.error(
+                    "Failed to open %s after %d attempts",
+                    context,
+                    max_retries,
+                )
+                failure_reason = (
+                    "may have cache conflicts"
+                    if "SWMR" in context
+                    else "may be locked by another process"
+                )
+                raise RuntimeError(
+                    f"Failed to open {context} after {max_retries} attempts. "
+                    f"The file {filepath} {failure_reason}. "
+                    "Try manually running: "
+                    f"h5clear -s {filepath} && h5clear -f {filepath}"
+                ) from exc
+
+            _clear_hdf_consistency_flags(
+                filepath, clear_status=clear_status, clear_force=clear_force
+            )
+            logger.info("Waiting %s seconds before retry...", delay)
+            time.sleep(delay)
+            delay *= 2
+
+    raise OSError(f"Unexpected error opening HDF5 file {filepath}")
+
+
+def _clear_hdf_consistency_flags(
+    filepath: Path, *, clear_status: bool, clear_force: bool
+) -> None:
+    """Best-effort ``h5clear`` recovery for an existing HDF5 file."""
+    if not filepath.exists():
+        return
+    flags = []
+    if clear_status:
+        flags.append("-s")
+    if clear_force:
+        flags.append("-f")
+
+    for flag in flags:
+        try:
+            logger.info(
+                "Attempting to clear HDF5 consistency flag %s for %s",
+                flag,
+                filepath,
+            )
+            result = subprocess.run(
+                ["h5clear", flag, str(filepath)],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                logger.info(
+                    "Successfully cleared HDF5 consistency flag %s", flag
+                )
+            else:
+                logger.warning("h5clear %s failed: %s", flag, result.stderr)
+        except (
+            subprocess.TimeoutExpired,
+            subprocess.CalledProcessError,
+            FileNotFoundError,
+        ) as clear_error:
+            logger.warning("Could not run h5clear %s: %s", flag, clear_error)
 
 
 class HDF:
@@ -94,17 +228,21 @@ class HDF:
         if self.filepath.suffix not in self.EXT:
             raise ValueError("filepath is not an hdf5 file")
         if not self.filepath.exists():
-            with h5py.File(name=self.filepath, mode="a", libver="latest") as hdf:
+            with h5py.File(name=self.filepath, mode="a", libver="latest"):
                 pass
 
         self.name = name
         self.mode = mode
         if mode == "single":
             self.root_posix = self.SINGLE_IMAGE_ROOT_POSIX
-            self.home_posix = posixpath.join(self.SINGLE_IMAGE_ROOT_POSIX, self.name)
+            self.home_posix = posixpath.join(
+                self.SINGLE_IMAGE_ROOT_POSIX, self.name
+            )
         elif mode == "set":
             self.root_posix = self.IMAGE_SET_ROOT_POSIX
-            self.home_posix = posixpath.join(self.IMAGE_SET_ROOT_POSIX, self.name)
+            self.home_posix = posixpath.join(
+                self.IMAGE_SET_ROOT_POSIX, self.name
+            )
             self.set_data_posix = posixpath.join(
                 self.home_posix, self.IMAGE_SET_DATA_POSIX
             )
@@ -127,82 +265,14 @@ class HDF:
         Raises:
             OSError: If file cannot be opened after all retry attempts.
         """
-        import time
-        import subprocess
-        import os
-        import logging
-
-        logger = logging.getLogger(__name__)
-        max_retries = 3
-        retry_delay = 0.5
-
-        for attempt in range(max_retries):
-            try:
-                return h5py.File(self.filepath, "a", libver="latest")
-            except OSError as e:
-                error_msg = str(e).lower()
-                # Handle various HDF5 locking scenarios
-                is_lock_error = any(
-                    [
-                        "file is already open for write/swmr write" in error_msg,
-                        "file is already open" in error_msg,
-                        "unable to lock file" in error_msg,
-                        "resource temporarily unavailable" in error_msg,
-                        "file locking disabled" in error_msg,
-                    ]
-                )
-
-                if is_lock_error:
-                    logger.warning(
-                        f"HDF5 file access conflict (attempt {attempt + 1}/{max_retries}): {e}"
-                    )
-
-                    # Try to clear HDF5 consistency flags if h5clear is available
-                    if attempt < max_retries - 1:  # Don't try h5clear on last attempt
-                        try:
-                            if os.path.exists(self.filepath):
-                                logger.info(
-                                    f"Attempting to clear HDF5 consistency flags for {self.filepath}"
-                                )
-                                result = subprocess.run(
-                                    ["h5clear", "-s", str(self.filepath)],
-                                    capture_output=True,
-                                    text=True,
-                                    timeout=10,
-                                )
-                                if result.returncode == 0:
-                                    logger.info(
-                                        "Successfully cleared HDF5 consistency flags"
-                                    )
-                                else:
-                                    logger.warning(f"h5clear failed: {result.stderr}")
-                        except (
-                            subprocess.TimeoutExpired,
-                            subprocess.CalledProcessError,
-                            FileNotFoundError,
-                        ) as clear_error:
-                            logger.warning(f"Could not run h5clear: {clear_error}")
-
-                        # Wait before retrying
-                        logger.info(f"Waiting {retry_delay} seconds before retry...")
-                        time.sleep(retry_delay)
-                        retry_delay *= 2  # Exponential backoff
-                    else:
-                        # Last attempt failed - provide helpful error message
-                        logger.error(
-                            f"Failed to open HDF5 file after {max_retries} attempts"
-                        )
-                        raise RuntimeError(
-                            f"Failed to open HDF5 file after {max_retries} attempts. "
-                            f"The file {self.filepath} may be locked by another process. "
-                            f"Try manually running: h5clear -s {self.filepath} && h5clear -f {self.filepath}"
-                        ) from e
-                else:
-                    # Different OSError, re-raise immediately
-                    raise
-
-        # This should not be reached due to the raise in the loop
-        raise OSError(f"Unexpected error opening HDF5 file {self.filepath}")
+        return _open_hdf_with_recovery(
+            self.filepath,
+            lambda: h5py.File(self.filepath, "a", libver="latest"),
+            context="HDF5 file",
+            lock_markers=_SAFE_WRITER_LOCK_MARKERS,
+            clear_status=True,
+            clear_force=False,
+        )
 
     def swmr_writer(self) -> h5py.File:
         """
@@ -219,98 +289,26 @@ class HDF:
         Raises:
             OSError: If file cannot be opened after all retry attempts.
         """
-        import time
-        import subprocess
-        import os
-        import logging
 
-        logger = logging.getLogger(__name__)
-        max_retries = 3
-        retry_delay = 0.5
-
-        for attempt in range(max_retries):
+        def _open_swmr_writer() -> h5py.File:
+            file_handle = h5py.File(self.filepath, "a", libver="latest")
             try:
-                # Create/open file with proper SWMR settings
-                file_handle = h5py.File(self.filepath, "a", libver="latest")
-                # Enable SWMR mode immediately after opening
-                try:
-                    file_handle.swmr_mode = True
-                    logger.debug(f"SWMR mode enabled successfully for {self.filepath}")
-                    return file_handle
-                except Exception as swmr_error:
-                    logger.warning(f"Could not enable SWMR mode: {swmr_error}")
-                    # Return file handle without SWMR mode as fallback
-                    return file_handle
-
-            except OSError as e:
-                error_msg = str(e).lower()
-                # Handle various HDF5 locking scenarios
-                is_lock_error = any(
-                    [
-                        "file is already open for write/swmr write" in error_msg,
-                        "file is already open" in error_msg,
-                        "unable to lock file" in error_msg,
-                        "resource temporarily unavailable" in error_msg,
-                        "file locking disabled" in error_msg,
-                        "ring type mismatch" in error_msg,
-                        "pinned entry count" in error_msg,
-                    ]
+                file_handle.swmr_mode = True
+                logger.debug(
+                    "SWMR mode enabled successfully for %s", self.filepath
                 )
+                return file_handle
+            except Exception as swmr_error:
+                logger.warning("Could not enable SWMR mode: %s", swmr_error)
+                return file_handle
 
-                if is_lock_error:
-                    logger.warning(
-                        f"HDF5 SWMR file access conflict (attempt {attempt + 1}/{max_retries}): {e}"
-                    )
-
-                    # Try to clear HDF5 consistency flags if h5clear is available
-                    if attempt < max_retries - 1:  # Don't try h5clear on last attempt
-                        try:
-                            if os.path.exists(self.filepath):
-                                logger.info(
-                                    f"Attempting to clear HDF5 consistency flags for {self.filepath}"
-                                )
-                                # Clear both status and force flags for SWMR issues
-                                subprocess.run(
-                                    ["h5clear", "-s", str(self.filepath)],
-                                    capture_output=True,
-                                    text=True,
-                                    timeout=10,
-                                )
-                                subprocess.run(
-                                    ["h5clear", "-f", str(self.filepath)],
-                                    capture_output=True,
-                                    text=True,
-                                    timeout=10,
-                                )
-                                logger.info("Cleared HDF5 consistency flags")
-                        except (
-                            subprocess.TimeoutExpired,
-                            subprocess.CalledProcessError,
-                            FileNotFoundError,
-                        ) as clear_error:
-                            logger.warning(f"Could not run h5clear: {clear_error}")
-
-                        # Wait before retrying
-                        logger.info(f"Waiting {retry_delay} seconds before retry...")
-                        time.sleep(retry_delay)
-                        retry_delay *= 2  # Exponential backoff
-                    else:
-                        # Last attempt failed - provide helpful error message
-                        logger.error(
-                            f"Failed to open HDF5 file in SWMR mode after {max_retries} attempts"
-                        )
-                        raise RuntimeError(
-                            f"Failed to open HDF5 file in SWMR mode after {max_retries} attempts. "
-                            f"The file {self.filepath} may have cache conflicts. "
-                            f"Try manually running: h5clear -s {self.filepath} && h5clear -f {self.filepath}"
-                        ) from e
-                else:
-                    # Different OSError, re-raise immediately
-                    raise
-
-        # This should not be reached due to the raise in the loop
-        raise OSError(
-            f"Unexpected error opening HDF5 file in SWMR mode {self.filepath}"
+        return _open_hdf_with_recovery(
+            self.filepath,
+            _open_swmr_writer,
+            context="HDF5 file in SWMR mode",
+            lock_markers=_SWMR_WRITER_LOCK_MARKERS,
+            clear_status=True,
+            clear_force=True,
         )
 
     def strict_writer(self) -> h5py.File:
@@ -380,7 +378,9 @@ class HDF:
             # Check if file is opened in read-only mode - with error handling
             # Handle both File and Group objects (Groups have a .file attribute)
             try:
-                if isinstance(handle, h5py.Group) and not isinstance(handle, h5py.File):
+                if isinstance(handle, h5py.Group) and not isinstance(
+                    handle, h5py.File
+                ):
                     # For Group objects, access the parent file
                     file_obj = handle.file
                     file_mode = file_obj.mode
@@ -432,7 +432,9 @@ class HDF:
 
     def get_data_group(self, handle):
         if self.mode != "set":
-            raise AttributeError("This method is only available for image sets")
+            raise AttributeError(
+                "This method is only available for image sets"
+            )
         return self.get_group(handle, self.set_data_posix)
 
     def get_image_group(self, handle, image_name):
@@ -449,7 +451,9 @@ class HDF:
         return self.get_group(
             handle,
             posixpath.join(
-                self.set_data_posix, image_name, self.IMAGE_MEASUREMENT_SUBGROUP_KEY
+                self.set_data_posix,
+                image_name,
+                self.IMAGE_MEASUREMENT_SUBGROUP_KEY,
             ),
         )
 
@@ -467,7 +471,9 @@ class HDF:
         return self.get_group(
             handle=handle,
             posix=posixpath.join(
-                self.set_data_posix, image_name, self.PROTECTED_METADATA_SUBGROUP_KEY
+                self.set_data_posix,
+                image_name,
+                self.PROTECTED_METADATA_SUBGROUP_KEY,
             ),
         )
 
@@ -477,7 +483,9 @@ class HDF:
         return self.get_group(
             handle=handle,
             posix=posixpath.join(
-                self.set_data_posix, image_name, self.PUBLIC_METADATA_SUBGROUP_KEY
+                self.set_data_posix,
+                image_name,
+                self.PUBLIC_METADATA_SUBGROUP_KEY,
             ),
         )
 
@@ -667,7 +675,9 @@ class HDF:
         for i in np.where(valid_indices)[0]:
             # Ensure we're working with proper Unicode strings
             original_str = str(result[i])
-            processed_str = HDF._pad_or_truncate_string(original_str, fixed_length)
+            processed_str = HDF._pad_or_truncate_string(
+                original_str, fixed_length
+            )
             # Encode to UTF-8 bytes to ensure it fits in fixed-length storage
             result[i] = processed_str
         return result
@@ -686,7 +696,8 @@ class HDF:
 
     @staticmethod
     def _decode_fixed_length_strings(
-        str_array: np.ndarray[Any, np.dtype[Any]], mask: np.ndarray[Any, np.dtype[Any]]
+        str_array: np.ndarray[Any, np.dtype[Any]],
+        mask: np.ndarray[Any, np.dtype[Any]],
     ) -> np.ndarray[Any, np.dtype[Any]]:
         """Decode fixed-length strings and trim trailing whitespace from valid entries.
 
@@ -718,7 +729,10 @@ class HDF:
         *,
         string_fixed_length: int | None = None,
     ) -> tuple[
-        np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]] | None, str, str
+        np.ndarray[Any, np.dtype[Any]],
+        np.ndarray[Any, np.dtype[Any]] | None,
+        str,
+        str,
     ]:
         """Encode pandas Series values for HDF5 storage.
 
@@ -735,9 +749,9 @@ class HDF:
         """
         orig_dtype = str(values.dtype)
 
-        if pd.api.types.is_numeric_dtype(values.dtype) or pd.api.types.is_bool_dtype(
+        if pd.api.types.is_numeric_dtype(
             values.dtype
-        ):
+        ) or pd.api.types.is_bool_dtype(values.dtype):
             # Convert to float64, with NaN for missing values
             encoded = values.astype(np.float64).values
             mask = None
@@ -764,7 +778,9 @@ class HDF:
                 if string_fixed_length is not None:
                     # Apply fixed-length padding/truncation
                     str_array = HDF._apply_fixed_length_to_strings(
-                        np.asarray(str_array), np.asarray(mask), string_fixed_length
+                        np.asarray(str_array),
+                        np.asarray(mask),
+                        string_fixed_length,
                     )
                     # Create array with explicit UTF-8 encoding for fixed-length
                     try:
@@ -798,7 +814,9 @@ class HDF:
             if string_fixed_length is not None:
                 # Apply fixed-length padding/truncation
                 str_array = HDF._apply_fixed_length_to_strings(
-                    np.asarray(str_array), np.asarray(mask), string_fixed_length
+                    np.asarray(str_array),
+                    np.asarray(mask),
+                    string_fixed_length,
                 )
                 # Create array with explicit UTF-8 encoding for fixed-length
                 try:
@@ -811,9 +829,9 @@ class HDF:
                     for i, s in enumerate(str_array):
                         if mask[i] == 1:
                             # Keep only ASCII characters for problematic Unicode
-                            ascii_safe_array[i] = s.encode("ascii", "ignore").decode(
-                                "ascii"
-                            )[:string_fixed_length]
+                            ascii_safe_array[i] = s.encode(
+                                "ascii", "ignore"
+                            ).decode("ascii")[:string_fixed_length]
                     encoded = ascii_safe_array.astype(
                         HDF._get_string_dtype(string_fixed_length)
                     )
@@ -856,7 +874,9 @@ class HDF:
             - orig_dtype: string representation of original dtype
         """
         orig_dtype = (
-            str(index.dtype) if not isinstance(index, pd.MultiIndex) else "MultiIndex"
+            str(index.dtype)
+            if not isinstance(index, pd.MultiIndex)
+            else "MultiIndex"
         )
 
         if isinstance(index, pd.MultiIndex):
@@ -875,20 +895,29 @@ class HDF:
                 if string_fixed_length is not None:
                     # Apply fixed-length padding/truncation
                     str_array = HDF._apply_fixed_length_to_strings(
-                        np.asarray(str_array), np.asarray(mask), string_fixed_length
+                        np.asarray(str_array),
+                        np.asarray(mask),
+                        string_fixed_length,
                     )
                     encoded_arrays.append(
-                        str_array.astype(HDF._get_string_dtype(string_fixed_length))
+                        str_array.astype(
+                            HDF._get_string_dtype(string_fixed_length)
+                        )
                     )
                 else:
-                    encoded_arrays.append(str_array.astype(HDF._get_string_dtype()))
+                    encoded_arrays.append(
+                        str_array.astype(HDF._get_string_dtype())
+                    )
                 mask_arrays.append(np.asarray(mask))
 
             metadata = {
                 "index_is_multiindex": 1,
                 "index_levels": index.nlevels,
                 "index_names": json.dumps(
-                    [str(name) if name is not None else None for name in index.names]
+                    [
+                        str(name) if name is not None else None
+                        for name in index.names
+                    ]
                 ),
             }
             if string_fixed_length is not None:
@@ -907,7 +936,9 @@ class HDF:
             if string_fixed_length is not None:
                 # Apply fixed-length padding/truncation
                 str_array = HDF._apply_fixed_length_to_strings(
-                    np.asarray(str_array), np.asarray(mask), string_fixed_length
+                    np.asarray(str_array),
+                    np.asarray(mask),
+                    string_fixed_length,
                 )
                 encoded_arrays = str_array.astype(
                     HDF._get_string_dtype(string_fixed_length)
@@ -1005,7 +1036,9 @@ class HDF:
         if is_multiindex:
             levels = []
             for i in range(group.attrs["index_levels"]):
-                level_data = group[f"{index_dataset_name}/levels/L{i}"][:logical_length]
+                level_data = group[f"{index_dataset_name}/levels/L{i}"][
+                    :logical_length
+                ]
                 level_mask = group[f"{index_dataset_name}/levels/L{i}_mask"][
                     :logical_length
                 ]
@@ -1028,11 +1061,15 @@ class HDF:
             return pd.MultiIndex.from_arrays(levels, names=index_names)
         else:
             index_data = group[f"{index_dataset_name}/values"][:logical_length]
-            index_mask = group[f"{index_dataset_name}/index_mask"][:logical_length]
+            index_mask = group[f"{index_dataset_name}/index_mask"][
+                :logical_length
+            ]
 
             if index_kind == "string_utf8_fixed":
                 # Decode fixed-length strings and trim trailing whitespace
-                index_values = HDF._decode_fixed_length_strings(index_data, index_mask)
+                index_values = HDF._decode_fixed_length_strings(
+                    index_data, index_mask
+                )
             else:
                 # Original variable-length string handling
                 index_values = np.empty(logical_length, dtype=object)
@@ -1108,7 +1145,9 @@ class HDF:
 
         # Encode series for schema information using fixed-length strings
         encoded_values, values_mask, values_kind, orig_values_dtype = (
-            HDF._encode_values_for_hdf5(series, string_fixed_length=string_fixed_length)
+            HDF._encode_values_for_hdf5(
+                series, string_fixed_length=string_fixed_length
+            )
         )
         encoded_index, index_masks, index_metadata, orig_index_dtype = (
             HDF._encode_index_for_hdf5(
@@ -1119,7 +1158,13 @@ class HDF:
         # Create values dataset
         if values_kind == "numeric_float64":
             HDF._create_resizable_dataset(
-                group, dataset, np.float64, (preallocate,), (None,), chunks, compression
+                group,
+                dataset,
+                np.float64,
+                (preallocate,),
+                (None,),
+                chunks,
+                compression,
             )
         else:  # string_utf8_fixed or string_utf8_vlen
             if values_kind == "string_utf8_fixed":
@@ -1204,7 +1249,9 @@ class HDF:
             mask_dataset[:] = 0  # Initialize to all missing
 
         # Set attributes
-        group.attrs["series_name"] = str(series.name) if series.name is not None else ""
+        group.attrs["series_name"] = (
+            str(series.name) if series.name is not None else ""
+        )
         group.attrs["len"] = 0  # Logical length is 0
         group.attrs["values_kind"] = values_kind
         group.attrs["orig_values_dtype"] = orig_values_dtype
@@ -1387,14 +1434,20 @@ class HDF:
 
         index_string_fixed_length = None
         if stored_index_kind == "string_utf8_fixed":
-            index_string_fixed_length = group.attrs["index_string_fixed_length"]
+            index_string_fixed_length = group.attrs[
+                "index_string_fixed_length"
+            ]
 
         # Encode data using stored schema
-        encoded_values, values_mask, values_kind, _ = HDF._encode_values_for_hdf5(
-            series, string_fixed_length=string_fixed_length
+        encoded_values, values_mask, values_kind, _ = (
+            HDF._encode_values_for_hdf5(
+                series, string_fixed_length=string_fixed_length
+            )
         )
-        encoded_index, index_masks, index_metadata, _ = HDF._encode_index_for_hdf5(
-            series.index, string_fixed_length=index_string_fixed_length
+        encoded_index, index_masks, index_metadata, _ = (
+            HDF._encode_index_for_hdf5(
+                series.index, string_fixed_length=index_string_fixed_length
+            )
         )
 
         # Validate schema compatibility
@@ -1526,8 +1579,12 @@ class HDF:
             return pd.Series([], name=series_name, dtype=object)
 
         # Decode values and index
-        values, _ = HDF._decode_values_from_hdf5(group, dataset, logical_length)
-        index = HDF._decode_index_from_hdf5(group, index_dataset, logical_length)
+        values, _ = HDF._decode_values_from_hdf5(
+            group, dataset, logical_length
+        )
+        index = HDF._decode_index_from_hdf5(
+            group, index_dataset, logical_length
+        )
 
         # Get series name
         series_name = group.attrs["series_name"]
@@ -1604,7 +1661,9 @@ class HDF:
             )
 
         if len(dataframe.columns) == 0:
-            raise ValueError("Cannot preallocate layout for DataFrame with no columns")
+            raise ValueError(
+                "Cannot preallocate layout for DataFrame with no columns"
+            )
 
         # Set frame attributes
         group.attrs["column_order"] = json.dumps(list(dataframe.columns))
@@ -1636,7 +1695,9 @@ class HDF:
                 # Use first few values to determine the proper schema
                 col_data = dataframe[col_name]
                 dummy_col_series = pd.Series(
-                    [col_data.iloc[0]] if not col_data.isna().iloc[0] else [None],
+                    [col_data.iloc[0]]
+                    if not col_data.isna().iloc[0]
+                    else [None],
                     dtype=col_data.dtype,
                     index=dataframe.index[:1],
                     name=col_name,
@@ -1645,7 +1706,10 @@ class HDF:
                 # Fallback to dtype for empty dataframe
                 col_dtype = dataframe[col_name].dtype
                 dummy_col_series = pd.Series(
-                    [], dtype=col_dtype, index=dataframe.index[:0], name=col_name
+                    [],
+                    dtype=col_dtype,
+                    index=dataframe.index[:0],
+                    name=col_name,
                 )
 
             HDF.preallocate_series_layout(
@@ -1693,7 +1757,9 @@ class HDF:
 
         # Check if layout already exists (preallocated)
         if "columns" in group and group.attrs.get("len", -1) == 0:
-            HDF.save_frame_update(group, dataframe, start=0, require_swmr=require_swmr)
+            HDF.save_frame_update(
+                group, dataframe, start=0, require_swmr=require_swmr
+            )
             return
 
         # Creation path: if require_swmr=True, only permit write (no object creation)
@@ -1706,7 +1772,9 @@ class HDF:
                     "Use preallocate_frame_layout() first, then start SWMR."
                 )
             # Use update path
-            HDF.save_frame_update(group, dataframe, start=0, require_swmr=require_swmr)
+            HDF.save_frame_update(
+                group, dataframe, start=0, require_swmr=require_swmr
+            )
             return
 
         # Create new layout (require_swmr=False for creation phase)
@@ -1721,7 +1789,9 @@ class HDF:
         )
 
         # Write the data
-        HDF.save_frame_update(group, dataframe, start=0, require_swmr=require_swmr)
+        HDF.save_frame_update(
+            group, dataframe, start=0, require_swmr=require_swmr
+        )
 
     @staticmethod
     def save_frame_update(
@@ -1867,7 +1937,9 @@ class HDF:
             return pd.DataFrame(columns=column_order)
 
         # Load index
-        index = HDF._decode_index_from_hdf5(group["index"], "index", logical_length)
+        index = HDF._decode_index_from_hdf5(
+            group["index"], "index", logical_length
+        )
 
         # Load columns in order
         column_order_attr = group.attrs["column_order"]
@@ -1897,7 +1969,9 @@ class HDF:
             handle = handle.file if isinstance(handle, h5py.Group) else handle
             try:
                 if hasattr(handle, "id") and handle.id.valid:
-                    logger.warning("HDF5 file handle may not have been properly closed")
+                    logger.warning(
+                        "HDF5 file handle may not have been properly closed"
+                    )
 
                     # Force close
                     handle.close()

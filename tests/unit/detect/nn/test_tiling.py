@@ -1,17 +1,24 @@
-"""Shared tiling module (Spec 2b, Task 3).
+"""Shared tiling module (Spec 2b, Task 3; centroid-in-core merge, Task 5).
 
 The fixed-geometric tiling was extracted from ``_sam3_detector`` to ``_tiling``
-so the semantic detectors reuse it. These tests exercise the new module path
-directly (the SAM3 suite still imports the re-exported names and stays green),
-plus the semantic union stitch.
+so the semantic detectors reuse it, and the cross-tile instance merge followed.
+These tests exercise the new module path directly (the SAM3 suite still imports
+the re-exported names and stays green): tile planning, the semantic union
+stitch, the legacy IoU-NMS merge, and the centroid-in-core merge that replaces
+it for tiled instance detection.
 """
 
 import numpy as np
+import pytest
 
 from phenotypic.detect.nn._tiling import (
+    _merge_tiles_iou_nms,
     _plan_tiles,
     _Tile,
+    assign_by_centroid_core,
+    owning_tile_index,
     stitch_semantic_tiles,
+    tile_overlap_px,
 )
 
 
@@ -80,7 +87,227 @@ class TestStitchSemanticTiles:
         assert np.array_equal(full, m)
 
     def test_length_mismatch_raises(self):
-        import pytest
-
         with pytest.raises(ValueError, match="tiles"):
             stitch_semantic_tiles([_Tile(0, 0, 2, 2)], [], out_shape=(2, 2))
+
+
+# ---------------------------------------------------------------------------
+# Instance merge: IoU-NMS (moved here from _sam3_detector)
+# ---------------------------------------------------------------------------
+
+
+class TestMergeTilesIouNms:
+    def test_merge_dedups_overlapping_instances(self):
+        a = np.zeros((10, 10), np.uint16)
+        a[2:6, 2:6] = 1
+        b = np.zeros((10, 10), np.uint16)
+        b[2:6, 2:6] = 1  # same blob from neighbour tile
+        merged = _merge_tiles_iou_nms([a, b], iou_thresh=0.5)
+        assert merged.max() == 1
+
+    def test_merge_keeps_distinct_instances(self):
+        a = np.zeros((10, 10), np.uint16)
+        a[1:3, 1:3] = 1
+        b = np.zeros((10, 10), np.uint16)
+        b[7:9, 7:9] = 1  # disjoint blob
+        merged = _merge_tiles_iou_nms([a, b], iou_thresh=0.5)
+        assert merged.max() == 2
+
+    def test_sam3_detector_reexports_the_merge(self):
+        from phenotypic.detect.nn import _sam3_detector
+
+        assert _sam3_detector._merge_tiles_iou_nms is _merge_tiles_iou_nms
+        assert _sam3_detector._iou is not None
+
+    def test_fragment_survives_iou_nms(self):
+        """Documents the bug centroid-in-core exists to fix.
+
+        IoU(whole, fragment) equals the fragment's area fraction, so a
+        fragment covering <= iou_thresh of its parent is never suppressed.
+        """
+        whole = np.zeros((20, 20), np.uint16)
+        whole[5:15, 5:15] = 1  # 100 px
+        frag = np.zeros((20, 20), np.uint16)
+        frag[5:15, 5:9] = 1  # 40 px, IoU == 0.4 <= 0.5
+        merged = _merge_tiles_iou_nms([whole, frag], iou_thresh=0.5)
+        assert merged.max() == 2  # the fragment survives as a second instance
+
+
+# ---------------------------------------------------------------------------
+# Instance merge: centroid-in-core (Task 5)
+# ---------------------------------------------------------------------------
+
+
+class TestTileOverlapPx:
+    def test_overlap_of_two_tiles(self):
+        assert tile_overlap_px([_Tile(0, 0, 100, 100), _Tile(0, 80, 100, 180)]) == 20
+
+    def test_single_tile_has_no_overlap(self):
+        assert tile_overlap_px([_Tile(0, 0, 10, 10)]) == 0
+
+    def test_abutting_tiles_do_not_overlap(self):
+        assert tile_overlap_px([_Tile(0, 0, 10, 10), _Tile(0, 10, 10, 20)]) == 0
+
+    def test_smallest_pairwise_overlap_wins(self):
+        tiles = _plan_tiles((100, 180), tile_px=100, overlap=0.2)
+        assert tile_overlap_px(tiles) == 20
+
+
+class TestOwningTileIndex:
+    def test_whole_and_fragment_resolve_to_the_same_tile(self):
+        tiles = _plan_tiles((100, 180), tile_px=100, overlap=0.2)
+        assert [(t.y0, t.x0, t.y1, t.x1) for t in tiles] == [
+            (0, 0, 100, 100),
+            (0, 80, 100, 180),
+        ]
+        # Whole colony centred at x=79.5 (tile 0 only contains it).
+        assert owning_tile_index(tiles, (49.5, 79.5)) == 0
+        # Its fragment in tile 1 is centred at x=84.5 — still nearer tile 0's
+        # centre (x=50) than tile 1's (x=130), so tile 1 declines to claim it.
+        assert owning_tile_index(tiles, (49.5, 84.5)) == 0
+
+    def test_border_tile_core_reaches_the_image_edge(self):
+        tiles = _plan_tiles((100, 180), tile_px=100, overlap=0.2)
+        assert owning_tile_index(tiles, (2.0, 178.0)) == 1
+        assert owning_tile_index(tiles, (2.0, 1.0)) == 0
+
+    def test_single_tile_always_owns(self):
+        assert owning_tile_index([_Tile(0, 0, 50, 50)], (25.0, 25.0)) == 0
+
+
+class TestAssignByCentroidCore:
+    def _two_tiles(self):
+        # 100x180 image, two 100x100 tiles overlapping by 20 px.
+        return [_Tile(0, 0, 100, 100), _Tile(0, 80, 100, 180)]
+
+    def test_fragment_regression_one_colony_stays_one(self):
+        """A colony fully inside tile A also appears as a fragment in tile B.
+
+        Under ``_merge_tiles_iou_nms(iou_thresh=0.5)`` the fragment survives
+        (IoU == area fraction) and paints OVER the colony. Centroid-in-core
+        must yield exactly one instance with its area intact.
+        """
+        tiles = self._two_tiles()
+        # Colony spans image cols 70..90 -> inside A (0..100); B (80..180)
+        # sees only cols 80..90 as a fragment.
+        a = np.zeros((100, 100), dtype=np.uint16)
+        a[40:60, 70:90] = 1  # whole, tile-local
+        b = np.zeros((100, 100), dtype=np.uint16)
+        b[40:60, 0:10] = 1  # fragment, tile-local
+
+        merged = assign_by_centroid_core(tiles, [a, b], (100, 180))
+        labels = [lbl for lbl in np.unique(merged) if lbl]
+        assert len(labels) == 1
+        assert int((merged == labels[0]).sum()) == 20 * 20
+
+    def test_instance_claimed_by_exactly_one_tile(self):
+        tiles = self._two_tiles()
+        # Colony wholly inside the overlap band, cols 82..88: both tiles see it
+        # whole, so both emit an identical instance.
+        a = np.zeros((100, 100), dtype=np.uint16)
+        a[10:20, 82:88] = 1
+        b = np.zeros((100, 100), dtype=np.uint16)
+        b[10:20, 2:8] = 1
+        merged = assign_by_centroid_core(tiles, [a, b], (100, 180))
+        assert len([lbl for lbl in np.unique(merged) if lbl]) == 1
+
+    def test_single_tile_relabels_contiguously(self):
+        t = [_Tile(0, 0, 50, 50)]
+        om = np.zeros((50, 50), dtype=np.uint16)
+        om[5:10, 5:10] = 7
+        om[20:25, 20:25] = 9
+        merged = assign_by_centroid_core(t, [om], (50, 50))
+        assert sorted(int(lbl) for lbl in np.unique(merged) if lbl) == [1, 2]
+
+    def test_labels_are_assigned_largest_first(self):
+        t = [_Tile(0, 0, 50, 50)]
+        om = np.zeros((50, 50), dtype=np.uint16)
+        om[0:2, 0:2] = 1  # 4 px, small
+        om[10:20, 10:20] = 2  # 100 px, large
+        merged = assign_by_centroid_core(t, [om], (50, 50))
+        assert merged[15, 15] == 1  # largest gets label 1
+        assert merged[0, 0] == 2
+
+    def test_empty_input_returns_empty_objmap(self):
+        tiles = self._two_tiles()
+        blank = np.zeros((100, 100), dtype=np.uint16)
+        merged = assign_by_centroid_core(tiles, [blank, blank.copy()], (100, 180))
+        assert merged.shape == (100, 180)
+        assert merged.dtype == np.uint16
+        assert not merged.any()
+
+    def test_length_mismatch_raises(self):
+        with pytest.raises(ValueError, match="tiles"):
+            assign_by_centroid_core(self._two_tiles(), [], (100, 180))
+
+    def test_overlap_guard_warns_when_colony_exceeds_overlap(self):
+        tiles = self._two_tiles()  # overlap_px == 20
+        a = np.zeros((100, 100), dtype=np.uint16)
+        a[10:70, 30:90] = 1  # d == 60 > 20
+        b = np.zeros((100, 100), dtype=np.uint16)
+        with pytest.warns(UserWarning, match="overlap"):
+            merged = assign_by_centroid_core(tiles, [a, b], (100, 180))
+        assert len([lbl for lbl in np.unique(merged) if lbl]) == 1  # not deleted
+
+    def test_no_overlap_warning_when_instance_fits(self, recwarn):
+        tiles = self._two_tiles()
+        a = np.zeros((100, 100), dtype=np.uint16)
+        a[40:50, 40:50] = 1  # d == 10 <= 20
+        b = np.zeros((100, 100), dtype=np.uint16)
+        assign_by_centroid_core(tiles, [a, b], (100, 180))
+        assert not [w for w in recwarn.list if issubclass(w.category, UserWarning)]
+
+
+class TestAssignByCentroidCoreMemory:
+    """The merge must not scale memory with the *instance* count.
+
+    Materializing one full-image boolean mask per survivor costs H*W bytes each,
+    and all survivors are alive at once for the largest-first sort. On a
+    4000x3000 plate with 1000 colonies that measured 12 GB of peak allocation.
+    Painting from each survivor's tile-local slice instead keeps the working set
+    at one tile plus the output objmap.
+    """
+
+    def test_peak_allocation_does_not_scale_with_instances(self):
+        import tracemalloc
+        import warnings
+
+        import numpy as np
+
+        from phenotypic.detect.nn._tiling import (
+            _plan_tiles,
+            assign_by_centroid_core,
+        )
+
+        h, w, n_inst = 800, 1200, 300
+        tiles = _plan_tiles((h, w), 518, 0.15)
+        rng = np.random.default_rng(0)
+        per_tile = []
+        for t in tiles:
+            om = np.zeros((t.h, t.w), dtype=np.uint16)
+            for lab in range(1, n_inst + 1):
+                cy = int(rng.integers(30, h - 30)) - t.y0
+                cx = int(rng.integers(30, w - 30)) - t.x0
+                ys = slice(max(0, cy - 10), min(t.h, cy + 10))
+                xs = slice(max(0, cx - 10), min(t.w, cx + 10))
+                if ys.stop > ys.start and xs.stop > xs.start:
+                    om[ys, xs] = lab
+            per_tile.append(om)
+
+        tracemalloc.start()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            assign_by_centroid_core(tiles, per_tile, (h, w))
+        _, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+        # Mechanism-derived bound. One full-image bool per survivor would be
+        # n_inst * h * w bytes (~288 MB here); the tile-local form needs only the
+        # uint16 objmap (h*w*2 = 1.9 MB) plus one tile. 20 MB leaves ample slack
+        # for numpy temporaries while still failing by an order of magnitude if
+        # per-instance full-image masks return.
+        one_full_image_mask_per_instance = n_inst * h * w
+        assert peak < 20_000_000, (
+            f"peak {peak/1e6:.0f} MB; per-instance full-image masks would cost "
+            f"{one_full_image_mask_per_instance/1e6:.0f} MB"
+        )

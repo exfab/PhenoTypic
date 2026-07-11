@@ -5,6 +5,8 @@ import os
 
 import pytest
 
+from tests._support.xdist_workers import resolve_xdist_auto_workers
+
 # The shared fixtures plugin (tests/unit/test_fixtures.py) imports numpy and
 # walks the entire ``phenotypic`` package at import time, and ``pytest_configure``
 # below imports ``phenotypic.settings``. Both require the project and its full
@@ -39,9 +41,14 @@ def pytest_xdist_auto_num_workers(config):
     xdist's default on platforms without affinity support (macOS/Windows).
     """
     try:
-        return max(1, len(os.sched_getaffinity(0)))
+        affinity_count = len(os.sched_getaffinity(0))
     except AttributeError:
-        return None
+        affinity_count = None
+    return resolve_xdist_auto_workers(
+        os.environ,
+        affinity_count=affinity_count,
+        cpu_count=None,
+    )
 
 
 def pytest_configure(config):

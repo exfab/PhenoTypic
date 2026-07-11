@@ -13,17 +13,24 @@ token (``[:, 1:, :]``) leaves the 4 register tokens contaminating the patch
 grid; we slice ``[:, 1 + num_register_tokens:, :]`` here, in one place, and
 ``DinoSam2Detector`` calls it too (its buggy private copy is deleted).
 
+It is likewise the single **resize policy**: every extract call pins the model
+input to the tile's native geometry (:data:`NATIVE_PROCESSOR_KWARGS`) instead of
+the checkpoint's 224-px classification preset, and every grid↔image mapping goes
+through the *covered* extent ``hp*patch x wp*patch`` (:func:`covered_hw`,
+:func:`upsample_grid_to_image`) rather than the full tile.
+
 All heavy imports (``torch``, ``transformers``) are **lazy** so detectors
 construct and serialise without them.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Tuple
+from typing import TYPE_CHECKING, Any, List, Tuple
 
 if TYPE_CHECKING:
     import numpy as np
 
+    from phenotypic.detect.nn._tiling import _Tile
     from phenotypic.sdk_.typing_ import DinoSize, DinoVersion
 
 
@@ -37,6 +44,129 @@ _DINOV3_SIZE_TO_REPO: dict[str, str] = {
     "base": "facebook/dinov3-vitb16-pretrain-lvd1689m",
     "large": "facebook/dinov3-vitl16-pretrain-lvd1689m",
 }
+
+
+#: Processor kwargs that pin the model input to the tile's native geometry.
+#: Without these, ``AutoImageProcessor`` applies the checkpoint's *classification*
+#: preset — DINOv2 resizes shortest-edge to 256 then center-crops to 224; DINOv3
+#: resizes squarely to 224 — so every tile reaches the ViT at 224x224 regardless
+#: of ``tile_px``. Under these kwargs the patch grid is ``(h // patch, w // patch)``
+#: and native px per patch is exactly ``patch_size``.
+NATIVE_PROCESSOR_KWARGS: dict[str, bool] = {
+    "do_resize": False,
+    "do_center_crop": False,
+}
+
+
+def backbone_patch_size(model: Any) -> int:
+    """Return the loaded backbone's ViT patch size, refusing to guess.
+
+    Every geometry helper here needs the patch size, and getting it wrong is a
+    **silent** sub-patch scale error rather than a crash. A ``getattr(...,
+    "patch_size", 14)``-style fallback is therefore worse than useless: DINOv2 is
+    patch-14 and DINOv3 is patch-16, so a per-call-site default can disagree with
+    itself within one run (the detector guessing 14 while this module guesses
+    16). Read it from the model, or fail loudly.
+
+    Args:
+        model: A loaded ``AutoModel`` (DINOv2/DINOv3).
+
+    Returns:
+        ``model.config.patch_size``.
+
+    Raises:
+        ValueError: If the backbone exposes no ``config.patch_size``.
+    """
+    patch = getattr(getattr(model, "config", None), "patch_size", None)
+    if patch is None:
+        raise ValueError(
+            f"{type(model).__name__} exposes no config.patch_size; the patch "
+            "grid cannot be derived and guessing it would silently rescale "
+            "every mask. Load a DINOv2/DINOv3 backbone."
+        )
+    return int(patch)
+
+
+def patch_grid_hw(pixel_hw: Tuple[int, int], patch: int) -> Tuple[int, int]:
+    """Return the ``(Hp, Wp)`` patch grid a ViT produces for ``pixel_hw``.
+
+    Patch embedding is a stride-``patch`` convolution, so it floors: a
+    non-multiple input silently drops up to ``patch - 1`` pixels off the bottom
+    and right. Use :func:`covered_hw` for the extent the grid actually spans.
+
+    Args:
+        pixel_hw: ``(H, W)`` of the tensor handed to the model.
+        patch: ``model.config.patch_size`` (14 for DINOv2, 16 for DINOv3).
+
+    Returns:
+        ``(Hp, Wp)`` patch-grid shape.
+    """
+    return (int(pixel_hw[0]) // int(patch), int(pixel_hw[1]) // int(patch))
+
+
+def covered_hw(grid_hw: Tuple[int, int], patch: int) -> Tuple[int, int]:
+    """Return the pixel extent a ``grid_hw`` patch grid actually covers.
+
+    ``(hp * patch, wp * patch)`` — never the original ``(H, W)``. Mapping a grid
+    onto ``(H, W)`` instead introduces a scale error of up to
+    ``(patch - 1) / H`` (2.0% vertically for a 600-px tile at patch 14).
+
+    Args:
+        grid_hw: ``(Hp, Wp)`` patch grid.
+        patch: ``model.config.patch_size``.
+
+    Returns:
+        ``(Hp * patch, Wp * patch)``.
+    """
+    return (int(grid_hw[0]) * int(patch), int(grid_hw[1]) * int(patch))
+
+
+def upsample_grid_to_image(
+    grid: "np.ndarray",
+    image_hw: Tuple[int, int],
+    patch: int,
+    *,
+    order: int = 0,
+) -> "np.ndarray":
+    """Upsample a patch grid to full resolution through its covered extent.
+
+    The grid spans ``covered_hw(grid.shape, patch)``, **not** ``image_hw``: a
+    stride-``patch`` conv floors, so up to ``patch - 1`` rows/columns at the
+    bottom/right were never seen by the model. Resizing straight to ``image_hw``
+    stretches the grid over pixels it does not describe (a 2.0% vertical scale
+    error for a 600-px tile at patch 14). Resize to the covered extent, then
+    edge-pad the remainder.
+
+    Args:
+        grid: ``(Hp, Wp)`` patch-grid array (boolean mask or float score map).
+        image_hw: ``(H, W)`` of the tile the grid came from.
+        patch: ``model.config.patch_size``.
+        order: Interpolation order — ``0`` (nearest) for masks, ``1`` for
+            score maps.
+
+    Returns:
+        ``(H, W)`` array with ``grid``'s dtype semantics preserved.
+    """
+    import numpy as np
+    from skimage.transform import resize
+
+    h, w = int(image_hw[0]), int(image_hw[1])
+    arr = np.asarray(grid)
+    ch, cw = covered_hw(arr.shape[:2], patch)
+    is_bool = arr.dtype == bool
+
+    covered = resize(
+        arr.astype(np.float32),
+        (ch, cw),
+        order=order,
+        preserve_range=True,
+        anti_aliasing=False,
+    )
+    if (ch, cw) != (h, w):
+        covered = np.pad(
+            covered, ((0, max(0, h - ch)), (0, max(0, w - cw))), mode="edge"
+        )[:h, :w]
+    return (covered > 0.5) if is_bool else covered
 
 
 def hf_dino_id(dino_version: "DinoVersion", dino_size: "DinoSize") -> str:
@@ -158,7 +288,9 @@ def extract_patch_features(
 
     Drops the CLS **and** register tokens (the C1 fix) via
     :func:`reshape_patch_tokens`, inferring the patch grid from the processed
-    pixel geometry and ``config.patch_size``.
+    pixel geometry and ``config.patch_size``. The image is fed at its native
+    geometry (:data:`NATIVE_PROCESSOR_KWARGS`), not the checkpoint's 224-px
+    classification preset.
 
     Args:
         model: A loaded ``AutoModel`` (DINOv2/DINOv3) on ``device``.
@@ -172,15 +304,17 @@ def extract_patch_features(
     import numpy as np
     import torch
 
-    inputs = processor(images=rgb_uint8, return_tensors="pt").to(device)
+    inputs = processor(
+        images=rgb_uint8, return_tensors="pt", **NATIVE_PROCESSOR_KWARGS
+    ).to(device)
     with torch.no_grad():
         outputs = model(**inputs)
     tokens = outputs.last_hidden_state[0].detach().cpu().numpy().astype(np.float32)
 
     pixel = inputs["pixel_values"]
     in_h, in_w = int(pixel.shape[-2]), int(pixel.shape[-1])
-    patch = int(getattr(model.config, "patch_size", 16))
-    grid_hw = (in_h // patch, in_w // patch)
+    patch = backbone_patch_size(model)
+    grid_hw = patch_grid_hw((in_h, in_w), patch)
     n_reg = int(getattr(model.config, "num_register_tokens", 0))
     return reshape_patch_tokens(tokens, grid_hw, n_reg)
 
@@ -197,8 +331,9 @@ def extract_reference_features(
 
     Like :func:`extract_patch_features` (or :func:`extract_hidden_layer_features`
     when ``layer`` is given) but also returns ``(H_proc, W_proc)`` — the
-    geometry the processor resized the image to — so the caller can align a
+    geometry the processor handed the model — so the caller can align a
     reference/support mask through the same path via :func:`align_mask_to_grid`.
+    Under :data:`NATIVE_PROCESSOR_KWARGS` this equals the input ``(H, W)``.
 
     Args:
         model: A loaded ``AutoModel`` on ``device``.
@@ -213,7 +348,9 @@ def extract_reference_features(
     import numpy as np
     import torch
 
-    inputs = processor(images=rgb_uint8, return_tensors="pt").to(device)
+    inputs = processor(
+        images=rgb_uint8, return_tensors="pt", **NATIVE_PROCESSOR_KWARGS
+    ).to(device)
     with torch.no_grad():
         if layer is None:
             outputs = model(**inputs)
@@ -225,8 +362,8 @@ def extract_reference_features(
 
     pixel = inputs["pixel_values"]
     proc_hw = (int(pixel.shape[-2]), int(pixel.shape[-1]))
-    patch = int(getattr(model.config, "patch_size", 16))
-    grid_hw = (proc_hw[0] // patch, proc_hw[1] // patch)
+    patch = backbone_patch_size(model)
+    grid_hw = patch_grid_hw(proc_hw, patch)
     n_reg = int(getattr(model.config, "num_register_tokens", 0))
     feats = reshape_patch_tokens(tokens, grid_hw, n_reg)
     return feats, proc_hw
@@ -244,7 +381,8 @@ def extract_hidden_layer_features(
 
     Uses ``output_hidden_states=True`` and selects ``hidden_states[layer]``
     (FSSDINO's layer-selection finding — intermediate layers carry stronger
-    semantics than the last). ``layer=-1`` is the last layer.
+    semantics than the last). ``layer=-1`` is the last layer. The image is fed
+    at its native geometry (:data:`NATIVE_PROCESSOR_KWARGS`).
 
     Args:
         model: A loaded ``AutoModel`` (DINOv2/DINOv3) on ``device``.
@@ -260,7 +398,9 @@ def extract_hidden_layer_features(
     import numpy as np
     import torch
 
-    inputs = processor(images=rgb_uint8, return_tensors="pt").to(device)
+    inputs = processor(
+        images=rgb_uint8, return_tensors="pt", **NATIVE_PROCESSOR_KWARGS
+    ).to(device)
     with torch.no_grad():
         outputs = model(**inputs, output_hidden_states=True)
     hidden = outputs.hidden_states[layer]
@@ -268,8 +408,8 @@ def extract_hidden_layer_features(
 
     pixel = inputs["pixel_values"]
     in_h, in_w = int(pixel.shape[-2]), int(pixel.shape[-1])
-    patch = int(getattr(model.config, "patch_size", 16))
-    grid_hw = (in_h // patch, in_w // patch)
+    patch = backbone_patch_size(model)
+    grid_hw = patch_grid_hw((in_h, in_w), patch)
     n_reg = int(getattr(model.config, "num_register_tokens", 0))
     return reshape_patch_tokens(tokens, grid_hw, n_reg)
 
@@ -280,17 +420,27 @@ def extract_hidden_layer_features(
 
 
 def resize_mask_to_grid(
-    mask: "np.ndarray", grid_hw: Tuple[int, int]
+    mask: "np.ndarray", grid_hw: Tuple[int, int], patch: int
 ) -> "np.ndarray":
     """Downsample a full-resolution boolean mask onto the patch grid.
 
-    Nearest-neighbour (``order=0``) so labels are not interpolated. The caller
-    is responsible for first aligning the mask to the same geometry the image
-    went through the processor (W4); this is the final patch-grid step.
+    Nearest-neighbour (``order=0``) so labels are not interpolated. The mask is
+    first cropped to ``covered_hw(grid_hw, patch)`` — the extent the grid
+    actually describes — so the truncated bottom/right remainder cannot leak
+    into a patch. The caller is responsible for first aligning the mask to the
+    same geometry the image went through the processor (W4); this is the final
+    patch-grid step.
+
+    ``patch`` is **required**. It was once optional, defaulting to mapping the
+    whole mask, and omitting it produced a silent sub-patch scale error rather
+    than a crash — a bug that reached both the query path and, later, the
+    exemplar path (where the buggy and corrected prototypes had cosine 0.44).
+    Get the value from :func:`backbone_patch_size`.
 
     Args:
         mask: ``(H, W)`` boolean (or 0/1) mask.
         grid_hw: ``(Hp, Wp)`` target patch grid.
+        patch: ``model.config.patch_size``.
 
     Returns:
         ``(Hp, Wp)`` boolean mask.
@@ -299,9 +449,11 @@ def resize_mask_to_grid(
     from skimage.transform import resize
 
     hp, wp = int(grid_hw[0]), int(grid_hw[1])
+    ch, cw = covered_hw((hp, wp), patch)
+    arr = np.asarray(mask)[:ch, :cw]
     small = (
         resize(
-            np.asarray(mask, dtype=np.float32),
+            arr.astype(np.float32),
             (hp, wp),
             order=0,
             preserve_range=True,
@@ -316,22 +468,29 @@ def align_mask_to_grid(
     mask: "np.ndarray",
     proc_hw: Tuple[int, int],
     grid_hw: Tuple[int, int],
+    patch: int,
 ) -> "np.ndarray":
     """Align a full-resolution mask to the patch grid via the processor geometry.
 
-    W4: the image is first resized by the processor to ``proc_hw`` (which for
-    DINOv2/DINOv3 is a fixed square, NOT aspect-preserving), then patchified to
-    ``grid_hw``. The mask must follow the **same** path — resize to ``proc_hw``,
-    then nearest-downsample to the grid — so a non-square exemplar's mask lines
-    up with its features. (For a clean non-aspect-preserving square resize the
-    one-step and two-step results coincide, but the explicit two-step stays
-    correct if a processor ever pads/crops.)
+    W4: the image reaches the model at ``proc_hw`` (under
+    :data:`NATIVE_PROCESSOR_KWARGS` that is its own ``(H, W)``; a resizing
+    processor may make it something else), then is patchified to ``grid_hw``.
+    The mask must follow the **same** path — resize to ``proc_hw``, then
+    nearest-downsample to the grid — so a non-square exemplar's mask lines up
+    with its features.
+
+    Because patchification floors, the grid only covers
+    ``covered_hw(grid_hw, patch)`` of ``proc_hw``. Pass ``patch`` so the
+    truncated bottom/right remainder is cropped rather than squeezed into the
+    last patch row/column.
 
     Args:
         mask: ``(Hm, Wm)`` full-resolution boolean (or 0/1) mask.
         proc_hw: ``(H_proc, W_proc)`` processed pixel geometry
             (``inputs.pixel_values.shape[-2:]``).
         grid_hw: ``(Hp, Wp)`` patch grid.
+        patch: ``model.config.patch_size`` (**required** — omitting it used to
+            be a silent scale error; see :func:`resize_mask_to_grid`).
 
     Returns:
         ``(Hp, Wp)`` boolean mask aligned with the patch features.
@@ -350,7 +509,7 @@ def align_mask_to_grid(
         )
         > 0.5
     )
-    return resize_mask_to_grid(processed, grid_hw)
+    return resize_mask_to_grid(processed, grid_hw, patch)
 
 
 # ---------------------------------------------------------------------------
@@ -361,6 +520,8 @@ def align_mask_to_grid(
 def pool_prototype(
     features: "np.ndarray",
     mask: "np.ndarray",
+    *,
+    patch: int,
     proc_hw: Tuple[int, int] | None = None,
 ) -> "np.ndarray":
     """Masked-mean an exemplar prototype from dense patch features.
@@ -374,6 +535,11 @@ def pool_prototype(
     Args:
         features: ``(Hp, Wp, D)`` dense patch features.
         mask: ``(Hm, Wm)`` boolean mask (any resolution; resized to the grid).
+        patch: ``model.config.patch_size`` (**required**). The mask is cropped
+            to the extent the grid actually covers before downsampling, so the
+            truncated bottom/right remainder cannot contaminate the prototype.
+            Omitting it was once permitted and silently corrupted the exemplar
+            prototype; see :func:`resize_mask_to_grid`.
         proc_hw: Optional ``(H_proc, W_proc)`` processed geometry for the W4
             two-step alignment (from :func:`extract_reference_features`).
 
@@ -386,15 +552,62 @@ def pool_prototype(
     feats = np.asarray(features, dtype=np.float32)
     hp, wp, d = feats.shape
     if proc_hw is None:
-        small = resize_mask_to_grid(np.asarray(mask), (hp, wp))
+        small = resize_mask_to_grid(np.asarray(mask), (hp, wp), patch)
     else:
-        small = align_mask_to_grid(np.asarray(mask), proc_hw, (hp, wp))
+        small = align_mask_to_grid(np.asarray(mask), proc_hw, (hp, wp), patch)
     idx = small.reshape(-1)
     flat = feats.reshape(hp * wp, d)
     fg = flat[idx]
     if fg.shape[0] == 0:
         return np.zeros(d, dtype=np.float32)
     return fg.mean(axis=0).astype(np.float32)
+
+
+def pool_prototype_tiled(
+    dense_by_tile: List["np.ndarray"],
+    tiles: List["_Tile"],
+    mask: "np.ndarray",
+    patch: int,
+) -> "np.ndarray":
+    """Pool a full-image mask's prototype from per-tile dense features.
+
+    Pooling every proposal against a **whole-plate** patch grid is a silent
+    no-op: at ``patch=14`` a 4000x3000 plate fed to the ViT at its 224-px
+    classification preset yields a 16x16 grid, i.e. ~250x187 native px per
+    patch, so a 30 px colony spans 0.16 x 0.12 patches. It rounds to empty in
+    :func:`resize_mask_to_grid`, :func:`pool_prototype` hits its zero-vector
+    fail-safe, and *every* proposal gets the same zero prototype — the cosine
+    scores become constant and the DINO half of the recipe does no work.
+
+    Tiling restores sub-patch resolution. The mask is assigned to the tile whose
+    core contains its centroid
+    (:func:`~phenotypic.detect.nn._tiling.owning_tile_index`), cropped to that
+    tile, and pooled against that tile's feature grid, where the colony now
+    spans ``30 / patch`` patches.
+
+    Args:
+        dense_by_tile: One ``(Hp, Wp, D)`` feature grid per tile, aligned with
+            *tiles*.
+        tiles: Crop rectangles in full-image coordinates (from
+            :func:`~phenotypic.detect.nn._tiling._plan_tiles`). A single
+            full-extent tile is fine — the un-tiled path.
+        mask: ``(H, W)`` boolean mask in full-image coordinates.
+        patch: ``model.config.patch_size`` (14 for DINOv2, 16 for DINOv3).
+
+    Returns:
+        ``(D,)`` mean-pooled prototype (zero vector if *mask* is empty).
+    """
+    import numpy as np
+
+    from phenotypic.detect.nn._tiling import owning_tile_index
+
+    ys, xs = np.nonzero(np.asarray(mask, dtype=bool))
+    if ys.size == 0:
+        return np.zeros(dense_by_tile[0].shape[-1], dtype=np.float32)
+    idx = owning_tile_index(tiles, (float(ys.mean()), float(xs.mean())))
+    tile = tiles[idx]
+    local = np.asarray(mask)[tile.y0:tile.y1, tile.x0:tile.x1]
+    return pool_prototype(dense_by_tile[idx], local, patch=patch)
 
 
 def cosine_similarity_map(
@@ -430,35 +643,35 @@ def cosine_match_to_mask(
     prototype: "np.ndarray",
     thresh: float,
     out_shape: Tuple[int, int],
+    patch: int,
 ) -> "np.ndarray":
     """Cosine-match query patches to a prototype → an upsampled boolean mask.
 
-    Computes the per-patch cosine map, bilinearly upsamples it to
-    ``out_shape``, and thresholds at ``thresh``. A zero prototype (empty
-    reference mask) yields an all-False mask (fail-safe).
+    Computes the per-patch cosine map, upsamples it through the extent the grid
+    actually covers (:func:`upsample_grid_to_image`), and thresholds at
+    ``thresh``. A zero prototype (empty reference mask) yields an all-False mask
+    (fail-safe).
 
     Args:
         features: ``(Hp, Wp, D)`` query dense patch features.
         prototype: ``(D,)`` exemplar prototype.
         thresh: Cosine-similarity cutoff (foreground where ``sim > thresh``).
         out_shape: ``(H, W)`` of the full-resolution output mask.
+        patch: ``model.config.patch_size`` (**required**). Stretching the score
+            map over ``out_shape`` instead would displace every object by up to
+            ``(patch - 1) / H``; see :func:`resize_mask_to_grid`.
 
     Returns:
         ``(H, W)`` boolean ``objmask``.
     """
     import numpy as np
-    from skimage.transform import resize
 
     proto = np.asarray(prototype, dtype=np.float64)
     if not np.any(proto):  # degenerate zero-prototype → fail safe
         return np.zeros(out_shape, dtype=bool)
 
     sim = cosine_similarity_map(features, proto)
-    sim_full = resize(
-        sim.astype(np.float32),
-        out_shape,
-        order=1,
-        preserve_range=True,
-        anti_aliasing=False,
+    sim_full = upsample_grid_to_image(
+        sim.astype(np.float32), out_shape, patch, order=1
     )
     return (sim_full > thresh).astype(bool)

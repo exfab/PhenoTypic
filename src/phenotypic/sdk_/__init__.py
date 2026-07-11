@@ -16,9 +16,24 @@ artifact filenames, directory names, JSON contract keys, and path helpers
 (re-exported here at package level for convenience).
 """
 
-from . import colourspace, constants_, exceptions_, napari_, register, slurm, slurm_
+from . import (
+    colourspace,
+    constants_,
+    exceptions_,
+    napari_,
+    register,
+    slurm,
+    slurm_,
+)
 from . import _io_constants
-from ._atomic_io import atomic_write_bytes, atomic_write_text
+from ._atomic_io import (
+    PARQUET_WRITE_OPTIONS,
+    atomic_write_bytes,
+    atomic_write_json,
+    atomic_write_parquet,
+    atomic_write_text,
+    atomic_write_with_writer,
+)
 from ._column_ref import ColumnRef, ColumnRefList, ColumnSource
 from ._io_constants import (
     # Filenames (CLI artifacts)
@@ -237,7 +252,11 @@ __all__ = [
     "NormControlMixin",
     "NormalizedOutputMixin",
     "atomic_write_bytes",
+    "atomic_write_json",
+    "atomic_write_parquet",
     "atomic_write_text",
+    "atomic_write_with_writer",
+    "PARQUET_WRITE_OPTIONS",
     "canonical_metadata_order",
     "colourspace",
     "constants_",

@@ -13,11 +13,10 @@ Pipeline builder validation rules
 The DAG builder's validation surface is a pure function
 :func:`phenotypic.gui.builder._validation.validate` that walks every
 scope reachable from ``state.root`` and emits a flat list of
-:class:`~phenotypic.gui.builder._validation.Issue` records. Six
-**blocking** rules (severity ``"error"``) disable
-``Run preview`` and ``Save pipeline``; the advisory hints (severity
-``"advisory"``) decorate the canvas with yellow borders but never
-block.
+:class:`~phenotypic.gui.builder._validation.Issue` records. Blocking
+issues (severity ``"error"``) disable ``Run preview`` and
+``Save pipeline``; advisory hints (severity ``"advisory"``) decorate
+the canvas with yellow borders but never block.
 
 Rules emit in deterministic order:
 
@@ -28,6 +27,7 @@ Rules emit in deterministic order:
 5. ``cycle`` (Rule 4)
 6. ``container_mode`` (Rule 5)
 7. ``stage_order_hint`` (Rule 7, advisory)
+8. ``unsupported_linear`` (fixed linear editor compatibility)
 
 Nested-scope issues are appended after the parent scope's issues so
 snapshot-style tests stay stable.
@@ -74,8 +74,12 @@ Summary table
      - Stage ordering respects ops → meas → post
    * - —
      - ``unknown_class``
-     - advisory
+     - error
      - Class not in the operation registry
+   * - —
+     - ``unsupported_linear``
+     - error
+     - Fixed linear editor cannot represent this DAG shape
 
 Per-rule reference
 ------------------
@@ -157,13 +161,24 @@ Rule 7 — Stage ordering respects ops → meas → post
 
 **Offender:** The *source* block of the out-of-order edge (yellow border + "?" badge).
 
-Advisory — Class not in the operation registry
+Blocking — Class not in the operation registry
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Issue kind(s):** ``unknown_class``
 
-**Severity:** advisory
+**Severity:** error
 
-**Mechanic:** Registry lookup for each non-sentinel block's ``class_name``. A miss emits ``unknown_class`` as an advisory so the rule-3 walk can skip the block cleanly without raising.
+**Mechanic:** Registry lookup for each non-sentinel block's ``class_name``. A miss emits ``unknown_class`` as an error because the runtime cannot safely materialize a pipeline from an unknown class. The rule-3 walk skips parameter introspection for that block cleanly.
 
-**Offender:** The block whose class is unknown to the registry (yellow border + "?" badge). Typically caused by registry drift (loading a ``pipeline.json`` saved by a newer build).
+**Offender:** The block whose class is unknown to the registry (red border). Typically caused by registry drift (loading a ``pipeline.json`` saved by a newer build).
+
+Blocking — Fixed linear editor cannot represent this DAG shape
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Issue kind(s):** ``unsupported_linear``
+
+**Severity:** error
+
+**Mechanic:** The fixed linear builder derives a one-spine-plus-side-values model with ``derive_linear_scope``. DAG shapes with forks, joins, cycles, dangling edges, shared aux sources, Input Image aux use, or orphan blocks emit ``unsupported_linear`` so linear edit dispatchers can pause mutation instead of corrupting the graph.
+
+**Offender:** The block reported by the linear-scope derivation, when the unsupported shape can be attributed to one block. The GUI shows an unsupported-state panel with export/reset actions for the raw builder JSON.

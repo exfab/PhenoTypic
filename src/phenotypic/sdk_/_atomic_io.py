@@ -11,16 +11,24 @@ lingers.
 The sibling-directory placement matters: :func:`os.replace` is only atomic when
 the source and destination are on the same filesystem, which a same-directory
 temp guarantees (a ``/tmp`` temp could land on a different mount and degrade to
-a non-atomic copy). Mirrors the callable-based
-:func:`phenotypic._cli._cli_output_manager._atomic_write`, but with a plain
-``text``/``bytes`` payload for the tune writers.
+a non-atomic copy). The module supports plain text/bytes payloads, deterministic
+JSON documents, pandas-style parquet writers, and callback-based writers such as
+Polars or matplotlib.
 """
+
 from __future__ import annotations
 
+import json
 import os
 import tempfile
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Union
+from typing import Any, Union
+
+PARQUET_WRITE_OPTIONS: dict[str, Any] = {
+    "compression": "zstd",
+    "compression_level": 3,
+}
 
 
 def _atomic_replace(target: Path, data: bytes) -> None:
@@ -68,6 +76,44 @@ def _atomic_replace(target: Path, data: bytes) -> None:
         raise
 
 
+def atomic_write_with_writer(
+    path: Union[str, Path],
+    writer: Callable[[str], None],
+) -> None:
+    """Atomically write ``path`` using a callback that receives a temp path.
+
+    Args:
+        path: Final destination path.
+        writer: Callable that writes complete output to a temporary path string.
+
+    Raises:
+        OSError: Propagated from the writer or rename after temp cleanup.
+    """
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path: Union[str, None] = None
+    try:
+        handle = tempfile.NamedTemporaryFile(
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".tmp",
+            delete=False,
+        )
+        tmp_path = handle.name
+        handle.close()
+        writer(tmp_path)
+        with open(tmp_path, "r+b") as fh:
+            os.fsync(fh.fileno())
+        os.replace(tmp_path, target)
+    except BaseException:
+        if tmp_path is not None:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+        raise
+
+
 def atomic_write_text(
     path: Union[str, Path], text: str, *, encoding: str = "utf-8"
 ) -> None:
@@ -104,3 +150,51 @@ def atomic_write_bytes(path: Union[str, Path], data: bytes) -> None:
         OSError: If the write or rename fails (the temp file is removed first).
     """
     _atomic_replace(Path(path), bytes(data))
+
+
+def atomic_write_json(
+    path: Union[str, Path],
+    payload: Mapping[str, Any] | list[Any],
+    *,
+    indent: int = 2,
+    sort_keys: bool = True,
+    ensure_ascii: bool = False,
+) -> None:
+    """Atomically write a JSON payload with deterministic formatting.
+
+    Args:
+        path: Destination JSON path.
+        payload: JSON-serializable mapping or list.
+        indent: Indentation passed to :func:`json.dumps`.
+        sort_keys: Whether mapping keys are sorted for deterministic output.
+        ensure_ascii: Whether non-ASCII characters are escaped.
+    """
+    atomic_write_text(
+        path,
+        json.dumps(
+            payload,
+            indent=indent,
+            sort_keys=sort_keys,
+            ensure_ascii=ensure_ascii,
+        )
+        + "\n",
+    )
+
+
+def atomic_write_parquet(
+    path: Union[str, Path],
+    frame: Any,
+    **kwargs: Any,
+) -> None:
+    """Atomically write a pandas-like frame with shared parquet defaults.
+
+    Args:
+        path: Destination parquet path.
+        frame: Object exposing ``to_parquet(path, **kwargs)``.
+        **kwargs: Per-call parquet writer overrides.
+    """
+    write_options = {"index": False, **PARQUET_WRITE_OPTIONS, **kwargs}
+    atomic_write_with_writer(
+        path,
+        lambda tmp_path: frame.to_parquet(tmp_path, **write_options),
+    )

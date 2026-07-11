@@ -186,6 +186,37 @@ class DinoSam2Detector(GpuDetector):
             duplicates (fixes SAM2 over-segmentation).  Default 0.7.
         min_proposal_area: Minimum proposal area in pixels (forwarded to SAM2's
             mask generator).  Default 100.
+        tile_px: Tile size, in pixels, at which DINO dense features are
+            extracted.  A colony must be resolvable on the patch grid to be
+            pooled at all: on a whole 4000x3000 plate a 30 px colony spans
+            0.16 patches and its prototype collapses to the zero vector.  Under
+            the native processor kwargs the resolution is pinned at
+            ``patch_size`` native px per patch regardless of *tile_px*, so this
+            is a **compute** knob, not a fidelity one — smaller is cheaper at
+            equal fidelity (attention is quadratic in tokens per tile).
+            Default 518 (``14 * 37``, an exact DINOv2 patch multiple).
+        tile_overlap: Fractional overlap between neighbouring DINO tiles.  Only
+            a proposal whose centroid lands in a tile's *core* is pooled from
+            that tile, so the overlap only needs to keep colonies whole near a
+            seam.  Default 0.15.
+        crop_n_layers: Number of additional SAM2 **crop-pyramid layers** used to
+            generate proposals.  ``0`` is a single full-image pass, in which
+            SAM2's encoder squashes the whole plate to 1024x1024; the ``n``-th
+            added layer re-tiles the image into ``(2 ** n) ** 2`` overlapping
+            crops encoded nearer native resolution, merged by NMS that prefers
+            masks from smaller crops.  The full-image pass is always included,
+            so ``1`` costs 5 encoder passes and ``2`` costs 21.  Default 1.
+        crop_nms_thresh: Box-IoU cutoff for NMS between proposals from different
+            SAM2 crops -- deduplicates a colony seen in two overlapping crops.
+            Default 0.7 (the SAM2 default).
+        crop_overlap_ratio: Fraction of image length by which first-layer SAM2
+            crops overlap (later layers scale this down).  Set it so the overlap
+            exceeds the largest colony diameter.  Default ``512 / 1500`` (the
+            SAM2 default).
+        crop_n_points_downscale_factor: Point-grid density divisor per SAM2 crop
+            layer -- ``points_per_side`` in layer ``n`` is scaled by
+            ``crop_n_points_downscale_factor ** n``.  Default 1 (the SAM2
+            default).
         device: PyTorch device for inference.  ``"auto"`` probes accelerators
             and raises ``RuntimeError`` if none is found.
         input_layer: Image layer fed to the model -- ``"rgb"`` (default; the
@@ -257,6 +288,21 @@ class DinoSam2Detector(GpuDetector):
     similarity_thresh: Annotated[float, TuneSpec(0.0, 1.0)] = 0.5
     merge_iou_thresh: Annotated[float, TuneSpec(0.0, 1.0)] = 0.7
     min_proposal_area: Annotated[int, TuneSpec(0, 500)] = 100
+
+    # DINO feature tiling — 518 = 14 * 37, an exact DINOv2 patch multiple.
+    # Whole-plate pooling makes every colony sub-patch (see
+    # _dino_support.pool_prototype_tiled); tiles keep colonies resolvable.
+    tile_px: Annotated[int, TuneSpec(256, 1024)] = 518
+    tile_overlap: Annotated[float, TuneSpec(0.0, 0.4)] = 0.15
+
+    # Native SAM2 crop-pyramid knobs — defaults mirror upstream
+    # ``SAM2AutomaticMaskGenerator`` except ``crop_n_layers``, which we engage
+    # by default (mirrors ``Sam2Detector``).
+    crop_n_layers: Annotated[int, TuneSpec(0, 2)] = 1
+    crop_nms_thresh: Annotated[float, TuneSpec(0.0, 1.0)] = 0.7
+    crop_overlap_ratio: Annotated[float, TuneSpec(0.0, 0.5)] = 512 / 1500
+    crop_n_points_downscale_factor: Annotated[int, TuneSpec(1, 2)] = 1
+
     device: Device = "auto"
 
     # Lazy runtime state — PrivateAttr → skipped by serialization.
@@ -312,6 +358,10 @@ class DinoSam2Detector(GpuDetector):
             self.sam2_model_size,
             device=self._device,
             min_mask_region_area=self.min_proposal_area,
+            crop_n_layers=self.crop_n_layers,
+            crop_nms_thresh=self.crop_nms_thresh,
+            crop_overlap_ratio=self.crop_overlap_ratio,
+            crop_n_points_downscale_factor=self.crop_n_points_downscale_factor,
         )
         dino_id = self._hf_dino_id()
         self._dino_model = AutoModel.from_pretrained(dino_id).to(self._device)
@@ -328,6 +378,11 @@ class DinoSam2Detector(GpuDetector):
         similarity of their pooled DINO feature to the foreground prototype
         (mean of the highest-IoU proposals), filtered by
         ``similarity_thresh``, IoU-merged, and painted largest-first.
+
+        Dense DINO features are extracted **per ``tile_px`` tile**, not on the
+        whole plate: a plate-wide patch grid makes every colony sub-patch, so
+        each proposal would pool an empty mask and receive the zero-vector
+        prototype (see ``_dino_support.pool_prototype_tiled``).
         """
         import numpy as np
 
@@ -341,16 +396,27 @@ class DinoSam2Detector(GpuDetector):
         proposals = [m["segmentation"].astype(bool) for m in raw]
         # Shared, register-token-aware dense features (C1 fix lives in one
         # place — _dino_support.extract_patch_features — not duplicated here).
-        from phenotypic.detect.nn._dino_support import (
-            extract_patch_features,
-            pool_prototype,
-        )
+        from phenotypic.detect.nn import _dino_support
+        from phenotypic.detect.nn._tiling import _plan_tiles
 
-        dense = extract_patch_features(
-            self._dino_model, self._dino_processor, rgb, device=self._device
-        )
+        patch = _dino_support.backbone_patch_size(self._dino_model)
+        tiles = _plan_tiles(rgb.shape[:2], self.tile_px, self.tile_overlap)
+        dense_by_tile = [
+            _dino_support.extract_patch_features(
+                self._dino_model,
+                self._dino_processor,
+                rgb[t.y0:t.y1, t.x0:t.x1],
+                device=self._device,
+            )
+            for t in tiles
+        ]
         features = np.stack(
-            [pool_prototype(dense, p).astype(np.float64) for p in proposals]
+            [
+                _dino_support.pool_prototype_tiled(
+                    dense_by_tile, tiles, p, patch
+                ).astype(np.float64)
+                for p in proposals
+            ]
         )
         prototype = self._foreground_prototype(features, raw)
         scores = _score_by_prototype(features, prototype)

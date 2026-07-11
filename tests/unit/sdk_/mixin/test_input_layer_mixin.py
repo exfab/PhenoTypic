@@ -68,6 +68,18 @@ def test_read_rgb_returns_3d_float32_unit_range():
     assert 0.0 <= arr.min() and arr.max() <= 1.0
 
 
+def test_read_rgb_accepts_normalized_float_rgb():
+    """Float RGB is a valid image representation and must not call ``np.iinfo``."""
+    from phenotypic import Image
+
+    rgb = np.array([[[0.0, 0.25, 1.0]]], dtype=np.float32)
+    arr = _Probe(input_layer="rgb")._read_input_layer(Image(rgb))
+
+    assert arr.dtype == np.float32
+    assert not arr.flags.writeable
+    np.testing.assert_array_equal(arr, rgb)
+
+
 def test_project_collapses_3d_via_detect_mode():
     image = load_synth_yeast_plate()
     image.set_detect_mode("MinRGB")

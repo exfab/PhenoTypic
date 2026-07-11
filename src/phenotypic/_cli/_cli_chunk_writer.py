@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Any, Optional
 
@@ -26,7 +25,7 @@ import click
 import polars as pl
 
 from ._cli_file_locking import file_lock
-from ._cli_output_manager import _atomic_write, join_metadata
+from ._cli_output_manager import join_metadata
 from ._cli_utils import load_job_metadata, scan_parquets
 from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 from phenotypic.sdk_ import (
@@ -40,6 +39,9 @@ from phenotypic.sdk_ import (
     ChunkStateKey,
     ChunkManifestKey,
     JobMetadataKey,
+    PARQUET_WRITE_OPTIONS,
+    atomic_write_json,
+    atomic_write_with_writer,
     chunk_parquet_filename,
     chunk_lock_path,
     analysis_full_parquet_path,
@@ -82,11 +84,19 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
     chunks_dir.mkdir(parents=True, exist_ok=True)
 
     state_path = progress_dir / CHUNK_STATE_JSON
-    state = _read_json(state_path, default={ChunkStateKey.CHUNKED_FILES: [], ChunkStateKey.NEXT_CHUNK_ID: 0})
+    state = _read_json(
+        state_path,
+        default={
+            ChunkStateKey.CHUNKED_FILES: [],
+            ChunkStateKey.NEXT_CHUNK_ID: 0,
+        },
+    )
     chunked_files: set[str] = set(state.get(ChunkStateKey.CHUNKED_FILES, []))
     next_chunk_id: int = state.get(ChunkStateKey.NEXT_CHUNK_ID, 0)
 
-    new_files = _scan_unchunked_parquets(output_dir / DIR_RESULTS, chunked_files)
+    new_files = _scan_unchunked_parquets(
+        output_dir / DIR_RESULTS, chunked_files
+    )
     if not new_files:
         logger.info("No new measurement files to chunk")
         _ensure_overlay_manifest(output_dir)
@@ -104,9 +114,9 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
     )
 
     chunk_name = chunk_parquet_filename(next_chunk_id)
-    _atomic_write(
+    atomic_write_with_writer(
         chunks_dir / chunk_name,
-        lambda p: chunk_df.write_parquet(p, compression="zstd", compression_level=3),
+        lambda p: chunk_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
     )
 
     state[ChunkStateKey.CHUNKED_FILES] = sorted(chunked_files)
@@ -114,28 +124,41 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
     _write_json(state, state_path)
 
     manifest_path = progress_dir / CHUNK_MANIFEST_JSON
-    manifest = _read_json(manifest_path, default={ChunkManifestKey.CHUNKS: [], ChunkManifestKey.TOTAL_ROWS: 0})
-    datasets_in_chunk = chunk_df[str(EXPERIMENT_METADATA.DATASET)].unique().to_list()
+    manifest = _read_json(
+        manifest_path,
+        default={ChunkManifestKey.CHUNKS: [], ChunkManifestKey.TOTAL_ROWS: 0},
+    )
+    datasets_in_chunk = (
+        chunk_df[str(EXPERIMENT_METADATA.DATASET)].unique().to_list()
+    )
     manifest[ChunkManifestKey.CHUNKS].append(
         {
             ChunkManifestKey.NAME: chunk_name,
             ChunkManifestKey.ROWS: chunk_df.height,
-            ChunkManifestKey.DATASETS: sorted(str(d) for d in datasets_in_chunk),
+            ChunkManifestKey.DATASETS: sorted(
+                str(d) for d in datasets_in_chunk
+            ),
         }
     )
-    manifest[ChunkManifestKey.TOTAL_ROWS] = sum(c[ChunkManifestKey.ROWS] for c in manifest[ChunkManifestKey.CHUNKS])
+    manifest[ChunkManifestKey.TOTAL_ROWS] = sum(
+        c[ChunkManifestKey.ROWS] for c in manifest[ChunkManifestKey.CHUNKS]
+    )
     _write_json(manifest, manifest_path)
 
-    combined = _incremental_combined(chunk_df, analysis_full_parquet_path(progress_dir))
+    combined = _incremental_combined(
+        chunk_df, analysis_full_parquet_path(progress_dir)
+    )
     combined_with_metadata: Optional[pl.DataFrame] = None
     if combined is not None:
-        _atomic_write(
+        atomic_write_with_writer(
             analysis_full_parquet_path(progress_dir),
-            lambda p: combined.write_parquet(p, compression="zstd", compression_level=3),
+            lambda p: combined.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
 
         job_meta = load_job_metadata(progress_dir)
-        csv_str = job_meta.get(JobMetadataKey.METADATA_CSV) if job_meta else None
+        csv_str = (
+            job_meta.get(JobMetadataKey.METADATA_CSV) if job_meta else None
+        )
         metadata_csv = Path(csv_str) if csv_str else None
         # External metadata is intentionally kept out of the master archive,
         # which stays a clean snapshot of what the workers measured. The
@@ -154,15 +177,13 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
                 )
                 combined_with_metadata = combined
 
-        _atomic_write(
+        atomic_write_with_writer(
             master_measurements_csv_path(output_dir),
             lambda p: combined.write_csv(p),
         )
-        _atomic_write(
+        atomic_write_with_writer(
             master_measurements_parquet_path(output_dir),
-            lambda p: combined.write_parquet(
-                p, compression="zstd", compression_level=3
-            ),
+            lambda p: combined.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
 
         _run_analysis_plugins(output_dir, progress_dir, combined_with_metadata)
@@ -266,7 +287,10 @@ def _read_and_concat(parquet_files: list[Path]) -> pl.DataFrame | None:
             if str(EXPERIMENT_METADATA.DATASET) not in df.columns:
                 dataset_name = pq_path.parent.parent.name
                 df = df.insert_column(
-                    0, pl.lit(dataset_name).alias(str(EXPERIMENT_METADATA.DATASET))
+                    0,
+                    pl.lit(dataset_name).alias(
+                        str(EXPERIMENT_METADATA.DATASET)
+                    ),
                 )
             frames.append(df)
         except Exception as exc:
@@ -296,7 +320,9 @@ def _incremental_combined(
         prev = pl.read_parquet(existing_path)
         return pl.concat([prev, new_chunk], how="diagonal_relaxed")
     except Exception as exc:
-        logger.warning("Failed to read existing combined file, rebuilding: %s", exc)
+        logger.warning(
+            "Failed to read existing combined file, rebuilding: %s", exc
+        )
         return _rebuild_combined(existing_path.parent / "chunks") or new_chunk
 
 
@@ -338,8 +364,11 @@ def _run_analysis_plugins(
         merged_df: Merged measurement DataFrame, or ``None``.
     """
     try:
-        from ._dashboard._analysis._prepare_context import AnalysisPrepareContext
+        from ._dashboard._analysis._prepare_context import (
+            AnalysisPrepareContext,
+        )
         from phenotypic.sdk_.register import AnalysisPluginRegistry
+
         # Trigger plugin registration
         from ._dashboard._analysis import (  # noqa: F401
             _image_viewer,
@@ -376,7 +405,11 @@ def _update_dataset_parquet(
         new_df: DataFrame of newly chunked measurements for this dataset.
     """
     agg_path = (
-        output_dir / DIR_RESULTS / dataset_name / DIR_MEASUREMENTS / DATASET_AGGREGATED_PARQUET
+        output_dir
+        / DIR_RESULTS
+        / dataset_name
+        / DIR_MEASUREMENTS
+        / DATASET_AGGREGATED_PARQUET
     )
     if agg_path.exists():
         try:
@@ -384,9 +417,9 @@ def _update_dataset_parquet(
             new_df = pl.concat([prev, new_df], how="diagonal_relaxed")
         except Exception:
             logger.warning("Corrupt %s, rebuilding from new data", agg_path)
-    _atomic_write(
+    atomic_write_with_writer(
         agg_path,
-        lambda p: new_df.write_parquet(p, compression="zstd", compression_level=3),
+        lambda p: new_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
     )
 
 
@@ -417,7 +450,7 @@ def _read_json(path: Path, *, default: dict[str, Any]) -> dict[str, Any]:
 
 
 def _write_json(data: dict[str, Any], path: Path) -> None:
-    """Write JSON with fsync for durability.
+    """Write JSON atomically with fsync for durability.
 
     Caller must hold the outer chunk lock.
 
@@ -425,12 +458,7 @@ def _write_json(data: dict[str, Any], path: Path) -> None:
         data: Dict to serialize.
         path: Destination file (parent dirs created if needed).
     """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
-        f.write("\n")
-        f.flush()
-        os.fsync(f.fileno())
+    atomic_write_json(path, data, sort_keys=False)
 
 
 def _ensure_overlay_manifest(output_dir: Path) -> None:
@@ -444,7 +472,9 @@ def _ensure_overlay_manifest(output_dir: Path) -> None:
     if manifest_path.exists():
         return
     try:
-        from ._dashboard._analysis._prepare_context import AnalysisPrepareContext
+        from ._dashboard._analysis._prepare_context import (
+            AnalysisPrepareContext,
+        )
         from ._dashboard._analysis._image_viewer import ImageViewerPlugin
 
         # ImageViewerPlugin.prepare_data writes the manifest under deliverables/

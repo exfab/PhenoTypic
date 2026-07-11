@@ -21,6 +21,11 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, get_args
 
+try:
+    from scripts._reference_generator import write_or_check_generated_file
+except ModuleNotFoundError:  # pragma: no cover - path-script execution
+    from _reference_generator import write_or_check_generated_file
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_RST = (
     REPO_ROOT
@@ -160,23 +165,45 @@ _RULES: List[Dict[str, Any]] = [
             "border + \"?\" badge)."
         ),
     },
-    # Advisory issue that doesn't map to a numbered spec rule but still
-    # emits from the validator.
+    # Non-numbered runtime issue: blocks pipeline materialization.
     {
         "rule": None,
         "kinds": ["unknown_class"],
-        "severity": "advisory",
+        "severity": "error",
         "title": "Class not in the operation registry",
         "mechanic": (
             "Registry lookup for each non-sentinel block's "
             "``class_name``. A miss emits ``unknown_class`` as an "
-            "advisory so the rule-3 walk can skip the block cleanly "
-            "without raising."
+            "error because the runtime cannot safely materialize a "
+            "pipeline from an unknown class. The rule-3 walk skips "
+            "parameter introspection for that block cleanly."
         ),
         "offender": (
-            "The block whose class is unknown to the registry (yellow "
-            "border + \"?\" badge). Typically caused by registry drift "
+            "The block whose class is unknown to the registry (red "
+            "border). Typically caused by registry drift "
             "(loading a ``pipeline.json`` saved by a newer build)."
+        ),
+    },
+    # Non-numbered runtime issue: the fixed linear editor cannot edit this
+    # DAG shape safely.
+    {
+        "rule": None,
+        "kinds": ["unsupported_linear"],
+        "severity": "error",
+        "title": "Fixed linear editor cannot represent this DAG shape",
+        "mechanic": (
+            "The fixed linear builder derives a one-spine-plus-side-values "
+            "model with ``derive_linear_scope``. DAG shapes with forks, "
+            "joins, cycles, dangling edges, shared aux sources, Input Image "
+            "aux use, or orphan blocks emit ``unsupported_linear`` so "
+            "linear edit dispatchers can pause mutation instead of corrupting "
+            "the graph."
+        ),
+        "offender": (
+            "The block reported by the linear-scope derivation, when the "
+            "unsupported shape can be attributed to one block. The GUI shows "
+            "an unsupported-state panel with export/reset actions for the "
+            "raw builder JSON."
         ),
     },
 ]
@@ -202,11 +229,10 @@ _RST_HEADER = """Pipeline builder validation rules
 The DAG builder's validation surface is a pure function
 :func:`phenotypic.gui.builder._validation.validate` that walks every
 scope reachable from ``state.root`` and emits a flat list of
-:class:`~phenotypic.gui.builder._validation.Issue` records. Six
-**blocking** rules (severity ``"error"``) disable
-``Run preview`` and ``Save pipeline``; the advisory hints (severity
-``"advisory"``) decorate the canvas with yellow borders but never
-block.
+:class:`~phenotypic.gui.builder._validation.Issue` records. Blocking
+issues (severity ``"error"``) disable ``Run preview`` and
+``Save pipeline``; advisory hints (severity ``"advisory"``) decorate
+the canvas with yellow borders but never block.
 
 Rules emit in deterministic order:
 
@@ -217,6 +243,7 @@ Rules emit in deterministic order:
 5. ``cycle`` (Rule 4)
 6. ``container_mode`` (Rule 5)
 7. ``stage_order_hint`` (Rule 7, advisory)
+8. ``unsupported_linear`` (fixed linear editor compatibility)
 
 Nested-scope issues are appended after the parent scope's issues so
 snapshot-style tests stay stable.
@@ -265,9 +292,12 @@ def _render_rst(entries: List[Dict[str, Any]]) -> str:
     chunks.append("------------------")
     chunks.append("")
     for entry in entries:
-        rule_label = (
-            f"Rule {entry['rule']}" if entry["rule"] is not None else "Advisory"
-        )
+        if entry["rule"] is not None:
+            rule_label = f"Rule {entry['rule']}"
+        elif entry["severity"] == "error":
+            rule_label = "Blocking"
+        else:
+            rule_label = "Advisory"
         heading = f"{rule_label} — {entry['title']}"
         chunks.append(heading)
         chunks.append("~" * len(heading))
@@ -354,28 +384,12 @@ def main(argv: List[str] | None = None) -> int:
     _check_coverage(_RULES)
     rendered = _render_rst(_RULES)
 
-    if args.check:
-        if not OUTPUT_RST.exists():
-            print(
-                f"{OUTPUT_RST} does not exist; run "
-                "scripts/generate_validation_reference.py without --check.",
-                file=sys.stderr,
-            )
-            return 1
-        existing = OUTPUT_RST.read_text(encoding="utf-8")
-        if existing != rendered:
-            print(
-                f"{OUTPUT_RST} is out of date; regenerate with "
-                "`uv run python scripts/generate_validation_reference.py`.",
-                file=sys.stderr,
-            )
-            return 1
-        return 0
-
-    OUTPUT_RST.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_RST.write_text(rendered, encoding="utf-8")
-    print(f"Wrote {OUTPUT_RST}")
-    return 0
+    return write_or_check_generated_file(
+        output_path=OUTPUT_RST,
+        rendered=rendered,
+        check=args.check,
+        regenerate_command="uv run python scripts/generate_validation_reference.py",
+    )
 
 
 if __name__ == "__main__":

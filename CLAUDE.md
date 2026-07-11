@@ -8,6 +8,16 @@
   with the topic name
 - **html artifacts** go in @docs/superpowers/artifacts/ under their own dated folder
   with the topic name
+- **Executable logic-validation scripts** go in @docs/superpowers/logic_validation_scripts/
+  under the change's own dated topic folder (same name as the matching spec/plan). One
+  runnable script per subject, named `<subject>.py`; it re-derives the load-bearing numeric
+  claims from scratch, depends only on the stdlib + numpy/scipy (never imports `phenotypic`),
+  exits non-zero on failure, and is committed alongside the spec. Write one whenever a design
+  rests on a numeric invariant a reader would otherwise take on faith — it is what keeps
+  specs, plans, and tests from drifting apart across a long change. See the
+  **`porting-a-reference-algorithm`** skill for the surrounding procedure. Precedent:
+  `docs/superpowers/specs/2026-07-08-alt-phase-detection/verify_claims.py` — an existing
+  script still co-located with its spec; `logic_validation_scripts/` is the going-forward home.
 
 ## Quick Start
 
@@ -54,8 +64,6 @@
     - `--gpu-shards N` (default 1) — parallel whole-GPU Stage-2 tasks (SLURM-only).
     - `--gpu-workers-per-gpu W` (default 1) — replicas packed per GPU (small-model
       fill).
-    - `--gpu-batch-size N|auto` (default 1) — images/forward (batchable models; `auto`
-      VRAM-probe lands in Spec 2).
 - `uv run python -m phenotypic.tune run spec.json -i <images> -o <out>` —
   hyperparameter tuning (grid/random + Optuna), distributed via `--slurm`/
   `--storage-url`
@@ -196,6 +204,19 @@ Conventions for closed value sets (`Enum`/`Literal`), `MeasurementInfo` /
 `ConstantLabels`, parameterized strings, and the tune annotation-coverage gate
 live in the **`adding-an-operation`** skill — use it when adding or editing any
 operation parameter.
+
+## Porting a Reference Algorithm
+
+Some operations here are **ports** of an external algorithm (a paper, a reference
+implementation), not fresh code — e.g. `FocusEdgePhase` and `FocusEdgeMonogenicPhase`
+transcribe Kovesi's `phasecong3` / `phasecongmono`. When matching code to an outside
+source, use the **`porting-a-reference-algorithm`** skill *before* making any claim about
+what that source does. It is a checkable procedure: assemble every reference locally →
+cite `file:line` for each claim → diff line-by-line (never inspect-and-summarize) → pin
+behaviour with a golden fixture (all outputs) **and** behavioural controls → mutation-test
+the suite → prove the fixture fails when the bug it guards is reintroduced → one
+drift-register row per deviation, however small. The executable check it produces belongs
+under `docs/superpowers/logic_validation_scripts/` (see **Agentic AI File Rules**).
 
 ## Gotchas
 

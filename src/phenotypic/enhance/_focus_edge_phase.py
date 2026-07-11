@@ -13,9 +13,15 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated, List, Literal
 
 import numpy as np
-from numpy.fft import fft2, ifft2, ifftshift
+from numpy.fft import fft2, ifft2
 from pydantic import Field
 
+from ._monogenic_kernels import (
+    construct_filter_grids,
+    log_gabor_radial,
+    rayleigh_mode,
+    spread_weight,
+)
 from ..abc_ import FocusEdge
 from ..sdk_.typing_ import TuneSpec
 
@@ -30,8 +36,18 @@ class _PhaseCong3Result:
     Attributes:
         M: Maximum moment of phase congruency covariance (edge strength).
         m: Minimum moment of phase congruency covariance (corner strength).
-        orientation: Feature orientation in radians [-pi/2, pi/2]. 0 corresponds
-            to a vertical edge, pi/2 is horizontal. Positive is anticlockwise.
+        orientation: Feature orientation in radians ``(-pi/2, pi/2]``. ``0`` is a
+            vertical edge, ``pi/2`` horizontal; positive is anticlockwise. Measured,
+            not assumed: a vertical step edge reads ``0.0`` degrees and a horizontal
+            one ``90.0``. Agrees with
+            :attr:`FocusEdgeMonogenicPhase`'s orientation to ``1.64`` degrees mean
+            (the residual is this operator's angular quantisation across ``n_orient``
+            filters; the monogenic one is continuous).
+
+            **This required a reflection of Kovesi's Julia output** -- see drift ``M13``.
+            His ``phasecong3`` reports ``pi/2 - phi``, contradicting its own docstring
+            *and* his ``phasecongmono``. Only ``orientation`` is affected; ``M``, ``m``,
+            ``pc_sum`` and ``feature_type`` are untouched.
         feature_type: Local weighted mean phase angle. pi/2 corresponds to a
             bright line, 0 to a step edge, -pi/2 to a dark line.
         T: Calculated noise threshold.
@@ -139,7 +155,7 @@ class FocusEdgePhase(FocusEdge):
         congruency map, clipped to [0, 1]. ``rgb`` and ``gray`` are unchanged.
 
     Raises:
-        ValueError: If ``n_scale`` < 1, ``n_orient`` < 1,
+        ValueError: If ``n_scale`` < 2, ``n_orient`` < 1,
             ``min_wavelength`` < 2, ``mult`` <= 1, ``sigma_onf`` outside
             [0.1, 1.0], ``k`` < 0, ``cutoff`` outside (0, 1), or ``g`` <= 0.
 
@@ -166,13 +182,26 @@ class FocusEdgePhase(FocusEdge):
         phase congruency and the Local Energy Model.
     """
 
-    n_scale: Annotated[int, TuneSpec(3, 6)] = Field(4, ge=1)
+    # ge=2: _phasecong3 divides by (n_scale - 1). At n_scale=1 that is a
+    # divide-by-zero which silently yields an all-zero detect_mat.
+    n_scale: Annotated[int, TuneSpec(3, 6)] = Field(4, ge=2)
     n_orient: Annotated[int, TuneSpec(4, 8)] = Field(6, ge=1)
     min_wavelength: Annotated[float, TuneSpec(2.0, 10.0)] = Field(3.0, ge=2.0)
     mult: Annotated[float, TuneSpec(1.5, 3.0)] = Field(2.1, gt=1.0)
-    sigma_onf: Annotated[float, TuneSpec(0.1, 1.0)] = Field(0.55, ge=0.1, le=1.0)
-    # Lower bound 0.5 (not 0.0): k=0 disables noise thresholding, a degenerate
-    # search anchor that the optimizer should never spend trials on.
+    # TuneSpec high is 0.99, not 1.0. `log_gabor_scale` raises at sigma_onf == 1.0 (drift M10),
+    # and `FloatRange` appends `high` exactly (tune/_search_space/_domains.py:86) -- so a grid
+    # tune over a 1.0 window would evaluate the degenerate point on every run. The `Field`
+    # bound stays `le=1.0` so `ImagePipeline.from_json` still loads legacy pipelines;
+    # `tests/fixtures/tune/back_compat_pipelines/enhance_features_sigma_onf_high.json` pins
+    # exactly that value. Construction succeeds; `.apply()` raises. A TuneSpec is a search
+    # window, not a validity bound, and narrowing it breaks nothing that deserializes.
+    sigma_onf: Annotated[float, TuneSpec(0.1, 0.99)] = Field(0.55, ge=0.1, le=1.0)
+    # Lower search bound 0.5 (not 0.0). k=0 does NOT disable noise thresholding -- it
+    # drops the standard-deviation term, leaving T = totalTau*sqrt(pi/2), the noise MEAN
+    # (measured on load_synth_yeast_plate: T = 4.19e-04 at k=0 versus 1.08e-03 at k=3).
+    # `noise_method=0.0` is what sets T = 0.0 exactly. k=0 is still a degenerate anchor --
+    # every response above the noise mean survives -- so the optimizer should not spend
+    # trials there, but the reason is not the one this comment used to give.
     k: Annotated[float, TuneSpec(0.5, 20.0)] = Field(2.0, ge=0.0)
     cutoff: Annotated[float, TuneSpec(0.3, 0.7)] = Field(0.5, gt=0.0, lt=1.0)
     g: Annotated[float, TuneSpec(2.0, 20.0)] = Field(10.0, gt=0.0)
@@ -208,11 +237,14 @@ class FocusEdgePhase(FocusEdge):
         rows, cols = img.shape
         epsilon = 1e-5  # Julia uses 1e-5
 
-        # Construct filter grids (quadrant-shifted, DC at corners)
-        radius, sintheta, costheta, freq = self._construct_filter_grids(rows, cols)
+        # Construct filter grids (quadrant-shifted, DC at corners).
+        # Shared kernel returns six values; freq/fx/fy are unused by phasecong3.
+        radius, sintheta, costheta, _, _, _ = construct_filter_grids(rows, cols)
 
         # Construct radial component of log-Gabor filters
-        log_gabor_list = self._construct_log_gabor_filters(radius)
+        log_gabor_list = log_gabor_radial(
+                radius, self.n_scale, self.min_wavelength, self.mult, self.sigma_onf
+        )
 
         # Construct angular components using cosine filter (Julia reference)
         angular_spread = self._compute_angular_spread(sintheta, costheta)
@@ -275,23 +307,22 @@ class FocusEdgePhase(FocusEdge):
                         tau = float(np.median(amplitude) / np.sqrt(np.log(4)))
                     elif abs(self.noise_method + 2) < epsilon:
                         # Mode-based Rayleigh estimation
-                        tau = self._rayleigh_mode(amplitude)
+                        tau = rayleigh_mode(amplitude)
 
             # Compute noise threshold T for this orientation
             if self.noise_method >= 0:
                 T = self.noise_method
-            else:
+            elif tau > 0:
                 # Total tau across scales (geometric series)
-                if tau > 0:
-                    total_tau = tau * (1 - (1 / self.mult) ** self.n_scale) / (
-                            1 - 1 / self.mult
-                    )
-                    # Expected noise energy from Rayleigh distribution
-                    mean_energy = total_tau * np.sqrt(np.pi / 2)
-                    sigma_energy = total_tau * np.sqrt((4 - np.pi) / 2)
-                    T = mean_energy + self.k * sigma_energy
-                else:
-                    T = 0.0
+                total_tau = tau * (1 - (1 / self.mult) ** self.n_scale) / (
+                        1 - 1 / self.mult
+                )
+                # Expected noise energy from Rayleigh distribution
+                mean_energy = total_tau * np.sqrt(np.pi / 2)
+                sigma_energy = total_tau * np.sqrt((4 - np.pi) / 2)
+                T = mean_energy + self.k * sigma_energy
+            else:
+                T = 0.0
 
             # Compute unit-normalized mean direction (Julia reference: XEnergy normalization)
             # MeanE and MeanO form a unit vector pointing in mean phase direction
@@ -316,9 +347,12 @@ class FocusEdgePhase(FocusEdge):
             energy_v[:, :, 2] += np.sin(angle) * sum_odd
 
             # Frequency spread weighting (Julia reference)
-            # Width measures how spread out the frequency responses are
-            width = (sum_amplitude / (max_amplitude + epsilon) - 1) / (self.n_scale - 1)
-            weight = 1.0 / (1.0 + np.exp((self.cutoff - width) * self.g))
+            # Width measures how spread out the frequency responses are.
+            # epsilon = 1e-5 is phasecong3's value; pass it explicitly so the
+            # shared kernel does not substitute phasecongmono's 1e-4.
+            weight = spread_weight(
+                    sum_amplitude, max_amplitude, self.n_scale, self.cutoff, self.g, epsilon
+            )
 
             # Phase congruency for this orientation (local variable, not stored
             # in a 3D array — saves ~0.58 GB at 3000x4000)
@@ -360,6 +394,32 @@ class FocusEdgePhase(FocusEdge):
         orientation = np.nan_to_num(orientation, nan=0.0, posinf=np.pi / 2,
                                     neginf=-np.pi / 2)
 
+        # Reflect: `pi/2 - orientation`, folded back into (-pi/2, pi/2]. Drift M13.
+        #
+        # Julia's `gridangles` (frequencyfilt.jl:430-431) builds `sintheta = fx/freq`,
+        # `costheta = fy/freq` -- which is `(cos(theta), -sin(theta))` of the angle MATLAB
+        # uses (`phasecong3.m:189`, `sin/cos` of `atan2(-y, x)`). That rotates the oriented
+        # bank 90 degrees, so the angle accumulated into `energy_v` is `pi/2 - phi`, not `phi`.
+        #
+        # Verified by RUNNING Kovesi's code, not by reading it. `phasecong3` from
+        # ImagePhaseCongruency.jl reports -86.35 deg on a vertical edge and -0.06 deg on a
+        # horizontal one -- while its own docstring says "0 corresponds to a vertical edge",
+        # and his `phasecongmono` in the same package reports -0.03 deg on that vertical edge.
+        # Kovesi's Julia contradicts itself. His MATLAB `phasecong3` satisfies "0 = vertical"
+        # but reports `-phi`, i.e. clockwise, violating the other half of the same docstring.
+        #
+        # We reflect so this operation reports `phi`. It then matches our own docstring, matches
+        # `FocusEdgeMonogenicPhase.orientation` (mean disagreement 35.89 deg -> 1.64 deg, the
+        # residual being the oriented bank's angular quantisation), and matches Kovesi's MATLAB
+        # at 0 and 90 degrees.
+        #
+        # `orientation` is a pure OUTPUT -- nothing downstream consumes it -- so `M`, `m`,
+        # `pc_sum` and `feature_type` are bit-identical either way. Switching the *grid* instead
+        # would move `pc_sum` by 2.2e-04 at n_orient=6 and 5.1e-02 at n_orient=5, and would
+        # still leave the two operations 35.89 deg apart. The cheap lever is the right one.
+        orientation = np.pi / 2 - orientation
+        orientation = np.where(orientation > np.pi / 2, orientation - np.pi, orientation)
+
         # Feature type (Julia reference)
         odd_v = np.sqrt(energy_v[:, :, 1] ** 2 + energy_v[:, :, 2] ** 2)
         feature_type = np.arctan2(energy_v[:, :, 0], odd_v)
@@ -375,98 +435,6 @@ class FocusEdgePhase(FocusEdge):
                 T=T,
                 pc_sum=pc_sum / self.n_orient,
         )
-
-    def _construct_filter_grids(
-            self, rows: int, cols: int
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Construct frequency domain grids for filter construction.
-
-        Grids are quadrant-shifted so DC component is at [0, 0].
-        Follows Julia filtergrids() implementation for odd/even handling.
-
-        Args:
-            rows: Number of rows in image.
-            cols: Number of columns in image.
-
-        Returns:
-            Tuple of (radius, sintheta, costheta, freq) where:
-            - radius: Radial frequency normalized [0, 0.5] with DC=1 to avoid div/0
-            - sintheta: fx/freq grid for angular filter (Julia gridangles)
-            - costheta: fy/freq grid for angular filter (Julia gridangles)
-            - freq: Original radial frequency with DC=0
-        """
-        # Frequency coordinates - Julia handles odd/even differently
-        if cols % 2 == 1:  # odd
-            fx_range = np.arange(-(cols - 1) / 2, (cols - 1) / 2 + 1) / cols
-        else:  # even
-            fx_range = np.arange(-cols / 2, cols / 2) / cols
-
-        if rows % 2 == 1:  # odd
-            fy_range = np.arange(-(rows - 1) / 2, (rows - 1) / 2 + 1) / rows
-        else:  # even
-            fy_range = np.arange(-rows / 2, rows / 2) / rows
-
-        # Quadrant shift so DC is at [0,0]
-        fx_range = ifftshift(fx_range)
-        fy_range = ifftshift(fy_range)
-
-        fx, fy = np.meshgrid(fx_range, fy_range)
-
-        # Radial frequency
-        freq = np.sqrt(fx ** 2 + fy ** 2)
-
-        # For log-Gabor, need radius with DC=1 to avoid log(0)
-        radius = freq.copy()
-        radius[0, 0] = 1.0
-
-        # Compute sintheta and costheta for angular filters (Julia gridangles)
-        # Temporarily set freq DC to 1 to avoid divide by zero
-        freq_safe = freq.copy()
-        freq_safe[0, 0] = 1.0
-        sintheta = fx / freq_safe
-        costheta = fy / freq_safe
-
-        # Restore DC values
-        sintheta[0, 0] = 0.0
-        costheta[0, 0] = 0.0
-
-        return radius, sintheta, costheta, freq
-
-    def _construct_log_gabor_filters(self, radius: np.ndarray) -> List[np.ndarray]:
-        """Construct log-Gabor filters for each scale.
-
-        Log-Gabor filters have Gaussian transfer functions on a logarithmic
-        frequency scale, providing constant shape ratio across scales.
-
-        Args:
-            radius: Radial frequency grid.
-
-        Returns:
-            List of n_scale log-Gabor filter arrays.
-        """
-        log_gabor_list = []
-
-        # Lowpass filter depends only on radius, not scale — compute once
-        lowpass = 1.0 / (1.0 + (radius / 0.45) ** 30)
-
-        for s in range(self.n_scale):
-            wavelength = self.min_wavelength * (self.mult ** s)
-            f0 = 1.0 / wavelength  # Center frequency
-
-            # Log-Gabor transfer function
-            with np.errstate(divide="ignore", invalid="ignore"):
-                log_rad_over_f0 = np.log(radius / f0)
-
-            log_gabor = np.exp(
-                    -(log_rad_over_f0 ** 2) / (2 * np.log(self.sigma_onf) ** 2)
-            )
-
-            # Zero out DC component
-            log_gabor[0, 0] = 0
-
-            log_gabor_list.append(log_gabor * lowpass)
-
-        return log_gabor_list
 
     def _compute_angular_spread(
             self, sintheta: np.ndarray, costheta: np.ndarray
@@ -508,35 +476,3 @@ class FocusEdgePhase(FocusEdge):
             angular_spread_list.append(spread)
 
         return angular_spread_list
-
-    def _rayleigh_mode(self, amplitude: np.ndarray) -> float:
-        """Estimate Rayleigh distribution parameter from amplitude data.
-
-        For filter responses to Gaussian noise, amplitudes follow a Rayleigh
-        distribution. The mode of a Rayleigh distribution equals sigma.
-
-        Args:
-            amplitude: Array of amplitude values.
-
-        Returns:
-            Estimated Rayleigh sigma parameter.
-        """
-        # Flatten and remove zeros
-        amp_flat = amplitude.flatten()
-        amp_flat = amp_flat[amp_flat > 0]
-
-        if len(amp_flat) == 0:
-            return 0.0
-
-        # Histogram-based mode estimation
-        # Match Julia: uses 50 bins
-        n_bins = 50
-        hist, bin_edges = np.histogram(amp_flat, bins=n_bins)
-        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-
-        # Find mode (peak of histogram)
-        mode_idx = np.argmax(hist)
-        mode_value = bin_centers[mode_idx]
-
-        # For Rayleigh distribution, mode = sigma
-        return float(mode_value)

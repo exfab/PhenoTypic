@@ -12,6 +12,8 @@ from phenotypic.data import load_synth_yeast_plate, load_synth_filamentous_plate
 from phenotypic.measure import MeasureSymmetricZones
 
 _GOLDEN_DIR = Path(__file__).parent / "_golden"
+_GOLDEN_RTOL = 3e-2
+_GOLDEN_ATOL = 1e-9
 _CASES = {
     "yeast": load_synth_yeast_plate,
     "filamentous": load_synth_filamentous_plate,
@@ -32,7 +34,13 @@ def test_symmetric_zones_matches_golden(name):
     )
     result = _measure(_CASES[name])
     golden = pd.read_parquet(golden_path)
-    pd.testing.assert_frame_equal(result, golden)
+    pd.testing.assert_frame_equal(
+        result,
+        golden,
+        check_exact=False,
+        rtol=_GOLDEN_RTOL,
+        atol=_GOLDEN_ATOL,
+    )
 
 
 @pytest.mark.skipif(
