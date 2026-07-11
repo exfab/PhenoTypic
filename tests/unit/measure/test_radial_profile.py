@@ -133,6 +133,29 @@ def test_boundary_pixel_sampling_would_break_down():
     assert float((signature > 45).mean()) < 0.05
 
 
+def test_reach_uses_the_outermost_crossing_per_bin_not_the_mean():
+    """Mutation control for the max-per-bin aggregation.
+
+    Each angular bin must report the *outermost* contour crossing, not the mean
+    of the crossings that fall in it. The two agree once every bin is narrow
+    enough to hold a single boundary feature, so this test forces them apart
+    with a deliberately coarse bin count: at angular_bins=16 the runner's tip
+    (r=90.5) shares a ~22.5-degree bin with the disk edge (r=40). The outermost
+    crossing keeps the tip; a mean-per-bin would average it down toward ~61.
+
+    If _trace_radial_signature is switched to mean-per-bin, ReachRadius here
+    drops from ~90.5 to ~61 -- 29 px, far outside TOL -- and this fails.
+    """
+    op = MeasureShape(angular_bins=16)
+    profile = op._measure_radial_profile(_crop(_disk_with_runner()))
+
+    # Max-per-bin preserves the runner tip even at coarse resolution.
+    assert profile["Shape_ReachRadius"] == pytest.approx(90.5, abs=TOL)
+    # The mean-per-bin value (~61.5) must be excluded by a wide margin, so the
+    # assertion above cannot pass under that mutation.
+    assert profile["Shape_ReachRadius"] > 61.5 + 10 * TOL
+
+
 @pytest.mark.parametrize(
     "mask",
     [
