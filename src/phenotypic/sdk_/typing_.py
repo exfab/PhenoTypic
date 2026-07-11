@@ -63,15 +63,12 @@ PhaseFusion = Literal["joint", "coherent", "l2"]
 #: exists so the field surface is stable; the code path does not exist yet.
 PhaseLift = Literal["monogenic", "conformal"]
 
-#: What :class:`FocusEdgeColorPhase` writes to ``detect_mat``. **Only ``pc``.** Of the three
-#: fusion rules only ``coherent`` builds a fused monogenic vector -- ``joint`` sums scalar
-#: energies, ``l2`` sums finished congruency maps -- so a cross-channel ``orientation`` or
-#: ``feature_type`` would describe a quantity the response never touched under the shipped
-#: default. Both are still computed and returned by the protected helper
-#: ``FocusEdgeColorPhase._color_phase_congruency()``, mirroring
-#: ``FocusEdgePhase._phasecong3()``, so a future consumer can reach them without a breaking
-#: change. Drift ``C15``.
-ColorPhaseOutput = Literal["pc"]
+#: Which :class:`FocusEdgeColorPhase` response map writes to ``detect_mat``. Mirrors
+#: :data:`MonogenicOutput`: ``"pc"`` is the fused congruency, and ``"orientation"`` /
+#: ``"feature_type"`` are normalized diagnostic angle maps. Under ``joint`` and ``l2`` the
+#: latter come from the weighted fused vector rather than the scalar calculation producing
+#: PC, so they are not a substitute for PC when detecting edges. Drift ``C15``.
+ColorPhaseOutput = Literal["pc", "orientation", "feature_type"]
 
 #: Image layer a process-mode CLI run exports. A closed
 #: subset of the layers exposed as Image accessors; ``rgb``/``gray``/

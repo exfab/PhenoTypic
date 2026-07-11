@@ -6,11 +6,13 @@ PFOM ranking regression live in the sibling files added alongside this one.
 
 from __future__ import annotations
 
+import json
 from typing import get_args
 
 import numpy as np
 import pytest
 from pydantic import ValidationError
+from skimage.exposure import rescale_intensity
 
 from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
@@ -46,6 +48,13 @@ class TestConstruction:
             "lab", "joint", "monogenic", "pc",
         )
         assert op.chroma_weight_1 == op.chroma_weight_2 == 1.0
+        assert op.norm == "clip"
+
+    @pytest.mark.parametrize("operation", [FocusEdgeColorPhase, FocusEdgeMonogenicPhase])
+    def test_norm_is_appended_in_schema_and_serialization(self, operation):
+        assert list(operation.model_fields)[-1] == "norm"
+        assert list(operation.model_json_schema()["properties"])[-1] == "norm"
+        assert list(json.loads(operation().to_json())["params"])[-1] == "norm"
 
     def test_construction_is_keyword_only(self):
         with pytest.raises(TypeError):
@@ -69,7 +78,8 @@ class TestConstruction:
             ("min_wavelength", 1.5),
             ("color_space", "rgb"),
             ("fusion", "mean"),
-            ("output", "orientation"),
+            ("output", "pc_sum"),
+            ("norm", "normalize"),
         ],
     )
     def test_out_of_range_fields_are_rejected(self, field, bad):
@@ -225,7 +235,7 @@ class TestFieldParityWithTheMonogenicPort:
 
     SHARED = [
         "n_scale", "min_wavelength", "mult", "sigma_onf", "k",
-        "deviation_gain", "cutoff", "g", "noise_method",
+        "deviation_gain", "cutoff", "g", "noise_method", "norm",
     ]
 
     @pytest.mark.parametrize("name", SHARED)
@@ -258,9 +268,8 @@ class TestTheClosedValueSets:
         assert set(get_args(PhaseFusion)) == {"joint", "coherent", "l2"}
         assert set(get_args(PhaseLift)) == {"monogenic", "conformal"}
 
-    def test_only_pc_is_exposed(self):
-        """Drift ``C15``. Only ``coherent`` builds a fused monogenic vector."""
-        assert get_args(ColorPhaseOutput) == ("pc",)
+    def test_color_output_matches_the_monogenic_response_set(self):
+        assert get_args(ColorPhaseOutput) == ("pc", "orientation", "feature_type")
 
     def test_the_fusion_literal_matches_the_kernel_dispatch(self):
         from phenotypic.enhance._color_phase_kernels import FUSIONS
@@ -504,7 +513,7 @@ class TestTheOperationForwardsItsFieldsVerbatim:
 class TestZeroChromaReducesToTheMonogenicPort:
     """Spec §7 test 1. The fusion must not perturb the port -- bit-identically.
 
-    Also pins the unexposed ``orientation`` and ``feature_type`` (drift ``C15``) for free:
+    Also pins the diagnostic ``orientation`` and ``feature_type`` outputs (drift ``C15``):
     at zero chroma the fused vector collapses to ``v_L``.
     """
 
@@ -542,8 +551,55 @@ class TestTheThreeFusionModesAreDistinct:
         assert np.abs(a - b).max() > least
 
 
+class TestOutputMapsAndNormalization:
+    @pytest.mark.parametrize("fusion", ["joint", "coherent", "l2"])
+    @pytest.mark.parametrize("output", ["orientation", "feature_type"])
+    def test_angle_outputs_are_the_normalized_fused_vector_maps(self, fusion, output):
+        op = FocusEdgeColorPhase(fusion=fusion, output=output)
+        result = op._color_phase_congruency(load_synth_yeast_plate())
+        source = getattr(result, output)
+        expected = np.clip((source + np.pi / 2) / np.pi, 0.0, 1.0)
+
+        actual = op.apply(load_synth_yeast_plate()).detect_mat[:]
+        np.testing.assert_allclose(actual, expected, rtol=1e-5, atol=1e-6)
+
+    @pytest.mark.parametrize("output", ["orientation", "feature_type"])
+    @pytest.mark.parametrize("norm", ["rescale", None])
+    def test_norm_does_not_change_angle_maps(self, output, norm):
+        baseline = FocusEdgeColorPhase(output=output, norm="clip").apply(
+            load_synth_yeast_plate()
+        ).detect_mat[:]
+        altered = FocusEdgeColorPhase(output=output, norm=norm).apply(
+            load_synth_yeast_plate()
+        ).detect_mat[:]
+        np.testing.assert_array_equal(altered, baseline)
+
+    def test_l2_pc_obeys_all_norm_policies(self):
+        raw = FocusEdgeColorPhase(fusion="l2")._color_phase_congruency(
+            load_synth_yeast_plate()
+        ).pc
+        assert raw.max() > 1.0
+
+        clipped = FocusEdgeColorPhase(fusion="l2", norm="clip").apply(
+            load_synth_yeast_plate()
+        ).detect_mat[:]
+        rescaled = FocusEdgeColorPhase(fusion="l2", norm="rescale").apply(
+            load_synth_yeast_plate()
+        ).detect_mat[:]
+        unbounded = FocusEdgeColorPhase(fusion="l2", norm=None).apply(
+            load_synth_yeast_plate()
+        ).detect_mat[:]
+
+        np.testing.assert_allclose(clipped, np.clip(raw, 0.0, 1.0), atol=1e-6)
+        np.testing.assert_allclose(
+            rescaled, rescale_intensity(raw, out_range=(0.0, 1.0)), atol=1e-6
+        )
+        np.testing.assert_allclose(unbounded, raw, atol=1e-6)
+        assert unbounded.max() > 1.0
+
+
 class TestTheUnitIntervalBoundAndTheClip:
-    """Spec §7 test 3, and the clip that makes it true."""
+    """Spec §7 test 3, and the default clip that makes it true."""
 
     def test_l2_exceeds_one_before_the_clip_even_at_default_weights(self):
         """The clip is load-bearing with **no tuning at all**.

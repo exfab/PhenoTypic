@@ -18,13 +18,14 @@ from pydantic import Field
 
 from ._monogenic_kernels import monogenic_phase_congruency
 from ..abc_ import FocusEdge
+from ..sdk_.mixin import NormalizedOutputMixin
 from ..sdk_.typing_ import MonogenicOutput, TuneSpec
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 
-class FocusEdgeMonogenicPhase(FocusEdge):
+class FocusEdgeMonogenicPhase(NormalizedOutputMixin, FocusEdge):
     """Enhance colony edges in ``detect_mat`` using monogenic phase congruency.
 
     Detects features where the log-Gabor Fourier components are maximally in phase,
@@ -86,10 +87,15 @@ class FocusEdgeMonogenicPhase(FocusEdge):
 
             ``"orientation"``'s true image is ``(0, 1]``, not ``[0, 1]``: the fold is
             half-open, so ``-pi/2`` is unattainable. ``"feature_type"`` attains both ends.
+        norm: Output-range policy for ``output="pc"``. ``"clip"`` (default) saturates to
+            [0, 1], ``"rescale"`` remaps the observed PC range to [0, 1], and ``None``
+            preserves it. It does not affect the two angle maps, whose fixed [0, 1]
+            encoding would otherwise lose its physical meaning.
 
     Returns:
-        Image: Input image with ``detect_mat`` replaced by the selected monogenic map,
-        clipped to ``[0, 1]``. ``rgb`` and ``gray`` are unchanged.
+        Image: Input image with ``detect_mat`` replaced by the selected monogenic map. PC
+        output follows ``norm``; angle outputs retain their normalized [0, 1] encoding.
+        ``rgb`` and ``gray`` are unchanged.
 
     Raises:
         ValidationError: If ``n_scale`` < 2, ``min_wavelength`` < 2, ``mult`` <= 1,
@@ -163,12 +169,12 @@ class FocusEdgeMonogenicPhase(FocusEdge):
         )
 
         if self.output == "pc":
-            selected = result.pc
+            selected = self._apply_norm(result.pc)
         elif self.output == "orientation":
-            selected = (result.orientation + np.pi / 2) / np.pi
+            selected = np.clip((result.orientation + np.pi / 2) / np.pi, 0.0, 1.0)
         else:
-            selected = (result.feature_type + np.pi / 2) / np.pi
+            selected = np.clip((result.feature_type + np.pi / 2) / np.pi, 0.0, 1.0)
 
         # detect_mat enforces float32 on assignment, so no explicit cast is needed.
-        image.detect_mat[:] = np.clip(selected, 0.0, 1.0)
+        image.detect_mat[:] = selected
         return image

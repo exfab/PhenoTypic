@@ -24,6 +24,7 @@ from phenotypic.enhance import (
     ContrastSigmoid,
     ContrastStretching,
     FocusBlobLoG,
+    FocusEdgeColorPhase,
     FocusEdgeMonogenicPhase,
     FocusEdgePhase,
     EnhanceLocalContrast,
@@ -198,3 +199,5 @@ def test_closed_set_fields_are_not_numeric_tunable():
     assert not is_numeric_tunable(ContrastSigmoid.model_fields["inv"])
     assert not is_numeric_tunable(ContrastStretching.model_fields["keep_colors"])
     assert not is_numeric_tunable(ContrastStretching.model_fields["input_layer"])
+    assert not is_numeric_tunable(FocusEdgeColorPhase.model_fields["norm"])
+    assert not is_numeric_tunable(FocusEdgeMonogenicPhase.model_fields["norm"])
