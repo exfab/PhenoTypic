@@ -65,6 +65,9 @@ TAXONOMY: dict[type, tuple[str, ...]] = {
     ContrastAdjustment    : (
         "EnhanceLocalContrast",
         "ContrastStretching",
+        "ContrastGamma",
+        "ContrastLog",
+        "ContrastSigmoid",
         "ImageInverter",
         "SharpenEdgeGauss",
     ),

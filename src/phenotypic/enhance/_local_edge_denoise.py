@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Optional
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, Optional
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -9,11 +9,11 @@ from pydantic import Field, field_validator
 from skimage.restoration import denoise_bilateral
 
 from ..abc_ import ImageDenoiser
-from ..sdk_.mixin import _GATSupportMixin
+from ..sdk_.mixin import NormalizedOutputMixin, _GATSupportMixin
 from ..sdk_.typing_ import TuneSpec
 
 
-class LocalEdgeDenoise(_GATSupportMixin, ImageDenoiser):
+class LocalEdgeDenoise(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser):
     """Denoise ``detect_mat`` with local edge-preserving bilateral filtering.
 
     Weights each pixel by both spatial proximity and intensity similarity
@@ -66,8 +66,10 @@ class LocalEdgeDenoise(_GATSupportMixin, ImageDenoiser):
         cval: Fill value used when ``mode='constant'``. Set to the mean
             background intensity to suppress spurious dark-band artefacts at
             plate edges. Default: 0.0.
-        clip: Clip output to [0, 1]. Default: ``True``. Automatically
-            deferred to ``False`` when ``use_gat=True``.
+        norm: Output range policy. ``"clip"`` (default) saturates values outside
+            [0, 1]; ``"rescale"`` remaps the full observed range onto [0, 1];
+            ``None`` passes values through untouched. Automatically deferred to
+            ``None`` when ``use_gat=True``.
 
         # GAT parameters (active only when use_gat=True)
         use_gat: Wrap denoising in the Generalized Anscombe Transform to
@@ -108,7 +110,7 @@ class LocalEdgeDenoise(_GATSupportMixin, ImageDenoiser):
     """
 
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma_color": 1.0}
-    _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("clip",)
+    _GAT_DEFER_VALUES: ClassVar[dict[str, Any]] = {"norm": None}
 
     # Categorical (not a float range) so the optimizer can try ``None`` — the
     # auto-estimate (noise-std) mode — alongside representative explicit sigmas.
@@ -121,7 +123,6 @@ class LocalEdgeDenoise(_GATSupportMixin, ImageDenoiser):
     win_size: Annotated[Optional[int], TuneSpec(tunable=False)] = None
     mode: Literal["constant", "edge", "symmetric", "reflect", "wrap"] = "constant"
     cval: Annotated[float, TuneSpec(tunable=False)] = 0
-    clip: bool = True
 
     @field_validator("sigma_color")
     @classmethod
@@ -147,6 +148,4 @@ class LocalEdgeDenoise(_GATSupportMixin, ImageDenoiser):
                 cval=self.cval,
                 channel_axis=None,
         )
-        if self.clip:
-            result = result.clip(0.0, 1.0)
-        image.detect_mat[:] = result
+        image.detect_mat[:] = self._apply_norm(result)

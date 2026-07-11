@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, ClassVar, Literal
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -9,11 +9,11 @@ from bm3d.profiles import BM3DStages
 from pydantic import Field
 
 from ..abc_ import ImageDenoiser
-from ..sdk_.mixin import _GATSupportMixin
+from ..sdk_.mixin import NormalizedOutputMixin, _GATSupportMixin
 from ..sdk_.typing_ import TuneSpec
 
 
-class EnhanceBlockMatch(_GATSupportMixin, ImageDenoiser):
+class EnhanceBlockMatch(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser):
     """Denoise ``detect_mat`` using block-matching and 3-D collaborative filtering.
 
     Groups similar image patches across the plate and filters them jointly
@@ -66,10 +66,11 @@ class EnhanceBlockMatch(_GATSupportMixin, ImageDenoiser):
             ``'hard_thresholding'`` runs only the first stage — approximately
             2× faster with slightly coarser colony edges. Accepted values:
             ``'all_stages'``, ``'hard_thresholding'``. Default: ``'all_stages'``.
-        clip: Clamp output to [0, 1] after BM3D aggregation. BM3D can
-            produce values marginally outside [0, 1] due to weighted patch
-            accumulation. Default: ``True``. Automatically set to ``False``
-            inside the GAT region when ``use_gat=True``.
+        norm: Output range policy. ``"clip"`` (default) saturates values outside
+            [0, 1] -- BM3D's weighted patch accumulation can drift marginally
+            out of range. ``"rescale"`` remaps the full observed range onto
+            [0, 1]; ``None`` passes values through untouched. Automatically
+            deferred to ``None`` when ``use_gat=True``.
 
         # GAT parameters — only active when use_gat=True
         use_gat: Wrap the BM3D call in a forward Generalised Anscombe
@@ -125,12 +126,11 @@ class EnhanceBlockMatch(_GATSupportMixin, ImageDenoiser):
         "use_gat"  : True,
         "sigma_psd": 1.0
     }
-    _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("clip",)
+    _GAT_DEFER_VALUES: ClassVar[dict[str, Any]] = {"norm": None}
 
     sigma_psd: Annotated[float, TuneSpec(0.01, 0.15, log=True)] = Field(0.02, ge=0.0)
     block_size: Annotated[int, TuneSpec(tunable=False)] = 8
     stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages"
-    clip: bool = True
 
     def _operate(self, image: Image) -> Image:
         # detect_mat is guaranteed to be in [0, 1] range, which BM3D expects
@@ -150,9 +150,7 @@ class EnhanceBlockMatch(_GATSupportMixin, ImageDenoiser):
                 stage_arg=self._convert_stage_arg(self.stage_arg),
         )
 
-        if self.clip:
-            denoised = denoised.clip(0.0, 1.0)
-        image.detect_mat[:] = denoised
+        image.detect_mat[:] = self._apply_norm(denoised)
 
     def _convert_stage_arg(
             self, stage_arg: Literal["all_stages", "hard_thresholding"]

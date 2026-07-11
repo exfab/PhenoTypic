@@ -10,6 +10,8 @@ Covers:
   also exercise the gray-channel write path, which has a [0, 1] range
   assertion that the mixin must bypass via ``image._data.gray``).
 - Snapshot integrity: noise/defer params restored after ``_operate``.
+- The ``_GAT_DEFER_VALUES`` contract: ``norm`` is ``None`` *inside* the GAT
+  region and restored to its constructed value afterwards.
 - Pass-through behaviour when ``use_gat=False``.
 - Pipeline JSON round-trip preserves all GAT init params.
 - Constructor validation rejects negative gain / sigma / scale-factor.
@@ -72,7 +74,7 @@ class TestEquivalenceWithExplicitTriple:
                 sigma_psd=0.02,
                 block_size=8,
                 stage_arg="all_stages",
-                clip=True,
+                norm="clip",
                 use_gat=True,
                 gat_gain=gain,
                 gat_mu=mu,
@@ -120,7 +122,7 @@ class TestEquivalenceWithExplicitTriple:
                 sigma=0.05,
                 wavelet="db2",
                 mode="soft",
-                clip=True,
+                norm="clip",
                 rescale_sigma=True,
                 use_gat=True,
                 gat_gain=gain,
@@ -135,7 +137,7 @@ class TestEquivalenceWithExplicitTriple:
         )
 
 
-# -- Wavelet corrector smoke tests (gray accessor + clip defer) ------------
+# -- Wavelet corrector smoke tests (gray accessor + norm defer) -----------
 
 
 class TestWaveletCorrectorGAT:
@@ -180,11 +182,11 @@ class TestWaveletCorrectorGAT:
     @pytest.mark.parametrize(
             "cls", [BayesShrinkCorrector, VisuShrinkCorrector]
     )
-    def test_clip_attr_restored(self, gray_image, cls):
-        """``clip`` (in ``_GAT_DEFER_ATTRS``) must roll back after the GAT region."""
-        op = cls(use_gat=True, clip=True, gat_scale_factor=255.0)
+    def test_norm_attr_restored(self, gray_image, cls):
+        """``norm`` (in ``_GAT_DEFER_VALUES``) must roll back after the GAT region."""
+        op = cls(use_gat=True, norm="clip", gat_scale_factor=255.0)
         op.apply(gray_image, inplace=True)
-        assert op.clip is True
+        assert op.norm == "clip"
         assert op.rescale_sigma is True
 
 
@@ -201,12 +203,12 @@ class TestSnapshotIntegrity:
         op.apply(synth_image, inplace=True)
         assert op.sigma_psd == 0.02
 
-    def test_clip_restored(self, synth_image):
+    def test_norm_restored(self, synth_image):
         op = EnhanceBlockMatch(
-                sigma_psd=0.02, clip=True, use_gat=True, gat_scale_factor=255.0
+                sigma_psd=0.02, norm="clip", use_gat=True, gat_scale_factor=255.0
         )
         op.apply(synth_image, inplace=True)
-        assert op.clip is True
+        assert op.norm == "clip"
 
     def test_attrs_restored_even_on_inner_failure(self, synth_image):
         """``finally`` clause guarantees attrs roll back even if inner raises."""
@@ -220,7 +222,7 @@ class TestSnapshotIntegrity:
         with pytest.raises(RuntimeError, match="simulated failure"):
             op._gat_apply(synth_image, "detect_mat", boom)
         assert op.sigma_psd == 0.02
-        assert op.clip is True
+        assert op.norm == "clip"
 
 
 # -- Pass-through when use_gat=False ---------------------------------------
@@ -348,3 +350,48 @@ class TestValidation:
         assert op.gat_mu == 0.5
         assert op.gat_read_sigma == 1.0
         assert op.gat_scale_factor == 65535.0
+
+
+# -- _GAT_DEFER_VALUES contract --------------------------------------------
+
+
+class TestDeferValues:
+    """``_GAT_DEFER_VALUES`` maps each deferred attribute to its inert value."""
+
+    def test_defer_values_is_a_mapping_with_correct_inert_values(self):
+        assert VisuShrinkEnhancer._GAT_DEFER_VALUES == {
+            "norm"         : None,
+            "rescale_sigma": False,
+        }
+
+    def test_norm_is_none_inside_the_gat_region_and_restored_after(
+            self, synth_image, monkeypatch
+    ):
+        """The crown-jewel round-trip: rescaling a GAT-stabilized signal is fatal.
+
+        A GAT-stabilized ``detect_mat`` lives around ~1.9-2.3, deliberately
+        outside [0, 1]. If ``norm`` is not deferred to ``None``, the inner
+        denoiser clips or rescales it and the inverse transform collapses.
+        """
+        op = VisuShrinkEnhancer(
+                use_gat=True, norm="clip", gat_scale_factor=255.0
+        )
+        seen = {}
+
+        original = VisuShrinkEnhancer._denoise_detect_mat
+
+        def spy(self, image):
+            seen["norm_inside"] = self.norm
+            seen["rescale_sigma_inside"] = self.rescale_sigma
+            seen["max_inside"] = float(image.detect_mat[:].max())
+            return original(self, image)
+
+        monkeypatch.setattr(VisuShrinkEnhancer, "_denoise_detect_mat", spy)
+        op.apply(synth_image, inplace=True)
+
+        assert seen["norm_inside"] is None
+        assert seen["rescale_sigma_inside"] is False
+        # Confirms the spy really ran inside the stabilized domain.
+        assert seen["max_inside"] > 1.0
+        assert op.norm == "clip"
+        assert op.rescale_sigma is True

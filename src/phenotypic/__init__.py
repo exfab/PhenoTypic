@@ -14,7 +14,7 @@ to study microbial growth patterns.
 
 """
 
-__version__ = "0.17.3"
+__version__ = "0.18.0"
 __author__ = "Alexander Nguyen"
 __email__ = "anguy344@ucr.edu"
 

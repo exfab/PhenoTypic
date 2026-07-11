@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -113,7 +113,7 @@ class NonLocalMeansDenoiser(_GATSupportMixin, ImageDenoiser):
     """
 
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"h": 1.0, "sigma": 1.0}
-    _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ()
+    _GAT_DEFER_VALUES: ClassVar[dict[str, Any]] = {}
 
     patch_size: Annotated[int, TuneSpec(5, 15, step=2)] = 5
     search_dist: Annotated[int, TuneSpec(5, 21, step=2)] = 11

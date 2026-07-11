@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import colour
 import numpy as np
 
-from phenotypic.sdk_.colourspace import sRGB_D50
-from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
 from phenotypic.sdk_.exceptions_ import IllegalAssignmentError
 from ..accessor_abstracts._color_space_accessor import ColorSpaceAccessor
+from ._xyz_conversion import rgb_to_xyz
 
 
 class XyzAccessor(ColorSpaceAccessor):
@@ -107,50 +105,12 @@ class XyzAccessor(ColorSpaceAccessor):
         """
         if self._root_image.rgb.isempty():
             raise AttributeError("XYZ conversion is not available for grayscale images")
-        match (self._root_image.gamma, self._root_image.illuminant):
-            case (GAMMA_ENCODINGS.SRGB, "D50"):
-                sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[
-                    self._root_image._observer
-                ]["D50"]
-                return colour.RGB_to_XYZ(
-                        RGB=self._root_image.rgb.normed(),
-                        colourspace=sRGB_D50,
-                        illuminant=sRGB_D50.whitepoint,
-                        apply_cctf_decoding=True,
-                )
-            case (GAMMA_ENCODINGS.SRGB, "D65"):
-                return colour.RGB_to_XYZ(
-                        RGB=self._root_image.rgb.normed(),
-                        colourspace=colour.RGB_COLOURSPACES["sRGB"],
-                        illuminant=colour.CCS_ILLUMINANTS[self._root_image._observer][
-                            "D65"
-                        ],
-                        apply_cctf_decoding=True,
-                )
-            case (GAMMA_ENCODINGS.LINEAR, "D50"):
-                sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[
-                    self._root_image._observer
-                ]["D50"]
-                return colour.RGB_to_XYZ(
-                        RGB=self._root_image.rgb.normed(),
-                        colourspace=colour.RGB_COLOURSPACES["sRGB"],
-                        illuminant=sRGB_D50.whitepoint,
-                        apply_cctf_decoding=False,
-                )
-            case (GAMMA_ENCODINGS.LINEAR, "D65"):
-                return colour.RGB_to_XYZ(
-                        RGB=self._root_image.rgb.normed(),
-                        colourspace=colour.RGB_COLOURSPACES["sRGB"],
-                        illuminant=colour.CCS_ILLUMINANTS[self._root_image._observer][
-                            "D65"
-                        ],
-                        apply_cctf_decoding=False,
-                )
-            case _:
-                raise ValueError(
-                        f"Unknown color_profile: {self._root_image.gamma} "
-                        f"or illuminant: {self._root_image.illuminant}"
-                )
+        return rgb_to_xyz(
+                self._root_image.rgb.normed(),
+                gamma=self._root_image.gamma,
+                illuminant=self._root_image.illuminant,
+                observer=self._root_image._observer,
+        )
 
     def __setitem__(self, key, value):
         """Prevent direct modification of XYZ color space data.

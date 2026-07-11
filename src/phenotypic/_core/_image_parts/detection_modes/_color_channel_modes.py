@@ -30,8 +30,19 @@ class _ColorChannelMode(DetectionMode):
 
     def compute(self, image: Image) -> np.ndarray:
         assert image._data.rgb is not None
-        rgb_normed = normalize_rgb_bitdepth(image._data.rgb)
-        return rgb_normed[:, :, self._channel_index].astype(np.float32)
+        return self.compute_from_rgb(normalize_rgb_bitdepth(image._data.rgb), image=image)
+
+    def compute_from_rgb(self, rgb: np.ndarray, *, image: Image) -> np.ndarray:
+        """Select one channel of *rgb*.
+
+        Args:
+            rgb: Float RGB array normalized to [0, 1], shape ``(rows, cols, 3)``.
+            image: Unused; this mode needs no colour configuration.
+
+        Returns:
+            A 2-D float32 array normalized to [0, 1].
+        """
+        return rgb[:, :, self._channel_index].astype(np.float32)
 
 
 @register_detection_mode

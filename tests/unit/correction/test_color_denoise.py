@@ -40,7 +40,7 @@ class TestColorDenoiseParameterValidation:
         c = ColorDenoise()
         assert c.sigma_psd == 0.02
         assert c.block_size == 8
-        assert c.clip is True
+        assert c.norm == "clip"
         assert c.use_gat is False
         assert c.gat_gain == 1.0
         assert c.gat_mu == 0.0
@@ -52,14 +52,14 @@ class TestColorDenoiseParameterValidation:
         c = ColorDenoise(
                 sigma_psd=0.05,
                 block_size=16,
-                clip=False,
+                norm=None,
                 use_gat=True,
                 gat_gain=2.0,
                 gat_scale_factor=65535.0,
         )
         assert c.sigma_psd == 0.05
         assert c.block_size == 16
-        assert c.clip is False
+        assert c.norm is None
         assert c.use_gat is True
         assert c.gat_gain == 2.0
         assert c.gat_scale_factor == 65535.0

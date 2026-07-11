@@ -58,20 +58,20 @@ class TestCombinationModes:
         assert np.allclose(result.detect_mat[:], 0.2)
 
 
-class TestClipping:
-    def test_clip_off_by_default_allows_out_of_range(self):
+class TestNormalization:
+    def test_norm_off_by_default_allows_out_of_range(self):
         image = Image(arr=np.zeros((8, 8), dtype=float))
         result = CompositeEnhance(
             ops=[_SetPlane(value=1.5), _SetPlane(value=-0.3)],
         ).apply(image)
         assert result.detect_mat[:].max() > 1.0
 
-    def test_clip_clamps_to_unit_interval(self):
+    def test_norm_clip_clamps_to_unit_interval(self):
         image = Image(arr=np.zeros((8, 8), dtype=float))
         result = CompositeEnhance(
             ops=[_SetPlane(value=1.5), _SetPlane(value=-0.3)],
             mode="min",
-            clip=True,
+            norm="clip",
         ).apply(image)
         assert result.detect_mat[:].min() >= 0.0
         assert result.detect_mat[:].max() <= 1.0
@@ -120,7 +120,7 @@ class TestIntegrityAndDefaults:
     def test_constructs_with_no_args(self):
         op = CompositeEnhance()
         assert op.mode == "max"
-        assert op.clip is False
+        assert op.norm is None
         assert len(op.ops) == 2
         assert isinstance(op.ops[0], GaussianBlur)
         assert isinstance(op.ops[1], MedianFilter)
@@ -136,12 +136,12 @@ class TestSerialization:
         op = CompositeEnhance(
             ops=[GaussianBlur(sigma=1.5), MedianFilter()],
             mode="mean",
-            clip=True,
+            norm="clip",
         )
         restored = CompositeEnhance.from_json(op.to_json())
         assert isinstance(restored, CompositeEnhance)
         assert restored.mode == "mean"
-        assert restored.clip is True
+        assert restored.norm == "clip"
         assert isinstance(restored.ops[0], GaussianBlur)
         assert restored.ops[0].sigma == 1.5
         assert isinstance(restored.ops[1], MedianFilter)

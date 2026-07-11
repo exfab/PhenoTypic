@@ -30,3 +30,17 @@ class GrayDetectionMode(DetectionMode):
     def compute(self, image: Image) -> np.ndarray:
         assert image._data.gray is not None
         return image._data.gray.copy()
+
+    def compute_from_rgb(self, rgb: np.ndarray, *, image: Image) -> np.ndarray:
+        """Collapse *rgb* with the same luminance weighting used to build ``gray``.
+
+        Args:
+            rgb: Float RGB array normalized to [0, 1], shape ``(rows, cols, 3)``.
+            image: Unused; this mode needs no colour configuration.
+
+        Returns:
+            A 2-D float32 luminance array normalized to [0, 1].
+        """
+        from skimage.color import rgb2gray
+
+        return rgb2gray(rgb).astype(np.float32)

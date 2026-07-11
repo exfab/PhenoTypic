@@ -17,6 +17,9 @@ from ._enhance_block_match import EnhanceBlockMatch
 from ._enhance_local_contrast import EnhanceLocalContrast
 from ._structure_smoothing import StructureSmoothing
 from ._contrast_streching import ContrastStretching
+from ._contrast_gamma import ContrastGamma
+from ._contrast_log import ContrastLog
+from ._contrast_sigmoid import ContrastSigmoid
 from ._focus_edge_frangi import FocusEdgeFrangi
 from ._gaussian_blur import GaussianBlur
 from ._focus_edge_hessian import FocusEdgeHessian
@@ -51,6 +54,9 @@ __all__ = [
     "EnhanceLocalContrast",
     "StructureSmoothing",
     "ContrastStretching",
+    "ContrastGamma",
+    "ContrastLog",
+    "ContrastSigmoid",
     "FocusEdgeFrangi",
     "GaussianBlur",
     "SubtractGaussian",

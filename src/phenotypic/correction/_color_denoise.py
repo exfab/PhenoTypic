@@ -10,12 +10,13 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from ..abc_ import ImageCorrector
+from ..sdk_.mixin import NormalizedOutputMixin
 from ..sdk_.typing_ import TuneSpec
 from ..sdk_._anscombe import gat_forward, gat_inverse, resolve_scale_factor
 from ..sdk_.colourspace import decode_srgb, encode_srgb
 
 
-class ColorDenoise(ImageCorrector):
+class ColorDenoise(NormalizedOutputMixin, ImageCorrector):
     """Denoise an RGB plate image using color block-matching 3D filtering (CBM3D).
 
     Apply the color extension of BM3D jointly across the three sRGB channels
@@ -59,10 +60,12 @@ class ColorDenoise(ImageCorrector):
             stage block sizes. Larger values capture more spatial context
             and improve denoising of uniform agar backgrounds but increase
             computation quadratically. Typical range: 4--16. Default: ``8``.
-        clip: Clamp the sRGB-re-encoded result to [0, 1] before rescaling to
-            the original integer dtype, preventing rare BM3D overshoot near
-            high-contrast colony edges from causing integer wraparound.
-            Default: ``True``.
+        norm: Output range policy applied to the sRGB-re-encoded result before
+            rescaling to the original integer dtype. ``"clip"`` (default)
+            saturates values outside [0, 1], preventing rare BM3D overshoot
+            near high-contrast colony edges from causing integer wraparound.
+            ``"rescale"`` remaps the full observed range onto [0, 1]; ``None``
+            passes values through untouched.
 
         # GAT parameters (active only when use_gat=True)
         use_gat: Wrap the per-channel CBM3D call in the Generalized Anscombe
@@ -124,7 +127,6 @@ class ColorDenoise(ImageCorrector):
 
     sigma_psd: Annotated[float, TuneSpec(0.01, 0.15, log=True)] = 0.02
     block_size: Annotated[int, TuneSpec(categories=(4, 8, 16))] = 8
-    clip: bool = True
     use_gat: bool = False
     # GAT noise-model parameters are sensor-calibration constants, not search
     # targets — keep their Field bounds, exclude from tuning.
@@ -213,10 +215,7 @@ class ColorDenoise(ImageCorrector):
         else:
             denoised = self._denoise_plain(rgb_lin)
 
-        denoised = encode_srgb(denoised)
-
-        if self.clip:
-            denoised = denoised.clip(0.0, 1.0)
+        denoised = self._apply_norm(encode_srgb(denoised))
 
         # Always clamp to the dtype range to avoid integer wraparound.
         rescaled = (denoised * vmax).round().clip(0, vmax).astype(dtype)

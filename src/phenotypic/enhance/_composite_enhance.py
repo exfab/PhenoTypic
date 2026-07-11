@@ -9,14 +9,15 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from ..abc_ import ImageEnhancer
-from ..sdk_.typing_ import OperationField
+from ..sdk_.mixin import NormalizedOutputMixin
+from ..sdk_.typing_ import NormOut, OperationField
 from ._gaussian_blur import GaussianBlur
 from ._median_filter import MedianFilter
 
 CombineMode = Literal["max", "mean", "min", "median"]
 
 
-class CompositeEnhance(ImageEnhancer):
+class CompositeEnhance(NormalizedOutputMixin, ImageEnhancer):
     """Enhance ``detect_mat`` by combining several enhancers' response maps pixel-wise.
 
     Apply two or more enhancers (or preprocessing pipelines ending in an
@@ -60,10 +61,11 @@ class CompositeEnhance(ImageEnhancer):
             ``'mean'`` averages all branches. ``'median'`` takes the per-pixel
             median (robust to a single outlier branch; most useful with three
             or more enhancers). Default: ``'max'``.
-        clip: When ``True``, clamp the combined result into ``[0.0, 1.0]``
-            after reduction. Leave ``False`` (default) when ``detect_mat`` is
-            not unit-normalised, since clipping an arbitrarily-scaled map would
-            distort it.
+        norm: Output range policy applied after reduction. ``None`` (default)
+            passes values through untouched, which is what an arbitrarily-scaled
+            (non unit-normalised) response map needs. ``"clip"`` saturates
+            values outside [0, 1]; ``"rescale"`` remaps the full observed range
+            onto [0, 1].
 
     Returns:
         Image: Input image with ``detect_mat`` set to the combined response
@@ -96,7 +98,7 @@ class CompositeEnhance(ImageEnhancer):
         >>> combiner = CompositeEnhance(
         ...     ops=[GaussianBlur(), MedianFilter(), EnhanceLocalContrast()],
         ...     mode="mean",
-        ...     clip=True,
+        ...     norm="clip",
         ... )
         >>> enhanced = combiner.apply(load_synth_yeast_plate())
         >>> float(enhanced.detect_mat[:].max()) <= 1.0
@@ -112,7 +114,7 @@ class CompositeEnhance(ImageEnhancer):
         default_factory=lambda: [GaussianBlur(), MedianFilter()]
     )
     mode: CombineMode = "max"
-    clip: bool = False
+    norm: NormOut = None
 
     @field_validator("ops", mode="before")
     @classmethod
@@ -149,10 +151,7 @@ class CompositeEnhance(ImageEnhancer):
                 "At least one enhancer must be provided to CompositeEnhance"
             )
 
-        combined = self._combine(response_maps)
-
-        if self.clip:
-            combined = np.clip(combined, 0.0, 1.0)
+        combined = self._apply_norm(self._combine(response_maps))
 
         original = image.detect_mat[:]
         image.detect_mat[:] = combined.astype(original.dtype, copy=False)

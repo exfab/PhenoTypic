@@ -1,5 +1,5 @@
 {
-  "version": "0.16.0",
+  "version": "0.18.0",
   "name": "d3a55e7a-8384-43be-8e13-a00f384ce13a",
   "desc": null,
   "reset": false,
@@ -15,7 +15,7 @@
         "sigma_psd": 0.0,
         "block_size": 8,
         "stage_arg": "all_stages",
-        "clip": true
+        "norm": "clip"
       }
     },
     "OtsuDetector": {

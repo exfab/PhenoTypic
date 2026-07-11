@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Callable, ClassVar
+from typing import TYPE_CHECKING, Annotated, Any, Callable, ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -34,11 +34,12 @@ class _GATSupportMixin(BaseModel):
             ``self`` for the duration of the inner denoise call. Examples:
             ``{"sigma_psd": 1.0}`` for BM3D; ``{"h": 1.0, "sigma": 1.0}``
             for non-local means.
-        ``_GAT_DEFER_ATTRS`` (ClassVar[tuple[str, ...]]):
-            Boolean attributes that must be ``False`` inside the GAT region.
-            Use for output-clip flags or skimage's ``rescale_sigma`` -- any
-            knob that would corrupt the stabilized round-trip if left at its
-            default. Restored after the inner call returns.
+        ``_GAT_DEFER_VALUES`` (ClassVar[dict[str, Any]]):
+            Attributes that must hold an inert value inside the GAT region,
+            mapped to that value. Use for output-normalization policies
+            (``{"norm": None}``) and skimage's ``rescale_sigma``
+            (``{"rescale_sigma": False}``) -- any knob that would corrupt the
+            stabilized round-trip. Restored after the inner call returns.
 
     GAT init parameters (added to every subclass automatically via cooperative
     ``super().__init__``):
@@ -58,7 +59,7 @@ class _GATSupportMixin(BaseModel):
     """
 
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {}
-    _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ()
+    _GAT_DEFER_VALUES: ClassVar[dict[str, Any]] = {}
 
     use_gat: bool = False
     gat_gain: float = Field(default=1.0, gt=0)
@@ -113,13 +114,13 @@ class _GATSupportMixin(BaseModel):
 
         snapshot = {
             k: getattr(self, k)
-            for k in (*self._GAT_NOISE_PARAMS, *self._GAT_DEFER_ATTRS)
+            for k in (*self._GAT_NOISE_PARAMS, *self._GAT_DEFER_VALUES)
         }
         try:
             for k, v in self._GAT_NOISE_PARAMS.items():
                 setattr(self, k, v)
-            for k in self._GAT_DEFER_ATTRS:
-                setattr(self, k, False)
+            for k, v in self._GAT_DEFER_VALUES.items():
+                setattr(self, k, v)
             fn(image)
         finally:
             for k, v in snapshot.items():

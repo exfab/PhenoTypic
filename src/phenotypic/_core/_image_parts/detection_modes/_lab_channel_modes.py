@@ -31,7 +31,35 @@ class _LabChannelMode(DetectionMode):
     def _normalize_channel(self, channel: np.ndarray) -> np.ndarray: ...
 
     def compute(self, image: Image) -> np.ndarray:
-        lab = image.color.Lab[:]
+        return self.compute_from_rgb(image.rgb.normed(), image=image)
+
+    def compute_from_rgb(self, rgb: np.ndarray, *, image: Image) -> np.ndarray:
+        """Convert *rgb* to CIE L*a*b* and select one normalized channel.
+
+        Args:
+            rgb: Float RGB array normalized to [0, 1], shape ``(rows, cols, 3)``.
+            image: Source image, consulted for ``gamma``, ``illuminant`` and
+                ``_observer`` only.
+
+        Returns:
+            A 2-D float32 array normalized to [0, 1].
+        """
+        import colour
+
+        from phenotypic._core._image_parts.color_space_accessors._xyz_conversion import (
+            rgb_to_xyz,
+        )
+
+        xyz = rgb_to_xyz(
+            rgb,
+            gamma=image.gamma,
+            illuminant=image.illuminant,
+            observer=image._observer,
+        )
+        lab = colour.XYZ_to_Lab(
+            XYZ=xyz,
+            illuminant=colour.CCS_ILLUMINANTS[image._observer][image.illuminant],
+        )
         return self._normalize_channel(lab[:, :, self._channel_index])
 
 

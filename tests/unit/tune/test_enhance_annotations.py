@@ -19,6 +19,9 @@ from pydantic import ValidationError
 from phenotypic import ImagePipeline
 from phenotypic.enhance import (
     EnhanceBlockMatch,
+    ContrastGamma,
+    ContrastLog,
+    ContrastSigmoid,
     ContrastStretching,
     FocusBlobLoG,
     FocusEdgeMonogenicPhase,
@@ -90,6 +93,11 @@ def _excluded(op, field_name: str):
             (ContrastStretching(), "lower_percentile", IntRange, (1, 5)),
             (ContrastStretching(), "upper_percentile", IntRange, (95, 99)),
             (SubtractRollingBall(), "radius", IntRange, (50, 200, True)),
+            (ContrastGamma(), "gamma", FloatRange, (0.1, 5.0, True)),
+            (ContrastGamma(), "gain", FloatRange, (0.5, 2.0, False)),
+            (ContrastLog(), "gain", FloatRange, (0.5, 2.0, False)),
+            (ContrastSigmoid(), "cutoff", FloatRange, (0.0, 1.0, False)),
+            (ContrastSigmoid(), "gain", FloatRange, (1.0, 20.0, False)),
         ],
 )
 def test_tune_spec_resolves_tier1(op, field_name, expected_domain, expected_bounds):
@@ -171,3 +179,22 @@ def test_invalid_value_still_raises_validation_error(factory):
     """The migrated bound rejects the same invalid input a validator did before."""
     with pytest.raises(ValidationError):
         factory()
+
+
+# --------------------------------------------------------------------------- #
+# Contrast* closed-value-set fields stay out of the numeric-tunable denominator
+# --------------------------------------------------------------------------- #
+def test_closed_set_fields_are_not_numeric_tunable():
+    """`norm`, `input_layer`, `inv`, `keep_colors` are Literal/Optional[Literal]/bool.
+
+    They must never enter the numeric coverage gate, which would otherwise demand
+    a `TuneSpec` (or an allowlist entry) for a field that has no numeric range.
+    """
+    from tests.unit.tune._annotation_introspect import is_numeric_tunable
+
+    assert not is_numeric_tunable(ContrastGamma.model_fields["norm"])
+    assert not is_numeric_tunable(ContrastGamma.model_fields["input_layer"])
+    assert not is_numeric_tunable(ContrastLog.model_fields["inv"])
+    assert not is_numeric_tunable(ContrastSigmoid.model_fields["inv"])
+    assert not is_numeric_tunable(ContrastStretching.model_fields["keep_colors"])
+    assert not is_numeric_tunable(ContrastStretching.model_fields["input_layer"])
