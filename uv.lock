@@ -3986,7 +3986,7 @@ requires-dist = [
     { name = "rawpy", marker = "sys_platform != 'win32'" },
     { name = "rich", specifier = ">=14.2.0" },
     { name = "ruptures", specifier = ">=1.1.9" },
-    { name = "sam2", marker = "sys_platform != 'win32' and extra == 'torch'" },
+    { name = "sam2", marker = "sys_platform != 'win32' and extra == 'torch'", specifier = ">=1.1.0" },
     { name = "scikit-image" },
     { name = "scikit-learn" },
     { name = "scipy" },

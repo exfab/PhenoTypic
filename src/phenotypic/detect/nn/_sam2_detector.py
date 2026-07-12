@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import PrivateAttr
+from pydantic import Field, PrivateAttr
 
 from phenotypic.abc_ import GpuDetector
 from phenotypic.detect.nn._checkpoint_manager import (
@@ -20,6 +20,7 @@ def build_sam2_generator(
     *,
     device: str,
     points_per_side: int = 32,
+    points_per_batch: int = 8,
     pred_iou_thresh: float = 0.7,
     stability_score_thresh: float = 0.92,
     min_mask_region_area: int = 100,
@@ -47,6 +48,9 @@ def build_sam2_generator(
         model_size: SAM2 variant (``"tiny"`` … ``"large"``).
         device: Resolved torch device string (from ``resolve_device``).
         points_per_side: Point-prompt grid density (``points_per_side ** 2``).
+        points_per_batch: Number of point prompts decoded together. Lowering
+            this bounds peak full-resolution mask memory without changing the
+            prompt grid or segmentation resolution.
         pred_iou_thresh: Minimum predicted-IoU score to keep a mask.
         stability_score_thresh: Minimum mask-stability score.
         min_mask_region_area: Minimum mask area in pixels.
@@ -98,6 +102,7 @@ def build_sam2_generator(
     return SAM2AutomaticMaskGenerator(
         model,
         points_per_side=points_per_side,
+        points_per_batch=points_per_batch,
         pred_iou_thresh=pred_iou_thresh,
         stability_score_thresh=stability_score_thresh,
         min_mask_region_area=min_mask_region_area,
@@ -106,6 +111,7 @@ def build_sam2_generator(
         crop_overlap_ratio=crop_overlap_ratio,
         crop_n_points_downscale_factor=crop_n_points_downscale_factor,
         box_nms_thresh=box_nms_thresh,
+        output_mode="uncompressed_rle",
     )
 
 
@@ -141,6 +147,10 @@ class Sam2Detector(GpuDetector):
             locations.  Increase for dense plates with many small
             colonies; decrease to speed up inference on sparse plates.
             Typical range: 16--64.  Default 32 (1024 points).
+        points_per_batch: Number of point prompts decoded together. Lower this
+            first if SAM2 runs out of memory; it preserves prompt positions,
+            crop resolution, and quality thresholds at the cost of throughput.
+            Default 8.
         pred_iou_thresh: Minimum predicted IoU score for a mask to be
             kept.  SAM2 self-estimates mask quality; masks below this
             threshold are discarded.  Raise to keep only high-confidence
@@ -273,6 +283,9 @@ class Sam2Detector(GpuDetector):
 
     model_size: Sam2ModelSize = "tiny"
     points_per_side: int = 32
+    points_per_batch: Annotated[int, TuneSpec(tunable=False)] = Field(
+        default=8, ge=1
+    )
     pred_iou_thresh: float = 0.7
     stability_score_thresh: float = 0.92
     min_mask_region_area: int = 100
@@ -312,6 +325,7 @@ class Sam2Detector(GpuDetector):
             self.model_size,
             device=device,
             points_per_side=self.points_per_side,
+            points_per_batch=self.points_per_batch,
             pred_iou_thresh=self.pred_iou_thresh,
             stability_score_thresh=self.stability_score_thresh,
             min_mask_region_area=self.min_mask_region_area,
@@ -330,29 +344,22 @@ class Sam2Detector(GpuDetector):
         Returns a uint16 labeled objmap (largest-first painting preserves
         small-colony identity at overlaps).
         """
-        import numpy as np
-
         rgb = sample
         masks = self._generator.generate(rgb)  # type: ignore[attr-defined]
 
         h, w = rgb.shape[:2]
-        objmap = np.zeros((h, w), dtype=np.uint16)
-        if masks:
-            max_labels = int(np.iinfo(np.uint16).max)
-            if len(masks) > max_labels:
-                import warnings
+        from phenotypic.detect.nn._sam2_rle import (
+            normalize_rle_records,
+            paint_rle_records,
+        )
 
-                warnings.warn(
-                    f"SAM2 generated {len(masks)} masks, exceeding uint16 "
-                    f"range. Only the first {max_labels} will be labeled.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-                masks = masks[:max_labels]
-            masks = sorted(masks, key=lambda m: m["area"], reverse=True)
-            for idx, m in enumerate(masks, start=1):
-                objmap[m["segmentation"]] = idx
-        return objmap
+        normalize_rle_records(masks, expected_shape=(h, w))
+        return paint_rle_records(
+            masks,
+            (h, w),
+            detector_name="SAM2",
+            truncate_before_sort=True,
+        )
 
 
 # Expose the class docstring on .apply() for Sphinx autodoc
