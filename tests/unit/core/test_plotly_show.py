@@ -19,6 +19,20 @@ def grid_image():
     return load_synth_yeast_plate()
 
 
+def _mpl_overlay_notices(ax):
+    """Return Matplotlib text artists used for the overlay notice."""
+    return [text for text in ax.texts if text.get_text() == "Overlay"]
+
+
+def _plotly_overlay_notices(fig):
+    """Return Plotly annotations used for the overlay notice."""
+    return [
+        annotation
+        for annotation in (fig.layout.annotations or ())
+        if annotation.text == "Overlay"
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Accessor show() tests — always matplotlib
 # ---------------------------------------------------------------------------
@@ -239,6 +253,96 @@ class TestDashWithOverlay:
         assert fig.layout.yaxis.side == "right"
 
 
+class TestOverlayNotice:
+    """Tests for the default opt-out notice on rendered object overlays."""
+
+    @pytest.mark.parametrize("accessor_name", ["rgb", "gray", "detect_mat"])
+    def test_accessor_show_adds_notice(self, grid_image, accessor_name):
+        accessor = getattr(grid_image, accessor_name)
+        fig, ax = accessor.show(overlay=True, show_grid=False)
+        notices = _mpl_overlay_notices(ax)
+        assert len(notices) == 1
+        assert notices[0].get_position() == (0.01, 0.99)
+        assert notices[0].get_color() == "white"
+        assert notices[0].get_bbox_patch().get_alpha() == 1.0
+        plt.close(fig)
+
+    @pytest.mark.parametrize("accessor_name", ["rgb", "gray", "detect_mat"])
+    def test_accessor_dash_adds_notice(self, grid_image, accessor_name):
+        accessor = getattr(grid_image, accessor_name)
+        fig = accessor.dash(overlay=True, show_grid=False)
+        notices = _plotly_overlay_notices(fig)
+        assert len(notices) == 1
+        assert notices[0].x == 0.01
+        assert notices[0].y == 0.99
+        assert notices[0].font.color == "white"
+        assert notices[0].bgcolor == "rgba(26, 26, 26, 1)"
+
+    def test_show_notice_can_be_disabled(self, grid_image):
+        fig, ax = grid_image.rgb.show(
+            overlay=True, show_overlay_notice=False,
+        )
+        assert _mpl_overlay_notices(ax) == []
+        assert len(ax.images) == 1
+        plt.close(fig)
+
+    def test_dash_notice_can_be_disabled(self, grid_image):
+        fig = grid_image.rgb.dash(
+            overlay=True, show_overlay_notice=False,
+        )
+        assert _plotly_overlay_notices(fig) == []
+        assert len(fig.data) == 1
+
+    def test_notice_not_shown_without_overlay(self, grid_image):
+        fig, ax = grid_image.rgb.show(overlay=False)
+        assert _mpl_overlay_notices(ax) == []
+        plt.close(fig)
+
+        dash_fig = grid_image.rgb.dash(overlay=False)
+        assert _plotly_overlay_notices(dash_fig) == []
+
+    def test_notice_not_shown_for_missing_object_label(self, grid_image):
+        missing_label = max(grid_image.objects.labels) + 1
+        fig, ax = grid_image.rgb.show(
+            overlay=True, object_label=missing_label,
+        )
+        assert _mpl_overlay_notices(ax) == []
+        plt.close(fig)
+
+        dash_fig = grid_image.rgb.dash(
+            overlay=True, object_label=missing_label,
+        )
+        assert _plotly_overlay_notices(dash_fig) == []
+
+    def test_grid_image_forwards_notice_option(self, grid_image):
+        fig, ax = grid_image.show(
+            overlay=True, show_overlay_notice=False,
+        )
+        assert _mpl_overlay_notices(ax) == []
+        plt.close(fig)
+
+        dash_fig = grid_image.dash(
+            overlay=True, show_overlay_notice=False,
+        )
+        assert _plotly_overlay_notices(dash_fig) == []
+
+    def test_notice_coexists_with_labels_and_grid(self, grid_image):
+        fig, ax = grid_image.show(
+            overlay=True, show_overlay_notice=True,
+            show_labels=True, show_grid=True,
+        )
+        assert len(_mpl_overlay_notices(ax)) == 1
+        assert len(ax.texts) > 1
+        plt.close(fig)
+
+        dash_fig = grid_image.dash(
+            overlay=True, show_overlay_notice=True,
+            show_labels=True, show_grid=True,
+        )
+        assert len(_plotly_overlay_notices(dash_fig)) == 1
+        assert len(dash_fig.layout.annotations) > 1
+
+
 # ---------------------------------------------------------------------------
 # Image.show(overlay=True) / Image.dash(overlay=True) — auto-pick accessor
 # ---------------------------------------------------------------------------
@@ -325,17 +429,21 @@ class TestOverlayNoObjects:
     def test_show_overlay_no_objects(self, empty_image):
         fig, ax = empty_image.show(overlay=True)
         assert isinstance(fig, plt.Figure)
+        assert _mpl_overlay_notices(ax) == []
         plt.close(fig)
 
     def test_dash_overlay_no_objects(self, empty_image):
         fig = empty_image.dash(overlay=True)
         assert isinstance(fig, go.Figure)
+        assert _plotly_overlay_notices(fig) == []
 
     def test_accessor_show_overlay_no_objects(self, empty_image):
         fig, ax = empty_image.rgb.show(overlay=True)
         assert isinstance(fig, plt.Figure)
+        assert _mpl_overlay_notices(ax) == []
         plt.close(fig)
 
     def test_accessor_dash_overlay_no_objects(self, empty_image):
         fig = empty_image.rgb.dash(overlay=True)
         assert isinstance(fig, go.Figure)
+        assert _plotly_overlay_notices(fig) == []
