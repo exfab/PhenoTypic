@@ -208,8 +208,11 @@ def tensor_vote(
 
     Returns:
         A tuple ``(stick_saliency, ball_saliency)`` of unnormalized float64
-        arrays. Stick saliency is ``lambda1 - lambda2`` and ball saliency is
-        ``lambda2`` after accumulated-tensor decomposition.
+        arrays, each with the same shape as ``response``. Both carry the same
+        amplitude units as ``response`` and scale linearly with positive input
+        amplitude for a fixed active-token mask. Stick saliency is
+        ``lambda1 - lambda2`` and ball saliency is ``lambda2`` after
+        accumulated-tensor decomposition. There is no sentinel or tie policy.
 
     Raises:
         ValueError: If arrays are not finite same-shaped 2-D inputs, response is

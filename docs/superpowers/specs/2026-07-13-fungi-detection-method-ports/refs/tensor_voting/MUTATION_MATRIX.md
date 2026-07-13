@@ -1,10 +1,19 @@
 # Tensor-voting mutation evidence
 
-Each mutant was applied alone to `_tensor_voting.py` with `apply_patch`, the named focused
-pytest command was executed, and the patch was reversed before the next mutant. `Max delta` is
-the largest absolute difference from any corresponding MATLAB fixture array. A non-fixture
-behavioral mutant reports the maximum fixture delta measured separately while the mutant was
-active.
+Each mutant was first applied manually and measured against its named focused pytest. The
+committed `run_mutations.py` makes that evidence reproducible without modifying the reviewed
+worktree: it copies the baseline to a temporary directory, proves each replacement changes only
+its unique declared site, injects one mutant at a time, executes the named killing probe, rejects
+survivors, and verifies the baseline SHA-256 is restored. Run it from the repository root with:
+
+```bash
+uv run python \
+  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/tensor_voting/run_mutations.py
+```
+
+`Max delta` is the largest absolute difference from any corresponding MATLAB fixture array. A
+non-fixture behavioral mutant reports the maximum fixture delta measured separately while the
+mutant was active.
 
 | Mutant | One semantic change | Command and killing test | Max delta | Result |
 |---|---|---|---:|---|

@@ -40,7 +40,9 @@ response and tangent field. It remains contextual evidence only.
 - The input tensor is retained. The voting field includes its center. An isolated token therefore
   contributes two coincident rank-1 tensors at its own pixel.
 - Boundaries use zero extension followed by cropping, not wrapping or reflection.
-- Stick and ball outputs are raw and unnormalized.
+- Stick and ball outputs are raw, unnormalized, same-shaped float64 arrays. Their values carry
+  response-amplitude units and scale linearly with positive amplitude for a fixed active mask.
+  There is no sentinel or tie mechanism.
 - The standalone operation wrapper and detector mapping are deferred.
 
 ## Drift register
