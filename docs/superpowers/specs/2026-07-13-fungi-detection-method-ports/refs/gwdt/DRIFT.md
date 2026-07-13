@@ -1,0 +1,15 @@
+# APP2 GWDT drift register proposal
+
+These rows are per-method proposals for the integrator's merged drift register.
+
+| ID | Category | Deviation | Evidence and consequence |
+|---|---|---|---|
+| D01 | Forced domain reduction | Replace 3-D `cnn_type` with explicit 2-D connectivity 4 or 8. | Source accepts offsets by Manhattan count in `vaa3d/app2/fastmarching_dt.h:73-87,153-167`; `_gwdt.py:15-30,140` retains axis and in-plane diagonal neighbors only. One-slice harness proves `cnn_type=1 -> 4` and `cnn_type=2 -> 8`. |
+| D02 | Contract-required | Accept a boolean background mask instead of applying `<= bkg_thresh` inside the helper. | Source threshold is `fastmarching_dt.h:24,45-58`; public boundary is `_gwdt.py:99-104,129-130`. This isolates detector threshold policy while preserving input-valued seeds. |
+| D03 | Contract-required | Reject non-array, non-2-D, empty, non-real, negative, or nonfinite input and malformed masks before source logic. | Source template has no equivalent guards; `_gwdt.py:70-96` defines deterministic Python failures. |
+| D04 | Capability added | Accept real NumPy dtypes, then reproduce Vaa3D float output by converting intensities and every recurrence result to float32. | Source template is called with uint8 or short in `vaa3d/app2_connector.cpp:377-384,420-427`; `_gwdt.py:129,133,166,192` broadens accepted input without changing source arithmetic after conversion. |
+| D05 | Forced language mechanism | Use Python heap lazy deletion rather than Vaa3D decrease-key heap objects. | Source adjusts objects in `fastmarching_dt.h:181-188` and `heap.h:60-66`; `_gwdt.py:174-177,196-202` pushes updated values and ignores stale entries. All public scalar maps match exact source fixtures; no parent or tie path is exposed. |
+| D06 | Capability removed | Omit Vaa3D console progress and process counters. | Source output is `fastmarching_dt.h:43-44,129-139`; the pure numerical helper has no I/O. Numeric state is unchanged. |
+| D07 | Forced total-function guard | Return ones for a constant distance map in `app2_gwdt_cost`. | Source lookup divides by zero through `fastmarching_macro.h:8` when span is zero; `_gwdt.py:229-232` defines a finite deterministic result. The no-background source fixture intentionally has no GI output. |
+| D08 | Contract-required integration separation | Expose the exact per-pixel GI lookup separately from APP2's endpoint-average tree recurrence. | Lookup is `fastmarching_macro.h:8-41`; edge averaging is `fastmarching_tree.h:353-371`; `_gwdt.py:207-234` returns only the local array. S01 must add endpoint averaging and may not feed this map to destination-only Dijkstra unchanged. |
+| D09 | Defect correction | Scan GI minimum and maximum independently instead of retaining the active overload's `if max ... else if min ...` chain. | Source scan is `fastmarching_tree.h:278-287`; `_gwdt.py:228-230` uses NumPy min/max. Strictly increasing flattened source input can leave `min_int=1e20` and index outside the table. The adapter defines deterministic bounds and tests increasing input. |

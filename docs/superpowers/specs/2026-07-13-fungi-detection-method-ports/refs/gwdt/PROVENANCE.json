@@ -1,0 +1,32 @@
+{
+  "method": "APP2 grey-weighted distance transform",
+  "paper": {
+    "authors": "Hang Xiao and Hanchuan Peng",
+    "doi": "10.1093/bioinformatics/btt170",
+    "local_file": "paper/2013_BIOINFO_app2.pdf",
+    "sha256": "a047ab8d12d6dfa0edee0fd6e32c1594a96747b1c137cdbb5a6c560a61eaf00d",
+    "url": "https://home.penglab.com/papersall/docpdf/2013_BIOINFO_app2.pdf"
+  },
+  "source": {
+    "paper_era_commit": "a7210aa5",
+    "paper_era_path": "released_plugins/v3d_plugins/vn2/app2/fastmarching_dt.h",
+    "selected_function_sha256_at_both_revisions": "5a4d930f2e4901b770a62e61ed5eb89f3583e4c3651c5abbb793e22430fda8c4",
+    "commit": "475e4ca92d4e51de10f1c05d80cef6615432c087",
+    "commit_date": "2024-04-25T16:17:22+08:00",
+    "license": "MIT",
+    "license_file": "vaa3d/LICENSE",
+    "repository": "https://github.com/Vaa3D/vaa3d_tools.git",
+    "selected_entry_point": "vaa3d/app2/fastmarching_dt.h:33-199",
+    "upstream_path": "released_plugins/v3d_plugins/neurontracing_vn2/app2/fastmarching_dt.h"
+  },
+  "checksum_manifest": "CHECKSUMS.sha256",
+  "key_source_hashes": {
+    "vaa3d/LICENSE": "817009dec890f9f68b082cf8395fe34902a6c892abe8bceef33c0a13c80ddc72",
+    "vaa3d/app2/fastmarching_dt.h": "f53794f5a8b63b42296aa860b5ee1a0ada8e6ff8b0f545d4827bffda50d73dc1",
+    "vaa3d/app2/fastmarching_macro.h": "774dc900768cfd4379a5fbc10d1e75ee333d0474512a7ffdb6b8ae2b289da8a5",
+    "vaa3d/app2/fastmarching_tree.h": "16f8d0f5c03eb645bd8b7d4ef62f2dda4d14d1f94125ce8f81ede079e0e7689f",
+    "vaa3d/app2/heap.h": "d27a95f73bb87ca2d3a3444365e71a25ad366e048ebc2c889b90e1c5b31902c3",
+    "vaa3d/app2_connector.cpp": "4813a41330849921f8da14f955b8826442bed38592c41f45bb5d887772f707c5",
+    "vaa3d/vn_app2.h": "6b7afe08af7038f5a8bb15f8f25f9f3a58e7d128b2397dc53c5f4f3a4ea8a632"
+  }
+}
