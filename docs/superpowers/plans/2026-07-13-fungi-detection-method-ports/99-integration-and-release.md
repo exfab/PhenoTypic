@@ -42,8 +42,11 @@ Refactor without behavior change before adding strategy branches:
 5. Add the NFA adapter and its owned detector test
    `tests/unit/detect/test_filamentous_fungi_nfa.py`; it consumes live phase orientation, preserves
    accepted label IDs, and rejects invalid-label rows according to A07.
-6. Apply GWDT only in the Dijkstra cost adapter according to the corrected blend/replacement
-   equation. Compute nonlocal transforms before tiling.
+6. Apply GWDT only in a distinct APP2 edge-cost adapter. Compute nonlocal transforms before tiling,
+   then charge each traversed edge as `(GI(source) + GI(destination)) * factor / 2`, with source
+   constants `factor=1.0` for axial moves and `factor=1.414214` for diagonal moves. Do not feed the
+   lookup into the existing destination-only Dijkstra recurrence, and do not silently substitute
+   its exact `sqrt(2)` diagonal constant. Preserve the existing Dijkstra adapter unchanged.
 7. Resolve tensor voting's detector contract at D0. If retained, compute stick/ball on the full
    phase response/orientation field, feed only stick saliency through one explicitly specified
    opt-in cost/evidence equation, keep ball diagnostic, and add disabled-mode and forwarding tests.
