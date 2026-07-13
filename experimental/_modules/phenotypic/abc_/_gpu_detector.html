@@ -599,7 +599,7 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
@@ -609,6 +609,49 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._object_detector</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectDetector</span>
+
+
+<span class="n">_UINT8_CONVERSION_CHUNK_BYTES</span> <span class="o">=</span> <span class="mi">16</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_conversion_rows</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a row count that bounds float64 conversion temporaries.&quot;&quot;&quot;</span>
+    <span class="n">values_per_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">))</span>
+    <span class="n">bytes_per_row</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">values_per_row</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">.</span><span class="n">itemsize</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">_UINT8_CONVERSION_CHUNK_BYTES</span> <span class="o">//</span> <span class="n">bytes_per_row</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_scale_to_uint8</span><span class="p">(</span>
+    <span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">scaling</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;dtype_range&quot;</span><span class="p">,</span> <span class="s2">&quot;image_max&quot;</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scale a non-uint8 array into uint8 using bounded row chunks.&quot;&quot;&quot;</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">scaling</span> <span class="o">==</span> <span class="s2">&quot;image_max&quot;</span><span class="p">:</span>
+        <span class="n">scale_max</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">):</span>
+        <span class="n">scale_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">max</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">scale_max</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+    <span class="k">if</span> <span class="n">scale_max</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">output</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">output</span>
+
+    <span class="n">rows_per_chunk</span> <span class="o">=</span> <span class="n">_conversion_rows</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">row_start</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">rows_per_chunk</span><span class="p">):</span>
+        <span class="n">row_stop</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">row_start</span> <span class="o">+</span> <span class="n">rows_per_chunk</span><span class="p">,</span> <span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">chunk</span> <span class="o">=</span> <span class="n">array</span><span class="p">[</span><span class="n">row_start</span><span class="p">:</span><span class="n">row_stop</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">scaling</span> <span class="o">==</span> <span class="s2">&quot;image_max&quot;</span><span class="p">:</span>
+            <span class="c1"># Keep this expression identical to the legacy whole-array path.</span>
+            <span class="n">output</span><span class="p">[</span><span class="n">row_start</span><span class="p">:</span><span class="n">row_stop</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">chunk</span> <span class="o">/</span> <span class="n">scale_max</span> <span class="o">*</span> <span class="mi">255</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">output</span><span class="p">[</span><span class="n">row_start</span><span class="p">:</span><span class="n">row_stop</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">chunk</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">scale_max</span><span class="p">)</span> <span class="o">/</span> <span class="n">scale_max</span> <span class="o">*</span> <span class="mi">255</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">output</span>
 
 
 <span class="c1"># &lt;&lt;Interface&gt;&gt;</span>
@@ -705,6 +748,9 @@
     <span class="c1"># serialize and round-trip (Spec 1 §4, review S4). Subclasses override the</span>
     <span class="c1"># defaults; &quot;instance&quot; keeps existing SAM behavior unchanged.</span>
     <span class="n">input_layer</span><span class="p">:</span> <span class="n">GpuInputLayer</span> <span class="o">=</span> <span class="s2">&quot;rgb&quot;</span>
+    <span class="n">input_scaling</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+        <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;dtype_range&quot;</span><span class="p">,</span> <span class="s2">&quot;image_max&quot;</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;image_max&quot;</span>
     <span class="n">supports_batching</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">output_kind</span><span class="p">:</span> <span class="n">GpuOutputKind</span> <span class="o">=</span> <span class="s2">&quot;instance&quot;</span>
 
@@ -726,23 +772,19 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Turn a raw ``input_layer`` array into a model-ready ``uint8`` sample.</span>
 
-<span class="sd">        Single-channel 2D layers (``gray``/``detect_mat``) are stacked into an</span>
-<span class="sd">        ``(H, W, 3)`` block so 3-channel models (SAM/DINO ViT) consume them</span>
-<span class="sd">        unchanged; ``rgb`` keeps its three channels. The result is then coerced</span>
-<span class="sd">        to ``uint8`` — float ``[0, 1]`` (``gray``/``detect_mat``) and ``uint16``</span>
-<span class="sd">        (16-bit ``rgb``) layers are max-normalized to ``0..255``, while an</span>
-<span class="sd">        already-``uint8`` ``rgb`` array passes through byte-identical — so every</span>
-<span class="sd">        layer reaches the model through this one shared conversion. Subclasses</span>
-<span class="sd">        rarely need to override this.</span>
+<span class="sd">        Non-uint8 inputs are converted in bounded row chunks. ``dtype_range``</span>
+<span class="sd">        maps integer dtype limits (for example, uint16 0..65535) or normalized</span>
+<span class="sd">        float 0..1 to 0..255; ``image_max`` retains the legacy per-image maximum</span>
+<span class="sd">        normalization. ``dtype_range`` values outside its range are clipped. A</span>
+<span class="sd">        2D layer is converted before it is stacked into an ``(H, W, 3)`` block,</span>
+<span class="sd">        avoiding three-channel conversion temporaries. An already-uint8 3D array</span>
+<span class="sd">        passes through without a copy. Subclasses rarely need to override this</span>
+<span class="sd">        method.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">array</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+            <span class="n">array</span> <span class="o">=</span> <span class="n">_scale_to_uint8</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_scaling</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
             <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">array</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">array</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">array</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
-            <span class="n">max_val</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">max_val</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">array</span> <span class="o">=</span> <span class="p">(</span><span class="n">array</span> <span class="o">/</span> <span class="n">max_val</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">array</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_collate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
