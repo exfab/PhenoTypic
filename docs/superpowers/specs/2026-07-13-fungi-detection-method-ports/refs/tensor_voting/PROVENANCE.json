@@ -1,0 +1,61 @@
+{
+  "method": "tensor_voting",
+  "retrieved": "2026-07-13",
+  "authority": {
+    "selected_scope": "Trevor Linton's oriented 2-D calc_vote_stick stage only",
+    "source": "MATLAB Central File Exchange 21051, version 1.0.0.0",
+    "source_url": "https://www.mathworks.com/matlabcentral/fileexchange/21051-tensor-voting-framework",
+    "archive_url": "https://www.mathworks.com/matlabcentral/mlc-downloads/downloads/submissions/21051/versions/1/download/zip",
+    "archive_file": "source_archive.zip",
+    "archive_sha256": "c1bb4f14a6b5c8e33e2875a9494b786d0a1463bf2e2169315fef2008f6172148",
+    "published": "2008-08-13",
+    "age_warning": "This executable source is more than five years old. It defines the historical algorithm but provides no evidence of fungal-detection benefit."
+  },
+  "papers": [
+    {
+      "title": "Tensor Voting: Theory and Applications",
+      "authors": ["Gerard Medioni", "Chi-Keung Tang", "Mi-Suen Lee"],
+      "file": "medioni_tensor_voting.pdf",
+      "url": "https://www.sci.utah.edu/~gerig/CS7960-S2010/handouts/Medioni_tensor_voting.pdf",
+      "sha256": "d185f8f3456a612881b218535148024238b7be7de295cff6232be5b4e66774ba"
+    },
+    {
+      "title": "Gap Filling of 3-D Microvascular Networks by Tensor Voting",
+      "authors": ["Laurent Risser", "Franck Plouraboue", "Xavier Descombes"],
+      "doi": "10.1109/TMI.2007.913248",
+      "file": "risser_2008.pdf",
+      "url": "https://inria.hal.science/hal-01576034/document",
+      "sha256": "7662136a1761127eb823807f0833a196c6ac05f63eded44b5156c43115c7c6f3",
+      "authority_decision": "Context only. This paper specifies a 3-D segmented-network token pipeline, not the planned response-plus-theta 2-D helper."
+    }
+  ],
+  "license": {
+    "status": "conflicting notices retained; no silent license choice",
+    "readme_file": "source/README",
+    "readme_sha256": "8bb40daf778f933316f3352a1c8a8cd7542ca50ac62ca7205b3594299244d003",
+    "readme_claim": "LGPL-3.0",
+    "file_exchange_license_file": "source/license.txt",
+    "file_exchange_license_sha256": "3ec1337e8c9b93cb89beb2a6b09d2e4213409dda8fcae71fc9b0ba88a42d1ef7",
+    "file_exchange_license_claim": "BSD-like three-clause notice",
+    "decision": "Distribute the unmodified reference corpus with both notices. Production code is an independently written mathematical re-expression and copies no reference comments or source structure. Do not describe the archive as unambiguously BSD or LGPL."
+  },
+  "runtime": {
+    "product": "MATLAB",
+    "version": "R2023b",
+    "executable": "/Applications/MATLAB_R2023b.app/bin/matlab",
+    "platform": "macOS"
+  },
+  "contract_decisions": {
+    "input": "finite nonnegative 2-D response and same-shaped finite axial tangent theta in Cartesian radians, x right and y up",
+    "encoding": "T0 = response * n * n^T with n=(-sin(theta), cos(theta))",
+    "active_tokens": "source l1-l2 > 0, equivalent to positive response after rank-1 encoding",
+    "self_vote": "retain T0 and include the voting-field center, yielding T0 plus one cast self-vote",
+    "support": "exact source odd window derived from the 0.01 decay cutoff",
+    "kernel_fork": "retain source/create_stick_tensorfield.m line 70 theta=4*theta fork",
+    "boundary": "zero extension with out-of-image votes discarded by crop",
+    "accumulation": "float64, MATLAB find column-major voter order",
+    "outputs": "unnormalized stick=l1-l2 and ball=l2 from the accumulated symmetric tensor",
+    "wrapper": "deferred because image-to-orientation estimation is not part of the selected source",
+    "detector": "deferred; later cost/evidence mapping is a separate PhenoTypic adaptation"
+  }
+}
