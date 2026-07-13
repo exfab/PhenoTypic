@@ -26,6 +26,11 @@ if TYPE_CHECKING:
 
 FootprintShape = Literal["disk", "square", "diamond"]
 
+#: Boundary extension modes shared by SciPy-compatible numerical reconnection
+#: helpers. Each port must still freeze its own default and supported subset from
+#: the selected reference.
+BoundaryMode: TypeAlias = Literal["reflect", "constant", "nearest", "mirror", "wrap"]
+
 DetectMode = Literal["gray", "red", "green", "blue", "MinRGB", "LabL", "LabA", "LabB", "HsvS", "HsvV", "InvS"]
 
 #: Source layer an ``InputLayerMixin`` operation reads from. ``"detect_mat"``

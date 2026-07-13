@@ -1,12 +1,23 @@
 from typing import get_args
 
 from phenotypic.sdk_.typing_ import (
+    BoundaryMode,
     DinoSize,
     DinoVersion,
     InputLayer,
     NormOut,
     ProcessOnlyLayer,
 )
+
+
+def test_boundary_mode_values():
+    assert set(get_args(BoundaryMode)) == {
+        "reflect",
+        "constant",
+        "nearest",
+        "mirror",
+        "wrap",
+    }
 
 
 def test_process_only_layer_values():

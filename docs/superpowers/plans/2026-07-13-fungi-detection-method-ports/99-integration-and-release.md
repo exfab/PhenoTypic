@@ -12,10 +12,16 @@ src/phenotypic/sdk_/reconnect/
 
 `CLAUDE.md` records array purity, Google docstrings, validation at Python entry points, no pydantic/
 `Image`, lazy optional imports, no `fastmath` without a numeric proof, Numba cache clearing, result
-dtype/axis documentation, and the reference/drift/mutation obligations. Add an import test that
-fails if GUDHI, FilFinder, FilterPy, Astropy, or plotting/UI modules enter `sys.modules`.
+dtype/axis documentation, and the reference/drift/mutation obligations. Add an incremental import
+test that fails if reconnect itself adds GUDHI, FilFinder, FilterPy, Astropy, or plotting/UI modules
+to `sys.modules`.
 Create any corrected-contract aliases needed by parallel modules, including `BoundaryMode`, in
 `sdk_/typing_.py` during S00 and pin them in `tests/unit/sdk_/test_typing_aliases.py`.
+Because a dotted submodule import necessarily initializes the repository's existing eager
+`phenotypic` and `phenotypic.sdk_` parents, the import gate measures the incremental module set:
+importing `phenotypic.sdk_.reconnect` after `phenotypic.sdk_` must add none of the prohibited
+optional, plotting, or UI modules. Refactoring the established top-level import surface is outside
+this porting change.
 
 Do not force unrelated methods into one return type. Use method-specific frozen dataclasses when a
 method has multiple observable outputs. Detector strategy adapters convert their results into the
