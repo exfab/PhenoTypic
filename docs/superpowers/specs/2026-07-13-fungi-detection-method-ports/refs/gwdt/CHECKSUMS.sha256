@@ -19,5 +19,5 @@ e8160f09db55b880619efc0e87a3d18ecb7a93bf723e7de91c10e9351c87c208  docs/superpowe
 79c33fcc682d2b067a04632de439fb04f7fc988db63ffb5f0f123df19d7a815a  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/gwdt/generate_fixture.py
 19a07d141ca9972f40866847969a2c57878120bd32e07adfd8ff0a194ebd3519  tests/fixtures/reconnect/gwdt/app2_source.npz
 3d0d5545cf449ae14f68a95fa800840a3696b28ccbfd7650354667edffa6995b  docs/superpowers/logic_validation_scripts/2026-07-13-fungi-detection-method-ports/gwdt.py
-b730cdb6b475202b41d7ccbcd065fd663ee5751e55f78603fed7838e6d25e1fb  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/gwdt/run_mutations.py
+d02ffeb2ba7d1a3a8d253738b455f89a2bab755ef8152d8256f57d9599a46190  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/gwdt/run_mutations.py
 f406943cd8e41ead98cca8ba9eea807dfaa6d51a4a822cccef28fa69bbafc0e1  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/gwdt/verify_checksums.py

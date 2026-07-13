@@ -137,8 +137,9 @@ MUTATIONS: tuple[Mutation, ...] = (
     ),
     (
         "M02",
-        "source_values = values.astype(np.float32)",
-        "source_values = np.reciprocal(values + 1e-6).astype(np.float32)",
+        "source_values: NDArray[np.float32] = values.astype(np.float32)",
+        "source_values: NDArray[np.float32] = "
+        "np.reciprocal(values + 1e-6).astype(np.float32)",
         assert_standard_4,
     ),
     (
@@ -180,8 +181,9 @@ MUTATIONS: tuple[Mutation, ...] = (
     ),
     (
         "M10",
-        "source_values = values.astype(np.float32)",
-        "source_values = (values / np.max(values)).astype(np.float32)",
+        "source_values: NDArray[np.float32] = values.astype(np.float32)",
+        "source_values: NDArray[np.float32] = "
+        "(values / np.max(values)).astype(np.float32)",
         assert_standard_4,
     ),
     (

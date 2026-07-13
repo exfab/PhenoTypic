@@ -8,6 +8,7 @@ import math
 from typing import Literal
 
 import numpy as np
+from numpy.typing import NDArray
 
 
 Connectivity = Literal[4, 8]
@@ -134,7 +135,7 @@ def grey_weighted_distance(
         or connectivity not in (4, 8)
     ):
         raise ValueError("connectivity must be 4 or 8")
-    source_values = values.astype(np.float32)
+    source_values: NDArray[np.float32] = values.astype(np.float32)
     distances = np.full(values.shape, _SOURCE_INFINITY, dtype=np.float32)
     distances[seeds] = source_values[seeds]
     alive = seeds.copy()
