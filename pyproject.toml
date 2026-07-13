@@ -103,7 +103,7 @@ torch = [
     # handles missing micro_sam gracefully at runtime.
     "torch>=2.5.1;sys_platform!='win32'",
     "torchvision>=0.20.1;sys_platform!='win32'",
-    "sam2;sys_platform!='win32'",
+    "sam2>=1.1.0;sys_platform!='win32'",
 ]
 
 foundation = [

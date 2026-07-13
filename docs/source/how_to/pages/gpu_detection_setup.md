@@ -113,6 +113,14 @@ print(result.num_objects)
   Use 16 for large, well-separated colonies. Increase to 48--64 for dense
   plates with many small colonies. Higher values increase inference time
   quadratically.
+- **`points_per_batch`** (default 8): Controls how many existing prompt-grid
+  points are decoded at once. Lower this first when a run exhausts GPU or unified
+  memory. It changes throughput, not crop resolution, prompt positions, or prompt
+  density.
+- **`input_scaling`** (default `"image_max"`): Converts non-uint8 model input
+  in bounded row chunks. The default retains historical per-image contrast
+  normalization and performed better on the labeled uint16 accuracy fixture.
+  Use `"dtype_range"` when absolute sensor-scale intensity must be preserved.
 - **`pred_iou_thresh`** (default 0.7): Minimum predicted IoU for keeping a
   mask. Raise to 0.85--0.95 for conservative detection (fewer false
   positives); lower to 0.5 to catch faint or ambiguous colonies.
@@ -248,6 +256,8 @@ Key parameters:
 
 - `dino_version` / `dino_size` — backbone generation (2/3) and size.
 - `sam2_model_size` — SAM2 variant for the proposal generator.
+- `points_per_batch` — SAM2 proposal-decoder batch size (default 8). Lowering it
+  reduces peak memory without reducing proposal density or crop resolution.
 - `similarity_thresh` — minimum cosine-to-prototype score to keep a proposal.
 - `merge_iou_thresh` — IoU above which two survivors are merged.
 - `tile_px` / `tile_overlap` — geometry of the tiles the DINO backbone scores
@@ -654,14 +664,22 @@ CUDA was explicitly requested but is not available. Check:
 
 ### Out of memory (OOM) errors
 
-SAM models require significant GPU memory. To reduce VRAM usage:
+SAM models require significant GPU memory. To reduce VRAM or unified-memory usage
+without lowering segmentation resolution:
 
+- Lower `points_per_batch` first (for example, 4 instead of the default 8). This
+  keeps the same prompt grid, crop pyramid, thresholds, and mask geometry.
+- Both `input_scaling="dtype_range"` and `input_scaling="image_max"` use the
+  same bounded row-chunk conversion, so this setting is not an OOM control.
+  Keep the `"image_max"` default for the validated compatibility policy; use
+  `"dtype_range"` only when absolute sensor-scale intensity is required.
 - Use a smaller model: `Sam2Detector(model_size="tiny")` instead of `"large"`.
 - Use `MicroSamDetector(model_type="vit_t_lm")` for the smallest micro-sam
   model.
-- Reduce `points_per_side` (e.g., 16 instead of 32) to generate fewer
-  candidate masks.
-- Process smaller images or downscale before detection.
+- If memory is still insufficient, reduce `points_per_side` (for example, 16
+  instead of 32), then reduce `crop_n_layers` or downscale the image. These later
+  options reduce prompt density or effective segmentation resolution and can
+  affect accuracy.
 
 ### Checkpoint not found on SLURM compute nodes
 

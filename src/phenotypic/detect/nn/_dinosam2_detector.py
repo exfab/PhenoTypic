@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, Any, List
 
-from pydantic import PrivateAttr
+from pydantic import Field, PrivateAttr
 
 from phenotypic.abc_ import GpuDetector
 from phenotypic.detect.nn._checkpoint_manager import Device, Sam2ModelSize
@@ -147,6 +147,38 @@ def _assemble_objmap(
     return objmap
 
 
+def _assemble_rle_objmap(
+    proposals: List[dict],
+    scores: "np.ndarray",
+    similarity_thresh: float,
+    merge_iou_thresh: float,
+    shape: tuple[int, int],
+) -> "np.ndarray":
+    """Filter, RLE-IoU merge, and stream scored proposals into an objmap."""
+    import numpy as np
+
+    from phenotypic.detect.nn._sam2_rle import (
+        merge_rle_records_by_iou,
+        paint_rle_records,
+    )
+
+    aligned_scores = np.asarray(scores)
+    foreground = [
+        proposal
+        for proposal, score in zip(proposals, aligned_scores)
+        if score >= similarity_thresh
+    ]
+    if not foreground:
+        return np.zeros(shape, dtype=np.uint16)
+    kept = merge_rle_records_by_iou(foreground, merge_iou_thresh)
+    return paint_rle_records(
+        kept,
+        shape,
+        detector_name="DinoSam2",
+        truncate_before_sort=False,
+    )
+
+
 class DinoSam2Detector(GpuDetector):
     """Detect colonies with SAM2 proposals scored by DINOv2 features.
 
@@ -186,6 +218,9 @@ class DinoSam2Detector(GpuDetector):
             duplicates (fixes SAM2 over-segmentation).  Default 0.7.
         min_proposal_area: Minimum proposal area in pixels (forwarded to SAM2's
             mask generator).  Default 100.
+        points_per_batch: Number of SAM2 point prompts decoded together. Lower
+            this first if inference runs out of memory; it preserves proposal
+            positions and crop resolution at the cost of throughput. Default 8.
         tile_px: Tile size, in pixels, at which DINO dense features are
             extracted.  A colony must be resolvable on the patch grid to be
             pooled at all: on a whole 4000x3000 plate a 30 px colony spans
@@ -288,6 +323,9 @@ class DinoSam2Detector(GpuDetector):
     similarity_thresh: Annotated[float, TuneSpec(0.0, 1.0)] = 0.5
     merge_iou_thresh: Annotated[float, TuneSpec(0.0, 1.0)] = 0.7
     min_proposal_area: Annotated[int, TuneSpec(0, 500)] = 100
+    points_per_batch: Annotated[int, TuneSpec(tunable=False)] = Field(
+        default=8, ge=1
+    )
 
     # DINO feature tiling — 518 = 14 * 37, an exact DINOv2 patch multiple.
     # Whole-plate pooling makes every colony sub-patch (see
@@ -358,6 +396,7 @@ class DinoSam2Detector(GpuDetector):
             self.sam2_model_size,
             device=self._device,
             min_mask_region_area=self.min_proposal_area,
+            points_per_batch=self.points_per_batch,
             crop_n_layers=self.crop_n_layers,
             crop_nms_thresh=self.crop_nms_thresh,
             crop_overlap_ratio=self.crop_overlap_ratio,
@@ -393,7 +432,13 @@ class DinoSam2Detector(GpuDetector):
         if not raw:
             return np.zeros(rgb.shape[:2], dtype=np.uint16)
 
-        proposals = [m["segmentation"].astype(bool) for m in raw]
+        shape = rgb.shape[:2]
+        from phenotypic.detect.nn._sam2_rle import (
+            decode_uncompressed_rle,
+            normalize_rle_records,
+        )
+
+        normalize_rle_records(raw, expected_shape=shape)
         # Shared, register-token-aware dense features (C1 fix lives in one
         # place — _dino_support.extract_patch_features — not duplicated here).
         from phenotypic.detect.nn import _dino_support
@@ -410,21 +455,26 @@ class DinoSam2Detector(GpuDetector):
             )
             for t in tiles
         ]
-        features = np.stack(
-            [
+        pooled_features = []
+        for proposal in raw:
+            mask = decode_uncompressed_rle(
+                proposal["segmentation"], expected_shape=shape
+            )
+            pooled_features.append(
                 _dino_support.pool_prototype_tiled(
-                    dense_by_tile, tiles, p, patch
+                    dense_by_tile, tiles, mask, patch
                 ).astype(np.float64)
-                for p in proposals
-            ]
-        )
+            )
+            del mask
+        features = np.stack(pooled_features)
         prototype = self._foreground_prototype(features, raw)
         scores = _score_by_prototype(features, prototype)
-        return _assemble_objmap(
-            proposals,
+        return _assemble_rle_objmap(
+            raw,
             scores,
             similarity_thresh=self.similarity_thresh,
             merge_iou_thresh=self.merge_iou_thresh,
+            shape=shape,
         )
 
     @staticmethod

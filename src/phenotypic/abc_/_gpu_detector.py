@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Annotated, Any, List
+from typing import TYPE_CHECKING, Annotated, Any, List, Literal
 
 import numpy as np
 
@@ -11,6 +11,49 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from ._object_detector import ObjectDetector
+
+
+_UINT8_CONVERSION_CHUNK_BYTES = 16 * 1024 * 1024
+
+
+def _conversion_rows(array: np.ndarray) -> int:
+    """Return a row count that bounds float64 conversion temporaries."""
+    values_per_row = int(np.prod(array.shape[1:], dtype=np.int64))
+    bytes_per_row = max(1, values_per_row * np.dtype(np.float64).itemsize)
+    return max(1, _UINT8_CONVERSION_CHUNK_BYTES // bytes_per_row)
+
+
+def _scale_to_uint8(
+    array: np.ndarray,
+    scaling: Literal["dtype_range", "image_max"],
+) -> np.ndarray:
+    """Scale a non-uint8 array into uint8 using bounded row chunks."""
+    output = np.empty(array.shape, dtype=np.uint8)
+    if scaling == "image_max":
+        scale_max = array.max()
+    elif np.issubdtype(array.dtype, np.integer):
+        scale_max = np.iinfo(array.dtype).max
+    else:
+        scale_max = 1.0
+
+    if scale_max <= 0:
+        output.fill(0)
+        return output
+
+    rows_per_chunk = _conversion_rows(array)
+    for row_start in range(0, array.shape[0], rows_per_chunk):
+        row_stop = min(row_start + rows_per_chunk, array.shape[0])
+        chunk = array[row_start:row_stop]
+        if scaling == "image_max":
+            # Keep this expression identical to the legacy whole-array path.
+            output[row_start:row_stop] = (
+                chunk / scale_max * 255
+            ).astype(np.uint8)
+        else:
+            output[row_start:row_stop] = (
+                np.clip(chunk, 0, scale_max) / scale_max * 255
+            ).astype(np.uint8)
+    return output
 
 
 # <<Interface>>
@@ -105,6 +148,9 @@ class GpuDetector(ObjectDetector, ABC):
     # serialize and round-trip (Spec 1 §4, review S4). Subclasses override the
     # defaults; "instance" keeps existing SAM behavior unchanged.
     input_layer: GpuInputLayer = "rgb"
+    input_scaling: Annotated[
+        Literal["dtype_range", "image_max"], TuneSpec(tunable=False)
+    ] = "image_max"
     supports_batching: bool = False
     output_kind: GpuOutputKind = "instance"
 
@@ -126,23 +172,19 @@ class GpuDetector(ObjectDetector, ABC):
     def _preprocess(self, array: np.ndarray) -> Any:
         """Turn a raw ``input_layer`` array into a model-ready ``uint8`` sample.
 
-        Single-channel 2D layers (``gray``/``detect_mat``) are stacked into an
-        ``(H, W, 3)`` block so 3-channel models (SAM/DINO ViT) consume them
-        unchanged; ``rgb`` keeps its three channels. The result is then coerced
-        to ``uint8`` — float ``[0, 1]`` (``gray``/``detect_mat``) and ``uint16``
-        (16-bit ``rgb``) layers are max-normalized to ``0..255``, while an
-        already-``uint8`` ``rgb`` array passes through byte-identical — so every
-        layer reaches the model through this one shared conversion. Subclasses
-        rarely need to override this.
+        Non-uint8 inputs are converted in bounded row chunks. ``dtype_range``
+        maps integer dtype limits (for example, uint16 0..65535) or normalized
+        float 0..1 to 0..255; ``image_max`` retains the legacy per-image maximum
+        normalization. ``dtype_range`` values outside its range are clipped. A
+        2D layer is converted before it is stacked into an ``(H, W, 3)`` block,
+        avoiding three-channel conversion temporaries. An already-uint8 3D array
+        passes through without a copy. Subclasses rarely need to override this
+        method.
         """
+        if array.dtype != np.uint8:
+            array = _scale_to_uint8(array, self.input_scaling)
         if array.ndim == 2:
             array = np.stack([array, array, array], axis=-1)
-        if array.dtype != np.uint8:
-            max_val = array.max()
-            if max_val > 0:
-                array = (array / max_val * 255).astype(np.uint8)
-            else:
-                array = np.zeros(array.shape, dtype=np.uint8)
         return array
 
     def _collate(self, samples: List[Any]) -> Any:

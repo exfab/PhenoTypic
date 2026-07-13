@@ -16,6 +16,7 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import GpuDetector, ObjectDetector
 from phenotypic.detect.nn import DinoSam2Detector
+from pydantic import ValidationError
 
 
 # ---------------------------------------------------------------------------
@@ -44,6 +45,11 @@ class TestDinoSam2Construction:
         assert det.similarity_thresh == 0.5
         assert det.merge_iou_thresh == 0.7
         assert det.min_proposal_area == 100
+        assert det.points_per_batch == 8
+
+    def test_points_per_batch_must_be_positive(self):
+        with pytest.raises(ValidationError):
+            DinoSam2Detector(points_per_batch=0)
 
     def test_dinov3_is_opt_in(self):
         det = DinoSam2Detector(dino_version=3, dino_size="base")
@@ -73,11 +79,27 @@ class TestDinoSam2Construction:
 
 class TestDinoSam2Serialization:
     def test_pipeline_json_round_trip(self):
-        pipe = ImagePipeline(ops=[DinoSam2Detector(dino_size="large")])
+        pipe = ImagePipeline(
+            ops=[DinoSam2Detector(dino_size="large", points_per_batch=4)]
+        )
         restored = ImagePipeline.from_json(pipe.to_json())
         det = list(restored._ops.values())[0]
         assert isinstance(det, DinoSam2Detector)
         assert det.dino_size == "large"
+        assert det.points_per_batch == 4
+
+    def test_old_pipeline_payload_defaults_points_per_batch(self):
+        config = json.loads(ImagePipeline(ops=[DinoSam2Detector()]).to_json())
+        detector_config = next(
+            value
+            for value in config["pipe_cfgs"].values()
+            if value["class"] == "DinoSam2Detector"
+        )
+        detector_config["params"].pop("points_per_batch")
+
+        restored = ImagePipeline.from_json(json.dumps(config))
+
+        assert list(restored._ops.values())[0].points_per_batch == 8
 
     def test_private_attrs_not_in_json(self):
         det = DinoSam2Detector()
@@ -209,6 +231,121 @@ class TestRecipeAlgorithm:
         assert objmap.max() == 1  # only the foreground proposal survives
         assert objmap[4, 4] == 1
         assert objmap[14, 14] == 0  # background dropped
+
+    def test_rle_recipe_matches_boolean_recipe(self):
+        from phenotypic.detect.nn._dinosam2_detector import (
+            _assemble_objmap,
+            _assemble_rle_objmap,
+        )
+        from phenotypic.detect.nn._sam2_rle import encode_uncompressed_rle
+
+        outer = np.zeros((12, 15), bool)
+        outer[1:10, 1:13] = True
+        inner = np.zeros((12, 15), bool)
+        inner[4:7, 5:9] = True
+        distinct = np.zeros((12, 15), bool)
+        distinct[9:11, 12:15] = True
+        masks = [inner, outer, distinct]
+        scores = np.array([0.9, 0.95, 0.1])
+        expected = _assemble_objmap(masks, scores, 0.5, 0.7)
+        records = [
+            {
+                "segmentation": encode_uncompressed_rle(mask),
+                "area": int(mask.sum()),
+            }
+            for mask in masks
+        ]
+        actual = _assemble_rle_objmap(records, scores, 0.5, 0.7, outer.shape)
+        np.testing.assert_array_equal(actual, expected)
+
+    def test_rle_merge_matches_boolean_merge(self):
+        from phenotypic.detect.nn._dinosam2_detector import _merge_by_iou
+        from phenotypic.detect.nn._sam2_rle import (
+            encode_uncompressed_rle,
+            merge_rle_records_by_iou,
+        )
+
+        rng = np.random.default_rng(11)
+        masks = [rng.random((10, 14)) > 0.75 for _ in range(8)]
+        bool_kept = _merge_by_iou(masks, 0.2)
+        records = [
+            {
+                "segmentation": encode_uncompressed_rle(mask),
+                "area": int(mask.sum()),
+                "identity": id(mask),
+            }
+            for mask in masks
+        ]
+        rle_kept = merge_rle_records_by_iou(records, 0.2)
+        assert [record["identity"] for record in rle_kept] == [
+            id(mask) for mask in bool_kept
+        ]
+
+    def test_rle_path_preserves_pooling_scores_order_and_final_map(self):
+        from phenotypic.detect.nn import _dino_support
+        from phenotypic.detect.nn._dinosam2_detector import (
+            _assemble_objmap,
+            _assemble_rle_objmap,
+            _score_by_prototype,
+        )
+        from phenotypic.detect.nn._sam2_rle import (
+            decode_uncompressed_rle,
+            encode_uncompressed_rle,
+        )
+        from phenotypic.detect.nn._tiling import _Tile
+
+        shape = (12, 15)
+        outer = np.zeros(shape, bool)
+        outer[1:10, 1:13] = True
+        inner = np.zeros(shape, bool)
+        inner[4:7, 5:9] = True
+        distinct = np.zeros(shape, bool)
+        distinct[9:11, 12:15] = True
+        masks = [inner, outer, distinct]
+        predicted_ious = [0.9, 0.95, 0.2]
+        yy, xx = np.indices(shape)
+        dense = np.stack((yy + 1, xx + 1, yy + xx + 1), axis=-1).astype(
+            np.float32
+        )
+        tiles = [_Tile(0, 0, *shape)]
+
+        bool_features = np.stack(
+            [
+                _dino_support.pool_prototype_tiled([dense], tiles, mask, 1)
+                for mask in masks
+            ]
+        )
+        records = [
+            {
+                "segmentation": encode_uncompressed_rle(mask),
+                "area": int(mask.sum()),
+                "predicted_iou": predicted_iou,
+            }
+            for mask, predicted_iou in zip(masks, predicted_ious)
+        ]
+        rle_features = np.stack(
+            [
+                _dino_support.pool_prototype_tiled(
+                    [dense],
+                    tiles,
+                    decode_uncompressed_rle(record["segmentation"]),
+                    1,
+                )
+                for record in records
+            ]
+        )
+        np.testing.assert_array_equal(rle_features, bool_features)
+
+        detector = DinoSam2Detector()
+        bool_prototype = detector._foreground_prototype(bool_features, records)
+        rle_prototype = detector._foreground_prototype(rle_features, records)
+        bool_scores = _score_by_prototype(bool_features, bool_prototype)
+        rle_scores = _score_by_prototype(rle_features, rle_prototype)
+        np.testing.assert_array_equal(rle_scores, bool_scores)
+
+        expected = _assemble_objmap(masks, bool_scores, 0.0, 0.7)
+        actual = _assemble_rle_objmap(records, rle_scores, 0.0, 0.7, shape)
+        np.testing.assert_array_equal(actual, expected)
 
 
 # ---------------------------------------------------------------------------
@@ -345,6 +482,7 @@ class TestDinoSam2Tiling:
         assert seen["crop_overlap_ratio"] == 0.25
         assert seen["crop_n_points_downscale_factor"] == 2
         assert seen["min_mask_region_area"] == 100
+        assert seen["points_per_batch"] == 8
 
     def test_infer_one_extracts_features_per_tile_not_per_plate(self, monkeypatch):
         """_infer_one must never hand the whole plate to the ViT: on a

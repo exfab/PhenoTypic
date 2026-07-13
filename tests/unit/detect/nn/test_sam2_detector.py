@@ -6,8 +6,12 @@ full ``phenotypic[torch]`` extra is available.
 """
 
 import json
+import sys
+import types
 
+import numpy as np
 import pytest
+from pydantic import ValidationError
 
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import GpuDetector, ObjectDetector
@@ -26,6 +30,7 @@ class TestSam2DetectorConstruction:
         det = Sam2Detector()
         assert det.model_size == "tiny"
         assert det.points_per_side == 32
+        assert det.points_per_batch == 8
         assert det.pred_iou_thresh == 0.7
         assert det.stability_score_thresh == 0.92
         assert det.min_mask_region_area == 100
@@ -78,6 +83,10 @@ class TestSam2DetectorConstruction:
         det = Sam2Detector()
         assert det._generator is None
 
+    def test_points_per_batch_must_be_positive(self):
+        with pytest.raises(ValidationError):
+            Sam2Detector(points_per_batch=0)
+
     def test_all_model_sizes_accepted(self):
         for size in ("tiny", "small", "base_plus", "large"):
             det = Sam2Detector(model_size=size)
@@ -119,6 +128,7 @@ class TestSam2DetectorSerialization:
         original = Sam2Detector(
             model_size="small",
             points_per_side=48,
+            points_per_batch=4,
             pred_iou_thresh=0.8,
             stability_score_thresh=0.95,
             min_mask_region_area=200,
@@ -134,6 +144,7 @@ class TestSam2DetectorSerialization:
         assert isinstance(restored, Sam2Detector)
         assert restored.model_size == "small"
         assert restored.points_per_side == 48
+        assert restored.points_per_batch == 4
         assert restored.pred_iou_thresh == 0.8
         assert restored.stability_score_thresh == 0.95
         assert restored.min_mask_region_area == 200
@@ -161,6 +172,20 @@ class TestSam2DetectorSerialization:
         restored_det = list(restored._ops.values())[0]
         assert isinstance(restored_det, Sam2Detector)
         assert restored_det.model_size == "tiny"
+        assert restored_det.points_per_batch == 8
+
+    def test_old_pipeline_payload_defaults_points_per_batch(self):
+        config = json.loads(ImagePipeline(ops=[Sam2Detector()]).to_json())
+        sam2_config = next(
+            value
+            for value in config["pipe_cfgs"].values()
+            if value["class"] == "Sam2Detector"
+        )
+        sam2_config["params"].pop("points_per_batch")
+
+        restored = ImagePipeline.from_json(json.dumps(config))
+
+        assert list(restored._ops.values())[0].points_per_batch == 8
 
     def test_json_structure(self):
         """Verify the serialised JSON has the expected structure."""
@@ -268,6 +293,146 @@ class TestSam2CropPyramid:
         sig = inspect.signature(build_sam2_generator)
         assert "box_nms_thresh" in sig.parameters
         assert sig.parameters["box_nms_thresh"].default == 0.7
+
+
+class TestSam2RleStreaming:
+    def test_builder_forwards_batch_size_and_internal_rle_mode(
+        self, monkeypatch
+    ):
+        from phenotypic.detect.nn._sam2_detector import build_sam2_generator
+
+        seen: dict = {}
+
+        class FakeGenerator:
+            def __init__(self, model, **kwargs):
+                seen.update(kwargs)
+
+        monkeypatch.setitem(
+            sys.modules,
+            "sam2.automatic_mask_generator",
+            types.SimpleNamespace(SAM2AutomaticMaskGenerator=FakeGenerator),
+        )
+        monkeypatch.setitem(
+            sys.modules,
+            "sam2.build_sam",
+            types.SimpleNamespace(build_sam2=lambda *a, **k: object()),
+        )
+        build_sam2_generator(
+            "tiny",
+            device="cpu",
+            points_per_batch=3,
+            checkpoint="/fake/checkpoint.pt",
+            config="fake.yaml",
+        )
+        assert seen["points_per_batch"] == 3
+        assert seen["output_mode"] == "uncompressed_rle"
+
+    @pytest.mark.parametrize(
+        "mask",
+        [
+            np.zeros((3, 5), dtype=bool),
+            np.ones((3, 5), dtype=bool),
+            np.indices((4, 7)).sum(axis=0) % 2 == 0,
+        ],
+    )
+    def test_fortran_rle_round_trip(self, mask):
+        from phenotypic.detect.nn._sam2_rle import (
+            decode_uncompressed_rle,
+            encode_uncompressed_rle,
+        )
+
+        rle = encode_uncompressed_rle(mask)
+        np.testing.assert_array_equal(decode_uncompressed_rle(rle), mask)
+
+    def test_rle_iou_matches_boolean_iou_randomized(self):
+        from phenotypic.detect.nn._sam2_rle import (
+            encode_uncompressed_rle,
+            rle_iou,
+        )
+
+        rng = np.random.default_rng(7)
+        for _ in range(30):
+            a = rng.random((9, 13)) > 0.7
+            b = rng.random((9, 13)) > 0.7
+            union = int((a | b).sum())
+            expected = int((a & b).sum()) / union if union else 0.0
+            assert rle_iou(
+                encode_uncompressed_rle(a), encode_uncompressed_rle(b)
+            ) == expected
+
+    def test_streamed_objmap_matches_binary_mask_ordering(self):
+        from phenotypic.detect.nn._sam2_rle import (
+            encode_uncompressed_rle,
+            paint_rle_records,
+        )
+
+        large = np.zeros((8, 11), bool)
+        large[1:7, 1:10] = True
+        small = np.zeros((8, 11), bool)
+        small[3:5, 4:7] = True
+        equal = np.zeros((8, 11), bool)
+        equal[:2, :3] = True
+        binary = [
+            {"segmentation": small, "area": int(small.sum())},
+            {"segmentation": equal, "area": int(equal.sum())},
+            {"segmentation": large, "area": int(large.sum())},
+        ]
+        expected = np.zeros(large.shape, dtype=np.uint16)
+        for label, record in enumerate(
+            sorted(binary, key=lambda item: item["area"], reverse=True), start=1
+        ):
+            expected[record["segmentation"]] = label
+        rle_records = [
+            {
+                "segmentation": encode_uncompressed_rle(record["segmentation"]),
+                "area": record["area"],
+            }
+            for record in binary
+        ]
+        actual = paint_rle_records(
+            rle_records,
+            large.shape,
+            detector_name="SAM2",
+            truncate_before_sort=True,
+        )
+        np.testing.assert_array_equal(actual, expected)
+
+    def test_uint16_cap_occurs_before_area_sort(self, monkeypatch):
+        from types import SimpleNamespace
+
+        from phenotypic.detect.nn._sam2_rle import (
+            encode_uncompressed_rle,
+            paint_rle_records,
+        )
+
+        masks = []
+        for column in range(3):
+            mask = np.zeros((1, 3), dtype=bool)
+            mask[0, column] = True
+            masks.append(mask)
+        records = [
+            {"segmentation": encode_uncompressed_rle(masks[0]), "area": 1},
+            {"segmentation": encode_uncompressed_rle(masks[1]), "area": 1},
+            # A later, larger record must be discarded before sorting.
+            {"segmentation": encode_uncompressed_rle(masks[2]), "area": 100},
+        ]
+        monkeypatch.setattr(np, "iinfo", lambda _dtype: SimpleNamespace(max=2))
+
+        with pytest.warns(UserWarning, match="exceeding uint16"):
+            actual = paint_rle_records(
+                records,
+                (1, 3),
+                detector_name="SAM2",
+                truncate_before_sort=True,
+            )
+
+        np.testing.assert_array_equal(actual, np.array([[1, 2, 0]], np.uint16))
+
+    def test_malformed_rle_is_rejected(self):
+        from phenotypic.detect.nn._sam2_rle import validate_uncompressed_rle
+
+        with pytest.raises(ValueError, match="cover exactly"):
+            validate_uncompressed_rle({"size": [2, 3], "counts": [2, 3]})
 
 
 if __name__ == "__main__":
