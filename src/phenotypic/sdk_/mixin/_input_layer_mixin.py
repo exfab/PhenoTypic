@@ -76,8 +76,11 @@ class InputLayerMixin(BaseModel):
             # ``rgb.vmax()`` (which is defined only for integer dtypes).
             raw = image.rgb[:]
             if np.issubdtype(raw.dtype, np.integer):
-                arr = np.asarray(raw, dtype=np.float32) / np.float32(
-                    np.iinfo(raw.dtype).max
+                arr = np.asarray(raw, dtype=np.float32)
+                np.divide(
+                    arr,
+                    np.float32(np.iinfo(raw.dtype).max),
+                    out=arr,
                 )
             else:
                 arr = normalize_rgb_bitdepth(raw)
