@@ -22,10 +22,12 @@ def grey_weighted_distance(
 
 def app2_gwdt_cost(
     distance: np.ndarray,
-    *,
-    intensity_lambda: float = 10.0,
 ) -> np.ndarray: ...
 ```
+
+`app2_gwdt_cost` uses the selected executable source's fixed 256-entry `givals`
+lookup. It has no tunable lambda. Continuous exponential evaluation is a different
+adaptation and must not be accepted through a quantization tolerance.
 
 If `seeds`, `weight_exp`, or `eps` are retained, label the result a PhenoTypic adaptation and
 write one drift row per parameter. Do not claim exact EDT reduction. Keep threshold/background
@@ -34,9 +36,12 @@ unchanged.
 
 Require a real-valued, 2-D, finite, nonnegative image and a same-shaped boolean background mask.
 Reject negative values, NaNs, infinities, empty arrays, shape mismatches, and non-boolean masks.
-Return a zero map for an all-background image. Reject a no-background mask because no finite
-background-seeded distance exists. These choices are part of the public contract, not incidental
-heap behavior.
+The explicit mask is a contract adaptation of Vaa3D's `image <= threshold` seed selection; the
+detector owns threshold construction. Preserve all remaining executable behavior, including
+float32 state, input-valued seed initialization, the initialization-frontier omission of diagonal
+length, the ordinary recurrence's diagonal length, all-background output equal to the seed input
+values, and the no-background float32 `1e20` sentinel map. Detector adapters validate that both
+background and foreground exist before calling the source-faithful helper.
 
 ## Owned files
 
@@ -64,7 +69,7 @@ penalty at lines 598-614.
    in-plane neighbors and diagonal weights correspond to each selected 2-D connectivity.
 3. Capture full distance and transformed-cost maps from a small source harness.
 4. Write failing helper/oracle/invalid-input tests and the standalone script.
-5. Implement a bounded heap-based 2-D helper with no `phenotypic` dependency.
+5. Implement the exact bounded two-phase Vaa3D heap recurrence with no `phenotypic` dependency.
 6. Prove the golden fixture fails for the source-versus-destination intensity mutant.
 7. Integrator adds an opt-in detector field, one defined blend/replacement equation, serialization,
    and exact disabled-mode regression.
@@ -73,14 +78,15 @@ penalty at lines 598-614.
 
 ## Logic-validation script
 
-Use repeated whole-grid Bellman-Ford relaxation in float64 on tiny arrays, with a convergence cap
-derived from the number of vertices. This is structurally independent of the production heap.
-Also exhaustively enumerate all simple paths for the smallest two-route cases. Verify: analytic 1-D
-cumulative sums; axis cost 1 and diagonal cost \(\sqrt2\); multiple-background pointwise minimum;
-a two-route analytic choice;
+Use repeated whole-grid relaxation on tiny arrays with explicit source-frontier initialization,
+followed by ordinary recurrence relaxation. This is structurally independent of the production
+heap. Also exhaustively enumerate simple paths after the initialized frontier for the smallest
+two-route cases. Verify: analytic 1-D cumulative sums; axis cost 1; initialization diagonal cost 1;
+post-frontier diagonal cost \(\sqrt2\); multiple-background source behavior; a two-route analytic choice;
 intensity monotonicity; added-seed monotonicity; positive scaling; transpose/reflection/rotation
-equivariance; 4-connectivity no smaller than 8-connectivity; center enhancement in a thick bar;
-inverse-cost center preference; all-background zero behavior; no-background failure; and
+equivariance only where the source's initialization order permits it; 4-connectivity no smaller
+than 8-connectivity on controlled cases; center enhancement in a thick bar; fixed lookup cost
+preference; all-background input-valued behavior; no-background sentinel behavior; and
 deterministic failures for negative, nonfinite, empty, or mismatched arrays/masks.
 
 Derive tolerance from the longest asserted path's accumulation bound plus square-root rounding.
@@ -93,7 +99,7 @@ the transformed cost.
 - inverse versus raw intensity in GWDT;
 - source versus destination intensity;
 - endpoint average inserted;
-- diagonal factor removed;
+- add a diagonal factor to the initialization frontier or remove it from ordinary recurrence;
 - 4-connectivity forced;
 - additive recurrence replaced;
 - threshold `<` versus `<=`;
@@ -102,7 +108,7 @@ the transformed cost.
 - cumulative GWDT used directly as a local Dijkstra term;
 - per-tile instead of full-image transform;
 - disabled mode changes legacy output.
-- accept negative/nonfinite intensity or a no-background mask;
+- accept negative/nonfinite intensity or change source all/no-background behavior;
 - change the documented one-slice 3-D-to-2-D neighbor reduction.
 
 ## Focused gate
