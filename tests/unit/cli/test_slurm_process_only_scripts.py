@@ -3,6 +3,7 @@ from phenotypic._cli._cli_directory_scanner import (
     scan_directory_structure,
 )
 from phenotypic._cli._cli_slurm_array_scripts import generate_all_array_job_scripts
+from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
 
 
 def test_array_script_threads_process_only_and_omits_aggregation(
@@ -26,6 +27,14 @@ def test_array_script_threads_process_only_and_omits_aggregation(
     )
     script_paths = [p for paths in scripts_by_ds.values() for p in paths]
     blob = "\n".join(p.read_text() for p in script_paths)
+
+    # Process-only SLURM machine-state must remain hidden, just like full-mode
+    # SLURM runs. Exported layer files themselves are intentionally outside the
+    # cache, mirrored under ``out`` by the worker.
+    dataset = datasets[0]
+    assert all(path.is_relative_to(slurm_scripts_dir(out)) for path in script_paths)
+    expected_log = logs_dir(out) / "slurm" / dataset.name / f"{dataset.name}_%A_%a.log"
+    assert str(expected_log) in blob
 
     # The per-image command is line-broken with ``\`` continuations, so the
     # flag and its value land on separate lines — assert each token is threaded
