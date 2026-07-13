@@ -69,15 +69,19 @@ def test_read_rgb_returns_3d_float32_unit_range():
 
 
 def test_read_rgb_accepts_normalized_float_rgb():
-    """Float RGB is a valid image representation and must not call ``np.iinfo``."""
+    """Normalized float RGB follows Image's documented uint16 storage contract."""
     from phenotypic import Image
 
     rgb = np.array([[[0.0, 0.25, 1.0]]], dtype=np.float32)
     arr = _Probe(input_layer="rgb")._read_input_layer(Image(rgb))
+    expected = np.array(
+        [[[0.0, np.float32(16383) / np.float32(65535), 1.0]]],
+        dtype=np.float32,
+    )
 
     assert arr.dtype == np.float32
     assert not arr.flags.writeable
-    np.testing.assert_array_equal(arr, rgb)
+    np.testing.assert_array_equal(arr, expected)
 
 
 def test_project_collapses_3d_via_detect_mode():

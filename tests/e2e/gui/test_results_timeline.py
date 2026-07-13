@@ -24,7 +24,7 @@ from playwright.sync_api import Page
 
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
-from phenotypic.schema import METADATA
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 
 # Tight DOM-poll budget on a fresh Werkzeug server: stochastically slow on GHA.
 pytestmark = pytest.mark.ci_flaky
@@ -45,7 +45,7 @@ def _timeline_master_df() -> pl.DataFrame:
             label += 1
             rows.append(
                 {
-                    "Metadata_Dataset": _DATASET,
+                    str(EXPERIMENT_METADATA.DATASET): _DATASET,
                     str(METADATA.IMAGE_NAME): f"p{plate}_t{img_no}",
                     "Metadata_ImageNumber": img_no,
                     "Metadata_PlateNum": str(plate),
@@ -68,7 +68,7 @@ def _no_time_master_df() -> pl.DataFrame:
             label += 1
             rows.append(
                 {
-                    "Metadata_Dataset": _DATASET,
+                    str(EXPERIMENT_METADATA.DATASET): _DATASET,
                     str(METADATA.IMAGE_NAME): f"p{plate}_t{rep}",
                     # Categorical group only — String, no numeric/temporal dtype
                     # and no Metadata_Time-like name, so no eligible time axis.
