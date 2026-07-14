@@ -1,9 +1,21 @@
-# A11: persistence-based ridge denoising
+# A11: cubical-persistence analysis
 
 **Implementer:** one dedicated 5.6-sol/high-effort algorithm turn
 **Reviewer:** independent 5.6-sol/high-effort turn
-**Shape:** blocked Keystone research/contract cluster
-**Blocked by:** C11 and S02 topology extra
+**Shape:** Keystone analysis cluster
+**Blocked by:** independent G0 reference/contract approval and S02 topology extra
+
+## Selected scope (2026-07-13)
+
+Path 1, analysis-only, is selected. The locally pinned GUDHI 3.13.0 cubical and
+persistent-cohomology corpus has no scalar-field cancellation or reconstruction API. The
+targeted reconstruction search therefore did not establish a source-faithful implementation
+for paths 2 or 3. This is **no reconstruction source found in the selected corpus**, not
+evidence that no such algorithm exists anywhere.
+
+The release must remove/defer the proposed `persistence_denoise` helper and
+`FocusEdgePersistenceDenoise` operation. A11 makes no denoising, ridge-improvement, or biological
+benefit claim. It reports topology only.
 
 ## Review outcome and required scope choice
 
@@ -46,6 +58,40 @@ def cubical_persistence(
     min_persistence: float = 0.0,
 ) -> PersistencePairsResult: ...
 ```
+
+The frozen Path 1 contract is:
+
+- `image` is converted with `np.asarray`, must be a nonempty, finite, real-valued, numeric,
+  two-dimensional array, and is copied to `float64`; booleans, complex values, object arrays,
+  NaN, infinity, empty axes, and other ranks raise `ValueError` before importing GUDHI.
+- `filtration` is exactly `"sublevel"` or `"superlevel"`; another value raises `ValueError`.
+- `min_persistence` is a finite real scalar other than `bool`, must be at least zero, and is
+  compared strictly: a finite class is returned iff `lifetime > min_persistence`. Equality is
+  excluded. Essential classes are always returned.
+- Pixels are GUDHI top-dimensional cells. A shaped array is passed directly to
+  `CubicalComplex(top_dimensional_cells=...)`; vertices are never used. GUDHI internally ravels
+  shaped inputs in Fortran order. Pair coface IDs are converted with
+  `np.unravel_index(id, image.shape, order="F")` and exposed as `(row, column)` coordinates.
+- The complex is the closed, nonperiodic rectangular cubical complex. Thresholded foreground
+  top cells are therefore 8-connected at shared vertices; the digital-topology dual used by the
+  independent oracle is 4-connected background. Homology dimensions are exactly beta-0 and
+  beta-1 over GUDHI's default field 11.
+- Sublevel passes `image`; superlevel passes `-image`. Public values are always in original
+  intensity coordinates. Sublevel uses `birth <= death`, `lifetime = death - birth`, and
+  essential death `+inf`. Superlevel uses `birth >= death`, `lifetime = birth - death`, and
+  essential death `-inf`. Essential lifetimes are `+inf`.
+- Each tuple has exactly two arrays, indexed by homology dimension. Within a dimension, GUDHI's
+  regular-pair order is retained and essential pairs are appended. Value arrays are one-dimensional
+  `float64`; cell arrays are `int64` with shape `(n, 2)`. An essential interval's death coordinate
+  is `(-1, -1)`. `essential_cells[d]` separately contains only its birth coordinates.
+- Plateau representative cells are GUDHI-version-pinned diagnostics. Exact cell coordinates are
+  fixture drift evidence, while numerical fidelity is decided by interval multisets and Betti
+  curves. No new canonical plateau representative is invented.
+- `gudhi` is imported only inside a valid nonempty call. Importing the module, importing
+  `phenotypic.analysis`, and constructing no object must not import it. A missing dependency raises
+  an actionable `ImportError` naming the `topology` extra; it is never converted to an empty result.
+- The function does not mutate `image`. `PersistencePairsResult` is frozen, but its NumPy arrays
+  remain ordinary mutable arrays; callers needing deep immutability must copy or mark them read-only.
 
 It is exported as `phenotypic.analysis.cubical_persistence`; it is not an operation and is not
 serialized in an image pipeline. Paths 2 and 3 add the blocked reconstruction helper only after a
