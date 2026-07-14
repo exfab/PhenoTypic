@@ -1,0 +1,1719 @@
+===== PAGE 1 =====
+Mon. Not. R. Astron. Soc. 000, 1–17 (2015) Printed 10 July 2015 (MN L ATEX style ﬁle v2.2)
+Filament Identiﬁcation Through Mathematical Morphology
+Eric W. Koch 1,2⋆ and Erik W. Rosolowsky 1,2⋆
+1University of Alberta, Department of Physics, 4-183 CCIS, Edmonton AB T6G 2E1, Canada
+2University of British Columbia, Okanagan Campus, Department of Physics, 3333 University Way, Kelowna BC V1V 1V7 Canada
+Draft date: 10 July 2015
+ABSTRACT
+We present a new algorithm for detecting ﬁlamentary structure FilFinder. The al-
+gorithm uses the techniques of mathematical morphology for ﬁlament identiﬁcation,
+presenting a complementary approach to current algorithms which use matched ﬁlter-
+ing or critical manifolds. Unlike other methods, FilFinder identiﬁes ﬁlaments over a
+wide dynamic range in brightness. We apply the new algorithm to far infrared imaging
+data of dust emission released by the Herschel Gould Belt Survey team. Our prelim-
+inary analysis characterizes both ﬁlaments and fainter striations. We ﬁnd a typical
+ﬁlament width of 0.09 pc across the sample, but the brightness varies from cloud
+to cloud. Several regions show a bimodal ﬁlament brightness distribution, with the
+bright mode (ﬁlaments) being an order of magnitude brighter than the faint mode
+(striations). Using the Rolling Hough Transform, we characterize the orientations of
+the striations in the data, ﬁnding preferred directions that agree with magnetic ﬁeld
+direction where data are available. There is a suggestive but noisy correlation between
+typical ﬁlament brightness and literature values of the star formation rates for clouds
+in the Gould Belt.
+Key words: ISM: structure – stars: formation – submillimetre: ISM – techniques:
+image processing
+1 INTRODUCTION
+The structure of molecular clouds (MCs) is thought to guide
+the star formation process, establishing both the rate and
+location of star formation. Unfortunately, the molecular hy-
+drogen that makes up the majority of the mass in MCs has
+negligible emission at the typical 10 K temperatures that
+characterize the bulk of MCs (Blitz 1993). Furthermore,
+high dust extinction precludes H2 absorption line mapping of
+cloud structure over large areas (Spitzer et al. 1973). Thus,
+studies of MC structure must rely on other tracers. Histori-
+cally, the most successful of these methods have been molec-
+ular line tracers, notably the rotational lines of CO and its
+isotopologues, infrared dust emission, and dust extinction in
+the near infrared and optical.
+Much of the early work studying cloud structure empha-
+sized data from large area mapping of molecular emission
+lines (e.g., Bally et al. 1987). Since the lines are velocity-
+resolved, the additional velocity dimension provided essen-
+tial context for understanding the dynamics of MCs. Unfor-
+tunately, the molecular line tracers are biased by both chem-
+istry, excitation and radiative transfer eﬀects. These eﬀects
+combine to limit the dynamic range of a given molecular line
+⋆ E-mail: ekoch@ualberta.ca (EWK); erosolow@ualbeta.ca
+(EWR)
+tracer to a relatively narrow range in density (Evans 1999).
+The past decade has seen a shift in attention toward struc-
+ture traced by dust, enabled by the thermal emission maps
+provided by the Spitzer and Herschel missions. Dust emis-
+sion provides what appears to be a less biased tracer of cloud
+structure, though variations in dust temperature, abundance
+and emissivity still require careful treatment (e.g., Schnee
+et al. 2010). Complementary work has been completed us-
+ing dust extinction in the near infrared, though these eﬀorts
+have largely focused on nearby clouds (e.g., Alves et al. 2001;
+Lombardi & Alves 2001).
+Qualitative analyses of these tracers forwarded a rich
+view of the structure in MCs, including the signiﬁcance
+of ﬁlamentary structure (e.g., Lynds 1962; Schneider &
+Elmegreen 1979; Bally et al. 1987; Falgarone et al. 1998;
+Nagahama et al. 1998). However, a quantitative analysis of
+these data was governed by the statistical and numerical
+techniques adopted and these approaches shaped the inter-
+pretation of MC structure. These analyses usually followed
+one of two approaches: statistical measurements of cloud im-
+age properties or the generation of object catalogs. The sta-
+tistical image characterization includes methods like Fourier
+or wavelet analysis which are usually anchored in the the-
+ory of turbulence (Stutzki et al. 1998; Langer et al. 1993).
+These methods are most useful when the measurement can
+be linked directly back to the underlying physical proper-
+c⃝ 2015 RAS
+arXiv:1507.02289v1  [astro-ph.GA]  8 Jul 2015
+
+===== PAGE 2 =====
+2 Koch & Rosolowsky
+ties of the gas. Statistical methods have consistently em-
+phasized the turbulent nature of MCs and recent work has
+emphasized retrieving the underlying properties of turbu-
+lence from the observations (e.g., Lazarian & Pogosyan 2000,
+2004). In contrast, the object cataloging approach splits the
+structure of MCs into an ensemble of substructures and ex-
+plore the properties of that ensemble. The classic two algo-
+rithms in the ﬁeld are Gaussclumps (Kramer et al. 1998)
+and Clumpﬁnd (Williams et al. 1994). These methods are
+designed around exploring the structure seen in molecular
+spectral line data cubes. The algorithms search for objects
+that have low (three-dimensional) aspect ratios, either by
+construction (Gaussclumps) or implicitly given the under-
+lying pixel grid (clumpﬁnd). Similar methods developed for
+two-dimensional data have been applied to continuum maps
+of the ISM (Bertin & Arnouts 1996; Rosolowsky et al. 2010).
+The view of the molecular ISM derived from these object
+identiﬁcation approaches is frequently described as clumpy.
+This clumpy view is drawn from the analysis of wide area
+mapping of MCs restricted to using only CO as a tracer
+and mapped at relatively poor quality compared to the cur-
+rent state of the art: for example, compare data in Williams
+et al. (1994) to Narayanan et al. (2008). This view has been
+emphasized by algorithmic construction and analysis. These
+algorithms adapt poorly to recovering structures with large
+aspect ratios, particularly when the structure is not straight
+in the plane of the sky. Additionally, using CO isotopologues
+as molecular gas tracers limits the dynamic range to roughly
+an order of magnitude in volume density for each tracer
+(Evans 1999). This density sensitivity obscures ﬁlamentary
+structure with a wide range of densities along a line of sight.
+While large-area molecular line mapping now provides
+data sets with wide dynamical range, the observations are
+relatively time consuming. Compared to CO observations,
+dust emission mapping is fast and relatively high resolution.
+The recent dust emission data, most notably the Herschel
+mapping of dust emission in the far infrared and submillime-
+tre (70 to 500 µm) present wide area maps with good dy-
+namic range and complementary observational biases with
+respect to molecular line mapping. However, dust maps inte-
+grate over the line of sight, potentially mixing regions with
+diﬀerent physical conditions. With the kinematic informa-
+tion from CO line emission, some of these overlaps can be
+resolved though line-of-sight projections still inﬂuence the
+interpretation (Beaumont et al. 2013).
+Initial analysis of dust emission maps has focused on
+the ﬁlamentary structure of the MC, speciﬁcally noting fea-
+tures in the images with large aspect ratios (Andr´ e et al.
+2010, 2013). Several qualitative descriptions of the ﬁlamen-
+tary networks have been proposed including a pervasive hub-
+ﬁlament structure (Myers 2009), converging ﬁlamentary pat-
+terns (Peretto et al. 2012b), or parallel networks (Busquet
+et al. 2013). Filaments appear to be ubiquitous though their
+qualitative interpretation can be subject to human judge-
+ment and the tracers used. While the dust emission data
+highlight the two-dimensional column density distributions,
+kinematic information from dense gas tracers can be used
+to trace the gas motion. Several individual ﬁlaments and
+hub-ﬁlament structures have been analyzed in detail and
+have even been argued to be the fundamental structures in
+the cluster formation process (e.g., Myers 2009; Kirk et al.
+2013b).
+While providing essential guidance, these single-object
+studies must be paired with broader population studies to
+place their results in context. We require a robust character-
+ization of ﬁlamentary structure that can be used to quan-
+tify the properties of ﬁlaments for an ensemble of clouds
+across the ISM. With such a quantiﬁcation of the ensem-
+ble, the population can be checked for variation with phys-
+ical parameters and compared to both individual cases and
+simulations of cloud structure. This need for a systematic
+characterization of ﬁlament properties has driven the devel-
+opment or adaptation of several new cataloging algorithms
+in the study of ISM structure. These algorithms approach
+the problem from diﬀerent perspectives.
+The DisPerSE algorithm (Sousbie 2011) was originally
+developed for identifying structures in three-dimensional
+cosmological simulations. DisPerSE leverages computational
+Morse theory to identify the critical surfaces and subse-
+quently draw smooth one-dimensional manifolds (ﬁlaments)
+through a density ﬁeld. At the heart of the method lies a
+Delaunay triangulation of the domain which serves as a well
+deﬁned set of points where the gradients of the underly-
+ing ﬁeld can be rigorously evaluated. The domain is parti-
+tioned into regions deﬁned by these critical points and the
+ﬁlamentary structures are identiﬁed at the borders of these
+domains. By comparing the robustness of the deﬁnition sub-
+ject to the variation of the points that deﬁne the ﬁeld, the
+algorithm is made robust in the presence of sampling noise.
+The algorithm works in arbitrary dimension and can be ap-
+plied to both two-dimensional dust emission data and three-
+dimensional spectral line data cubes.
+Following a similar approach, the Hi-GAL survey team
+(Molinari et al. 2010) is exploring the use of image gradients
+and the local Hessian matrix as a basis for identifying ﬁla-
+mentary structure (Schisano et al. 2014). The eigenvalues of
+the Hessian matrix identify the direction of elongation and
+can ﬁnd those sets of points on ridges for which the curva-
+ture is large and negative in one direction and small in the
+other. These sets of points deﬁne regions which are aggre-
+gated into ﬁlaments for which the properties can be charac-
+terized. The Hi-GAL approach then processes the Hessian
+map using image processing approaches similar to those pro-
+posed in Section 2 below. Since the Hessian matrix can be
+generalized to arbitrary dimension, this approach may be
+generalizable to spectral line data, but development to date
+is focused on the two-dimensional images.
+Salji et al. (2015) also present a Hessian-based approach
+but instead uses a multiscale analysis to enhance ﬁlamentary
+structures with a range of widths relative to the ﬁlter size.
+Finally, the getﬁlaments algorithm (Men’shchikov 2013)
+identiﬁes ﬁlaments through their persistence in the image
+data across multiple spatial scales. The algorithm progres-
+sively smooths and subtracts oﬀ signal at diﬀerent spatial
+scales. The smoothing kernel is a Gaussian and increases in
+size exponentially up to the maximum scale probed. The de-
+composition is similar to the continuous form of the a trous
+wavelet algorithm (Starck & Murtagh 2006). Filaments are
+identiﬁed as signiﬁcant structures with lengths minimally
+changed by the convolutions but widths equal to the con-
+volution beam. The algorithm is then applied to the data
+across several wavebands, and ﬁlaments are reconstructed
+based on a common appearance in several images.
+In this paper, we present a separate approach to iden-
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 3 =====
+Filaments 3
+tifying ﬁlaments based on the application of mathematical
+morphology (Shih 2009). Mathematical morphology has de-
+veloped a suite of operations for digital image processing
+based on the underlying pixel grid of the image, which is usu-
+ally rectilinear, and the discrete values of the image data. In
+particular, these operators act on grey-valued images, with
+integer value from 0 to 2 k− 1 where k is usually 1 (binary
+masks), 8, 16 or 32. We identify regions of emission and
+ﬁnd their skeletons to identify ﬁlamentary structures. We
+then prune these skeletons to produce a robust catalog of
+ﬁlaments.
+We present our algorithm below. In Section 2 we outline
+the algorithm and apply the algorithm to theHerschel Gould
+Belt Survey (Section 3) to generate a catalog of ﬁlamentary
+structures (Section 4). We discuss our results in Section 5.
+2 METHODS
+Identifying and segmenting ﬁlamentary structure is a chal-
+lenging computational problem because there is little prior
+information about the structure of the features in an image.
+This section describes our method of segmenting ﬁlamentary
+structure using intensity data and how the main properties
+of each structure are calculated.
+This new algorithm builds oﬀ a rich suite of existing
+methods developed in the ﬁeld of mathematical morphology,
+which is used across science for image processing. Our treat-
+ment relies on a well developed theoretical framework that
+is laid out in, for example, Shih (2009, hereafter S09). Such
+methods are well validated and public domain implementa-
+tions are readily available 1. We ﬁnd that this method is ro-
+bust to changes in algorithmic parameters and the approach
+can identify ﬁlamentary structure over several orders of mag-
+nitude in intensity. We refer to our algorithm as FilFinder;
+it is implemented in Python and is publicly available 2.
+2.1 Isolating Filamentary Structure
+The algorithm begins with a ﬁve-step preprocessing se-
+quence that identiﬁes regions in the image containing ﬁl-
+amentary structure. These steps are demonstrated in Fig-
+ure 1, which shows the application of these steps to sim-
+ulated data. The image is drawn from an Enzo simulation
+(O’Shea et al. 2004) of the column density in a stirred tur-
+bulent box with initial conditions chosen to mimic interstel-
+lar clouds and produce ﬁlamentary structure. We use simu-
+lated data to demonstrate the algorithm since the results can
+be produced free from observational noise and then subse-
+quently degraded to establish the inﬂuence of observational
+eﬀects. First, we ﬁt a log-normal distribution to the bright-
+ness data, identifying the mean µ and standard deviation σ
+of the log-intensity. The image is ﬂattened using an arctan-
+gent transform:I′ =I0arctan(I/I 0) where the normalization
+I0≡ exp(µ+2σ). Since arctan(x)∼x forx< 1, the eﬀect of
+the transform is to leave emission below the threshold min-
+imally changed but values signiﬁcantly above the threshold
+asymptotically approach πI0/2. This transform suppresses
+1 For example, we rely on http://scikit-image.org/
+2 https://github.com/e-koch/FilFinder
+objects that are signiﬁcantly brighter than the ﬁlamentary
+structure within the image (usually bright cores). We note
+that the ﬁnal mask does not change signiﬁcantly for small
+changes in I0. We discuss this eﬀect in Appendix A. Sec-
+ond, the ﬂattened data are smoothed with a Gaussian that
+has a FHWM of 0.05 pc – half the expected width of a ﬁla-
+ments found by Arzoumanian et al. (2011). The smoothing
+minimizes variations within the ﬁlaments, which eliminates
+spurious elements later in the process, while maintaining
+the large-scale structure. Third, we create a mask of the
+ﬁlamentary structure by applying an adaptive threshold to
+the smoothed image. This is the crucial step in creating the
+ﬁlament mask. Adaptive thresholding considers each pixel
+in the image in comparison to a patch of the image around
+each pixel and uses a criterion to keep or discard that pixel.
+The criterion used here is that the intensity of the central
+pixel must be greater than the median of the neighborhood
+around it. The local threshold is what allows for ﬁlamentary
+structure to be detected over the entire dynamic range in
+brightness within the the image. We choose a patch size of
+0.2 pc, as twice the expected ﬁlament width (Arzoumanian
+et al. 2011). We note that the choice of patch size aﬀects
+the ﬁlamentary mask shape, but this patch size is not used
+when calculating the ﬁlament widths (see Section 2.4). We
+combine this mask with a globally thresholded mask, which
+removes regions below the noise level in the image.
+These ﬁrst three steps are sensitive to the chosen nor-
+malization value for the arctan transform (I0) and the patch
+size used for the adaptive threshold. The vast majority of
+the structure is recognized for a range of reasonable val-
+ues of both parameters, however, the connectivity between
+detected regions can change drastically. We ﬁnd that op-
+timal results are obtained by setting these parameters to
+the values explained above but we explore the eﬀects of
+these choices in Appendix A. Since mathematical morphol-
+ogy methods are based on the geometry of the image pixels,
+some instability can arise when the physical scales that we
+use to estimate the algorithm parameters map to small pixel
+sizes. In particular, we ﬁnd that for regions where the adap-
+tive threshold patch size is smaller than 40 pixels across,
+spurious fragmentation occurs. In these cases, the algorithm
+interpolates the image onto a larger grid for the ﬁrst 3 steps.
+The returned mask is then regridded back onto the original
+image size.
+The remaining two steps clean small, spurious features
+from the adaptive threshold mask. Objects are removed that
+have an area smaller than the typical smallest ﬁlamentary
+object: 5π(0.1pc)2, where 0.1 pc is a typical ﬁlament width
+and 5 is the aspect ratio for an object to be considered a
+ﬁlament. This deﬁnition was chosen empirically after exam-
+ining the output of multiple datasets. The vast majority of
+ﬁlaments make up a network, and so they deviate signiﬁ-
+cantly from the elliptical description of ﬁlaments. We found
+that, for the dataset analyzed in this work, regions with
+a smaller area than the threshold led to failed ﬁts to their
+radial proﬁles (Section 2.4), consistent with these being spu-
+rious features. Finally, a median ﬁlter with a size of 0.05 pc
+is applied to the mask, which removes small features from
+the edges of objects. This step limits spurious branches in
+the ﬁlament identiﬁcation steps that follow.
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 4 =====
+4 Koch & Rosolowsky
+a) b) c)
+d) e)
+Figure 1. Steps in the masking process. a) Simulated data with Gaussian noise shown on a logarithmic intensity scale. b) Flattened
+using an arctan transform. c) Smoothed using a Gaussian ﬁlter. d) Adaptive thresholding. e) Remove unphysical, small objects.
+2.2 Tracing Filaments using Skeletons
+The combination of these ﬁve pre-processing steps estab-
+lish the mask used for subsequent analysis. Each structure
+within the mask is reduced to a skeleton using a Medial Axis
+Transform (Blum 1967). This method reduces an object to
+skeleton form (i.e., one pixel wide) such that it is minimally
+connected. The Medial Axis Transform calculates the posi-
+tion of the skeleton by computing the minimum distance of
+each pixel in the object to a pixel outside of it. A skeleton
+pixel is one which maximizes this distance with respect to
+its neighbouring pixels along one direction (e.g., vertical),
+but does not in the other direction (e.g., horizontal). This
+can be thought of as ﬁnding the circle with the maximum
+radius that will ﬁt into the object. As a simpliﬁed example,
+the skeleton of a circular object would simply be the pixel
+at the centre. If the object were then stretched in the verti-
+cal direction, its skeleton would be a vertical line. Thus the
+skeleton pixels are points that are the centres of the maximal
+circles that ﬁt into the object.
+After the Medial Axis Transform, we process the re-
+sulting skeleton into the ﬁlamentary structures. The main
+steps in this process are illustrated in Figure 2. Initially,
+the skeleton contains many small branches resulting from
+small deviations in the mask boundary that get ampliﬁed
+under the transform (Figure 2, top panel). These typical
+features need to be “pruned” leaving the dominant skele-
+ton feature behind for characterization. Unfortunately, most
+pruning methods present in the literature (S09) shorten the
+length of the skeleton, which we regard as a scientiﬁcally rel-
+evant property of the ﬁlaments. Instead, we complete a full
+analysis of the unpruned skeleton and use the length infor-
+mation in the skeleton to identify branches for pruning. We
+ﬁrst label each pixel in the skeleton by the number of adja-
+cent neighbours. There are three relevant cases: end points
+(1 neighbour), body points (2 neighbours) or intersections
+2
+1
+A
+B
+4
+C
+6
+D
+9 8
+A1
+2 B
+4
+D
+6
+8
+9
+C
+Figure 2. Top: An un-pruned skeleton with intersection points
+removed. Numerical labels denote branches and alphabetical
+ones represent intersections. Middle: The skeleton converted to
+a graph. Bottom: The ﬁnal skeleton after the pruning process.
+(⩾ 3 neighbours). Intersection points are removed from the
+skeleton, returning a collection of branches.
+We exploit the fact that each branch must be com-
+prised only of end and body points to calculate the length
+of a branch. Each pixel is connected to at most two neigh-
+bours (which do not touch each other) and the length of
+each branch is unambiguously deﬁned. The skeleton is then
+converted to a weighted graph, where the nodes of the graph
+consist of the end and intersection points, and the edges are
+the branches. Edges are weighted using a sum of weights de-
+rived from the branch length and the average intensity of the
+image along the branch. Both quantities are normalized by
+the sum over all branches in the skeleton, ensuring a weight
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 5 =====
+Filaments 5
+between 0 and 1. A shortest-path algorithm is run on the
+graph, which identiﬁes the shortest possible path between
+each pair of end points. From this set of paths, we identify
+the longest path through the skeleton. The sum of branch
+lengths for this longest shortest-path is deﬁned to be the
+length of the ﬁlament.
+Any remaining branches which are not part of the
+longest path are now subject to pruning. A branch is pruned
+provided its deletion does not aﬀect the skeleton’s connec-
+tivity, its length is below a given threshold, and its average
+intensity is insigniﬁcant relative to the rest of the skeleton.
+The length threshold is set to 3 times the beamwidth of the
+image; using a shorter threshold did not eﬀectively prune
+spurious branches. The intensity threshold is set to 0.1 of
+the total intensity along the entire skeleton. The value of
+the intensity threshold was found to be insensitive to moder-
+ate changes, however it ensures the removal of long spurious
+features over background regions.
+We note that FilFinder does not prohibit loops in the
+skeleton structure. While this can be an artifact of the me-
+dial axis transform, we ﬁnd that the majority of the loops
+describe the actual pattern of emission. The shortest-path
+algorithm used to derive the ﬁlament length is not able to
+handle loops in the graph. To overcome this, we only in-
+clude the path through the loop that has a higher weight
+when computing the length. The other portion of the loop,
+provided it does not alter the overall connectivity, is then el-
+igible to be pruned. To eliminate loops from spurious holes
+in the mask, we ﬁll in holes that have areas smaller than the
+beam area.
+2.3 Plane Orientation and Curvature
+A novel method for parameterizing the orientation of linear
+structure known as the Rolling Hough Transform (RHT)
+was introduced by Clark et al. (2014). We provide a basic
+explanation of the algorithm here. The RHT is based on the
+family of Hough transforms, which map (x,y ) space into (r,
+θ) space using the equation for a straight line,
+r =x cosθ +y sinθ, (1)
+wherer is the radius from the origin and θ is the angle from
+a deﬁned direction (Duda & Hart 1972). The RHT diﬀers
+from this original Hough transform deﬁnition by restricting
+tor = 0 and deﬁning the origin to be at the centre of a disc of
+a given diameter. Then,θ = 0 is deﬁned to be in the positive
+y-direction. The transform is performed by measuring the
+response within the disc while varying θ between 0 and π
+at each speciﬁed pixel. The value of the transform around
+each pixel is the angle at which the transform has the largest
+response.
+We perform the RHT using a disc with a diameter of
+3 times the beamwidth at each pixel within a skeleton.
+The diameter was determined to be the smallest diame-
+ter which eliminated signiﬁcant pixelization eﬀects. Smaller
+discs can become dominated by the axes and diagonal di-
+rections (θ = 0◦, 45◦, 90◦) instead of the larger structure.
+Discs signiﬁcantly larger than ﬁlaments can wash out the
+directional information. We sum the response of the trans-
+form from all pixels to arrive at a distribution of angles
+in the plane for the skeleton. Unlike in Clark et al. (2014)
+where the expectation value of the RHT is compared to the
+Figure 3. The output of the RHT for the skeleton shown in
+Figure 2. Note 2θ is plotted to visualize the continuous boundary.
+The median is shown by the solid line and the quartiles by the
+dashed lines. The curvature ( δθ) of the ﬁlament is deﬁned the
+interquartile range, or the half the angle between the two dashed
+lines, where the ‘half’ is introduced because we are plotting 2 θ.
+starlight polarization angle, we do not have a quantity to
+set the zero of the distribution. Instead, we calculate the
+weighted directional mean and deﬁne it as the orientation
+of the ﬁlament,
+⟨θ⟩ = 1
+2 tan−1
+( Σiwi sin 2θi
+Σiwi cos 2θi
+)
+, (2)
+wherewi is the normalized value of the transform atθi such
+that Σiwi = 1. Here θ is deﬁned on [−π/2,π/ 2). We calcu-
+late the conﬁdence intervals on the directional mean using
+Equation 3 from Fisher & Lewis (1983),
+⟨θ⟩± sin−1
+(
+uα
+√
+1−α
+2R2
+)
+(3)
+where uα is the z-score of the two-tail probability.
+The quantity α = Σ i cos [2wi (θi−⟨θ⟩)] is the esti-
+mated weighted second trigonometric moment and R2 =[
+(Σiwi sinθi)2 + (Σiwi cosθi)2]
+is the weighted length of the
+vector.
+These quantities make the assumption that the distri-
+bution is unimodal, which does not hold for all ﬁlaments. Be-
+cause of this, and since the conﬁdence intervals are limited
+to the range of θ, we deﬁne the curvature δθ conservatively
+to be the interquartile range (IQR, z = 0.67). Filaments
+with a multi-modal response have an ill-deﬁned orientation,
+however their dispersion is accounted for by the measure of
+curvature. We show an example of the distribution, angle of
+orientation, and curvature in Figure 3. Like the polarization
+angle of starlight, the orientation of a ﬁlament is ambiguous,
+so θ is conﬁned to a range of π radians.
+2.4 Width
+We calculate a ﬁlament’s width by building a radial pro-
+ﬁle with respect to the skeleton. We consider a distance
+transform using the skeleton as the reference point. To avoid
+counting pixels multiple times, we calculate a global distance
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 6 =====
+6 Koch & Rosolowsky
+transform for an entire image using all of the skeletons. A
+given pixel is then included in proﬁle calculations only for
+the skeleton to which it is closest. The proﬁles are limited to
+a maximum distance of 0.3 pc to ensure proﬁles only account
+for the proﬁle of the ﬁlament. We found that this threshold
+did not cut oﬀ any features of the proﬁle in question for all
+regions that we analyzed (Section 4). We found that this
+limit was not adequate in many cases, particularly when ﬁl-
+aments are closely packed together. To ensure we only ﬁt
+the proﬁle of the ﬁlament in question, radial proﬁles are fur-
+ther cut by removing portions where the proﬁle begins to
+increase.
+To derive the width and the surface brightness of that
+ﬁlament, we ﬁt a Gaussian with a constant oﬀset (back-
+ground) to the radial proﬁles. The radial proﬁle and Gaus-
+sian ﬁt for a ﬁlament are shown in Figure 4. We deﬁne the
+ﬁlament width to be the full-width-half-maximum (FWHM)
+value deconvolved by the beamwidth, as described by Arzou-
+manian et al. (2011).
+Not all ﬁlaments showed a Gaussian proﬁle, so to obtain
+some measure of ﬁlament width in these cases, we adopt a
+parallel, non-parametric method. We estimate the peak and
+background intensities in the proﬁle using the 5th and 99th
+percentiles, respectively. We then interpolate the proﬁle and
+calculate the distance where the intensity drops to half of
+the peak intensity relative to the background. This value
+reproduces the Gaussian FWHM value for a Gaussian pro-
+ﬁle but still provides a representative width measurement
+for non-Gaussian ﬁlaments. The error is estimated by cal-
+culating the range of distance between the 45% and 55%
+percentiles in the proﬁle.
+The non-parametric method is used only in the cases
+where a Gaussian does not return a good ﬁt. We quantify
+a ‘good ﬁt’ as one that has errors that do not exceed the
+absolute value of the parameters and the reduced χ2 value
+is below∼ 10. The exact cutoﬀ value used is largely insen-
+sitive to determining the quality of near Gaussian proﬁles.
+Those which have signiﬁcant, non-random deviations from
+a Gaussian return a signiﬁcantly higher reduced χ2. This
+method is used as the last resort in an attempt to derive
+some useful information from the radial proﬁle. In the results
+presented (Section 4), only 2% of the derived widths use
+the non-parametric approach. The non-parametric method
+is used primarily in two situations: there is excessive crowd-
+ing with other ﬁlaments leading to a lack of valid pixels
+for the proﬁle, or a bright, compact feature not associated
+with the ﬁlamentary structure caused the proﬁle to increase
+at greater distance, leading to a severely truncated proﬁle.
+This latter eﬀect occurs for short ﬁlaments, as the smaller
+number of surrounding pixels has a greater eﬀect when av-
+eraging within each bin.
+3 DATA
+We apply our new ﬁlament extraction method to the obser-
+vational data acquired as part of the Herschel Gould Belt
+Survey (HGBS; Andr´ e et al. 2010). This program surveyed
+16 nearby molecular clouds using the PACS and SPIRE in-
+struments (Griﬃn et al. 2010). The survey produced maps
+of emission with wavelengths of 70 µm, 160µm, 250 µm,
+350 µm and 500 µm, which primarily traces dust emission
+0.000.020.040.060.080.100.120.140.160.18
+Radial Distance (pc)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Surface Brightness (MJy/sr)
+0.15
+0.30
+0.45
+0.60
+0.75
+0.90
+1.05
+1.20
+1.35
+Surface Brightness (MJy/sr)
+Figure 4. Left: The radial proﬁle of the ﬁlament shown to the
+right and in Figure 2. The proﬁle is the result of averaging the
+intensity by binning pixels with respect to their distance from the
+skeleton. Right: Skeleton of the ﬁlament plotted over the image.
+in these nearby clouds. The Herschel data have provided a
+new view into the (dust) column density structure in nearby
+clouds and were arguably the main reason for the commu-
+nity’s increasing interest in ﬁlamentary structure (Andr´ e
+et al. 2010). We used the preliminary release data available
+from the HGBS survey webpage 3. The individual data have
+been described in a series of publications as given in Table
+3, which also presents adopted cloud properties. At present,
+the HGBS team has not released a ﬁnal reference set of im-
+ages, and our preliminary results described below should be
+revised once a reference set of data is released.
+The HGBS observed nearly all of the star forming
+clouds in the solar neighbourhood, but recent work has
+called attention to the California-Auriga molecular cloud.
+Despite being as massive as Orion ( ∼ 105 M⊙), this cloud
+was long ignored owing to the minimal star formation taking
+place therein (Lada et al. 2009). Since it provides a coun-
+terpoint to the vigorous star formation taking place in the
+nearby Orion region, we include SPIRE observations by Har-
+vey et al. (2013) in our analysis. This provides some ability
+to check whether the diﬀerences in star formation rate are
+associated with diﬀerences in the ﬁlamentary network.
+Maps from the Herschel SPIRE instrument have a zero-
+point intensity oﬀset introduced in the mapping procedure.
+While the relative calibration within the maps is excellent,
+the absolute calibration requires correcting this constant oﬀ-
+set. Because of signiﬁcant overlap in the bandpasses, we use
+the 350 µm data from the second public Planck data re-
+lease (Planck Collaboration 2015a). Following Bernard et al.
+(2010), we determine the oﬀset by convolving the SPIRE
+data to match the Planck resolution, correlating the data
+position-by-position, and ﬁtting a line to the correlation. We
+ﬁnd that the relative calibration is excellent as measured by
+the slope of the line: within 10% of unity, with the diﬀer-
+ences arising in part because of diﬀerent bandpass shapes
+between the Planck HFI 857 GHz band and the SPIRE 350
+3 http://www.herschel.fr/cea/gouldbelt/en/Phocea/Vie_
+des_labos/Ast/ast_visu.php?id_ast=66
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 7 =====
+Filaments 7
+T able 1. Adopted Cloud Properties. The masses are calculated using the
+assumptions from Section 5.2 and the Planck oﬀsets.
+Name Reference Distance Σ SFR Mcloud Planck Oﬀset
+(pc) ( M⊙ yr−1 pc−2) ( M⊙) (MJy sr −1)
+Aquila 1, 3 260 1.80 30 000 85.5
+California Centre 2, 3 450 0.32 23 000 9.0
+California East 2, 3 450 0.32 12 000 10.1
+California West 2, 3 450 0.32 5200 14.7
+Chamaeleon 4, 5, 3 170 3.88 1500 -879.1
+IC-5146 6, 3 460 0.38 6800 20.7
+Lupus I 7, 3 150 0.37 900 14.4
+Orion-A Centre 8, 9, 10 400 0.48 12 000 32.6
+Orion-A South 8, 9, 10 400 0.48 18 000 35.2
+Orion-B 11, 10 400 0.084 44 000 26.2
+Perseus 12, 3 235 1.32 5100 23.7
+Pipe 13, 11 145 0.032 1300 31.7
+Polaris 1, 14 150 0.0 1000 9.3
+Taurus 15, 16, 17 140 0.147 2200 21.2
+References – 1: Andr´ e et al. (2010), 2: Harvey et al. (2013), 3: Evans et al.
+(2014), 4: Winston et al. (2012), 5: Alves de Oliveira et al. (2014), 6:
+Arzoumanian et al. (2011), 7: Rygl et al. (2013), 8: Polychroni et al. (2013),
+9: Roy et al. (2013), 10: Lada et al. (2010), 11: Schneider et al. (2013), 12:
+Pezzuto et al. (2012), 13: Peretto et al. (2012a), 14: Miville-Deschˆ enes et al.
+(2010), 15: Kirk et al. (2013a) 16: Palmeirim et al. (2013), 17: Heiderman
+et al. (2010).
+µm band. The zero-point oﬀset is determined from the con-
+stant oﬀset for the line and is reported in Table 3. We note
+that, because of the adaptive thresholding employed in the
+ﬁlament identiﬁcation, most of the results are practically
+unaﬀected by this correction.
+Since the ﬂux ratio between the 350 µm band and the
+other SPIRE bands is a function of dust emissivity and
+temperature, the Planck referencing is ambiguous for other
+bands. While the ﬁlament identiﬁcation algorithm works
+well on these other images, we focus this preliminary analy-
+sis on the 350µm data because of the clear route to absolute
+calibration.
+4 RESULTS AND ANALYSIS
+In this section, we present results determined purely from
+the ﬁlament analysis of the 350 µm emission alone ( §4).
+We then examine those results in the context of prelimi-
+nary physical interpretations (§5). These latter analyses are
+not complete because dust emission is a function not only
+gas column density but also dust temperature, gas-to-dust
+ratio, and dust emissivity. These confounding variations of
+dust properties preclude a direct translation between emis-
+sion and column density. Multiband analysis of ﬁlamentary
+structures ﬁnds that they show an increase in dust tem-
+perature with ﬁlament radius (e.g., K¨ onyves et al. 2010),
+and dust emissivity shows evidence for varying with diﬀer-
+ent density histories (Schnee & Goodman 2005; Schnee et al.
+2006, 2008, 2010). Other eﬀorts are in progress to provide
+deﬁnitive maps of the physical conditions in these clouds
+and we conﬁne our analysis to a restrictive linear scaling
+between dust emission and gas column density. While this
+indicates our interpretations are potentially inaccurate, the
+main purpose of this work is to present a new methodology
+and indicate novel directions for robust analysis, and a full
+treatment of these eﬀects is beyond the scope of the present
+work.
+We analyze the SPIRE 350 µm data for the 14 regions
+described in Table 3 above. The maps are convolved using a
+Gaussian beam to a reach a common physical resolution set
+by the angular size of the 25′′ SPIRE beam at the maximum
+distance present in the analysis (460 pc), which projects to
+0.056 pc. We also regrid the data to a common pixel scale
+based on the smallest distance of the clouds analyzed (140
+pc). This removes any pixel dependencies, which could skew
+the derived properties of each region. We then apply the
+ﬁlament ﬁnding algorithm as described in Section 2. An ex-
+ample of the results of the analysis for the Chamaeleon re-
+gion are shown in Figure 5(b). For reference, we also plot
+the ﬁlaments identiﬁed 4 using the DisPerSE algorithm de-
+scribed in Sousbie (2011). We used a persistence cutoﬀ of 12
+in the ﬁgure. While lowering the persistence reveals fainter
+features, we found that not all of the faint features found
+by FilFinder were recovered by DisPerSE without also re-
+covering spurious features. Furthermore, the returned net-
+work was largely connected into one feature despite using
+the network breakdown option in the package. The getﬁla-
+ments code of Men’shchikov (2013) is not publicly released
+at present. The DisPerSE and FilFinder algorithms repro-
+duce the general shapes of the brightest ﬁlamentary struc-
+tures. The exact paths traced by the two approaches are not
+necessarily identical, but the basic features are well repro-
+duced. In addition, FilFinder identiﬁes numerous features in
+the faint regions of emission that are undetected using Dis-
+PerSE. These features agree well with the faint structures
+in the image, particularly those that have been attributed
+4 Following the tutorial: http://www2.iap.fr/users/sousbie/
+web/html/index38d8.html?post/regular-grid-%3A-filaments
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 8 =====
+8 Koch & Rosolowsky
+10h36m48m11h00m12m24m36m
+RA (J2000)
+□79◦00′
+30′
+□78◦00′
+30′
+□77◦00′
+30′
+□76◦00′
+Dec (J2000) 15
+30
+45
+60
+75
+90
+105
+120
+135
+Surface Brightness (MJy/sr)
+11h00m04m08m12m16m
+RA (J2000)
+□78◦00′
+40′
+20′
+□77◦00′
+□76◦40′
+Dec (J2000) 15
+30
+45
+60
+75
+90
+105
+120
+135
+Surface Brightness (MJy/sr)
+Figure 5. Left: A comparison of ﬁlaments returned by the DisPerSE algorithm (Sousbie 2011) (red) and those returned by our method
+(blue) in the Chamaeleon region. Right: A zoomed in view denoted by the box in the left. In general, the ﬁlaments identiﬁed using
+FilFinder agree well with those identiﬁed by DisPerSE. However, FilFinder recovers many more faint, ﬁlamentary features away from
+the brightest regions in the image.
+to magnetic features in clouds (Li et al. 2013; Clark et al.
+2014).
+4.1 The Filament Population
+In Figure 6 we present the joint distributions of ﬁlament
+properties for all the regions described in Table 3. We adopt
+notation for ﬁlament length (L), width (W ), curvature (δθ),
+orientation (θ), average surface brightness (I). In Appendix
+A, we also argue that our parameter distributions are un-
+likely to be a signiﬁcantly aﬀected by the resolution of the
+350 µm data. Any small eﬀects should be removed by the
+convolution of all data to a common physical resolution and
+projection to a common pixel scale. Of the total 369 ﬁl-
+aments found, the radial proﬁle ﬁts failed for just 11 ﬁl-
+aments due to the complications discussed in Section 2.4.
+In each of these 11 cases, the width was too small to be
+deconvolved; these are the only ﬁlaments with widths that
+could not be deconvolved. Overall, we ﬁnd properties simi-
+lar to previous analyses. Filament brightnesses range mostly
+between 20 and 70 MJy sr −1, and are typically around 25
+MJy sr−1. These values correspond to the peak brightness
+above the background in the ﬁt. The median deconvolved ﬁl-
+ament width (FWHM) is 0.09 pc with some spread around
+this width (0.06 and 0.14 pc at the 15th and 85th percentiles,
+respectively), in agreement with Andr´ e et al. (2013). There
+is no signiﬁcant covariance with width: bright ﬁlaments show
+no systematic diﬀerence in width compared to fainter ﬁla-
+ments. Filament lengths are typically 2.2 pc long with the
+majority ranging between 1.4 and 4.4 pc. In exceptional
+cases, a small number of ﬁlaments reach up to 20 pc. Note
+that ﬁlament lengths are path lengths and the projected dis-
+tance between the ends is necessarily smaller. Furthermore,
+this length does not take into account projection eﬀects due
+to the unknown inclination. Based on the ranges of lengths
+and widths, the typical ﬁlament aspect ratio is between 7
+and 9.
+4.2 Eﬀect of Cores on Filament Properties
+As indicated in Section 2, we derive ﬁlament properties
+based on the original images and do not attempt prepro-
+cessing to remove cores. In this section, we brieﬂy describe
+how the inclusion of cores aﬀects the properties of the ﬁla-
+ments. As noted in several studies of the HGBS (K¨ onyves
+et al. 2010; Arzoumanian et al. 2011; Andr´ e et al. 2013),
+the width of cores corresponds well to previously derived
+widths of ﬁlaments (∼0.1 pc). Based on a by-eye analysis of
+our results, we ﬁnd that the skeletons returned by FilFinder
+correspond well to tracing the centre of the cores along the
+ﬁlament. We note, however, that the skeletonization process
+used does not guarantee this, leading to the possibility that
+the radial proﬁle is artiﬁcially wider due to the oﬀset of a
+bright feature. Very few of these cases were found upon in-
+specting the radial proﬁles of each region. We expect that
+this has a negligible eﬀect on the global properties derived.
+Filaments with signiﬁcantly higher surface brightness
+have been found to have many cores along their extent (e.g.,
+K¨ onyves et al. 2010). This large number of cores likely causes
+a signiﬁcant increase in the peak of the ﬁlament’s radial
+proﬁle. We expect that this is the greatest eﬀect of including
+the core population while deriving ﬁlament properties. Since
+the number of low surface brightness ﬁlaments far exceeds
+those of high surface brightness, this eﬀect will inﬂate the
+positive tail of the surface brightness distribution (Figure
+6).
+Finally, we note the dependency of both of these poten-
+tial issues on the size of the ﬁlament. Many ﬁlaments have
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 9 =====
+Filaments 9
+0.0
+0.6
+1.2
+1.8
+log10(I/ MJy/sr)
+□0.5
+0.0
+0.5
+1.0
+log10(L/ pc)
+□1.6
+□1.2
+□0.8
+□0.4
+log10(W/ pc)
+0.6
+0.9
+1.2
+1.5
+δθ
+0.0 0.6 1.2 1.8
+log10(I/ MJy/sr)
+□0.5 0.0 0.5 1.0
+log10(L/ pc)
+0.6 0.9 1.2 1.5
+δθ
+Figure 6. Key properties derived from for all ﬁlaments in the HGBS and the California Molecular Cloud (Harvey et al. 2013). Note that
+the width refers to the deconvolved FWHM. The dotted lines indicate the 50, 85 and 99.5 percentiles of the histograms. The contours
+represent the areas containing the 50, 85 and 99.5 percentiles. Dots represent individual data points that do not fall within the lowest
+contour. All ﬁlaments are above the minimum length cutoﬀ (5 times the beamwidth, or 0.275 pc for the common projection to a distance
+of 460 pc), and so it is not shown in the ﬁgure. The beam width of 0.056 pc (projected at 460 pc) is indicated by the red line.
+skeletons which cover regions over a large dynamic range
+in surface brightness. Often the portions of lower surface
+brightness extend substantially from the brighter regions.
+In these cases, both of the issues presented above are un-
+likely to have a large eﬀect on the radial proﬁle due to the
+large number of pixels at lower surface brightness. Future
+work that includes a joint analysis of compact core objects
+and ﬁlaments will mitigate these possible biases.
+4.3 Region-based Analysis
+The preceding section aggregates all the regions together
+into a single analysis, but this combines widely diﬀerent re-
+gions of the ISM. We take advantage of this broad survey
+of the Gould Belt region to compare the distributions of
+properties in diﬀerent regions.
+In a by-eye inspection, the brightness of the ﬁlamen-
+tary networks appears to vary signiﬁcantly cloud-by-cloud
+(and in regions across the face of the cloud). We summa-
+rize these variations by plotting the distributions of ﬁlament
+brightness above the background level in Figure 7. This vio-
+lin plot shows amplitude of the probability density functions
+(PDFs) as the full width of the ‘violin.’ The probability den-
+sity function is generated from a Gaussian kernel density es-
+timate of the observed data, which smooths the PDF. The
+quartiles of the data are shown as lines drawn in the distri-
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 10 =====
+10 Koch & Rosolowsky
+□1.5 □1.0 □0.5 0.0 0.5 1.0 1.5 2.0 2.5 3.0
+log10 Surface Brightness (MJy/sr)
+Taurus
+Polaris
+Pipe
+Perseus
+Orion-B
+Orion-A South
+Orion-A Center
+Lupus
+IC-5146
+Chamaeleon
+California West
+California East
+California Center
+Aquila
+Figure 7. A violin plot showing the background subtracted surface brightness along the ﬁlamentary structure. The ‘violin’ shows
+an estimate of the PDF for the surface brightness. These regions show signiﬁcant multimodal structure in their brightness PDFs and
+signiﬁcant variations between regions.
+butions. This visualization is similar to stacked histograms
+of the data but highlights the diﬀerences in shape between
+the regions. Few of the PDFs are Gaussian and many (no-
+tably Orion A South, California East and IC-5146) show
+bimodal structure with the bright mode an order of magni-
+tude brighter than the faint mode. Next, the brightness dis-
+tributions, while overlapping, are signiﬁcantly diﬀerent be-
+tween the regions. Aquila is dominated by relatively bright
+ﬁlaments whereas the Polaris region is substantially fainter.
+The California molecular cloud shares a common mean and
+width for the distribution across all images analyzed for this
+cloud, but the distribution shape varies over the cloud. Simi-
+larly, the two parts of Orion A share a common distribution,
+though the “Centre” of the cloud which contains the main
+ridge of the cloud shows no bright mode, indicating that the
+southern portion of the cloud has more mass in the ﬁlamen-
+tary structure. The Orion B PDF spans the range seen in
+the Orion A images, but still sits at larger values than the
+lowest mass clouds.
+We estimate the inﬂuence of ﬁlamentary structure on
+the regions as a whole using two diﬀerent measurements.
+First, we compare the typical ﬁlament brightness to the
+background level estimated in the width. On average, ﬁla-
+ment brightnesses are 1.3 +0.5
+−0.2 times that of the broad back-
+ground on which they are found. This factor does not show
+signiﬁcant variation from cloud to cloud across the Gould
+Belt. We also use our model to construct an image of the
+ﬁlamentary network to quantify what fraction of cloud emis-
+sion in the entire image is found within the ﬁlamentary net-
+work. We ﬁnd typical values between 4.5% and 23.9% with
+no clear relation to cloud mass or star formation properties.
+Note that this quantiﬁcation includes all the emission in the
+image, which may spuriously include foreground and back-
+ground emission not associated with the cloud. These values
+reﬂect only the emission contained within the width of the
+ﬁlament above the background level derived in the ﬁts; thus
+emission on scales larger than the ﬁlament width is not in-
+cluded. These values indicate that the ﬁlamentary network,
+while prominent describes a relatively a small fraction of the
+total emission in the cloud.
+We compare the width distributions for the ﬁlament
+families using a two-sided Kolomorov-Smirnoﬀ test (Press
+et al. 2002). In Figure 8 we show the negative log-probability
+that the two distributions are drawn from the same par-
+ent distribution. The Figure indicates that there are de-
+tectable variations in the ﬁlament width distributions be-
+tween clouds. The clearest associations between populations
+suggests some variation with either cloud mass or distance,
+since the GMCs are, on average, more distant than the low
+mass clouds. The algorithm shows good robustness with re-
+spect to distance (see Appendix B) and we carry out all the
+analysis with data convolved to a common physical resolu-
+tion. However, there may be some distance eﬀects introduced
+because the more distant objects are physically larger in a
+given image and may sample a wider range of properties.
+Overall, we ﬁnd good evidence for region-based vari-
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 11 =====
+Filaments 11
+Taurus
+Polaris
+Pipe
+Perseus
+Orion-B
+Orion-A South
+Orion-A Center
+Lupus
+IC-5146
+Chamaeleon
+California West
+California East
+California Center
+Aquila
+Taurus
+Polaris
+Pipe
+Perseus
+Orion-B
+Orion-A South
+Orion-A Center
+Lupus
+IC-5146
+Chamaeleon
+California West
+California East
+California Center
+Aquila
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0
+3.5
+4.0
+4.5
+ log10 p-value
+Figure 8. P-values for two-sided Kolmogorov-Smirnoﬀ tests
+showing the probability of the ﬁlament distributions being drawn
+from the same parent distribution for the ﬁlament width. The
+greyscale value represents the negative logarithm of the probabil-
+ity so substantially diﬀerent distributions are larger (darker).
+ation among the diﬀerent nearby star-forming molecular
+clouds. Several of the Herschel maps observe the same ob-
+ject but have divided the map into diﬀerent regions based on
+observing requirements. In general, we ﬁnd little variation
+between images observing diﬀerent parts of the same object.
+4.4 Filament Orientation
+The Rolling Hough Transform (RHT,§2.3) provides a novel
+means to assess the orientation of linear features. In our
+case, we use it to search for preferred orientations in the ﬁl-
+amentary networks that may be caused by magnetic ﬁelds
+or the directions of converging ﬂows. We search for the po-
+tentially related signatures of the faint striation populations
+relative to brighter ﬁlaments. Here we adopt the nomencla-
+ture that a ‘striation’ is a faint ﬁlament. Despite the fact
+that some clouds show bimodality between bright and faint
+features, we stress that our analysis in Section 4.1 does not
+show evidence for a universal intensity threshold value that
+separates the ﬁlaments into bright and faint populations. As
+such we do not specify a threshold to indicate ﬁlaments that
+can be deﬁnitively considered striations. We show the ori-
+entation distributions for six Gould belt regions in Figure
+9 that exhibit the range of orientation distributions in the
+analyzed clouds. We measure the angular distribution of the
+sets of branches that comprise the ﬁlaments rather than the
+distribution for entire skeletons as a whole. While this de-
+stroys orientation information for individual ﬁlaments, this
+approach better describes the orientation of the region’s en-
+tire ﬁlamentary structure.
+Chamaeleon – Alves de Oliveira et al. (2014) noted that
+the Chamaeleon Molecular cloud shows two distinct ﬁlament
+and striation populations (see Figure 5(a)). By eye exami-
+nation of the images suggests that the populations inter-
+sect each other perpendicularly. The RHT results show a
+Aquila California East
+California West Chamaeleon
+□π/2 0 π/2
+Orion-A South
+□π/2 0 π/2
+Pipe
+Figure 9. Filament orientations for six Gould Belt regions. All
+histograms are normalized to unity and the kernel density estima-
+tions (solid black line) are computed over a continuous boundary.
+The East-West direction corresponds to 0 ◦. Some clouds show
+preferred orientations (California West, Pipe, Chamaeleon) and
+others are uniform in the brightness distributions (Aquila).
+signiﬁcant peak in the direction of the striation population
+which dominates the region by surface area. These striations
+lie in the direction of the large scale magnetic ﬁeld (Alves
+de Oliveira et al. 2014). A small peak can be seen approx-
+imately in the direction of the bright ﬁlaments. Qualita-
+tively, the Chamaeleon region has a bimodal distribution of
+the ﬁlamentary structure orientation. We attempted to cap-
+ture this behaviour quantitatively through diﬀerent bright-
+ness weighting schemes but were not able to improve on this
+qualitative result.
+Aquila – The Aquila region shows no preferred direction
+for the ﬁlamentary structure. This is consistent with a by-
+eye evaluation of the data. As a whole, the region shows no
+clear bimodality as we see in Chamaeleon.
+California – Despite being part of the same complex,
+the East and West parts of the California Molecular Cloud
+show some diﬀerences in the orientation of the ﬁlamentary
+structure. The West component has an aligned striation
+structure, though not clearly perpendicular to the promi-
+nent ﬁlaments as seen in Chamaeleon. This is reﬂected in
+the output of the RHT (Figure 9), which shows a prominent
+peak centred near 0 radians. There is no noticeable peak
+corresponding to the bright ﬁlaments. The central region of
+California (not shown) reveals a similar RHT output as the
+West component. Conversely, the East component yields a
+more uniform distribution with a wider peak centred near
+−π/4. The uniformity makes it more akin to the Aquila re-
+gion than the other regions shown in Figure 9. The striation
+structure in this region may have been disrupted by the con-
+centrations of YSOs in the region (Harvey et al. 2013).
+Pipe – The Pipe molecular cloud has a unique structure
+possibly attributed to a shock (Peretto et al. 2012a). There
+is a clear directional preference centred at θ = 0, consistent
+with the shape of the bow-front. The small peak corresponds
+to the direction of the connecting structures located behind
+the bow-front. Unlike other regions where the faint ﬁlamen-
+tary structure dominates the orientation information, the
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 12 =====
+12 Koch & Rosolowsky
+Pipe region is dominated by the prominent ﬁlaments. There
+is a noticeable lack of a striation population that is found in
+most other regions in the Gould Belt. This absence may be
+further evidence of the bow-shock dominating the region.
+Orion-A South – The south region of Orion-A has a pre-
+ferred directions at aboutθ =−1.4 with less signiﬁcant peak
+closer to θ =−0.4. In comparison with Chamaeleon, these
+peaks are less signiﬁcant and the distribution is more uni-
+form. The peak at −0.4 radians corresponds approximately
+to the direction of the bright ﬁlaments in the region. The
+peak at−1.4 radians is associated with the striations, par-
+ticularly near the northern part of the image.
+The orientation histograms presented in Figure 9 are
+not weighted by an intensity value associated with each
+branch. We ﬁnd that such a weighting scheme causes no
+signiﬁcant change in the histogram’s shape for all regions.
+Since intensity scales with ﬁlament mass, this points to a
+clear indication that the faint striation structure as a whole
+contributes a signiﬁcant fraction of the mass. The orienta-
+tion of these striations is likely connected to the large-scale
+magnetic ﬁeld around the clouds. In addition to the work
+of Alves de Oliveira et al. (2014) in Chamaeleon, the align-
+ment of the faint linear features in the ISM with the large
+scale magnetic ﬁeld has also been noted in dust extinction
+(Li et al. 2013) and Hi (Clark et al. 2014). The sensitivity
+of the FilFinder algorithm to faint ﬁlamentary structure of-
+fers a method to quantitatively identify the signature of the
+magnetic ﬁeld.
+5 DISCUSSION
+Examination of the ﬁlament populations showed signiﬁcant
+region-to-region variation between the diﬀerent sections of
+the Gould Belt. Since such clouds also show signiﬁcant vari-
+ation in their star formation activity, we explore some em-
+pirical correlations between ﬁlaments and star formation.
+5.1 Star Formation and Filamentary Structure
+The scientiﬁc interest in ﬁlaments has largely been driven by
+their close connection to the star formation process. Since
+this work presents a means to identify ﬁlaments across a
+range of molecular clouds, we explored whether the proper-
+ties of the ﬁlamentary network were connected to the star
+formation rates (SFRs) of clouds. We have adopted the SFRs
+for these regions described in the literature (see Table 3) and
+parameterize them in terms of a SFR surface density: ΣSFR.
+In general, these studies identify the numbers of protostars
+of diﬀerent classes, and assuming an evolutionary timescale
+for the diﬀerent classes, infer a SFR. These rates are not
+spatially matched to the SPIRE images we analyze in this
+study. In cases where a single SFR is supplied in the litera-
+ture for a region, we apply the rate to all images associated
+with that region.
+In Figure 10, we plot ΣSFR against the median ﬁlament
+brightness for the diﬀerent images. This parameterization
+explores connection between the strength of the ﬁlamen-
+tary structure in a region and star formation rate. The Fil-
+Finder approach explicitly includes a smooth background of
+emission underneath the ﬁlamentary network, so the anal-
+ysis speciﬁcally measures the magnitude of the ﬁlamentary
+0.6 0.8 1.0 1.2 1.4 1.6
+log10 Median of Filament Surface Brightness / (MJy/sr)
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0
+3.5
+4.0
+Σ SF R(M⊙ Myr□1 pc□2)
+Aquila
+California Center
+California East
+California West
+Chamaeleon
+IC-5146
+Lupus
+Orion-A Center
+Orion-A South
+Orion-B
+Perseus
+Pipe
+Polaris
+Taurus
+Figure 10. The SFR densities (see Table 3) plotted against the
+median of the surface brightness along the ﬁlamentary structure.
+There is a suggestive trend of the surface density of star formation
+with typical ﬁlament brightness though the Chamaeleon region is
+an obvious outlier.
+substructure rather than the cloud surface density overall.
+There is not a clear correlation given the available data;
+however, with the exception of Chamaeleon, images with
+brighter ﬁlamentary structure tend to have higher Σ SFR.
+The Chamaeleon region is small and may have its star for-
+mation rate estimates aﬀected by small number statistics.
+The weak correlation is driven by Aquila, Perseus and Orion
+A all having higher than average ﬁlament brightnesses and
+ΣSFR.
+Since the algorithm also ﬁts a background level, above
+which the ﬁlament brightness is measured, we compared
+the ﬁlament brightness to the background. This background
+emission could be either the relatively smooth bulk of the
+cloud or true background emission, unassociated with the
+star forming region but projected along the line of sight. We
+ﬁnd that all clouds have a typical ﬁlament brightness that
+is typically 1.3 times larger than the background emission
+on which the ﬁlaments are found. The bright ﬁlaments can
+have ﬁlament-to-background ratios of more than 10.
+We also explored the correlation of other properties of
+the ﬁlamentary network with star formation rates but did
+not ﬁnd any obvious connections. However, these results
+may become clearer with the full release of HGBS data in-
+cluding column density and temperature results. If borne out
+by a more thorough analysis, this type of correlation would
+support the evolutionary sequence where ﬁlaments form and
+gravitationally fragment (Andr´ e et al. 2013), possibly medi-
+ated by magnetic ﬁelds (Chen & Ostriker, in preparation).
+In this scenario, the early stages of molecular cloud evolution
+would be parameterized by the amplitude of the ﬁlamentary
+network within the cloud. Our method provides a method
+to characterize this network.
+5.2 Filament Stability
+We also explore the distribution of ﬁlamentary emission that
+would be subject to classical gravitational instabilities. For
+this initial analysis, we adopt a constant dust emissivity at
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 13 =====
+Filaments 13
+0 5 10 15 20 25 30
+Mline (M⊙/pc)
+Taurus
+Polaris
+Pipe
+Perseus
+Orion-B
+Orion-A South
+Orion-A Center
+Lupus
+IC-5146
+Chamaeleon
+California West
+California East
+California Center
+Aquila
+Figure 11. Average linear mass densities of the ﬁlaments for a constant Tdust = 15 K. The density is calculated by including all pixels
+within the FWHM of the ﬁlament. The distributions in the plot are weighted by the number of pixels in the ﬁlaments. The dotted line
+corresponds to the thermal critical mass density of 16 M ⊙ pc−1
+.
+350 µm of 0.073 cm 2 g−1 from the law of Beckwith et al.
+(1990) and the assumption that dependence on frequency
+scales with the index β = 2. We adopt a uniform dust tem-
+perature ofTdust = 15 K as is characteristic of the more care-
+ful analysis by K¨ onyves et al. (2010) and Arzoumanian et al.
+(2011). Given these assumptions with gas-to-dust mass ratio
+of 100-to-1, we ﬁnd Σ gas = 1.02 M⊙ pc−2(I350/MJy sr−1).
+Work from K¨ onyves et al. (2010) shows that the dust tem-
+perature decreases toward the centres of ﬁlaments, meaning
+that the values derived here for the mass will be lower limits
+on the true surface density. Using the modiﬁed blackbody
+model for the spectrum, this diﬀerence would be a factor of
+4 for Tdust = 10 K.
+The critical mass per unit length for a nearly isother-
+mal cylinder is Mline,crit = 2 c2
+s/G (Inutsuka & Miyama
+1997). Taking Tgas = 10 K as typical for a molecular cloud
+and the mean particle mass in molecular material to be
+µ = 2.4, we ﬁnd Mline,crit = 16 M⊙ pc−2. We calculate
+the observed Mline assuming that the ﬁlament has a Gaus-
+sian proﬁle perpendicular to the ﬁlament with a FWHM
+as measured previously: W . We average the measured sur-
+face densities over the ﬁlament within the FWHM width of
+the ﬁlament: ⟨Σgas⟩ and compute the linear mass density
+as Mline =⟨Σgas⟩W/erf(
+√
+ln 2) = 1.23⟨Σgas⟩W . The numer-
+ical prefactor arises because of the assumed Gaussian pro-
+ﬁle and the correction required to account for the wings of
+the Gaussian outside of our integration region. More careful
+treatment of projection eﬀects and direct measurements of
+cs will be required to assess whether a given ﬁlament will be
+subject to gravitational instability. Moreover, the instabil-
+ity criterion ignores other forms of support such as turbu-
+lence or magnetic ﬁeld conﬁgurations that would make this
+threshold value a lower limit.
+Chen et al. (2015, in preparation) argue that the
+presence of velocity gradients across ﬁlaments seen in the
+CARMA Large Area Star formation Survey data (Storm
+et al. 2014) indicates that ﬁlament formation occurs in
+a magnetized slab. In such an environment, the magnetic
+critical length is L = B/(2πρG1/2). Taking the ﬁlaments
+as having an axisymmetric Gaussian density proﬁle gives
+Mline∼ ΣL∼ BW/(2πG1/2)∼ 9 M⊙ pc−1. Here we have
+taken the typical width of a ﬁlament to be 0.1 pc consis-
+tent with our analysis and the typical magnetic ﬁeld to be
+B = 30 µG as a summary value for the results from the
+Planck Collaboration (2015b). This value is of order the
+gravitational instability value, but depends on local ﬁeld
+strength and ﬁlament width. These parameters can be re-
+lated back to mass densities using relationships between pre-
+and post-shock values (Chen et al. 2015) but this relation-
+ship requires assumptions about the strength of the shock.
+While notable that the diﬀerent instability mechanisms pro-
+duce similar linear mass densities, the measurements that
+ground the theory of ﬁlament formation via magnetohydro-
+dynamic processes are diﬃcult to obtain from these data
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 14 =====
+14 Koch & Rosolowsky
+alone. This estimate suggests that the surface densities re-
+quired for gravitational collapse will also be able to overcome
+magnetic support as well.
+In Figure 11, we show a violin plot for the linear mass
+density of ﬁlaments in the diﬀerent clouds analyzed here.
+Overall, the linear mass densities of clouds are below the
+stability criterion, but the massive star forming clouds show
+bright ﬁlaments well above the instability threshold. While
+the comparison to the values required for instability is in-
+teresting, several factors preclude strong conclusions. Some
+ﬁlaments in the other regions may be unstable since lower-
+than-assumed dust temperatures can signiﬁcantly increase
+the mass densities (by a factor likely between 1 and 4). Fur-
+ther, the ﬁlaments show signiﬁcant curvature along their
+lengths and this ‘kinking’ would make the systems more
+unstable. We conclude that many ﬁlamentary networks are
+near the threshold of instability to fragmentation. Massive
+molecular clouds such as Aquila, California (Centre) and
+Orion show a few bright ﬁlaments that would be unstable
+over many diﬀerent combinations of assumptions, but the
+lower mass clouds do not have the same signiﬁcant bright
+ﬁlaments.
+5.3 Future Work
+This paper presents a ﬁrst look at ﬁlamentary structure
+through the lens of a new algorithm. While some of the
+results show that the new method is promising, future work
+is required to make the outcomes more robust. Using ro-
+bust maps of the column density and temperature derived
+from multi-band ﬁtting is the ﬁrst obvious improvement,
+potentially with links to the Planck data on the largest an-
+gular scales. With such maps, we expect an increase in the
+mass densities of the ﬁlaments and possibly a decrease in
+width as the centres of the ﬁlaments gain more importance
+in the ﬁts. The curvature of the ﬁlaments and their lengths
+are unlikely to be signiﬁcantly altered with more physically
+grounded data.
+A primary advantage of this approach, shared with the
+DisPerSE algorithm, is the ability to extend naturally to
+three dimensions. This extension would allow for ﬁlament
+extraction from position-position-velocity (PPV) data cubes
+of spectral line emission. The primary barriers to this inno-
+vation lie in the careful treatment of intersection and prun-
+ing for three-dimensional skeletons. The algorithm is stabi-
+lized by the excellent signal to noise present in the Herschel
+data. Typical millimetre-wave PPV data sets have signiﬁ-
+cantly poorer sensitivity but new ALMA data sets will have
+the sensitivity required to stabilize the algorithm.
+Finally, a joint analysis of core and ﬁlament populations
+will eliminate some of the concerns that cores are distort-
+ing ﬁlament properties (§4.2). Furthermore, including back-
+ground ﬁlament structure in a joint analysis with the cores
+will improve estimates of core size, stability and connection
+with their background environment. With the code publicly
+released, we welcome community contribution to its devel-
+opment.
+6 SUMMARY
+We have presentedFilFinder a new algorithm for measuring
+ﬁlaments in astronomical images. FilFinder adopts the tech-
+niques of mathematical morphology to identify ﬁlamentary
+features in image data. This approach diﬀers from other al-
+gorithms, which use wavelets and curvelets ( get ﬁlaments)
+or critical manifolds (DisPerSE) or Hessian operators (the
+Hi-GAL survey and Salji et al. 2015). The algorithm relies
+on adaptive thresholding, which creates a mask based on
+local changes in brightness. The Medial Axis Transform re-
+duces the signal mask to a skeleton. This skeleton is then
+pruned down to a ﬁlamentary network. When compared to
+the ﬁlaments identiﬁed by DisPerSE,FilFinder identiﬁes the
+same bright ﬁlaments but also reliably extracts a population
+of faint ﬁlaments (striations) in the peripheries of the molec-
+ular clouds.
+Such a morphology-based approach enables new types
+of analyses. We apply this method to study the properties
+of the ﬁlamentary networks in molecular clouds found in the
+Gould Belt star forming region. We use the Herschel Gould
+Belt Survey data of Andr´ e et al. (2010) supplemented by
+data on the California molecular cloud from Harvey et al.
+(2013). These data provide 350 µm imaging of these clouds
+at a linear resolution of< 0.056 pc. We compare the ﬁlament
+populations between diﬀerent molecular clouds in the Gould
+Belt. Because of the preliminary nature of the data released
+by the Herschel Gould Belt Survey team, our results are
+tentative and serve to illustrate the types of analysis enabled
+by the new approach. In this preliminary context, we ﬁnd:
+(i) Filament widths are found here to have a median value
+of W = 0.09 pc across the cloud surveyed. The distribution
+shows a variation in width of a factor of ∼ 2. The striations
+extracted here alongside the usual bright ﬁlaments have a
+similar distribution of widths.
+(ii) The brightness of a ﬁlament is typically 1.3 times
+larger than the local background emission. However, because
+ﬁlaments are not pervasive, the network comprises about
+10% of the intensity of the entire image.
+(iii) The brightness distributions of the ﬁlamentary net-
+work vary signiﬁcantly from region to region. The large
+molecular clouds in the sample (Orion A and B, Califor-
+nia) tend to have brighter ﬁlamentary networks than fainter
+clouds. Regions without signiﬁcant star formation (Polaris)
+show signiﬁcantly lower median ﬁlament brightness. Many
+of the distributions are bimodal with a bright mode an order
+of magnitude larger than the faint mode. The distributions
+of ﬁlament curvature and width also show signiﬁcant varia-
+tions across the sample.
+(iv) Adapting the Rolling Hough Transform approach of
+Clark et al. (2014), we have examined the distribution of
+orientations for the ﬁlaments. Since the faint ﬁlaments dom-
+inate this analysis by number, we can identify a preferred
+direction in the striation population for some of the clouds
+(California, Chamaeleon, and the Pipe). There is weak ev-
+idence for a perpendicular population from the bright ﬁla-
+ments in Chamaeleon, consistent with the by-eye analysis of
+Alves de Oliveira et al. (2014).
+(v) We ﬁnd a suggestive but noisy correlation between
+the brightness of the ﬁlamentary network and the liter-
+ature estimates of the star formation rate in a region.
+The Chamaeleon region does not agree with this sugges-
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 15 =====
+Filaments 15
+tive trend, showing a high star formation rate with respect
+to its ﬁlament brightness.
+(vi) We examined the stability of the ﬁlaments under a
+linear mapping from intensity to column density. The bright
+ﬁlaments in the clouds are close to or above the threshold
+for instability. However, the unmeasured quantities in the
+instability criteria and our simple linear mapping surface
+density make both the data and the threshold uncertain by
+a factor of two.
+While such results will need to be re-examined in the con-
+text of ﬁnal data from the Herschel Gould Belt Survey,
+they oﬀer some suggestive directions for the analysis of ﬁl-
+aments in the context of far infrared emission data. The
+algorithm can readily be generalized to higher dimensional
+data, enabling a parallel analysis in high-sensitivity position-
+position-velocity data. The code and documentation have
+been publicly released.
+ACKNOWLEDGMENTS
+This work has been supported by a Discovery Grant and
+a Canada Graduate Scholarship from the Natural Sci-
+ences and Engineering Research Council Canada. This re-
+search has made use of data from the Herschel Gould Belt
+survey (HGBS) project (http://gouldbelt-herschel.cea.
+fr). The HGBS is a Herschel Key Programme jointly carried
+out by SPIRE Specialist Astronomy Group 3 (SAG 3), sci-
+entists of several institutes in the PACS Consortium (CEA
+Saclay, INAF-IFSI Rome and INAF-Arcetri, KU Leuven,
+MPIA Heidelberg), and scientists of the Herschel Science
+Centre (HSC). We thank Neal Evans, who provided useful
+guidance on star formation rates in this sample. We acknowl-
+edge the anonymous referee for their thorough review that
+improved the clarity and presentation of the paper. We are
+grateful for the open source development community that
+has supported this work, in particular, the work of the As-
+tropy Collaboration et al. (2013, astropy) and van der Walt
+et al. (2014, scikit-image). This research has made use of
+NASA’s Astrophysics Data System, the NASA Extragalac-
+tic Database, and the SIMBAD database, operated at CDS,
+Strasbourg, France.
+REFERENCES
+Alves de Oliveira C., et al., 2014, A&A, 568, A98
+Alves J. F., Lada C. J., Lada E. A., 2001, Nature, 409, 159
+Andr´ e P., et al., 2010, A&A, 518, L102
+Andr´ e P., Di Francesco J., Ward-Thompson D., Inutsuka
+S.-i., Pudritz R. E., Pineda J., 2013, arXiv, p. 6232
+Arzoumanian D., et al., 2011, A&A, 529, L6
+Astropy Collaboration et al., 2013, A&A, 558, A33
+Bally J., Langer W. D., Stark A. A., Wilson R. W., 1987,
+ApJ, 312, L45
+Beaumont C. N., Oﬀner S. S. R., Shetty R., Glover S. C. O.,
+Goodman A. A., 2013, ApJ, 777, 173
+Beckwith S. V. W., Sargent A. I., Chini R. S., Guesten R.,
+1990, AJ, 99, 924
+Bernard J.-P., et al., 2010, A&A, 518, L88
+Bertin E., Arnouts S., 1996, A&AS, 117, 393
+Blitz L., 1993, in Protostars and Planets III. pp 125–161
+Blum H., 1967, in Wathen-Dunn W., ed., Proc. Models for
+the Perception of Speech and Visual Form. MIT Press,
+Cambridge, MA, pp 362–380
+Busquet G., et al., 2013, ApJ, 764, L26
+Chen C.-Y., Ostriker E. C., Classy Team 2015, in American
+Astronomical Society Meeting Abstracts. p. 110.02
+Clark S. E., Peek J. E. G., Putman M. E., 2014, ApJ, 789,
+82
+Duda R. O., Hart P. E., 1972, Commun. ACM, 15, 11
+Evans N. J. I., 1999, ARA&A, 37, 311
+Evans N. J. I., Heiderman A., Vutisalchavakul N., 2014,
+The Astrophysical Journal, 782, 114
+Falgarone E., Panis J.-F., Heithausen A., Perault M.,
+Stutzki J., Puget J.-L., Bensch F., 1998, A&A, 331, 669
+Fisher N. I., Lewis T., 1983, Biometrika, 70, pp. 333
+Griﬃn M. J., et al., 2010, A&A, 518, L3
+Harvey P. M., et al., 2013, ApJ, 764, 133
+Heiderman A., Evans II N. J., Allen L. E., Huard T., Heyer
+M., 2010, ApJ, 723, 1019
+Inutsuka S.-i., Miyama S. M., 1997, ApJ, 480, 681
+Kirk J. M., et al., 2013a, MNRAS, 432, 1424
+Kirk H., Myers P. C., Bourke T. L., Gutermuth R. A.,
+Hedden A., Wilson G. W., 2013b, ApJ, 766, 115
+K¨ onyves V., et al., 2010, A&A, 518, L106
+Kramer C., Stutzki J., Rohrig R., Corneliussen U., 1998,
+A&A, 329, 249
+Lada C. J., Lombardi M., Alves J. F., 2009, ApJ, 703, 52
+Lada C. J., Lombardi M., Alves J. F., 2010, ApJ, 724, 687
+Langer W. D., Wilson R. W., Anderson C. H., 1993, ApJL,
+408, L45
+Lazarian A., Pogosyan D., 2000, ApJ, 537, 720
+Lazarian A., Pogosyan D., 2004, ApJ, 616, 943
+Li H.-b., Fang M., Henning T., Kainulainen J., 2013, MN-
+RAS, 436, 3707
+Lombardi M., Alves J., 2001, A&A, 377, 1023
+Lynds B. T., 1962, ApJS, 7, 1
+Men’shchikov A., 2013, A&A, 560, 63
+Miville-Deschˆ enes M.-A., et al., 2010, A&A, 518, L104
+Molinari S., et al., 2010, A&A, 518, L100
+Myers P. C., 2009, ApJ, 700, 1609
+Nagahama T., Mizuno A., Ogawa H., Fukui Y., 1998, AJ,
+116, 336
+Narayanan G., Heyer M. H., Brunt C., Goldsmith P. F.,
+Snell R., Li D., 2008, ApJS, 177, 341
+O’Shea B. W., Bryan G., Bordner J., Norman M. L., Abel
+T., Harkness R., Kritsuk A., 2004, arXiv, p. 3044
+Palmeirim P., et al., 2013, A&A, 550, A38
+Peretto N., et al., 2012a, A&A, 541, 63
+Peretto N., et al., 2012b, A&A, 541, A63
+Pezzuto S., et al., 2012, A&A, 547, A54
+Planck Collaboration 2015a, ArXiv e-prints:1502.01582,
+Planck Collaboration 2015b, ArXiv e-prints:1502.04123,
+Polychroni D., et al., 2013, ApJ, 777, L33
+Press W. H., Teukolsky S. A., Vetterling W. T., Flannery
+B. P., 2002, Numerical recipes in C++ : the art of scientiﬁc
+computing. Cambridge University Press
+Rosolowsky E., et al., 2010, ApJS, 188, 123
+Roy A., et al., 2013, ApJ, 763, 55
+Rygl K. L. J., et al., 2013, A&A, 549, L1
+Salji C. J., et al., 2015, MNRAS, 449, 1782
+Schisano E., et al., 2014, ApJ, 791, 27
+Schnee S., Goodman A., 2005, ApJ, 624, 254
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 16 =====
+16 Koch & Rosolowsky
+Schnee S., Bethell T., Goodman A., 2006, ApJ, 640, L47
+Schnee S., Li J., Goodman A. A., Sargent A. I., 2008, ApJ,
+684, 1228
+Schnee S., et al., 2010, ApJ, 708, 127
+Schneider S., Elmegreen B. G., 1979, ApJS, 41, 87
+Schneider N., et al., 2013, ApJ, 766, L17
+Shih F. Y., 2009, Image Processing and Mathematical Mor-
+phology. Fundamentals and Applications, CRC PressI Llc
+Sousbie T., 2011, MNRAS, 414, 350
+Spitzer L., Drake J. F., Jenkins E. B., Morton D. C., Roger-
+son J. B., York D. G., 1973, ApJ, 181, L116
+Starck J., Murtagh F., 2006, Astronomical Image and Data
+Analysis
+Storm S., et al., 2014, ApJ, 794, 165
+Stutzki J., Bensch F., Heithausen A., Ossenkopf V., Zielin-
+sky M., 1998, A&A, 336, 697
+Williams J. P., de Geus E. J., Blitz L., 1994, ApJ, 428, 693
+Winston E., et al., 2012, A&A, 545, A145
+van der Walt S., Schnberger J. L., Nunez-Iglesias J.,
+Boulogne F., Warner J. D., Yager N., Gouillart E., Yu
+T. a., 2014, PeerJ, 2, e453
+APPENDIX A: PARAMETER SENSITIVITY
+The creation of the ﬁlament mask (Section 2) is dependent
+on two parameters: the size of the patch used for the adap-
+tive threshold, and normalization value (I0) used in the arc-
+tan transform. The choice of the parameters does not greatly
+aﬀect the initial detected regions. However, the connectivity
+between these structure may change drastically. We demon-
+strate this in Figure A1, where the ﬁlamentary structure
+in the image from Figure 1 is shown for diﬀerent combi-
+nations of parameters. Choosing a low normalization value
+causes the algorithm to ignore faint connections. Choosing
+a small patch size leads to fragmented regions, which do not
+adequately describe the large-scale structure. Conversely, a
+large patch size will lead to ignoring substructure within ﬁla-
+mentary structures. The patch size inﬂuences the ﬁnal mask
+more than the choice of normalization, in fact the mask dras-
+tically changes when the patch size is altered by a factor of
+2. Optimal results are obtained by setting these parameters
+to the values discussed in Section 2. As is shown in Figure
+A1, bright ﬁlamentary structure is largely insensitive to such
+changes.
+The normalization used in the arctan transform is also
+sensitive to the noise level. When the image is ﬂattened be-
+yond the level of the faint ﬁlamentary structure, adaptive
+thresholding will return large spurious regions devoid of sig-
+nal. We note that such regions can be identiﬁed using the
+optimal parameters, however they are eliminated by the re-
+moval of small objects (see Figure 1d-e). Features near the
+noise level rely on optimal parameter settings to be identi-
+ﬁed. The sensitivities discussed above are most noticeable
+in this case and proper identiﬁcation relies on minimizing
+fragmentation of the region due to noise.
+Normal
+Convolved
+Regridded
+Figure B1. Image of the skeleton structures after smoothing
+the Pipe data to the equivalent physical resolution it would have
+at 460 pc. The ﬁlamentary structure extracted from the image is
+nearly the same after degrading the resolution by a factor of 2.5.
+APPENDIX B: RESOLUTION EFFECTS
+In this section, we test the derived parameters of the ﬁla-
+mentary network with respect to changes in physical reso-
+lution. We complete an analysis of the Pipe region, one of
+the nearest targets, at its native physical resolution (0.015
+pc), at the resolution the data would have were the cloud
+located at 460 pc (0.056 pc), and the eﬀect of regridding
+the convolved data back to the original pixel scale. We pro-
+cess these versions through the FilFinder algorithm with the
+same parameters adopted throughout this analysis. We dis-
+play the identiﬁed ﬁlamentary networks in Figure B1 and
+the distributions of the properties in Figure B2.
+While the network properties and location vary slightly
+with the degradation of the resolution, they are remarkably
+stable despite the poorer resolution. The only noticeable
+change is that there is a tendency for short ﬁlaments to be
+merged into longer ﬁlaments after image degradation. The
+width of the ﬁlaments do not change signiﬁcantly once the
+data are deconvolved. Overall, the properties do not change
+signiﬁcantly within the range of resolutions explored, though
+this minimal variation is not expected for data sampling dra-
+matically diﬀerent spatial scales.
+Despite this robustness with respect to resolution, we
+still proceed by degrading all the Herschel survey data to
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 17 =====
+Filaments 17
+26
+13
+75
+7
+95
+ 99
+Flatten Percentile
+Patch Size (pixels)
+Figure A1. The ﬁlament mask and cleaned skeletons from the example image shown in Figure 1 are shown with varying patch size
+and the ﬂattening threshold used in the arctan transform. Both parameters have a signiﬁcant eﬀect on the connectivity of the network.
+Signiﬁcant features missing in some panels have split into smaller regions, which are rejected by the described criteria for a good ﬁlament
+(see§2). The optimal parameter choices are shown in the centre panel.
+a common physical resolution to enable a clear comparison
+between the diﬀerent systems in the Gould Belt.
+c⃝ 2015 RAS, MNRAS 000, 1–17
+
+===== PAGE 18 =====
+18 Koch & Rosolowsky
+0 2 4 6 8 10 12 14
+Lengths (pc)
+0
+2
+4
+6
+8
+10
+12
+14
+16
+Normal
+Convolved
+Regridded
+0.00 0.05 0.10 0.15 0.20 0.25 0.30
+Width (pc)
+0
+2
+4
+6
+8
+10
+□1.5 □1.0 □0.5 0.0 0.5 1.0 1.5
+Orientation
+0
+2
+4
+6
+8
+10
+12
+14
+16
+0.4 0.6 0.8 1.0 1.2 1.4
+Curvature
+0
+1
+2
+3
+4
+5
+6
+7
+8
+Figure B2. Comparison of the derived skeleton properties shown
+in B1. The distributions of the properties are similar under this
+reduction in resolution except that the number of short ﬁlaments
+drops by a factor of two.
+c⃝ 2015 RAS, MNRAS 000, 1–17

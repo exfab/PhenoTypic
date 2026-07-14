@@ -1,0 +1,12 @@
+# A10 FilFinder drift register
+
+| ID | Category | Deviation | Evidence and consequence |
+|---|---|---|---|
+| F01 | Input segmentation | Use the caller's inclusive `detect_mat >= threshold` mask and skip FilFinder adaptive segmentation. | The source explicitly supports an existing mask at `upstream/fil_finder/filfinder2D.py:299-325`. This makes threshold behavior a PhenoTypic-owned, independently tested seam. |
+| F02 | Product selection | Expose exactly one raster as `objmap`, not FilFinder graph, distance, width, or tables. | `ObjectDetector` has only mask/map output channels. The three selected source attributes are fixture-pinned. |
+| F03 | Skeleton threshold | Freeze one pixel and expose no skeleton-threshold field. | FilFinder 1.8 caps `skel_thresh` with `min(ceil(value), 1 pix)` at `upstream/fil_finder/filfinder2D.py:658-669`; a tunable would be ineffective for every positive input. |
+| F04 | Empty behavior | Short-circuit an empty threshold mask to an all-zero map without constructing FilFinder. | Graph analysis assumes filament objects; the zero result follows directly from the selected-raster contract. [Based on general reasoning - no specific citation available.] |
+| F05 | Label translation | Relabel the selected boolean raster with deterministic 8-connectivity. | FilFinder internally uses 8-connectivity at `upstream/fil_finder/filfinder2D.py:679-695`, but its public selected rasters are boolean. PhenoTypic requires consecutive object labels. |
+| F06 | Executor lifetime | Supply a fresh one-process pool and guarantee `shutdown(wait=True)` instead of leaving FilFinder's implicit reusable/process executor lifetime external. | Default executor creation is `upstream/fil_finder/filfinder2D.py:167-175`; ordered results are collected at lines 709-720. This preserves process execution and result order while making ownership and cleanup explicit. |
+| F07 | Warning policy | Suppress only the expected warning emitted when the supplied mask intentionally skips segmentation. | The warning and immediate return are `upstream/fil_finder/filfinder2D.py:312-325`. All skeleton/pruning warnings remain visible. |
+| F08 | Optional dependency | Import FilFinder and Astropy only inside application and raise an actionable call-time `ImportError`. | Base `phenotypic` imports must remain cheap; dependency wiring is integrator-owned. [Based on repository architecture - no external citation available.] |

@@ -24,17 +24,18 @@ class FilFinderDetector(ObjectDetector):
     beamwidth_px: float = 1.0
     prune_criteria: FilFinderPruneCriteria = "all"
     relative_intensity_threshold: float = 0.2
-    skeleton_threshold_px: float | None = None
     branch_threshold_px: float | None = None
     max_prune_iterations: int = 10
     rng_seed: int = 0
 ```
 
 Freeze threshold comparison, output attributes, beam/pixel units, pruning parameter mapping,
-connectivity, label ordering, empty-mask behavior, and one-pixel skeleton warning. Instantiate a
-fresh FilFinder object per application, use the supplied threshold mask, skip FilFinder flattening/
-adaptive segmentation, pass pixel quantities, label the selected raster, and preserve all image
-source layers.
+connectivity, label ordering, empty-mask behavior, and the one-pixel skeleton cutoff. FilFinder 1.8
+caps `skel_thresh` at one pixel in `analyze_skeletons`; the wrapper therefore freezes the upstream
+one-pixel behavior and exposes no ineffective skeleton-threshold parameter or compensation.
+Instantiate a fresh FilFinder object per application, use the supplied threshold mask, skip
+FilFinder flattening/adaptive segmentation, pass pixel quantities, label the selected raster, and
+preserve all image source layers.
 
 Freeze an explicit stage graph per output. `output="mask"` runs mask creation only and must not call
 `medskel` or graph analysis. `output="skeleton"` runs mask creation plus `medskel` and must not run
