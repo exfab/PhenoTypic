@@ -1,9 +1,10 @@
 """Validate only the PhenoTypic-owned A10 FilFinder adapter logic.
 
 This script never imports :mod:`phenotypic`, FilFinder, scikit-image, or SciPy.
-It independently verifies inclusive thresholding, threshold monotonicity,
-deterministic 8-connected row-major labeling, mask/map consistency, empty
-input, and input-layer preservation. FilFinder skeletonization, pruning,
+It independently verifies the float32 ImageData coercion seam, inclusive
+thresholding, threshold monotonicity, deterministic 8-connected row-major
+labeling, mask/map consistency, empty input, and input-layer preservation.
+FilFinder skeletonization, pruning,
 longest-path selection, lengths, and distances are intentionally validated by
 the pinned external fixture and behavioral controls, not reimplemented here.
 """
@@ -26,6 +27,29 @@ def inclusive_threshold(image: np.ndarray, threshold: float) -> np.ndarray:
     """Return the frozen threshold after ImageData's float32 coercion seam."""
     source = np.asarray(image, dtype=np.float32).astype(np.float64)
     return source >= threshold
+
+
+def validate_float32_predecessor_coercion() -> None:
+    """Prove the ImageData precision seam changes a native float64 comparison."""
+    threshold = np.float64(0.5)
+    native_predecessor = np.nextafter(threshold, np.float64(0.0))
+    direct_float64_mutant = (
+        np.asarray([native_predecessor], dtype=np.float64) >= threshold
+    )
+    if bool(direct_float64_mutant[0]):
+        raise AssertionError("direct-float64 mutant did not remain below threshold")
+
+    coerced = np.float64(np.float32(native_predecessor))
+    if coerced != threshold:
+        raise AssertionError("float32 coercion did not round predecessor to equality")
+
+    actual = inclusive_threshold(
+        np.array([native_predecessor], dtype=np.float64), float(threshold)
+    )
+    if not bool(actual[0]):
+        raise AssertionError(
+            "thresholding bypassed the load-bearing float32 ImageData coercion"
+        )
 
 
 def label_eight_connected(mask: np.ndarray) -> np.ndarray:
@@ -155,6 +179,7 @@ def validate_external_fixture_translation() -> None:
 
 def validate_filfinder_adapter_contract() -> None:
     """Run every source-independent adapter derivation."""
+    validate_float32_predecessor_coercion()
     validate_inclusive_threshold_and_monotonicity()
     validate_label_connectivity_and_order()
     validate_empty_and_layer_preservation()

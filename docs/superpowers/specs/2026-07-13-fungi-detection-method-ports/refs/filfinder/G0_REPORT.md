@@ -91,10 +91,13 @@ line endings only for explicitly classified text and leaves binary evidence byte
 checkout with `core.autocrlf=true` must reproduce the raw fixture SHA above and pass the complete
 checksum gate before this successor can be reviewed.
 
-The standalone script is intentionally narrower. It independently re-derives threshold equality
-and monotonicity, 8-connected row-major labeling, `objmask == objmap > 0`, empty behavior, and
-source-layer preservation without importing PhenoTypic, FilFinder, SciPy, or scikit-image. It does
-not disguise a second FilFinder call as independent validation.
+The standalone script is intentionally narrower. It independently proves that a native `float64`
+predecessor of 0.5 compares below the threshold before the ImageData seam but rounds to equality
+and foreground through the required `float32` coercion. This control kills the superseded direct-
+`float64` threshold helper. The script also re-derives threshold equality and monotonicity,
+8-connected row-major labeling, `objmask == objmap > 0`, empty behavior, and source-layer
+preservation without importing PhenoTypic, FilFinder, SciPy, or scikit-image. It does not disguise
+a second FilFinder call as independent validation.
 
 ## Optional dependency and stage gates for implementation
 
@@ -115,16 +118,17 @@ The reviewer must require tests proving all of these boundaries before G3:
 
 ## Required mutation matrix
 
-Each mutant must fail a named test: strict threshold, wrong image layer, omitted existing-mask
-flag, bare float at either pixel-quantity seam, changed one-pixel skeleton threshold, swapped prune
-fields, missing RNG seed, reused FilFinder state, wrong output attribute, 4-connected labels,
-objmask/map mismatch, modified `detect_mat`, eager optional import, swallowed dependency error,
-skipped executor shutdown, and execution of a downstream stage for an earlier output.
+Each mutant must fail a named test: direct-float64 comparison that skips ImageData coercion, strict
+threshold, wrong image layer, omitted existing-mask flag, bare float at either pixel-quantity seam,
+changed one-pixel skeleton threshold, swapped prune fields, missing RNG seed, reused FilFinder
+state, wrong output attribute, 4-connected labels, objmask/map mismatch, modified `detect_mat`,
+eager optional import, swallowed dependency error, skipped executor shutdown, and execution of a
+downstream stage for an earlier output.
 
 ## Local gate results before review
 
 - Pinned source oracle fixture generation: PASS, twice with identical fixture hash.
-- Float32 ImageData seam and float32-nextafter boundary: PASS.
+- Float32 ImageData seam, native-float64 predecessor control, and float32-nextafter boundary: PASS.
 - Corrected fixture versus all 24 real-runtime case/product outputs: PASS exact.
 - Process-local warning transport, narrow-filter control, and keyed worker stderr: PASS.
 - Source-independent adapter logic: PASS.
@@ -132,7 +136,9 @@ skipped executor shutdown, and execution of a downstream stage for an earlier ou
 - Ruff and byte compilation for all A10 evidence scripts: PASS.
 - Fresh wheel/sdist reference exclusion: PASS.
 - Fresh `core.autocrlf=true` checkout, raw fixture hash, checksum gate, and logic suite: PASS.
-- Independent corrected-successor G0 review: PENDING.
+- Independent corrected-successor G0 review: FAIL at `9b217368716a19be5e9b98f24ca47756265cf92f`; the reviewer proved the
+  superseded direct-float64 helper survived because all prior logic inputs were already quantized.
+  This successor adds the missing native-float64 predecessor control and awaits rereview.
 
 Numerical/source fidelity here is an adapter claim only. It is not evidence that FilFinder improves
 fungal detection quality on PhenoTypic images; that requires a separate ground-truth benchmark.

@@ -129,9 +129,10 @@ stderr channels.
 The golden arrays require exact equality on the pinned oracle environment. This contract makes no
 cross-version bitwise claim: medial-axis tie behavior and graph results are dependency-sensitive,
 which is why every transitive oracle version is recorded. The standalone script independently
-validates only PhenoTypic-owned thresholding, labeling, mask/map equivalence, empty behavior, and
-layer preservation. It deliberately does not reimplement FilFinder skeletonization, pruning, or
-longest-path logic.
+validates the load-bearing ImageData precision seam with a native `float64` predecessor that
+becomes threshold equality only after `float32` coercion. It also validates only PhenoTypic-owned
+thresholding, labeling, mask/map equivalence, empty behavior, and layer preservation. It
+deliberately does not reimplement FilFinder skeletonization, pruning, or longest-path logic.
 
 The fixture JSON is pinned to LF by its directory `.gitattributes`. Evidence verification hashes
 explicitly classified text after CRLF-to-LF canonicalization and hashes binary artifacts byte for

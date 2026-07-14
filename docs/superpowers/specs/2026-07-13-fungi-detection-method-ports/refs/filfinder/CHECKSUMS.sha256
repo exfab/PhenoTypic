@@ -1,13 +1,13 @@
 c412ff392de395499b853b362649f6928184160b0cf7c50999b57dfd720d5916  docs/superpowers/plans/2026-07-13-fungi-detection-method-ports/algorithms/10-filfinder.md
-5accb5419fe1e6d15e9a238b7d8677c28587699af66ecc1bd08db457245a69ef  docs/superpowers/logic_validation_scripts/2026-07-13-fungi-detection-method-ports/filfinder.py
+cd53fceb95b4d38dea6857a3cfdbd101549ce7024c2d9f739bbace3b993db0b6  docs/superpowers/logic_validation_scripts/2026-07-13-fungi-detection-method-ports/filfinder.py
 9e19c874017b650b1351b5b2ff5f70f0665763f9d279c9b154b64fffde163000  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/PROVENANCE.json
 b097db7a72702d34c57c9ac184022fd4384ed424d0942b053177b509d43394bd  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/ATTRIBUTION.md
 8f2d1223e765a88b27c3354ea7c81bf846295cb3f8ddaf82756810b1d2678427  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/.gitattributes
-805b8fb5b41a546988c22348ceaaa28bf09d00004ad2f2c7937b872a1d761006  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/REFERENCE_CONTRACT.md
+a18be3c5ddc98bb0998760b7af5c030f4141e99ee4f1da93aef0396d7fd78720  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/REFERENCE_CONTRACT.md
 950829ca76228fbd841f115d181eb230aed1a3dbd8ba31a11498c26b7f8bcc82  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/reconciliation.md
 01d3a9cdc65e7393790c566c535e03cb49eb31de310caa433c510e2bdb2b7333  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/DRIFT.md
-d83754ecd8d65629920cea4c2f1608dfdc1917537993b662b4865ed7eec59a40  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/RUN.md
-86302eac569c131ff844b3c98b1491fa3edf412bea76ada62a46da241dded5bf  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/G0_REPORT.md
+e651b2268117f988176a2cf4db0190c5f48a69439bdb4dd3b9cd8738694608ae  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/RUN.md
+0478e43e4ee7ae2559cf1a20b3ab18cde64ebf714bf527b15edba8d5c7903458  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/G0_REPORT.md
 020c51843e19ad24fa8e3587c4e81fd071caead4d1eae13c8c4065db0cd8678e  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/PACKAGING_EXCLUSION.md
 5b4bd5dbcaf4b9a33159c280b4b32c7c5fd9ac8ce745eb2cfa40d5f1a2f6a09b  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/generate_fixture.py
 1ed0bbfcc96b27542e519b6ddfb40be416a1b74f3947e6dc696542e0b3c15388  docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/verify_checksums.py

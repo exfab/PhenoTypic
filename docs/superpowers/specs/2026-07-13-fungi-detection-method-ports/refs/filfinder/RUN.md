@@ -23,6 +23,11 @@ Schema v3 is adapter-reachable evidence: every synthetic source image is coerced
 boundary uses adjacent float32 values around 0.5. Native float64 synthetic values are not a valid
 wrapper oracle because `ImageData` cannot retain them.
 
+The standalone logic suite nevertheless includes one native `float64` predecessor control. It
+first proves the value compares below 0.5 directly, then proves the required ImageData-style
+`float32` coercion rounds it to equality and therefore foreground. This is a mutation control for
+the precision seam, not an external-oracle input.
+
 Run the independent adapter logic suite:
 
 ```bash
