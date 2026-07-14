@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
-from typing import TypeAlias
+from typing import TypeAlias, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -269,8 +269,9 @@ def clark_rolling_hough(
         )
 
     valid = np.any(threshold_residual > 0.0, axis=2)
-    response: Float64Array = np.sum(
-        threshold_residual, axis=2, dtype=np.float64
+    response = cast(
+        Float64Array,
+        np.sum(threshold_residual, axis=2, dtype=np.float64),
     )
     orientation: Float64Array = np.full(values.shape, np.nan, dtype=np.float64)
     for row, column in np.argwhere(valid):
