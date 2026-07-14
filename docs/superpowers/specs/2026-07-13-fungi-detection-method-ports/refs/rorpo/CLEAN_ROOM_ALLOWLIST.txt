@@ -1,0 +1,8 @@
+docs/superpowers/plans/2026-07-13-fungi-detection-method-ports/algorithms/08-rorpo.md
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/rorpo/ATTRIBUTION.md
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/rorpo/CLEAN_ROOM_ALLOWLIST.txt
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/rorpo/CLEAN_ROOM_ATTESTATION.md
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/rorpo/CONTRACT.md
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/rorpo/SANITIZED_HANDOFF.md
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/rorpo/ipol_2017_207_article.pdf
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/rorpo/source_fixture.json
