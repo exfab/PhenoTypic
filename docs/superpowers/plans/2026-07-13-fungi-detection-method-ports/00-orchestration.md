@@ -22,8 +22,8 @@ edit the same registries concurrently.
 | A05 Kalman coast | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | deferred: no matching source contract |
 | A06 Cellular automaton | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | TrickTrack core only; fungal adapter deferred |
 | A07 NFA | one dedicated clean-room turn | fresh reviewer, not its oracle | Keystone | statistical core only |
-| A08 RORPO | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core plus new wrapper |
-| A09 Rolling Hough | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core plus new wrapper |
+| A08 RORPO | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | numerical core only; wrapper deferred |
+| A09 Rolling Hough | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | numerical core only |
 | A10 FilFinder | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | new wrapper only |
 | A11 Persistence | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | analysis core, conditional wrapper, or defer |
 | S00 Scaffold | integrator | independent phase reviewer | Seam | no |
@@ -79,8 +79,8 @@ D0 review corrections C1-C14
           -> A05 Kalman deferred (no matching source)
           -> A06 TrickTrack CA core only ----------------|--> S02 exports/typing/taxonomy
           -> A07 NFA statistical core only ---------------|         |
-          -> A08 RORPO core/wrapper ----------------------|         +--> S03 final gate
-          -> A09 RHT core/wrapper ------------------------|         |
+          -> A08 RORPO numerical core only ---------------|         +--> S03 final gate
+          -> A09 RHT numerical core only -----------------|         |
           -> A10 FilFinder wrapper -----------------------|--> S01 detector strategy seam
           -> A11 Persistence analysis/conditional wrapper +
 

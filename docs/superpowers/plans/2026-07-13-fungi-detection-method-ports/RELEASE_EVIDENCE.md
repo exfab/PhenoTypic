@@ -82,9 +82,11 @@ only on the allowed numerical stack.
 | A10 FilFinder | 21/21 |
 | A11 persistence | 15/15 |
 
-Each distribution-safe HEAD matrix names the killing test. The complete A07 and A08 oracle-side
-matrices remain isolated at `62406d7c2` and `dd0c966aa`, respectively. The A01 seam runner also
-verifies that its documented matrix and executable mutant names are identical.
+The A07 named 13-mutant matrix is the distribution-safe executable tuple in
+`tests/unit/sdk_/reconnect/run_nfa_mutations.py`. A08's complete documented oracle-side matrix
+remains isolated at `dd0c966aa`. Every other distribution-safe HEAD matrix names its killing test.
+The A01 seam runner also verifies that its documented matrix and executable mutant names are
+identical.
 
 ## Review gates and remaining release decisions
 
