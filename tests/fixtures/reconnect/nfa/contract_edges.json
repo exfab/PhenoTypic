@@ -1,0 +1,48 @@
+{
+  "authority": "source-independent frozen A07 contract",
+  "cases": [
+    {
+      "expected_log10_tail": 0.0,
+      "k": 0,
+      "n": 20,
+      "name": "k_zero_exact",
+      "p": 0.125
+    },
+    {
+      "expected_log10_tail_kind": "negative_infinity",
+      "k": 1,
+      "n": 1000,
+      "name": "p_zero_impossible",
+      "p": 0.0
+    },
+    {
+      "expected_log10_tail": 0.0,
+      "k": 1000,
+      "n": 1000,
+      "name": "p_one_certain",
+      "p": 1.0
+    },
+    {
+      "expected_log10_tail": -322979.90912777267,
+      "k": 999,
+      "n": 1000,
+      "name": "minimum_positive_float64",
+      "p": 5e-324
+    },
+    {
+      "expected_relation": "finite_and_nonpositive",
+      "k": 999,
+      "n": 1000,
+      "name": "maximum_float64_below_one",
+      "p": 0.9999999999999999
+    },
+    {
+      "expected_error": "n exceeds the reviewed 1000000-trial domain",
+      "k": 4611686018427387903,
+      "n": 9223372036854775807,
+      "name": "scipy_positive_logsf_counterexample",
+      "p": 0.5
+    }
+  ],
+  "schema_version": 1
+}
