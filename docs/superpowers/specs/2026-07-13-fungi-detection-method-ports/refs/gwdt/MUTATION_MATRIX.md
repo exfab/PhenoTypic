@@ -35,7 +35,7 @@ by the focused tests named below.
 | S06 change disabled strategy | `test_tile_dispatch_keeps_app2_separate_from_legacy_dijkstra` | KILLED |
 | S07 add source-style tree threshold gate | `test_app2_tree_allows_finite_gap_pixels_without_a_threshold_gate` | KILLED |
 | S08 reverse equal-cost seed priority | `test_equal_cost_ownership_uses_first_row_major_boundary_seed` | KILLED |
-| S09 reverse detector neighbor priority | `test_equal_cost_predecessor_uses_fixed_detector_neighbor_order` | KILLED |
+| S09 restore exact Vaa3D neighbor priority | `test_equal_cost_predecessor_uses_fixed_detector_neighbor_order` | KILLED |
 | S10 slice APP2 map from the global origin | `test_tiled_app2_uses_overlap_as_halo_and_exact_global_map_slices` | KILLED |
 | S11 remove tile overlap halo | `test_tiled_app2_uses_overlap_as_halo_and_exact_global_map_slices` | KILLED |
 | S12 let later tiles overwrite overlap ownership | `test_tiled_app2_uses_overlap_as_halo_and_exact_global_map_slices` | KILLED |

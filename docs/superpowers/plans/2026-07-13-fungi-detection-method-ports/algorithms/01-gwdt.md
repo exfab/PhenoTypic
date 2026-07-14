@@ -127,7 +127,7 @@ the transformed cost.
 - disabled mode changes legacy output.
 - reintroduce a tree-stage threshold/gap gate;
 - reverse equal-cost multi-colony seed priority;
-- reverse detector neighbor priority on an equal-cost predecessor case;
+- restore the exact Vaa3D neighbor priority on a path-visible predecessor case;
 - slice the full-image GI map from the wrong origin, remove overlap, or let later tiles overwrite;
 - accept negative/nonfinite intensity or change source all/no-background behavior;
 - change the documented one-slice 3-D-to-2-D neighbor reduction.

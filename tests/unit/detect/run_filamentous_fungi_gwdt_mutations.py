@@ -86,9 +86,18 @@ MUTATIONS: tuple[Mutation, ...] = (
         "test_equal_cost_ownership_uses_first_row_major_boundary_seed",
     ),
     (
-        "S09 reverse detector neighbor priority",
+        "S09 restore exact Vaa3D neighbor priority",
         "for row_offset, column_offset, factor in _APP2_NEIGHBORS:",
-        "for row_offset, column_offset, factor in reversed(_APP2_NEIGHBORS):",
+        """for row_offset, column_offset, factor in (
+            (-1, -1, 1.414214),
+            (-1, 0, 1.0),
+            (-1, 1, 1.414214),
+            (0, -1, 1.0),
+            (0, 1, 1.0),
+            (1, -1, 1.414214),
+            (1, 0, 1.0),
+            (1, 1, 1.414214),
+        ):""",
         "test_equal_cost_predecessor_uses_fixed_detector_neighbor_order",
     ),
     (

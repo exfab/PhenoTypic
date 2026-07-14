@@ -74,26 +74,25 @@ def test_equal_cost_ownership_uses_first_row_major_boundary_seed(
 
 
 def test_equal_cost_predecessor_uses_fixed_detector_neighbor_order() -> None:
-    """Equal path costs retain the predecessor reached by detector scan order."""
+    """Detector order differs observably from the exact Vaa3D source order."""
     gi_cost = np.array(
         [
-            [3.0, 1.0, 2.0, 5.0],
-            [1.0, 5.0, 4.0, 3.0],
-            [5.0, 5.0, 3.0, 4.0],
-            [4.0, 4.0, 3.0, 5.0],
+            [3.0, 1.0, 4.0, 5.0],
+            [2.0, 3.0, 1.0, 1.0],
+            [2.0, 5.0, 5.0, 4.0],
+            [3.0, 3.0, 1.0, 2.0],
         ],
         dtype=np.float64,
     )
     colony_labels = np.zeros((4, 4), dtype=np.int32)
-    colony_labels[0, 0] = 1
-    colony_labels[3, 3] = 2
+    colony_labels[1, 1] = 1
 
     result = _run_app2_gwdt_dijkstra(gi_cost, colony_labels)
 
-    assert result.colony_id[1, 1] == 1
-    assert result.cost_distance[0, 1] == result.cost_distance[1, 0] == 2.0
-    assert result.cost_distance[1, 1] == 5.0
-    assert result.predecessor[1, 1] == 1
+    assert result.colony_id[0, 2] == 1
+    assert result.cost_distance[0, 1] == result.cost_distance[1, 2] == 2.0
+    assert result.cost_distance[0, 2] == 4.5
+    assert result.predecessor[0, 2] == 6
 
 
 @pytest.mark.parametrize(
