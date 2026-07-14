@@ -10,7 +10,6 @@ from typing import (
     Any,
     Callable,
     Generic,
-    Literal,
     overload,
     Self,
     cast,
@@ -23,7 +22,11 @@ from pydantic import Field
 from scipy import ndimage
 
 from phenotypic.abc_ import ObjectDetector
-from phenotypic.sdk_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import (
+    FilFinderOutput,
+    FilFinderPruneCriteria,
+    TuneSpec,
+)
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -233,12 +236,12 @@ class FilFinderDetector(ObjectDetector):
         float,
         Field(ge=0.0, le=1.0, allow_inf_nan=False),
     ] = 0.5
-    output: Literal["mask", "skeleton", "longest_path"] = "mask"
+    output: FilFinderOutput = "mask"
     beamwidth_px: Annotated[
         float,
         Field(gt=0.0, allow_inf_nan=False),
     ] = 1.0
-    prune_criteria: Literal["all", "intensity", "length"] = "all"
+    prune_criteria: FilFinderPruneCriteria = "all"
     relative_intensity_threshold: Annotated[
         float,
         Field(gt=0.0, le=1.0, allow_inf_nan=False),

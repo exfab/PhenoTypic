@@ -193,6 +193,54 @@ assert 'astropy.units' not in sys.modules
     assert completed.returncode == 0, completed.stderr
 
 
+def test_pipeline_roundtrip_without_topology_dependencies() -> None:
+    """A real pipeline round-trip needs no optional topology runtime."""
+    code = """
+import sys
+
+sys.modules["fil_finder"] = None
+sys.modules["astropy"] = None
+sys.modules["astropy.units"] = None
+
+from phenotypic import ImagePipeline
+from phenotypic.detect import FilFinderDetector
+
+detector = FilFinderDetector(
+    threshold=0.25,
+    output="longest_path",
+    beamwidth_px=2.5,
+    prune_criteria="length",
+    relative_intensity_threshold=0.4,
+    branch_threshold_px=3.5,
+    max_prune_iterations=7,
+    rng_seed=11,
+)
+expected = detector.model_dump()
+assert detector.model_json_schema()["properties"]["output"]["enum"] == [
+    "mask",
+    "skeleton",
+    "longest_path",
+]
+
+payload = ImagePipeline(ops=[detector]).to_json()
+restored_pipeline = ImagePipeline.from_json(payload)
+restored = next(iter(restored_pipeline._ops.values()))
+
+assert type(restored) is FilFinderDetector
+assert restored.model_dump() == expected
+assert sys.modules["fil_finder"] is None
+assert sys.modules["astropy"] is None
+assert sys.modules["astropy.units"] is None
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", code],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+
+
 def test_defaults_schema_and_serialized_fields() -> None:
     """The keyword-only contract remains machine-readable."""
     detector = FilFinderDetector()

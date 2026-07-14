@@ -3,8 +3,26 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import subprocess
 import sys
+
+
+_REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+_LOGIC_VALIDATION_DIRECTORY = (
+    _REPOSITORY_ROOT
+    / "docs/superpowers/logic_validation_scripts/2026-07-13-fungi-detection-method-ports"
+)
+_EXPECTED_LOGIC_VALIDATION_SCRIPTS = {
+    "cellular_automaton.py",
+    "filfinder.py",
+    "gwdt.py",
+    "nfa.py",
+    "persistence.py",
+    "rolling_hough.py",
+    "rorpo.py",
+    "tensor_voting.py",
+}
 
 
 def test_reviewed_fungi_ports_are_publicly_exported() -> None:
@@ -68,3 +86,14 @@ print(json.dumps(sorted(name for name in added if name.split(".")[0] in blocked)
     )
 
     assert json.loads(completed.stdout) == []
+
+
+def test_logic_validation_script_manifest_is_exact() -> None:
+    """Every in-scope numerical port has exactly one committed script."""
+    actual = {
+        path.name
+        for path in _LOGIC_VALIDATION_DIRECTORY.glob("*.py")
+        if path.is_file()
+    }
+
+    assert actual == _EXPECTED_LOGIC_VALIDATION_SCRIPTS

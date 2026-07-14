@@ -1,7 +1,7 @@
 from __future__ import annotations
 import heapq
 import itertools
-from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Optional, Union
+from typing import TYPE_CHECKING, Annotated, ClassVar, Optional, Union
 import numpy as np
 import gc
 
@@ -26,7 +26,11 @@ from phenotypic.enhance import (
     ContrastStretching,
     FocusEdgePhase,
 )
-from phenotypic.sdk_.typing_ import OperationField, TuneSpec
+from phenotypic.sdk_.typing_ import (
+    FilamentousFungiReconnectStrategy,
+    OperationField,
+    TuneSpec,
+)
 
 from phenotypic.detect import HysteresisDetector
 from phenotypic.detect._inoculum_detector import InoculumDetector
@@ -425,7 +429,7 @@ class FilamentousFungiDetector(GridObjectDetector):
     frag_reach_px: Annotated[int, TuneSpec(5, 30)] = 10
     # TODO: review bound (unverified vs literature)
     gap_crossing_penalty: Annotated[float, TuneSpec(1.0, 10.0)] = 4.0
-    reconnect_strategy: Literal["dijkstra", "app2_gwdt"] = "dijkstra"
+    reconnect_strategy: FilamentousFungiReconnectStrategy = "dijkstra"
 
     # ── Scene-derivation overrides (None → auto-derived by the validator) ──
     # Auto-derived from max_colony_radius_px / min_branch_width_px when left at

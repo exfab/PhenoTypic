@@ -31,6 +31,22 @@ FootprintShape = Literal["disk", "square", "diamond"]
 #: the selected reference.
 BoundaryMode: TypeAlias = Literal["reflect", "constant", "nearest", "mirror", "wrap"]
 
+#: Raster product selected by ``FilFinderDetector``. FilFinder exposes more
+#: graph and measurement products, but ``ObjectDetector`` returns exactly one
+#: of these three source-visible boolean rasters as consecutive labels.
+FilFinderOutput: TypeAlias = Literal["mask", "skeleton", "longest_path"]
+
+#: Branch-pruning criterion forwarded unchanged by ``FilFinderDetector`` when
+#: the selected output requires longest-path analysis.
+FilFinderPruneCriteria: TypeAlias = Literal["all", "intensity", "length"]
+
+#: Candidate-path propagation used by ``FilamentousFungiDetector``. The
+#: legacy Dijkstra path remains the default; ``"app2_gwdt"`` opts into the
+#: source-faithful APP2 endpoint-average recurrence.
+FilamentousFungiReconnectStrategy: TypeAlias = Literal[
+    "dijkstra", "app2_gwdt"
+]
+
 DetectMode = Literal["gray", "red", "green", "blue", "MinRGB", "LabL", "LabA", "LabB", "HsvS", "HsvV", "InvS"]
 
 #: Source layer an ``InputLayerMixin`` operation reads from. ``"detect_mat"``

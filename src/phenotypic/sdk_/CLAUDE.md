@@ -82,7 +82,8 @@ ContrastAdjustment)` yields `['gamma', 'gain', 'norm', 'input_layer']`.
   re-spelling. Templated paths (e.g. `chunk_{id:03d}.parquet`) live as
   private `Final[str]` constants paired with public render functions.
 - `typing_.py` — Literal type aliases for closed value sets used at public
-  boundaries (`FootprintShape`, `DetectMode`, `ExecutionMode`,
+  boundaries (`FootprintShape`, `DetectMode`, `FilFinderOutput`,
+  `FilFinderPruneCriteria`, `FilamentousFungiReconnectStrategy`, `ExecutionMode`,
   `ImageTypeName`, `ProcessingStatus`, `RecompileTaskType`,
   `CheckpointType`, `FailureSource`, `NormOut`, `InputLayer`).
 - `funcs_.py` — timing decorators, mask validation.
