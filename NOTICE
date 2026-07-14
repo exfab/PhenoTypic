@@ -48,6 +48,67 @@ source under that model's own license, which the user must accept.
   attributed here. No FSSDINO code is bundled or redistributed.
   Paper:     https://arxiv.org/abs/2602.07550
 
+Reviewed filamentary-structure method ports
+--------------------------------------------
+
+The following notices cover the source-derived numerical cores and optional
+runtime adapters introduced by the fungi detection method ports. Reference
+papers, executable-source snapshots, oracle harnesses, and generated fixtures
+under `docs/superpowers/` and `tests/fixtures/` are development evidence and
+are excluded from wheel and source-distribution artifacts. Only production
+code and the license texts listed below are distributed.
+
+- Vaa3D APP2 grey-weighted distance transform, Vaa3D contributors. The
+  `grey_weighted_distance` and `app2_gwdt_cost` implementations are derived
+  from the pinned Vaa3D APP2 logic under the MIT License.
+  Upstream:  https://github.com/Vaa3D/vaa3d_tools
+  License:   licenses/vaa3d-MIT.txt
+
+- Tensor Voting 2D Framework, Trevor Linton, copyright 2008. The upstream
+  archive contains conflicting license statements: `license.txt` contains a
+  BSD-like grant while `README` states LGPL-3.0 and includes that license.
+  PhenoTypic preserves both claims without selecting between them. The
+  source-derived `tensor_vote` component requires human licensing approval
+  before a public release.
+  Licenses:  licenses/tensor-voting-BSD-like.txt
+             licenses/tensor-voting-LGPL-3.0-claim.txt
+
+- TrickTrack, HSF contributors. The source-derived caller-supplied cellular
+  automaton core is covered by Apache-2.0. No TrickTrack runtime dependency or
+  upstream source is bundled.
+  Upstream:  https://github.com/HSF/TrickTrack
+  License:   licenses/tricktrack-Apache-2.0.txt
+
+- LSD NFA scoring. The executable oracle is AGPL-3.0-or-later and is not
+  distributed or linked. The production `binomial_nfa` core was independently
+  authored in a source-free clean room from the published equation,
+  source-generated fixtures, and a behavioral contract. Human licensing review
+  of that clean-room boundary remains required before a public release.
+  Paper:     https://doi.org/10.5201/ipol.2012.gjmr-lsd
+
+- RORPO. The executable oracle is GPL-3.0-or-later and is not distributed or
+  linked. The production `rorpo` core was independently authored in a
+  source-free clean room from the IPOL paper and source-free generated
+  fixtures. The paper and executable software have separate license terms.
+  Paper:     https://doi.org/10.5201/ipol.2017.207
+
+- Rolling Hough Transform, S. E. Clark. The Clark numerical core is derived
+  from the pinned `seclark/RHT` implementation under the MIT License.
+  Upstream:  https://github.com/seclark/RHT
+  License:   licenses/rolling-hough-MIT.txt
+
+- FilFinder, Eric Koch and Erik Rosolowsky, copyright 2014-2020. The optional
+  `FilFinderDetector` adapter calls the separately installed `fil-finder==1.8`
+  runtime under the MIT License. No FilFinder source is bundled.
+  Upstream:  https://github.com/e-koch/FilFinder
+  License:   licenses/filfinder-MIT.txt
+
+- GUDHI, the GUDHI developers, copyright 2014. The optional
+  `cubical_persistence` analysis calls the separately installed `gudhi==3.13.0`
+  runtime under the MIT License. No GUDHI source or wheel is bundled.
+  Upstream:  https://github.com/GUDHI/gudhi-devel
+  License:   licenses/gudhi-MIT.txt
+
 Gated foundation-model weights (SAM3, DINOv3) are never bundled; their downloads
 are gated behind an explicit license-acceptance step (see
 PHENOTYPIC_ACCEPT_MODEL_LICENSE and the require_license_acceptance hook in

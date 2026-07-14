@@ -25,7 +25,10 @@ blocked = (
     "matplotlib",
     "napari",
     "plotly",
+    "dash",
     "PyQt5",
+    "PyQt6",
+    "PySide2",
     "PySide6",
 )
 before = set(sys.modules)

@@ -23,6 +23,7 @@ from pydantic import Field
 from scipy import ndimage
 
 from phenotypic.abc_ import ObjectDetector
+from phenotypic.sdk_.typing_ import TuneSpec
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -242,9 +243,11 @@ class FilFinderDetector(ObjectDetector):
         float,
         Field(gt=0.0, le=1.0, allow_inf_nan=False),
     ] = 0.2
-    branch_threshold_px: (
-        Annotated[float, Field(gt=0.0, allow_inf_nan=False)] | None
-    ) = None
+    branch_threshold_px: Annotated[
+        float | None,
+        Field(gt=0.0, allow_inf_nan=False),
+        TuneSpec(tunable=False),
+    ] = None
     max_prune_iterations: Annotated[int, Field(ge=1, strict=True)] = 10
     rng_seed: Annotated[int, Field(ge=0, strict=True)] = 0
 
