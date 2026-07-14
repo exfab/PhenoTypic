@@ -10,5 +10,17 @@ The harness exits nonzero if the pinned Clark discretization or stable FilFinder
 outputs drift. It requires only the project's locked NumPy, SciPy, and Matplotlib environment. It
 does not import `phenotypic` and does not require Astropy because FITS I/O is stubbed.
 
-This is a G0 contract probe, not the required all-output golden fixture. The latter remains blocked
-until the public A09 result equations are approved.
+Generate and independently verify the all-output fixture:
+
+```bash
+uv run python docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/rolling_hough/generate_fixture.py
+uv run python docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/rolling_hough/verify_fixture.py
+```
+
+The generator executes the pinned Clark and FilFinder files directly and does not import
+`phenotypic`. The verifier imports neither reference source and checks the canonical fixture hash,
+sparse-to-dense reconciliation, exact residual sums, invalid sentinels, empty-output failure, and
+FilFinder endpoint behavior.
+
+The evidence supports only the candidate narrow core in `SOURCE_CONTRACT.md`. The broader planned
+result remains blocked pending a separate coherence/wrapper design and independent G0 review.

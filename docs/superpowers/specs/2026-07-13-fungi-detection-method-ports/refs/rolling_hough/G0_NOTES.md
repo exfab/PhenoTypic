@@ -1,5 +1,9 @@
 # A09 Rolling Hough G0 Research Checkpoint
 
+> Historical checkpoint. `G0_REPORT.md` and `SOURCE_CONTRACT.md` supersede the continuation
+> section after completion of the all-output fixture. Production remains frozen pending independent
+> G0 review.
+
 ## Status
 
 G0 is not yet approved. Production is frozen. This checkpoint pins the primary paper,

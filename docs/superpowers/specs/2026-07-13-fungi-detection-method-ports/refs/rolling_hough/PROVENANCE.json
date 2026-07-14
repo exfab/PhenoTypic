@@ -1,0 +1,48 @@
+{
+  "subject": "A09 Clark Rolling Hough Transform",
+  "gate_status": "candidate_narrow_core_pending_independent_g0_review",
+  "paper": {
+    "title": "Magnetically Aligned HI Fibers and the Rolling Hough Transform",
+    "authors": ["S. E. Clark", "J. E. G. Peek", "M. E. Putman"],
+    "version": "arXiv:1312.1338v2",
+    "doi": "10.1088/0004-637X/789/1/82",
+    "pdf": "clark_2014_arxiv_1312.1338v2.pdf",
+    "source_archive": "clark_2014_arxiv_1312.1338v2_source.tar.gz",
+    "line_addressable_source": "clark_2014_fibers_cpp.tex",
+    "age_caveat": "Published in 2014, more than five years old as of 2026-07-13."
+  },
+  "clark_source": {
+    "repository": "https://github.com/seclark/RHT.git",
+    "commit": "4d06f9fa4cafe9022011a0bec0315390d7e23c39",
+    "archive": "RHT-4d06f9f.tar.gz",
+    "archive_sha256": "836a71d162e41c61b541a80b0f7f8be2b2e6060ebf2a17628214a87a7d2897d",
+    "license": "MIT",
+    "license_file": "source_clark/LICENSE",
+    "scope": "Full Clark preprocessing and original rho-zero rolling-window numerical authority"
+  },
+  "filfinder_test_oracle": {
+    "repository": "https://github.com/e-koch/FilFinder.git",
+    "version": "v1.8",
+    "commit": "22539cf2176ad9b717658652e8da749158597f4d",
+    "archive": "FilFinder-v1.8-22539cf.tar.gz",
+    "archive_sha256": "2d15bed245c8d1fade48e26f9e8de4a8701689efc7476f12ab1d1cc9ea1eca34",
+    "license": "MIT",
+    "license_file": "source_filfinder/LICENSE.rst",
+    "scope": "Simple binary-skeleton Hough-normal orientation cross-check only"
+  },
+  "fixture": {
+    "generator": "generate_fixture.py",
+    "verifier": "verify_fixture.py",
+    "file": "tests/fixtures/reconnect/rolling_hough/clark_rht_source.npz",
+    "manifest": "tests/fixtures/reconnect/rolling_hough/manifest.json"
+  },
+  "candidate_contract": "SOURCE_CONTRACT.md",
+  "excluded_from_candidate": [
+    "pixelwise coherence",
+    "smoothing-diameter translation",
+    "globally normalized helper response",
+    "enhancement wrapper",
+    "public exports and registries",
+    "biological benefit"
+  ]
+}
