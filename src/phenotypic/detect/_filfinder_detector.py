@@ -152,8 +152,8 @@ def _create_warning_forwarding_pool() -> _WarningForwardingProcessPool:
 def _load_filfinder_runtime() -> tuple[Any, Any]:
     """Import the optional runtime only for a nonempty application."""
     try:
-        import astropy.units as units  # type: ignore[import-untyped]
-        from fil_finder import FilFinder2D  # type: ignore[import-untyped]
+        import astropy.units as units  # type: ignore[import-untyped, import-not-found]
+        from fil_finder import FilFinder2D  # type: ignore[import-untyped, import-not-found]
     except ImportError as error:
         raise ImportError(_TOPOLOGY_IMPORT_ERROR) from error
     return FilFinder2D, units

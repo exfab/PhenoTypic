@@ -24,10 +24,11 @@ Optional imports are an adapter-only seam. FilFinder and Astropy are absent from
 construction, schema generation, and empty-mask application. A nonempty application imports them
 at call time and reports the `topology` extra if unavailable; drift F08 records this boundary.
 
-Every source-visible external output in the public path is present in the fixture. Production tests
-must compare threshold mask, FilFinder mask, distance, pre/post-prune skeleton, longest path,
-lengths, selected label map, and every warning/stderr channel, rather than checking only the final
-nonzero count.
+Every source-visible external output in the public path is present in the fixture. The pinned
+source-oracle generator compares the threshold mask, FilFinder mask, distance, pre/post-prune
+skeleton, longest path, lengths, and every warning/stderr channel. Production tests compare all 24
+selected case/product label maps exactly, plus adapter-owned stage, warning-transport, dtype,
+threshold, unit, and lifecycle behavior.
 
 ## G2 production implementation map
 
