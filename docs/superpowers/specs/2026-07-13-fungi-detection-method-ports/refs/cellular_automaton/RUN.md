@@ -30,3 +30,16 @@ Verify the pinned artifacts before use:
 ```bash
 shasum -a 256 -c CHECKSUMS.sha256
 ```
+
+Regenerate the instrumented all-output fixture from the pinned archive:
+
+```bash
+uv run python generate_fixture.py
+```
+
+Run the independent oracle and required mutation matrix from the repository root:
+
+```bash
+uv run python docs/superpowers/logic_validation_scripts/2026-07-13-fungi-detection-method-ports/cellular_automaton.py
+uv run python docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/cellular_automaton/run_mutations.py
+```

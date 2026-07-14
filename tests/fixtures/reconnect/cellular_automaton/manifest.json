@@ -1,0 +1,8 @@
+{
+  "archive_sha256": "144e836fe1bc64fc97bf09b47a5b6dd60e31899f720d3b4d559931d36780fbe1",
+  "fixture": "tricktrack_source.json",
+  "fixture_sha256": "dc766ab3e9b18b212fed9bbac338f40dea6af1532e0b6b9ba6a998738c129f0b",
+  "generator": "docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/cellular_automaton/generate_fixture.py",
+  "harness_sha256": "a91a2f20bb808b658bdb4ed5d2b3f39e54e3730722e94e6dae3f59c1e0ce607a",
+  "source_commit": "b164fad1361505ff8dbf328107b645753ce331ac"
+}

@@ -2,6 +2,19 @@
   "subject": "A06 cellular automaton",
   "gate_status": "blocked",
   "gate_reason": "The executable source defines CA evolution on a caller-supplied detector graph, not the planned fungal image-space graph and colony-labelled result contract.",
+  "narrow_core_disposition": {
+    "status": "passed",
+    "scope": "tricktrack_ca evolution and exact-length extraction over caller-supplied ordered outer-neighbor CSR",
+    "deferred": [
+      "fungal graph construction",
+      "angle and distance semantics",
+      "colony ownership",
+      "rasterization",
+      "detector integration",
+      "exports and registries"
+    ],
+    "record": "G0_NARROW_CORE.md"
+  },
   "paper": {
     "title": "TrickTrack: An experiment-independent, cellular-automaton based track seeding library",
     "authors": [
