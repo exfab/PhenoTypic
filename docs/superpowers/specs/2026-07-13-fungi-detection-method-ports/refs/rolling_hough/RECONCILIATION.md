@@ -46,6 +46,31 @@ The standalone logic validator independently re-counts every eligible local wind
 geometry and re-derives residual, response, Boolean validity, and axial collapse without importing
 either source.
 
+## G2 production reconciliation
+
+The private production core is transcribed stage by stage. Input and scalar guards at
+`src/phenotypic/sdk_/reconnect/_rolling_hough.py:47-85` implement D01 and the frozen parameter
+boundary. The inclusive disk, bad-pixel clearing, edge crop, and second halo at
+`src/phenotypic/sdk_/reconnect/_rolling_hough.py:88-131` correspond to
+`source_clark/rht/rht.py:403-488,518-537`. Reflect correlation, smoothing-radius footprint,
+subtraction, and strict-positive bitmask at `src/phenotypic/sdk_/reconnect/_rolling_hough.py:134-163`
+correspond to `source_clark/rht/rht.py:530-556`; the spelling change is D08.
+
+The Hough-normal equation and round-to-nearest-even rho-zero raster at
+`src/phenotypic/sdk_/reconnect/_rolling_hough.py:166-181` correspond to
+`source_clark/rht/rht.py:592-664`. The subtract-then-multiply threshold at
+`src/phenotypic/sdk_/reconnect/_rolling_hough.py:184-190` preserves the source operation order at
+`source_clark/rht/rht.py:835-839`, including rejected-bin negative zero. The doubled-angle axial
+collapse at `src/phenotypic/sdk_/reconnect/_rolling_hough.py:193-198` corresponds to
+`source_clark/rht/rht.py:667-692`.
+
+Finally, theta construction, angle-dependent support, per-center raw counts, dense residuals, raw
+response, Boolean validity, and NaN invalid orientation at
+`src/phenotypic/sdk_/reconnect/_rolling_hough.py:231-288` correspond to
+`source_clark/rht/rht.py:259-264,780-846`. Dense cubes, fixed dtypes, safe empty output, raw response,
+NaN orientation, and Boolean validity are the already-approved D03-D07 and D09 adapter rows. No
+additional G2 deviation was introduced.
+
 ## FilFinder reconciliation
 
 FilFinder v1.8 is a separate MIT implementation and a deliberately limited cross-check. It uses a
