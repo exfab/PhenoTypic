@@ -28,3 +28,19 @@ Every source-visible external output in the public path is present in the fixtur
 must compare threshold mask, FilFinder mask, distance, pre/post-prune skeleton, longest path,
 lengths, selected label map, and every warning/stderr channel, rather than checking only the final
 nonzero count.
+
+## G2 production implementation map
+
+| Frozen wrapper behavior | Production implementation | Executable evidence |
+|---|---|---|
+| Float32 ImageData seam, copied float64 source, inclusive threshold, empty short circuit | `src/phenotypic/detect/_filfinder_detector.py:162-165,274-281` | `tests/unit/detect/test_filfinder_detector.py:241-269,290-370`; `docs/superpowers/logic_validation_scripts/2026-07-13-fungi-detection-method-ports/filfinder.py:26-52` |
+| Lazy optional imports and actionable nonempty failure | `src/phenotypic/detect/_filfinder_detector.py:152-159,252-272,283` | `tests/unit/detect/test_filfinder_detector.py:177-269` |
+| Fresh one-process executor with keyed child-warning forwarding and guaranteed shutdown | `src/phenotypic/detect/_filfinder_detector.py:46-149,284-320` | `tests/unit/detect/test_filfinder_detector.py:460-510` |
+| Exact supplied-mask warning filter | `src/phenotypic/detect/_filfinder_detector.py:168-176` | `tests/unit/detect/test_filfinder_detector.py:444-458` |
+| Constructor units/copies and frozen mask, medial-axis, analysis stage order | `src/phenotypic/detect/_filfinder_detector.py:285-318` | `tests/unit/detect/test_filfinder_detector.py:271-348` |
+| Selected raster, 8-connected labeling, row-major labels, and mask/map consistency | `src/phenotypic/detect/_filfinder_detector.py:294-330` | `tests/unit/detect/test_filfinder_detector.py:372-396`; `docs/superpowers/logic_validation_scripts/2026-07-13-fungi-detection-method-ports/filfinder.py:55-86` |
+| All 24 source-selected products across eight oracle cases | `src/phenotypic/detect/_filfinder_detector.py:274-331` | `tests/unit/detect/test_filfinder_detector.py:512-554`; `tests/fixtures/reconnect/filfinder/oracle.json` |
+| Required transcription mutants | `docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/run_mutations.py:378-603` | `docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/MUTATION_MATRIX.md` |
+
+The production module is private in G2. Public exports, dependency declarations, detector seams,
+serialization registries, taxonomy, tuning, and GUI discovery remain integrator-owned G5 work.
