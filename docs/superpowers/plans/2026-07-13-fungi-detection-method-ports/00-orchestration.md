@@ -21,7 +21,7 @@ edit the same registries concurrently.
 | A04 Bowler-hat | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core plus new wrapper |
 | A05 Kalman coast | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | deferred: no matching source contract |
 | A06 Cellular automaton | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | TrickTrack core only; fungal adapter deferred |
-| A07 NFA | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | statistical core plus detector adapter |
+| A07 NFA | one dedicated clean-room turn | fresh reviewer, not its oracle | Keystone | statistical core only |
 | A08 RORPO | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core plus new wrapper |
 | A09 Rolling Hough | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core plus new wrapper |
 | A10 FilFinder | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | new wrapper only |
@@ -78,14 +78,13 @@ D0 review corrections C1-C14
           -> A04 Bowler-hat core/wrapper ----------------|
           -> A05 Kalman deferred (no matching source)
           -> A06 TrickTrack CA core only ----------------|--> S02 exports/typing/taxonomy
-          -> A07 NFA core/wrapper ------------------------|         |
+          -> A07 NFA statistical core only ---------------|         |
           -> A08 RORPO core/wrapper ----------------------|         +--> S03 final gate
           -> A09 RHT core/wrapper ------------------------|         |
           -> A10 FilFinder wrapper -----------------------|--> S01 detector strategy seam
           -> A11 Persistence analysis/conditional wrapper +
 
 A01 -> S01
-A07 -> S01
 A09 -> A10 only for optional oracle comparison, never runtime import
 A10 -> S02 topology extra
 A11 -> S02 topology extra only if included in release scope
@@ -135,7 +134,8 @@ suites. A06 contributes only its TrickTrack core and public-export seam, never a
 
 ### Gate P2: dependency-free Tier B
 
-A07-A09 are independently green and reviewed. Confirm `import phenotypic` and
+A07-A09 included cores are independently green and reviewed. A07 contributes no detector seam.
+Confirm `import phenotypic` and
 `import phenotypic.sdk_.reconnect` do not import FilFinder or GUDHI.
 
 ### Gate P3: topology-extra Tier B

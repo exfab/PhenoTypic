@@ -119,21 +119,21 @@ layer, call one helper, write `detect_mat`. Each is a few lines of glue.
 - **Ridge enhancers** → `FocusEdge` marker subclasses in `phenotypic.enhance`
   (mirroring `FocusEdgeSato`), delegating to the helper:
   `FocusEdgeJerman → reconnect.jerman_vesselness`,
-  `FocusEdgeBowlerHat → reconnect.bowler_hat` (`FootprintMixin` for the disk SE),
+  `FocusEdgeBowlerHat → reconnect.bowler_hat` (clean-room contract pending; no explicit
+  `FootprintMixin`),
   `FocusEdgeRORPO → reconnect.rorpo`,
   `FocusEdgeRollingHough → reconnect.rolling_hough`
   (`output: Literal["response","orientation"]`; orientation is a **diagnostic**
   map, not detector-safe — the `FocusEdgeMonogenicPhase` precedent),
-  `FocusEdgeTensorVoting → reconnect.tensor_vote`
-  (`output: Literal["response","junction"]` = stick vs ball saliency),
+  tensor voting is currently a pure core only; its wrapper is deferred until a sourced
+  orientation-producing seam exists,
   `FocusEdgePersistenceDenoise → reconnect.persistence_denoise` (optional dep).
-- **Validation refiner** → `NFAValidation(ObjectRefiner)` in `phenotypic.refine`
-  delegating to `reconnect.nfa_meaningful`.
-- **Reconnection strategies** → *no standalone operation*. The fungi detector's
-  reconnection stage gains a
-  `reconnect_strategy: Literal["dijkstra","kalman","cellular_automaton"]` field
-  and calls `reconnect.kalman_coast` / `reconnect.ca_track`; the GWDT term is
-  folded into the cost surface it hands to `run_multisource_dijkstra`.
+- **NFA** → clean-room pure `binomial_nfa` statistic only. Orientation counting,
+  `NFAValidation`, and detector integration are deferred.
+- **Reconnection strategies** → Kalman is deferred because no executable source matches the
+  proposed image-space contract. Cellular automaton is a pure TrickTrack evolution/extraction
+  core over a caller-supplied ordered graph, with no fungal detector seam. APP2 GWDT uses its own
+  source-faithful edge recurrence; the existing Dijkstra strategy remains unchanged by default.
 - **FilFinder** → stays a **wrapper detector** `FilFinderDetector(ObjectDetector)`
   because it wraps an *external* maintained package (not our algorithm to
   helper-ize); it degrades gracefully when fil-finder is absent (the
@@ -269,13 +269,13 @@ load-bearing numeric invariant (the logic-validation script) · effort.
 ### Tier B
 
 #### 4.7 A-contrario / NFA gate
-- **Helper:** `reconnect.nfa_meaningful(segments, eps, n_tests_model) -> mask/scores` in `_nfa.py`.
-- **Wrapper:** `NFAValidation(ObjectRefiner)` in `phenotypic.refine`.
-- **Input:** a labeled/segment map. **Params:** `eps`, `n_tests` model params.
-- **Algorithm:** keep only structures with `NFA = N_tests · P_H0(≥k of n aligned) ≤ ε`.
+- **Helper:** `reconnect.binomial_nfa(n, k, p, n_tests, epsilon) -> NFAResult` in `_nfa.py`.
+- **Wrapper:** none in this release.
+- **Input:** explicit binomial counts/probability and complete-family test-count bound.
+- **Algorithm:** compute `NFA = N_tests · P_H0(≥k of n) ≤ ε` in a reviewed log-domain.
   Reference: Desolneux–Moisan–Morel; NFA as used in LSD (Grompone von Gioi).
-- **Reuse:** `scipy.stats` binomial tail; existing refiner scaffolding.
-- **Wrap/port:** port of the NFA test.
+- **Reuse:** validated `scipy.stats` binomial log survival plus bounded source-independent fallback.
+- **Wrap/port:** clean-room port of the pure NFA statistic; labels/orientations are deferred.
 - **Invariant:** under a uniform-random-orientation H0, the expected count of
   ε-meaningful detections ≤ ε (Monte Carlo vs the binomial-tail formula).
 - **Effort:** ~1–2 days.
@@ -387,11 +387,10 @@ Numeric tolerances derive from a mechanism (e.g. 1 ulp × N ops), not a guess.
 - **Phase 1 (cost + cheap enhancers, no new dep):** `_gwdt` (+ detector wiring) →
   `_jerman` + `FocusEdgeJerman` → `_bowler_hat` + `FocusEdgeBowlerHat`. Establishes
   the helper→wrapper→fixture→logic-validation→drift-register harness on small cases.
-- **Phase 2 (capstone):** `_tensor_voting` + `FocusEdgeTensorVoting` (the one real
-  Tier-A port; covers gaps and junctions).
-- **Phase 3 (reconnection strategies):** `_kalman`, `_cellular_automaton`, and the
-  detector `reconnect_strategy` selector.
-- **Phase 4 (Tier B):** `_nfa` + `NFAValidation`, `_rorpo` + `FocusEdgeRORPO`, and
+- **Phase 2 (capstone):** pure `_tensor_voting` core; wrapper/detector use is deferred.
+- **Phase 3:** pure `_cellular_automaton` TrickTrack core. Kalman and the fungal CA detector
+  adapters are deferred.
+- **Phase 4 (Tier B):** pure clean-room `_nfa` statistic, `_rorpo` + `FocusEdgeRORPO`, and
   `_rolling_hough` + `FocusEdgeRollingHough` — all **dependency-free**; then add the
   `phenotypic[topology]` extra (`gudhi`, `fil-finder`) with `_persistence` +
   `FocusEdgePersistenceDenoise` and the `FilFinderDetector` wrapper.
@@ -432,9 +431,9 @@ Each phase is independently shippable and reviewable.
       `_bowler_hat` + `FocusEdgeBowlerHat` — each with helper unit test, wrapper
       doctest, golden fixture, logic-validation script, drift register, taxonomy +
       tune-gate entries.
-- [ ] Phase 2: `_tensor_voting` + `FocusEdgeTensorVoting` (`output` = response/junction).
-- [ ] Phase 3: `_kalman`, `_cellular_automaton` + detector `reconnect_strategy` selector.
-- [ ] Phase 4 (dependency-free): `_nfa` + `NFAValidation` · `_rorpo` +
+- [ ] Phase 2: pure `_tensor_voting` core; wrapper deferred.
+- [ ] Phase 3: pure `_cellular_automaton` TrickTrack core; Kalman and detector adapters deferred.
+- [ ] Phase 4 (dependency-free): pure `_nfa` statistic · `_rorpo` +
       `FocusEdgeRORPO` · `_rolling_hough` + `FocusEdgeRollingHough`.
 - [ ] Phase 4 (`topology` extra): `pyproject.toml`
       `[project.optional-dependencies] topology = ["gudhi", "fil-finder"]`,

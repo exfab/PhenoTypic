@@ -39,9 +39,8 @@ Refactor without behavior change before adding strategy branches:
 3. Add orientation to the reconnection data flow without recomputing it.
 4. Add Kalman and CA adapters that emit the existing assignments/paths. They do not bypass shared
    path-quality rejection or painting.
-5. Add the NFA adapter and its owned detector test
-   `tests/unit/detect/test_filamentous_fungi_nfa.py`; it consumes live phase orientation, preserves
-   accepted label IDs, and rejects invalid-label rows according to A07.
+5. A07 has no detector adapter in this release. Its pure statistic joins only the S02 public-export
+   seam; orientation counting and label mapping remain deferred.
 6. Apply GWDT only in a distinct APP2 edge-cost adapter. Compute nonlocal transforms before tiling,
    then charge each traversed edge as `(GI(source) + GI(destination)) * factor / 2`, with source
    constants `factor=1.0` for axial moves and `factor=1.414214` for diagonal moves. Do not feed the
