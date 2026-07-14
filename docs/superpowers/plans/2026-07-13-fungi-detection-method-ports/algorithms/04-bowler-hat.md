@@ -2,8 +2,22 @@
 
 **Implementer:** one dedicated 5.6-sol/high-effort algorithm turn
 **Reviewer:** independent 5.6-sol/high-effort turn
-**Shape:** Keystone morphology core and Leaf wrapper
-**Blocked by:** C13, formula-fork resolution, and S00
+**Shape:** Deferred after incomplete G0 executable-oracle review
+**Blocked by:** unavailable licensed MATLAB runtime and unresolved source license/formula fork
+
+## G0 decision
+
+A04 is deferred from this release. The available executable oracle could not run because the
+configured MATLAB license server returned error `-15,570`. The signed-versus-absolute residual,
+footprint rasterization, boundary behavior, and final normalization fork therefore could not be
+regenerated or reviewed. Source licensing also remains unresolved. Under
+`01-reference-and-validation.md`, a paper-only implementation without the selected executable
+fixture and license decision cannot pass G0, so no A04 production code, wrapper, export, or
+fixture enters this release.
+
+Resume A04 only after the licensed runtime is available, the oracle outputs are regenerated, and
+an independent reviewer freezes the formula fork and compatible implementation boundary. The
+contract proposal below remains planning material, not an approved implementation contract.
 
 ## Contract decision
 

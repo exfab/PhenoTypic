@@ -2,8 +2,10 @@
 
 **Date:** 2026-07-13
 **Input design:** `docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/design.md`
-**Status:** contract-correction gate required before implementation
-**Scope:** 11 algorithm clusters, one implementation agent and one independent reviewer per cluster
+**Status:** partial release candidate: A01, A02, and A06-A11 implemented;
+A03-A05 explicitly deferred at their reference-contract gates
+**Scope:** 11 algorithm clusters, one implementation agent and one independent reviewer per cluster;
+eight approved implementation paths in this release candidate
 
 ## Outcome of the design review
 

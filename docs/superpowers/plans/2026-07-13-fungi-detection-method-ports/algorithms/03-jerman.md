@@ -2,8 +2,22 @@
 
 **Implementer:** one dedicated 5.6-sol/high-effort algorithm turn
 **Reviewer:** independent 5.6-sol/high-effort turn
-**Shape:** Keystone core and Leaf wrapper
-**Blocked by:** C5 and S00
+**Shape:** Deferred after incomplete G0 source-fidelity review
+**Blocked by:** unavailable authenticated full paper needed to freeze C5
+
+## G0 decision
+
+A03 is deferred from this release. The author executable source was located and exercised, but
+the full authoritative paper could not be retrieved after the university-authenticated browser
+lost network access. The paper is required to decide whether the selected executable implements
+the complete published Hessian chain and response contract, and to review that decision
+independently. An implementation drafted from the executable alone cannot pass G0 under
+`01-reference-and-validation.md`, so no A03 production code, wrapper, export, or fixture enters
+this release.
+
+Resume A03 by restoring authenticated paper access, pinning and hashing the paper locally,
+reconciling it line by line with the executable source, then obtaining an independent G0 review.
+The contract proposal below remains planning material, not an approved implementation contract.
 
 ## Contract decision
 
