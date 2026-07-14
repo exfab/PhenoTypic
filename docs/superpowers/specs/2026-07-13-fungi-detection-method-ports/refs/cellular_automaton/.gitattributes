@@ -1,6 +1,8 @@
+/.gitattributes text eol=lf
 *.md text eol=lf
 *.json text eol=lf
 *.sha256 text eol=lf
+source_harness.cpp text eol=lf
 source/** text eol=lf
 *.gz -text
 *.pdf -text
