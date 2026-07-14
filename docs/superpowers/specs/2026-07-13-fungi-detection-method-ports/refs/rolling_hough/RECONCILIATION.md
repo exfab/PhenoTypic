@@ -28,7 +28,9 @@ the exact discrete behavior.
 Five full Clark cases cover an asymmetric horizontal structure, nondefault crossing, gapped
 diagonal, border plus NaN/Inf, and constant input. It records every preprocessing stage, mask,
 theta bin, center-line voxel, support, raw count, threshold residual, accepted bin, sparse source
-coordinate/residual, response, attempted/persisted backprojection, validity, and orientation.
+coordinate/residual, response, attempted/persisted backprojection, Boolean validity, and
+orientation. The source threshold parameter is recorded as `threshold_fraction`; coherence is
+deferred and absent.
 
 Six local diameter-11 templates capture horizontal, vertical, diagonal, crossing, gap, and full
 circle counts, fraction-one equality behavior, and source angles. The same fixture records exact
@@ -38,8 +40,11 @@ and all cross-field invariants without importing either source.
 
 Integer counts and masks compare exactly. Clark sparse residuals and backprojections compare at
 zero tolerance because both fixture paths execute the same NumPy operations in the same runtime.
-Future independent production comparisons must use an operation-count/ULP-derived bound for
-floating convolution and angular collapse, never an unexplained decimal tolerance.
+The pinned source probes use exact zero-ULP angle controls rather than a decimal tolerance. Future
+production comparisons must derive any wider bound from its operation count and runtime contract.
+The standalone logic validator independently re-counts every eligible local window from captured
+geometry and re-derives residual, response, Boolean validity, and axial collapse without importing
+either source.
 
 ## FilFinder reconciliation
 

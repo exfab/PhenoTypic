@@ -34,9 +34,11 @@ No production is authorized until an independent G0 reviewer approves this exact
 
 ## Frozen behavior
 
-1. `image` is a nonempty, two-dimensional, real numeric array. The source converts it to floating
-   arithmetic for masking. Nonfinite pixels are source-supported bad pixels and invalidate nearby
-   centers. Boolean and complex inputs are rejected at the Python boundary as D01.
+1. `image` is a nonempty, two-dimensional NumPy array with dtype exactly `float64`. Integer,
+   Boolean, float16, float32, extended-float, and complex inputs are rejected rather than silently
+   converted. This preserves the pinned source's captured arithmetic and prevents dtype-dependent
+   SciPy correlation output. Nonfinite float64 pixels are source-supported bad pixels and
+   invalidate nearby centers. The boundary restriction is D01.
 2. `window_diameter` is a positive odd integer. `smoothing_radius` is a positive integer, matching
    the executable parameter rather than renaming it as a diameter. `threshold_fraction` is finite
    and in `[0, 1]`.
@@ -76,6 +78,9 @@ No production is authorized until an independent G0 reviewer approves this exact
 12. A constant or otherwise empty-result image returns zero residual/response, false `valid`, and
     NaN orientation. This avoids the executable persistence path's empty-array `IndexError` while
     preserving all defined numerical products; it is registered as D06.
+13. Dense `valid` is an adapter Boolean conversion of the executable's sparse positive-residual
+    emission rule. It is exactly `np.any(threshold_residual > 0, axis=2)`, never the truth value of
+    raw counts or an integer label. This representation drift is D09.
 
 ## Explicit exclusions
 
@@ -85,3 +90,5 @@ No production is authorized until an independent G0 reviewer approves this exact
 - No FilFinder runtime dependency. FilFinder v1.8 is only a test oracle for axial normal
   orientation on simple binary skeletons.
 - No claim of improved fungal detection. That requires a separate ground-truth benchmark.
+- No integer or float32 input conversion. A later conversion boundary requires a new drift row and
+  dedicated numeric controls.

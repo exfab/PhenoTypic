@@ -19,6 +19,8 @@ REPOSITORY_ROOT = REFERENCE_DIRECTORY.parents[5]
 FIXTURE_DIRECTORY = REPOSITORY_ROOT / "tests/fixtures/reconnect/rolling_hough"
 FIXTURE_PATH = FIXTURE_DIRECTORY / "clark_rht_source.npz"
 MANIFEST_PATH = FIXTURE_DIRECTORY / "manifest.json"
+VERIFIER_PATH = REFERENCE_DIRECTORY / "verify_fixture.py"
+SOURCE_PROBE_PATH = REFERENCE_DIRECTORY / "source_contract_probe.py"
 CLARK_REVISION = "4d06f9fa4cafe9022011a0bec0315390d7e23c39"
 FILFINDER_REVISION = "22539cf2176ad9b717658652e8da749158597f4d"
 
@@ -189,7 +191,7 @@ def _source_pipeline_case(
         "image": image,
         "window_diameter": np.array(window_diameter, dtype=np.int64),
         "smoothing_radius": np.array(smoothing_radius, dtype=np.int64),
-        "coherence_fraction": np.array(fraction, dtype=np.float64),
+        "threshold_fraction": np.array(fraction, dtype=np.float64),
         "smoothing_kernel": smoothing_kernel,
         "smoothing_mask": np.asarray(smoothing_mask, dtype=bool),
         "window_mask": np.asarray(window_mask, dtype=bool),
@@ -301,13 +303,17 @@ def generate_source_fixture() -> None:
 
     required_keys = sorted(fixture)
     FIXTURE_DIRECTORY.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(FIXTURE_PATH, **fixture)
+    np.savez_compressed(FIXTURE_PATH, **fixture)  # type: ignore[arg-type]
     manifest = {
+        "schema_version": 2,
         "fixture": FIXTURE_PATH.name,
         "canonical_content_sha256": _canonical_content_hash(fixture, required_keys),
+        "contract_input_dtype": "float64",
         "clark_revision": CLARK_REVISION,
         "filfinder_revision": FILFINDER_REVISION,
         "generator_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "verifier_sha256": hashlib.sha256(VERIFIER_PATH.read_bytes()).hexdigest(),
+        "source_probe_sha256": hashlib.sha256(SOURCE_PROBE_PATH.read_bytes()).hexdigest(),
         "required_keys": required_keys,
     }
     MANIFEST_PATH.write_text(

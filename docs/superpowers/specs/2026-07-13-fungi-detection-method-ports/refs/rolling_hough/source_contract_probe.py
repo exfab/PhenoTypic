@@ -22,6 +22,20 @@ REFERENCE_DIR = Path(__file__).resolve().parent
 sys.dont_write_bytecode = True
 
 
+def _assert_zero_ulp_float64(observed: float, expected: float, *, label: str) -> None:
+    """Require exact float64 bits for a calibrated pinned-source probe."""
+
+    observed_value = np.float64(observed)
+    expected_value = np.float64(expected)
+    observed_bits = int(observed_value.view(np.uint64))
+    expected_bits = int(expected_value.view(np.uint64))
+    if observed_bits != expected_bits:
+        raise AssertionError(
+            f"{label}: expected zero-ULP drift, observed bits "
+            f"0x{observed_bits:016x} versus 0x{expected_bits:016x}"
+        )
+
+
 def _load_source_module(name: str, path: Path) -> Any:
     """Load a source module from an exact local path."""
     spec = importlib.util.spec_from_file_location(name, path)
@@ -81,7 +95,9 @@ def _probe_clark(clark: Any) -> dict[str, Any]:
         peaks = np.flatnonzero(counts == counts.max())
         np.testing.assert_array_equal(peaks, expected_peaks)
         source_angle = clark.theta_rht(counts.astype(float), True)
-        np.testing.assert_allclose(source_angle, expected_angle, rtol=0.0, atol=1e-15)
+        _assert_zero_ulp_float64(
+            source_angle, expected_angle, label=f"Clark {name} source angle"
+        )
         summaries[name] = {
             "peak_bins": peaks.tolist(),
             "source_angle": float(source_angle),
@@ -128,7 +144,9 @@ def _probe_filfinder(filfinder: Any) -> dict[str, Any]:
         theta, response, quantiles = filfinder.rht(mask, radius=5, ntheta=18)
         assert theta.shape == (17,)
         assert response.shape == (17, 1)
-        np.testing.assert_allclose(quantiles[1], expected_mean, rtol=0.0, atol=1e-15)
+        _assert_zero_ulp_float64(
+            quantiles[1], expected_mean, label=f"FilFinder {name} mean angle"
+        )
         summaries[name] = {
             "theta_count_after_endpoint_drop": int(theta.size),
             "response_sum": float(response.sum()),

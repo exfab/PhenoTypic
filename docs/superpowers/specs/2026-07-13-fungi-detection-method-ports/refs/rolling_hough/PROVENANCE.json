@@ -9,13 +9,18 @@
     "pdf": "clark_2014_arxiv_1312.1338v2.pdf",
     "source_archive": "clark_2014_arxiv_1312.1338v2_source.tar.gz",
     "line_addressable_source": "clark_2014_fibers_cpp.tex",
+    "pdf_sha256": "95971bd1c30d672b8d23ebaf9a6cc45fadd503465ef405fbabb49577501a0f62",
+    "source_archive_sha256": "8ab9f33fdc84aad54a86d020a3454b25b425c40b365e3bf3537d9ed7db737caa",
+    "arxiv_license": "arXiv.org perpetual, non-exclusive license 1.0",
+    "license_url": "https://arxiv.org/licenses/nonexclusive-distrib/1.0/",
+    "redistribution_disposition": "The arXiv license authorizes arXiv distribution but does not grant a general third-party redistribution license. The committed PDF, source archive, and extracted TeX are review-only evidence, are excluded from Python packages and release artifacts, and must not be copied into production distributions. G0 approval does not approve paper redistribution.",
     "age_caveat": "Published in 2014, more than five years old as of 2026-07-13."
   },
   "clark_source": {
     "repository": "https://github.com/seclark/RHT.git",
     "commit": "4d06f9fa4cafe9022011a0bec0315390d7e23c39",
     "archive": "RHT-4d06f9f.tar.gz",
-    "archive_sha256": "836a71d162e41c61b541a80b0f7f8be2b2e6060ebf2a17628214a87a7d2897d",
+    "archive_sha256": "836a71d162e41c61b541a80b0f7f8be2b2e6060ebf2a17628214a87a7d2897d7",
     "license": "MIT",
     "license_file": "source_clark/LICENSE",
     "scope": "Full Clark preprocessing and original rho-zero rolling-window numerical authority"
@@ -31,10 +36,18 @@
     "scope": "Simple binary-skeleton Hough-normal orientation cross-check only"
   },
   "fixture": {
+    "schema_version": 2,
     "generator": "generate_fixture.py",
+    "generator_sha256": "b53d35b5c55805c6f3fd994cd51bfa221c6ab1751ddc8215c600d1083fb8952b",
     "verifier": "verify_fixture.py",
+    "verifier_sha256": "b5c0f5c20a6d779d5fc94c66aedaaaf821ac949e3a9e4042e9938cc21c0fce19",
+    "source_probe_sha256": "943633f07d3c36c6e8c7b3cc14a87bcb6e358eeac8c1c33469396432d8cd68aa",
+    "logic_validator": "docs/superpowers/logic_validation_scripts/2026-07-13-fungi-detection-method-ports/rolling_hough.py",
+    "logic_validator_sha256": "80229de3a806be1f67b1b3ee88fd37e1dd3cf3438518a9918b6dc4a57605c016",
     "file": "tests/fixtures/reconnect/rolling_hough/clark_rht_source.npz",
-    "manifest": "tests/fixtures/reconnect/rolling_hough/manifest.json"
+    "file_sha256": "ebc388e6520ff9f4c42c27bc94d2e33570f2aec001b71932aa35d4819562da73",
+    "manifest": "tests/fixtures/reconnect/rolling_hough/manifest.json",
+    "manifest_sha256": "854d978d07583c2f851d7712aef8d7f8c43f6eb449fa32b710a6079c94a24dfc"
   },
   "candidate_contract": "SOURCE_CONTRACT.md",
   "excluded_from_candidate": [

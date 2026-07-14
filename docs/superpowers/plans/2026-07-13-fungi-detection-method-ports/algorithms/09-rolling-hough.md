@@ -1,17 +1,19 @@
-# A09: Rolling Hough Transform
+# A09: Clark Rolling Hough core
 
 **Implementer:** one dedicated 5.6-sol/high-effort algorithm turn
+
 **Reviewer:** independent 5.6-sol/high-effort turn
-**Shape:** Keystone Clark transform core only; coherence and wrapper deferred
-**Blocked by:** C10 and S00
+
+**Shape:** source-faithful numerical core only
+
+**Blocked by:** independent G0 PASS and shared scaffold S00
 
 ## Corrected contract
 
-The helper must return enough information for both promised wrapper outputs. Pin the Clark paper,
-official/source-author implementation, exact FilFinder RHT implementation/version, licenses, and
-defaults. The RHT was introduced as a local measure of coherent linearity
-([Clark et al. 2014](https://arxiv.org/abs/1312.1338)); the exact discretization must come from the
-pinned code, not the abstract.
+The executable authority is the source-author `seclark/RHT` repository at immutable MIT commit
+`4d06f9fa4cafe9022011a0bec0315390d7e23c39`. The approved candidate is narrower than the original
+plan: it reproduces Clark preprocessing and the rho-zero rolling transform but does not invent a
+pixelwise coherence statistic or enhancement wrapper.
 
 ```python
 @dataclass(frozen=True)
@@ -33,84 +35,71 @@ def clark_rolling_hough(
 ) -> ClarkRollingHoughResult: ...
 ```
 
-The core accepts only a nonempty 2-D float64 array. Integer, Boolean, float16, float32,
-extended-float, and complex inputs are rejected. `window_diameter` is positive and odd;
-`smoothing_radius` is a positive source radius, not a translated diameter; and
-`threshold_fraction` is finite in `[0, 1]`.
+Input is exactly a nonempty 2-D `float64` NumPy array. There is no implicit integer or float32
+conversion. `window_diameter` is a positive odd integer, `smoothing_radius` is a positive integer,
+and `threshold_fraction` is finite in `[0, 1]`.
 
-`raw_counts` has shape `image.shape + (n_theta,)` and stores exact int64 rho-zero center-line
-counts. The core also exposes exact angle-dependent `support_counts`, source residuals,
-unnormalized residual-sum response, Hough-normal axial orientation, the source rolling-window
-eligibility mask, and a dense Boolean validity conversion. Coherence is not sourced and is
-deferred. Invalid orientations are NaN. No normalization, wrapper mapping, or `detect_mat`
-conversion belongs in this release.
+The result exposes both source-near integer counts and float64 threshold residuals. `orientation`
+is the Hough-normal axial angle, not the filament tangent. Invalid orientation is NaN. Dense
+Boolean `valid` is an explicit adapter conversion from sparse positive-residual emission. The
+complete formulas, axes, boundaries, sentinels, dtype rules, and deviations are frozen in
+`refs/rolling_hough/SOURCE_CONTRACT.md` and `DRIFT.md`.
 
-Freeze the inclusive disk smoothing footprint, SciPy reflect correlation, strict `> 0` bitmask,
-bad-pixel halos, angular count/grid, round-to-nearest-even rho-zero rasterization, angle-dependent
-supports, threshold equality producing zero residual, doubled-angle collapse, crossings,
-empty-result behavior, axes, and dtypes. Dense `valid` is exactly
-`np.any(threshold_residual > 0, axis=2)` and is recorded as representation drift D09.
+Coherence remains deferred. A mean-resultant length, peak ratio, or similarly named field would be
+a new derived capability requiring its own equation, tie behavior, tests, drift row, and review.
+The fixture parameter previously misnamed `coherence_fraction` is `threshold_fraction`.
 
-## Owned files and tasks
+## Owned production files
 
 ```text
 src/phenotypic/sdk_/reconnect/_rolling_hough.py
 tests/unit/sdk_/reconnect/test_rolling_hough.py
 tests/fixtures/reconnect/rolling_hough/
 docs/superpowers/logic_validation_scripts/2026-07-13-fungi-detection-method-ports/rolling_hough.py
-refs/rolling_hough corpus and reconciliation
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/rolling_hough/
 ```
 
-1. Resolve port-versus-wrap wording: production is dependency-free. Use a pinned Clark/source-
-   author executable as the full-pipeline oracle. FilFinder is only a compatible binary-skeleton
-   accumulator cross-check because its modified RHT reports filament/branch angular distributions,
-   not this plan's image preprocessing or pixelwise response/coherence contract
-   ([FilFinder tutorial](https://fil-finder.readthedocs.io/en/latest/tutorial.html)).
-2. Freeze float64-only input, preprocessing, source radius, diameter, angle, line, gate, border,
-   collapse, sentinel, dense-valid drift, and output equations.
-3. Capture smoothing, unsharp, bitmask, theta grid, accumulator, validity, accepted bins, and every public
-   output for asymmetric, boundary, gap, crossing, border, constant, and non-default cases.
-4. Write a direct small-array oracle and red helper tests.
-5. Implement the pure helper and deterministic kernel.
-6. Defer coherence, response normalization, smoothing-diameter translation, wrapper output,
-   doctest, serialization, taxonomy, tune fields, and any `detect_mat` conversion.
-7. Keep FilFinder only in the oracle environment for simple binary-skeleton angle comparisons;
-   committed tests consume fixtures without it. Record preprocessing and derived products as
-   PhenoTypic adaptations unless the pinned source-author executable supplies them.
-8. Reviewer reruns FilFinder/source oracle and mutations.
+The algorithm implementer must not edit wrappers, public exports, registries, dependency files, or
+the deferred coherence design.
 
-## Logic-validation script
+## Execution steps
 
-Independently build the disk smoothing footprint, direct reflect correlation, unsharp bitmask,
-eligibility halos, angular grid, rho-zero center lines, support counts, integer raw counts, exact
-threshold residual, dense validity, response, and axial collapse. Recount every eligible center;
-check all odd diameters 1 through 31, exact gate equality, zero-weight and constant cases,
-nonfinite-pixel halos, horizontal/vertical/diagonal recovery, 90-degree covariance, line reversal
-modulo \(\pi\), crossings, borders, and all fixture outputs. Counts/residuals/response are exact;
-the reviewed source-orientation controls require zero ULP.
+1. Reviewer approves the pinned paper/source corpus, narrow source contract, drift register,
+   fixture, verifier pins, and paper redistribution disposition.
+2. Write red tests for every public field, all captured preprocessing intermediates, exact counts,
+   float64 residual bounds, invalid inputs, empty output, borders, nonfinite masking, and dtypes.
+3. Implement the four stages separately: preprocessing and eligibility masks, theta/center-line
+   rasterization, raw count and residual accumulation, then response/orientation collapse.
+4. Compare every source-visible output and intermediate with the golden fixture. Use exact integer
+   comparison and documented ULP-derived floating bounds.
+5. Run required mutants individually and map each to a named test.
+6. Independent reviewer performs line-by-line source reconciliation and signs the exact commit.
 
 ## Required mutants
 
-- wrong smoothing kernel/normalization;
-- `>=0` versus `>0` bitmask;
-- swap diameters or radius off by one;
-- square rather than circular window;
-- full Hough rather than rho-zero center line;
-- row/column or degree/radian error;
-- wrong gate rounding or strictness;
-- wrong angular endpoint or 2-pi periodicity;
-- arithmetic rather than axial weighted mean;
-- arbitrary angle on zero response;
-- wrong border mode;
-- derive validity from raw counts instead of positive residual;
-- accept or silently convert a non-float64 image;
-- add coherence, normalization, or a wrapper-derived field.
+- interpret smoothing radius as a diameter;
+- use a noninclusive disk or different border mode;
+- change strict-positive unsharp masking;
+- change theta count, include the endpoint, swap row/column, or use tangent angle;
+- replace round-to-nearest-even during center-line rasterization;
+- use constant rather than angle-dependent support;
+- change threshold equality to accepted positive output;
+- compute validity from raw counts or return integer validity;
+- normalize the local response globally;
+- return pi instead of NaN for invalid orientation;
+- accept or silently convert integer/float32 inputs;
+- reproduce the source empty-output exception.
 
 ## Focused gate
 
 ```bash
+uv run python docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/rolling_hough/generate_fixture.py
+uv run python docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/rolling_hough/verify_fixture.py
 uv run python docs/superpowers/logic_validation_scripts/2026-07-13-fungi-detection-method-ports/rolling_hough.py
-uv run pytest tests/unit/sdk_/reconnect/test_rolling_hough.py tests/unit/sdk_/reconnect/test_import_rules.py -q
+uv run pytest tests/unit/sdk_/reconnect/test_rolling_hough.py -q
 uv run mypy src/phenotypic/sdk_/reconnect/_rolling_hough.py
-uv run ruff check src/phenotypic/sdk_/reconnect/_rolling_hough.py tests/unit/sdk_/reconnect/test_rolling_hough.py
+uv run ruff check
 ```
+
+No wrapper, coherence, biological-performance, or globally normalized output claim is approved by
+this core gate.

@@ -13,6 +13,10 @@ import numpy as np
 REFERENCE_DIRECTORY = Path(__file__).resolve().parent
 REPOSITORY_ROOT = REFERENCE_DIRECTORY.parents[5]
 FIXTURE_DIRECTORY = REPOSITORY_ROOT / "tests/fixtures/reconnect/rolling_hough"
+GENERATOR_PATH = REFERENCE_DIRECTORY / "generate_fixture.py"
+SOURCE_PROBE_PATH = REFERENCE_DIRECTORY / "source_contract_probe.py"
+EXPECTED_CLARK_REVISION = "4d06f9fa4cafe9022011a0bec0315390d7e23c39"
+EXPECTED_FILFINDER_REVISION = "22539cf2176ad9b717658652e8da749158597f4d"
 
 
 def _canonical_hash(fixture: dict[str, np.ndarray], keys: list[str]) -> str:
@@ -43,6 +47,26 @@ def verify_source_fixture() -> None:
     manifest = json.loads(
         (FIXTURE_DIRECTORY / "manifest.json").read_text(encoding="utf-8")
     )
+    if manifest["schema_version"] != 2:
+        raise AssertionError("A09 fixture manifest schema drifted")
+    if manifest["clark_revision"] != EXPECTED_CLARK_REVISION:
+        raise AssertionError("A09 Clark verifier revision drifted")
+    if manifest["filfinder_revision"] != EXPECTED_FILFINDER_REVISION:
+        raise AssertionError("A09 FilFinder verifier revision drifted")
+    if manifest["contract_input_dtype"] != "float64":
+        raise AssertionError("A09 public input dtype contract drifted")
+    if hashlib.sha256(GENERATOR_PATH.read_bytes()).hexdigest() != manifest[
+        "generator_sha256"
+    ]:
+        raise AssertionError("A09 fixture generator hash drifted")
+    if hashlib.sha256(Path(__file__).read_bytes()).hexdigest() != manifest[
+        "verifier_sha256"
+    ]:
+        raise AssertionError("A09 fixture verifier hash drifted")
+    if hashlib.sha256(SOURCE_PROBE_PATH.read_bytes()).hexdigest() != manifest[
+        "source_probe_sha256"
+    ]:
+        raise AssertionError("A09 pinned source-probe hash drifted")
     with np.load(FIXTURE_DIRECTORY / manifest["fixture"], allow_pickle=False) as archive:
         fixture = {key: np.asarray(archive[key]) for key in archive.files}
     required_keys = manifest["required_keys"]
@@ -50,6 +74,10 @@ def verify_source_fixture() -> None:
         raise AssertionError("A09 fixture key set differs from its manifest")
     if _canonical_hash(fixture, required_keys) != manifest["canonical_content_sha256"]:
         raise AssertionError("A09 fixture canonical content hash mismatch")
+    if str(fixture["clark_revision"]) != EXPECTED_CLARK_REVISION:
+        raise AssertionError("A09 fixture Clark revision drifted")
+    if str(fixture["filfinder_revision"]) != EXPECTED_FILFINDER_REVISION:
+        raise AssertionError("A09 fixture FilFinder revision drifted")
 
     for case_index in range(1, 6):
         prefix = f"c{case_index:02d}_"
@@ -57,7 +85,15 @@ def verify_source_fixture() -> None:
         valid = fixture[prefix + "valid"]
         response = fixture[prefix + "raw_response"]
         orientation = fixture[prefix + "derived_orientation"]
-        np.testing.assert_array_equal(valid, np.any(residual, axis=2))
+        if fixture[prefix + "image"].dtype != np.float64:
+            raise AssertionError(f"case {case_index}: input is not float64")
+        if prefix + "coherence_fraction" in fixture:
+            raise AssertionError(f"case {case_index}: deferred coherence name leaked")
+        if fixture[prefix + "threshold_fraction"].dtype != np.float64:
+            raise AssertionError(f"case {case_index}: threshold fraction is not float64")
+        if valid.dtype != np.bool_:
+            raise AssertionError(f"case {case_index}: validity is not Boolean")
+        np.testing.assert_array_equal(valid, np.any(residual > 0.0, axis=2))
         np.testing.assert_array_equal(
             fixture[prefix + "accepted_bins"], residual > 0.0
         )
