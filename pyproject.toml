@@ -1,7 +1,7 @@
 [build-system]
-# setuptools>=62.3 is required for recursive ``**`` globs in
-# ``[tool.setuptools.package-data]`` (used to ship the GUI sub-app assets).
-requires = ["setuptools>=62.3", "wheel"]
+# setuptools>=77.0.3 is required for PEP 639 ``license-files`` support;
+# recursive ``**`` package-data globs also remain supported at this floor.
+requires = ["setuptools>=77.0.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -20,6 +20,7 @@ authors = [
 description = "An image processing framework created for Ex-FAB NSF BioFoundry that aims to streamline the development of image processing pipelines for images analysis of phenotypes."
 
 readme = "README.md"
+license-files = ["LICENSE", "NOTICE", "licenses/*.txt"]
 
 requires-python = ">=3.10, <3.13"
 

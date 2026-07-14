@@ -26,8 +26,10 @@ def test_reviewed_fungi_ports_are_publicly_exported() -> None:
         "tricktrack_ca",
     }
 
-    assert expected_reconnect <= set(reconnect.__all__)
-    assert {"PersistencePairsResult", "cubical_persistence"} <= set(analysis.__all__)
+    assert expected_reconnect == set(reconnect.__all__)
+    assert {"PersistencePairsResult", "cubical_persistence"} <= set(
+        analysis.__all__
+    )
     assert "FilFinderDetector" in detect.__all__
     for name in expected_reconnect:
         assert getattr(reconnect, name).__module__.startswith(

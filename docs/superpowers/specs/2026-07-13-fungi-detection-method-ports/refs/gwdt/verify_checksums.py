@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[6]
 MANIFEST = Path(__file__).with_name("CHECKSUMS.sha256")
-TEXT_SUFFIXES = {"", ".cpp", ".h", ".json", ".md", ".py", ".txt"}
+TEXT_SUFFIXES = {"", ".cpp", ".h", ".json", ".makefile", ".md", ".py", ".txt"}
 
 
 def verify_checksums() -> None:

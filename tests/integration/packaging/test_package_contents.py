@@ -25,6 +25,7 @@ Two design choices matter:
 Marked ``slow`` (shells out to ``uv build``); excluded from the default
 ``-m 'not slow'`` PR run.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -58,6 +59,16 @@ REQUIRED_WHEEL_PATHS = [
     "phenotypic/data/early_colony.png",
 ]
 
+REQUIRED_THIRD_PARTY_LICENSES = {
+    "filfinder-MIT.txt",
+    "gudhi-MIT.txt",
+    "rolling-hough-MIT.txt",
+    "tensor-voting-BSD-like.txt",
+    "tensor-voting-LGPL-3.0-claim.txt",
+    "tricktrack-Apache-2.0.txt",
+    "vaa3d-MIT.txt",
+}
+
 
 def _expected_gui_asset_wheel_paths() -> list[str]:
     """Every CSS/JS/PNG under ``src/phenotypic/gui`` as its in-wheel path."""
@@ -82,6 +93,9 @@ def _build_dists(dest: Path) -> Path:
     shutil.copy2(REPO_ROOT / "README.md", src_copy / "README.md")
     if (REPO_ROOT / "LICENSE").exists():
         shutil.copy2(REPO_ROOT / "LICENSE", src_copy / "LICENSE")
+    if (REPO_ROOT / "NOTICE").exists():
+        shutil.copy2(REPO_ROOT / "NOTICE", src_copy / "NOTICE")
+    shutil.copytree(REPO_ROOT / "licenses", src_copy / "licenses")
     shutil.copytree(
         REPO_ROOT / "src",
         src_copy / "src",
@@ -131,6 +145,17 @@ def test_wheel_contains_required_paths(built_dists):
         names = set(zf.namelist())
     missing = [p for p in REQUIRED_WHEEL_PATHS if p not in names]
     assert not missing, f"missing from wheel: {missing}"
+
+
+@pytest.mark.slow
+def test_wheel_contains_fungi_port_license_texts(built_dists):
+    """Every third-party license referenced by NOTICE ships in the wheel."""
+    with zipfile.ZipFile(built_dists["wheel"]) as zf:
+        basenames = {Path(name).name for name in zf.namelist()}
+    missing = sorted(REQUIRED_THIRD_PARTY_LICENSES - basenames)
+    assert not missing, (
+        f"third-party license texts missing from wheel: {missing}"
+    )
 
 
 @pytest.mark.slow

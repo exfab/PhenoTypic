@@ -45,7 +45,7 @@ use endpoint averaging; destination-only cost-surface composition is not APP2 fi
 | GI input range scans observed minimum and maximum | `fastmarching_tree.h:278-287` | `_gwdt.py:228-233` | Production uses independent min/max reductions; the source overload's `else if` can leave minimum unset for strictly increasing flattened input. Drift D09. |
 | GI index truncates normalized value times 255 | `fastmarching_macro.h:8` | `_gwdt.py:233-234` | Exact NumPy integer truncation for nonnegative normalized input. |
 | GI table contains 256 fixed values | `fastmarching_macro.h:10-41` | `_gwdt.py:32-62` | Literal transcription; fixture equality is exact. |
-| Tree edge averages endpoint GI and multiplies a hard-coded factor | `fastmarching_tree.h:353-371` | Integration seam, not `_gwdt.py` | Mandatory S01 endpoint-average kernel mode. Preserve diagonal `1.414214`, not exact sqrt(2), unless a seam drift is approved. Destination-only existing kernel is forbidden. |
+| Tree edge averages endpoint GI and multiplies a hard-coded factor | `fastmarching_tree.h:353-371` | `_filamentous_fungi_detector.py:59-68,71-163` | The opt-in S01 kernel preserves diagonal `1.414214`, endpoint averaging, and strict-less relaxation. It is separate from the destination-only legacy kernel. Multi-colony seeds and returned ownership maps are D11. |
 
 ## Fixture and independent oracle
 

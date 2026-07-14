@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Annotated, ClassVar, Optional, Union
+import heapq
+import itertools
+from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Optional, Union
 import numpy as np
 import gc
 
@@ -15,6 +17,7 @@ from scipy.ndimage import center_of_mass, label as ndi_label
 from skimage.filters import threshold_otsu
 from skimage.measure import label
 from skimage.morphology import disk, dilation
+from skimage.segmentation import find_boundaries
 
 from phenotypic.abc_ import GridObjectDetector
 from phenotypic import ImagePipeline
@@ -47,8 +50,117 @@ from phenotypic.sdk_.branch_pathfinding import (
     calibrate_thresholds,
     apply_filter_cascade,
     euclidean_voronoi_assign,
-    connectivity_correct_labels
+    connectivity_correct_labels,
 )
+from phenotypic.sdk_.branch_pathfinding import DijkstraResult
+from phenotypic.sdk_.reconnect import app2_gwdt_cost, grey_weighted_distance
+
+
+_APP2_NEIGHBORS = (
+    (0, 1, 1.0),
+    (-1, 1, 1.414214),
+    (-1, 0, 1.0),
+    (-1, -1, 1.414214),
+    (0, -1, 1.0),
+    (1, -1, 1.414214),
+    (1, 0, 1.0),
+    (1, 1, 1.414214),
+)
+
+
+def _run_app2_gwdt_dijkstra(
+    gi_cost: np.ndarray,
+    colony_labels: np.ndarray,
+) -> DijkstraResult:
+    """Propagate colony ownership with APP2 endpoint-averaged GI edge costs.
+
+    This is deliberately separate from the existing destination-only Dijkstra
+    kernel. APP2 charges an axial edge ``(GI(p) + GI(q)) / 2`` and a diagonal
+    edge the same average multiplied by its source constant ``1.414214``.
+
+    Args:
+        gi_cost: Finite, nonnegative, two-dimensional APP2 lookup map.
+        colony_labels: Same-shaped integer colony labels with zero background.
+
+    Returns:
+        Dijkstra propagation maps compatible with the shared path extractor.
+
+    Raises:
+        ValueError: If the two arrays do not satisfy the internal seam contract.
+    """
+    costs = np.asarray(gi_cost)
+    labels = np.asarray(colony_labels)
+    if costs.ndim != 2 or labels.ndim != 2 or costs.shape != labels.shape:
+        raise ValueError("gi_cost and colony_labels must be same-shaped 2-D arrays")
+    if not np.issubdtype(costs.dtype, np.number) or not np.all(np.isfinite(costs)):
+        raise ValueError("gi_cost must contain finite numeric values")
+    if np.any(costs < 0.0):
+        raise ValueError("gi_cost must be nonnegative")
+    if not np.issubdtype(labels.dtype, np.integer) or np.any(labels < 0):
+        raise ValueError("colony_labels must contain nonnegative integers")
+
+    rows, columns = costs.shape
+    cost_distance = np.full(costs.shape, np.inf, dtype=np.float64)
+    colony_id = np.full(costs.shape, -1, dtype=np.int32)
+    predecessor = np.full(costs.shape, -1, dtype=np.int32)
+    visited = np.zeros(costs.shape, dtype=np.bool_)
+
+    colony_mask = labels > 0
+    boundary_mask = find_boundaries(colony_mask, mode="inner", connectivity=2)
+    cost_distance[colony_mask] = 0.0
+    colony_id[colony_mask] = labels[colony_mask].astype(np.int32, copy=False)
+    visited[colony_mask & ~boundary_mask] = True
+
+    centroids: dict[int, tuple[float, float]] = {}
+    for colony_label in np.unique(labels[colony_mask]):
+        coordinates = np.argwhere(labels == colony_label)
+        centroid = coordinates.mean(axis=0)
+        centroids[int(colony_label)] = (float(centroid[0]), float(centroid[1]))
+
+    counter = itertools.count()
+    heap: list[tuple[float, int, int, int]] = []
+    for row, column in np.argwhere(boundary_mask):
+        heapq.heappush(heap, (0.0, next(counter), int(row), int(column)))
+
+    while heap:
+        distance, _, row, column = heapq.heappop(heap)
+        if visited[row, column] or distance != cost_distance[row, column]:
+            continue
+        visited[row, column] = True
+        source_label = colony_id[row, column]
+
+        for row_offset, column_offset, factor in _APP2_NEIGHBORS:
+            neighbor_row = row + row_offset
+            neighbor_column = column + column_offset
+            if (
+                neighbor_row < 0
+                or neighbor_row >= rows
+                or neighbor_column < 0
+                or neighbor_column >= columns
+                or visited[neighbor_row, neighbor_column]
+            ):
+                continue
+            edge_cost = (
+                (float(costs[row, column]) + float(costs[neighbor_row, neighbor_column]))
+                * factor
+                / 2.0
+            )
+            candidate = distance + edge_cost
+            if candidate < cost_distance[neighbor_row, neighbor_column]:
+                cost_distance[neighbor_row, neighbor_column] = candidate
+                colony_id[neighbor_row, neighbor_column] = source_label
+                predecessor[neighbor_row, neighbor_column] = row * columns + column
+                heapq.heappush(
+                    heap,
+                    (candidate, next(counter), neighbor_row, neighbor_column),
+                )
+
+    return DijkstraResult(
+        cost_distance=cost_distance,
+        colony_id=colony_id,
+        predecessor=predecessor,
+        colony_centroids=centroids,
+    )
 
 
 class FilamentousFungiDetector(GridObjectDetector):
@@ -160,6 +272,12 @@ class FilamentousFungiDetector(GridObjectDetector):
             penalise traversal of bare agar far from the colony, keeping
             paths near established structure; lower values allow longer
             background detours. Typical range: 1.0--10.0. Default: 4.0.
+        reconnect_strategy: Reconnection edge-cost strategy. ``"dijkstra"``
+            preserves the legacy destination-only composite-cost recurrence.
+            ``"app2_gwdt"`` computes one full-image APP2 grey-weighted
+            distance transform from the detected foreground, applies its fixed
+            GI lookup, and uses source-faithful endpoint-averaged GI edge
+            costs. Default: ``"dijkstra"``.
 
         # Scene-derivation overrides (leave at None to auto-derive)
         gauss_sigma: Gaussian sigma for background subtraction, in pixels.
@@ -302,6 +420,7 @@ class FilamentousFungiDetector(GridObjectDetector):
     frag_reach_px: Annotated[int, TuneSpec(5, 30)] = 10
     # TODO: review bound (unverified vs literature)
     gap_crossing_penalty: Annotated[float, TuneSpec(1.0, 10.0)] = 4.0
+    reconnect_strategy: Literal["dijkstra", "app2_gwdt"] = "dijkstra"
 
     # ── Scene-derivation overrides (None → auto-derived by the validator) ──
     # Auto-derived from max_colony_radius_px / min_branch_width_px when left at
@@ -488,6 +607,13 @@ class FilamentousFungiDetector(GridObjectDetector):
                 center_objmask=inoculum_objmask,
         )
 
+        app2_gi_cost = None
+        if self.reconnect_strategy == "app2_gwdt":
+            app2_gi_cost = self._compute_full_image_app2_gi_cost(
+                    enhanced_arr,
+                    background=~overall_objmask.astype(np.bool_, copy=False),
+            )
+
         unmasked_cost, cost_surface = self._build_cost_surface(
                 pct_result=pct_result,
                 enhanced_arr=enhanced_arr,
@@ -502,6 +628,7 @@ class FilamentousFungiDetector(GridObjectDetector):
                 unmasked_cost=unmasked_cost,
                 pct_energy=pct_result.pc_sum.astype(np.float32),
                 grayscale=enhanced_gray,
+                app2_gi_cost=app2_gi_cost,
         )
 
         self._log_memory_usage(
@@ -668,6 +795,36 @@ class FilamentousFungiDetector(GridObjectDetector):
 
         return unmasked_cost, base_cost
 
+    @staticmethod
+    def _compute_full_image_app2_gi_cost(
+            image: np.ndarray,
+            *,
+            background: np.ndarray,
+    ) -> np.ndarray:
+        """Compute the APP2 GI lookup once before any tile is extracted.
+
+        The detector defines background as pixels excluded by its full-image
+        dual-mask branch detector. Both background and foreground must be
+        present because the source lookup is not a meaningful detector seam
+        for either constant class mask.
+
+        Args:
+            image: Full contrast-stretched detection image.
+            background: Full-image boolean background mask.
+
+        Returns:
+            Full-image float64 APP2 GI lookup values.
+
+        Raises:
+            ValueError: If either background or foreground is absent.
+        """
+        if not np.any(background) or np.all(background):
+            raise ValueError(
+                    "app2_gwdt reconnection requires both background and foreground"
+            )
+        distance = grey_weighted_distance(image, background, connectivity=8)
+        return app2_gwdt_cost(distance)
+
     def _reconnect_fragments_tiled(
             self,
             colony_labels: np.ndarray,
@@ -676,6 +833,7 @@ class FilamentousFungiDetector(GridObjectDetector):
             unmasked_cost: np.ndarray,
             pct_energy: np.ndarray,
             grayscale: np.ndarray,
+            app2_gi_cost: np.ndarray | None = None,
     ) -> np.ndarray:
         """Generate tiles, process each, merge results into output mask.
 
@@ -686,6 +844,8 @@ class FilamentousFungiDetector(GridObjectDetector):
             unmasked_cost: Unmasked composite cost for quality calibration.
             pct_energy: Float32 (H, W) PCT energy map for quality filtering.
             grayscale: Float32 (H, W) enhanced grayscale for SNR filtering.
+            app2_gi_cost: Optional full-image APP2 GI map. When present, each
+                tile receives a view of this already-computed nonlocal map.
 
         Returns:
             Updated colony labels with reconnected fragments painted in.
@@ -732,10 +892,15 @@ class FilamentousFungiDetector(GridObjectDetector):
             tile_frags = screened_frags[row_start:row_end, col_start:col_end]
             tile_pct = pct_energy[row_start:row_end, col_start:col_end]
             tile_gray = grayscale[row_start:row_end, col_start:col_end]
+            tile_app2_gi = (
+                    None
+                    if app2_gi_cost is None
+                    else app2_gi_cost[row_start:row_end, col_start:col_end]
+            )
 
             tile_result = self._process_tile(
                     tile_cost, tile_raw, tile_colony, tile_frags,
-                    tile_pct, tile_gray, pct_noise_ceil,
+                    tile_pct, tile_gray, pct_noise_ceil, tile_app2_gi,
             )
             self._merge_tile_into_output(
                     output, tile_result, row_start, col_start
@@ -788,6 +953,7 @@ class FilamentousFungiDetector(GridObjectDetector):
             tile_pct: np.ndarray,
             tile_gray: np.ndarray,
             pct_noise_ceil: float,
+            tile_app2_gi: np.ndarray | None = None,
     ) -> np.ndarray:
         """Process a single tile: Dijkstra, assign, paths, quality filter, assemble.
 
@@ -799,6 +965,7 @@ class FilamentousFungiDetector(GridObjectDetector):
             tile_pct: PCT energy map for this tile.
             tile_gray: Grayscale image for this tile.
             pct_noise_ceil: PCT energy threshold for F5 background masking.
+            tile_app2_gi: Optional slice of the full-image APP2 GI map.
 
         Returns:
             Updated tile colony labels with reconnected fragments.
@@ -810,9 +977,12 @@ class FilamentousFungiDetector(GridObjectDetector):
             return tile_colony
 
         # Run Dijkstra from colony boundaries
-        dijkstra = run_multisource_dijkstra(
-                tile_cost, tile_colony, self.delta
-        )
+        if tile_app2_gi is None:
+            dijkstra = run_multisource_dijkstra(
+                    tile_cost, tile_colony, self.delta
+            )
+        else:
+            dijkstra = _run_app2_gwdt_dijkstra(tile_app2_gi, tile_colony)
 
         # Assign fragments to colonies by majority vote
         assignments = assign_fragments_to_colonies(

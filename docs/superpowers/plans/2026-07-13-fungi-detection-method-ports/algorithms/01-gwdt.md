@@ -34,6 +34,15 @@ write one drift row per parameter. Do not claim exact EDT reduction. Keep thresh
 policy in the detector and make the new term explicitly opt-in so the default Dijkstra output is
 unchanged.
 
+The integrated detector policy uses the complement of the full-image dual-mask fungal foreground
+as APP2 background and rejects all-background or all-foreground masks. It computes the GWDT and
+fixed GI lookup once before tiles are generated. `reconnect_strategy="app2_gwdt"` then replaces
+only candidate-path propagation with the APP2 endpoint-average GI recurrence. The legacy
+composite surface remains the prescreening and path-quality evidence, but its destination-only
+edge cost, EDT gap penalty, and radial-retreat multiplier are not added to APP2 edges. The default
+`reconnect_strategy="dijkstra"` retains the prior path exactly. These detector-specific decisions
+are recorded separately from the source-faithful helper in drift rows D10-D12.
+
 Require a real-valued, 2-D, finite, nonnegative image and a same-shaped boolean background mask.
 Reject negative values, NaNs, infinities, empty arrays, shape mismatches, and non-boolean masks.
 The explicit mask is a contract adaptation of Vaa3D's `image <= threshold` seed selection; the

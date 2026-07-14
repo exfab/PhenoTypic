@@ -1,8 +1,8 @@
 # APP2 GWDT mutation-by-test matrix
 
 Core mutants are injected one at a time by `run_mutations.py`; every row must report
-`KILLED`. Seam mutants are owned by the serialized detector integration and remain
-explicitly gated rather than falsely claimed here.
+`KILLED`. Seam mutants are owned by the serialized detector integration and are killed
+by the focused tests named below.
 
 | Mutant | Single conceptual change | Killing probe | Result |
 |---|---|---|---|
@@ -25,10 +25,11 @@ explicitly gated rather than falsely claimed here.
 
 ## Serialized seam mutants
 
-| Mutant | Required integration test |
-|---|---|
-| Use cumulative GWDT directly as a local Dijkstra term | APP2 endpoint-average analytic path fixture |
-| Use destination-only GI instead of endpoint average | source/source-destination GI edge control |
-| Use exact sqrt(2) instead of APP2 tree factor `1.414214` | diagonal endpoint-average edge fixture or approved seam drift |
-| Compute GWDT per tile instead of on the full image | full-image versus tiled seam equality |
-| Change disabled legacy detector output | exact disabled-mode Dijkstra regression |
+| Mutant | Killing test | Result |
+|---|---|---|
+| Use cumulative GWDT directly as a local Dijkstra term | `test_app2_axis_edges_use_endpoint_average_not_destination_cost` | KILLED |
+| Use destination-only GI instead of endpoint average | `test_app2_axis_edges_use_endpoint_average_not_destination_cost` | KILLED |
+| Use exact sqrt(2) instead of APP2 tree factor `1.414214` | `test_app2_diagonal_edges_use_pinned_source_factor` | KILLED |
+| Compute GWDT per tile instead of on the full image | `test_app2_cost_is_computed_once_on_full_image_before_tiling` | KILLED |
+| Feed GI into the legacy destination-only kernel | `test_tile_dispatch_keeps_app2_separate_from_legacy_dijkstra` | KILLED |
+| Change disabled legacy detector output | `test_explicit_legacy_strategy_is_byte_identical_to_default` | KILLED |
