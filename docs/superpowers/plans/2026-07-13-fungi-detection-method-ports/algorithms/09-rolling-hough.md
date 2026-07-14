@@ -2,7 +2,7 @@
 
 **Implementer:** one dedicated 5.6-sol/high-effort algorithm turn
 **Reviewer:** independent 5.6-sol/high-effort turn
-**Shape:** Keystone transform core and Leaf diagnostic wrapper
+**Shape:** Keystone Clark transform core only; coherence and wrapper deferred
 **Blocked by:** C10 and S00
 
 ## Corrected contract
@@ -15,39 +15,47 @@ pinned code, not the abstract.
 
 ```python
 @dataclass(frozen=True)
-class RollingHoughResult:
-    angular_accumulator: np.ndarray
+class ClarkRollingHoughResult:
+    theta: np.ndarray
+    support_counts: np.ndarray
+    raw_counts: np.ndarray
+    threshold_residual: np.ndarray
     response: np.ndarray
     orientation: np.ndarray
-    coherence: np.ndarray
+    eligible: np.ndarray
     valid: np.ndarray
 
-def rolling_hough(
+def clark_rolling_hough(
     image: np.ndarray,
     window_diameter: int,
-    smoothing_diameter: int,
-    coherence_fraction: float,
-) -> RollingHoughResult: ...
+    smoothing_radius: int,
+    threshold_fraction: float,
+) -> ClarkRollingHoughResult: ...
 ```
 
-`angular_accumulator` has shape `image.shape + (n_theta,)` and stores raw integer center-line
-counts from the pinned source. If the source also normalizes the distribution, expose that only as
-a separately named derived field with a written rounding bound. `response`, `coherence`, and axial
-`orientation` are explicitly derived capability fields. `valid` is false wherever the source gate
-accepts no angle; invalid helper orientations use `NaN`, while the wrapper applies the finite
-mapping frozen below. Do not
-invent a response silently. Freeze odd-diameter/radius rules, normalized smoothing kernel, convolution
-padding, bitmask comparator, angular grid, center-line rasterization, threshold rounding and
-inclusive comparison, border support, axial collapse, crossing behavior, undefined-angle sentinel,
-and dtype. Keep raw radians in the helper and map to `[0,1]` only in the wrapper.
+The core accepts only a nonempty 2-D float64 array. Integer, Boolean, float16, float32,
+extended-float, and complex inputs are rejected. `window_diameter` is positive and odd;
+`smoothing_radius` is a positive source radius, not a translated diameter; and
+`threshold_fraction` is finite in `[0, 1]`.
+
+`raw_counts` has shape `image.shape + (n_theta,)` and stores exact int64 rho-zero center-line
+counts. The core also exposes exact angle-dependent `support_counts`, source residuals,
+unnormalized residual-sum response, Hough-normal axial orientation, the source rolling-window
+eligibility mask, and a dense Boolean validity conversion. Coherence is not sourced and is
+deferred. Invalid orientations are NaN. No normalization, wrapper mapping, or `detect_mat`
+conversion belongs in this release.
+
+Freeze the inclusive disk smoothing footprint, SciPy reflect correlation, strict `> 0` bitmask,
+bad-pixel halos, angular count/grid, round-to-nearest-even rho-zero rasterization, angle-dependent
+supports, threshold equality producing zero residual, doubled-angle collapse, crossings,
+empty-result behavior, axes, and dtypes. Dense `valid` is exactly
+`np.any(threshold_residual > 0, axis=2)` and is recorded as representation drift D09.
 
 ## Owned files and tasks
 
 ```text
 src/phenotypic/sdk_/reconnect/_rolling_hough.py
-src/phenotypic/enhance/_focus_edge_rolling_hough.py
 tests/unit/sdk_/reconnect/test_rolling_hough.py
-tests/unit/enhance/test_focus_edge_rolling_hough.py
 tests/fixtures/reconnect/rolling_hough/
 docs/superpowers/logic_validation_scripts/2026-07-13-fungi-detection-method-ports/rolling_hough.py
 refs/rolling_hough corpus and reconciliation
@@ -58,31 +66,28 @@ refs/rolling_hough corpus and reconciliation
    accumulator cross-check because its modified RHT reports filament/branch angular distributions,
    not this plan's image preprocessing or pixelwise response/coherence contract
    ([FilFinder tutorial](https://fil-finder.readthedocs.io/en/latest/tutorial.html)).
-2. Freeze preprocessing, diameter, angle, line, gate, border, collapse, sentinel, and output
-   equations.
+2. Freeze float64-only input, preprocessing, source radius, diameter, angle, line, gate, border,
+   collapse, sentinel, dense-valid drift, and output equations.
 3. Capture smoothing, unsharp, bitmask, theta grid, accumulator, validity, accepted bins, and every public
    output for asymmetric, boundary, gap, crossing, border, constant, and non-default cases.
 4. Write a direct small-array oracle and red helper tests.
 5. Implement the pure helper and deterministic kernel.
-6. Add `RollingHoughOutput = Literal["response", "orientation"]`, wrapper normalization, spy,
-   diagnostic warning, doctest, serialization, taxonomy, and tune fields. The orientation wrapper
-   maps valid axial radians to `[0, 1)` by division by `pi` and writes `0.0` at invalid pixels so
-   `detect_mat` stays finite. Document that wrapper output alone cannot distinguish an invalid
-   orientation from a valid zero angle; inferential callers must use the pure helper's `valid` mask.
-7. Add FilFinder only to the dev oracle environment for binary-skeleton accumulator comparisons;
+6. Defer coherence, response normalization, smoothing-diameter translation, wrapper output,
+   doctest, serialization, taxonomy, tune fields, and any `detect_mat` conversion.
+7. Keep FilFinder only in the oracle environment for simple binary-skeleton angle comparisons;
    committed tests consume fixtures without it. Record preprocessing and derived products as
    PhenoTypic adaptations unless the pinned source-author executable supplies them.
 8. Reviewer reruns FilFinder/source oracle and mutations.
 
 ## Logic-validation script
 
-Independently build the normalized smoothing kernel, direct convolution, unsharp bitmask, angular
-grid, center lines, integer counts, exact threshold gate, validity, and axial collapse. Check constant input,
-analytic template count, exact gate and one-pixel-below cases, positive-scale invariance, additive-
-offset invariance only in the padding-independent valid interior, separately sourced border behavior,
-horizontal/vertical/diagonal recovery, 90-degree covariance, line reversal modulo \(\pi\), crossing
-multi-orientation behavior, allowed/disallowed gap, border rule, and all fixture outputs. Counts are
-exact; angle error is bounded by half the angular bin width plus floating rounding.
+Independently build the disk smoothing footprint, direct reflect correlation, unsharp bitmask,
+eligibility halos, angular grid, rho-zero center lines, support counts, integer raw counts, exact
+threshold residual, dense validity, response, and axial collapse. Recount every eligible center;
+check all odd diameters 1 through 31, exact gate equality, zero-weight and constant cases,
+nonfinite-pixel halos, horizontal/vertical/diagonal recovery, 90-degree covariance, line reversal
+modulo \(\pi\), crossings, borders, and all fixture outputs. Counts/residuals/response are exact;
+the reviewed source-orientation controls require zero ULP.
 
 ## Required mutants
 
@@ -96,17 +101,16 @@ exact; angle error is bounded by half the angular bin width plus floating roundi
 - wrong angular endpoint or 2-pi periodicity;
 - arithmetic rather than axial weighted mean;
 - arbitrary angle on zero response;
-- pass `NaN` through the orientation wrapper or map an invalid pixel to a nonzero finite angle;
 - wrong border mode;
-- wrapper maps orientation as response or hardcodes a field.
+- derive validity from raw counts instead of positive residual;
+- accept or silently convert a non-float64 image;
+- add coherence, normalization, or a wrapper-derived field.
 
 ## Focused gate
 
 ```bash
 uv run python docs/superpowers/logic_validation_scripts/2026-07-13-fungi-detection-method-ports/rolling_hough.py
-uv run pytest tests/unit/sdk_/reconnect/test_rolling_hough.py tests/unit/enhance/test_focus_edge_rolling_hough.py -q
-uv run pytest tests/unit/abc_/test_enhancer_taxonomy.py tests/unit/tune/test_enhance_annotations.py tests/unit/tune/test_annotation_coverage.py tests/unit/sdk_/test_typing_aliases.py -q
-uv run pytest --doctest-modules src/phenotypic/enhance/_focus_edge_rolling_hough.py -q
-uv run mypy src/phenotypic/sdk_/reconnect/_rolling_hough.py src/phenotypic/enhance/_focus_edge_rolling_hough.py
-uv run ruff check src/phenotypic/sdk_/reconnect/_rolling_hough.py src/phenotypic/enhance/_focus_edge_rolling_hough.py
+uv run pytest tests/unit/sdk_/reconnect/test_rolling_hough.py tests/unit/sdk_/reconnect/test_import_rules.py -q
+uv run mypy src/phenotypic/sdk_/reconnect/_rolling_hough.py
+uv run ruff check src/phenotypic/sdk_/reconnect/_rolling_hough.py tests/unit/sdk_/reconnect/test_rolling_hough.py
 ```
