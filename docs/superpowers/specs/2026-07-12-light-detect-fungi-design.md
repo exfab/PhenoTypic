@@ -1,158 +1,169 @@
 # `LightDetectFungi` — design
 
-Status: proposal (not committed). A **lightweight** filamentous-fungi detector: composite the
-branch enhancement and the center-fill enhancement into one response map, then segment it with
-`TriangleDetector`. **No Dijkstra reconnection, no Voronoi labelling, no cost surface, no
-tiling** — those stay in `FilamentousFungiDetector`. This is the fast path for "where is the
-fungus" when per-colony reconnection is not needed.
+Status: proposal (not committed). A **lightweight** filamentous-fungi detector: build the branch
+mask with **two-scale-`k` phase-congruency hysteresis**, union it with a grid-gated center-fill,
+and (optionally) label per colony via a cheap grid-Voronoi assignment. **No Dijkstra cost-surface
+reconnection, no tiling, no quality-filter cascade** — those stay in `FilamentousFungiDetector`.
+The fast path to a clean, well-connected, filled fungal mask (and, with grid seeds, per-colony
+labels) without the minutes-long machinery.
 
-Grounded in a live run on the production crop (`NeurosporaPipeV10.json`, `650/650/600/600`).
+Grounded in live runs on the production crop (`NeurosporaPipeV10.json`, `650/650/600/600`).
 
-## 1 · Motivation
+## 1 · Motivation & flow
 
-`FilamentousFungiDetector` does an enormous amount (inoculum detect → dual-mask branch detect →
-grid Voronoi → Dijkstra fragment reconnection → final Voronoi), and takes ~minutes. Much of the
-value — a filled-center fungal mask — comes from just two ideas developed this session:
+`FilamentousFungiDetector` (~minutes) does inoculum-detect → dual-mask branch-detect → grid
+Voronoi → Dijkstra reconnection → final Voronoi. `LightDetectFungi` keeps the value from a few
+cheap ideas developed this session:
 
-- the **branch enhancement** recipe (`FlattenIllumination → ContrastStretching(70,99) →
-  FocusEdgePhase`, i.e. the `FocusBranches` spec), and
-- the **center-fill** (a `ManualGridPointDetector` at known wells ∩ a background subtraction),
-  which fills the hollow inoculum core that edge-based phase congruency leaves — **without**
-  `fill_holes` (which would also fill the legitimate gaps between hyphae).
-
-`LightDetectFungi` composites those two and thresholds. It is a `ObjectDetector` (not a
-`GridObjectDetector`) because it does no per-colony labelling.
-
-## 2 · The scale problem (the crux — verified)
-
-The two enhancements must be composited (pixel-wise `max`) into one map. **They are not on the
-same energy scale out of the box.** Measured on the production crop:
-
-| Map | min | max | p99 | mean |
-|---|---|---|---|---|
-| `FocusEdgePhase` branch (`pc_sum`) | 0.000 | 0.546 | **0.148** | 0.010 |
-| `SubtractGaussian` center body | 0.000 | 0.397 | 0.142 | 0.013 |
-
-**The PCT output *is* clipped to `[0, 1]` but does not fill it** — `pc_sum` is `Σ/n_orient`
-then `np.clip(·, 0, 1)` (`_focus_edge_phase.py`), and on real plates it lives near the bottom of
-the range (p99 ≈ 0.15, mean ≈ 0.01). `FocusEdgePhase` is **not** a `NormalizedOutputMixin`, so it
-never rescales. That the two happen to share a scale here (both p99 ≈ 0.14) is **coincidental**
-and must not be relied on: a center-fill that filled `[0, 1]` (e.g. a binary stamp, or any
-`norm="rescale"` enhancer) would swamp the branches under `max`.
-
-**Resolution — normalise each enhancement to `[0, 1]` before compositing.** Rescale each map by
-its own robust range (`rescale_intensity(m, in_range=(0, p99.5(m)))`). Verified: after this,
-branch p99 → 0.82, gated-center p99 → 1.0, composite p99 → 0.97, and both terms contribute to the
-`max`. `CompositeEnhance` will **not** do this for you — its `norm` field is an *output* clip
-policy, not per-child normalisation — so the normalisation is `LightDetectFungi`'s job (or a
-range-filling step must be added to each child enhancer).
-
-## 3 · Architecture (`_operate`)
+- **branch mask via two-`k` hysteresis** — recovers most of the reconnection Dijkstra gives (§2);
+- **center-fill** — `ManualGridPointDetector` at known wells ∩ a background subtraction, filling
+  the hollow inoculum core that edge-based phase congruency leaves — **without** `fill_holes`;
+- **grid-Voronoi labelling** (optional) — per-colony identity from known well coords, no Dijkstra.
 
 ```
-branch_map = normalize( branch_enhancer(image).detect_mat )          # FocusBranches-style PCT, -> [0,1]
-body_map   = normalize( background_subtractor(image).detect_mat )    # SubtractGaussian body, -> [0,1]
-grid_mask  = center_detector(image).objmask                          # ManualGridPointDetector at wells
-center_map = body_map * grid_mask                                    # center-fill, gated to known wells
-composite  = maximum(branch_map, center_map)                         # balanced energies
-image.detect_mat[:] = composite
-TriangleDetector(...).apply(image, inplace=True)                     # segmentation backend
+strict = PCT(k=6)      ;  loose = PCT(k=4.5)          # two phase-congruency passes on the same enhanced base
+branch_mask = two_k_hysteresis(strict, loose)          # §2 -> reconnected binary branch mask
+center_mask = center_detector.objmask & (bg_subtract > otsu)   # §3 grid ∩ body, fills the core
+colony_mask = branch_mask | center_mask                # union of binary evidence
+objmap      = grid_voronoi_label(colony_mask, seeds)   # §4 optional per-colony id (else CC labels)
 ```
 
-- **`normalize`** = `rescale_intensity(m, in_range=(0, percentile(m, 99.5)))` — the same-scale
-  guarantee. A single private helper, reused for both maps.
-- **Center gating.** `body_map` alone responds to cores *and* branches *and* any bright agar; the
-  `grid_mask` (from the manual grid at exact coordinates) confines the *fill* to the known wells,
-  which also drops the plate rim (the stamps never cover the wall). Verified: the gated center
-  map is 60 clean discs on this plate. The grid detector is swappable (`InoculumDetector`, blob,
-  etc.) for plates without known coordinates.
-- **Composite** is `max` (union of evidence), matching how `FilamentousFungiDetector` combines its
-  own two masks (`_combine_bg_removed_with_pct`).
-- **Segmentation** is `TriangleDetector` on the composite, per request.
+**No gamma pre-adjustment.** The pipeline runs on the raw cropped image — **no** `adjust_gamma`
+front step (which the exploration notebooks originally carried). It is safe *and* marginally
+better: the chain is contrast-adaptive/invariant end-to-end (homomorphic `FlattenIllumination`,
+percentile `ContrastStretching`, contrast-invariant phase congruency, adaptive `otsu`/`triangle`),
+so a global gamma is absorbed — and measured, gamma slightly *increased* fragmentation
+(12.0 → 11.2 fragments/colony without it; the difference is faint-tip threshold flicker, systematically
+in no-gamma's favour). Do not add a gamma step.
 
-## 4 · What `TriangleDetector` gives you, and the trade-off
+## 2 · Branch mask: two-scale-`k` hysteresis (the crux — verified)
 
-Triangle is a **permissive** single threshold (designed to catch faint objects). On the
-normalised composite it fills the centers and captures branches, but it **also picks up agar
-micro-texture** — the normalisation lifts the low-level background, and faint hyphae and faint
-agar texture sit at the same level (the same tension the whole session has circled). Measured:
-`fg ≈ 0.33`, **~46 000 connected components** (mostly tiny speckle + one fragment per branch tip,
-since nothing reconnects them). This is the accepted cost of "light":
+`k` (the phase-congruency noise threshold) trades confidence for coverage: **high `k` = clean but
+fragmented; low `k` = full but agar-flooded.** Neither single `k` is good. Hysteresis marries two:
 
-- `objmask` is a good filled-fungus mask; `objmap` is **fragmented** (no colony-level identity).
-  If per-colony labels are needed, that is what `FilamentousFungiDetector` is for.
-- Mitigations to document (not defaults): a **minimum-object-size filter** (a `refine` op) drops
-  the speckle cheaply; a larger `min_wavelength` in the branch enhancer suppresses more agar; or
-  swap `TriangleDetector` → `HysteresisDetector(low="triangle", high="otsu")` (what the heavy
-  detector uses) for a cleaner double-threshold at the cost of the "single backend" simplicity.
+- **strict `k=6`** → seeds: `seed = otsu(PCT k=6)` — clean, confident branch cores;
+- **loose `k=4.5`** → candidates: `cand = triangle(PCT k=4.5)` — faint connectors **and** agar;
+- **reconnect**: `keep = reconstruction(seed ∩ cand, mask=cand, "dilation")` — grow the seeds
+  through the candidate mask; keep every candidate component that touches a seed.
+
+**Binarize the two signals with *opposite* thresholds** — strict×strict for seeds, loose×loose
+for candidates. Verified this is load-bearing: `otsu`-seed / `triangle`-cand is the only combo
+that both reconnects and stays clean (using `otsu` on candidates drops the connectors → no
+reconnection; using `triangle` on seeds admits agar into the seeds → flood).
+
+Measured (grid-restricted per-colony fragments | agar false-positive, production crop):
+
+| binarization | frags/colony | agar_fp |
+|---|---|---|
+| seed only (`otsu` k=6) | 22.0 | 0.001 |
+| cand only (`triangle` k=4.5) | 26.0 | 0.045 (flood) |
+| **two-`k`: `otsu` seed / `triangle` cand** | **12.0** | **0.012** |
+| two-`k`: `otsu` / `otsu` | 22.3 | 0.002 |
+| two-`k`: `triangle` / `triangle` | 26.0 | 0.041 |
+
+**Nearly halves fragmentation (22 → 12) while agar stays clean** — the faint `k=4.5` hyphae that
+bridge the `k=6` seed fragments are *recovered* (they touch a seed), and isolated `k=4.5` agar is
+*rejected* (no seed). Cost: **two PCT passes (~45 s) + one `reconstruction`**. Decisively better
+than coherence-enhancing diffusion (which managed only −7 to −13%).
+
+**This is why the earlier continuous-composite + `TriangleDetector` plan is dropped for the branch
+stage.** The two-`k` hysteresis *is* the branch segmentation (binarization built in), and it
+sidesteps the cross-signal **energy-scale problem** entirely: each signal is thresholded at its own
+scale, so there is no continuous `max()` of a low-energy PCT map (p99 ≈ 0.15) against a full-range
+center map to normalise. (For the record, that scale mismatch — `FocusEdgePhase` clips to `[0,1]`
+but fills only the bottom, and is not a `NormalizedOutputMixin` — was real and was the whole reason
+a naive `max` composite failed; binarizing per-signal avoids it rather than patching it.)
+
+## 3 · Center-fill (verified)
+
+Phase congruency is an edge detector, so the inoculum core is a hole. Fill it with a *separate*
+solid-body signal, gated to the known wells:
+
+- `center_detector` (default `ManualGridPointDetector` at the plate's grid coords) stamps a disk at
+  each of the 60 wells → `grid_mask`;
+- `background_subtractor` (`SubtractGaussian(sigma=300)`) on the enhanced image keeps the bright
+  solid cores (and, unavoidably, the plate rim);
+- `center_mask = grid_mask & (body > otsu(body))` — the intersection snaps each stamp to real
+  colony signal **and drops the plate rim** (the stamps never cover the wall). Verified: 60 clean
+  discs. No `fill_holes`, so the legitimate inter-hypha gaps are preserved.
+
+The grid detector is swappable (`InoculumDetector`, blob) for plates without known coordinates.
+
+## 4 · Union & labelling
+
+`colony_mask = branch_mask | center_mask` (both binary). Per-colony `objmap`: two-`k` still leaves
+~12 components/colony, so connected-component labelling alone gives ~12 labels/colony. To get **one
+label per colony**, assign every component to its nearest grid seed via **Euclidean Voronoi**
+(`euclidean_voronoi_assign` + `connectivity_correct_labels` from `sdk_.branch_pathfinding` — the
+*cheap* part of `FilamentousFungiDetector`, **not** the Dijkstra cost-surface part). With known
+`ManualGridPointDetector` coords this is trivial and yields 60 labels. Optional
+(`label_by_grid_voronoi`); off → `objmap` is the raw connected components.
 
 ## 5 · Fields / API
 
 ```python
-class LightDetectFungi(ObjectDetector):
-    branch_enhancer:        OperationField = FocusBranches(k=6)          # default: flatten→70-99→PCT(wl5, k6)
-    center_detector:        OperationField = ManualGridPointDetector(...)  # or InoculumDetector
-    background_subtractor:  OperationField = SubtractGaussian(sigma=300, n_iter=2)
-    segmenter:              OperationField = TriangleDetector()
-    normalize_percentile:   float = 99.5                                 # robust range top for rescale
-    gate_center_to_grid:    bool = True
+class LightDetectFungi(GridObjectDetector):        # grid: uses grid seeds for center-fill + labelling
+    # branch enhancement (shared pre-PCT base, then two PCT passes)
+    branch_base:      OperationField = <ImagePipeline: FlattenIllumination(300), ContrastStretching(70,99)>
+    n_orient:         int = 8
+    min_wavelength:   float = 5.0
+    k_strict:         float = 6.0                    # seed pass  (clean)
+    k_loose:          float = 4.5                    # candidate pass (faint connectors)
+    seed_thresh:      Literal["otsu","triangle"] = "otsu"      # strict
+    cand_thresh:      Literal["otsu","triangle"] = "triangle"  # loose
+    # center-fill
+    center_detector:       OperationField = ManualGridPointDetector(...)   # or InoculumDetector
+    background_subtractor: OperationField = SubtractGaussian(sigma=300, n_iter=2)
+    # cleanup + labelling
+    min_object_area:       int = 30                  # drop sub-branch speckle
+    label_by_grid_voronoi: bool = True
 ```
 
-- All operations are `OperationField` (JSON round-trips the concrete class, GUI-editable) with
-  live-default caveats handled in a `model_validator` (same pattern as
-  `FilamentousFungiDetector.inoculum_detector`, which cannot hold a live pipeline at class-def
-  time).
-- If `FocusBranches` does not exist yet (companion spec), the default `branch_enhancer` is an
-  inline `ImagePipeline([FlattenIllumination(300), ContrastStretching(70,99),
-  FocusEdgePhase(n_orient=8, k=6, min_wavelength=5)])`.
-- **`k=6`** (not `FocusBranches`'s own `k=2` completeness default) is chosen here because the
-  light path exposes the segmenter directly to agar. The k-screen measured `k=6` giving the
-  cleanest map (agar-strip `p99` 0.098 → 0.007 from `k=1` → `k=6`) at the cost of branch coverage
-  (`active` 0.31 → 0.06); the light detector prioritises a clean mask over faint-tip recall. Lower
-  it toward `2` when peripheral hyphae matter more than background cleanliness.
+- `OperationField`s JSON-round-trip the concrete class and are GUI-editable; live-default caveats
+  handled in a `model_validator` (same pattern as `FilamentousFungiDetector.inoculum_detector`).
+- **Why `k_strict=6` / `k_loose=4.5`:** the k-screen showed `k=6` is the cleanest single map
+  (agar-strip `p99` 0.007) and `k=4.5` supplies the faint connectors; the hysteresis needs the gap
+  between them. `k_loose` is the main tuning knob (§8).
 
 ## 6 · Registration & tests
 
-- `detect/_light_detect_fungi.py` → `LightDetectFungi`; re-export from `detect/__init__.py`
-  (import + `__all__`).
+- `detect/_light_detect_fungi.py` → `LightDetectFungi`; re-export from `detect/__init__.py`.
 - Tests (`tests/unit/detect/`):
-  - **Scale invariance (the load-bearing one):** feed a branch map with p99 = 0.1 and a center
-    map with p99 = 1.0; assert that after `_operate` the branch structure still appears in the
-    final mask (i.e. the normalisation prevents the center from swamping it). Mutation: delete the
-    `normalize` on the branch term and assert the branch pixels vanish from the mask — proves the
-    normalisation is load-bearing.
-  - **Center fill without hole-fill:** on a synthetic colony (solid core + radiating lines with
-    gaps), assert the core is foreground **and** at least one inter-branch gap stays background
-    (distinguishes this from `binary_fill_holes`).
-  - **Composite energy:** both terms contribute — a pixel high only in branch and a pixel high
-    only in center both survive to the composite.
-  - **Contract:** `objmask`/`objmap` populated, `detect_mat` ends as the composite, `rgb`/`gray`
-    untouched.
-  - **Serialization round-trip** of the nested `OperationField`s.
+  - **Two-`k` reconnection (load-bearing):** a synthetic colony whose branches are broken at `k=6`
+    but connected by faint pixels present at `k=4.5` → assert the reconnected mask has **fewer
+    connected components** than the `k=6` seed mask, and that a pure-agar region stays background
+    (agar_fp low). Mutation: swap to `otsu`/`otsu` binarization → assert the fragment count rises
+    back to the seed-only level (proves the loose-candidate threshold is load-bearing).
+  - **Binarization direction:** `triangle`-seed variant floods a pure-agar patch (agar_fp jumps) —
+    pins that seeds must use the strict threshold.
+  - **Center fill without hole-fill:** solid core + radiating lines with gaps → core is foreground
+    **and** at least one inter-branch gap stays background (distinguishes from `binary_fill_holes`).
+  - **Labelling:** with grid seeds and `label_by_grid_voronoi=True`, a plate of N wells → N labels;
+    off → `objmap` == connected components.
+  - **Contract & serialization round-trip.**
 
 ## 7 · Excluded (explicitly, vs `FilamentousFungiDetector`)
 
-Dijkstra fragment reconnection, the composite cost surface (anisotropy/coherence/MAD), tiling,
-Euclidean Voronoi partition, connectivity correction, and the calibration/quality-filter cascade.
-Consequently `LightDetectFungi` produces a **binary-quality fungal mask**, not individually
-labelled colonies. Keep it that way — the moment per-colony reconnection is needed, reach for the
-full detector.
+The Dijkstra **cost surface** (anisotropy/coherence/MAD), tiling, path quality-filter cascade, and
+the two-pass grid→reconnect→final Voronoi. Two-`k` hysteresis recovers the *sub-threshold
+connectors* Dijkstra would bridge (hyphae that exist in the faint `k=4.5` signal); only **truly
+empty gaps** (no candidate pixels at all) remain unbridged — those still need Dijkstra. The **cheap
+Euclidean-Voronoi labelling is retained** (§4); the expensive cost-surface reconnection is not.
 
 ## 8 · Open questions
 
-1. **Cost-surface reuse is gone.** The heavy detector consumes the *full* `_PhaseCong3Result`
-   (`M`, `m`, `orientation`) for its cost surface, which a black-box enhancer does not expose.
-   `LightDetectFungi` sidesteps this (no cost surface), so no issue here — but it means the two
-   detectors cannot share a single PCT pass if ever composed.
-2. **Normalisation vs background lift.** `rescale(0, p99)` lifts agar texture and drives the
-   triangle over-segmentation. Worth trying `in_range=(floor, p99)` with a small robust `floor`
-   to push true background to 0 — but faint branches and faint agar are co-located, so this trades
-   speckle for lost branch tips. Decide with a size-filter benchmark before committing a default.
-3. **`k=6` default (set) vs branch completeness.** The k-screen picks `k=6` for a clean map
-   (agar `p99` 0.007, `active` 0.06). This deliberately trades away faint peripheral hyphae; if a
-   downstream needs those, `k≈2` recovers coverage (`active` 0.21) but leans harder on the
-   segmenter/size-filter to hold agar back. `min_wavelength` is the other agar-suppression lever
-   (larger = more suppression) and is worth a joint k × wl screen before hardening both.
-4. **Ship the size filter as a default?** ~46k → a few hundred objects with a `min_object_area`
-   drop; arguably it belongs inside `LightDetectFungi` rather than as a separate `refine` step,
-   since a raw triangle mask is barely usable without it.
+1. **`k_loose` tuning.** `4.5` chosen from one plate; sweep `4.0 / 4.5 / 5.0` (lower = more
+   connectors recovered but more agar admitted to candidates). The notebook
+   `BranchReconnect_TwoK_Hysteresis.ipynb` is the vehicle.
+2. **3-`k` ladder — tested, does not help (resolved).** Two formulations of `6 → 5 → 4.5` both
+   failed to beat plain 2-`k`: a **nested-reconstruction** ladder is mathematically a *no-op*
+   (morphological reconstruction floods whole components, so an intermediate mask nested between
+   the extremes changes nothing — verified, 0.02% pixel diff vs 2-`k`); a **bounded-geodesic**
+   ladder (limited growth per level) only trades a hair of agar (0.012→0.009) for a hair more
+   fragments (12.0→13.0) and converges to 2-`k` as the reach grows. The residual ~12 fragments/
+   colony are **true empty gaps** (no candidate pixels bridging even at `k=4.5`) — hysteresis can't
+   span those; they are genuinely Dijkstra's job. **Keep the 2-level version.**
+3. **Two PCT passes.** ~2× the branch cost. Still seconds (vs minutes for the full detector), so
+   acceptable for "light" — but confirm on a full batch.
+4. **Grid-Voronoi labelling default.** On for grid plates (known coords); needs a graceful CC-label
+   fallback when no grid seeds are available. Resolve against how callers supply coordinates.
