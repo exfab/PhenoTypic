@@ -13,21 +13,24 @@ separate ground-truth benchmark.
 
 | Cluster | Release disposition | Core or final implementation commit | Independent review disposition |
 |---|---|---|---|
-| A01 GWDT | Implemented core plus opt-in APP2 detector seam | `82fcb1318`, seam finalized by `0f41118f3` | G6 rereview required on semantic baseline |
+| A01 GWDT | Implemented core plus opt-in APP2 detector seam | `82fcb1318`, seam finalized by `0f41118f3` | G6 PASS on `0f41118f3` |
 | A02 tensor voting | Implemented pure numerical core; detector use deferred by the frozen contract | `dcf64b818` | G6 PASS on `b38bff56a` |
 | A03 Jerman | Deferred at G0; authenticated paper unavailable after network loss | none | No implementation sign-off claimed |
 | A04 bowler-hat | Deferred at G0; MATLAB oracle unavailable and source-license/formula fork unresolved | none | No implementation sign-off claimed |
 | A05 Kalman | Deferred at G0; no executable source matches the proposed image-space tracker | none | G0 deferral independently reviewed |
 | A06 cellular automaton | Implemented narrow TrickTrack cellular-automaton core | `e1e5cefd0` | G6 PASS on `b38bff56a` |
 | A07 NFA | Implemented clean-room binomial NFA statistic only | `a121ddced` | G6 PASS on `b38bff56a` |
-| A08 RORPO | Implemented clean-room four-direction 2-D core | `694bde067` | G6 PASS |
+| A08 RORPO | Implemented clean-room four-direction 2-D core | `694bde067` | G6 PASS on `0f41118f3` |
 | A09 rolling Hough | Implemented Clark rolling-Hough core; coherence remains outside scope | `47429c59c` | G6 PASS on `b38bff56a` |
 | A10 FilFinder | Implemented lazy optional `FilFinderDetector` adapter | `a166c79e7` | G6 PASS on `b38bff56a` |
 | A11 persistence | Implemented GUDHI cubical-persistence analysis path only | `baf228cfb` | G6 PASS on `b38bff56a` |
 
-The detailed source authority, immutable revisions, hashes, licenses, executable commands,
-reconciliation, fixtures, drift rows, and mutation matrices live under
-`docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/` for each implemented method.
+The distribution-safe source authority, immutable revisions, hashes, licenses, executable
+commands, reconciliation, fixtures, drift rows, and mutation matrices live under
+`docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/`. A07 and A08 are clean-room
+exceptions: HEAD contains only their sanitized implementation-side artifacts. Complete
+oracle-side evidence is isolated at commits `62406d7c2` for A07 and `dd0c966aa` for A08 and was
+available to their independent reviewers, not their clean-room implementers.
 
 ## Shared integration
 
@@ -51,7 +54,7 @@ dependency source code.
 
 | Gate | Result |
 |---|---|
-| Focused combined suite | 518 passed on `fb4563801`; the only subsequent semantic-baseline delta was the S09 test/evidence correction |
+| Focused combined suite | 518 passed on evidence commit `2bb5c49c9`; no production delta followed the semantic baseline |
 | Fresh G7 reviewer suite | 352 passed, 4 deselected; 291 shared registry/serialization/legacy tests passed |
 | Broader reviewer suite | 860 passed, 3 skipped before requested finalization |
 | Standalone numerical validators | Exact manifest of 8 scripts; all 8 passed |
@@ -79,15 +82,17 @@ only on the allowed numerical stack.
 | A10 FilFinder | 21/21 |
 | A11 persistence | 15/15 |
 
-Each matrix names the killing test. The A01 seam runner also verifies that its documented matrix
-and executable mutant names are identical.
+Each distribution-safe HEAD matrix names the killing test. The complete A07 and A08 oracle-side
+matrices remain isolated at `62406d7c2` and `dd0c966aa`, respectively. The A01 seam runner also
+verifies that its documented matrix and executable mutant names are identical.
 
 ## Review gates and remaining release decisions
 
-- G0-G6 are complete for A02 and A06-A11 within their explicitly narrowed contracts.
-- A01 awaits the returning reviewer's final G6 verdict on `0f41118f3`.
-- The fresh combined reviewer passed the shared code at `fb4563801`; a final evidence-only rereview
-  is required after A01 G6 and this manifest are committed.
+- G0-G6 are complete for A01, A02, and A06-A11 within their explicitly narrowed contracts.
+- A01 G6 passed on `0f41118f3` after the returning reviewer independently verified the exact
+  source-order mutant and every earlier seam finding.
+- The fresh combined reviewer passed G7 code on `2bb5c49c9`; its remaining findings concerned
+  this evidence ledger and the phase-gate wording only.
 - A03-A05 are not implemented and are not represented as completed algorithms. Their algorithm
   plans record the evidence needed to resume them.
 - Public distribution still requires human approval of A02's conflicting upstream license claims
@@ -97,5 +102,4 @@ and executable mutant names are identical.
   Targeted changed-file gates pass; this manifest does not relabel the repository-wide baseline
   as green.
 
-G8 remains blocked until the final A01 G6 rereview, final combined evidence review, and the two
-human licensing decisions are complete.
+G8 public release remains blocked by the two human licensing decisions.

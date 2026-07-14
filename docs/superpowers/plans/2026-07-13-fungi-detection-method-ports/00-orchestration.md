@@ -17,8 +17,8 @@ edit the same registries concurrently.
 |---|---|---|---|---|
 | A01 GWDT | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core only |
 | A02 Tensor voting | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core; wrapper conditional on C3 |
-| A03 Jerman | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core plus new wrapper |
-| A04 Bowler-hat | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core plus new wrapper |
+| A03 Jerman | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | deferred: authenticated paper unavailable |
+| A04 Bowler-hat | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | deferred: executable oracle/license unresolved |
 | A05 Kalman coast | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | deferred: no matching source contract |
 | A06 Cellular automaton | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | TrickTrack core only; fungal adapter deferred |
 | A07 NFA | one dedicated clean-room turn | fresh reviewer, not its oracle | Keystone | statistical core only |
@@ -74,8 +74,8 @@ D0 review corrections C1-C14
       -> S00 reconnect scaffold and shared result dataclasses
           -> A01 GWDT core ------------------------------+
           -> A02 Tensor core/wrapper --------------------|
-          -> A03 Jerman core/wrapper --------------------|
-          -> A04 Bowler-hat core/wrapper ----------------|
+          -> A03 Jerman deferred (paper unavailable)
+          -> A04 Bowler-hat deferred (oracle/license blocked)
           -> A05 Kalman deferred (no matching source)
           -> A06 TrickTrack CA core only ----------------|--> S02 exports/typing/taxonomy
           -> A07 NFA statistical core only ---------------|         |
@@ -127,8 +127,9 @@ change helper signatures, so scaffolding before this gate must contain no algori
 
 ### Gate P1: Tier A numerical cores
 
-Active Tier A cores A01-A04 and A06 are independently green and reviewed. A05 is explicitly
-deferred and is not a P1 prerequisite. Run the included cores' logic scripts in one
+Active Tier A cores A01, A02, and A06 are independently green and reviewed. A03-A05 are
+explicitly deferred at their G0 reference-contract gates and are not P1 prerequisites. Run the
+included cores' logic scripts in one
 process-isolated loop, then the SDK, enhancer, detector, serialization, tune, mypy, and ruff
 suites. A06 contributes only its TrickTrack core and public-export seam, never a detector seam.
 
