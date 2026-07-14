@@ -7,5 +7,6 @@
 *.rst text eol=lf
 *.sha256 text eol=lf
 *.txt text eol=lf
+upstream/LICENSE text eol=lf
 *.pdf -text
 *.whl -text
