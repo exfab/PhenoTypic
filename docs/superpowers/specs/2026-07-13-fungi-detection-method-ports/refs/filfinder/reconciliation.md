@@ -2,6 +2,7 @@
 
 | Source behavior | Pinned source | Wrapper disposition |
 |---|---|---|
+| PhenoTypic stores floating `detect_mat` as `float32` | `src/phenotypic/_core/_image_parts/_image_data_manager.py:24-57` | Quantize at the existing ImageData seam, then copy those exact values to a `float64` FilFinder buffer without normalization. Fixture boundaries use `float32` neighbors. |
 | Constructor accepts image, beam width, mask, pool | `upstream/fil_finder/filfinder2D.py:97-100` | Fresh object per apply; copied image/mask, pixel quantity, owned one-process executor. |
 | Supplied mask must match image and is stored | `upstream/fil_finder/filfinder2D.py:154-161` | Inclusive threshold creates same-shape boolean mask; pass a copy. |
 | Default constructor creates reusable/process pool | `upstream/fil_finder/filfinder2D.py:167-175` | Lifetime-only drift F06: wrapper supplies and shuts down a fresh one-process pool. |

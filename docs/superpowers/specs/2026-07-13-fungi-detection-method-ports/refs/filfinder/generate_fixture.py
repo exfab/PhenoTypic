@@ -218,12 +218,20 @@ def synthetic_cases() -> dict[str, np.ndarray]:
         paint_square(symmetric_tie, 10 - offset, 10 - offset, 0.8)
         paint_square(symmetric_tie, 10 - offset, 10 + offset, 0.8)
 
-    threshold_boundary = np.zeros((7, 9), dtype=np.float64)
-    threshold_boundary[2:5, 2] = np.nextafter(THRESHOLD, 0.0)
+    threshold_boundary = np.zeros((7, 9), dtype=np.float32)
+    threshold_boundary[2:5, 2] = np.nextafter(
+        np.float32(THRESHOLD), np.float32(0.0)
+    )
     threshold_boundary[2:5, 4] = THRESHOLD
-    threshold_boundary[2:5, 6] = np.nextafter(THRESHOLD, 1.0)
+    threshold_boundary[2:5, 6] = np.nextafter(
+        np.float32(THRESHOLD), np.float32(1.0)
+    )
 
-    empty = np.full((7, 9), np.nextafter(THRESHOLD, 0.0), dtype=np.float64)
+    empty = np.full(
+        (7, 9),
+        np.nextafter(np.float32(THRESHOLD), np.float32(0.0)),
+        dtype=np.float32,
+    )
 
     return {
         "straight": straight,
@@ -332,6 +340,9 @@ def analyze_case(name: str, image: np.ndarray) -> dict[str, object]:
     import astropy.units as u
     from fil_finder import FilFinder2D
 
+    # ImageData stores detect_mat as float32. The adapter then copies those
+    # quantized values into a float64 source buffer before calling FilFinder.
+    image = np.asarray(image, dtype=np.float32).astype(np.float64)
     threshold_mask = image >= THRESHOLD
     record: dict[str, object] = {
         "name": name,
@@ -492,7 +503,7 @@ def generate_filfinder_fixture() -> None:
     """Regenerate the deterministic FilFinder 1.8 fixture JSON."""
     verify_authoritative_source()
     fixture = {
-        "schema_version": 2,
+        "schema_version": 3,
         "authority": "fil-finder 1.8 sdist and v1.8 tag commit",
         "parameters": {
             "threshold": THRESHOLD,

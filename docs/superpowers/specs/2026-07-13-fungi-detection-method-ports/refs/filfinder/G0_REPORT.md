@@ -2,9 +2,10 @@
 
 ## Status
 
-**READY FOR INDEPENDENT REVIEW. Production remains blocked until an independent reviewer returns
-an explicit G0 PASS on the exact evidence commit.** No production module, dependency file, export,
-typing alias, registry, GUI discovery, or serialization entry is changed by this gate.
+**CORRECTED SUCCESSOR READY FOR INDEPENDENT REVIEW. The prior `b224fb59...` sign-off is invalid.
+Production remains blocked until an independent reviewer returns an explicit G0 PASS on the exact
+successor evidence commit.** No dependency file, export, typing alias, registry, GUI discovery, or
+serialization entry is changed by this gate.
 
 ## Frozen authorities
 
@@ -45,9 +46,25 @@ typing alias, registry, GUI discovery, or serialization entry is changed by this
 
 ## Golden evidence
 
+### Precision-seam correction
+
+G2 real-runtime tests proved that the schema-v2 oracle was not reachable through PhenoTypic:
+`ImageData` coerces floating `detect_mat` arrays to `float32` at
+`src/phenotypic/_core/_image_parts/_image_data_manager.py:24-57`, while that oracle passed native
+float64 synthetic values directly to FilFinder. The nominal float64 value immediately below 0.5
+rounded to 0.5 at the real image seam, and float32 intensity quantization changed two pixels in
+the Y-spur/disconnected longest paths. This was evidence of a mismatched oracle, not an acceptable
+tolerance.
+
+Schema v3 first applies the exact float32 ImageData coercion, then copies those values into the
+adapter's float64 source buffer. Threshold controls use float32 `nextafter` below/equal/above 0.5.
+All eight cases and every source-visible intermediate were regenerated. A production red harness,
+isolated from this evidence-only successor, then matched all 24 case/product combinations exactly
+against the corrected fixture.
+
 `tests/fixtures/reconnect/filfinder/oracle.json` was generated twice through a real
 `ProcessPoolExecutor(max_workers=1)` and was byte-identical both times at SHA-256
-`c9e7fa5a528dff2bc1bb5388227bcdab85957a506260dacfc456fd13fa8827f3`.
+`fabf4ddd818d51f7f376de85035b83f2c9393a55dbc5d1d91b8946f68e511106`.
 
 The eight cases are straight, Y-spur, disconnected, loop/branch, deterministic noise, symmetric
 tie, threshold boundary, and empty. For each applicable case the fixture captures:
@@ -107,13 +124,15 @@ skipped executor shutdown, and execution of a downstream stage for an earlier ou
 ## Local gate results before review
 
 - Pinned source oracle fixture generation: PASS, twice with identical fixture hash.
+- Float32 ImageData seam and float32-nextafter boundary: PASS.
+- Corrected fixture versus all 24 real-runtime case/product outputs: PASS exact.
 - Process-local warning transport, narrow-filter control, and keyed worker stderr: PASS.
 - Source-independent adapter logic: PASS.
 - Evidence/source aggregate verification: PASS.
 - Ruff and byte compilation for all A10 evidence scripts: PASS.
 - Fresh wheel/sdist reference exclusion: PASS.
-- Fresh `core.autocrlf=true` checkout, raw fixture hash, and complete checksum gate: PASS.
-- Independent G0 review: PENDING.
+- Fresh `core.autocrlf=true` checkout, raw fixture hash, checksum gate, and logic suite: PASS.
+- Independent corrected-successor G0 review: PENDING.
 
 Numerical/source fidelity here is an adapter claim only. It is not evidence that FilFinder improves
 fungal detection quality on PhenoTypic images; that requires a separate ground-truth benchmark.

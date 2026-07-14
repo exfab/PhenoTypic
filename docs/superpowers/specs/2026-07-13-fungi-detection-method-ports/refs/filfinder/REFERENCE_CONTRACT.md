@@ -36,9 +36,14 @@ compensate for the upstream cap.
 
 ## Input, threshold, and units
 
-Read a copy of `image.detect_mat[:]`; do not modify RGB, gray, or `detect_mat`. The threshold mask
-is exactly `detect_mat >= threshold`, so equality is foreground. NaN pixels compare false. Copy the
-mask before giving it to FilFinder because its constructor mutates NaNs in a supplied mask at
+Read a copy of `image.detect_mat[:]`; do not modify RGB, gray, or `detect_mat`. `ImageData` coerces
+every floating `detect_mat` assignment to `float32` at
+`src/phenotypic/_core/_image_parts/_image_data_manager.py:24-57`. The adapter copies those exact
+single-precision values into a `float64` source buffer without normalization before thresholding
+or calling FilFinder. The threshold mask is exactly `source_image >= threshold`, so equality is
+foreground and NaN pixels compare false. The fixture's below/equal/above controls use adjacent
+`float32` values around 0.5, not unrepresentable `float64` neighbors. Copy the mask before giving it
+to FilFinder because its constructor mutates NaNs in a supplied mask at
 `upstream/fil_finder/filfinder2D.py:154-161`.
 
 Construct a fresh `FilFinder2D` for each application with the copied float image, copied boolean
@@ -106,6 +111,11 @@ loop/branch, deterministic noise, symmetric tie, threshold-boundary, and empty c
 input, threshold mask, FilFinder mask, medial-axis distance, pre- and post-prune skeleton,
 longest-path raster, labels, filament/branch lengths, warnings, parameters, seed, platform, and the
 complete dependency vector.
+
+Every recorded source image first passes through the repository's `float32` `ImageData` seam, then
+is copied to the adapter's `float64` FilFinder buffer. This is load-bearing: the superseded
+float64-native fixture changed two longest-path tie pixels and rounded its nominal below-threshold
+control to equality when routed through a real `Image`.
 
 Warning evidence is process-local. The fixture records parent-process warnings separately from
 warnings transported out of each real `Filament2D.skeleton_analysis` worker task. Every applicable

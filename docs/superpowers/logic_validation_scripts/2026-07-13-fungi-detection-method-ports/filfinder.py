@@ -23,8 +23,9 @@ FIXTURE_PATH = REPOSITORY_ROOT / "tests/fixtures/reconnect/filfinder/oracle.json
 
 
 def inclusive_threshold(image: np.ndarray, threshold: float) -> np.ndarray:
-    """Return the frozen inclusive threshold mask."""
-    return np.asarray(image, dtype=np.float64) >= threshold
+    """Return the frozen threshold after ImageData's float32 coercion seam."""
+    source = np.asarray(image, dtype=np.float32).astype(np.float64)
+    return source >= threshold
 
 
 def label_eight_connected(mask: np.ndarray) -> np.ndarray:
@@ -63,16 +64,21 @@ def label_eight_connected(mask: np.ndarray) -> np.ndarray:
 
 def validate_inclusive_threshold_and_monotonicity() -> None:
     """Pin equality and prove that increasing the threshold cannot add pixels."""
-    center = 0.5
+    center = np.float32(0.5)
     values = np.array(
-        [np.nextafter(center, 0.0), center, np.nextafter(center, 1.0)]
+        [
+            np.nextafter(center, np.float32(0.0)),
+            center,
+            np.nextafter(center, np.float32(1.0)),
+        ],
+        dtype=np.float32,
     )
-    actual = inclusive_threshold(values, center)
+    actual = inclusive_threshold(values, float(center))
     expected = np.array([False, True, True])
     if not np.array_equal(actual, expected):
         raise AssertionError(f"inclusive threshold mismatch: {actual} != {expected}")
 
-    image = np.linspace(0.0, 1.0, 1001, dtype=np.float64).reshape(7, 143)
+    image = np.linspace(0.0, 1.0, 1001, dtype=np.float32).reshape(7, 143)
     previous = inclusive_threshold(image, 0.0)
     for threshold in np.linspace(0.001, 1.0, 1000):
         current = inclusive_threshold(image, float(threshold))

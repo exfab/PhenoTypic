@@ -13,10 +13,15 @@ git diff --exit-code -- tests/fixtures/reconnect/filfinder/oracle.json
 shasum -a 256 tests/fixtures/reconnect/filfinder/oracle.json
 ```
 
-The expected raw fixture SHA-256 is
-`c9e7fa5a528dff2bc1bb5388227bcdab85957a506260dacfc456fd13fa8827f3`. Its directory `.gitattributes`
+The expected raw schema-v3 fixture SHA-256 is
+`fabf4ddd818d51f7f376de85035b83f2c9393a55dbc5d1d91b8946f68e511106`. Its directory `.gitattributes`
 forces LF, and the generator itself rejects missing child-process warnings, an overbroad supplied-
 mask warning filter, unexpected worker stderr, or an empty-input worker launch.
+
+Schema v3 is adapter-reachable evidence: every synthetic source image is coerced through
+`float32`, then copied into the same `float64` buffer the wrapper passes to FilFinder. The threshold
+boundary uses adjacent float32 values around 0.5. Native float64 synthetic values are not a valid
+wrapper oracle because `ImageData` cannot retain them.
 
 Run the independent adapter logic suite:
 
