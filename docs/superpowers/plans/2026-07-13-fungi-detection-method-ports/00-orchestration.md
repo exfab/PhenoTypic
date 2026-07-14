@@ -19,8 +19,8 @@ edit the same registries concurrently.
 | A02 Tensor voting | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core; wrapper conditional on C3 |
 | A03 Jerman | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core plus new wrapper |
 | A04 Bowler-hat | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core plus new wrapper |
-| A05 Kalman coast | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core only |
-| A06 Cellular automaton | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core only |
+| A05 Kalman coast | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | deferred: no matching source contract |
+| A06 Cellular automaton | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | TrickTrack core only; fungal adapter deferred |
 | A07 NFA | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | statistical core plus detector adapter |
 | A08 RORPO | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core plus new wrapper |
 | A09 Rolling Hough | one dedicated algorithm turn | fresh reviewer, not its author | Keystone | core plus new wrapper |

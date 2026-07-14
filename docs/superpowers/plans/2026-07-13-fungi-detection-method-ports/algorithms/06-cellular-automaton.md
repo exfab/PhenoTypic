@@ -2,62 +2,52 @@
 
 **Implementer:** one dedicated 5.6-sol/high-effort algorithm turn
 **Reviewer:** independent 5.6-sol/high-effort turn
-**Shape:** Keystone graph core followed by detector Seam
+**Shape:** Keystone TrickTrack CA core only; fungal detector seam deferred
 **Blocked by:** C7 and S00
 
 ## Corrected contract
 
-The current `(points, theta, tol)` helper lacks the directed graph that makes CA state meaningful.
-HEP trackers get direction from detector layers; a fungal ridge field does not. The selected
-layer definition is therefore a PhenoTypic capability adaptation and must be explicit. Standard
-CA tracking increments states synchronously on a directed friendship graph and then extracts
-descending-state chains ([Track Finding, 2021](https://link.springer.com/chapter/10.1007/978-3-030-65771-0_5)).
+The selected executable authority is HSF TrickTrack v1.0.9 at commit
+`b164fad1361505ff8dbf328107b645753ce331ac`. It defines CA evolution and exact-length
+fork extraction over a caller-supplied, ordered friendship graph. It does not define fungal
+point/layer construction, row/column or axial-angle semantics, component ownership,
+rasterization, or colony-labelled output. Those seams are deferred rather than represented as
+source-faithful behavior.
 
-Prefer splitting source-faithful evolution from fungal graph construction:
+The source-faithful helper contract is:
 
 ```python
 @dataclass(frozen=True)
-class CATrackResult:
-    segments: np.ndarray                  # int64, (M, 2), point-index pairs
-    compatibility: np.ndarray             # int64, (K, 2), segment-index pairs
-    segment_seed_component_ids: np.ndarray # int64, (M,), -1 means unowned
-    states: np.ndarray                    # int64, (M,)
-    predecessor_offsets: np.ndarray       # int64, (M + 1,)
-    predecessors: np.ndarray              # int64, (P,)
-    track_offsets: np.ndarray             # int64, (R + 1,)
-    track_segment_indices: np.ndarray     # int64, (Q,)
-    track_seed_component_ids: np.ndarray  # int64, (R,)
-    convergence_iterations: int
+class TrickTrackCAResult:
+    states: np.ndarray              # uint8, (M,)
+    retained_root_indices: np.ndarray  # int64, supplied root order
+    path_offsets: np.ndarray        # int64, (R + 1,)
+    path_cell_indices: np.ndarray   # int64, exact-length DFS paths
+    ordinary_rounds: int
 
-def build_ca_segment_graph(
-    points: np.ndarray,
-    theta: np.ndarray,
-    layers: np.ndarray,
-    component_ids: np.ndarray,
-    endpoint_roles: np.ndarray,
+def tricktrack_ca(
+    outer_neighbor_offsets: np.ndarray,
+    outer_neighbor_indices: np.ndarray,
+    root_cell_indices: np.ndarray,
     *,
-    angle_tol: float,
-    max_link_distance: float,
-    max_layer_skip: int = 1,
-) -> tuple[np.ndarray, np.ndarray]: ...  # segments (M,2), compatibility pairs (K,2)
-
-def evolve_ca(
-    edges: np.ndarray,          # (M,2) directed point-index segments
-    compatibility: np.ndarray,  # (K,2) directed compatible segment-index pairs
-    segment_seed_component_ids: np.ndarray,  # (M,), -1 means unowned
-) -> CATrackResult: ...
+    min_hits_per_track: int,
+) -> TrickTrackCAResult: ...
 ```
 
-Offsets encode ragged predecessors and tracks without object arrays. Segments are ordered by
-`(source_point, destination_point)`, compatibility pairs lexicographically, and tracks by
-`(seed_component_id, descending segment-index sequence)`. All arrays are C-contiguous and read-only.
-An empty graph returns offsets `[0]`, zero iterations, and correctly shaped zero-length arrays.
-Reject nonfinite point/orientation data, invalid shapes/dtypes/indices, non-axial angles, negative
-or unknown component IDs other than the `-1` sentinel, nonpositive distances, invalid tolerances,
-unsorted layers, duplicate segments/pairs, cycles, and seed ownership conflicts. Freeze `(row,col)` coordinates, axial tangent convention, radians,
-layer DAG, component/self-link rules, endpoint-role vocabulary, inclusive boundaries, snapshot
-updates, cycle rejection, and deterministic ordering. CA nodes are directed point-to-point segments;
-compatibility pairs identify predecessor/successor segment cells.
+CSR cell and neighbor order, and supplied root order, are load-bearing. The helper never sorts or
+canonicalizes. States and same-state flags are `uint8` and start at zero. Validate
+`3 <= min_hits_per_track <= 257`, valid int64 CSR indices, and optional DAG safety as explicit
+Python-boundary drift. Run exactly `min_hits_per_track - 3` ordinary globally synchronous rounds.
+Each cell scans stored outer neighbors in supplied order, stops at the first equal-state neighbor,
+and is incremented in the separate update pass when flagged. Then run one special final pass over
+roots in supplied order: compute and apply each root update immediately, and retain roots whose
+state is at least `min_hits_per_track - 2`. For every retained root, depth-first traverse stored
+outer-neighbor vectors in insertion order and emit every cell-index path of exactly
+`min_hits_per_track - 1` cells. Extraction does not test descending states, choose a best fork,
+sort paths, or continue beyond exact length.
+
+The executable source is authoritative where its use of stored outer neighbors differs from the
+paper's inner-neighbor wording.
 
 ## Owned files and tasks
 
@@ -70,45 +60,39 @@ refs/cellular_automaton corpus and reconciliation
 ```
 
 1. Pin the selected CATS/TrickTrack/related implementation, license, update rule, and extraction.
-2. Define fungal points, layer construction, link distance/skip, orientation compatibility, cycle
-   handling, fork enumeration, and result ordering.
-3. Capture straight, equal/unequal fork, skipped layer, distractor, boundary, permutation, and
-   isolated cases with every graph/result field.
-4. Write independent synchronous and topological-DP oracles, then red tests.
-5. Implement graph builder and Numba-compatible snapshot evolution.
-6. Integrator passes detector orientation/components/roles into reconnection, rejects ambiguous
-   multi-colony tracks, rasterizes accepted links, samples the shared raw cost surface to construct
-   complete `FragmentPath` cost profiles and `FragmentAssignment` costs, and reuses quality
-   filtering and path painting at
-   `src/phenotypic/detect/_filamentous_fungi_detector.py:830-898`.
-7. Specify ambiguous multi-colony rejection and deterministic overlap-tile conflict handling.
-8. Preserve byte-identical Dijkstra behavior by default.
-9. Reviewer reruns source, oracles, mutants, and detector integration.
+2. Instrument the archived executable source to capture ordered neighbors, every ordinary-round
+   flag and state, immediate root updates, retained roots, and all DFS paths.
+3. Capture straight, equal/unequal fork, root-order, neighbor-order, exact-length truncation,
+   isolated, lower/upper `min_hits_per_track`, and invalid CSR cases with every result field.
+4. Write an independent two-buffer ordinary-round oracle plus a separate immediate-root-pass DFS
+   oracle, then red tests.
+5. Implement the source-faithful core without graph construction or detector adaptation.
+6. Reviewer reruns the source instrumentation, oracle, fixtures, mutants, and focused gates.
 
 ## Logic-validation script
 
-Compare snapshot CA iteration against independent longest-path dynamic programming on the same
-DAG. Check exact chain depth and convergence iterations, equal/unequal forks, isolated cells,
-layer-skip gate, exact angle/distance boundaries, input-permutation invariance, sequential-update
-counterexample, cycle rejection, canonical output, and every fixture key. State/track assertions are
-exact; derive only the graph-construction cosine/distance ulp bound.
+Re-derive the fixed ordinary-round schedule with separate flag/state buffers, then independently
+apply the immediate root pass and insertion-order DFS. Check every fixture field exactly, including
+the counterexample that distinguishes globally synchronous ordinary rounds from immediate root
+updates. No convergence or longest-path claim is made.
 
 ## Required core mutants
 
-- in-place rather than synchronous update;
-- wrong predecessor-state rule or min instead of max;
-- strict/inclusive angle or distance boundary change;
-- degrees/radians or \(\pi\)-fold error;
-- row/column swap or distance gate removal;
-- layer skip/backward-link error or early convergence;
-- keep one predecessor, drop endpoint, or nondeterministic set order;
+- in-place rather than synchronous ordinary update;
+- scan inner instead of stored outer neighbors;
+- do not stop at the first equal-state neighbor;
+- run to convergence or use the wrong fixed round count;
+- make the final root pass globally synchronous;
+- change the inclusive retained-root threshold;
+- sort neighbors, roots, or emitted paths;
+- enforce descending states during DFS, keep one fork, or continue beyond exact length;
+- promote states to int64 and thereby hide the source uint8 bound;
 
-## Required post-S01 seam mutants
+## Deferred seam
 
-- fail to interpolate long raster links or swap row/column rasterization;
-- assign an ambiguous track to the first colony;
-- omit raw-cost sampling or miscompute `FragmentPath` summaries;
-- change tile conflict ownership or disabled Dijkstra behavior.
+Fungal graph construction, angle and distance compatibility, colony ownership, rasterization,
+cost sampling, and detector integration require a separately sourced or explicitly novel design.
+They are not release gates for this core-only A06 port.
 
 ## Focused gate
 
@@ -119,11 +103,5 @@ uv run mypy src/phenotypic/sdk_/reconnect/_cellular_automaton.py
 uv run ruff check src/phenotypic/sdk_/reconnect/_cellular_automaton.py tests/unit/sdk_/reconnect/test_cellular_automaton.py
 ```
 
-After S01/S02, the algorithm reviewer returns for:
-
-```bash
-uv run pytest tests/unit/detect/test_filamentous_fungi_detector.py -q
-uv run pytest tests/unit/tune/test_detect_annotations.py tests/unit/tune/test_annotation_coverage.py tests/unit/sdk_/test_typing_aliases.py -q
-uv run mypy src/phenotypic/detect/_filamentous_fungi_detector.py
-uv run ruff check src/phenotypic/detect/_filamentous_fungi_detector.py
-```
+There is no A06 detector seam in this release. Any later seam invalidates this core-only scope and
+requires a new contract and returning reviewer.

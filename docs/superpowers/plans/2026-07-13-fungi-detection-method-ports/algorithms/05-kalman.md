@@ -2,10 +2,24 @@
 
 **Implementer:** one dedicated 5.6-sol/high-effort algorithm turn
 **Reviewer:** independent 5.6-sol/high-effort turn
-**Shape:** Keystone core followed by detector Seam
-**Blocked by:** C6 and S00
+**Shape:** Deferred after independent G0 source-fidelity review
+**Blocked by:** no executable source matches the proposed image-space contract
 
-## Contract decision
+## G0 decision
+
+A05 is deferred from this release. The strongest licensed executable candidate, mkFit at commit
+`ba37025247ff72c8edd2baea02b5b4ac335bdede`, is a detector-native six-state physics tracker with
+geometry-dependent propagation, hit gates, scoring, fake-hit codes, hole limits, and candidate
+pruning. It cannot serve as an oracle for the proposed float64
+`[row, col, v_row, v_col]` image tracker, fixed matrices, fixed inclusive gate, miss-only scoring,
+or deterministic hit-index tie order. No separable mkFit subroutine supplies that contract.
+
+An explicitly novel `kalman_nearest_coast` algorithm may be designed later, but it would use
+analytic validation rather than an original-logic source-fidelity claim and therefore requires a
+new approved design. The rejected proposal below is retained only as an audit record; it is not an
+implementation contract or release gate.
+
+## Rejected contract proposal
 
 Choose a bounded combinatorial tracker or replace this plan with a separately named
 `kalman_nearest_coast` plan. A true combinatorial
