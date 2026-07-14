@@ -61,9 +61,9 @@ pyproject.toml
 uv.lock
 ```
 
-This matters because GWDT, Kalman, and CA all converge on
+This matters because GWDT and any separately approved detector adapters converge on
 `FilamentousFungiDetector._process_tile` (`src/phenotypic/detect/_filamentous_fungi_detector.py:782-880`),
-while every enhancer converges on public exports and the taxonomy roster
+while enhancers and exported numerical cores converge on public exports and the taxonomy roster
 (`tests/unit/abc_/test_enhancer_taxonomy.py:28-65`).
 
 ## Dependency DAG
@@ -76,8 +76,8 @@ D0 review corrections C1-C14
           -> A02 Tensor core/wrapper --------------------|
           -> A03 Jerman core/wrapper --------------------|
           -> A04 Bowler-hat core/wrapper ----------------|
-          -> A05 Kalman core ----------------------------|
-          -> A06 CA core --------------------------------|--> S02 exports/typing/taxonomy
+          -> A05 Kalman deferred (no matching source)
+          -> A06 TrickTrack CA core only ----------------|--> S02 exports/typing/taxonomy
           -> A07 NFA core/wrapper ------------------------|         |
           -> A08 RORPO core/wrapper ----------------------|         +--> S03 final gate
           -> A09 RHT core/wrapper ------------------------|         |
@@ -85,8 +85,6 @@ D0 review corrections C1-C14
           -> A11 Persistence analysis/conditional wrapper +
 
 A01 -> S01
-A05 -> S01
-A06 -> S01
 A07 -> S01
 A09 -> A10 only for optional oracle comparison, never runtime import
 A10 -> S02 topology extra
@@ -130,8 +128,10 @@ change helper signatures, so scaffolding before this gate must contain no algori
 
 ### Gate P1: Tier A numerical cores
 
-A01-A06 are independently green and reviewed. Run their logic scripts in one process-isolated
-loop, then the SDK, enhancer, detector, serialization, tune, mypy, and ruff suites.
+Active Tier A cores A01-A04 and A06 are independently green and reviewed. A05 is explicitly
+deferred and is not a P1 prerequisite. Run the included cores' logic scripts in one
+process-isolated loop, then the SDK, enhancer, detector, serialization, tune, mypy, and ruff
+suites. A06 contributes only its TrickTrack core and public-export seam, never a detector seam.
 
 ### Gate P2: dependency-free Tier B
 
