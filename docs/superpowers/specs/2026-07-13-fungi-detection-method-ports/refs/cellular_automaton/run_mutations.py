@@ -112,7 +112,8 @@ MUTATIONS = (
     Mutation(
         "sort-root-pass",
         "for position, raw_root_index in enumerate(root_cell_indices):",
-        "for position, raw_root_index in enumerate(np.sort(root_cell_indices)):",
+        "root_cell_indices = np.sort(root_cell_indices)\n"
+        "    for position, raw_root_index in enumerate(root_cell_indices):",
         "test_root_pass_is_immediate_and_preserves_supplied_order",
     ),
     Mutation(
