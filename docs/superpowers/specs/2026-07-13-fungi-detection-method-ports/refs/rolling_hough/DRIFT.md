@@ -1,7 +1,7 @@
 # A09 candidate-core drift register
 
-These rows apply only to the proposed `clark_rolling_hough` core in `SOURCE_CONTRACT.md`. No
-production implementation exists yet.
+These rows apply to the private `clark_rolling_hough` implementation authorized by
+`SOURCE_CONTRACT.md`. Shared detector integration, wrappers, and public exports do not exist yet.
 
 | ID | Candidate deviation | Reason and consequence | Evidence required |
 |---|---|---|---|

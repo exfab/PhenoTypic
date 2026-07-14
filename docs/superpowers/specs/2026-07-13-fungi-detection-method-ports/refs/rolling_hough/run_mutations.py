@@ -245,8 +245,8 @@ MUTATIONS: tuple[Mutation, ...] = (
     (
         "RH-M14",
         "test_raw_response_is_not_globally_normalized",
-        "response = np.sum(threshold_residual, axis=2, dtype=np.float64)",
-        "response = np.sum(threshold_residual, axis=2, dtype=np.float64)\n    response /= np.max(response)",
+        "response: Float64Array = np.sum(\n        threshold_residual, axis=2, dtype=np.float64\n    )",
+        "response: Float64Array = np.sum(\n        threshold_residual, axis=2, dtype=np.float64\n    )\n    response /= np.max(response)",
         _assert_all_outputs,
     ),
     (

@@ -269,7 +269,9 @@ def clark_rolling_hough(
         )
 
     valid = np.any(threshold_residual > 0.0, axis=2)
-    response = np.sum(threshold_residual, axis=2, dtype=np.float64)
+    response: Float64Array = np.sum(
+        threshold_residual, axis=2, dtype=np.float64
+    )
     orientation: Float64Array = np.full(values.shape, np.nan, dtype=np.float64)
     for row, column in np.argwhere(valid):
         orientation[row, column] = _axial_orientation(

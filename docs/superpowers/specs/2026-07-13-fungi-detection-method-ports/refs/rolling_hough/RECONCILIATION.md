@@ -66,7 +66,7 @@ collapse at `src/phenotypic/sdk_/reconnect/_rolling_hough.py:193-198` correspond
 
 Finally, theta construction, angle-dependent support, per-center raw counts, dense residuals, raw
 response, Boolean validity, and NaN invalid orientation at
-`src/phenotypic/sdk_/reconnect/_rolling_hough.py:231-288` correspond to
+`src/phenotypic/sdk_/reconnect/_rolling_hough.py:231-290` correspond to
 `source_clark/rht/rht.py:259-264,780-846`. Dense cubes, fixed dtypes, safe empty output, raw response,
 NaN orientation, and Boolean validity are the already-approved D03-D07 and D09 adapter rows. No
 additional G2 deviation was introduced.
