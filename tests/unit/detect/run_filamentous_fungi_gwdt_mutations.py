@@ -13,6 +13,10 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE_RELATIVE = Path("src/phenotypic/detect/_filamentous_fungi_detector.py")
 TEST = "tests/unit/detect/test_filamentous_fungi_gwdt_seam.py"
+MATRIX = Path(
+    "docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/"
+    "refs/gwdt/MUTATION_MATRIX.md"
+)
 
 
 Mutation = tuple[str, str, str, str]
@@ -66,6 +70,49 @@ MUTATIONS: tuple[Mutation, ...] = (
         "if False:",
         "test_tile_dispatch_keeps_app2_separate_from_legacy_dijkstra",
     ),
+    (
+        "S07 add source-style tree threshold gate",
+        """or visited[neighbor_row, neighbor_column]
+            )""",
+        """or visited[neighbor_row, neighbor_column]
+                or costs[neighbor_row, neighbor_column] >= 1000.0
+            )""",
+        "test_app2_tree_allows_finite_gap_pixels_without_a_threshold_gate",
+    ),
+    (
+        "S08 reverse equal-cost seed priority",
+        "for row, column in np.argwhere(boundary_mask):",
+        "for row, column in np.argwhere(boundary_mask)[::-1]:",
+        "test_equal_cost_ownership_uses_first_row_major_boundary_seed",
+    ),
+    (
+        "S09 reverse detector neighbor priority",
+        "for row_offset, column_offset, factor in _APP2_NEIGHBORS:",
+        "for row_offset, column_offset, factor in reversed(_APP2_NEIGHBORS):",
+        "test_equal_cost_predecessor_uses_fixed_detector_neighbor_order",
+    ),
+    (
+        "S10 slice APP2 map from the global origin",
+        """else app2_gi_cost[row_start:row_end, col_start:col_end]
+            )""",
+        """else app2_gi_cost[
+                        : row_end - row_start, : col_end - col_start
+                    ]
+            )""",
+        "test_tiled_app2_uses_overlap_as_halo_and_exact_global_map_slices",
+    ),
+    (
+        "S11 remove tile overlap halo",
+        "step = tile_size - overlap",
+        "step = tile_size",
+        "test_tiled_app2_uses_overlap_as_halo_and_exact_global_map_slices",
+    ),
+    (
+        "S12 let later tiles overwrite overlap ownership",
+        "new_pixels = (tile_labels > 0) & (out_slice == 0)",
+        "new_pixels = tile_labels > 0",
+        "test_tiled_app2_uses_overlap_as_halo_and_exact_global_map_slices",
+    ),
 )
 
 
@@ -79,8 +126,23 @@ def replace_once(source: str, old: str, new: str) -> str:
     return source.replace(old, new, 1)
 
 
+def verify_matrix_matches_runner() -> None:
+    """Require one exact documentation row per executable seam mutant."""
+    matrix = (ROOT / MATRIX).read_text(encoding="utf-8")
+    seam_rows = [line for line in matrix.splitlines() if line.startswith("| S")]
+    if len(seam_rows) != len(MUTATIONS):
+        raise AssertionError(
+            f"matrix has {len(seam_rows)} seam rows for {len(MUTATIONS)} mutants"
+        )
+    for name, _old, _new, test_name in MUTATIONS:
+        expected = f"| {name} | `{test_name}` | KILLED |"
+        if expected not in seam_rows:
+            raise AssertionError(f"mutation matrix row is missing or stale: {expected}")
+
+
 def verify_mutations_are_killed() -> None:
     """Run each mutant in an isolated source-tree copy."""
+    verify_matrix_matches_runner()
     original = (ROOT / SOURCE_RELATIVE).read_text(encoding="utf-8")
     for index, (name, old, new, test_name) in enumerate(MUTATIONS):
         with tempfile.TemporaryDirectory(

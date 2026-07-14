@@ -21,6 +21,11 @@ destination GI values and multiplies by hard-coded factors `1`, `1.414214`, or
 `1.732051`
 (`vaa3d/app2/fastmarching_tree.h:278-287,353-371`). Detector integration must therefore
 use endpoint averaging; destination-only cost-surface composition is not APP2 fidelity.
+The detector intentionally does not port the adjacent tree threshold gate: Vaa3D either
+rejects every below-threshold destination or permits only isolated below-threshold breaks,
+depending on `is_break_accept` (`fastmarching_tree.h:357-367`). PhenoTypic instead treats
+every finite GI pixel as traversable and leaves gap rejection to its downstream path-quality
+cascade. This explicit detector policy is drift D13.
 
 ## Line-by-line mapping
 
@@ -46,6 +51,9 @@ use endpoint averaging; destination-only cost-surface composition is not APP2 fi
 | GI index truncates normalized value times 255 | `fastmarching_macro.h:8` | `_gwdt.py:233-234` | Exact NumPy integer truncation for nonnegative normalized input. |
 | GI table contains 256 fixed values | `fastmarching_macro.h:10-41` | `_gwdt.py:32-62` | Literal transcription; fixture equality is exact. |
 | Tree edge averages endpoint GI and multiplies a hard-coded factor | `fastmarching_tree.h:353-371` | `_filamentous_fungi_detector.py:59-68,71-163` | The opt-in S01 kernel preserves diagonal `1.414214`, endpoint averaging, and strict-less relaxation. It is separate from the destination-only legacy kernel. Multi-colony seeds and returned ownership maps are D11. |
+| Tree traversal applies `bkg_thresh` according to `is_break_accept` | `fastmarching_tree.h:357-367` | `_filamentous_fungi_detector.py:_run_app2_gwdt_dijkstra` | The detector applies no tree-stage threshold gate; every finite GI pixel is traversable. Gap acceptance remains in the downstream quality cascade. Drift D13. |
+| Tree has one root and scans 2-D neighbors northwest through southeast in nested row/column order | `fastmarching_tree.h:237-245,289-310,341-355` | `_filamentous_fungi_detector.py:_APP2_NEIGHBORS,_run_app2_gwdt_dijkstra` | The detector's multi-colony adaptation inserts boundary seeds row-major and scans clockwise from east. Strict-less updates retain the first owner and predecessor on exact ties. Drift D14 records both source-unclaimed seed ownership and the deliberate neighbor-order difference. |
+| Tree runs on one image domain | `fastmarching_tree.h:237-245` | `_filamentous_fungi_detector.py:_reconnect_fragments_tiled` | Overlap is the processing halo, edge tiles clip, the full-image GI map uses identical slice bounds, and first row-major tile wins overlap writes. Drift D15. |
 
 ## Fixture and independent oracle
 

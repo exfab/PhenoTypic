@@ -27,9 +27,15 @@ by the focused tests named below.
 
 | Mutant | Killing test | Result |
 |---|---|---|
-| Use cumulative GWDT directly as a local Dijkstra term | `test_app2_axis_edges_use_endpoint_average_not_destination_cost` | KILLED |
-| Use destination-only GI instead of endpoint average | `test_app2_axis_edges_use_endpoint_average_not_destination_cost` | KILLED |
-| Use exact sqrt(2) instead of APP2 tree factor `1.414214` | `test_app2_diagonal_edges_use_pinned_source_factor` | KILLED |
-| Compute GWDT per tile instead of on the full image | `test_app2_cost_is_computed_once_on_full_image_before_tiling` | KILLED |
-| Feed GI into the legacy destination-only kernel | `test_tile_dispatch_keeps_app2_separate_from_legacy_dijkstra` | KILLED |
-| Change disabled legacy detector output | `test_explicit_legacy_strategy_is_byte_identical_to_default` | KILLED |
+| S01 raw cumulative GWDT | `test_full_image_adapter_applies_gi_lookup_not_raw_distance` | KILLED |
+| S02 destination-only GI | `test_app2_axis_edges_use_endpoint_average_not_destination_cost` | KILLED |
+| S03 exact square-root diagonal | `test_app2_diagonal_edges_use_pinned_source_factor` | KILLED |
+| S04 skip full-image transform | `test_app2_cost_is_computed_once_on_full_image_before_tiling` | KILLED |
+| S05 feed GI to legacy kernel | `test_tile_dispatch_keeps_app2_separate_from_legacy_dijkstra` | KILLED |
+| S06 change disabled strategy | `test_tile_dispatch_keeps_app2_separate_from_legacy_dijkstra` | KILLED |
+| S07 add source-style tree threshold gate | `test_app2_tree_allows_finite_gap_pixels_without_a_threshold_gate` | KILLED |
+| S08 reverse equal-cost seed priority | `test_equal_cost_ownership_uses_first_row_major_boundary_seed` | KILLED |
+| S09 reverse detector neighbor priority | `test_equal_cost_predecessor_uses_fixed_detector_neighbor_order` | KILLED |
+| S10 slice APP2 map from the global origin | `test_tiled_app2_uses_overlap_as_halo_and_exact_global_map_slices` | KILLED |
+| S11 remove tile overlap halo | `test_tiled_app2_uses_overlap_as_halo_and_exact_global_map_slices` | KILLED |
+| S12 let later tiles overwrite overlap ownership | `test_tiled_app2_uses_overlap_as_halo_and_exact_global_map_slices` | KILLED |

@@ -41,7 +41,15 @@ only candidate-path propagation with the APP2 endpoint-average GI recurrence. Th
 composite surface remains the prescreening and path-quality evidence, but its destination-only
 edge cost, EDT gap penalty, and radial-retreat multiplier are not added to APP2 edges. The default
 `reconnect_strategy="dijkstra"` retains the prior path exactly. These detector-specific decisions
-are recorded separately from the source-faithful helper in drift rows D10-D12.
+are recorded separately from the source-faithful helper in drift rows D10-D15. Unlike Vaa3D's
+`fastmarching_tree.h:357-367` gate, the detector tree traverses every finite GI pixel and leaves
+gap rejection to its downstream path-quality cascade. Equal-cost multi-colony ownership is first
+row-major boundary seed, then the detector's clockwise-from-east neighbor order. That neighbor
+order is an explicit drift from Vaa3D's nested northwest-through-southeast scan. Exact ties retain
+both the first owner and the first path-visible predecessor. Tile overlap is the complete
+processing halo;
+edge tiles clip, the full-image GI map is sliced at the same bounds, and the first row-major tile
+owns overlap pixels.
 
 Require a real-valued, 2-D, finite, nonnegative image and a same-shaped boolean background mask.
 Reject negative values, NaNs, infinities, empty arrays, shape mismatches, and non-boolean masks.
@@ -117,6 +125,10 @@ the transformed cost.
 - cumulative GWDT used directly as a local Dijkstra term;
 - per-tile instead of full-image transform;
 - disabled mode changes legacy output.
+- reintroduce a tree-stage threshold/gap gate;
+- reverse equal-cost multi-colony seed priority;
+- reverse detector neighbor priority on an equal-cost predecessor case;
+- slice the full-image GI map from the wrong origin, remove overlap, or let later tiles overwrite;
 - accept negative/nonfinite intensity or change source all/no-background behavior;
 - change the documented one-slice 3-D-to-2-D neighbor reduction.
 

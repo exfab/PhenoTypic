@@ -77,6 +77,11 @@ def _run_app2_gwdt_dijkstra(
     This is deliberately separate from the existing destination-only Dijkstra
     kernel. APP2 charges an axial edge ``(GI(p) + GI(q)) / 2`` and a diagonal
     edge the same average multiplied by its source constant ``1.414214``.
+    Unlike APP2's image-threshold gate, this detector seam deliberately permits
+    traversal through every finite GI pixel; downstream path-quality filters own
+    the gap-acceptance decision. Equal-cost multi-colony ties retain the first
+    boundary seed in row-major order, then the first path reached through the
+    fixed ``_APP2_NEIGHBORS`` order.
 
     Args:
         gi_cost: Finite, nonnegative, two-dimensional APP2 lookup map.
@@ -836,6 +841,11 @@ class FilamentousFungiDetector(GridObjectDetector):
             app2_gi_cost: np.ndarray | None = None,
     ) -> np.ndarray:
         """Generate tiles, process each, merge results into output mask.
+
+        The configured overlap is the processing halo: there is no separate
+        core/halo crop. Tiles run in row-major order, edge tiles clip to the
+        image, every auxiliary array including the nonlocal APP2 map uses the
+        same bounds, and the first processed tile owns an overlap pixel.
 
         Args:
             colony_labels: Labeled colony assignment from watershed.
