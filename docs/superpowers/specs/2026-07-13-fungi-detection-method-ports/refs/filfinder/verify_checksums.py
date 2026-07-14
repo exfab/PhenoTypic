@@ -13,18 +13,21 @@ EXPECTED_SOURCE_FILE_COUNT = 59
 EXPECTED_SOURCE_AGGREGATE_SHA256 = (
     "73db4ddb96269a1602a66f1afdc9d6b036faf79f3d374861cf4544761a590174"
 )
+TEXT_SUFFIXES = {".json", ".md", ".py", ".rst", ".txt"}
+TEXT_FILENAMES = {"PKG-INFO"}
 
 
-def canonical_bytes(content: bytes) -> bytes:
-    """Normalize checkout line endings while preserving binary bytes."""
-    if b"\0" in content:
-        return content
-    return content.replace(b"\r\n", b"\n")
+def canonical_bytes(path: pathlib.Path) -> bytes:
+    """Normalize line endings only for explicitly classified text evidence."""
+    content = path.read_bytes()
+    if path.suffix in TEXT_SUFFIXES or path.name in TEXT_FILENAMES:
+        return content.replace(b"\r\n", b"\n")
+    return content
 
 
 def sha256(path: pathlib.Path) -> str:
     """Return the canonical SHA-256 digest for one evidence file."""
-    return hashlib.sha256(canonical_bytes(path.read_bytes())).hexdigest()
+    return hashlib.sha256(canonical_bytes(path)).hexdigest()
 
 
 def verify_manifest() -> None:

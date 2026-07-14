@@ -57,7 +57,9 @@ assembly. The executor and external object are never cached or reused.
 For a nonempty threshold mask, all outputs first construct FilFinder with the supplied mask and
 call `create_mask(use_existing_mask=True)`. That source branch skips flattening and adaptive
 segmentation at `upstream/fil_finder/filfinder2D.py:299-325`. The wrapper suppresses only the
-expected "Using inputted mask" warning from that call.
+exact `UserWarning` message `Using inputted mask. Skipping creation of anew mask.` from that call.
+It uses an anchored exact-message filter scoped to the call. A nonmatching control warning remains
+visible in the fixture, proving that the filter is not category-wide or global.
 
 - `output="mask"`: select `filfinder.mask`; never call `medskel` or `analyze_skeletons`.
 - `output="skeleton"`: call `medskel(rng=rng_seed)`, select the pre-analysis
@@ -105,12 +107,25 @@ input, threshold mask, FilFinder mask, medial-axis distance, pre- and post-prune
 longest-path raster, labels, filament/branch lengths, warnings, parameters, seed, platform, and the
 complete dependency vector.
 
+Warning evidence is process-local. The fixture records parent-process warnings separately from
+warnings transported out of each real `Filament2D.skeleton_analysis` worker task. Every applicable
+task emits the source's max-pruning warning at `upstream/fil_finder/filament.py:331-361`. The
+loop/branch case additionally records the two NumPy `in1d` deprecation sites at
+`upstream/fil_finder/pixel_ident.py:831,861`, each with its observed count. Import-time Astropy
+deprecation output bypasses Python warning capture, so it is retained as stderr keyed by case and
+worker rather than suppressed. The empty case starts no worker and has empty worker-warning and
+stderr channels.
+
 The golden arrays require exact equality on the pinned oracle environment. This contract makes no
 cross-version bitwise claim: medial-axis tie behavior and graph results are dependency-sensitive,
 which is why every transitive oracle version is recorded. The standalone script independently
 validates only PhenoTypic-owned thresholding, labeling, mask/map equivalence, empty behavior, and
 layer preservation. It deliberately does not reimplement FilFinder skeletonization, pruning, or
 longest-path logic.
+
+The fixture JSON is pinned to LF by its directory `.gitattributes`. Evidence verification hashes
+explicitly classified text after CRLF-to-LF canonicalization and hashes binary artifacts byte for
+byte, so checkout policy cannot change the evidence identity.
 
 Numerical fidelity to this package does not establish biological detection benefit. Such a claim
 requires a separate ground-truth image benchmark. [Based on general reasoning - no specific

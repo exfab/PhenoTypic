@@ -37,16 +37,17 @@ typing alias, registry, GUI discovery, or serialization entry is changed by this
 5. The source creates an implicit reusable/process executor when no pool is provided
    (`upstream/fil_finder/filfinder2D.py:167-175`). The wrapper instead owns one fresh one-process
    pool per apply and guarantees `shutdown(wait=True)` on both success and exception.
-6. In the locked NetworkX 3.6 environment, the real oracle emits "Graph pruning reached max
-   iterations" on the nonempty fixture cases from
-   `upstream/fil_finder/filament.py:331-361`. This warning is upstream behavior and must not be
-   globally suppressed; only the expected supplied-mask warning is adapter-suppressed.
+6. In the locked NetworkX 3.6 environment, every real worker task emits `Graph pruning reached max
+   iterations.` on the nonempty fixture cases from
+   `upstream/fil_finder/filament.py:331-361`. The loop/branch task also emits 352 deprecations from
+   each `numpy.in1d` call site at `upstream/fil_finder/pixel_ident.py:831,861`. These are upstream
+   behaviors and remain visible. Only the exact supplied-mask warning is adapter-suppressed.
 
 ## Golden evidence
 
 `tests/fixtures/reconnect/filfinder/oracle.json` was generated twice through a real
 `ProcessPoolExecutor(max_workers=1)` and was byte-identical both times at SHA-256
-`23403d67bb0df84ea419726da659a6ca09036ebdd6eddf6249549a5b948569e5`.
+`c9e7fa5a528dff2bc1bb5388227bcdab85957a506260dacfc456fd13fa8827f3`.
 
 The eight cases are straight, Y-spur, disconnected, loop/branch, deterministic noise, symmetric
 tie, threshold boundary, and empty. For each applicable case the fixture captures:
@@ -55,10 +56,23 @@ tie, threshold boundary, and empty. For each applicable case the fixture capture
 - FilFinder existing mask and its 8-connected label map;
 - medial-axis distance and pre-prune skeleton;
 - post-prune full skeleton and longest-path skeleton;
-- selected-raster label maps, filament lengths, branch lengths, effective thresholds, and parent
-  warning counts;
+- selected-raster label maps, filament lengths, branch lengths, and effective thresholds;
+- raw existing-mask warning evidence, the exact adapter suppression rule, and a visible
+  nonmatching-warning control;
+- parent warnings, warnings transported from each keyed process-worker task, and Astropy
+  import-time stderr keyed separately by case and worker;
 - threshold/pruning/unit parameters, RNG seed, Python/platform, and every transitive oracle
   dependency version.
+
+The seven nonempty cases start one worker each and submit 1, 1, 2, 1, 3, 1, and 2 ordered tasks,
+respectively. Every task retains the max-pruning warning. The empty case starts no worker. The
+generator asserts these channel boundaries before it writes the fixture, so a parent-only warning
+capture cannot silently produce an empty warning record.
+
+The fixture directory pins JSON to LF with `.gitattributes`. The checksum verifier canonicalizes
+line endings only for explicitly classified text and leaves binary evidence byte-exact. A fresh
+checkout with `core.autocrlf=true` must reproduce the raw fixture SHA above and pass the complete
+checksum gate before this successor can be reviewed.
 
 The standalone script is intentionally narrower. It independently re-derives threshold equality
 and monotonicity, 8-connected row-major labeling, `objmask == objmap > 0`, empty behavior, and
@@ -93,10 +107,12 @@ skipped executor shutdown, and execution of a downstream stage for an earlier ou
 ## Local gate results before review
 
 - Pinned source oracle fixture generation: PASS, twice with identical fixture hash.
+- Process-local warning transport, narrow-filter control, and keyed worker stderr: PASS.
 - Source-independent adapter logic: PASS.
 - Evidence/source aggregate verification: PASS.
 - Ruff and byte compilation for all A10 evidence scripts: PASS.
 - Fresh wheel/sdist reference exclusion: PASS.
+- Fresh `core.autocrlf=true` checkout, raw fixture hash, and complete checksum gate: PASS.
 - Independent G0 review: PENDING.
 
 Numerical/source fidelity here is an adapter claim only. It is not evidence that FilFinder improves

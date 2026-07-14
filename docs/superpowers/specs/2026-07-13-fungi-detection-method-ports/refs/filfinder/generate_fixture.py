@@ -15,13 +15,14 @@ import inspect
 import json
 import pathlib
 import platform
+import re
 import sys
+import tempfile
 import warnings
 from concurrent.futures import ProcessPoolExecutor
+from typing import Any, Callable
 
-import astropy.units as u
 import numpy as np
-from fil_finder import FilFinder2D
 from scipy import ndimage
 
 
@@ -35,6 +36,137 @@ RELATIVE_INTENSITY_THRESHOLD = 0.2
 MAX_PRUNE_ITERATIONS = 10
 RNG_SEED = 0
 EXPECTED_SOURCE = REFERENCE_DIR / "upstream/fil_finder/filfinder2D.py"
+EXPECTED_SUPPLIED_MASK_WARNING = "Using inputted mask. Skipping creation of anew mask."
+WARNING_POLICY_CONTROL = "A10 warning-policy control must remain visible."
+GRAPH_PRUNING_WARNING = "Graph pruning reached max iterations."
+EXPECTED_WORKER_STDERR_LINES = [
+    "WARNING: AstropyDeprecationWarning: The TestRunner class is deprecated and may be removed in a future version.",
+    "        Use pytest instead. [astropy.tests.runner]",
+    "WARNING: AstropyDeprecationWarning: The TestRunnerBase class is deprecated and may be removed in a future version.",
+    "        Use pytest instead. [astropy.utils.decorators]",
+]
+EXPECTED_TASK_COUNTS = {
+    "straight": 1,
+    "y_spur": 1,
+    "disconnected": 2,
+    "loop_branch": 1,
+    "noise": 3,
+    "symmetric_tie": 1,
+    "threshold_boundary": 2,
+}
+
+
+def warning_records(caught: list[warnings.WarningMessage]) -> list[dict[str, object]]:
+    """Serialize and count deterministic warning evidence without absolute paths."""
+    counts: dict[tuple[str, str, str, int], int] = {}
+    for item in caught:
+        key = (
+            str(item.message),
+            item.category.__name__,
+            pathlib.Path(item.filename).name,
+            item.lineno,
+        )
+        counts[key] = counts.get(key, 0) + 1
+    return [
+        {
+            "message": message,
+            "category": category,
+            "source_file": source_file,
+            "line": line,
+            "count": count,
+        }
+        for (message, category, source_file, line), count in sorted(counts.items())
+    ]
+
+
+def execute_with_warning_capture(
+    task_index: int,
+    function: Callable[..., Any],
+    args: tuple[object, ...],
+    kwargs: dict[str, object],
+) -> tuple[int, str, object, list[dict[str, object]]]:
+    """Execute one real process-worker task and return its warning records."""
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        result = function(*args, **kwargs)
+    return task_index, function.__qualname__, result, warning_records(caught)
+
+
+def initialize_worker_stderr(stderr_path: str) -> None:
+    """Redirect one worker's import/runtime stderr to its deterministic evidence file."""
+    sys.stderr = open(stderr_path, "w", buffering=1, encoding="utf-8")  # noqa: SIM115
+
+
+class WarningCapturedFuture:
+    """Unwrap a worker result while retaining its warning records in the parent."""
+
+    def __init__(
+        self,
+        future: object,
+        warning_sink: dict[int, dict[str, object]],
+    ) -> None:
+        self._future = future
+        self._warning_sink = warning_sink
+
+    def result(self) -> object:
+        """Return the upstream result and persist keyed warning evidence."""
+        task_index, function_name, result, records = self._future.result()  # type: ignore[attr-defined]
+        self._warning_sink[task_index] = {
+            "task_index": task_index,
+            "function": function_name,
+            "warnings": records,
+        }
+        return result
+
+
+class WarningCapturingProcessPoolExecutor(ProcessPoolExecutor):
+    """A real one-process executor that transports child warnings to the parent."""
+
+    def __init__(self, case_name: str) -> None:
+        self.worker_key = f"{case_name}:worker-0"
+        self.stderr_path = pathlib.Path(tempfile.gettempdir()) / (
+            f"phenotypic-a10-filfinder-{case_name}-worker-0.stderr"
+        )
+        self.stderr_path.unlink(missing_ok=True)
+        super().__init__(
+            max_workers=1,
+            initializer=initialize_worker_stderr,
+            initargs=(str(self.stderr_path),),
+        )
+        self._next_task_index = 0
+        self.warning_records_by_task: dict[int, dict[str, object]] = {}
+
+    def stderr_records(self) -> list[dict[str, object]]:
+        """Return deterministic keyed stderr, or no record if no worker started."""
+        if not self.stderr_path.exists():
+            return []
+        return [
+            {
+                "worker": self.worker_key,
+                "stderr_lines": self.stderr_path.read_text(
+                    encoding="utf-8"
+                ).splitlines(),
+            }
+        ]
+
+    def submit(  # type: ignore[override]
+        self,
+        function: Callable[..., Any],
+        /,
+        *args: object,
+        **kwargs: object,
+    ) -> WarningCapturedFuture:
+        """Submit a source task through the child warning-capture trampoline."""
+        task_index = self._next_task_index
+        self._next_task_index += 1
+        future = super().submit(
+            execute_with_warning_capture,
+            task_index,
+            function,
+            args,
+            kwargs,
+        )
+        return WarningCapturedFuture(future, self.warning_records_by_task)
 
 
 def paint_square(image: np.ndarray, row: int, col: int, value: float) -> None:
@@ -116,17 +248,90 @@ def label_eight_connected(mask: np.ndarray) -> np.ndarray:
     return labels.astype(np.int64, copy=False)
 
 
-def warning_counts(caught: list[warnings.WarningMessage]) -> dict[str, int]:
-    """Count repeated upstream warnings without bloating the fixture."""
+def warning_record_counts(records: list[dict[str, object]]) -> dict[str, int]:
+    """Count messages in already serialized warning evidence."""
     counts: dict[str, int] = {}
-    for item in caught:
-        message = str(item.message)
-        counts[message] = counts.get(message, 0) + 1
+    for item in records:
+        message = str(item["message"])
+        counts[message] = counts.get(message, 0) + int(item["count"])
     return dict(sorted(counts.items()))
+
+
+def validate_warning_evidence(
+    record: dict[str, object],
+    *,
+    empty: bool,
+) -> None:
+    """Reject a fixture whose process-local warning evidence is incomplete."""
+    raw_records = record["create_mask_warning_records"]
+    expected_raw = [
+        {
+            "message": EXPECTED_SUPPLIED_MASK_WARNING,
+            "category": "UserWarning",
+            "source_file": "filfinder2D.py",
+            "line": 313,
+            "count": 1,
+        }
+    ]
+    if raw_records != expected_raw:
+        raise AssertionError(f"unexpected create_mask warnings: {raw_records!r}")
+
+    visible_records = record["adapter_policy_visible_warning_records"]
+    if not isinstance(visible_records, list) or len(visible_records) != 1:
+        raise AssertionError(
+            f"warning filter hid or added a warning: {visible_records!r}"
+        )
+    visible = visible_records[0]
+    if (
+        visible["message"] != WARNING_POLICY_CONTROL
+        or visible["category"] != "UserWarning"
+        or visible["source_file"] != "generate_fixture.py"
+        or visible["count"] != 1
+    ):
+        raise AssertionError(f"warning policy control changed: {visible!r}")
+
+    if record["analyze_skeleton_parent_warning_records"] != []:
+        raise AssertionError("process-worker warnings leaked into the parent channel")
+
+    worker_records = record["analyze_skeleton_worker_warning_records"]
+    stderr_records = record["process_worker_stderr_records"]
+    if empty:
+        if worker_records != [] or stderr_records != []:
+            raise AssertionError("empty input unexpectedly started a process worker")
+        return
+
+    case_name = str(record["name"])
+    expected_task_count = EXPECTED_TASK_COUNTS[case_name]
+    if not isinstance(worker_records, list) or len(worker_records) != expected_task_count:
+        raise AssertionError(
+            f"{case_name}: worker task count changed: {worker_records!r}"
+        )
+    for task_index, task in enumerate(worker_records):
+        if task["task_index"] != task_index:
+            raise AssertionError(f"{case_name}: worker task order changed: {task!r}")
+        if task["function"] != "Filament2D.skeleton_analysis":
+            raise AssertionError(f"{case_name}: worker function changed: {task!r}")
+        warning_counts = warning_record_counts(task["warnings"])
+        if warning_counts.get(GRAPH_PRUNING_WARNING) != 1:
+            raise AssertionError(
+                f"{case_name}: graph-pruning warning missing from task {task_index}"
+            )
+    if stderr_records != [
+        {
+            "worker": f"{case_name}:worker-0",
+            "stderr_lines": EXPECTED_WORKER_STDERR_LINES,
+        }
+    ]:
+        raise AssertionError(
+            f"{case_name}: import-time worker stderr changed: {stderr_records!r}"
+        )
 
 
 def analyze_case(name: str, image: np.ndarray) -> dict[str, object]:
     """Capture every wrapper-visible stage from one fresh FilFinder object."""
+    import astropy.units as u
+    from fil_finder import FilFinder2D
+
     threshold_mask = image >= THRESHOLD
     record: dict[str, object] = {
         "name": name,
@@ -134,7 +339,7 @@ def analyze_case(name: str, image: np.ndarray) -> dict[str, object]:
         "threshold_mask": encode_array(threshold_mask.astype(np.uint8)),
     }
 
-    with ProcessPoolExecutor(max_workers=1) as pool:
+    with WarningCapturingProcessPoolExecutor(name) as pool:
         filfinder = FilFinder2D(
             image.copy(),
             beamwidth=BEAMWIDTH_PX * u.pix,
@@ -144,7 +349,24 @@ def analyze_case(name: str, image: np.ndarray) -> dict[str, object]:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             filfinder.create_mask(use_existing_mask=True)
-        record["create_mask_warning_counts"] = warning_counts(caught)
+        raw_mask_warnings = warning_records(caught)
+        record["create_mask_warning_records"] = raw_mask_warnings
+        record["create_mask_warning_counts"] = warning_record_counts(
+            raw_mask_warnings
+        )
+        with warnings.catch_warnings(record=True) as policy_caught:
+            warnings.simplefilter("always")
+            warnings.filterwarnings(
+                "ignore",
+                message=f"^{re.escape(EXPECTED_SUPPLIED_MASK_WARNING)}$",
+                category=UserWarning,
+            )
+            filfinder.create_mask(use_existing_mask=True)
+            warnings.warn(WARNING_POLICY_CONTROL, UserWarning)
+        record["adapter_suppressed_warning"] = EXPECTED_SUPPLIED_MASK_WARNING
+        record["adapter_policy_visible_warning_records"] = warning_records(
+            policy_caught
+        )
         record["filfinder_mask"] = encode_array(
             np.asarray(filfinder.mask, dtype=np.uint8)
         )
@@ -164,8 +386,13 @@ def analyze_case(name: str, image: np.ndarray) -> dict[str, object]:
                     "longest_path_labels_8_connected": None,
                     "filament_lengths_px": [],
                     "branch_lengths_px": [],
+                    "analyze_skeleton_parent_warning_records": [],
+                    "analyze_skeleton_warning_counts": {},
+                    "analyze_skeleton_worker_warning_records": [],
+                    "process_worker_stderr_records": pool.stderr_records(),
                 }
             )
+            validate_warning_evidence(record, empty=True)
             return record
 
         filfinder.medskel(rng=RNG_SEED)
@@ -195,7 +422,15 @@ def analyze_case(name: str, image: np.ndarray) -> dict[str, object]:
                 branch_thresh=branch_threshold,
                 max_prune_iter=MAX_PRUNE_ITERATIONS,
             )
-        record["analyze_skeleton_warning_counts"] = warning_counts(caught)
+        parent_warnings = warning_records(caught)
+        record["analyze_skeleton_parent_warning_records"] = parent_warnings
+        record["analyze_skeleton_warning_counts"] = warning_record_counts(
+            parent_warnings
+        )
+        record["analyze_skeleton_worker_warning_records"] = [
+            pool.warning_records_by_task[index]
+            for index in sorted(pool.warning_records_by_task)
+        ]
         record["skeleton_post_prune"] = encode_array(
             np.asarray(filfinder.skeleton, dtype=np.uint8)
         )
@@ -218,6 +453,8 @@ def analyze_case(name: str, image: np.ndarray) -> dict[str, object]:
         record["effective_branch_threshold_px"] = int(
             filfinder.branch_thresh.value
         )
+        record["process_worker_stderr_records"] = pool.stderr_records()
+        validate_warning_evidence(record, empty=False)
         return record
 
 
@@ -241,6 +478,8 @@ def dependency_versions() -> dict[str, str]:
 
 def verify_authoritative_source() -> None:
     """Fail unless the oracle imports the committed sdist source file."""
+    from fil_finder import FilFinder2D
+
     actual = pathlib.Path(inspect.getfile(FilFinder2D)).resolve()
     if actual != EXPECTED_SOURCE.resolve():
         raise RuntimeError(
@@ -253,7 +492,7 @@ def generate_filfinder_fixture() -> None:
     """Regenerate the deterministic FilFinder 1.8 fixture JSON."""
     verify_authoritative_source()
     fixture = {
-        "schema_version": 1,
+        "schema_version": 2,
         "authority": "fil-finder 1.8 sdist and v1.8 tag commit",
         "parameters": {
             "threshold": THRESHOLD,

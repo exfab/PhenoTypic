@@ -2,7 +2,33 @@
   "authority": "fil-finder 1.8 sdist and v1.8 tag commit",
   "cases": [
     {
+      "adapter_policy_visible_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 365,
+          "message": "A10 warning-policy control must remain visible.",
+          "source_file": "generate_fixture.py"
+        }
+      ],
+      "adapter_suppressed_warning": "Using inputted mask. Skipping creation of anew mask.",
+      "analyze_skeleton_parent_warning_records": [],
       "analyze_skeleton_warning_counts": {},
+      "analyze_skeleton_worker_warning_records": [
+        {
+          "function": "Filament2D.skeleton_analysis",
+          "task_index": 0,
+          "warnings": [
+            {
+              "category": "UserWarning",
+              "count": 1,
+              "line": 361,
+              "message": "Graph pruning reached max iterations.",
+              "source_file": "filament.py"
+            }
+          ]
+        }
+      ],
       "branch_lengths_px": [
         [
           10.82842712474619
@@ -11,6 +37,15 @@
       "create_mask_warning_counts": {
         "Using inputted mask. Skipping creation of anew mask.": 1
       },
+      "create_mask_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 313,
+          "message": "Using inputted mask. Skipping creation of anew mask.",
+          "source_file": "filfinder2D.py"
+        }
+      ],
       "effective_branch_threshold_px": 3,
       "effective_skeleton_threshold_px": 1.0,
       "empty_short_circuit": false,
@@ -1643,6 +1678,17 @@
         ]
       ],
       "name": "straight",
+      "process_worker_stderr_records": [
+        {
+          "stderr_lines": [
+            "WARNING: AstropyDeprecationWarning: The TestRunner class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.tests.runner]",
+            "WARNING: AstropyDeprecationWarning: The TestRunnerBase class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.utils.decorators]"
+          ],
+          "worker": "straight:worker-0"
+        }
+      ],
       "skeleton_labels_8_connected": [
         [
           0,
@@ -3270,7 +3316,33 @@
       ]
     },
     {
+      "adapter_policy_visible_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 365,
+          "message": "A10 warning-policy control must remain visible.",
+          "source_file": "generate_fixture.py"
+        }
+      ],
+      "adapter_suppressed_warning": "Using inputted mask. Skipping creation of anew mask.",
+      "analyze_skeleton_parent_warning_records": [],
       "analyze_skeleton_warning_counts": {},
+      "analyze_skeleton_worker_warning_records": [
+        {
+          "function": "Filament2D.skeleton_analysis",
+          "task_index": 0,
+          "warnings": [
+            {
+              "category": "UserWarning",
+              "count": 1,
+              "line": 361,
+              "message": "Graph pruning reached max iterations.",
+              "source_file": "filament.py"
+            }
+          ]
+        }
+      ],
       "branch_lengths_px": [
         [
           7.0710678118654755,
@@ -3282,6 +3354,15 @@
       "create_mask_warning_counts": {
         "Using inputted mask. Skipping creation of anew mask.": 1
       },
+      "create_mask_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 313,
+          "message": "Using inputted mask. Skipping creation of anew mask.",
+          "source_file": "filfinder2D.py"
+        }
+      ],
       "effective_branch_threshold_px": 3,
       "effective_skeleton_threshold_px": 1.0,
       "empty_short_circuit": false,
@@ -5714,6 +5795,17 @@
         ]
       ],
       "name": "y_spur",
+      "process_worker_stderr_records": [
+        {
+          "stderr_lines": [
+            "WARNING: AstropyDeprecationWarning: The TestRunner class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.tests.runner]",
+            "WARNING: AstropyDeprecationWarning: The TestRunnerBase class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.utils.decorators]"
+          ],
+          "worker": "y_spur:worker-0"
+        }
+      ],
       "skeleton_labels_8_connected": [
         [
           0,
@@ -8141,7 +8233,46 @@
       ]
     },
     {
+      "adapter_policy_visible_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 365,
+          "message": "A10 warning-policy control must remain visible.",
+          "source_file": "generate_fixture.py"
+        }
+      ],
+      "adapter_suppressed_warning": "Using inputted mask. Skipping creation of anew mask.",
+      "analyze_skeleton_parent_warning_records": [],
       "analyze_skeleton_warning_counts": {},
+      "analyze_skeleton_worker_warning_records": [
+        {
+          "function": "Filament2D.skeleton_analysis",
+          "task_index": 0,
+          "warnings": [
+            {
+              "category": "UserWarning",
+              "count": 1,
+              "line": 361,
+              "message": "Graph pruning reached max iterations.",
+              "source_file": "filament.py"
+            }
+          ]
+        },
+        {
+          "function": "Filament2D.skeleton_analysis",
+          "task_index": 1,
+          "warnings": [
+            {
+              "category": "UserWarning",
+              "count": 1,
+              "line": 361,
+              "message": "Graph pruning reached max iterations.",
+              "source_file": "filament.py"
+            }
+          ]
+        }
+      ],
       "branch_lengths_px": [
         [
           12.82842712474619
@@ -8153,6 +8284,15 @@
       "create_mask_warning_counts": {
         "Using inputted mask. Skipping creation of anew mask.": 1
       },
+      "create_mask_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 313,
+          "message": "Using inputted mask. Skipping creation of anew mask.",
+          "source_file": "filfinder2D.py"
+        }
+      ],
       "effective_branch_threshold_px": 3,
       "effective_skeleton_threshold_px": 1.0,
       "empty_short_circuit": false,
@@ -10586,6 +10726,17 @@
         ]
       ],
       "name": "disconnected",
+      "process_worker_stderr_records": [
+        {
+          "stderr_lines": [
+            "WARNING: AstropyDeprecationWarning: The TestRunner class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.tests.runner]",
+            "WARNING: AstropyDeprecationWarning: The TestRunnerBase class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.utils.decorators]"
+          ],
+          "worker": "disconnected:worker-0"
+        }
+      ],
       "skeleton_labels_8_connected": [
         [
           0,
@@ -13013,7 +13164,47 @@
       ]
     },
     {
+      "adapter_policy_visible_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 365,
+          "message": "A10 warning-policy control must remain visible.",
+          "source_file": "generate_fixture.py"
+        }
+      ],
+      "adapter_suppressed_warning": "Using inputted mask. Skipping creation of anew mask.",
+      "analyze_skeleton_parent_warning_records": [],
       "analyze_skeleton_warning_counts": {},
+      "analyze_skeleton_worker_warning_records": [
+        {
+          "function": "Filament2D.skeleton_analysis",
+          "task_index": 0,
+          "warnings": [
+            {
+              "category": "UserWarning",
+              "count": 1,
+              "line": 361,
+              "message": "Graph pruning reached max iterations.",
+              "source_file": "filament.py"
+            },
+            {
+              "category": "DeprecationWarning",
+              "count": 352,
+              "line": 831,
+              "message": "`in1d` is deprecated. Use `np.isin` instead.",
+              "source_file": "pixel_ident.py"
+            },
+            {
+              "category": "DeprecationWarning",
+              "count": 352,
+              "line": 861,
+              "message": "`in1d` is deprecated. Use `np.isin` instead.",
+              "source_file": "pixel_ident.py"
+            }
+          ]
+        }
+      ],
       "branch_lengths_px": [
         [
           0.5,
@@ -13025,6 +13216,15 @@
       "create_mask_warning_counts": {
         "Using inputted mask. Skipping creation of anew mask.": 1
       },
+      "create_mask_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 313,
+          "message": "Using inputted mask. Skipping creation of anew mask.",
+          "source_file": "filfinder2D.py"
+        }
+      ],
       "effective_branch_threshold_px": 3,
       "effective_skeleton_threshold_px": 1.0,
       "empty_short_circuit": false,
@@ -16417,6 +16617,17 @@
         ]
       ],
       "name": "loop_branch",
+      "process_worker_stderr_records": [
+        {
+          "stderr_lines": [
+            "WARNING: AstropyDeprecationWarning: The TestRunner class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.tests.runner]",
+            "WARNING: AstropyDeprecationWarning: The TestRunnerBase class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.utils.decorators]"
+          ],
+          "worker": "loop_branch:worker-0"
+        }
+      ],
       "skeleton_labels_8_connected": [
         [
           0,
@@ -19804,7 +20015,59 @@
       ]
     },
     {
+      "adapter_policy_visible_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 365,
+          "message": "A10 warning-policy control must remain visible.",
+          "source_file": "generate_fixture.py"
+        }
+      ],
+      "adapter_suppressed_warning": "Using inputted mask. Skipping creation of anew mask.",
+      "analyze_skeleton_parent_warning_records": [],
       "analyze_skeleton_warning_counts": {},
+      "analyze_skeleton_worker_warning_records": [
+        {
+          "function": "Filament2D.skeleton_analysis",
+          "task_index": 0,
+          "warnings": [
+            {
+              "category": "UserWarning",
+              "count": 1,
+              "line": 361,
+              "message": "Graph pruning reached max iterations.",
+              "source_file": "filament.py"
+            }
+          ]
+        },
+        {
+          "function": "Filament2D.skeleton_analysis",
+          "task_index": 1,
+          "warnings": [
+            {
+              "category": "UserWarning",
+              "count": 1,
+              "line": 361,
+              "message": "Graph pruning reached max iterations.",
+              "source_file": "filament.py"
+            }
+          ]
+        },
+        {
+          "function": "Filament2D.skeleton_analysis",
+          "task_index": 2,
+          "warnings": [
+            {
+              "category": "UserWarning",
+              "count": 1,
+              "line": 361,
+              "message": "Graph pruning reached max iterations.",
+              "source_file": "filament.py"
+            }
+          ]
+        }
+      ],
       "branch_lengths_px": [
         [
           0.5,
@@ -19829,6 +20092,15 @@
       "create_mask_warning_counts": {
         "Using inputted mask. Skipping creation of anew mask.": 1
       },
+      "create_mask_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 313,
+          "message": "Using inputted mask. Skipping creation of anew mask.",
+          "source_file": "filfinder2D.py"
+        }
+      ],
       "effective_branch_threshold_px": 3,
       "effective_skeleton_threshold_px": 1.0,
       "empty_short_circuit": false,
@@ -22223,6 +22495,17 @@
         ]
       ],
       "name": "noise",
+      "process_worker_stderr_records": [
+        {
+          "stderr_lines": [
+            "WARNING: AstropyDeprecationWarning: The TestRunner class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.tests.runner]",
+            "WARNING: AstropyDeprecationWarning: The TestRunnerBase class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.utils.decorators]"
+          ],
+          "worker": "noise:worker-0"
+        }
+      ],
       "skeleton_labels_8_connected": [
         [
           0,
@@ -24610,7 +24893,33 @@
       ]
     },
     {
+      "adapter_policy_visible_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 365,
+          "message": "A10 warning-policy control must remain visible.",
+          "source_file": "generate_fixture.py"
+        }
+      ],
+      "adapter_suppressed_warning": "Using inputted mask. Skipping creation of anew mask.",
+      "analyze_skeleton_parent_warning_records": [],
       "analyze_skeleton_warning_counts": {},
+      "analyze_skeleton_worker_warning_records": [
+        {
+          "function": "Filament2D.skeleton_analysis",
+          "task_index": 0,
+          "warnings": [
+            {
+              "category": "UserWarning",
+              "count": 1,
+              "line": 361,
+              "message": "Graph pruning reached max iterations.",
+              "source_file": "filament.py"
+            }
+          ]
+        }
+      ],
       "branch_lengths_px": [
         [
           8.485281374238571,
@@ -24623,6 +24932,15 @@
       "create_mask_warning_counts": {
         "Using inputted mask. Skipping creation of anew mask.": 1
       },
+      "create_mask_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 313,
+          "message": "Using inputted mask. Skipping creation of anew mask.",
+          "source_file": "filfinder2D.py"
+        }
+      ],
       "effective_branch_threshold_px": 3,
       "effective_skeleton_threshold_px": 1.0,
       "empty_short_circuit": false,
@@ -27055,6 +27373,17 @@
         ]
       ],
       "name": "symmetric_tie",
+      "process_worker_stderr_records": [
+        {
+          "stderr_lines": [
+            "WARNING: AstropyDeprecationWarning: The TestRunner class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.tests.runner]",
+            "WARNING: AstropyDeprecationWarning: The TestRunnerBase class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.utils.decorators]"
+          ],
+          "worker": "symmetric_tie:worker-0"
+        }
+      ],
       "skeleton_labels_8_connected": [
         [
           0,
@@ -29482,7 +29811,46 @@
       ]
     },
     {
+      "adapter_policy_visible_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 365,
+          "message": "A10 warning-policy control must remain visible.",
+          "source_file": "generate_fixture.py"
+        }
+      ],
+      "adapter_suppressed_warning": "Using inputted mask. Skipping creation of anew mask.",
+      "analyze_skeleton_parent_warning_records": [],
       "analyze_skeleton_warning_counts": {},
+      "analyze_skeleton_worker_warning_records": [
+        {
+          "function": "Filament2D.skeleton_analysis",
+          "task_index": 0,
+          "warnings": [
+            {
+              "category": "UserWarning",
+              "count": 1,
+              "line": 361,
+              "message": "Graph pruning reached max iterations.",
+              "source_file": "filament.py"
+            }
+          ]
+        },
+        {
+          "function": "Filament2D.skeleton_analysis",
+          "task_index": 1,
+          "warnings": [
+            {
+              "category": "UserWarning",
+              "count": 1,
+              "line": 361,
+              "message": "Graph pruning reached max iterations.",
+              "source_file": "filament.py"
+            }
+          ]
+        }
+      ],
       "branch_lengths_px": [
         [
           2.0
@@ -29494,6 +29862,15 @@
       "create_mask_warning_counts": {
         "Using inputted mask. Skipping creation of anew mask.": 1
       },
+      "create_mask_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 313,
+          "message": "Using inputted mask. Skipping creation of anew mask.",
+          "source_file": "filfinder2D.py"
+        }
+      ],
       "effective_branch_threshold_px": 3,
       "effective_skeleton_threshold_px": 1.0,
       "empty_short_circuit": false,
@@ -29897,6 +30274,17 @@
         ]
       ],
       "name": "threshold_boundary",
+      "process_worker_stderr_records": [
+        {
+          "stderr_lines": [
+            "WARNING: AstropyDeprecationWarning: The TestRunner class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.tests.runner]",
+            "WARNING: AstropyDeprecationWarning: The TestRunnerBase class is deprecated and may be removed in a future version.",
+            "        Use pytest instead. [astropy.utils.decorators]"
+          ],
+          "worker": "threshold_boundary:worker-0"
+        }
+      ],
       "skeleton_labels_8_connected": [
         [
           0,
@@ -30294,10 +30682,32 @@
       ]
     },
     {
+      "adapter_policy_visible_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 365,
+          "message": "A10 warning-policy control must remain visible.",
+          "source_file": "generate_fixture.py"
+        }
+      ],
+      "adapter_suppressed_warning": "Using inputted mask. Skipping creation of anew mask.",
+      "analyze_skeleton_parent_warning_records": [],
+      "analyze_skeleton_warning_counts": {},
+      "analyze_skeleton_worker_warning_records": [],
       "branch_lengths_px": [],
       "create_mask_warning_counts": {
         "Using inputted mask. Skipping creation of anew mask.": 1
       },
+      "create_mask_warning_records": [
+        {
+          "category": "UserWarning",
+          "count": 1,
+          "line": 313,
+          "message": "Using inputted mask. Skipping creation of anew mask.",
+          "source_file": "filfinder2D.py"
+        }
+      ],
       "empty_short_circuit": true,
       "filament_lengths_px": [],
       "filfinder_mask": [
@@ -30540,6 +30950,7 @@
       ],
       "medial_axis_distance_px": null,
       "name": "empty",
+      "process_worker_stderr_records": [],
       "skeleton_labels_8_connected": null,
       "skeleton_longest_path": null,
       "skeleton_post_prune": null,
@@ -30654,5 +31065,5 @@
     "platform": "macOS-26.5.1-arm64-arm-64bit",
     "python": "3.12.11 (main, Sep  2 2025, 14:12:30) [Clang 20.1.4 ]"
   },
-  "schema_version": 1
+  "schema_version": 2
 }

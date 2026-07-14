@@ -1,0 +1,12 @@
+* text=auto
+*.fits binary
+*.hdf5 binary
+*.pdf binary
+*.json text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.rst text eol=lf
+*.txt text eol=lf
+PKG-INFO text eol=lf
+CHECKSUMS.sha256 text eol=lf
+.gitattributes text eol=lf
