@@ -22,10 +22,10 @@ from phenotypic.sdk_.reconnect import (
     ReconnectConfig,
     build_reconnect_cost,
     filter_mask_by_overlap,
-    identify_pseudo_fragments,
     markers_from_centroids,
     partition_by_grid_voronoi,
     reconnect_fragments_tiled,
+    select_reconnect_fragments,
 )
 from phenotypic.sdk_.typing_ import OperationField, TuneSpec
 
@@ -78,6 +78,7 @@ class TwoKFilamentousDetector(GridObjectDetector):
     border_margin_px: Annotated[int, TuneSpec(20, 100)] = 50
     frag_reach_px: Annotated[int, TuneSpec(5, 30)] = 10
     gap_crossing_penalty: Annotated[float, TuneSpec(1.0, 10.0)] = 4.0
+    reconnect_scope: Literal["branches", "pseudo"] = "branches"
     gauss_sigma: Annotated[Optional[float], TuneSpec(tunable=False)] = None
     tile_size: Annotated[Optional[int], TuneSpec(tunable=False)] = None
     tile_overlap: Annotated[Optional[int], TuneSpec(tunable=False)] = None
@@ -195,7 +196,11 @@ class TwoKFilamentousDetector(GridObjectDetector):
             raise RuntimeError("Voronoi assignment produced empty result.")
 
         # ── RECONNECT (Dijkstra over the loose PCT cost surface) ──
-        central_mask, fragment_labels = identify_pseudo_fragments(colony_labels, center_mask)
+        central_mask, fragment_labels = select_reconnect_fragments(
+            colony_labels, center_mask, colony_mask, structure_mask,
+            scope=self.reconnect_scope,
+            min_fragment_size=max(1, self.min_branch_width_px),
+        )
         cfg = self._reconnect_config()
         unmasked_cost, cost_surface = build_reconnect_cost(
             loose.pc_sum, loose.M, loose.m, loose.orientation,

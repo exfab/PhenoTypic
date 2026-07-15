@@ -122,3 +122,62 @@ def test_final_objmap_excludes_objects_not_overlapping_centers():
     assert objmap[stray_rc] == 0                       # stray object is not labeled (overlap-keep)
     # No pixel anywhere in the stray blob may be labeled — it overlaps no center-fill location.
     assert objmap[stray_bbox].max() == 0
+
+
+def _plate_colony_with_severed_hypha():
+    """1x2 grid: colony 0 = core + tendril + a SEPARATE bright bar just beyond the tendril
+    tip (a severed hypha, 30px gap, inside colony 0's Voronoi cell). colony 1 = plain core.
+    Returns (GridImage, well0, well1, frag_bbox).
+
+    The 30px gap is wide enough that the branch detector leaves the bar a distinct
+    connected component (so the overlap filter drops it — ``pseudo`` deletes it), yet the
+    loose phase-congruency cost surface still admits a bridge for the Dijkstra
+    reconnection (so ``branches`` recovers it). See the ``min_wavelength=2.0`` note in the
+    behavior test: at the detector's default 5px wavelength the log-Gabor footprint fuses
+    the tendril and bar into one component below ~38px, leaving no split-but-bridgeable gap
+    at this synthetic scale.
+    """
+    H, W = 200, 400
+    g = np.full((H, W), 60, dtype=np.uint8)
+    yy, xx = np.ogrid[:H, :W]
+
+    def disk(cy, cx, r, val):
+        g[(yy - cy) ** 2 + (xx - cx) ** 2 < r * r] = val
+
+    well0, well1 = (100, 100), (100, 300)
+    disk(*well0, 22, 235); g[97:104, 100:150] = 215        # colony 0: core + tendril to col ~149
+    g[97:104, 180:216] = 215                                # severed hypha: separate bar, 30px gap
+    disk(*well1, 22, 235)                                   # colony 1: plain core
+    frag_bbox = (slice(95, 106), slice(180, 216))           # tight around the severed bar
+    rgb = np.repeat(g[..., None], 3, axis=2)
+    return GridImage(rgb, nrows=1, ncols=2), well0, well1, frag_bbox
+
+
+def test_reconnect_scope_branches_recovers_severed_hypha():
+    img, well0, well1, frag_bbox = _plate_colony_with_severed_hypha()
+
+    def run(scope):
+        d = TwoKFilamentousDetector(
+            center_detector=ManualGridPointDetector(coord1=well0, coord2=well1,
+                                                    shape="disk", width=40),
+            reconnect_scope=scope,
+            # Finer wavelength than the 5px default: shrinks the log-Gabor fusion footprint
+            # so a 30px gap yields a genuinely-disconnected fragment (still within the field's
+            # TuneSpec(2.0, 10.0) range). At the default the tendril + bar fuse below ~38px,
+            # so no gap is both split and bridgeable on this compact synthetic plate.
+            min_wavelength=2.0,
+        )
+        return np.asarray(d.apply(img.copy(), inplace=False).objmap[:])
+
+    branches = run("branches")
+    pseudo = run("pseudo")
+    # pseudo drops the severed hypha (overlap filter deletes it before reconnection)
+    assert pseudo[frag_bbox].max() == 0
+    # branches reconnects it: the fragment region is now labeled, and total coverage grows
+    assert branches[frag_bbox].max() > 0
+    assert (branches > 0).sum() > (pseudo > 0).sum()
+
+
+def test_reconnect_scope_defaults_to_branches():
+    d = TwoKFilamentousDetector()
+    assert d.reconnect_scope == "branches"
