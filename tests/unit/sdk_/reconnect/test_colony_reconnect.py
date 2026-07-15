@@ -107,3 +107,56 @@ def test_reconnect_fragments_tiled_noop_without_fragments():
     cost = np.ones((20, 20), dtype=np.float64)
     out = reconnect_fragments_tiled(colony, empty_frags, cost, cost, np.zeros((20, 20), np.float32), np.zeros((20, 20), np.float32), _cfg())
     assert np.array_equal(out, colony)
+
+
+def test_select_reconnect_fragments_pseudo_matches_identify():
+    from phenotypic.sdk_.reconnect import select_reconnect_fragments, identify_pseudo_fragments
+    labels = np.zeros((30, 30), dtype=np.int32)
+    labels[4:8, 4:8] = 1            # CC touching a center
+    labels[20:24, 20:24] = 1        # CC not touching a center -> pseudo-fragment
+    center = np.zeros((30, 30), dtype=bool); center[6, 6] = True
+    colony_mask = labels > 0        # ignored by the pseudo path
+    structure_mask = labels > 0
+    c0, f0 = identify_pseudo_fragments(labels, center)
+    c1, f1 = select_reconnect_fragments(labels, center, colony_mask, structure_mask, scope="pseudo")
+    assert np.array_equal(c0, c1)
+    assert np.array_equal(f0, f1)
+
+
+def test_select_reconnect_fragments_branches_admits_disconnected():
+    from phenotypic.sdk_.reconnect import select_reconnect_fragments
+    center = np.zeros((30, 40), dtype=bool); center[10, 10] = True
+    structure_mask = np.zeros((30, 40), dtype=bool); structure_mask[8:13, 8:20] = True  # body on center
+    colony_labels = np.where(structure_mask, 1, 0).astype(np.int32)
+    colony_mask = structure_mask.copy()
+    colony_mask[8:13, 28:36] = True        # disconnected branch fragment, dropped by the overlap filter
+    central, frags = select_reconnect_fragments(
+        colony_labels, center, colony_mask, structure_mask, scope="branches")
+    assert central[10, 10]                 # body is central
+    assert frags[10, 30] > 0               # the disconnected fragment is a reconnect candidate
+    # pseudo scope must NOT admit it
+    _, frags_pseudo = select_reconnect_fragments(
+        colony_labels, center, colony_mask, structure_mask, scope="pseudo")
+    assert frags_pseudo[10, 30] == 0
+
+
+def test_select_reconnect_fragments_min_size_drops_specks():
+    from phenotypic.sdk_.reconnect import select_reconnect_fragments
+    center = np.zeros((30, 40), dtype=bool); center[10, 10] = True
+    structure_mask = np.zeros((30, 40), dtype=bool); structure_mask[8:13, 8:20] = True
+    colony_labels = np.where(structure_mask, 1, 0).astype(np.int32)
+    colony_mask = structure_mask.copy()
+    colony_mask[8:13, 28:36] = True        # 40-px real fragment (kept)
+    colony_mask[0, 0] = True               # 1-px speck (dropped)
+    _, frags = select_reconnect_fragments(
+        colony_labels, center, colony_mask, structure_mask, scope="branches", min_fragment_size=5)
+    assert frags[10, 30] > 0
+    assert frags[0, 0] == 0
+
+
+def test_select_reconnect_fragments_rejects_bad_scope():
+    import pytest
+    from phenotypic.sdk_.reconnect import select_reconnect_fragments
+    z = np.zeros((5, 5), dtype=np.int32); b = np.zeros((5, 5), dtype=bool)
+    with pytest.raises(ValueError):
+        select_reconnect_fragments(z, b, b, b, scope="nonsense")  # type: ignore[arg-type]

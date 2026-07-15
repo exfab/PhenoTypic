@@ -22,6 +22,7 @@ from ._colony_reconnect import (
     compute_full_image_app2_gi_cost,
     identify_pseudo_fragments,
     reconnect_fragments_tiled,
+    select_reconnect_fragments,
 )
 
 __all__ = [
@@ -42,6 +43,7 @@ __all__ = [
     "partition_by_grid_voronoi",
     "reconnect_fragments_tiled",
     "rorpo",
+    "select_reconnect_fragments",
     "tensor_vote",
     "tricktrack_ca",
 ]

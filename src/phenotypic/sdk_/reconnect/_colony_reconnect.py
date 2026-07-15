@@ -15,7 +15,7 @@ import numpy as np
 from scipy.ndimage import label as ndi_label
 from skimage.filters import threshold_otsu
 from skimage.measure import label
-from skimage.morphology import dilation, disk
+from skimage.morphology import dilation, disk, remove_small_objects
 from skimage.segmentation import find_boundaries
 
 from ..branch_pathfinding import (
@@ -89,6 +89,60 @@ def identify_pseudo_fragments(
     else:
         fragment_labels = np.zeros(foreground.shape, dtype=np.int32)
     return central_mask, fragment_labels
+
+
+def select_reconnect_fragments(
+    colony_labels: np.ndarray,
+    center_mask: np.ndarray,
+    colony_mask: np.ndarray,
+    structure_mask: np.ndarray,
+    *,
+    scope: str = "branches",
+    min_fragment_size: int = 1,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Select the fragment set the Dijkstra reconnection is allowed to bridge.
+
+    ``scope="pseudo"`` reproduces :func:`identify_pseudo_fragments` exactly: only the
+    Voronoi-cut pieces of ``colony_labels`` that miss the inoculum. ``scope="branches"``
+    additionally admits the disconnected branch components the overlap filter drops
+    (``colony_mask & ~structure_mask``), so genuinely-severed hyphae reach reconnection
+    instead of being deleted before it runs. Fragments the reconnection cannot bridge are
+    still dropped downstream by the caller's ``final_mask`` step (they are never painted
+    into ``colony_labels``), so no extra deletion is needed here.
+
+    Args:
+        colony_labels: Voronoi colony labels built from ``structure_mask`` (the Dijkstra
+            targets). Zero is background.
+        center_mask: Boolean inoculum-center mask.
+        colony_mask: The pre-filter union ``branch_mask | center_mask``.
+        structure_mask: ``filter_mask_by_overlap(colony_mask, center_mask)`` — the
+            center-connected bodies kept today.
+        scope: ``"branches"`` (default) admits disconnected branch fragments;
+            ``"pseudo"`` restricts to Voronoi-cut pseudo-fragments (legacy behavior).
+        min_fragment_size: Drop connected fragments smaller than this many pixels
+            (``scope="branches"`` only). ``1`` keeps all.
+
+    Returns:
+        ``(central_mask, fragment_labels)``. ``central_mask`` is the trusted colony
+        bodies (unchanged vs the pseudo path); ``fragment_labels`` is an int32 relabeled
+        map of the fragments to reconnect.
+
+    Raises:
+        ValueError: If ``scope`` is not ``"branches"`` or ``"pseudo"``.
+    """
+    central_mask, fragment_labels = identify_pseudo_fragments(colony_labels, center_mask)
+    if scope == "pseudo":
+        return central_mask, fragment_labels
+    if scope != "branches":
+        raise ValueError(f"scope must be 'branches' or 'pseudo', got {scope!r}")
+
+    media_frag_mask = (
+        np.asarray(colony_mask, dtype=bool) & ~np.asarray(structure_mask, dtype=bool)
+    )
+    fragment_mask = (fragment_labels > 0) | media_frag_mask
+    if min_fragment_size > 1:
+        fragment_mask = remove_small_objects(fragment_mask, min_size=min_fragment_size)
+    return central_mask, label(fragment_mask).astype(np.int32)
 
 
 def _apply_penalties_inplace(
