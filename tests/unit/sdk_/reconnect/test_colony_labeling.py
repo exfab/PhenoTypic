@@ -25,7 +25,12 @@ def test_markers_from_centroids_one_seed_per_label():
     markers = markers_from_centroids(objmap)
     assert markers.dtype == np.int32
     assert set(np.unique(markers)) == {0, 1, 2}
-    assert int(markers[np.array([3, 4]).mean().round().astype(int), 3]) or markers[markers > 0].size == 2
+    assert markers[markers > 0].size == 2                        # exactly two seeds
+    # each seed sits inside its own label's footprint (placed at that label's centroid)
+    y1, x1 = (int(v) for v in np.argwhere(markers == 1)[0])
+    y2, x2 = (int(v) for v in np.argwhere(markers == 2)[0])
+    assert objmap[y1, x1] == 1
+    assert objmap[y2, x2] == 2
 
 
 def test_partition_by_grid_voronoi_labels_two_blobs():

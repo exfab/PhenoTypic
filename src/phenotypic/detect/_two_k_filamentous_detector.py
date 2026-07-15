@@ -92,6 +92,12 @@ class TwoKFilamentousDetector(GridObjectDetector):
 
     @model_validator(mode="after")
     def _derive_scene_params(self) -> Self:
+        if self.k_loose >= self.k_strict:
+            raise ValueError(
+                f"k_loose ({self.k_loose}) must be < k_strict ({self.k_strict}): the loose "
+                "pass supplies the faint candidates and the strict pass the confident seeds; "
+                "inverting them inverts the hysteresis."
+            )
         if self.branch_base is None:
             self.branch_base = ImagePipeline(ops=[
                 FlattenIllumination(sigma=300.0),
@@ -169,6 +175,12 @@ class TwoKFilamentousDetector(GridObjectDetector):
         center_mask, center_objmap = self._fill_centers(image, enhanced)
         if center_objmap.max() == 0:
             raise ValueError("No centers detected by center_detector; cannot label colonies.")
+        if not center_mask.any():
+            raise ValueError(
+                "center_detector found wells but none intersect the background-subtracted "
+                "colony body (grid ∩ body is empty). Check background_subtractor sigma or the "
+                "grid coordinates."
+            )
 
         # ── FILTER + GRID VORONOI ──
         # Union centers FIRST so branch rings (PCT leaves the inoculum core a hole) connect

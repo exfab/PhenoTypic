@@ -12,6 +12,15 @@ def test_defaults_and_construction():
     assert d.tile_size is not None and d.mad_window is not None and d.mad_window % 2 == 1
 
 
+def test_k_loose_must_be_below_k_strict():
+    from pydantic import ValidationError
+    # inverting the hysteresis scales (loose >= strict) is rejected by the validator
+    with pytest.raises(ValidationError):
+        TwoKFilamentousDetector(k_loose=6.0, k_strict=6.0)
+    with pytest.raises(ValidationError):
+        TwoKFilamentousDetector(k_loose=7.0, k_strict=6.0)
+
+
 def test_end_to_end_labels_colonies():
     image = load_synth_filamentous_plate().copy()
     d = TwoKFilamentousDetector(center_detector=OtsuDetector(ignore_zeros=True))
@@ -73,9 +82,9 @@ def _plate_two_colonies_and_a_stray():
     blob far from both wells. Returns (GridImage, well0_rc, well1_rc, stray_rc, stray_bbox).
 
     ``stray_bbox`` is a (row_slice, col_slice) tight around the stray blob but clear of both
-    colonies — the load-bearing region assertion: no stray pixel may end up labeled. (A
-    single-point check at the blob centre is not enough: a solid blob's centre is a
-    phase-congruency hole and reads 0 regardless, so the region check is what has teeth.)
+    colonies, for a region assertion that no stray pixel is labeled. (A single-point check at the
+    blob centre is not enough: a solid blob's centre is a phase-congruency hole and reads 0
+    regardless, so the region covers the rim where PCT actually responds.)
     """
     H, W = 200, 400
     g = np.full((H, W), 60, dtype=np.uint8)
@@ -95,6 +104,14 @@ def _plate_two_colonies_and_a_stray():
 
 
 def test_final_objmap_excludes_objects_not_overlapping_centers():
+    """End-to-end: the final objmap keeps only center-overlapping objects (never "all objects").
+
+    This is the requirement the detector must satisfy. It is enforced jointly by the
+    ``filter_mask_by_overlap`` pre-filter AND the grid-Voronoi marker-drop (a marker-less
+    connected component is zeroed by ``partition_by_grid_voronoi``), so this integration test
+    guards the *behavior* rather than isolating the filter — the filter itself is unit-tested in
+    ``tests/unit/sdk_/reconnect/test_colony_labeling.py``.
+    """
     img, well0, well1, stray_rc, stray_bbox = _plate_two_colonies_and_a_stray()
     detector = TwoKFilamentousDetector(
         center_detector=ManualGridPointDetector(coord1=well0, coord2=well1,
