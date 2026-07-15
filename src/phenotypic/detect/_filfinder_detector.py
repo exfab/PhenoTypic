@@ -11,7 +11,6 @@ from typing import (
     Callable,
     Generic,
     overload,
-    Self,
     cast,
     TypeVar,
 )
@@ -20,6 +19,7 @@ import warnings
 import numpy as np
 from pydantic import Field
 from scipy import ndimage
+from typing_extensions import Self
 
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.sdk_.typing_ import (
