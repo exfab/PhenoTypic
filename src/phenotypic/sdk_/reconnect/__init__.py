@@ -16,19 +16,31 @@ from ._colony_labeling import (
     markers_from_centroids,
     partition_by_grid_voronoi,
 )
+from ._colony_reconnect import (
+    ReconnectConfig,
+    build_reconnect_cost,
+    compute_full_image_app2_gi_cost,
+    identify_pseudo_fragments,
+    reconnect_fragments_tiled,
+)
 
 __all__ = [
     "ClarkRollingHoughResult",
     "NFAResult",
+    "ReconnectConfig",
     "RorpoResult",
     "TrickTrackCAResult",
     "app2_gwdt_cost",
     "binomial_nfa",
+    "build_reconnect_cost",
     "clark_rolling_hough",
+    "compute_full_image_app2_gi_cost",
     "filter_mask_by_overlap",
     "grey_weighted_distance",
+    "identify_pseudo_fragments",
     "markers_from_centroids",
     "partition_by_grid_voronoi",
+    "reconnect_fragments_tiled",
     "rorpo",
     "tensor_vote",
     "tricktrack_ca",
