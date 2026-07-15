@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Annotated, ClassVar, Optional, Union
+from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Optional, Union
 import numpy as np
 import gc
 
@@ -34,7 +34,7 @@ from phenotypic.sdk_.reconnect import (
     build_reconnect_cost,
     compute_full_image_app2_gi_cost,
     filter_mask_by_overlap,
-    identify_pseudo_fragments,
+    select_reconnect_fragments,
     markers_from_centroids,
     partition_by_grid_voronoi,
     reconnect_fragments_tiled,
@@ -299,6 +299,7 @@ class FilamentousFungiDetector(GridObjectDetector):
     # TODO: review bound (unverified vs literature)
     gap_crossing_penalty: Annotated[float, TuneSpec(1.0, 10.0)] = 4.0
     reconnect_strategy: FilamentousFungiReconnectStrategy = "dijkstra"
+    reconnect_scope: Literal["branches", "pseudo"] = "branches"
 
     # ── Scene-derivation overrides (None → auto-derived by the validator) ──
     # Auto-derived from max_colony_radius_px / min_branch_width_px when left at
@@ -480,8 +481,10 @@ class FilamentousFungiDetector(GridObjectDetector):
         # ── PHASE 4: DIJKSTRA RECONNECTION ──────────────────────────
         colony_labels = inoculum_structure_map
 
-        central_mask, fragment_labels = identify_pseudo_fragments(
-                colony_labels, inoculum_objmask,
+        central_mask, fragment_labels = select_reconnect_fragments(
+                colony_labels, inoculum_objmask, overall_objmask, inoculum_structure_mask,
+                scope=self.reconnect_scope,
+                min_fragment_size=max(1, self.min_branch_width_px),
         )
 
         app2_gi_cost = None
