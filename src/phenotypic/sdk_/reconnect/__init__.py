@@ -11,6 +11,11 @@ from ._nfa import NFAResult, binomial_nfa
 from ._rolling_hough import ClarkRollingHoughResult, clark_rolling_hough
 from ._rorpo import RorpoResult, rorpo
 from ._tensor_voting import tensor_vote
+from ._colony_labeling import (
+    filter_mask_by_overlap,
+    markers_from_centroids,
+    partition_by_grid_voronoi,
+)
 
 __all__ = [
     "ClarkRollingHoughResult",
@@ -20,7 +25,10 @@ __all__ = [
     "app2_gwdt_cost",
     "binomial_nfa",
     "clark_rolling_hough",
+    "filter_mask_by_overlap",
     "grey_weighted_distance",
+    "markers_from_centroids",
+    "partition_by_grid_voronoi",
     "rorpo",
     "tensor_vote",
     "tricktrack_ca",
