@@ -135,16 +135,27 @@ structure gives Dijkstra more real hyphae to route along than the strict map wou
   `_reconnect_fragments_tiled` and all of `sdk_.branch_pathfinding`, plus the scene-derivation of
   `gauss_sigma`/`tile_size`/`mad_window`/… from `max_colony_radius_px`/`min_branch_width_px`.
 
-**Reuse mechanism (decide at implementation):**
-- **(a) Extract a mixin/base** holding FFD Phases 3–5 (`_ReconnectAndLabelMixin`), consumed by both
-  FFD and Class 2 — DRY, but a refactor of FFD.
-- **(b) Subclass `FilamentousFungiDetector`** and override the branch-detection step (and the
-  inoculum step) to call Class 1's kernel + the center-fill, leaving Phases 3–5 inherited. Less
-  refactor; needs FFD's `_operate` to expose a branch-detection hook (it is currently monolithic, so
-  a small `_detect_branches(image) -> (branch_mask, pct_result, enhanced_arr, enhanced_gray)`
-  extraction is the minimal enabling change).
-- Recommend **(b)** with the one-method extraction — smallest change, and it makes FFD's own branch
-  stage overridable, which is generally useful.
+**Reuse mechanism — RESOLVED: (c) extract to `sdk_.reconnect` as composable pure functions.**
+Rather than a mixin (a) or subclassing FFD (b), pull FFD's Phase 3–5 orchestration out of the
+detector into **pure array functions** in `sdk_.reconnect` (the package already documents itself as
+the home for "reconnecting filamentary image structure", and `sdk_.branch_pathfinding`'s docstring
+says its machinery was "extracted from `FilamentousFungiDetector`" so detectors stay thin consumers).
+Both FFD and Class 2 then call the same functions — no inheritance coupling. Chosen granularity is
+**composable pieces** (labeling and reconnection separable, so a no-Dijkstra `LightDetectFungi` can
+reuse just the labeling half):
+
+- `sdk_.reconnect._colony_labeling`: `filter_mask_by_overlap`, `markers_from_centroids`,
+  `partition_by_grid_voronoi`.
+- `sdk_.reconnect._colony_reconnect`: `ReconnectConfig` (frozen dataclass of the 14 scalar knobs),
+  `identify_pseudo_fragments`, `build_reconnect_cost(pc_sum, M, m, orientation, …, cfg)` (takes the
+  four PCT **arrays**, not `_PhaseCong3Result`, to keep the package import-pure),
+  `reconnect_fragments_tiled(…, cfg, app2_gi_cost=None)`, `compute_full_image_app2_gi_cost`.
+
+FFD is **refactored to consume these** (true DRY), gated by a golden regression test pinning FFD's
+`objmap` bit-for-bit before/after. Class 2 calls the identical functions with its two-`k` branch
+mask + center-fill. Former options (a)/(b) rejected: a mixin still refactors FFD without the
+domain-independence win; subclassing couples Class 2 to FFD's lifecycle. Full task breakdown in
+`docs/superpowers/plans/2026-07-14-twok-phase-hysteresis-implementation.md`.
 
 ---
 
@@ -168,18 +179,19 @@ structure gives Dijkstra more real hyphae to route along than the strict map wou
   - **Cost-surface reuse:** spy that Phase-4 receives the *loose* `_PhaseCong3Result` (no second PCT
     pass beyond Class 1's two).
 
-## 5 · Open questions
+## 5 · Open questions — RESOLVED (see implementation plan)
 
-1. **Reuse mechanism (§3 a vs b).** Confirm the minimal FFD `_detect_branches` extraction is
-   acceptable, else go with the mixin.
-2. **Flatten/stretch placement.** Class 1 assumes an enhanced `detect_mat` (like `FocusEdgePhase`).
-   Confirm Class 2 runs `FlattenIllumination(300) → ContrastStretching(70,99)` (no gamma — settled
-   this session) before Class 1, either inline or as a `branch_base` pipeline field.
-3. **`k_loose` default** (4.0 vs 4.5): 4.0 recovers more connectors (~9 vs 12 frags/colony) at a
-   little more agar — pick per whether the downstream leans on Dijkstra to clean up (then 4.5 is
-   safer) or wants maximal recall pre-Dijkstra (then 4.0).
-4. **Does Class 2 even need Dijkstra after two-`k`?** Two-`k` already gets to ~12 frags/colony; the
-   residual are *true empty gaps* (the tested niche where Dijkstra still helps). Worth measuring the
-   marginal fragment reduction Dijkstra buys on top of two-`k` before committing to the heavier
-   Class 2 — it may be small enough that `LightDetectFungi` (two-`k` + grid-Voronoi, no Dijkstra)
-   suffices and Class 2 is only for the hardest plates.
+1. **Reuse mechanism — RESOLVED.** Not (a) mixin / (b) subclass; instead **(c) extract Phase 3–5 to
+   `sdk_.reconnect` as composable pure functions**, and refactor FFD to consume them behind a golden
+   regression gate (§3). Center-fill lives as **inline detector fields** (`center_detector` +
+   `background_subtractor`), matching FFD's `inoculum_detector` pattern — not a standalone
+   `FillInoculumCenters` class. Class 1 stays a pure branch enhancer regardless (the actual §2 goal).
+2. **Flatten/stretch placement — RESOLVED.** Class 2 owns a `branch_base` pipeline field defaulting
+   to `FlattenIllumination(300) → ContrastStretching(70,99)`, **no gamma**, applied to a copy before
+   the two-`k` kernel.
+3. **`k_loose` default — RESOLVED: 4.5.** Dijkstra cleans up residual gaps downstream, so the safer
+   (less-agar) 4.5 is the default; `k_loose` stays tunable for maximal-recall (4.0) use.
+4. **Does Class 2 need Dijkstra after two-`k`? — RESOLVED: yes, build it.** The residual ~12
+   frags/colony are *true empty gaps* — Dijkstra's tested niche. Class 2 is the heavy/hardest-plate
+   detector; the no-Dijkstra `LightDetectFungi` (two-`k` + grid-Voronoi) remains the light path and
+   now reuses the same extracted `sdk_.reconnect` labeling functions.
