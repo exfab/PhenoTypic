@@ -77,7 +77,10 @@ def test_read_rgb_accepts_normalized_float_rgb():
 
     assert arr.dtype == np.float32
     assert not arr.flags.writeable
-    np.testing.assert_array_equal(arr, rgb)
+    # Image stores as uint16 (bit_depth=16), so a float RGB round-trips through one
+    # uint16 quantization step (1/65535 ~= 1.5e-5); assert equality within that step
+    # rather than bit-exact (0.25 comes back as 0.24998856).
+    np.testing.assert_allclose(arr, rgb, atol=1.0 / 65535)
 
 
 def test_project_collapses_3d_via_detect_mode():
