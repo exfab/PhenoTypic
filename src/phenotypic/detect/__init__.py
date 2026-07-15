@@ -28,6 +28,7 @@ from ._secondary_otsu import SecondaryOtsuDetector
 from ._sine_peak_detector import SinePeakDetector
 from ._composite_detector import CompositeDetector
 from ._filamentous_fungi_detector import FilamentousFungiDetector
+from ._two_k_filamentous_detector import TwoKFilamentousDetector
 from ._filfinder_detector import FilFinderDetector
 from ._inoculum_detector import InoculumDetector
 
@@ -36,6 +37,7 @@ __all__ = [
     "ChanVeseDetector",
     "CompositeDetector",
     "FilamentousFungiDetector",
+    "TwoKFilamentousDetector",
     "FilFinderDetector",
     "HysteresisDetector",
     "InoculumDetector",
