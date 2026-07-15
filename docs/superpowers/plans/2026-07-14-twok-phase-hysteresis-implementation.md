@@ -1513,9 +1513,9 @@ def test_final_objmap_excludes_objects_not_overlapping_centers():
 Run: `uv run pytest tests/unit/detect/test_two_k_filamentous_detector.py::test_final_objmap_excludes_objects_not_overlapping_centers -v`
 Expected: PASS. (If the synthetic doesn't robustly produce two labeled colonies — e.g. PCT thresholds don't fire on this scale — adjust sizes/contrast/`width` while keeping the intent: two center-overlapping colonies labeled, one far-from-center object excluded. Do not weaken the `stray_rc == 0` assertion.)
 
-- [ ] **Step 3: Prove the filter is load-bearing (test integrity)**
+- [ ] **Step 3: Scope note (verified during code review)**
 
-Temporarily change `_operate`'s `structure_mask = filter_mask_by_overlap(colony_mask, center_mask)` to `structure_mask = colony_mask` (bypass the overlap filter), rerun the test, and confirm the `objmap[stray_rc] == 0` assertion now **FAILS** (the stray object leaks into the objmap). Then revert and confirm PASS. This proves the overlap filter — not something incidental — is what excludes non-center objects.
+This integration test guards the end-to-end behavior — "only center-overlapping objects are labeled" — which is enforced **jointly** by `filter_mask_by_overlap` AND the grid-Voronoi marker-drop (`partition_by_grid_voronoi` zeroes marker-less connected components). Bypassing *only* the filter (`structure_mask = colony_mask`) does **not** fail the test — verified empirically that the marker-drop still excludes the stray. So this test guards the gross "keep all objects" regression (skipping the Voronoi entirely would leak the stray); the overlap filter itself is unit-tested in `tests/unit/sdk_/reconnect/test_colony_labeling.py::test_filter_mask_by_overlap_drops_non_overlapping_cc`.
 
 - [ ] **Step 4: Commit**
 
