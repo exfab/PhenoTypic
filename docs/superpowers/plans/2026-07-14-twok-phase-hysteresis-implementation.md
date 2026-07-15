@@ -1357,7 +1357,11 @@ class TwoKFilamentousDetector(GridObjectDetector):
         if center_objmap.max() == 0:
             raise ValueError("No centers detected by center_detector; cannot label colonies.")
 
-        # ── FILTER + GRID VORONOI ── (union centers so branch rings connect through cores)
+        # ── FILTER + GRID VORONOI ──
+        # Union centers FIRST so branch rings (PCT leaves the inoculum core a hole) connect
+        # through their cores; THEN keep only components overlapping a center — the analogue of
+        # FFD's `inoculum_structure_mask = _filter_mask_by_overlap(overall_objmask, inoculum_objmask)`.
+        # This drops stray/agar objects not attached to any well (do NOT keep all objects).
         colony_mask = branch_mask | center_mask
         structure_mask = filter_mask_by_overlap(colony_mask, center_mask)
         markers = markers_from_centroids(center_objmap)
@@ -1378,6 +1382,9 @@ class TwoKFilamentousDetector(GridObjectDetector):
         )
 
         # ── FINAL VORONOI ──
+        # Re-partition the overlap-filtered `structure_mask` (NOT the raw branch_mask) together
+        # with the reconnected labels, so the final objmap contains ONLY center-overlapping
+        # objects — mirrors FFD's `final_mask = (colony_labels > 0) | inoculum_structure_mask`.
         final_mask = (colony_labels > 0) | structure_mask
         colony_labels = partition_by_grid_voronoi(markers, final_mask)
 
@@ -1452,6 +1459,69 @@ Expected: PASS. (`two_k_phase` is called exactly once; the detector reuses `loos
 ```bash
 git add tests/unit/detect/test_two_k_filamentous_detector.py
 git commit -m "test(detect): TwoKFilamentousDetector serialization + single-PCT-pass guards"
+```
+
+### Task 5.3: Overlap-keep pin — final objmap excludes objects not overlapping a center
+
+**Load-bearing requirement (mirrors FFD):** the final `objmap` must contain **only** components overlapping a detected center. A bright structure far from every well must be background (`0`) — the detector must **not** "keep all objects." This is the `structure_mask = filter_mask_by_overlap(colony_mask, center_mask)` filter in `_operate`; this test pins it and must be able to fail if the filter is bypassed.
+
+**Files:**
+- Modify: `tests/unit/detect/test_two_k_filamentous_detector.py`
+
+**Interfaces:**
+- Consumes: `TwoKFilamentousDetector`, `ManualGridPointDetector`, `GridImage`.
+
+- [ ] **Step 1: Write the failing-capable test (append)**
+
+```python
+from phenotypic import GridImage
+from phenotypic.detect import ManualGridPointDetector
+
+
+def _plate_two_colonies_and_a_stray():
+    """1x2 grid: two colonies (solid core + branch tendril) on known wells, plus one bright
+    blob far from both wells. Returns (GridImage, well0_rc, well1_rc, stray_rc)."""
+    H, W = 200, 400
+    g = np.full((H, W), 60, dtype=np.uint8)
+    yy, xx = np.ogrid[:H, :W]
+
+    def disk(cy, cx, r, val):
+        g[(yy - cy) ** 2 + (xx - cx) ** 2 < r * r] = val
+
+    well0, well1 = (100, 100), (100, 300)
+    disk(*well0, 22, 235); g[98:103, 100:150] = 215        # colony 0: core + tendril
+    disk(*well1, 22, 235); g[98:103, 250:300] = 215        # colony 1: core + tendril
+    stray_rc = (32, 200)
+    disk(*stray_rc, 18, 240)                                # stray blob, far from both wells
+    rgb = np.repeat(g[..., None], 3, axis=2)
+    return GridImage(rgb, nrows=1, ncols=2), well0, well1, stray_rc
+
+
+def test_final_objmap_excludes_objects_not_overlapping_centers():
+    img, well0, well1, stray_rc = _plate_two_colonies_and_a_stray()
+    detector = TwoKFilamentousDetector(
+        center_detector=ManualGridPointDetector(coord1=well0, coord2=well1,
+                                                shape="disk", width=40),
+    )
+    objmap = np.asarray(detector.apply(img, inplace=False).objmap[:])
+    assert objmap[well0] > 0 and objmap[well1] > 0     # both colonies are labeled
+    assert objmap[stray_rc] == 0                       # stray object is dropped by the overlap filter
+```
+
+- [ ] **Step 2: Run to verify it passes**
+
+Run: `uv run pytest tests/unit/detect/test_two_k_filamentous_detector.py::test_final_objmap_excludes_objects_not_overlapping_centers -v`
+Expected: PASS. (If the synthetic doesn't robustly produce two labeled colonies — e.g. PCT thresholds don't fire on this scale — adjust sizes/contrast/`width` while keeping the intent: two center-overlapping colonies labeled, one far-from-center object excluded. Do not weaken the `stray_rc == 0` assertion.)
+
+- [ ] **Step 3: Prove the filter is load-bearing (test integrity)**
+
+Temporarily change `_operate`'s `structure_mask = filter_mask_by_overlap(colony_mask, center_mask)` to `structure_mask = colony_mask` (bypass the overlap filter), rerun the test, and confirm the `objmap[stray_rc] == 0` assertion now **FAILS** (the stray object leaks into the objmap). Then revert and confirm PASS. This proves the overlap filter — not something incidental — is what excludes non-center objects.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add tests/unit/detect/test_two_k_filamentous_detector.py
+git commit -m "test(detect): pin final objmap to center-overlapping objects only"
 ```
 
 ---
