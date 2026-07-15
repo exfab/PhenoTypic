@@ -12,7 +12,8 @@ import numpy as np
 import pandas as pd
 from matplotlib.colors import Normalize
 
-sys.path.insert(0, "/private/tmp")
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from render_twok_reconnected_orientation import (  # noqa: E402
     isolated_global_crop,
@@ -37,10 +38,7 @@ from phenotypic.util._matched_ring_rotation import (  # noqa: E402
 )
 
 
-OUTPUT_DIR = Path(
-    "/Users/alex/.codex/visualizations/2026/07/15/"
-    "019f6340-b68c-7a81-b738-983ed6ea1a27/orientation-real-image"
-)
+OUTPUT_DIR = SCRIPT_DIR.parent / "artifacts"
 COLONIES = (
     ("R3C4", 24),
     ("R4C6", 36),

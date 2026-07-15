@@ -42,11 +42,9 @@ IMAGE_PATH = Path(
     "denoised_media_subsets_FrameIdx10-12/xylan/"
     "d000273_300_001_2025-12-12_02-00-49_rgb.tiff"
 )
-OUTPUT_DIR = Path(
-    "/Users/alex/.codex/visualizations/2026/07/15/"
-    "019f6340-b68c-7a81-b738-983ed6ea1a27/orientation-real-image"
-)
-CACHE_DIR = Path("/private/tmp/neurospora_orientation_cache")
+ANALYSIS_DIR = Path(__file__).resolve().parents[1]
+OUTPUT_DIR = ANALYSIS_DIR / "artifacts"
+CACHE_DIR = ANALYSIS_DIR / "cache"
 
 K = 5
 COORD1 = (400, 550)

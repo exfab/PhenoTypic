@@ -785,10 +785,10 @@ check.
 
 | Colony | Ring aggregator | Continuous ring support | Absolute p95 | Raw peak |
 |---|---|---:|---:|---:|
-| R3C4 | equal-sector axial mean | 66.7% | 40.7 degrees | 46.7 degrees |
-| R3C4 | equal-sector axial median | 66.7% | 37.2 degrees | 42.6 degrees |
-| R4C6 | equal-sector axial mean | 100.0% | 18.0 degrees | 18.1 degrees |
-| R4C6 | equal-sector axial median | 100.0% | 17.3 degrees | 17.3 degrees |
+| R3C4 | equal-sector axial mean | 10/21 rings, 47.6% | 40.7 degrees | 46.7 degrees |
+| R3C4 | equal-sector axial median | 10/21 rings, 47.6% | 37.2 degrees | 42.6 degrees |
+| R4C6 | equal-sector axial mean | 13/14 rings, 92.9% | 18.0 degrees | 18.1 degrees |
+| R4C6 | equal-sector axial median | 13/14 rings, 92.9% | 17.2 degrees | 17.3 degrees |
 
 The eligible R3C4 ring summaries compound in the positive image-coordinate turning
 direction until a near-tangential ring terminates the profile. R4C6 accumulates about 18
@@ -810,3 +810,68 @@ The main limitation is loss of spatial correspondence. A positive sector on one 
 a different positive sector on the next can contribute to one smooth colony-wide curve
 without representing the same branch. For that reason this method should be interpreted
 as colony-wide rotational tendency, not tracked branch rotation or a bifurcation angle.
+
+## 13. Full-length cumulative axial-median change
+
+### 13.1 Question answered
+
+This diagnostic asks how the colony-wide equal-sector axial-median radial-relative
+orientation changes from one ring to the next. It is an orientation-state calculation,
+not a polar path predictor. It was added because R3C4 retained rich, locally coherent
+orientation evidence after the tangent-based method reached an 87.4-degree ring median
+and terminated at its 75-degree radial-integration guard.
+
+The calculation uses the full detected-object radius rather than the symmetric-growth or
+sparse-zone radius. The exclusive outer bound is the first complete 8 px ring boundary
+beyond the farthest detected object pixel. The inoculum core remains excluded. Ring
+medians retain the same equal-sector eligibility, three-sector minimum, and 0.15 axial
+ring-resultant threshold as Section 12.
+
+### 13.2 Calculation
+
+For reliable adjacent ring medians `m_k`, accumulate only their seam-safe axial change:
+
+```text
+d_k = 0.5 * atan2(sin(2 * (m_k - m_(k-1))),
+                  cos(2 * (m_k - m_(k-1))))
+C_k = C_(k-1) + d_k
+```
+
+The first supported ring is zero. A missing ring consensus or an exactly 90-degree axial
+change terminates continuous accumulation. There is no absolute-tilt cutoff and no
+`tan(tilt)` term, so near-tangential ring medians remain finite. Raw orientation angles
+are not summed. Consequently, subdividing an unchanged orientation interval does not
+inflate the result, global image rotation cancels, and crossings of the axial
+plus/minus-90-degree seam remain continuous. The unwrapped cumulative value may exceed
+90 degrees; its sign assumes the true change between each adjacent ring is less than 90
+degrees.
+
+### 13.3 Real-image prototype results
+
+| Colony | Continuous ring support | Absolute p95 | Raw peak |
+|---|---:|---:|---:|
+| R3C4 | 17/21 rings, 81.0% | 51.4 degrees | 60.5 degrees |
+| R4C6 | 13/14 rings, 92.9% | 90.9 degrees | 92.8 degrees |
+
+For R3C4, the profile continues through the 87.4- and 89.5-degree near-tangential ring
+medians and remains defined through ring 16. It stops at ring 17 because the ring
+resultant falls below 0.15, not because of tangency or symmetric-radius trimming.
+
+For R4C6, the large positive cumulative change reflects a ring median that moves from
+-51.3 degrees in the first measured ring to approximately +34 degrees in the outer
+supported rings. The tangent-based radial-path reference remains near 17 degrees because
+it answers a different geometric question. Neither result should be substituted for the
+other without naming the definition.
+
+### 13.4 Interpretation and limitations
+
+This is the preferred colony-wide complement for capturing tangential orientation
+changes. It retains equal-sector weighting, so adding more same-orientation pixels to an
+already reliable sector does not directly increase the value. Support remains a separate
+quantity and can still change with branch density near eligibility thresholds.
+
+The result is not a tracked biological branch trajectory. An abrupt change can occur
+when different sector populations dominate adjacent rings, even if no individual branch
+turns by that amount. Use the sector-level tangential or Cartesian diagnostics when
+spatial correspondence is required. Keep the tangent-based radial-path calculation as a
+reference rather than combining its values with this orientation-state metric.

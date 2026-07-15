@@ -12,7 +12,8 @@ import numpy as np
 import pandas as pd
 from matplotlib.colors import Normalize
 
-sys.path.insert(0, "/private/tmp")
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from render_matched_ring_comparison import (  # noqa: E402
     extract_profiles,
@@ -21,7 +22,6 @@ from render_matched_ring_comparison import (  # noqa: E402
 )
 from render_tangential_method_comparison import (  # noqa: E402
     draw_rings,
-    extract_pixel_fields,
 )
 from render_twok_reconnected_orientation import (  # noqa: E402
     isolated_global_crop,
@@ -30,19 +30,98 @@ from render_twok_reconnected_orientation import (  # noqa: E402
 )
 from phenotypic.measure import MeasureOrientationZones  # noqa: E402
 from phenotypic.measure._measure_orientation_zones import (  # noqa: E402
+    _RADIAL_RELATIVE_MIN_COHERENCE,
     _RADIAL_RELATIVE_N_SECTORS,
     radial_ring_orientation_profile,
     radial_ring_sector_field,
     signed_radial_relative_field,
+    zone_selector,
 )
 
 
-OUTPUT_DIR = Path(
-    "/Users/alex/.codex/visualizations/2026/07/15/"
-    "019f6340-b68c-7a81-b738-983ed6ea1a27/orientation-real-image"
-)
+OUTPUT_DIR = SCRIPT_DIR.parent / "artifacts"
 COLONIES = (("R3C4", 24), ("R4C6", 36))
 SPECTRAL_NORM = Normalize(vmin=-180.0, vmax=180.0)
+
+
+def extract_full_length_ring_fields(
+    section,
+    operation: MeasureOrientationZones,
+    profiles: dict,
+) -> tuple[dict, np.ndarray, np.ndarray, np.ndarray]:
+    """Extend ring compounding to the full detected-object radius.
+
+    Unlike the production Sholl-style diagnostics, this prototype must not
+    stop at ``min(sparse_end_radius, symmetric_radius)``. Its exclusive outer
+    bound is therefore the first complete ring boundary beyond the farthest
+    detected object pixel. The inferred inoculum core remains excluded.
+
+    Args:
+        section: Image crop containing one isolated detected colony.
+        operation: Configured orientation-zone measurer.
+        profiles: Profiles initially extracted by ``extract_profiles``.
+
+    Returns:
+        A tuple containing updated profiles, local orientation angles,
+        coherence, and the full-length non-inoculum object selector.
+
+    Raises:
+        RuntimeError: If the crop does not yield exactly one object field or
+            contains no detected structure outside the inoculum.
+    """
+    props, label2section = operation._prep(section)
+    records = list(operation._iter_object_fields(section, props, label2section))
+    if len(records) != 1:
+        raise RuntimeError("Expected exactly one object field")
+    (
+        _prop,
+        seg,
+        obj_mask,
+        phi,
+        coherence,
+        _gradient,
+        dist_map,
+        centre,
+    ) = records[0]
+    if phi.shape != profiles["base"].shape:
+        raise RuntimeError("Pixel field and display tile shapes differ")
+    if not np.allclose(centre, profiles["centre"]):
+        raise RuntimeError("Full-length field changed the inoculum center")
+
+    inner_radius = float(seg.core_end_radius)
+    outside_core = (
+        obj_mask
+        & np.isfinite(dist_map)
+        & (dist_map >= inner_radius)
+    )
+    if not outside_core.any():
+        raise RuntimeError("No detected structure exists outside the inoculum")
+    object_extent_radius = float(np.max(dist_map[outside_core]))
+    radial_span = np.nextafter(object_extent_radius, np.inf) - inner_radius
+    n_rings = max(1, int(np.ceil(radial_span / operation.radial_ring_width)))
+    outer_radius = inner_radius + n_rings * operation.radial_ring_width
+    selector = zone_selector(
+        dist_map,
+        inner_radius,
+        outer_radius,
+        obj_mask,
+        "Mask",
+    )
+    updated_profiles = dict(profiles)
+    updated_profiles.update(
+        {
+            "inner_radius": inner_radius,
+            "outer_radius": outer_radius,
+            "object_extent_radius": object_extent_radius,
+            "dist_map": dist_map,
+            "reliable_structure": (
+                selector
+                & np.isfinite(coherence)
+                & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
+            ),
+        }
+    )
+    return updated_profiles, phi, coherence, selector
 
 
 def axial_difference(outer: np.ndarray | float, inner: float) -> np.ndarray:
@@ -172,6 +251,7 @@ def render_compounded_rotation(
     )
     mean_cumulative = compound_ring_tilt(radii, mean_tilt)
     median_cumulative = compound_ring_tilt(radii, median_tilt)
+    profiles = {**profiles, "radii": radii}
     n_sectors = sector_tilt.shape[1]
     mean_lattice = np.repeat(mean_cumulative[:, np.newaxis], n_sectors, axis=1)
     median_lattice = np.repeat(
@@ -335,7 +415,9 @@ def render_compounded_rotation(
         "Compounded signed rotation (degrees), fixed −180° to +180°"
     )
     figure.suptitle(
-        f"{colony}: colony-wide Sholl ring tilt compounded outward",
+        f"{colony}: colony-wide Sholl ring tilt compounded outward\n"
+        f"full detected length {profiles['object_extent_radius']:.1f} px; "
+        f"outer ring boundary {profiles['outer_radius']:.1f} px",
         fontsize=14,
     )
     figure.text(
@@ -371,6 +453,8 @@ def render_compounded_rotation(
             "TotalRings": int(radii.size),
             "AbsP95Deg": mean_p95,
             "RawPeakDeg": mean_raw,
+            "ObjectExtentRadiusPx": profiles["object_extent_radius"],
+            "OuterRingRadiusPx": profiles["outer_radius"],
         },
         {
             "Colony": colony,
@@ -380,6 +464,8 @@ def render_compounded_rotation(
             "TotalRings": int(radii.size),
             "AbsP95Deg": median_p95,
             "RawPeakDeg": median_raw,
+            "ObjectExtentRadiusPx": profiles["object_extent_radius"],
+            "OuterRingRadiusPx": profiles["outer_radius"],
         },
     ]
     profile_rows: list[dict[str, float | str]] = []
@@ -420,7 +506,7 @@ def render_all_ring_compounded_rotation() -> None:
             quiver_block=24,
         )
         profiles = extract_profiles(section, operation)
-        phi, _fiber_axis, coherence, selector = extract_pixel_fields(
+        profiles, phi, coherence, selector = extract_full_length_ring_fields(
             section, operation, profiles
         )
         output, colony_summary, colony_profiles = render_compounded_rotation(

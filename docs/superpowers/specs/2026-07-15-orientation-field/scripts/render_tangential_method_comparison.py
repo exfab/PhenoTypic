@@ -15,7 +15,8 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import Normalize
 from scipy.ndimage import distance_transform_edt, gaussian_filter, map_coordinates
 
-sys.path.insert(0, "/private/tmp")
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from render_matched_ring_comparison import (  # noqa: E402
     extract_profiles,
@@ -42,10 +43,7 @@ from phenotypic.util._matched_ring_rotation import (  # noqa: E402
 from phenotypic.util._nematic_bend import fiber_bend_field  # noqa: E402
 
 
-OUTPUT_DIR = Path(
-    "/Users/alex/.codex/visualizations/2026/07/15/"
-    "019f6340-b68c-7a81-b738-983ed6ea1a27/orientation-real-image"
-)
+OUTPUT_DIR = SCRIPT_DIR.parent / "artifacts"
 COLONIES = (("R3C4", 24), ("R4C6", 36))
 SPECTRAL_NORM = Normalize(vmin=-180.0, vmax=180.0)
 
