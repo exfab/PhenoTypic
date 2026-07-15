@@ -606,7 +606,6 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
         """
         from phenotypic.sdk_._plotly_helpers import (
             plotly_imshow,
-            add_plotly_obj_labels,
         )
 
         if base_layer == "rgb":
@@ -624,7 +623,6 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
                 figsize=(display_w // 100, display_h // 100),
         )
         fig.update_coloraxes(showscale=False)
-        add_plotly_obj_labels(fig, image)
 
         MeasureSymmetricZones._add_overlay_traces(
                 fig, image, intermediates_cache,

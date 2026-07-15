@@ -1,0 +1,9 @@
+Colony,DetectorLabel,Variant,AllowGapBridging,AllowRestarts,ValueBasis,Support,AbsP95Deg,RawMaxDeg,AdditionalCellsVsStrict
+R3C4,24,Strict baseline,False,False,inoculum-path,0.285185185185,93.7459753113,155.84177102,0
+R3C4,24,Gap bridging only,True,False,inoculum-path,0.285185185185,93.7459753113,155.84177102,0
+R3C4,24,Segment restarts only,False,True,segment-relative,0.422222222222,91.4382105793,155.84177102,74
+R3C4,24,Gap bridging + restarts,True,True,segment-relative,0.422222222222,91.4382105793,155.84177102,74
+R4C6,36,Strict baseline,False,False,inoculum-path,0.425925925926,49.83176655,70.5264391982,0
+R4C6,36,Gap bridging only,True,False,inoculum-path,0.425925925926,49.83176655,70.5264391982,0
+R4C6,36,Segment restarts only,False,True,segment-relative,0.490740740741,54.666945522,71.8968945644,14
+R4C6,36,Gap bridging + restarts,True,True,segment-relative,0.490740740741,54.666945522,71.8968945644,14

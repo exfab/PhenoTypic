@@ -53,6 +53,14 @@ def test_inspect_returns_themed_figure(measured):
     assert tuple(fig.layout.template.layout.colorway) == OKABE_ITO
 
 
+def test_inspect_hides_object_labels(measured):
+    op, image = measured
+    fig = op.inspect(image)
+    annotation_text = {str(ann.text) for ann in fig.layout.annotations}
+    object_labels = {str(prop.label) for prop in image.objects.props}
+    assert annotation_text.isdisjoint(object_labels)
+
+
 def test_inspect_for_save_flattens_legendonly(measured):
     op, image = measured
     # non-vacuous: the interactive figure DOES hide overlay layers behind the legend
