@@ -1,11 +1,19 @@
 """Shard partitioning + per-stage SLURM args resolution (Spec 1 §7, Plan 3)."""
 
+from pathlib import Path
+
+from phenotypic._cli import _cli_staged_slurm
 from phenotypic._cli._cli_staged_slurm import (
     STAGE_DEPENDENCY,
     generate_staged_scripts,
     partition_shards,
     resolve_stage_slurm_args,
+    submit_staged_chain,
 )
+
+
+def _manifest(n):
+    return [("ds", f"img{i}") for i in range(n)]
 
 
 def test_partition_shards_even():
@@ -69,9 +77,11 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
         n_shards=2,
     )
     assert set(scripts) == {"stage1", "stage2", "stage3"}
-    s1 = scripts["stage1"].read_text(encoding="utf-8")
+    # Image-arrayed stages return a list of chunk scripts (one chunk here);
+    # the GPU stage is a single shard-arrayed script.
+    s1 = scripts["stage1"][0].read_text(encoding="utf-8")
     s2 = scripts["stage2"].read_text(encoding="utf-8")
-    s3 = scripts["stage3"].read_text(encoding="utf-8")
+    s3 = scripts["stage3"][0].read_text(encoding="utf-8")
 
     # Stage 1 & 3 on the CPU partition; Stage 2 on the GPU partition + 1 GPU
     assert "--partition=batch" in s1 and "--partition=batch" in s3
@@ -104,4 +114,106 @@ def test_stage2_script_carries_signal_directive(tmp_path):
     # Stage 3's afterany dependency waits for the continuation.
     assert "--requeue" in s2
     # only Stage 2 carries the walltime-survival directives
-    assert "--requeue" not in scripts["stage1"].read_text(encoding="utf-8")
+    assert "--requeue" not in scripts["stage1"][0].read_text(encoding="utf-8")
+
+
+def test_image_stages_chunked_when_exceeding_array_limit(tmp_path):
+    # 5 images / array_limit 2 -> ceil(5/2) = 3 chunks per image-arrayed stage;
+    # the GPU stage is never chunked (it is an array over shards).
+    scripts = generate_staged_scripts(
+        pipeline_path=tmp_path / "p.json",
+        datasets_manifest=_manifest(5),
+        output_dir=tmp_path,
+        image_type="Image",
+        cpu_slurm_args={"slurm_partition": "batch"},
+        gpu_slurm_args={"slurm_partition": "gpu"},
+        n_shards=1,
+        array_limit=2,
+    )
+    assert len(scripts["stage1"]) == 3
+    assert len(scripts["stage3"]) == 3
+    assert isinstance(scripts["stage2"], Path)
+
+    arrays = [s.read_text(encoding="utf-8") for s in scripts["stage1"]]
+    # Every chunk is a 0-based array within the limit (never an index >= limit).
+    assert "--array=0-1" in arrays[0]
+    assert "--array=0-1" in arrays[1]
+    assert "--array=0-0" in arrays[2]  # trailing chunk: 1 image
+
+
+def test_chunk_windows_map_to_absolute_manifest_indices(tmp_path):
+    scripts = generate_staged_scripts(
+        pipeline_path=tmp_path / "p.json",
+        datasets_manifest=_manifest(5),
+        output_dir=tmp_path,
+        image_type="Image",
+        cpu_slurm_args={"slurm_partition": "batch"},
+        gpu_slurm_args={"slurm_partition": "gpu"},
+        n_shards=1,
+        array_limit=2,
+    )
+    c0, c1, c2 = (s.read_text(encoding="utf-8") for s in scripts["stage1"])
+    # The worker resolves the ABSOLUTE manifest index via CURRENT_TASK_INDEX,
+    # populated from the per-chunk TASK_INDICES window.
+    assert "--index $CURRENT_TASK_INDEX" in c0
+    assert "    0\n    1" in c0  # window [0, 2)
+    assert "    2\n    3" in c1  # window [2, 4)
+    assert "    4" in c2         # window [4, 5)
+
+
+def test_single_chunk_keeps_plain_script_names(tmp_path):
+    scripts = generate_staged_scripts(
+        pipeline_path=tmp_path / "p.json",
+        datasets_manifest=_manifest(3),
+        output_dir=tmp_path,
+        image_type="Image",
+        cpu_slurm_args={"slurm_partition": "batch"},
+        gpu_slurm_args={"slurm_partition": "gpu"},
+        n_shards=1,
+        array_limit=1000,
+    )
+    assert [p.name for p in scripts["stage1"]] == ["stage1.sh"]
+    assert [p.name for p in scripts["stage3"]] == ["stage3.sh"]
+
+
+def test_multi_chunk_scripts_get_indexed_names(tmp_path):
+    scripts = generate_staged_scripts(
+        pipeline_path=tmp_path / "p.json",
+        datasets_manifest=_manifest(5),
+        output_dir=tmp_path,
+        image_type="Image",
+        cpu_slurm_args={"slurm_partition": "batch"},
+        gpu_slurm_args={"slurm_partition": "gpu"},
+        n_shards=1,
+        array_limit=2,
+    )
+    assert [p.name for p in scripts["stage1"]] == [
+        "stage1_chunk0.sh", "stage1_chunk1.sh", "stage1_chunk2.sh",
+    ]
+
+
+def test_submit_staged_chain_is_strict_sequential(monkeypatch):
+    calls = []
+
+    def _fake_submit(script, dependency_job_id=None):
+        calls.append((Path(script).name, dependency_job_id))
+        return f"job{len(calls) - 1}"
+
+    monkeypatch.setattr(
+        _cli_staged_slurm._sbatch, "submit_script", _fake_submit
+    )
+
+    scripts = {
+        "stage1": [Path("s1c0.sh"), Path("s1c1.sh")],
+        "stage2": Path("s2.sh"),
+        "stage3": [Path("s3c0.sh"), Path("s3c1.sh")],
+    }
+    job_ids = submit_staged_chain(scripts)
+
+    assert job_ids == ["job0", "job1", "job2", "job3", "job4"]
+    # One linear afterany chain across every image chunk AND the GPU stage:
+    # each submission depends on the previous job id (strict sequential).
+    assert [name for name, _ in calls] == [
+        "s1c0.sh", "s1c1.sh", "s2.sh", "s3c0.sh", "s3c1.sh",
+    ]
+    assert [dep for _, dep in calls] == [None, "job0", "job1", "job2", "job3"]

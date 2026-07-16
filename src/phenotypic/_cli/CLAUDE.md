@@ -58,12 +58,26 @@ trio.
 
 `StagedSlurmStrategy` writes its **own** per-stage SBATCH scripts via
 `format_sbatch_directives` (the array generator's fixed path + per-image
-`_cli_process_single` body cannot be reused per stage) and submits a **3-link
-`afterany` chain** (`submit_script(stage, dependency_job_id=prev)`):
+`_cli_process_single` body cannot be reused per stage) and submits a **single
+strict-sequential `afterany` chain** across every image chunk and the GPU stage
+(`submit_staged_chain` → `submit_script(script, dependency_job_id=prev)`):
 
 - Stage 1 / Stage 3 = arrays over **images**; Stage 2 = an array over
   **shards** (`--gpu-shards`, `partition_shards`), each a resident-model
   `run_stage2_shard`.
+- **Array chunking (`MaxArraySize`):** when the image count exceeds the cluster
+  `MaxArraySize` (`get_slurm_array_limit`), Stages 1 & 3 split into
+  `ceil(n_images / limit)` chunk scripts (`calculate_optimal_array_chunks` →
+  `_write_image_stage_chunks`), each a 0-based `--array=0-(k-1)` whose
+  `TASK_INDICES` window holds the **absolute** manifest indices and whose worker
+  reads `--index $CURRENT_TASK_INDEX` — so no array index ever reaches the limit.
+  A single chunk keeps the plain `stage1.sh`/`stage3.sh` name; multiple become
+  `stageN_chunk{i}.sh`. Stage 2 is **never chunked** (a shard worker streams its
+  whole shard on one GPU); `--gpu-shards > MaxArraySize` raises. `generate_staged_scripts`
+  returns `{"stage1": [Path…], "stage2": Path, "stage3": [Path…]}` — image stages
+  are always lists. Chunks chain **strictly sequentially** (chunk B waits for
+  chunk A), so only one chunk's array is queued at a time (gentle on
+  `MaxSubmitJobs`/QoS) while the array **inside** a chunk still fans out.
 - Per-stage resources: Stages 1 & 3 use `config.slurm_args` (CPU); Stage 2 uses
   `resolve_stage_slurm_args(gpu_slurm_args, slurm_args)` — inherit/delta over the
   CPU profile, auto-add `slurm_gpus_per_node=1` (explicit `=0` **omits** the
