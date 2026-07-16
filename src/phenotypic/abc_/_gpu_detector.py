@@ -154,11 +154,20 @@ class GpuDetector(ObjectDetector, ABC):
     supports_batching: bool = False
     output_kind: GpuOutputKind = "instance"
 
+    # Post-inference cleanup: zero the background instance BEFORE relabeling. A
+    # class-agnostic segmenter (SAM2 etc.) can emit the plate background as a
+    # positive-labelled mask framing the image; left in place it survives into
+    # measurement and bridges every colony it touches when ``relabel`` binarizes
+    # ``objmap > 0``, collapsing all instances into one blob. Zeroing the
+    # border-plurality label first removes the bridge (see
+    # ``ObjectMap.drop_frame_background``). ``instance`` output only.
+    drop_frame_background: bool = True
     # Post-inference cleanup: split a single instance label that spans spatially
     # disconnected blobs into separate instances by connected components. A SAM
     # mask (or a tile-merged objmap) can paint one label across distant regions;
     # relabeling by connectivity gives each connected region its own id. Binary
-    # connected-components, so two *touching* distinct labels merge into one.
+    # connected-components, so two *touching* distinct labels merge into one —
+    # which is why the background is dropped first, above.
     # ``instance`` output only — ``semantic`` already auto-labels by connectivity.
     split_disconnected_labels: bool = True
     # Connectivity for the relabel (1 = 4-neighbour, 2 = 8-neighbour). Structural,
@@ -219,9 +228,12 @@ class GpuDetector(ObjectDetector, ABC):
         """Write one ``infer_batch`` result onto the image per ``output_kind``.
 
         - ``instance`` -> ``image.objmap[:]`` (detector-controlled labels).
-          When ``split_disconnected_labels`` is set, the written objmap is then
-          relabeled by connected components (``connectivity``) so one label
-          spanning spatially disconnected blobs becomes separate instances.
+          When ``drop_frame_background`` is set, the border-plurality background
+          label is zeroed first. When ``split_disconnected_labels`` is set, the
+          objmap is then relabeled by connected components (``connectivity``) so
+          one label spanning spatially disconnected blobs becomes separate
+          instances -- order matters: dropping the background before the relabel
+          stops it from bridging every colony into one blob.
         - ``semantic`` -> ``image.objmask[:]`` (auto-labels into the shared
           ``objmap`` backend, exactly like a threshold detector; see Spec 1 §8).
           Already connectivity-labeled, so ``split_disconnected_labels`` is a
@@ -229,6 +241,8 @@ class GpuDetector(ObjectDetector, ABC):
         """
         if self.output_kind == "instance":
             image.objmap[:] = result.astype(np.uint16)
+            if self.drop_frame_background:
+                image.objmap.drop_frame_background()
             if self.split_disconnected_labels:
                 image.objmap.relabel(connectivity=self.connectivity)
         else:  # semantic
