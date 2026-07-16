@@ -61,6 +61,7 @@ from ._model_metrics import MODEL_METRICS
 from ._object import OBJECT
 from ._curation import CURATION
 from ._error_category import ErrorCategory
+from ._metadata_match import METADATA_MATCH
 from ._quality_check import QUALITY_CHECK
 from ._quality_count import QUALITY_COUNT
 from ._quality_icc import QUALITY_ICC
@@ -84,6 +85,7 @@ __all__ = [
     "REMBI_MODULE",
     "header_to_module",
     "METADATA",
+    "METADATA_MATCH",
     "ACQUISITION_METADATA",
     "CONDITION_METADATA",
     "CULTURE_METADATA",

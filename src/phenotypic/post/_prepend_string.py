@@ -4,7 +4,7 @@ import pandas as pd
 from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
-from ._utils import ensure_metadata_prefix
+from ._utils import affix_preserving_na, ensure_metadata_prefix
 
 
 class PrependString(PostMeasurement):
@@ -23,6 +23,10 @@ class PrependString(PostMeasurement):
     Returns:
         pd.DataFrame: A copy of the input DataFrame with the modified column.
 
+    Notes:
+        Missing values (``NA``/``NaN``) stay missing — they are not stringified
+        into ``"WT-nan"``. Only present values get the prefix.
+
     Raises:
         KeyError: If the column does not exist in the DataFrame.
 
@@ -39,6 +43,12 @@ class PrependString(PostMeasurement):
         >>> result = op.apply(df)
         >>> list(result["MetadataSample_SampleID"])
         ['WT-001', 'WT-002']
+
+        An undetected colony's missing value stays missing:
+
+        >>> df.loc[1, "MetadataSample_SampleID"] = None
+        >>> list(op.apply(df)["MetadataSample_SampleID"])
+        ['WT-001', nan]
     """
 
     column: str = ""
@@ -57,7 +67,7 @@ class PrependString(PostMeasurement):
             df: Measurement DataFrame containing the target column.
 
         Returns:
-            DataFrame with the modified column.
+            DataFrame with the modified column. NA cells are left as NA.
         """
         if self.column not in df.columns:
             raise KeyError(
@@ -65,5 +75,7 @@ class PrependString(PostMeasurement):
                 f"Available columns: {list(df.columns)}"
             )
         result = df.copy()
-        result[self.column] = self.value + result[self.column].astype(str)
+        result[self.column] = affix_preserving_na(
+            result[self.column], prefix=self.value
+        )
         return result

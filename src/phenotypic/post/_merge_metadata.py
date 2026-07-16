@@ -31,6 +31,13 @@ class MergeMetadata(PostMeasurement):
             inserted after the last source column. All source columns
             are kept.
 
+    Notes:
+        Rows where *any* source column is missing (``NA``/``NaN``) merge to
+        ``NaN`` rather than to a string containing the literal ``"nan"``.
+        This matters for undetected colonies, whose measurement columns are
+        null: a merged key like ``"nan_A1"`` would look valid and silently
+        group unrelated rows together. Missing stays missing.
+
     Raises:
         ValueError: If columns contains fewer than 2 names.
         KeyError: If any source column does not exist in the DataFrame.
@@ -53,6 +60,13 @@ class MergeMetadata(PostMeasurement):
         >>> result = merge.apply(df)
         >>> list(result["MetadataSample_SampleID"])
         ['WT_30C', 'mut_37C']
+
+        A missing source value yields a missing merged key, never
+        ``'nan_37C'``:
+
+        >>> df.loc[1, "MetadataGenetic_Strain"] = None
+        >>> list(merge.apply(df)["MetadataSample_SampleID"])
+        ['WT_30C', nan]
     """
 
     columns: List[str] = []
@@ -87,7 +101,7 @@ class MergeMetadata(PostMeasurement):
 
         Returns:
             DataFrame with the new merged column inserted after the last
-            source column.
+            source column. Rows with an NA in any source column get NaN.
         """
         # Validate all source columns exist
         for col in self.columns:
@@ -101,6 +115,11 @@ class MergeMetadata(PostMeasurement):
         merged = df[self.columns[0]].astype(str)
         for col in self.columns[1:]:
             merged = merged + self.delimiter + df[col].astype(str)
+
+        # `.astype(str)` turns NA into the literal "nan", which would produce a
+        # valid-looking key (e.g. "nan_A1"). Blank the merged value instead so a
+        # missing source stays missing. No-op when nothing is NA.
+        merged = merged.mask(df[self.columns].isna().any(axis=1))
 
         # Insert after the last source column
         result = df.copy()

@@ -144,9 +144,26 @@ the post-applied mirror the GUI reads/curates. Per-image parquets in
 `pipeline.measure(image, apply_post=False)` on the per-image path. Post is applied once
 at the end of aggregation against the merged master, and the post-applied frame is what
 `analysis.{csv,parquet}` and `measurements_by_feature/<feature>.{csv,parquet}` derive
-from. The external `--metadata` CSV inner-join also lands on the post-applied frame
+from. The external `--metadata` CSV **left-join** also lands on the post-applied frame
 (inside `finalize_post_master_outputs`), so the mirror, per-feature splits, and
 `analysis.*` carry metadata while the master archive stays post-free and metadata-free.
+The join is **left** so metadata rows matching no measured object survive as **phantom
+rows** — metadata + join keys populated, every measurement/info column null, and
+`QC_MetadataOnly=true` (`schema.METADATA_MATCH`) — which is how a user sees the strains
+that were never detected. Measurement rows with no metadata are still dropped
+(measurements are the join's right frame). `join_metadata(df, csv, *, how=...)` defaults
+to `how="inner"`: **only** `finalize_post_master_outputs` passes `how="left"`. The
+mid-run `_cli_chunk_writer` and the dashboard `_analysis_data` sidecar keep `inner` on
+purpose — they join against a **partial** frame, where a left join would flag every
+not-yet-processed strain as missing.
+
+`QC_MetadataOnly` is a **user-facing output column, not internal machinery** — it is how a
+user filters the mirror for "which strains went undetected". Analysis/QC/post code must
+**not** branch on it. Those ops are public API (a notebook calls them on frames that never
+saw the CLI and carry no flag), so they detect a phantom the same way they detect any
+missing value: **drop/ignore NaN**. A phantom row is null in every measurement/info column,
+so NaN-native math (`notna()`, `nanpercentile`, `np.isfinite`, `dropna`) handles it, needs
+no flag column to exist, and is automatically a no-op on frames that have none.
 Feed analysis plugins/dashboards from `measurements.parquet`, not
 `master_measurements.*`.
 

@@ -366,6 +366,36 @@ class ExpectedVsDetectedCount(QualityCheck):
             return int(value.sum())
         return int(value)
 
+    @staticmethod
+    def _detected_count(group: pd.DataFrame) -> int:
+        """Number of rows in *group* that are a real detected object.
+
+        Counts rows carrying an ``Object_Label`` rather than simply taking
+        ``len(group)``. A row with no label is not a detection: the CLI's
+        ``--metadata`` left join seeds the measurements mirror with rows for
+        strains that matched no measured object, and every measurement/info
+        column on such a row — ``Object_Label`` included — is null. Counting
+        them would report ``detected == expected`` for a strain detected
+        *nowhere*, i.e. a metric of 0.0 and a passing check, inverting the very
+        divergence this class measures.
+
+        No flag column is consulted, so this stays correct for a frame that
+        never went through the CLI. On any frame without null labels — every
+        frame today, and every notebook ``analyze()`` call — this equals
+        ``len(group)`` exactly, so existing results do not move.
+
+        Args:
+            group: One group of the analyzed frame.
+
+        Returns:
+            Count of rows with a non-null ``Object_Label``, or ``len(group)``
+            when the frame carries no label column at all.
+        """
+        label = str(OBJECT.LABEL)
+        if label not in group.columns:
+            return int(len(group))
+        return int(group[label].notna().sum())
+
     def _compute(self, group: pd.DataFrame) -> pd.DataFrame:
         """Compute count-divergence metrics for one group.
 
@@ -383,7 +413,7 @@ class ExpectedVsDetectedCount(QualityCheck):
             ``QC_Count_Detected``, ``QC_Count_Expected``,
             ``QC_Count_Delta``, ``QC_Count_Metric``.
         """
-        detected = int(len(group))
+        detected = self._detected_count(group)
         key = self._group_key(group)
         expected = self._lookup_expected(key)
 

@@ -249,6 +249,12 @@ constraint-dependencies = [
 
 [tool.ruff]
 line-length = 79
+# Vendored upstream reference sources are pristine third-party copies that the
+# `porting-a-reference-algorithm` workflow diffs our ports against line-by-line.
+# `ruff check --fix` (the documented lint command) is repo-wide, so without this
+# it silently rewrites them — stripping "unused" imports and reformatting calls —
+# and the diff against upstream stops meaning anything. Never lint or fix them.
+extend-exclude = ["docs/superpowers/**/refs"]
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]

@@ -128,14 +128,24 @@ def get_curated_frame(
 def _extract_keys(df: pl.DataFrame) -> set[tuple[str, int]]:
     """Pull ``(Metadata_ImageName, Object_Label)`` keys out of ``df``.
 
+    Rows whose ``Object_Label`` is null are skipped. The post-applied
+    ``measurements.parquet`` mirror is built with a **left** join against the
+    ``--metadata`` table, so it carries "phantom" rows — metadata for strains
+    that were never detected, with a null label and null measurements. A
+    phantom is not a curatable object, so it can never contribute a curation
+    key, and ``int(None)`` would raise. The rows stay in the mirror on
+    purpose: the viewer must show which strains went undetected. Mirrors the
+    guard in
+    :func:`~phenotypic.gui.results_viewer._curation_labels._keys_of`.
+
     Args:
         df: A polars frame that must expose both key columns.
 
     Returns:
-        A set of ``(image_file, object_label)`` tuples. ``image_file`` is
-        coerced to ``str`` and ``object_label`` to ``int`` so the set is safe
-        to compare across frames that may differ in dtype (e.g. parquet vs.
-        Dash JSON round-trip).
+        A set of ``(image_file, object_label)`` tuples for the real (detected)
+        rows. ``image_file`` is coerced to ``str`` and ``object_label`` to
+        ``int`` so the set is safe to compare across frames that may differ in
+        dtype (e.g. parquet vs. Dash JSON round-trip).
 
     Raises:
         ValueError: If either key column is missing from ``df``.
@@ -147,8 +157,9 @@ def _extract_keys(df: pl.DataFrame) -> set[tuple[str, int]]:
             f"{list(_KEY_COLUMNS)} but the following are missing: {missing}. "
             "Re-run the pipeline or pass a frame that exposes these columns."
         )
-    image_files = df.get_column(_KEY_COLUMNS[0]).to_list()
-    object_labels = df.get_column(_KEY_COLUMNS[1]).to_list()
+    keyed = df.filter(pl.col(_KEY_COLUMNS[1]).is_not_null())
+    image_files = keyed.get_column(_KEY_COLUMNS[0]).to_list()
+    object_labels = keyed.get_column(_KEY_COLUMNS[1]).to_list()
     return {(str(f), int(label)) for f, label in zip(image_files, object_labels)}
 
 

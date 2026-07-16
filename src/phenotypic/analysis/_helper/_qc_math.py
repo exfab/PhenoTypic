@@ -17,8 +17,9 @@ The two families of statistics provided are:
 
 NaN handling matches the removers: MAD helpers use nan-aware reductions
 (``np.nanmedian`` / ``np.nanmean``) and propagate NaN scores for NaN inputs,
-while Tukey helpers use plain ``np.percentile`` (linear interpolation, no
-nan-awareness) exactly as :class:`TukeyOutlierRemover` does.
+while Tukey helpers use ``np.nanpercentile`` (linear interpolation) so that a
+NaN measurement neither shifts the quartiles nor destroys the fences, exactly
+as :class:`TukeyOutlierRemover` does.
 """
 
 from __future__ import annotations
@@ -117,17 +118,21 @@ def tukey_fences(values: np.ndarray, k: float = 1.5) -> tuple[float, float]:
     """Compute Tukey's lower and upper outlier fences for an array of values.
 
     The fences are ``Q1 - k*IQR`` and ``Q3 + k*IQR`` where ``IQR = Q3 - Q1``.
-    Quartiles use ``np.percentile`` with its default linear interpolation
-    (matching :class:`TukeyOutlierRemover`), which is **not** nan-aware: any
-    NaN in ``values`` propagates to NaN fences.
+    Quartiles use ``np.nanpercentile`` with its default linear interpolation
+    (matching :class:`TukeyOutlierRemover`): NaN entries are ignored, so the
+    fences of a group are unaffected by a missing measurement. A group whose
+    values are *all* NaN (or empty) has no quartiles to compute and yields
+    ``(nan, nan)``.
 
     Args:
-        values: Array of numeric values for one group.
+        values: Array of numeric values for one group. NaN entries are ignored.
         k: IQR multiplier for the fences. ``1.5`` flags standard outliers;
             ``3.0`` flags only extreme outliers. Default is ``1.5``.
 
     Returns:
-        A ``(lower_fence, upper_fence)`` tuple of floats.
+        A ``(lower_fence, upper_fence)`` tuple of floats, computed from the
+        non-NaN values. Returns ``(nan, nan)`` when ``values`` is empty or
+        entirely NaN.
 
     Examples:
         >>> import numpy as np
@@ -135,10 +140,23 @@ def tukey_fences(values: np.ndarray, k: float = 1.5) -> tuple[float, float]:
         >>> lower, upper = tukey_fences(np.arange(1.0, 11.0))
         >>> round(lower, 4), round(upper, 4)
         (-3.5, 14.5)
+        >>> # A NaN colony measurement does not disturb the fences.
+        >>> with_nan = np.append(np.arange(1.0, 11.0), np.nan)
+        >>> lower, upper = tukey_fences(with_nan)
+        >>> round(lower, 4), round(upper, 4)
+        (-3.5, 14.5)
+        >>> # An all-NaN group has no quartiles.
+        >>> tukey_fences(np.array([np.nan, np.nan]))
+        (nan, nan)
     """
     values = np.asarray(values, dtype=float)
-    q1 = np.percentile(values, 25)
-    q3 = np.percentile(values, 75)
+    # np.nanpercentile emits "RuntimeWarning: All-NaN slice encountered" and
+    # returns nan for a fully-NaN (or empty) input; return the nan fences
+    # directly instead of warning.
+    if values.size == 0 or bool(np.all(np.isnan(values))):
+        return float("nan"), float("nan")
+    q1 = np.nanpercentile(values, 25)
+    q3 = np.nanpercentile(values, 75)
     iqr = q3 - q1
     lower_fence = q1 - (iqr * k)
     upper_fence = q3 + (iqr * k)
@@ -160,8 +178,8 @@ def tukey_outlier_mask(values: np.ndarray, k: float = 1.5) -> np.ndarray:
 
     Returns:
         A boolean array aligned with ``values``, ``True`` where the value is an
-        outlier. With NaN inputs the fences become NaN and every comparison is
-        ``False``, so NaN entries are never flagged.
+        outlier. NaN entries are never flagged: they are ignored when computing
+        the fences, and every comparison against a NaN value is ``False``.
 
     Examples:
         >>> import numpy as np

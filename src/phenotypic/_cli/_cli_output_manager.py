@@ -14,7 +14,16 @@ import os
 import shutil
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, Final, List, Optional, TYPE_CHECKING
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Final,
+    List,
+    Literal,
+    Optional,
+    TYPE_CHECKING,
+)
 
 import pandas as pd
 import polars as pl
@@ -30,7 +39,7 @@ from ._measurement_sources import (
     measurement_sources_by_path,
 )
 from ._cli_parquet_agg import aggregate_parquet_files
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA, METADATA_MATCH
 from phenotypic.util import split_measurements
 from phenotypic.sdk_ import (
     DIR_RESULTS,
@@ -60,14 +69,40 @@ from phenotypic.sdk_ import (
 logger = logging.getLogger(__name__)
 
 
-def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
+#: Pre-join marker column proving a row came from the measurements frame. It is
+#: the only null that is *structurally* impossible on a matched row, so it — not
+#: a null in some measurement column — is what identifies a phantom. A real row
+#: may legitimately carry a null measurement, and ``join_metadata`` is generic
+#: over frame shape (callers pass frames without ``Object_Label``). Dropped
+#: before returning.
+_MEAS_PRESENT_SENTINEL: Final = "__phenotypic_measurement_present"
+
+
+def join_metadata(
+    df: "pl.DataFrame",
+    metadata_csv: Path,
+    *,
+    how: Literal["inner", "left"] = "inner",
+) -> "pl.DataFrame":
     """Join external metadata CSV onto a measurements DataFrame.
 
-    Identifies columns common to both the measurements and metadata,
-    casts them to ``String`` for a safe join, and performs an inner join
-    with the metadata on the left.  Only rows present in both DataFrames
-    survive.  Warns if the row count increases (duplicate metadata keys)
-    or decreases (measurement rows with no matching metadata).
+    Identifies columns common to both the measurements and metadata, casts them
+    to ``String`` for a safe join, and joins with the metadata frame on the
+    **left**.
+
+    ``how="inner"`` (the default) keeps only rows present in both frames.
+    ``how="left"`` keeps every metadata row: a metadata key that matched no
+    measured object survives as a **phantom row** — its join-key and metadata
+    values are carried, every measurement/info column is null, and
+    :attr:`~phenotypic.schema.METADATA_MATCH.METADATA_ONLY` (``QC_MetadataOnly``)
+    is ``True``. Absence of a colony is data: a strain that failed to grow, or
+    that detection missed, is exactly what the user needs to see. The flag column
+    is emitted **only** under ``how="left"``, so the inner callers' output schema
+    is unchanged.
+
+    Note that a left join is asymmetric by design: it keeps *metadata*-unmatched
+    rows but still drops *measurement*-unmatched rows, because measurements are
+    the right frame.
 
     Bare (un-prefixed) metadata *attribute* columns are prefixed via
     :func:`~phenotypic.sdk_.ensure_metadata_prefix` (``Strain`` ->
@@ -81,12 +116,19 @@ def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
     Args:
         df: Measurements DataFrame (must have columns to join on).
         metadata_csv: Path to the metadata CSV file.
+        how: Join strategy. ``"inner"`` (default) drops metadata rows that
+            matched no measured object; ``"left"`` keeps them as phantom rows
+            and adds the ``QC_MetadataOnly`` flag column. Keyword-only.
 
     Returns:
-        DataFrame with metadata columns first, then measurement columns.
+        DataFrame with metadata columns first, then measurement columns (plus
+        ``QC_MetadataOnly`` when ``how="left"``). Row order follows the metadata
+        frame.
     """
     metadata_df = pl.read_csv(metadata_csv)
-    common = list(set(df.columns) & set(metadata_df.columns))
+    # sorted() — a set's iteration order is not stable across runs, which would
+    # make the logged column order nondeterministic.
+    common = sorted(set(df.columns) & set(metadata_df.columns))
     if not common:
         logger.warning(
             "Metadata CSV has no columns in common with measurements — skipping join"
@@ -127,33 +169,74 @@ def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
     )
     n_rows_before = df.height
     n_cols_before = len(df.columns)
-    df = metadata_df.join(df, on=common, how="inner")
-    n_new_cols = len(df.columns) - n_cols_before
-    if df.height > n_rows_before:
+    flag = str(METADATA_MATCH.METADATA_ONLY)
+    if how == "left":
+        df = df.with_columns(pl.lit(True).alias(_MEAS_PRESENT_SENTINEL))
+    out = metadata_df.join(df, on=common, how=how, maintain_order="left")
+    if how == "left":
+        out = out.with_columns(
+            pl.col(_MEAS_PRESENT_SENTINEL).is_null().alias(flag)
+        ).drop(_MEAS_PRESENT_SENTINEL)
+    n_new_cols = len(out.columns) - n_cols_before
+
+    # Three independently computed signals. Height arithmetic can no longer
+    # infer any of them: under a left join the output height is driven by the
+    # metadata frame, so a row-count delta conflates duplicates, drops, and
+    # phantoms.
+    #
+    # (1) Duplicate metadata keys — asked of the metadata frame directly. Fan-out
+    #     on the measurement side (one key -> many colonies) is the normal case
+    #     and must never warn.
+    n_unique_keys = metadata_df.n_unique(subset=common)
+    if n_unique_keys < metadata_df.height:
         logger.warning(
-            "Metadata join increased row count from %d to %d — "
-            "metadata CSV likely has duplicate keys on columns %s. "
-            "Verify your metadata CSV has unique values on join columns.",
-            n_rows_before,
-            df.height,
+            "Metadata CSV has duplicate keys on columns %s (%d unique keys "
+            "across %d rows) — each duplicate fans the join out into extra "
+            "rows. Verify your metadata CSV has unique values on join columns.",
             common,
+            n_unique_keys,
+            metadata_df.height,
         )
-    n_dropped = n_rows_before - df.height
+
+    # (2) Measurement rows that matched no metadata — real under both modes,
+    #     since measurements are the right frame.
+    n_dropped = df.join(
+        metadata_df.select(common).unique(), on=common, how="anti"
+    ).height
     if n_dropped > 0:
         logger.warning(
-            "Metadata inner join dropped %d/%d measurement rows "
+            "Metadata %s join dropped %d/%d measurement rows "
             "with no matching metadata on columns %s",
+            how,
             n_dropped,
             n_rows_before,
             common,
         )
+
+    # (3) Metadata rows that matched nothing — the point of the left join.
+    if how == "left":
+        n_phantom = int(out[flag].sum())
+        if n_phantom:
+            logger.warning(
+                "%d/%d metadata rows matched no measured object on columns "
+                "%s — these samples were not detected. They are kept in "
+                "measurements.{csv,parquet} with null measurements and "
+                "%s = true.",
+                n_phantom,
+                metadata_df.height,
+                common,
+                flag,
+            )
+
     logger.info(
-        "Metadata join: added %d columns, %d/%d rows matched",
+        "Metadata join: added %d columns, %d rows in (%d measurement rows, "
+        "%d metadata rows)",
         n_new_cols,
-        df.height,
+        out.height,
         n_rows_before,
+        metadata_df.height,
     )
-    return df
+    return out
 
 
 def _scratch_dest_name(pq: Path) -> str:
@@ -495,7 +578,30 @@ def _apply_post_to_master(
                 "Running post-measurement transform on master: %s", key
             )
             df_pd = post_op.apply(df_pd)
-        return pl.from_pandas(df_pd)
+        out = pl.from_pandas(df_pd)
+        # ``to_pandas()`` promotes an Int64 column that carries nulls (every
+        # measurement column on a --metadata phantom row) to float64, and
+        # ``from_pandas`` brings it back as Float64 — silently changing the
+        # mirror's dtypes. Restore the master's integer dtypes. Its own
+        # try/except: a restore failure must not fall into the outer handler,
+        # which would discard all post output.
+        try:
+            casts = [
+                pl.col(name).cast(dt)
+                for name, dt in master_df.schema.items()
+                if name in out.columns
+                and dt.is_integer()
+                and out.schema[name].is_float()
+            ]
+            if casts:
+                out = out.with_columns(casts)
+        except Exception:
+            logger.warning(
+                "Failed to restore integer dtypes after the post-measurement "
+                "pandas round-trip; post output is kept as-is",
+                exc_info=True,
+            )
+        return out
     except Exception:
         logger.warning(
             "Post-measurement transform raised during aggregation; "
@@ -552,11 +658,41 @@ def _image_metadata_from_mirror(mirror_df: "pl.DataFrame") -> list[dict]:
     image, reading whichever of :data:`_REMBI_IMAGE_META_COLUMNS` the frame
     carries and mapping each to the manifest builder's bare key. Returns an
     empty list when none of those columns are present.
+
+    ``--metadata`` phantom rows are excluded — they describe a sample that was
+    never imaged, and REMBI is a publication manifest, so folding one in
+    fabricates an image record that does not exist (an ``n_images`` of 3 for two
+    captured plates).
+
+    Two independent filters are needed, because a phantom's shape depends on the
+    join key:
+
+    * ``QC_MetadataOnly`` — the authoritative signal, and the only one that works
+      for the **documented** per-image join. When the CSV joins on
+      ``MetadataImage_ImageName``, the phantom *keeps* that key, so its image
+      name is emphatically **not** null and a name-based filter sees nothing.
+    * a null image name — covers the per-colony join (on ``Grid_RowNum`` /
+      ``Grid_ColNum``), where ``MetadataImage_ImageName`` comes from the
+      measurement side and so is null on a phantom.
+
+    Reading the flag is correct *here* even though analysis/post ops must never
+    branch on it: this is CLI-internal code, downstream of the join that creates
+    it, and it degrades to the name filter alone when the column is absent.
+    Filtering the name column specifically (rather than ``drop_nulls()``) keeps
+    legitimate images that merely lack an optional field such as ``BitDepth``.
     """
     present = [c for c in _REMBI_IMAGE_META_COLUMNS if c in mirror_df.columns]
     if not present:
         return []
-    distinct = mirror_df.select(present).unique()
+    real = mirror_df
+    flag = str(METADATA_MATCH.METADATA_ONLY)
+    if flag in real.columns:
+        real = real.filter(~pl.col(flag).fill_null(False))
+    distinct = real.select(present)
+    name_col = str(METADATA.IMAGE_NAME)
+    if name_col in present:
+        distinct = distinct.filter(pl.col(name_col).is_not_null())
+    distinct = distinct.unique()
     return [
         {_REMBI_IMAGE_META_COLUMNS[c]: record[c] for c in present}
         for record in distinct.iter_rows(named=True)
@@ -584,8 +720,10 @@ def finalize_post_master_outputs(
 
     The order is:
 
-    1. If *metadata_csv* is provided, inner-join its rows onto a copy of
-       *master_df* via :func:`join_metadata`. The join lands here — not
+    1. If *metadata_csv* is provided, left-join its rows onto a copy of
+       *master_df* via :func:`join_metadata` — so a metadata key that
+       matched no measured object survives as a phantom row flagged
+       ``QC_MetadataOnly = true``. The join lands here — not
        on the master archive on disk — so
        ``master_measurements.{csv,parquet}`` stays a clean, op-free
        archive of what the workers measured, while the working frame
@@ -624,11 +762,12 @@ def finalize_post_master_outputs(
             located (the SLURM sentinel may run before any pipeline.json
             is persisted).
         metadata_csv: Optional external metadata CSV. When provided, its
-            columns are inner-joined onto an in-memory copy of *master_df*
+            columns are left-joined onto an in-memory copy of *master_df*
             before post ops run, so :class:`PostMeasurement` operations
             can reference joined columns. Only the mirror (and its
             derivatives) carry external metadata — never the master
-            archive on disk.
+            archive on disk. Undetected metadata keys survive as phantom
+            rows carrying ``QC_MetadataOnly = true``.
         no_qc: When ``True``, skip the QC compute step entirely (no ``qc/``
             artifact is written and the GUI review state is left as-is).
             When ``False`` (default), QC runs whenever the pipeline has a
@@ -664,7 +803,7 @@ def finalize_post_master_outputs(
     working_df = master_df
     if metadata_csv is not None:
         try:
-            working_df = join_metadata(master_df, metadata_csv)
+            working_df = join_metadata(master_df, metadata_csv, how="left")
         except Exception as e:
             logger.warning(
                 "Failed to join metadata CSV: %s: %s", type(e).__name__, e
@@ -681,7 +820,8 @@ def finalize_post_master_outputs(
 
     # Best-effort copy of the --metadata source CSV → deliverables/metadata.csv,
     # so a portable, co-located copy of the FULL original mapping survives next to
-    # the run (the inner-join drops unmatched rows from the mirror, and
+    # the run (the mirror is not a substitute for it: the left join keeps every
+    # metadata row but a later post op may filter rows away, and
     # job_metadata.json only holds an absolute path useless once results move off
     # the cluster). Content-only copy (shutil.copy, not copy2 — mtime is not
     # preserved by design); re-running/--recompile overwrites it with a fresh
@@ -1578,8 +1718,8 @@ class OutputManager:
 
         Args:
             datasets: List of all datasets processed.
-            metadata_csv: Optional path to external CSV for inner-join
-                on shared columns.
+            metadata_csv: Optional path to external CSV left-joined onto
+                the mirror on shared columns.
             pipeline: Optional in-memory pipeline used to split the
                 aggregated master into per-feature sub-spreadsheets. See
                 :func:`aggregate_measurements` for fallback behavior.

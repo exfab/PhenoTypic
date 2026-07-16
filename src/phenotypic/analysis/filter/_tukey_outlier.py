@@ -665,7 +665,9 @@ class TukeyOutlierRemover(SetAnalyzer):
         This static method filters out rows in the DataFrame group where the values of a specific
         column (`on`) are considered outliers. Outliers are determined by the provided multiplier
         for the IQR. Rows with values outside the range defined by the lower and upper thresholds
-        (calculated using the IQR method) are excluded.
+        (calculated using the IQR method) are excluded. Rows whose ``on`` value is
+        NaN are preserved: NaN is ignored when computing the fences, and a NaN
+        never compares outside them.
 
         Args:
             key: The group key (not used but required for joblib).
@@ -675,8 +677,10 @@ class TukeyOutlierRemover(SetAnalyzer):
                 threshold for identifying outlier rows in the DataFrame group.
 
         Returns:
-            Filtered DataFrame containing rows that fall within the calculated IQR thresholds.
+            Filtered DataFrame containing rows that fall within the calculated IQR thresholds,
+            plus any rows whose ``on`` value is NaN.
         """
-        values = group[on]
-        lower_fence, upper_fence = _qc_math.tukey_fences(values.to_numpy(), k)
-        return group[(values >= lower_fence) & (values <= upper_fence)]
+        values = group[on].to_numpy(dtype=float, na_value=np.nan)
+        lower_fence, upper_fence = _qc_math.tukey_fences(values, k)
+        is_outlier = (values < lower_fence) | (values > upper_fence)
+        return group[~is_outlier]

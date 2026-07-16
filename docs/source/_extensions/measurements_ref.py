@@ -39,6 +39,7 @@ _GROUPS: dict[str, tuple[str, ...]] = {
     "Quality Control"  : (
         "QUALITY_CHECK", "QUALITY_COUNT", "QUALITY_OCCUPANCY", "QUALITY_ICC",
         "QUALITY_MAD", "QUALITY_SE", "QUALITY_TUKEY", "QUALITY_ZMAX",
+        "METADATA_MATCH",
     ),
     "Curation & Errors": ("CURATION", "ErrorCategory"),
     "Metadata"         : (
