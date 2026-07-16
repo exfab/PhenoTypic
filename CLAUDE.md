@@ -59,13 +59,14 @@
   final HDF, measures, and deletes the sidecar. The output folder is identical to a
   single-pass run; resume is content-defined (HDF → sidecar → parquet) and progress is
   stage-tagged. `--mode process --layer objmap` exports objmaps after Stages 1–2.
-  On SLURM, the stages submit as a **single strict-sequential `afterany` chain** with
-  per-stage resources: Stages 1 & 3 on the CPU `--slurm` profile, Stage 2 as a GPU array
-  of resident-model shard-workers. When the image count exceeds the cluster
-  `MaxArraySize`, Stages 1 & 3 auto-split into `ceil(n_images / MaxArraySize)` sequential
-  array chunks (Stage 2 is never chunked — one shard streams on one GPU), so a run with
-  more images than the array limit dispatches without hitting "Invalid job array
-  specification". Stage 2 survives walltime — each sidecar write is
+  On SLURM, the stages submit through the **shared drip-feed dispatcher** (the same one
+  the CPU path uses): Stages 1 & 3 on the CPU `--slurm` profile, Stage 2 as a GPU array
+  of resident-model shard-workers. Stages 1 & 3 auto-split into
+  `ceil(n_images / min(MaxArraySize, MaxSubmitJobs))` chunks (Stage 2 is never chunked —
+  one shard streams on one GPU); only chunk 0 + a tiny dispatcher are queued up front, and
+  each chunk's dispatcher submits the next after it ends. Peak queue occupancy stays at
+  ~1 chunk, so a large run dispatches without hitting "Invalid job array specification" or
+  the per-user `MaxSubmitJobs` cap. Stage 2 survives walltime — each sidecar write is
   atomic and the worker SIGTERM-resubmits its shard, so a `TIMEOUT` never loses work.
   Staged GPU flags (Spec 1 §10):
     - `--gpu-slurm key=value` — Stage-2 GPU SBATCH profile; **inherits/deltas over

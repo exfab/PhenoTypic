@@ -17,9 +17,9 @@ from typing import Any, Dict, List, Sequence, TypeVar
 from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
 from phenotypic.sdk_.slurm import (
     SlurmArrayScriptSpec,
-    _sbatch,
     calculate_optimal_array_chunks,
     get_slurm_array_limit,
+    get_slurm_max_submit_jobs,
     write_slurm_array_script,
 )
 from phenotypic.sdk_.typing_ import ImageTypeName
@@ -286,25 +286,47 @@ def generate_staged_scripts(
     return {"stage1": stage1, "stage2": stage2, "stage3": stage3}
 
 
-def submit_staged_chain(scripts: Dict[str, Any]) -> List[str]:
-    """Submit the staged scripts as one strict-sequential ``afterany`` chain.
+def flatten_staged_scripts(scripts: Dict[str, Any]) -> List[Path]:
+    """Ordered flat chunk list for the drip-feed dispatcher.
 
-    Order: every Stage-1 chunk, then Stage 2, then every Stage-3 chunk. Each
-    submission depends on the previous job id, so chunks run one after another
-    (gentle on ``MaxSubmitJobs``/QoS) while the array inside a chunk still fans
-    out. Returns the submitted job ids in submission order.
+    Order: every Stage-1 chunk, then Stage 2, then every Stage-3 chunk. The
+    dispatcher submits them one at a time (chunk N+1 only after chunk N ends),
+    so the linear order encodes the stage dependencies.
     """
-    ordered: List[Path] = [
-        *scripts["stage1"],
-        scripts["stage2"],
-        *scripts["stage3"],
-    ]
-    job_ids: List[str] = []
-    prev: str | None = None
-    for script in ordered:
-        prev = _sbatch.submit_script(script, dependency_job_id=prev)
-        job_ids.append(prev)
-    return job_ids
+    return [*scripts["stage1"], scripts["stage2"], *scripts["stage3"]]
+
+
+def submit_staged_chain(
+    scripts: Dict[str, Any],
+    *,
+    output_dir: Path,
+    slurm_args: Dict[str, Any],
+    console: Any = None,
+) -> List[str]:
+    """Submit the staged scripts via the shared drip-feed dispatcher.
+
+    Reuses :func:`submit_slurm_script_chain` (the same funnel the CPU
+    autonomous path uses) so **only the first chunk + a dispatcher job are
+    queued up front**; when chunk N finishes, its dispatcher submits chunk N+1.
+    Peak queue occupancy stays at ~1 chunk + 1 dispatcher instead of every
+    chunk at once — critical because a run's total array tasks
+    (~2 x n_images) otherwise blows ``MaxSubmitJobs`` (Spec 1 §7/§9). The tiny
+    dispatcher runs on the CPU ``slurm_args`` profile. Returns the initially
+    submitted job ids (chunk 0 and, if multiple chunks, dispatcher 1).
+    """
+    # Local import avoids a circular import at module load
+    # (_cli_slurm_submission -> sdk_ -> ... ).
+    from rich.console import Console
+
+    from ._cli_slurm_submission import submit_slurm_script_chain
+
+    submission = submit_slurm_script_chain(
+        flat_chunk_scripts=flatten_staged_scripts(scripts),
+        output_dir=output_dir,
+        slurm_args=slurm_args,
+        console=console or Console(),
+    )
+    return submission.job_ids
 
 
 class StagedSlurmStrategy(ExecutionStrategy):
@@ -321,13 +343,18 @@ class StagedSlurmStrategy(ExecutionStrategy):
             for img in ds.images
         ]
 
+        # Chunk to the TIGHTER of MaxArraySize and MaxSubmitJobs: a single chunk
+        # must fit both the array-index cap and the per-user submit cap (only one
+        # chunk is queued at a time under the drip-feed dispatcher below).
         array_limit = get_slurm_array_limit()
-        # Image stages chunk to fit MaxArraySize; the Stage-2 shard array cannot
+        max_submit = get_slurm_max_submit_jobs()
+        chunk_limit = min(array_limit, max_submit) if max_submit else array_limit
+        # Image stages chunk to fit the limit; the Stage-2 shard array cannot
         # (a shard worker streams its whole shard on one GPU), so guard it.
-        if max(1, cfg.gpu_shards) > array_limit:
+        if max(1, cfg.gpu_shards) > chunk_limit:
             raise ValueError(
-                f"--gpu-shards ({cfg.gpu_shards}) exceeds the SLURM array limit "
-                f"({array_limit}); reduce the shard count."
+                f"--gpu-shards ({cfg.gpu_shards}) exceeds the SLURM chunk limit "
+                f"({chunk_limit}); reduce the shard count."
             )
 
         scripts = generate_staged_scripts(
@@ -339,16 +366,19 @@ class StagedSlurmStrategy(ExecutionStrategy):
             gpu_slurm_args=cfg.gpu_slurm_args,
             n_shards=max(1, cfg.gpu_shards),
             ext=cfg.ext,
-            array_limit=array_limit,
+            array_limit=chunk_limit,
         )
 
-        # One strict-sequential afterany chain across every image chunk and the
-        # GPU stage. submit_script uses --dependency afterany:<prev>, so a few
-        # per-image failures in one stage never block the next (Spec 1 §7/§9).
-        self.submitted_job_ids = submit_staged_chain(scripts)
+        # Drip-feed dispatcher: only chunk 0 + a dispatcher are queued now; each
+        # chunk's dispatcher submits the next after it ends. Keeps peak queue at
+        # ~1 chunk (never the ~2 x n_images tasks that blow MaxSubmitJobs) while
+        # afterany between chunks lets per-image failures pass (Spec 1 §7/§9).
+        self.submitted_job_ids = submit_staged_chain(
+            scripts, output_dir=output_dir, slurm_args=cfg.slurm_args
+        )
         logger.info(
-            "Submitted staged GPU chain (%d stage-1 chunks -> stage2 -> "
-            "%d stage-3 chunks): jobs=%s",
+            "Submitted staged GPU chain via drip-feed dispatcher "
+            "(%d stage-1 chunks -> stage2 -> %d stage-3 chunks): initial jobs=%s",
             len(scripts["stage1"]),
             len(scripts["stage3"]),
             self.submitted_job_ids,

@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from phenotypic._cli import _cli_staged_slurm
 from phenotypic._cli._cli_staged_slurm import (
     STAGE_DEPENDENCY,
+    flatten_staged_scripts,
     generate_staged_scripts,
     partition_shards,
     resolve_stage_slurm_args,
@@ -192,28 +192,48 @@ def test_multi_chunk_scripts_get_indexed_names(tmp_path):
     ]
 
 
-def test_submit_staged_chain_is_strict_sequential(monkeypatch):
-    calls = []
-
-    def _fake_submit(script, dependency_job_id=None):
-        calls.append((Path(script).name, dependency_job_id))
-        return f"job{len(calls) - 1}"
-
-    monkeypatch.setattr(
-        _cli_staged_slurm._sbatch, "submit_script", _fake_submit
-    )
-
+def test_flatten_staged_scripts_orders_chunks_then_stages():
     scripts = {
         "stage1": [Path("s1c0.sh"), Path("s1c1.sh")],
         "stage2": Path("s2.sh"),
         "stage3": [Path("s3c0.sh"), Path("s3c1.sh")],
     }
-    job_ids = submit_staged_chain(scripts)
-
-    assert job_ids == ["job0", "job1", "job2", "job3", "job4"]
-    # One linear afterany chain across every image chunk AND the GPU stage:
-    # each submission depends on the previous job id (strict sequential).
-    assert [name for name, _ in calls] == [
+    # Order encodes the stage dependencies for the drip-feed dispatcher:
+    # every Stage-1 chunk, then Stage 2, then every Stage-3 chunk.
+    assert [p.name for p in flatten_staged_scripts(scripts)] == [
         "s1c0.sh", "s1c1.sh", "s2.sh", "s3c0.sh", "s3c1.sh",
     ]
-    assert [dep for _, dep in calls] == [None, "job0", "job1", "job2", "job3"]
+
+
+def test_submit_staged_chain_uses_drip_feed_dispatcher(monkeypatch):
+    captured = {}
+
+    class _FakeSubmission:
+        job_ids = ["chunk0", "dispatch1"]
+
+    def _fake_chain(*, flat_chunk_scripts, output_dir, slurm_args, console):
+        captured["flat"] = [Path(p).name for p in flat_chunk_scripts]
+        captured["slurm_args"] = slurm_args
+        return _FakeSubmission()
+
+    # Patch the shared drip-feed funnel at its definition site (submit_staged_chain
+    # imports it locally, so the lookup resolves to this patched attribute).
+    import phenotypic._cli._cli_slurm_submission as sub_mod
+
+    monkeypatch.setattr(sub_mod, "submit_slurm_script_chain", _fake_chain)
+
+    scripts = {
+        "stage1": [Path("s1c0.sh"), Path("s1c1.sh")],
+        "stage2": Path("s2.sh"),
+        "stage3": [Path("s3c0.sh")],
+    }
+    job_ids = submit_staged_chain(
+        scripts, output_dir=Path("/out"), slurm_args={"slurm_partition": "short"}
+    )
+
+    # Only the drip-feed's initial jobs come back (chunk 0 + dispatcher 1), NOT
+    # one job per chunk — the rest are auto-submitted by each chunk's dispatcher.
+    assert job_ids == ["chunk0", "dispatch1"]
+    assert captured["flat"] == ["s1c0.sh", "s1c1.sh", "s2.sh", "s3c0.sh"]
+    # The tiny dispatcher runs on the CPU (short) profile.
+    assert captured["slurm_args"] == {"slurm_partition": "short"}
