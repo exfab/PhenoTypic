@@ -96,3 +96,8 @@ ContrastAdjustment)` yields `['gamma', 'gain', 'norm', 'input_layer']`.
   and the ipywidgets notebook shell (`viz.notebook.build_notebook_dashboard`).
   UI toolkits stay lazily imported; the theme imports plotly but no toolkit
   (enforced by `tests/unit/viz/test_import_rules.py`).
+- `orientation_fields/` — branch-tracking-free literal skeleton-ring crossing
+  transforms, equal-crossing outward profiles, and composable Matplotlib
+  diagnostics. Computation accepts explicit masks, orientation/coherence fields,
+  center, distance map, and radii; enhancement and object detection remain caller
+  responsibilities.

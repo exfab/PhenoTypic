@@ -113,6 +113,7 @@ def extract_full_length_ring_fields(
             "inner_radius": inner_radius,
             "outer_radius": outer_radius,
             "object_extent_radius": object_extent_radius,
+            "obj_mask": obj_mask,
             "dist_map": dist_map,
             "reliable_structure": (
                 selector

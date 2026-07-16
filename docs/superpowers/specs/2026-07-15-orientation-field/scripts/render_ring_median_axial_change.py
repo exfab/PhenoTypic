@@ -129,6 +129,38 @@ def calculate_colony_axial_change(
         operation,
         profiles,
     )
+    return calculate_axial_change_from_fields(
+        profiles,
+        phi,
+        coherence,
+        selector,
+    )
+
+
+def calculate_axial_change_from_fields(
+    profiles: dict,
+    phi: np.ndarray,
+    coherence: np.ndarray,
+    selector: np.ndarray,
+) -> dict:
+    """Calculate ring evidence and cumulative profiles from one selector.
+
+    Args:
+        profiles: Full-length colony profile metadata.
+        phi: Image-derived local axial orientation field in radians.
+        coherence: Image-derived local orientation coherence.
+        selector: Structure pixels allowed to contribute to ring-sector means.
+
+    Returns:
+        Dictionary containing ring evidence, cumulative profiles, and pixel
+        fields painted on ``profiles["reliable_structure"]``.
+
+    Raises:
+        ValueError: If the field and selector arrays do not share a shape.
+    """
+    arrays = (coherence, selector, profiles["dist_map"])
+    if any(array.shape != phi.shape for array in arrays):
+        raise ValueError("orientation fields and selector must share one shape")
     signed_tilt, _signed_turn, _turn_magnitude, polar_angle = (
         signed_radial_relative_field(
             phi,
@@ -181,6 +213,7 @@ def calculate_colony_axial_change(
         "radial_path": radial_path,
         "axial_field": axial_field,
         "radial_field": radial_field,
+        "polar_angle": polar_angle,
     }
 
 

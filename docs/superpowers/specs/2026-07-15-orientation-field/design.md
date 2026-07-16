@@ -875,3 +875,492 @@ when different sector populations dominate adjacent rings, even if no individual
 turns by that amount. Use the sector-level tangential or Cartesian diagnostics when
 spatial correspondence is required. Keep the tangent-based radial-path calculation as a
 reference rather than combining its values with this orientation-state metric.
+
+## 14. Skeleton-masked sampling diagnostic
+
+### 14.1 Controlled comparison
+
+This diagnostic tests whether branch width is materially affecting the full-length
+cumulative axial-median result. The detected object mask is morphologically skeletonized
+to a one-pixel centreline. The skeleton and detected-mask variants then use the same
+image-derived local orientation field, coherence field, inoculum centre and exclusion,
+8 px rings, 36 sectors, sector eligibility rules, ring-consensus threshold, and
+cumulative axial-change calculation from Section 13. Only the pixels allowed to
+contribute to a ring-sector mean change.
+
+The skeleton-derived cumulative values are painted back over the reliable detected mask
+in the comparison figure so the spatial result remains legible. A separate panel shows
+the actual one-pixel measurement skeleton, widened by one pixel for display only.
+
+### 14.2 Two-colony results
+
+| Colony | Sampling | Reliable pixels | Continuous support | Median sector support | Median ring resultant | Absolute p95 | Raw peak |
+|---|---|---:|---:|---:|---:|---:|---:|
+| R3C4 | detected mask | 22,750 | 17/21 rings | 0.722 | 0.281 | 51.4 degrees | 60.5 degrees |
+| R3C4 | skeleton | 7,559 | 19/21 rings | 0.667 | 0.324 | 40.1 degrees | 43.9 degrees |
+| R4C6 | detected mask | 6,951 | 13/14 rings | 0.528 | 0.549 | 90.9 degrees | 92.8 degrees |
+| R4C6 | skeleton | 2,265 | 13/14 rings | 0.472 | 0.566 | 72.2 degrees | 73.0 degrees |
+
+On rings supported by both variants, the mean absolute cumulative-profile difference is
+13.0 degrees for R3C4 and 17.1 degrees for R4C6. These are sample-specific results from
+the cached branch-reconnection detector output; the complete values are exported in
+`artifacts/twok_skeletonized_axial_change_summary.csv` and
+`artifacts/twok_skeletonized_axial_change_profiles.csv`.
+
+### 14.3 Interpretation
+
+The result is mixed, not a demonstrated accuracy improvement. Skeletonization increases
+R3C4's continuous ring support and modestly raises median ring resultant for both
+colonies, but it lowers median sector coverage and substantially reduces the reported
+cumulative magnitude. Without branch-trajectory ground truth, the lower peaks cannot be
+classified as more accurate rather than attenuated.
+
+Skeleton sampling is useful as a branch-width sensitivity diagnostic because a thick
+branch no longer contributes across its full cross-section. It does not make the metric
+invariant to branch number. Additional branches can still change the within-sector axial
+mean, the sectors that pass support thresholds, and which sector population determines
+the ring median. Skeleton topology is also detector- and morphology-dependent: connected
+dense regions can create loops and short spurs that do not correspond one-to-one with
+biological branches.
+
+Keep the detected-mask result as the current primary prototype and show the skeleton
+result alongside it as a sensitivity analysis. Promotion of skeleton sampling would
+require manually annotated or synthetic branch trajectories with known radial-relative
+turning, including controlled changes in branch width and count.
+
+## 15. Continuity-aware axial lifting at tangency
+
+### 15.1 Status and question
+
+This section is a specification only. It does not change the current reference
+calculation.
+
+An axial orientation is periodic over 180 degrees. At exact tangency, +90 and -90
+degrees therefore describe the same line. The current seam-safe axial difference already
+handles a simple representation flip such as +89 to -89 degrees as a +2-degree change:
+
+```text
+d_axial(a, b) = 0.5 * atan2(sin(2 * (a - b)), cos(2 * (a - b)))
+```
+
+This is equivalent to the conservative one-dimensional period-pi behavior provided by
+`numpy.unwrap(..., period=pi)`: it selects the period-complementary representation that
+minimizes the adjacent jump. NumPy's implementation is suitable as an independent
+reference, but it does not use a turning trend or choose among multiple ring modes.
+[NumPy documents the period-aware rule here](https://numpy.org/doc/stable/reference/generated/numpy.unwrap.html).
+
+R3C4 demonstrates a different ambiguity. Its skeleton ring median changes from 88.69 to
+10.98 degrees. The same axial observation permits a -77.71-degree increment or a
++102.29-degree increment. Neither is determined by the two unoriented ring medians.
+Choosing the latter because earlier rings turned positively would be a dynamical prior,
+not additional image evidence.
+
+### 15.2 Goals and non-goals
+
+The proposed prototype will:
+
+- preserve continuity through harmless +90/-90 representation changes;
+- use the previous accepted change only when the current ring supports more than one
+  nearly equivalent axial state;
+- expose when continuity, rather than the best independent ring estimate, selected a
+  state;
+- return an explicit unsupported or ambiguous state when no defensible continuation
+  exists;
+- retain equal-sector weighting and separate support from orientation magnitude.
+
+It will not infer axial polarity from a single ring, prove clockwise versus
+counterclockwise biological growth, track a particular branch, bridge missing rings, or
+estimate bifurcation angles. Those tasks require spatial correspondence.
+
+### 15.3 Considered designs
+
+#### Design A: principal period-pi unwrap
+
+```text
+wrapped ring median -> principal axial difference -> cumulative change
+```
+
+For each reliable ring median `m_k`:
+
+```text
+u_k = u_(k-1) + d_axial(m_k, u_(k-1))
+```
+
+This is the boring, reliable reference and matches the current calculation. It is
+rotation invariant and seam safe, but assumes the true adjacent change has magnitude
+below 90 degrees. It cannot distinguish a -77.71-degree change from its +102.29-degree
+axial lift and cannot prevent a switch between different sector populations.
+
+#### Design B: predictive lift of one ring median
+
+```text
+wrapped median -> candidate 180-degree lifts -> previous-step predictor -> chosen lift
+```
+
+Let `u_(k-1)` be the previous unwrapped state and
+`v_(k-1) = u_(k-1) - u_(k-2)` its previous change. Predict:
+
+```text
+p_k = u_(k-1) + clip(v_(k-1), -60 degrees, +60 degrees)
+U_k = {m_k + 180 degrees * n : n is an integer}
+u_k = argmin over U_k of |u - p_k|
+```
+
+This can select a non-principal lift when a sustained trend crosses the axial seam. It
+is simple and online, but it can turn an earlier error into a persistent trajectory and
+can impose a direction unsupported by the current ring.
+
+#### Design C: history-aware selection among admissible ring modes
+
+```text
+ring-sector tilts -> data-admissible axial modes -> continuity gate -> unwrapped state
+                                      |                    |
+                                      +-> support/QC ------+
+```
+
+Do not collapse a ring to one median before applying continuity. For every reliable
+sector tilt `theta_(k,s)`, calculate its equal-sector axial data loss as a candidate
+ring state:
+
+```text
+L_(k,j) = mean_s |d_axial(theta_(k,s), theta_(k,j))|
+```
+
+Retain distinct candidates whose loss is within 5 degrees of the minimum and which have
+at least three reliable sectors within 15 degrees. Each retained axial candidate is
+expanded to its nearby 180-degree lifts and compared with the predictor `p_k` defined in
+Design B. Continuity may choose only among this data-admissible set; it may not rescue a
+poorly supported orientation.
+
+### 15.4 Recommended prototype
+
+Use Design C, with Design A retained unchanged as the reference. Do not use a generic
+two-dimensional phase-unwrapping routine. For example,
+`skimage.restoration.unwrap_phase` is intended for spatial phase arrays and is not a
+substitute for equal-sector ring-state selection.
+[The scikit-image phase-unwrapping contract is documented here](https://scikit-image.org/docs/stable/api/skimage.restoration.html#skimage.restoration.unwrap_phase).
+
+The initial deterministic rules are:
+
+1. Require the existing three-sector minimum, sector-resultant eligibility, and ring
+   resultant of at least 0.15 before constructing candidates.
+2. Give every eligible angular sector one vote. Raw pixel count and detected branch
+   count are not explicit optimization weights.
+3. Use the independently best axial median for the first supported ring.
+4. Use the principal axial step for the second ring because no previous velocity exists.
+5. From the third ring onward, predict from the previous accepted change and choose the
+   nearest data-admissible lifted candidate.
+6. Activate history-based selection only when the previous or independently selected
+   current state is within 15 degrees of tangency. Outside that gate, retain the
+   independently selected median.
+7. Require an accepted step no larger than 60 degrees and a prediction residual no
+   larger than 30 degrees. These are prototype guards to be sensitivity-tested, not
+   established biological limits.
+8. If the best and second-best admissible continuations differ in prediction residual by
+   less than 10 degrees, mark the ring `history_ambiguous`.
+9. If no candidate passes the step and residual guards, mark it
+   `history_discontinuity`. Do not emit zero and do not restart on later rings.
+10. Flag every ring where history selects a state other than the independently best
+    candidate as `continuity_tiebreak`.
+
+The reported continuous state is:
+
+```text
+C_k = u_k - u_start
+```
+
+The prototype must export the wrapped independent median, chosen unwrapped state,
+principal axial increment, chosen increment, candidate data loss, prediction residual,
+continuation margin, status flag, sector support, and ring resultant. The overlay should
+show the current reference and continuity-aware profile together, with ambiguous or
+discontinuous rings left blank rather than colored as zero.
+
+Under these conservative rules, the R3C4 88.69-to-10.98-degree transition is expected to
+remain unsupported unless ring 11 contains a near-tangential alternative whose
+equal-sector data loss is within the admissible 5-degree window. Previous state alone is
+not sufficient evidence to force the +102.29-degree lift.
+
+### 15.5 Required controls
+
+1. +89 to -89 degrees unwraps to a +2-degree change; -89 to +89 unwraps to -2 degrees.
+2. Global image rotation leaves radial-relative results unchanged.
+3. Straight radial, horizontal, and vertical fields do not accumulate false rotation.
+4. A synthetic smooth crossing through tangency follows the known unwrapped direction.
+5. Reversing the synthetic turning direction reverses the reported sign.
+6. Exact equidistance between two lifts returns `history_ambiguous`.
+7. A strongly supported true reversal outside the tangency gate is preserved rather than
+   smoothed away.
+8. A mode outside the 5-degree data-loss window cannot be selected by history.
+9. Duplicating pixels or branch width within already eligible sectors does not change the
+   selected state.
+10. Adding branches that occupy new sectors may change support or the ring state, and is
+    reported as such rather than claimed to be branch-count invariant.
+11. Missing or rejected rings terminate the profile without zero-filling or restart.
+12. The existing principal axial-change output remains numerically unchanged.
+
+Sensitivity figures must sweep the candidate-loss slack, maximum accepted step, and
+prediction-residual guard. Promotion requires synthetic trajectories with known turns
+and manually reviewed real paths through the tangential R3C4 region.
+
+## 16. Point-level previous-ring orientation inheritance
+
+### 16.1 Collection contract
+
+This diagnostic replaces colony-wide ring medians and 10-degree sector cells with
+literal crossings between the reliable one-pixel object skeleton and each full-length
+Sholl circle. It is an orientation-collection prototype, not a colony phenotype.
+
+For every 8 px ring centre, skeleton pixels within 1.5 px of the mathematical circle are
+grouped by 8-connectivity. Each connected crossing stores its coherence-weighted
+coordinate, absolute fiber-axis orientation, radial-relative tilt, coherence, axial
+resultant, and contributing skeleton-pixel count. The inoculum exclusion and coherence
+threshold remain active. Crossings are never discarded merely because they cannot be
+matched; all raw records are exported.
+
+An outer crossing may inherit only from a crossing on the immediately preceding ring.
+Both crossings must:
+
+- be connected through the reliable skeleton inside the intervening annular corridor;
+- lie within `ring_width / cos(75 degrees)`, which is 30.91 px for 8 px rings;
+- differ by no more than 20 degrees under the seam-safe axial difference;
+- admit a 180-degree lift whose step is at most 60 degrees and whose residual from the
+  previous accepted step is at most 30 degrees.
+
+The common candidate cost is:
+
+```text
+cost = (distance / maximum_distance)^2
+     + (absolute_axial_difference / 20 degrees)^2
+```
+
+A local choice is rejected when the second-best cost lies within 0.05 of the best cost.
+Only finite parent accumulation may propagate. There is no gap bridge, late seed, or
+restart. A missing or rejected intermediate crossing therefore terminates that path.
+
+For an accepted parent `i` and child `o`, the raw state retains both:
+
+```text
+signed_o   = signed_i   + chosen_unwrapped_step(i, o)
+absolute_o = absolute_i + abs(chosen_unwrapped_step(i, o))
+```
+
+No colony-level aggregation is defined yet.
+
+### 16.2 Matching policies
+
+All policies operate on the identical hard-gated candidate graph:
+
+- **Reciprocal one-to-one:** accept an edge only when each endpoint is the other's unique
+  decisive best candidate. This is the conservative primary comparison.
+- **Independent many-to-one:** every outer crossing accepts its own decisive best parent;
+  several children may inherit from the same parent. This preserves branch splits but
+  can also duplicate one inner orientation into nearby parallel children.
+- **Global one-to-one:** solve one minimum-cost assignment per adjacent ring pair using a
+  private unmatched option for every outer point. A valid but poor edge is not forced,
+  and assignments with a nearly equal alternative total cost are rejected.
+
+The current sector-based matcher remains unchanged as a reference. It is not used to
+construct these point records.
+
+### 16.3 Real-image collection results
+
+| Colony | Policy | Raw crossings | Supported points | Accepted edges | Raw cumulative peak |
+|---|---|---:|---:|---:|---:|
+| R3C4 | reciprocal one-to-one | 602 | 53 | 22 | 25.3 degrees |
+| R3C4 | independent many-to-one | 602 | 123 | 92 | 45.1 degrees |
+| R3C4 | global one-to-one | 602 | 57 | 26 | 19.6 degrees |
+| R4C6 | reciprocal one-to-one | 200 | 45 | 17 | 18.2 degrees |
+| R4C6 | independent many-to-one | 200 | 62 | 34 | 30.5 degrees |
+| R4C6 | global one-to-one | 200 | 45 | 17 | 18.2 degrees |
+
+The point collector retains crossings through the full detected length: R3C4 has raw
+crossings through ring 20 and R4C6 through ring 12. Strict accepted inheritance reaches
+ring 6 for reciprocal and global matching and ring 9 for many-to-one matching in R3C4;
+it reaches ring 5 for one-to-one and many-to-one matching in R4C6. Later raw crossings
+remain in the export with explicit unsupported states rather than being reset to zero.
+
+The point prototype does not reproduce or directly evaluate the former R3C4
+88.69-to-10.98-degree colony-median transition. Its strict inherited point paths end by
+ring 6 for one-to-one matching and ring 9 for many-to-one matching, before the former
+ring-10-to-ring-11 transition. The 20-degree orientation-sharing gate applies to the
+axes at candidate point endpoints, not to colony-wide ring medians. Continuing through
+that region would require endpoint-level evidence on every intervening ring.
+
+The annular skeleton-connectivity requirement is essential. Angle and Euclidean distance
+alone produced visually plausible but unsupported chords between unrelated branches in
+the first diagnostic run. Connectivity removed those edges but reduced propagation
+support substantially. The present figures should therefore be read as an audit of what
+the strict collection rules accept, not as a completed outward-turning measurement.
+
+### 16.4 Preserved diagnostics and next checks
+
+The raw crossing CSV stores local orientation evidence independently of matching policy.
+The state CSV stores parent ID, status, distance, axial change, prediction residual,
+unwrapped orientation, signed step, signed accumulation, absolute accumulation, and
+normalized cost for every policy and every crossing.
+
+Before selecting a policy or calculating one colony statistic, compare:
+
+1. axial gates of 10, 20, and 30 degrees;
+2. spatial gates of 1.5 and 2 ring widths against the 75-degree geometric reach;
+3. crossing half-widths of 1.0, 1.5, and 2.0 px;
+4. strict corridor connectivity against a one-ring skeleton geodesic limit;
+5. reciprocal, many-to-one, and global policy stability on known synthetic branches;
+6. width and uniformly replicated branch-count controls.
+
+Any final aggregation must report correspondence support separately and must not convert
+unmatched crossings into zero rotation.
+
+## 17. Coherence-enhancing diffusion and equal-crossing population trend
+
+### 17.1 Controlled preprocessing comparison
+
+The literal skeleton-ring collector was rerun after applying `StructureSmoothing` to the
+orientation source with:
+
+```text
+num_iter=30, sigma=1.5 px, rho=3.0 px, dt=0.1, alpha=0.001, C=90
+```
+
+These are prototype parameters, not established biological thresholds. The TwoK object
+map, inferred inoculum center, distance map, 8 px ring positions, inoculum exclusion, and
+point-matching guards are taken from the original condition and mechanically reused for
+CED. A mismatch in the object mask, center, or distance map raises an error. CED therefore
+changes the intensity-derived orientation and coherence fields, not the detected colony
+geometry.
+
+| Colony | Condition | Crossings | Median coherence | Many-to-one support | Many-to-one raw peak |
+|---|---|---:|---:|---:|---:|
+| R3C4 | original | 602 | 0.471 | 123 | 45.1 degrees |
+| R3C4 | CED | 610 | 0.552 | 143 | 38.1 degrees |
+| R4C6 | original | 200 | 0.541 | 62 | 30.5 degrees |
+| R4C6 | CED | 202 | 0.687 | 60 | 25.8 degrees |
+
+CED increased median local coherence in both colonies while leaving the number of
+literal crossings nearly unchanged. The inherited many-to-one raw peak decreased in
+both colonies. These observations show that the preprocessing materially changes the
+orientation evidence; they do not independently establish that every changed angle is
+closer to biological ground truth.
+
+### 17.2 Branch-tracking-free population calculation
+
+For each ring, every literal crossing contributes one radial-relative axial tilt. The
+ring population consensus is the equal-crossing doubled-angle mean:
+
+```text
+ring_angle = 0.5 * atan2(mean(sin(2 * tilt)), mean(cos(2 * tilt)))
+ring_resultant = hypot(mean(cos(2 * tilt)), mean(sin(2 * tilt)))
+```
+
+A ring requires at least three crossings and a resultant of at least 0.15. Consecutive
+supported ring angles accumulate seam-safe period-180-degree changes within each
+contiguous run. A missing ring starts a new zero-relative run, and an exact 90-degree
+inter-ring step is directionally ambiguous, remains unsupported, and also breaks the
+run. This calculation does not match or directly follow individual branches.
+Conditional on both rings passing the minimum-crossing guard, uniformly replicating the
+same crossing-orientation distribution leaves its consensus unchanged. Support itself is
+count-sensitive, and uneven skeleton fragmentation can still change the empirical
+distribution.
+
+R4C6 shows a similar outward population profile under both conditions: the raw peak is
+82.7 degrees in the original field and 80.4 degrees after CED, with 12 of 14 rings
+supported. That full peak is sensitive to the first two rings, whose resultants are low
+(0.24 and 0.26 originally; 0.16 and 0.17 after CED). From the first clearly coherent
+ring in this example (ring 2, resultant about 0.77) to the outermost supported ring, the
+observed shift is about 43 degrees in both conditions. The outermost supported-ring
+resultant changes from 0.775 to 0.873, while several other outer resultants are similar
+or slightly lower after CED. This persistence is evidence that the later-radius trend is
+not caused solely by dotted intensity, but it is not yet a validated biological effect
+size. R3C4 remains heterogeneous and has low-resultant intervals. After changing the
+calculation to restart after unsupported gaps rather than carrying an unidentified lift
+across them, its largest within-run population change is 59.8 degrees originally and
+61.0 degrees after the first CED setting. CED does not resolve the low-resultant
+intervals or make the separate supported runs comparable.
+
+The population raw peak remains a diagnostic, not a selected phenotype. A production
+metric should retain the signed radial profile and ring resultant, and should report the
+fraction of supported rings separately.
+
+### 17.3 CED parameter sweep
+
+Twenty-six CED configurations were evaluated on both colonies. The coarse grid varied:
+
+- `sigma`: 0.75, 1.5, and 2.5 px;
+- `rho`: 1x and 2x `sigma`;
+- `num_iter`: 15 and 30;
+- `C`: 80 and 95;
+
+The library default and the first diagnostic setting were added as explicit controls;
+`dt=0.1` and `alpha=0.001` remained fixed. Parameter selection did not use the observed
+rotation amplitude. It compared median crossing coherence, the 90th percentile of
+seam-safe neighboring orientation changes along non-junction skeleton interiors,
+crossing-count preservation, reliable-skeleton preservation, and normalized source
+RMSE.
+
+No tested CED configuration reduced the mean branch-interior P90 angular roughness
+across the two colonies. Changes ranged from a 0.4% increase to a 10.3% increase.
+Consequently, increased structure-tensor coherence cannot be interpreted as evidence
+that CED corrected the dotted-intensity angle error. Strong low-`C` settings provided
+the largest coherence gains, but also changed local angles and source intensity more.
+
+For a conservative visualization, CED24 was selected by two prespecified guards:
+
+```text
+mean P90 roughness degradation <= 1%
+worst crossing-count deviation <= 2%
+```
+
+Among configurations passing both guards, CED24 had the largest mean coherence gain.
+Its parameters are `sigma=2.5`, `rho=5.0`, `num_iter=30`, `C=95`, `dt=0.1`, and
+`alpha=0.001`. Across the colonies it raises median crossing coherence by 13.7%, changes
+P90 branch-interior roughness by -0.4% under the reduction convention (a 0.4% worsening),
+has at most 1.5% crossing-count deviation, and has mean normalized source RMSE 0.073.
+This is a sweep-selected conservative display setting, not a validated optimum.
+
+### 17.4 Outward-normalized arrow overlay
+
+The local structure-tensor orientation is axial: `theta` and `theta + 180 degrees` are
+the same observation, so the image does not measure a head-to-tail direction. For the
+literal-crossing overlay, each axis is represented by the equivalent arrow whose dot
+product with the center-to-crossing radial vector is nonnegative. The arrowhead therefore
+points toward increasing radius by construction. It helps show whether the local axis
+leans clockwise or counterclockwise as it leaves the inoculum, but it must not be read as
+measured growth polarity or material flow. Color continues to encode signed
+radial-relative tilt.
+
+The focused outward-orientation diagnostic contains only the literal-crossing arrows,
+the equal-crossing ring consensus, its resultant, and contiguous-run consensus change.
+It does not infer branch correspondence. Each crossing contributes one vote within its
+ring. Conditional on eligibility, uniformly replicating the same orientation distribution
+leaves the consensus unchanged. The minimum-crossing support guard remains count-sensitive,
+and uneven skeleton fragmentation can still alter the sampled distribution.
+
+### 17.5 Public SDK helper boundary
+
+The approved literal-crossing calculation is available from
+`phenotypic.sdk_.orientation_fields`. `literal_skeleton_ring_crossings` performs the
+skeleton-ring transform, and `literal_crossing_ring_profile` calculates the
+equal-crossing ring consensus and contiguous outward change. Both functions accept
+explicit arrays and geometry; neither performs CED, detects an object, or infers an
+inoculum center.
+
+Each diagnostic is a separate, composable function:
+
+- `plot_literal_crossing_map` draws the source-array overlay, accepted skeleton,
+  sampled rings, and outward-normalized local arrows;
+- `plot_literal_crossing_population` draws every local crossing tilt and the black
+  equal-crossing ring consensus;
+- `plot_literal_crossing_outward_profile` draws contiguous-run consensus change and
+  ring resultant on separate axes.
+
+Plot functions accept a caller-owned Matplotlib `Axes` and return their principal
+artist. They express values in degrees for interpretation while transform and profile
+arrays remain in radians for calculation. The real-colony CED diagnostic now calls
+these public helpers rather than maintaining a second implementation.
+
+The public local-tilt plots default to the cyclic `twilight_shifted` colormap so the
+equivalent -90-degree and +90-degree axial seam has matching endpoint colors. The saved
+session diagnostics retain the explicitly requested `Spectral` map, which is
+non-cyclic and therefore has a visible color discontinuity at that seam. In either map,
+exact tangency has no defensible arrow polarity; outward arrowheads are a display
+convention rather than a measured direction.

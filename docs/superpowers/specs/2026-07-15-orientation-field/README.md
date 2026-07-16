@@ -48,6 +48,29 @@ do not need to be repeated when those inputs are available.
 - `artifacts/twok_R4C6_ring_median_axial_change_2x2.png`
 - `artifacts/twok_ring_median_axial_change_summary.csv`
 - `artifacts/twok_ring_median_axial_change_profiles.csv`
+- `artifacts/twok_R3C4_skeletonized_axial_change_2x3.png`
+- `artifacts/twok_R4C6_skeletonized_axial_change_2x3.png`
+- `artifacts/twok_skeletonized_axial_change_summary.csv`
+- `artifacts/twok_skeletonized_axial_change_profiles.csv`
+- `artifacts/twok_R3C4_point_matched_orientation_2x2.png`
+- `artifacts/twok_R4C6_point_matched_orientation_2x2.png`
+- `artifacts/twok_point_ring_crossings.csv`
+- `artifacts/twok_point_matched_orientation_states.csv`
+- `artifacts/twok_point_matched_orientation_summary.csv`
+- `artifacts/twok_R3C4_ced_point_crossing_comparison_2x2.png`
+- `artifacts/twok_R4C6_ced_point_crossing_comparison_2x2.png`
+- `artifacts/twok_R3C4_ced_literal_crossing_trend_2x2.png`
+- `artifacts/twok_R4C6_ced_literal_crossing_trend_2x2.png`
+- `artifacts/twok_ced_literal_crossing_ring_profiles.csv`
+- `artifacts/twok_ced_literal_crossing_summary.csv`
+- `artifacts/twok_ced_literal_crossing_parameter_sweep.png`
+- `artifacts/twok_ced_literal_crossing_parameter_sweep.csv`
+- `artifacts/twok_ced_literal_crossing_parameter_sweep_aggregate.csv`
+- `artifacts/twok_R3C4_literal_crossing_outward_metric_CED24.png`
+- `artifacts/twok_R4C6_literal_crossing_outward_metric_CED24.png`
+- `artifacts/twok_R3C4_literal_crossing_before_after_CED24.png`
+- `artifacts/twok_R3C4_ced_point_crossing_comparison_CED24_2x2.png`
+- `artifacts/twok_R4C6_ced_point_crossing_comparison_CED24_2x2.png`
 - `artifacts/twok_tangential_methods_comparison.csv`
 - `artifacts/twok_ring_compounded_rotation_summary.csv`
 - `artifacts/twok_ring_compounded_rotation_profiles.csv`
@@ -66,6 +89,9 @@ uv run python docs/superpowers/specs/2026-07-15-orientation-field/validation/rin
 
 The public orientation-zone schema was deliberately not expanded for the tangential or
 ring-compounded prototypes. They remain diagnostic calculations pending further review.
+The selected literal skeleton-ring crossing transform and its three independent plot
+helpers are now public under `phenotypic.sdk_.orientation_fields`; no single phenotype
+column has been selected from that profile.
 The equal-sector axial mean/median ring-compounding prototype is intentionally different
 from the other Sholl-style views: it starts outside the inferred inoculum but extends to
 the first complete ring boundary beyond the farthest detected object pixel. It does not
