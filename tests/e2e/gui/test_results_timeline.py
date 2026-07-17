@@ -24,7 +24,7 @@ from playwright.sync_api import Page
 
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
-from phenotypic.schema import METADATA
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 
 # Tight DOM-poll budget on a fresh Werkzeug server: stochastically slow on GHA.
 pytestmark = pytest.mark.ci_flaky
@@ -45,7 +45,7 @@ def _timeline_master_df() -> pl.DataFrame:
             label += 1
             rows.append(
                 {
-                    "Metadata_Dataset": _DATASET,
+                    str(EXPERIMENT_METADATA.DATASET): _DATASET,
                     str(METADATA.IMAGE_NAME): f"p{plate}_t{img_no}",
                     "Metadata_ImageNumber": img_no,
                     "Metadata_PlateNum": str(plate),
@@ -68,7 +68,7 @@ def _no_time_master_df() -> pl.DataFrame:
             label += 1
             rows.append(
                 {
-                    "Metadata_Dataset": _DATASET,
+                    str(EXPERIMENT_METADATA.DATASET): _DATASET,
                     str(METADATA.IMAGE_NAME): f"p{plate}_t{rep}",
                     # Categorical group only — String, no numeric/temporal dtype
                     # and no Metadata_Time-like name, so no eligible time axis.
@@ -231,8 +231,11 @@ def test_margin_ring_pre_mounted_offscreen(page: Page, hub_url: str) -> None:
     # of (populated) columns fit visibly, so the margin ring beyond them is
     # pre-mounted off-screen for instant step-in (mirrors the Browse margin-ring
     # test's deliberately-small viewport).
-    page.set_viewport_size({"width": 600, "height": 450})
     _open_timeline(page, hub_url)
+    # Configure the timeline at the normal viewport before shrinking it. At the
+    # deliberately narrow test width, the sticky tab bar can cover the dropdown
+    # menu and prevent this setup helper from selecting the plate grouping.
+    page.set_viewport_size({"width": 600, "height": 450})
     page.wait_for_selector(".timeline-cell--focused")
     # Poll until the warm sweep has mounted a margin-ring <img> that sits
     # outside the viewport's visible rectangle (pre-mounted for instant step-in).

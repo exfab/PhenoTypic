@@ -34,6 +34,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ASSETS_ROOT = REPO_ROOT / "docs" / "source" / "_static" / "gui_images"
@@ -447,6 +448,45 @@ def _wait_for_http_200(url: str, *, timeout: float = 30.0) -> None:
     )
 
 
+def _stop_process(proc: subprocess.Popen[Any]) -> None:
+    """Terminate *proc*, escalating to ``kill`` after five seconds."""
+    if proc.poll() is not None:
+        return
+    proc.terminate()
+    try:
+        proc.wait(timeout=5.0)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=5.0)
+
+
+def _read_log_tail(log_path: Path, *, max_lines: int = 80) -> str:
+    """Return the final lines of a child-process log for CI diagnostics."""
+    try:
+        lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError as exc:
+        return f"<unable to read {log_path}: {exc}>"
+    return "\n".join(lines[-max_lines:]) or "<log is empty>"
+
+
+def _wait_for_process_http_200(
+        url: str,
+        proc: subprocess.Popen[str],
+        log_path: Path,
+        *,
+        timeout: float = 30.0,
+) -> None:
+    """Wait for one GUI child and surface its log if readiness fails."""
+    try:
+        _wait_for_http_200(url, timeout=timeout)
+    except RuntimeError as exc:
+        _stop_process(proc)
+        raise RuntimeError(
+                f"{exc}\nChild exit code: {proc.poll()}\n"
+                f"Child log tail ({log_path}):\n{_read_log_tail(log_path)}"
+        ) from exc
+
+
 def _gui_log_sink(port: int) -> Path:
     """Return the temp log path for a GUI subprocess booted on *port*.
 
@@ -488,19 +528,16 @@ def boot_gui(root: Path) -> tuple[subprocess.Popen[str], str]:
                 text=True,
         )
     base_url = f"http://127.0.0.1:{port}"
-    _wait_for_http_200(base_url + "/", timeout=30.0)
+    _wait_for_process_http_200(
+            base_url + "/", proc, log_path, timeout=30.0,
+    )
     print(f"[gui]   ready at {base_url}")
     return proc, base_url
 
 
 def shutdown_gui(proc: subprocess.Popen[str]) -> None:
     print("[gui] shutting down")
-    proc.terminate()
-    try:
-        proc.wait(timeout=5.0)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait(timeout=5.0)
+    _stop_process(proc)
 
 
 # ---------------------------------------------------------------------------
@@ -761,33 +798,34 @@ def _seed_results_timeline_output() -> None:
     writes a separate output dir mirroring ``tests/e2e/gui/test_results_timeline``:
     a ``master`` + ``measurements`` mirror with ``Metadata_ImageNumber`` (Int64
     monotonic) + ``Metadata_PlateNum``, plus a per-image overlay PNG under
-    ``results/<ds>/overlays/<stem>.png`` for every ``(plate, image-number)`` cell,
+    canonical dataset overlay directory for every ``(plate, image-number)`` cell,
     so X=ImageNumber × Y=PlateNum yields a populated focus-navigate matrix.
 
-    Idempotent (skips when the master already exists) and non-fatal — a failure
-    leaves the capture to skip rather than abort the whole screenshot run.
+    Deterministically rewrites the small fixture so a partial or pre-migration
+    seed cannot survive across capture runs. A failure leaves the capture to
+    skip rather than abort the whole screenshot run.
     """
     from phenotypic.sdk_ import (
+        dataset_overlays_dir,
         deliverables_dir,
         master_measurements_csv_path,
         master_measurements_parquet_path,
         measurements_csv_path,
         measurements_parquet_path,
     )
+    from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 
-    if master_measurements_parquet_path(RESULTS_TIMELINE_OUTPUT_DIR).exists():
-        print(
-            f"[dataset] reusing existing "
-            f"{RESULTS_TIMELINE_OUTPUT_DIR.relative_to(REPO_ROOT)}"
-        )
-        return
-
+    display_output_dir = (
+        RESULTS_TIMELINE_OUTPUT_DIR.relative_to(REPO_ROOT)
+        if RESULTS_TIMELINE_OUTPUT_DIR.is_relative_to(REPO_ROOT)
+        else RESULTS_TIMELINE_OUTPUT_DIR
+    )
     import polars as pl
     from PIL import Image as PILImage
 
     print(
         f"[dataset] seeding Results Timeline output under "
-        f"{RESULTS_TIMELINE_OUTPUT_DIR.relative_to(REPO_ROOT)}"
+        f"{display_output_dir}"
     )
     rows: list[dict[str, object]] = []
     label = 0
@@ -796,8 +834,8 @@ def _seed_results_timeline_output() -> None:
             label += 1
             rows.append(
                 {
-                    "Metadata_Dataset": RESULTS_TIMELINE_DATASET,
-                    "Metadata_ImageFile": f"p{plate}_t{img_no}",
+                    str(EXPERIMENT_METADATA.DATASET): RESULTS_TIMELINE_DATASET,
+                    str(METADATA.IMAGE_NAME): f"p{plate}_t{img_no}",
                     "Metadata_ImageNumber": img_no,
                     "Metadata_PlateNum": str(plate),
                     "Object_Label": label,
@@ -817,7 +855,9 @@ def _seed_results_timeline_output() -> None:
     df.write_parquet(master_measurements_parquet_path(RESULTS_TIMELINE_OUTPUT_DIR))
     df.write_csv(measurements_csv_path(RESULTS_TIMELINE_OUTPUT_DIR))
     df.write_parquet(measurements_parquet_path(RESULTS_TIMELINE_OUTPUT_DIR))
-    overlays = RESULTS_TIMELINE_OUTPUT_DIR / "results" / RESULTS_TIMELINE_DATASET / "overlays"
+    overlays = dataset_overlays_dir(
+            RESULTS_TIMELINE_OUTPUT_DIR, RESULTS_TIMELINE_DATASET,
+    )
     overlays.mkdir(parents=True, exist_ok=True)
     for plate in range(1, RESULTS_TIMELINE_N_PLATES + 1):
         for img_no in range(1, RESULTS_TIMELINE_N_TIMES + 1):
@@ -1947,12 +1987,7 @@ def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
             finally:
                 browser.close()
     finally:
-        proc.terminate()
-        try:
-            proc.wait(timeout=5.0)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait(timeout=5.0)
+        _stop_process(proc)
 
 
 def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
@@ -1989,7 +2024,9 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
         )
     base_url = f"http://127.0.0.1:{port}"
     try:
-        _wait_for_http_200(base_url + "/", timeout=30.0)
+        _wait_for_process_http_200(
+                base_url + "/", proc, log_path, timeout=30.0,
+        )
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=not headed)
             try:
@@ -2069,12 +2106,7 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
             finally:
                 browser.close()
     finally:
-        proc.terminate()
-        try:
-            proc.wait(timeout=5.0)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait(timeout=5.0)
+        _stop_process(proc)
 
     # The loaded Results Timeline tab rides on this standalone-capture pass too,
     # but it needs a Timeline-CAPABLE output (the synthetic tutorial CLI run is
@@ -2111,7 +2143,9 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
             )
         rt_url = f"http://127.0.0.1:{rt_port}"
         try:
-            _wait_for_http_200(rt_url + "/", timeout=30.0)
+            _wait_for_process_http_200(
+                    rt_url + "/", rt_proc, rt_log_path, timeout=30.0,
+            )
             with sync_playwright() as pw:
                 browser = pw.chromium.launch(headless=not headed)
                 try:
@@ -2120,12 +2154,7 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
                 finally:
                     browser.close()
         finally:
-            rt_proc.terminate()
-            try:
-                rt_proc.wait(timeout=5.0)
-            except subprocess.TimeoutExpired:
-                rt_proc.kill()
-                rt_proc.wait(timeout=5.0)
+            _stop_process(rt_proc)
     else:
         print(
             "[shot]   results_timeline: no Timeline seed master — capture skipped"
@@ -2148,7 +2177,12 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
     tune_proc = _boot_standalone_tune(tune_port)
     tune_url = f"http://127.0.0.1:{tune_port}"
     try:
-        _wait_for_http_200(tune_url + "/", timeout=30.0)
+        _wait_for_process_http_200(
+                tune_url + "/",
+                tune_proc,
+                _gui_log_sink(tune_port),
+                timeout=30.0,
+        )
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=not headed)
             try:
@@ -2157,12 +2191,7 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
             finally:
                 browser.close()
     finally:
-        tune_proc.terminate()
-        try:
-            tune_proc.wait(timeout=5.0)
-        except subprocess.TimeoutExpired:
-            tune_proc.kill()
-            tune_proc.wait(timeout=5.0)
+        _stop_process(tune_proc)
 
 
 def _qc_curation_loop_loaded_shots(page) -> None:
