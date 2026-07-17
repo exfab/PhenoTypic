@@ -11,7 +11,16 @@ from pydantic import PrivateAttr, field_validator, model_validator
 # Control/FigureProvider/figure are re-exported from phenotypic.abc_ (this is
 # exactly what _measure_symmetric_zones.py imports).
 from phenotypic.abc_ import Control, FigureProvider, MeasureFeatures, figure
-from phenotypic.schema import OBJECT, ORIENTATION_ZONES
+from phenotypic.schema import (
+    OBJECT,
+    ORIENTATION_ZONE_DIAGNOSTIC,
+    ORIENTATION_ZONE_PRIMARY,
+)
+from phenotypic.sdk_.orientation_fields import (
+    aggregate_literal_crossing_zone,
+    literal_crossing_ring_profile,
+    literal_skeleton_ring_crossings,
+)
 from phenotypic.util._matched_ring_rotation import (
     matched_ring_cumulative_rotation_profile,
     matched_tracks_to_ring_sector_values,
@@ -33,6 +42,26 @@ _RADIAL_RELATIVE_N_SECTORS = 36
 _RADIAL_RELATIVE_MIN_COHERENCE = 0.15
 _RADIAL_RELATIVE_MIN_PIXELS_PER_SECTOR = 3
 _RADIAL_RING_MIN_RESULTANT = 0.15
+_LITERAL_CROSSING_HALF_WIDTH = 1.5
+_LITERAL_CROSSING_MIN_POINTS = 3
+_PRIMARY_OUTWARD_METRICS = (
+    "OutwardRotationSustainedPeak",
+    "OutwardRotationNet",
+    "OutwardRotationRate",
+    "OutwardRotationConsistency",
+)
+_DIAGNOSTIC_OUTWARD_METRICS = (
+    "OutwardRotationRawPeak",
+    "OutwardRotationP90",
+    "OutwardRotationP95",
+    "OutwardRotationMedianMagnitude",
+    "OutwardRotationAbsoluteArea",
+    "OutwardRotationTotalVariation",
+    "OutwardRotationRateGradient",
+    "OutwardRotationRingSupport",
+    "OutwardRotationRunSpanSupport",
+    "OutwardRotationMedianResultant",
+)
 
 # Okabe-Ito navy for figure text (matches MeasureSymmetricZones; family comes
 # from the phenotypic plotly template applied by @figure).
@@ -874,7 +903,9 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
     fixed-width Sholl-style annular bands, compares matching sectors across a
     configurable radial lag, and separately reports the broad Dense-to-Sparse
     change. Emits the
-    :class:`~phenotypic.schema.ORIENTATION_ZONES` columns.
+    :class:`~phenotypic.schema.ORIENTATION_ZONE_PRIMARY` columns. Set
+    ``include_diagnostics=True`` to also emit the validation, comparator, and
+    legacy :class:`~phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC` columns.
 
     Args:
         intensity_source: Image array for the structure tensor and zone
@@ -885,6 +916,13 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             used for longer-range radial rotation.
         long_range_lag: Centre-to-centre radial comparison distance in pixels.
             Must be an integer multiple of ``radial_ring_width``.
+        outward_peak_window_rings: Odd number of consecutive literal-crossing
+            rings used by the sustained-peak rolling median.
+        outward_min_run_rings: Minimum contiguous supported-ring count for the
+            robust net, rate, and consistency metrics.
+        include_diagnostics: Emit validation comparators, quality support, raw
+            peak, rate-gradient, and legacy orientation-zone columns. Defaults
+            to ``False`` so only primary outward-rotation metrics are returned.
         quiver_block: inspect() quiver downsample block size in pixels.
         n_annuli: Number of equal-area annuli in the shared zone segmentation.
         pelt_penalty: PELT penalty controlling core-changepoint sensitivity.
@@ -907,13 +945,19 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         True
     """
 
-    _measurement_infoclass: ClassVar[type] = ORIENTATION_ZONES
+    _measurement_infoclass: ClassVar[type] = ORIENTATION_ZONE_PRIMARY
+    _measurement_infoclasses: ClassVar[list[type]] = [
+        ORIENTATION_ZONE_DIAGNOSTIC
+    ]
 
     intensity_source: Literal["gray", "detect_mat"] = "detect_mat"
     sigma_d: float = 1.5
     sigma_i: float = 4.0
     radial_ring_width: float = 8.0
     long_range_lag: float = 16.0
+    outward_peak_window_rings: int = 3
+    outward_min_run_rings: int = 6
+    include_diagnostics: bool = False
     quiver_block: int = 12
     # --- zone passthrough (defaults identical to MeasureSymmetricZones) ---
     n_annuli: int = 100
@@ -948,6 +992,31 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
                 "radial_ring_width and long_range_lag must be finite and > 0"
             )
         return value
+
+    @field_validator("outward_peak_window_rings", mode="before")
+    @classmethod
+    def _valid_outward_peak_window(cls, value):
+        if (
+            isinstance(value, (bool, np.bool_))
+            or not isinstance(value, (int, np.integer))
+            or value < 3
+            or value % 2 == 0
+        ):
+            raise ValueError(
+                "outward_peak_window_rings must be an odd integer >= 3"
+            )
+        return int(value)
+
+    @field_validator("outward_min_run_rings", mode="before")
+    @classmethod
+    def _valid_outward_minimum_run(cls, value):
+        if (
+            isinstance(value, (bool, np.bool_))
+            or not isinstance(value, (int, np.integer))
+            or value < 3
+        ):
+            raise ValueError("outward_min_run_rings must be an integer >= 3")
+        return int(value)
 
     @model_validator(mode="after")
     def _validate_long_range_scales(self):
@@ -995,8 +1064,22 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         """
         from skimage.measure import regionprops
 
-        r_max = max(seg.sparse_end_radius, seg.symmetric_radius) * (
-            1 + self.extent_margin
+        min_row, min_col, max_row, max_col = prop.bbox
+        object_radius_bound = max(
+            np.hypot(
+                row - seg.centroid_global[0], col - seg.centroid_global[1]
+            )
+            for row, col in (
+                (min_row, min_col),
+                (min_row, max_col),
+                (max_row, min_col),
+                (max_row, max_col),
+            )
+        )
+        r_max = max(
+            max(seg.sparse_end_radius, seg.symmetric_radius)
+            * (1 + self.extent_margin),
+            object_radius_bound + self.radial_ring_width,
         )
         if hasattr(image, "grid") and seg.label in label2section:
             try:
@@ -1097,7 +1180,12 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
 
     def _operate(self, image) -> pd.DataFrame:  # type: ignore[override]
         props, label2section = self._prep(image)
-        headers = ORIENTATION_ZONES.get_headers()
+        headers = ORIENTATION_ZONE_PRIMARY.get_headers()
+        if self.include_diagnostics:
+            headers = [
+                *headers,
+                *ORIENTATION_ZONE_DIAGNOSTIC.get_headers(),
+            ]
         # pre-seed every object's row with NaN so skipped/failed objects still appear
         base: dict[int, dict] = {}
         for prop in props:
@@ -1156,6 +1244,145 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             [base[p.label] for p in props], columns=[OBJECT.LABEL, *headers]
         )
 
+    def _write_diagnostic(self, row: dict, header: str, value: float) -> None:
+        """Write one opt-in diagnostic value."""
+        if self.include_diagnostics:
+            row[header] = value
+
+    def _fill_literal_crossing_metrics(
+        self,
+        row: dict,
+        seg: ZoneSegmentation,
+        obj_mask: np.ndarray,
+        phi: np.ndarray,
+        coherence: np.ndarray,
+        dist_map: np.ndarray,
+        centre: tuple[float, float],
+    ) -> None:
+        """Write full-length literal-crossing primary and diagnostic metrics.
+
+        The complete detected object is skeletonized before the inoculum
+        selector is applied. Ring centers cover the complete detected radial
+        extent and are never trimmed to the symmetric radius.
+        """
+
+        def _write_missing() -> None:
+            for zone in _ZONES:
+                for metric in _PRIMARY_OUTWARD_METRICS:
+                    row[f"OrientZones_{metric}-Mask-{zone}"] = np.nan
+                for metric in _DIAGNOSTIC_OUTWARD_METRICS:
+                    self._write_diagnostic(
+                        row,
+                        f"OrientZones_{metric}-Mask-{zone}",
+                        np.nan,
+                    )
+
+        if not seg.zones_computed:
+            _write_missing()
+            return
+        inner_radius = float(seg.core_end_radius)
+        outside_core = (
+            obj_mask & np.isfinite(dist_map) & (dist_map >= inner_radius)
+        )
+        if not outside_core.any():
+            _write_missing()
+            return
+
+        object_extent_radius = float(np.max(dist_map[outside_core]))
+        radial_span = np.nextafter(object_extent_radius, np.inf) - inner_radius
+        n_rings = max(
+            1,
+            int(np.ceil(radial_span / self.radial_ring_width)),
+        )
+        outer_radius = inner_radius + n_rings * self.radial_ring_width
+        radii = (
+            inner_radius
+            + (np.arange(n_rings, dtype=np.float64) + 0.5)
+            * self.radial_ring_width
+        )
+        selector = zone_selector(
+            dist_map,
+            inner_radius,
+            outer_radius,
+            obj_mask,
+            "Mask",
+        )
+        transform = literal_skeleton_ring_crossings(
+            obj_mask,
+            phi + _FIBER_AXIS_OFFSET,
+            coherence,
+            dist_map,
+            centre,
+            radii,
+            selector=selector,
+            minimum_coherence=_RADIAL_RELATIVE_MIN_COHERENCE,
+            crossing_half_width=_LITERAL_CROSSING_HALF_WIDTH,
+            minimum_crossing_resultant=_RADIAL_RING_MIN_RESULTANT,
+        )
+        profile = literal_crossing_ring_profile(
+            transform,
+            minimum_points=_LITERAL_CROSSING_MIN_POINTS,
+            minimum_resultant=_RADIAL_RING_MIN_RESULTANT,
+        )
+        bounds = {
+            "Overall": (inner_radius, outer_radius),
+            "Dense": (
+                inner_radius,
+                min(float(seg.dense_end_radius), outer_radius),
+            ),
+            "Sparse": (
+                max(float(seg.dense_end_radius), inner_radius),
+                outer_radius,
+            ),
+        }
+        for zone, (lower, upper) in bounds.items():
+            metrics = aggregate_literal_crossing_zone(
+                profile,
+                lower,
+                upper,
+                peak_window_rings=self.outward_peak_window_rings,
+                minimum_run_rings=self.outward_min_run_rings,
+            )
+            primary_values = {
+                "OutwardRotationSustainedPeak": float(
+                    np.degrees(metrics.sustained_peak)
+                ),
+                "OutwardRotationNet": float(np.degrees(metrics.net_rotation)),
+                "OutwardRotationRate": float(
+                    np.degrees(metrics.rotation_rate)
+                ),
+                "OutwardRotationConsistency": metrics.consistency,
+            }
+            for metric, value in primary_values.items():
+                row[f"OrientZones_{metric}-Mask-{zone}"] = value
+
+            diagnostic_values = {
+                "OutwardRotationRawPeak": float(np.degrees(metrics.raw_peak)),
+                "OutwardRotationP90": float(np.degrees(metrics.percentile_90)),
+                "OutwardRotationP95": float(np.degrees(metrics.percentile_95)),
+                "OutwardRotationMedianMagnitude": float(
+                    np.degrees(metrics.median_magnitude)
+                ),
+                "OutwardRotationAbsoluteArea": float(
+                    np.degrees(metrics.absolute_area)
+                ),
+                "OutwardRotationTotalVariation": float(
+                    np.degrees(metrics.total_variation)
+                ),
+                "OutwardRotationRateGradient": float(
+                    np.degrees(metrics.rate_gradient)
+                ),
+                "OutwardRotationRingSupport": metrics.ring_support,
+                "OutwardRotationRunSpanSupport": metrics.run_span_support,
+                "OutwardRotationMedianResultant": metrics.median_resultant,
+            }
+            for metric, value in diagnostic_values.items():
+                self._write_diagnostic(
+                    row,
+                    f"OrientZones_{metric}-Mask-{zone}",
+                    value,
+                )
+
     def _fill_metrics(
         self,
         row,
@@ -1175,6 +1402,15 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         """
         per_zone = {}
         radial_relative = {}
+        self._fill_literal_crossing_metrics(
+            row,
+            seg,
+            obj_mask,
+            phi,
+            coh,
+            dist_map,
+            centre,
+        )
         signed_tilt, _signed_turning, outward_turning, polar_angle = (
             signed_radial_relative_field(phi, centre, dist_map)
         )
@@ -1197,9 +1433,21 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
                     cm,
                     direction,
                 )  # scalars only
-                row[f"OrientZones_Concentration-{variant}-{zone}"] = R
-                row[f"OrientZones_Turning-{variant}-{zone}"] = turning_degrees
-                row[f"OrientZones_Coherence-{variant}-{zone}"] = cm
+                self._write_diagnostic(
+                    row,
+                    f"OrientZones_Concentration-{variant}-{zone}",
+                    R,
+                )
+                self._write_diagnostic(
+                    row,
+                    f"OrientZones_Turning-{variant}-{zone}",
+                    turning_degrees,
+                )
+                self._write_diagnostic(
+                    row,
+                    f"OrientZones_Coherence-{variant}-{zone}",
+                    cm,
+                )
             valid_bounds = (
                 np.isfinite(r_lo) and np.isfinite(r_hi) and r_hi > r_lo
             )
@@ -1231,12 +1479,20 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
                 radial_turning_degrees,
                 radial_support,
             )
-            row[f"OrientZones_RadialTilt-Mask-{zone}"] = radial_tilt_degrees
-            row[f"OrientZones_OutwardTurning-Mask-{zone}"] = (
-                radial_turning_degrees
+            self._write_diagnostic(
+                row,
+                f"OrientZones_RadialTilt-Mask-{zone}",
+                radial_tilt_degrees,
             )
-            row[f"OrientZones_RadialSectorSupport-Mask-{zone}"] = (
-                radial_support
+            self._write_diagnostic(
+                row,
+                f"OrientZones_OutwardTurning-Mask-{zone}",
+                radial_turning_degrees,
+            )
+            self._write_diagnostic(
+                row,
+                f"OrientZones_RadialSectorSupport-Mask-{zone}",
+                radial_support,
             )
         long_range, ring_profile = self._fill_long_range_metrics(
             row,
@@ -1299,7 +1555,11 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             long_range[name] = public
             values = (magnitude_degrees, signed_degrees, support)
             for metric, value in zip(metric_names, values):
-                row[f"OrientZones_{metric}-Mask-{name}"] = value
+                self._write_diagnostic(
+                    row,
+                    f"OrientZones_{metric}-Mask-{name}",
+                    value,
+                )
 
         if not seg.zones_computed:
             for name in (*_ZONES, "DenseToSparse"):

@@ -5,6 +5,10 @@ object masks. They do not detect branches, infer parent-child correspondence,
 or apply image enhancement.
 """
 
+from ._aggregates import (
+    LiteralCrossingZoneMetrics,
+    aggregate_literal_crossing_zone,
+)
 from ._literal_crossings import (
     LiteralCrossingRingProfile,
     LiteralSkeletonRingCrossing,
@@ -19,9 +23,11 @@ from ._plots import (
 )
 
 __all__ = [
+    "LiteralCrossingZoneMetrics",
     "LiteralCrossingRingProfile",
     "LiteralSkeletonRingCrossing",
     "LiteralSkeletonRingCrossingTransform",
+    "aggregate_literal_crossing_zone",
     "literal_crossing_ring_profile",
     "literal_skeleton_ring_crossings",
     "plot_literal_crossing_map",

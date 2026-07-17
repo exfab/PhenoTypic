@@ -2,17 +2,23 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
 import pytest
 
+from phenotypic import Image
 from phenotypic.data import (
     load_synth_yeast_plate,
     load_synth_filamentous_plate,
 )
-from phenotypic.schema import ORIENTATION_ZONES
+from phenotypic.schema import (
+    ORIENTATION_ZONE_DIAGNOSTIC,
+    ORIENTATION_ZONE_PRIMARY,
+    ORIENTATION_ZONES,
+)
 from phenotypic.measure import MeasureOrientationZones
 from phenotypic.measure._measure_orientation_zones import (
     aggregate_long_range_rotation,
@@ -104,8 +110,19 @@ def test_measure_returns_all_schema_columns_one_row_per_object():
     df = MeasureOrientationZones().measure(image)
     assert isinstance(df, pd.DataFrame)
     assert len(df) == image.num_objects
-    for h in ORIENTATION_ZONES.get_headers():
+    for h in ORIENTATION_ZONE_PRIMARY.get_headers():
         assert h in df.columns
+    assert set(ORIENTATION_ZONE_DIAGNOSTIC.get_headers()).isdisjoint(
+        df.columns
+    )
+
+
+def test_include_diagnostics_emits_comparators_support_and_legacy_columns():
+    image = load_synth_filamentous_plate()
+    df = MeasureOrientationZones(include_diagnostics=True).measure(image)
+
+    assert set(ORIENTATION_ZONE_PRIMARY.get_headers()).issubset(df.columns)
+    assert set(ORIENTATION_ZONE_DIAGNOSTIC.get_headers()).issubset(df.columns)
     for metric in (
         "RadialTilt",
         "OutwardTurning",
@@ -114,7 +131,7 @@ def test_measure_returns_all_schema_columns_one_row_per_object():
     ):
         headers = [
             header
-            for header in ORIENTATION_ZONES.get_headers()
+            for header in ORIENTATION_ZONE_DIAGNOSTIC.get_headers()
             if f"_{metric}-" in header
         ]
         assert headers
@@ -156,6 +173,48 @@ def test_measure_returns_all_schema_columns_one_row_per_object():
             assert np.all((finite >= -90.0 - 1e-9) & (finite <= 90.0 + 1e-9))
 
 
+def test_primary_and_diagnostic_schema_are_distinct_and_document_units():
+    """Public descriptions should classify columns and state their units."""
+    assert all(
+        member.resolved_kind == "primary"
+        for member in ORIENTATION_ZONE_PRIMARY
+    )
+    assert all(
+        member.resolved_kind == "quality"
+        for member in ORIENTATION_ZONE_DIAGNOSTIC
+    )
+    for member in (
+        *ORIENTATION_ZONE_PRIMARY,
+        *ORIENTATION_ZONE_DIAGNOSTIC,
+    ):
+        description = member.desc.lower()
+        assert "degree" in description or "dimensionless" in description
+
+
+def test_legacy_orientation_zones_name_preserves_legacy_member_access():
+    """The old public name should retain access to its former members."""
+    assert ORIENTATION_ZONES is ORIENTATION_ZONE_DIAGNOSTIC
+    assert (
+        ORIENTATION_ZONES.CONCENTRATION_RADIAL_OVERALL.label
+        == "Concentration-Radial-Overall"
+    )
+
+
+def test_sparse_cumulative_magnitude_descriptions_disclose_dense_carryover():
+    """Sparse cumulative magnitudes should not imply zone-local generation."""
+    members = (
+        ORIENTATION_ZONE_PRIMARY.OUTWARD_ROTATION_SUSTAINED_PEAK_SPARSE,
+        ORIENTATION_ZONE_DIAGNOSTIC.OUTWARD_ROTATION_RAW_PEAK_SPARSE,
+        ORIENTATION_ZONE_DIAGNOSTIC.OUTWARD_ROTATION_P90_SPARSE,
+        ORIENTATION_ZONE_DIAGNOSTIC.OUTWARD_ROTATION_P95_SPARSE,
+        ORIENTATION_ZONE_DIAGNOSTIC.OUTWARD_ROTATION_MEDIAN_MAGNITUDE_SPARSE,
+        ORIENTATION_ZONE_DIAGNOSTIC.OUTWARD_ROTATION_ABSOLUTE_AREA_SPARSE,
+    )
+    assert all(
+        "include rotation accumulated" in member.desc for member in members
+    )
+
+
 def test_public_zone_angles_are_converted_from_radians_to_degrees():
     size = 81
     centre = (40.0, 40.0)
@@ -173,7 +232,7 @@ def test_public_zone_angles_are_converted_from_radians_to_degrees():
         dense_end_radius=30.0,
         sparse_end_radius=45.0,
     )
-    operation = MeasureOrientationZones()
+    operation = MeasureOrientationZones(include_diagnostics=True)
     row: dict[str, float] = {}
 
     per_zone, radial_relative, _long_range, _ring_profile = (
@@ -235,6 +294,120 @@ def test_public_zone_angles_are_converted_from_radians_to_degrees():
             row["OrientZones_OutwardTurning-Mask-Dense"],
         )
     )
+
+
+def test_literal_crossing_primary_and_diagnostic_values_use_public_units():
+    """Controlled spiral arms should yield degree-based literal metrics."""
+    from skimage.draw import line
+
+    size = 121
+    centre = (60.0, 60.0)
+    rows, cols = np.indices((size, size), dtype=float)
+    distance = np.hypot(rows - centre[0], cols - centre[1])
+    polar = np.arctan2(rows - centre[0], cols - centre[1])
+    object_mask = np.zeros((size, size), dtype=bool)
+    radii = np.linspace(0.0, 50.0, 401)
+    for base_angle in np.linspace(0.0, 2.0 * np.pi, 8, endpoint=False):
+        branch_rows = np.rint(
+            centre[0] + radii * np.sin(base_angle + 0.01 * radii)
+        ).astype(int)
+        branch_cols = np.rint(
+            centre[1] + radii * np.cos(base_angle + 0.01 * radii)
+        ).astype(int)
+        for index in range(1, radii.size):
+            rr, cc = line(
+                branch_rows[index - 1],
+                branch_cols[index - 1],
+                branch_rows[index],
+                branch_cols[index],
+            )
+            object_mask[rr, cc] = True
+
+    fiber_axis = polar + 0.01 * distance
+    phi = fiber_axis - np.pi / 2.0
+    segmentation = SimpleNamespace(
+        zones_computed=True,
+        core_end_radius=10.0,
+        dense_end_radius=30.0,
+    )
+    operation = MeasureOrientationZones(
+        radial_ring_width=5.0,
+        long_range_lag=10.0,
+        include_diagnostics=True,
+    )
+    row: dict[str, float] = {}
+
+    operation._fill_literal_crossing_metrics(
+        row,
+        segmentation,
+        object_mask,
+        phi,
+        np.ones_like(distance),
+        distance,
+        centre,
+    )
+
+    assert row[
+        "OrientZones_OutwardRotationSustainedPeak-Mask-Overall"
+    ] == pytest.approx(np.degrees(0.30), abs=0.25)
+    assert row["OrientZones_OutwardRotationNet-Mask-Overall"] == pytest.approx(
+        np.degrees(0.30), abs=0.25
+    )
+    assert row[
+        "OrientZones_OutwardRotationRate-Mask-Overall"
+    ] == pytest.approx(np.degrees(0.01), abs=0.02)
+    assert row[
+        "OrientZones_OutwardRotationConsistency-Mask-Overall"
+    ] == pytest.approx(1.0)
+    assert row[
+        "OrientZones_OutwardRotationRawPeak-Mask-Overall"
+    ] == pytest.approx(np.degrees(0.35), abs=0.25)
+
+
+def test_r3c4_real_crop_preserves_literal_crossing_regression() -> None:
+    """The real development colony should preserve its robust rotation readout."""
+    fixture_path = (
+        Path(__file__).parents[2]
+        / "fixtures"
+        / "orientation_zones"
+        / "r3c4_twok_literal_crossing.npz"
+    )
+    with np.load(fixture_path) as fixture:
+        detect_mat = fixture["detect_mat"]
+        objmap = fixture["objmap"]
+        assert detect_mat.shape == (512, 512)
+        assert objmap.shape == detect_mat.shape
+        assert int(fixture["source_label"]) == 24
+        assert str(fixture["colony"]) == "R3C4"
+
+    image = Image(arr=detect_mat)
+    image.detect_mat[:] = detect_mat
+    image.objmap[:] = objmap
+    result = MeasureOrientationZones(include_diagnostics=True).measure(image)
+    assert len(result) == 1
+    row = result.iloc[0]
+
+    assert row[
+        "OrientZones_OutwardRotationSustainedPeak-Mask-Overall"
+    ] == pytest.approx(47.7189, abs=0.05)
+    assert row[
+        "OrientZones_OutwardRotationRawPeak-Mask-Overall"
+    ] == pytest.approx(59.7523, abs=0.05)
+    assert row["OrientZones_OutwardRotationNet-Mask-Overall"] == pytest.approx(
+        -23.3725, abs=0.05
+    )
+    assert row[
+        "OrientZones_OutwardRotationRate-Mask-Overall"
+    ] == pytest.approx(-0.42594, abs=0.005)
+    assert row[
+        "OrientZones_OutwardRotationConsistency-Mask-Overall"
+    ] == pytest.approx(0.384615, abs=1e-6)
+    assert row[
+        "OrientZones_OutwardRotationRingSupport-Mask-Overall"
+    ] == pytest.approx(0.851852, abs=1e-6)
+    assert row[
+        "OrientZones_OutwardRotationRunSpanSupport-Mask-Overall"
+    ] == pytest.approx(0.461538, abs=1e-6)
 
 
 def _radial_test_field(size: int = 121):
@@ -620,12 +793,14 @@ def test_long_range_parameters_require_compatible_positive_scales():
     operation = MeasureOrientationZones(
         radial_ring_width=8.0,
         long_range_lag=32.0,
+        include_diagnostics=True,
     )
     assert operation.radial_ring_width == 8.0
     assert operation.long_range_lag == 32.0
     restored = MeasureOrientationZones.from_json(operation.to_json())
     assert restored.radial_ring_width == 8.0
     assert restored.long_range_lag == 32.0
+    assert restored.include_diagnostics is True
 
     with pytest.raises(ValueError, match="integer multiple"):
         MeasureOrientationZones(
@@ -643,6 +818,25 @@ def test_long_range_parameters_require_compatible_positive_scales():
         for value in (np.nan, np.inf):
             with pytest.raises(ValueError, match="finite and > 0"):
                 MeasureOrientationZones(**{field: value})
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("outward_peak_window_rings", 2, "odd integer"),
+        ("outward_peak_window_rings", 4, "odd integer"),
+        ("outward_peak_window_rings", True, "odd integer"),
+        ("outward_min_run_rings", 2, "integer >= 3"),
+        ("outward_min_run_rings", True, "integer >= 3"),
+    ],
+)
+def test_literal_aggregate_parameters_are_validated(
+    field: str,
+    value: object,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        MeasureOrientationZones(**{field: value})
 
 
 def test_rotation_invariance_of_R_magnitude_and_turning():
@@ -676,7 +870,7 @@ def test_tiny_objects_are_all_nan():
     image = load_synth_yeast_plate()
     df = MeasureOrientationZones().measure(image)
     # every row has the full column set; NaN allowed, no exceptions
-    assert set(ORIENTATION_ZONES.get_headers()).issubset(df.columns)
+    assert set(ORIENTATION_ZONE_PRIMARY.get_headers()).issubset(df.columns)
 
 
 def test_measure_cache_is_compact():
@@ -1271,10 +1465,10 @@ def test_non_grid_image_uses_expanded_crop_fallback():
     image = load_synth_filamentous_plate()
     section = image.grid[18]
     assert not hasattr(section, "grid"), "grid section should be a plain Image"
-    df = MeasureOrientationZones().measure(section)
+    df = MeasureOrientationZones(include_diagnostics=True).measure(section)
     assert isinstance(df, pd.DataFrame)
     assert len(df) == section.num_objects
-    assert set(ORIENTATION_ZONES.get_headers()).issubset(df.columns)
+    assert set(ORIENTATION_ZONE_PRIMARY.get_headers()).issubset(df.columns)
     # the object is a real colony → the fallback path still yields a finite R
     r = df["OrientZones_Concentration-Radial-Overall"].to_numpy(float)
     assert np.isfinite(r).any()
@@ -1304,7 +1498,7 @@ def test_collapsed_zones_yield_all_nan():
         dist_map,
         _centre,
     )
-    assert len(row) == len(ORIENTATION_ZONES.get_headers())
+    assert len(row) == len(ORIENTATION_ZONE_PRIMARY.get_headers())
     assert all(np.isnan(v) for v in row.values())
 
 
@@ -1313,7 +1507,7 @@ def test_radial_and_mask_variants_diverge_on_real_plate():
     # (spec §1/§2). In the sparse ring the mask carves holes the Radial variant
     # keeps, so the two concentration reads must differ for at least some objects.
     image = load_synth_filamentous_plate()
-    df = MeasureOrientationZones().measure(image)
+    df = MeasureOrientationZones(include_diagnostics=True).measure(image)
     rad = df["OrientZones_Concentration-Radial-Sparse"].to_numpy(float)
     msk = df["OrientZones_Concentration-Mask-Sparse"].to_numpy(float)
     both = np.isfinite(rad) & np.isfinite(msk)

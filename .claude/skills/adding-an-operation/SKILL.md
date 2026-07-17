@@ -65,6 +65,31 @@ column reference — so the enum `desc` is what end users read. Author only `lab
 and `desc` on a member; **never** author `bio_desc` (human-only). Also kept in the
 root `CLAUDE.md` (Code Style + Gotchas) and the contributing guide.
 
+### Fixed measurement schemas are explicit
+
+For a fixed set of output columns, declare every member directly as
+`Entry(label, desc)`, following the neighboring files in `phenotypic.schema`:
+
+```python
+class MY_MEASUREMENTS(DescriptiveTrait):
+    @classmethod
+    def category(cls) -> str:
+        return "MyMeasurements"
+
+    VALUE = Entry(
+        "Value",
+        "Complete per-column calculation and interpretation. Reported in pixels.",
+    )
+```
+
+Keep the complete public description beside its member, including the exact
+calculation, selector or region, units, range or sign convention, and missing-value
+conditions. Repeat zone- or variant-specific wording where necessary. Do **not**
+generate fixed member descriptions from shared dictionaries, templates, formatter
+functions, comprehensions, or metaprogramming. Avoiding repetition is less important
+than making each public column independently readable and reviewable. Reserve dynamic
+header generation for schemas whose columns are genuinely runtime-parameterized.
+
 **For type-only enforcement** of a closed set with no documentation surface (CLI
 dispatch keys, internal mode flags), a `Literal[...]` `TypeAlias` in
 `phenotypic.sdk_.typing_` is sufficient — no Enum needed. Examples:

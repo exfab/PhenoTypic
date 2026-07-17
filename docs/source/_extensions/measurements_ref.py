@@ -26,55 +26,86 @@ from phenotypic.schema._measurement_info import _rst_cell_text
 #: Toctree groups (caption -> ordered enum names). Single source of truth; a test
 #: asserts every public schema enum lands in exactly one group.
 _GROUPS: dict[str, tuple[str, ...]] = {
-    "Measurements"     : (
-        "SIZE", "SHAPE", "BBOX", "INTENSITY", "TEXTURE", "ColorLab", "ColorHSV",
-        "Colorxy", "ColorXYZ", "ColorComposition", "OBJECT", "GRID",
-        "NEIGHBOR_DIST", "GRID_LINREG_STATS", "GRID_SPREAD", "SYMMETRIC_ZONES",
-        "ORIENTATION_ZONES", "RADIAL_EXPANSION",
+    "Measurements": (
+        "SIZE",
+        "SHAPE",
+        "BBOX",
+        "INTENSITY",
+        "TEXTURE",
+        "ColorLab",
+        "ColorHSV",
+        "Colorxy",
+        "ColorXYZ",
+        "ColorComposition",
+        "OBJECT",
+        "GRID",
+        "NEIGHBOR_DIST",
+        "GRID_LINREG_STATS",
+        "GRID_SPREAD",
+        "SYMMETRIC_ZONES",
+        "ORIENTATION_ZONE_PRIMARY",
+        "RADIAL_EXPANSION",
     ),
     "Models & Analysis": (
-        "LOG_GROWTH_MODEL", "LINEAR_LAG_MODEL", "LINEAR_CAP_AND_LAG_MODEL",
-        "EDGE_CORRECTION", "MODEL_METRICS",
+        "LOG_GROWTH_MODEL",
+        "LINEAR_LAG_MODEL",
+        "LINEAR_CAP_AND_LAG_MODEL",
+        "EDGE_CORRECTION",
+        "MODEL_METRICS",
     ),
-    "Quality Control"  : (
-        "QUALITY_CHECK", "QUALITY_COUNT", "QUALITY_OCCUPANCY", "QUALITY_ICC",
-        "QUALITY_MAD", "QUALITY_SE", "QUALITY_TUKEY", "QUALITY_ZMAX",
+    "Quality Control": (
+        "QUALITY_CHECK",
+        "QUALITY_COUNT",
+        "QUALITY_OCCUPANCY",
+        "QUALITY_ICC",
+        "QUALITY_MAD",
+        "QUALITY_SE",
+        "QUALITY_TUKEY",
+        "QUALITY_ZMAX",
         "METADATA_MATCH",
+        "ORIENTATION_ZONE_DIAGNOSTIC",
     ),
     "Curation & Errors": ("CURATION", "ErrorCategory"),
-    "Metadata"         : (
-        "METADATA", "ACQUISITION_METADATA", "CONDITION_METADATA",
-        "CULTURE_METADATA", "EXPERIMENT_METADATA", "GENETIC_METADATA",
-        "PLATE_METADATA", "SAMPLE_METADATA", "STUDY_METADATA",
+    "Compatibility": ("ORIENTATION_ZONES",),
+    "Metadata": (
+        "METADATA",
+        "ACQUISITION_METADATA",
+        "CONDITION_METADATA",
+        "CULTURE_METADATA",
+        "EXPERIMENT_METADATA",
+        "GENETIC_METADATA",
+        "PLATE_METADATA",
+        "SAMPLE_METADATA",
+        "STUDY_METADATA",
     ),
 }
 
 _METADATA_OVERVIEWS: dict[str, tuple[str, str]] = {
-    "METADATA"            : (
+    "METADATA": (
         "Framework-populated image bookkeeping, including image names, UUIDs, "
         "file formats, image types, bit depth, and file suffixes.",
         "Use when reading provenance emitted by PhenoTypic itself; these are "
         "not the biological metadata columns users normally supply.",
     ),
-    "SAMPLE_METADATA"     : (
+    "SAMPLE_METADATA": (
         "Sample identity and provenance, including sample IDs, replicates, "
         "clones, source plate/well, library IDs, barcodes, and controls.",
         "Use for sample-level biological identity and for linking colonies "
         "back to source materials.",
     ),
-    "PLATE_METADATA"      : (
+    "PLATE_METADATA": (
         "Assay plate and physical layout, including plate IDs, batches, array "
         "density, and incubator position.",
         "Use when grouping measurements by plate, batch, or spatial assay "
         "layout.",
     ),
-    "CONDITION_METADATA"  : (
+    "CONDITION_METADATA": (
         "Media, nutrients, supplements, treatments, compounds, doses, and "
         "stress conditions applied to colonies.",
         "Use when comparing phenotypes across growth environments or "
         "perturbations.",
     ),
-    "CULTURE_METADATA" : (
+    "CULTURE_METADATA": (
         "Temperature, elapsed time, time units, timepoints, day indices, "
         "generation, humidity, and atmosphere.",
         "Use for time-course analyses and culture-condition grouping.",
@@ -84,17 +115,17 @@ _METADATA_OVERVIEWS: dict[str, tuple[str, str]] = {
         "experimenter, resolution, and exposure time.",
         "Use when tracking imaging batches or diagnosing acquisition effects.",
     ),
-    "GENETIC_METADATA"    : (
+    "GENETIC_METADATA": (
         "Organism and genetic identity, including species, strain, genotype, "
         "background, alleles, plasmids, markers, mating type, and ploidy.",
         "Use when grouping or filtering colonies by genetic background.",
     ),
-    "EXPERIMENT_METADATA" : (
+    "EXPERIMENT_METADATA": (
         "Experiment-level bookkeeping, including experiment IDs, projects, "
         "datasets, protocols, and notes.",
         "Use when organizing outputs across projects, protocols, or datasets.",
     ),
-    "STUDY_METADATA"      : (
+    "STUDY_METADATA": (
         "Study-level descriptors for one run: title, description, keywords, "
         "authors, license, funding, publications, links, and acknowledgements.",
         "Use when recording REMBI Study-component provenance for a dataset.",
@@ -117,9 +148,20 @@ def _lead_paragraphs(doc: str, max_paragraphs: int = 3) -> str:
     if not doc:
         return ""
     sections = (
-        "Args:", "Arguments:", "Returns:", "Yields:", "Raises:",
-        "Example:", "Examples:", "Note:", "Notes:", "Attributes:",
-        "Warning:", "See Also:", "References:", "Best For:",
+        "Args:",
+        "Arguments:",
+        "Returns:",
+        "Yields:",
+        "Raises:",
+        "Example:",
+        "Examples:",
+        "Note:",
+        "Notes:",
+        "Attributes:",
+        "Warning:",
+        "See Also:",
+        "References:",
+        "Best For:",
         "Consider Also:",
     )
     paragraphs: list[str] = []
@@ -156,11 +198,13 @@ def _metadata_overview_rows(info_names: list[str]) -> str:
     rows: list[str] = []
     for name in info_names:
         includes, use_for = _METADATA_OVERVIEWS[name]
-        rows.extend([
-            f"   * - :doc:`{name} <{_doc_stem(name)}>`",
-            f"     - {includes}",
-            f"     - {use_for}",
-        ])
+        rows.extend(
+            [
+                f"   * - :doc:`{name} <{_doc_stem(name)}>`",
+                f"     - {includes}",
+                f"     - {use_for}",
+            ]
+        )
     return "\n".join(rows)
 
 
@@ -186,13 +230,17 @@ def _enum_page(info_cls: type[Any]) -> str:
     out.append(f"Python object: ``{info_cls.__module__}.{title}``")
     out.append("")
 
-    description = _lead_paragraphs(_strip_appended_table(info_cls.__doc__ or ""))
+    description = _lead_paragraphs(
+        _strip_appended_table(info_cls.__doc__ or "")
+    )
     if description:
         out.append(_rst_cell_text(description))
         out.append("")
 
     out.append(
-            info_cls.rst_table(header=("Column label", "Description"), use_headers=True)
+        info_cls.rst_table(
+            header=("Column label", "Description"), use_headers=True
+        )
     )
     out.append("")
     return "\n".join(out)
@@ -254,19 +302,21 @@ def _metadata_overview_block(names) -> str:
     present = [n for n in names if n in _METADATA_OVERVIEWS]
     if not present:
         return ""
-    return "\n".join([
-        "Metadata Tag Overview",
-        "---------------------",
-        "",
-        ".. list-table::",
-        "   :header-rows: 1",
-        "",
-        "   * - Tag class",
-        "     - Includes",
-        "     - Use for",
-        _metadata_overview_rows(present),
-        "",
-    ])
+    return "\n".join(
+        [
+            "Metadata Tag Overview",
+            "---------------------",
+            "",
+            ".. list-table::",
+            "   :header-rows: 1",
+            "",
+            "   * - Tag class",
+            "     - Includes",
+            "     - Use for",
+            _metadata_overview_rows(present),
+            "",
+        ]
+    )
 
 
 def _build_group_index(caption, names, public_infos) -> str:
@@ -303,7 +353,9 @@ def _copy_measurement_assets(srcdir: str) -> None:
     ``/_static/measurements/...`` references resolve in the built HTML."""
     import phenotypic
 
-    src = Path(phenotypic.__file__).resolve().parent / "_assets" / "measurements"
+    src = (
+        Path(phenotypic.__file__).resolve().parent / "_assets" / "measurements"
+    )
     if not src.is_dir():
         return
     dest = Path(srcdir) / "_static" / "measurements"
@@ -325,13 +377,13 @@ def _build_pages(srcdir: str) -> None:
             continue
         slug = _group_slug(caption)
         _write(
-                output_dir / slug / "index.rst",
-                _build_group_index(caption, present, public_infos),
+            output_dir / slug / "index.rst",
+            _build_group_index(caption, present, public_infos),
         )
         for name in present:
             _write(
-                    output_dir / slug / f"{_doc_stem(name)}.rst",
-                    _enum_page(public_infos[name]),
+                output_dir / slug / f"{_doc_stem(name)}.rst",
+                _enum_page(public_infos[name]),
             )
 
 
@@ -344,7 +396,7 @@ def _generate(app):
 def setup(app):
     app.connect("builder-inited", _generate)
     return {
-        "version"            : "0.3",
-        "parallel_read_safe" : True,
+        "version": "0.3",
+        "parallel_read_safe": True,
         "parallel_write_safe": True,
     }
