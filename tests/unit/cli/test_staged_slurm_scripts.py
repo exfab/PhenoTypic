@@ -4,6 +4,7 @@ from pathlib import Path
 
 from phenotypic._cli._cli_staged_slurm import (
     STAGE_DEPENDENCY,
+    StagedSlurmStrategy,
     flatten_staged_scripts,
     generate_staged_scripts,
     partition_shards,
@@ -237,3 +238,54 @@ def test_submit_staged_chain_uses_drip_feed_dispatcher(monkeypatch):
     assert captured["flat"] == ["s1c0.sh", "s1c1.sh", "s2.sh", "s3c0.sh"]
     # The tiny dispatcher runs on the CPU (short) profile.
     assert captured["slurm_args"] == {"slurm_partition": "short"}
+
+
+def test_strategy_reserves_max_submit_slot_for_dispatcher(
+    monkeypatch, tmp_path
+):
+    """The active array plus dispatcher must fit MaxSubmitJobs."""
+    captured = {}
+
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_slurm.get_slurm_array_limit",
+        lambda: 1000,
+    )
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_slurm.get_slurm_max_submit_jobs",
+        lambda: 5,
+    )
+
+    def _fake_generate(**kwargs):
+        captured["array_limit"] = kwargs["array_limit"]
+        return {
+            "stage1": [tmp_path / "s1.sh"],
+            "stage2": tmp_path / "s2.sh",
+            "stage3": [tmp_path / "s3.sh"],
+        }
+
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_slurm.generate_staged_scripts",
+        _fake_generate,
+    )
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_slurm.submit_staged_chain",
+        lambda *args, **kwargs: ["chunk0", "dispatch1"],
+    )
+
+    config = type(
+        "Config",
+        (),
+        {
+            "pipeline_json": tmp_path / "pipeline.json",
+            "image_type": "Image",
+            "slurm_args": {},
+            "gpu_slurm_args": {},
+            "gpu_shards": 1,
+            "ext": None,
+        },
+    )()
+    strategy = object.__new__(StagedSlurmStrategy)
+    strategy.config = config
+    strategy.execute([], tmp_path)
+
+    assert captured["array_limit"] == 4

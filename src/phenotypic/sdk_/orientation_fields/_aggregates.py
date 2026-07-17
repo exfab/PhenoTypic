@@ -194,10 +194,11 @@ def aggregate_literal_crossing_zone(
 
     Returns:
         Primary and diagnostic zone summaries. Angular values remain in
-        radians. Support values and consistency are dimensionless.
+        radians. Support values and consistency are dimensionless. Invalid or
+        collapsed radial bounds return an all-missing record.
 
     Raises:
-        ValueError: If bounds or aggregate settings are invalid.
+        ValueError: If aggregate settings are invalid.
     """
     _validate_aggregate_settings(peak_window_rings, minimum_run_rings)
     if (

@@ -343,12 +343,13 @@ class StagedSlurmStrategy(ExecutionStrategy):
             for img in ds.images
         ]
 
-        # Chunk to the TIGHTER of MaxArraySize and MaxSubmitJobs: a single chunk
-        # must fit both the array-index cap and the per-user submit cap (only one
-        # chunk is queued at a time under the drip-feed dispatcher below).
+        # Chunk to the TIGHTER of MaxArraySize and the conservative
+        # MaxSubmitJobs estimate. Reserve one submission slot for the dependent
+        # dispatcher that is queued alongside the active array chunk.
         array_limit = get_slurm_array_limit()
         max_submit = get_slurm_max_submit_jobs()
-        chunk_limit = min(array_limit, max_submit) if max_submit else array_limit
+        submit_capacity = max(1, max_submit - 1) if max_submit else array_limit
+        chunk_limit = min(array_limit, submit_capacity)
         # Image stages chunk to fit the limit; the Stage-2 shard array cannot
         # (a shard worker streams its whole shard on one GPU), so guard it.
         if max(1, cfg.gpu_shards) > chunk_limit:

@@ -941,7 +941,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         >>> from phenotypic.measure import MeasureOrientationZones
         >>> image = load_synth_filamentous_plate()
         >>> df = MeasureOrientationZones().measure(image)
-        >>> 'OrientZones_Concentration-Radial-Overall' in df.columns
+        >>> 'OrientZones_OutwardRotationRate-Mask-Overall' in df.columns
         True
     """
 

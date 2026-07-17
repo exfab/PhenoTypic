@@ -223,12 +223,18 @@ def _public_measurement_info_classes() -> dict[str, type[Any]]:
     return infos
 
 
-def _enum_page(info_cls: type[Any]) -> str:
-    """Build a standalone page for one ``MeasurementInfo`` enum."""
-    title = info_cls.__name__
+def _enum_page(info_cls: type[Any], *, export_name: str | None = None) -> str:
+    """Build a standalone page for one public ``MeasurementInfo`` export."""
+    title = export_name or info_cls.__name__
     out: list[str] = _heading(title, "=")
-    out.append(f"Python object: ``{info_cls.__module__}.{title}``")
+    out.append(f"Python export: ``phenotypic.schema.{title}``")
     out.append("")
+
+    if title != info_cls.__name__:
+        out.append(
+            f"Compatibility alias for ``phenotypic.schema.{info_cls.__name__}``."
+        )
+        out.append("")
 
     description = _lead_paragraphs(
         _strip_appended_table(info_cls.__doc__ or "")
@@ -383,7 +389,7 @@ def _build_pages(srcdir: str) -> None:
         for name in present:
             _write(
                 output_dir / slug / f"{_doc_stem(name)}.rst",
-                _enum_page(public_infos[name]),
+                _enum_page(public_infos[name], export_name=name),
             )
 
 

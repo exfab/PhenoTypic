@@ -81,11 +81,14 @@ Stage 2 starts after the last Stage-1 chunk and Stage 3 after Stage 2:
 - Stage 1 / Stage 3 = arrays over **images**; Stage 2 = an array over
   **shards** (`--gpu-shards`, `partition_shards`), each a resident-model
   `run_stage2_shard`. The tiny dispatcher jobs run on `config.slurm_args` (CPU).
-- **Array chunking (`min(MaxArraySize, MaxSubmitJobs)`):** the image count is
+- **Array chunking (`min(MaxArraySize, MaxSubmitJobs - 1)`):** the image count is
   split into `ceil(n_images / chunk_limit)` chunk scripts
   (`calculate_optimal_array_chunks` → `_write_image_stage_chunks`), where
-  `chunk_limit = min(get_slurm_array_limit(), get_slurm_max_submit_jobs())` — a
-  single chunk must fit **both** the array-index cap and the per-user submit cap.
+  `get_slurm_max_submit_jobs()` conservatively uses the smallest configured QoS
+  or user-association limit, and `chunk_limit` reserves one submission slot for
+  the dependent dispatcher queued alongside the active array. A single chunk
+  must fit **both** the array-index cap and the remaining per-user submit
+  capacity.
   Each chunk is a 0-based `--array=0-(k-1)` whose `TASK_INDICES` window holds the
   **absolute** manifest indices and whose worker reads
   `--index $CURRENT_TASK_INDEX`, so no array index ever reaches the limit. A

@@ -97,17 +97,20 @@ class TestSLURMArrayLimitParsing:
 
     @patch("subprocess.run")
     def test_get_slurm_max_submit_jobs_success(self, mock_run):
-        """Test parsing MaxSubmitJobsPerUser from sacctmgr."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="MaxSubmitJobsPerUser\n5000\n10000\n",
-        )
+        """Test conservative parsing across QoS and association policies."""
+        mock_run.side_effect = [
+            MagicMock(
+                returncode=0,
+                stdout="MaxSubmitJobsPerUser\n5000\n10000\n",
+            ),
+            MagicMock(returncode=0, stdout="MaxSubmitJobs\n2500\n"),
+        ]
 
         # Clear cache before test
         get_slurm_max_submit_jobs.cache_clear()
 
         limit = get_slurm_max_submit_jobs()
-        assert limit == 10000  # Maximum of values
+        assert limit == 2500
 
     @patch("subprocess.run")
     def test_get_slurm_max_submit_jobs_fallback(self, mock_run):

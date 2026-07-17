@@ -7,6 +7,7 @@ job chunking strategies for large image datasets.
 
 from __future__ import annotations
 
+import getpass
 import re
 import subprocess
 from functools import lru_cache
@@ -59,14 +60,18 @@ def get_slurm_array_limit() -> int:
 
 @lru_cache(maxsize=1)
 def get_slurm_max_submit_jobs() -> Optional[int]:
-    """Query SLURM for MaxSubmitJobs limit per user.
+    """Query a conservative SLURM MaxSubmitJobs limit per user.
 
     Uses ``sacctmgr`` to retrieve the maximum number of jobs a user can
     have in the queue simultaneously. This is typically set by QoS
     (Quality of Service) policies.
 
     Returns:
-        Integer limit or None if not configured/available.
+        Smallest configured positive QoS or user-association limit, or ``None``
+        if no limit is configured or available. Taking the smallest value is
+        conservative when the cluster exposes several QoS or association
+        records and the caller cannot reliably infer which one the submitted
+        job will use.
 
     Examples:
         >>> limit = get_slurm_max_submit_jobs()
@@ -77,37 +82,47 @@ def get_slurm_max_submit_jobs() -> Optional[int]:
         - Result is cached for the session
         - Returns None if sacctmgr is not available
         - Returns None if no limit is configured (unlimited)
-        - This limit is typically much higher than array limits (e.g., 10000+)
+        - QoS and association records can carry different limits; returning the
+          largest value can oversize an array for the active policy.
     """
-    try:
-        result = subprocess.run(
-            ["sacctmgr", "show", "qos", "format=MaxSubmitJobsPerUser", "-P"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
-        )
-
+    commands = (
+        [
+            "sacctmgr",
+            "show",
+            "qos",
+            "format=MaxSubmitJobsPerUser",
+            "-P",
+        ],
+        [
+            "sacctmgr",
+            "show",
+            "assoc",
+            "where",
+            f"user={getpass.getuser()}",
+            "format=MaxSubmitJobs",
+            "-P",
+        ],
+    )
+    values: list[int] = []
+    for command in commands:
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
+            continue
         if result.returncode != 0:
-            return None
+            continue
+        for token in re.split(r"[|\n]", result.stdout):
+            token = token.strip()
+            if token.isdigit() and int(token) > 0:
+                values.append(int(token))
 
-        lines = result.stdout.strip().split("\n")
-        if len(lines) < 2:
-            return None
-
-        values = []
-        for line in lines[1:]:
-            line = line.strip()
-            if line and line.isdigit():
-                values.append(int(line))
-
-        if values:
-            return max(values)
-
-        return None
-
-    except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
-        return None
+    return min(values) if values else None
 
 
 def estimate_concurrent_capacity(
