@@ -24,8 +24,10 @@ MAX_FALLBACK_TERMS = 1_000_000
 # Exhaustive calibration below on SciPy 1.16.3 reaches exactly 256 ULP at
 # n=26, k=24, p=1/100 after the public log10-to-probability round trip.
 SMALL_TAIL_ULP_LIMIT = 256.0
-# Observed against the 120-digit Decimal oracle below on the locked runtime.
-MILLION_FALLBACK_ULP_LIMIT = 3_297.0
+# Observed against the 120-digit Decimal oracle below on supported CI
+# platforms: macOS reaches 3,297 ULP and Ubuntu reaches 3,819 ULP because the
+# production-style ``math.lgamma`` path is supplied by the platform libm.
+MILLION_FALLBACK_ULP_LIMIT = 3_819.0
 MINIMUM_POSITIVE_ULP_LIMIT = 1.0
 
 

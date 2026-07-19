@@ -13,6 +13,10 @@ class FakeGpuDetector(GpuDetector):
     are overrideable per test."""
 
     threshold: float = 0.5
+    # The synthetic threshold mask can legitimately touch the frame and does
+    # not encode a model-produced background instance. Production detectors
+    # retain the GpuDetector default of dropping that background label.
+    drop_frame_background: bool = False
     _loaded: bool = PrivateAttr(default=False)
 
     def _ensure_model_loaded(self) -> None:

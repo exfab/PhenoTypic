@@ -22,6 +22,10 @@ FIXTURE_ROOT = Path(__file__).parents[3] / "fixtures" / "reconnect" / "nfa"
 # the observed maximum is five float64 ULP at ``large_n_rare``.
 _GOLDEN_LOG10_TAIL_MAX_ULP = 5
 _FLOAT64_UNIT_ROUNDOFF = np.finfo(np.float64).eps / 2
+# Calibrated against the independent 120-digit Decimal oracle on the supported
+# CI platforms. macOS reaches 3,297 ULP; Ubuntu reaches 3,819 ULP because the
+# fallback's ``math.lgamma`` path is supplied by the platform libm.
+_MILLION_FALLBACK_MAX_ULP = 3_819
 
 
 def _exact_tail(n: int, k: int, p: Fraction) -> Fraction:
@@ -204,7 +208,7 @@ def test_million_trial_underflow_uses_finite_bounded_fallback():
     assert _positive_float_ulp_distance(
         float(-actual.log10_binomial_tail),
         -expected,
-    ) <= 3_297
+    ) <= _MILLION_FALLBACK_MAX_ULP
 
 
 def test_minimum_positive_probability_uses_additive_log_ratio():
