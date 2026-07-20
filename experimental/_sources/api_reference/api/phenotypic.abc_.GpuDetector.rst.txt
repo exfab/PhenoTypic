@@ -62,6 +62,7 @@ phenotypic.abc\_.GpuDetector
       ~GpuDetector.input_scaling
       ~GpuDetector.supports_batching
       ~GpuDetector.output_kind
+      ~GpuDetector.drop_frame_background
       ~GpuDetector.split_disconnected_labels
       ~GpuDetector.connectivity
    

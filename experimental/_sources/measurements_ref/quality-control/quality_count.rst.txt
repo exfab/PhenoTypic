@@ -1,7 +1,7 @@
 QUALITY_COUNT
 =============
 
-Python object: ``phenotypic.schema._quality_count.QUALITY_COUNT``
+Python export: ``phenotypic.schema.QUALITY_COUNT``
 
 Measurement info for the expected-vs-detected colony count QC check.
 

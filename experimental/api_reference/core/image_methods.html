@@ -638,6 +638,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api/phenotypic.analysis.html">phenotypic.analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.analysis.cubical_persistence.html">phenotypic.analysis.cubical_persistence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.analysis.filter_spec_json.html">phenotypic.analysis.filter_spec_json</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.analysis.filter_spec_query.html">phenotypic.analysis.filter_spec_query</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.analysis.render_error_analysis_html.html">phenotypic.analysis.render_error_analysis_html</a></li>
@@ -652,6 +653,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.analysis.MADOutlierRemover.html">phenotypic.analysis.MADOutlierRemover</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.analysis.MaxModifiedZScore.html">phenotypic.analysis.MaxModifiedZScore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.analysis.PersistencePairsResult.html">phenotypic.analysis.PersistencePairsResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.analysis.RelativeMAD.html">phenotypic.analysis.RelativeMAD</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.analysis.ReplicateAgreement.html">phenotypic.analysis.ReplicateAgreement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.analysis.TukeyOutlierFraction.html">phenotypic.analysis.TukeyOutlierFraction</a></li>
@@ -692,6 +694,8 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.detect.ChanVeseDetector.html">phenotypic.detect.ChanVeseDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.detect.CompositeDetector.html">phenotypic.detect.CompositeDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.detect.FilamentousFungiDetector.html">phenotypic.detect.FilamentousFungiDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.detect.TwoKFilamentousDetector.html">phenotypic.detect.TwoKFilamentousDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.detect.FilFinderDetector.html">phenotypic.detect.FilFinderDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.detect.HysteresisDetector.html">phenotypic.detect.HysteresisDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.detect.InoculumDetector.html">phenotypic.detect.InoculumDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.detect.MadHysteresisDetector.html">phenotypic.detect.MadHysteresisDetector</a></li>
@@ -737,6 +741,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.SubtractOpening.html">phenotypic.enhance.SubtractOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.FocusEdgePhase.html">phenotypic.enhance.FocusEdgePhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.FocusEdgeMonogenicPhase.html">phenotypic.enhance.FocusEdgeMonogenicPhase</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.FocusEdgeTwoKPhase.html">phenotypic.enhance.FocusEdgeTwoKPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.FocusEdgeColorPhase.html">phenotypic.enhance.FocusEdgeColorPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.SubtractRollingBall.html">phenotypic.enhance.SubtractRollingBall</a></li>
@@ -4816,6 +4821,41 @@ a fresh one. Defaults to None.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.drop_frame_background">
+<span class="sig-name descname"><span class="pre">drop_frame_background</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/accessors/_objmap_accessor.html#ObjectMap.drop_frame_background"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.drop_frame_background" title="Link to this definition">#</a></dt>
+<dd><p>Zero the label that forms the image-border frame (the background).</p>
+<p>Class-agnostic instance segmenters (SAM2 and friends) can emit the plate
+background as its own positive-labelled “object” – a single mask that
+frames the image around the colonies. Left in place, that label survives
+into measurement and, worse, bridges every colony it touches when
+<a class="reference internal" href="#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.relabel" title="phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.relabel"><code class="xref py py-meth docutils literal notranslate"><span class="pre">relabel()</span></code></a> binarizes <code class="docutils literal notranslate"><span class="pre">objmap</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> for connected components,
+collapsing all instances into one blob. Zeroing it <em>before</em> <code class="docutils literal notranslate"><span class="pre">relabel</span></code>
+removes the bridge, so <code class="docutils literal notranslate"><span class="pre">relabel</span></code> then correctly merges fragments into
+their surrounding colony and keeps distinct colonies apart.</p>
+<p>The background is identified topologically and parameter-free: the label
+owning the <strong>plurality of the image-border pixels</strong>. A colony never forms
+the frame of a (cropped) plate, so this is the agar background. When no
+positive label touches the border – every ordinary threshold/​watershed
+map, where the border is already background 0 – this is a no-op.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The zeroed background label, or 0 if none was found (no-op).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+<div class="admonition-notes admonition">
+<p class="admonition-title">Notes</p>
+<ul class="simple">
+<li><p>Only the single plurality-owning label is zeroed; border-<em>touching</em>
+colonies are left for an explicit border refiner (which carries its
+own tolerance) to handle.</p></li>
+</ul>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.foreground">
 <span class="sig-name descname"><span class="pre">foreground</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.foreground" title="Link to this definition">#</a></dt>
 <dd><p>Extracts and returns the foreground of the image by masking out the background.</p>
@@ -8592,6 +8632,7 @@ of the <cite>other</cite> object. Returns False otherwise.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.copy"><code class="docutils literal notranslate"><span class="pre">ObjectMap.copy()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.dash"><code class="docutils literal notranslate"><span class="pre">ObjectMap.dash()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.draw"><code class="docutils literal notranslate"><span class="pre">ObjectMap.draw()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.drop_frame_background"><code class="docutils literal notranslate"><span class="pre">ObjectMap.drop_frame_background()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.foreground"><code class="docutils literal notranslate"><span class="pre">ObjectMap.foreground()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.histogram"><code class="docutils literal notranslate"><span class="pre">ObjectMap.histogram()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.imsave"><code class="docutils literal notranslate"><span class="pre">ObjectMap.imsave()</span></code></a></li>

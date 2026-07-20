@@ -638,6 +638,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.cubical_persistence.html">phenotypic.analysis.cubical_persistence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.filter_spec_json.html">phenotypic.analysis.filter_spec_json</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.filter_spec_query.html">phenotypic.analysis.filter_spec_query</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.render_error_analysis_html.html">phenotypic.analysis.render_error_analysis_html</a></li>
@@ -652,6 +653,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MADOutlierRemover.html">phenotypic.analysis.MADOutlierRemover</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MaxModifiedZScore.html">phenotypic.analysis.MaxModifiedZScore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.PersistencePairsResult.html">phenotypic.analysis.PersistencePairsResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.RelativeMAD.html">phenotypic.analysis.RelativeMAD</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ReplicateAgreement.html">phenotypic.analysis.ReplicateAgreement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierFraction.html">phenotypic.analysis.TukeyOutlierFraction</a></li>
@@ -692,6 +694,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.ChanVeseDetector.html">phenotypic.detect.ChanVeseDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.CompositeDetector.html">phenotypic.detect.CompositeDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.FilamentousFungiDetector.html">phenotypic.detect.FilamentousFungiDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.TwoKFilamentousDetector.html">phenotypic.detect.TwoKFilamentousDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.FilFinderDetector.html">phenotypic.detect.FilFinderDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.HysteresisDetector.html">phenotypic.detect.HysteresisDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.InoculumDetector.html">phenotypic.detect.InoculumDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.MadHysteresisDetector.html">phenotypic.detect.MadHysteresisDetector</a></li>
@@ -737,6 +741,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractOpening.html">phenotypic.enhance.SubtractOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgePhase.html">phenotypic.enhance.FocusEdgePhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeMonogenicPhase.html">phenotypic.enhance.FocusEdgeMonogenicPhase</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeTwoKPhase.html">phenotypic.enhance.FocusEdgeTwoKPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeColorPhase.html">phenotypic.enhance.FocusEdgeColorPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractRollingBall.html">phenotypic.enhance.SubtractRollingBall</a></li>
@@ -1197,7 +1202,7 @@
 <td><p>Query SLURM for MaxArraySize configuration.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.slurm.get_slurm_max_submit_jobs.html#phenotypic.sdk_.slurm.get_slurm_max_submit_jobs" title="phenotypic.sdk_.slurm.get_slurm_max_submit_jobs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_slurm_max_submit_jobs</span></code></a></p></td>
-<td><p>Query SLURM for MaxSubmitJobs limit per user.</p></td>
+<td><p>Query a conservative SLURM MaxSubmitJobs limit per user.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.slurm.parse_job_id.html#phenotypic.sdk_.slurm.parse_job_id" title="phenotypic.sdk_.slurm.parse_job_id"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_job_id</span></code></a></p></td>
 <td><p>Extract the SLURM job ID from sbatch output.</p></td>
@@ -1542,13 +1547,17 @@ query fails or SLURM is not available.</p>
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.slurm.</span></span><span class="sig-name descname"><span class="pre">get_slurm_max_submit_jobs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/slurm/_config.html#get_slurm_max_submit_jobs"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Query SLURM for MaxSubmitJobs limit per user.</p>
+<dd><p>Query a conservative SLURM MaxSubmitJobs limit per user.</p>
 <p>Uses <code class="docutils literal notranslate"><span class="pre">sacctmgr</span></code> to retrieve the maximum number of jobs a user can
 have in the queue simultaneously. This is typically set by QoS
 (Quality of Service) policies.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Integer limit or None if not configured/available.</p>
+<dd class="field-odd"><p>Smallest configured positive QoS or user-association limit, or <code class="docutils literal notranslate"><span class="pre">None</span></code>
+if no limit is configured or available. Taking the smallest value is
+conservative when the cluster exposes several QoS or association
+records and the caller cannot reliably infer which one the submitted
+job will use.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a> | None</p>
@@ -1568,7 +1577,8 @@ have in the queue simultaneously. This is typically set by QoS
 <li><p>Result is cached for the session</p></li>
 <li><p>Returns None if sacctmgr is not available</p></li>
 <li><p>Returns None if no limit is configured (unlimited)</p></li>
-<li><p>This limit is typically much higher than array limits (e.g., 10000+)</p></li>
+<li><p>QoS and association records can carry different limits; returning the
+largest value can oversize an array for the active policy.</p></li>
 </ul>
 </div>
 </dd></dl>

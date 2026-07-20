@@ -1,7 +1,7 @@
 RADIAL_EXPANSION
 ================
 
-Python object: ``phenotypic.schema._radial_expansion.RADIAL_EXPANSION``
+Python export: ``phenotypic.schema.RADIAL_EXPANSION``
 
 Radial expansion measurements for filamentous fungal colonies.
 

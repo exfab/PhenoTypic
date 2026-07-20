@@ -1,7 +1,7 @@
 CONDITION_METADATA
 ==================
 
-Python object: ``phenotypic.schema._experimental_tags._condition.CONDITION_METADATA``
+Python export: ``phenotypic.schema.CONDITION_METADATA``
 
 Recommended ``MetadataCondition_*`` tags describing media and experimental conditions.
 

@@ -638,6 +638,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="api/phenotypic.analysis.html">phenotypic.analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.cubical_persistence.html">phenotypic.analysis.cubical_persistence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.filter_spec_json.html">phenotypic.analysis.filter_spec_json</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.filter_spec_query.html">phenotypic.analysis.filter_spec_query</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.render_error_analysis_html.html">phenotypic.analysis.render_error_analysis_html</a></li>
@@ -652,6 +653,7 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.MADOutlierRemover.html">phenotypic.analysis.MADOutlierRemover</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.MaxModifiedZScore.html">phenotypic.analysis.MaxModifiedZScore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.PersistencePairsResult.html">phenotypic.analysis.PersistencePairsResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.RelativeMAD.html">phenotypic.analysis.RelativeMAD</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.ReplicateAgreement.html">phenotypic.analysis.ReplicateAgreement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.TukeyOutlierFraction.html">phenotypic.analysis.TukeyOutlierFraction</a></li>
@@ -692,6 +694,8 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.detect.ChanVeseDetector.html">phenotypic.detect.ChanVeseDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.detect.CompositeDetector.html">phenotypic.detect.CompositeDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.detect.FilamentousFungiDetector.html">phenotypic.detect.FilamentousFungiDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.detect.TwoKFilamentousDetector.html">phenotypic.detect.TwoKFilamentousDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.detect.FilFinderDetector.html">phenotypic.detect.FilFinderDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.detect.HysteresisDetector.html">phenotypic.detect.HysteresisDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.detect.InoculumDetector.html">phenotypic.detect.InoculumDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.detect.MadHysteresisDetector.html">phenotypic.detect.MadHysteresisDetector</a></li>
@@ -737,6 +741,7 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.enhance.SubtractOpening.html">phenotypic.enhance.SubtractOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.enhance.FocusEdgePhase.html">phenotypic.enhance.FocusEdgePhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.enhance.FocusEdgeMonogenicPhase.html">phenotypic.enhance.FocusEdgeMonogenicPhase</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.enhance.FocusEdgeTwoKPhase.html">phenotypic.enhance.FocusEdgeTwoKPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.enhance.FocusEdgeColorPhase.html">phenotypic.enhance.FocusEdgeColorPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.enhance.SubtractRollingBall.html">phenotypic.enhance.SubtractRollingBall</a></li>
@@ -1309,7 +1314,13 @@ Default: 1.</p>
 <dt><code class="docutils literal notranslate"><span class="pre">--no-dataset-column</span></code></dt><dd><p>Exclude the <code class="docutils literal notranslate"><span class="pre">MetadataExperiment_Dataset</span></code> column from
 <code class="docutils literal notranslate"><span class="pre">master_measurements.csv</span></code>. The column is included by default.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">--metadata</span> <span class="pre">PATH</span></code></dt><dd><p>CSV file to inner-join onto <code class="docutils literal notranslate"><span class="pre">master_measurements.csv</span></code> on shared columns.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">--metadata</span> <span class="pre">PATH</span></code></dt><dd><p>CSV file to left-join onto the measurements mirror on shared columns. Every
+CSV row survives: one that matches no measured object is kept with null
+measurements and <code class="docutils literal notranslate"><span class="pre">QC_MetadataOnly</span></code> set to <code class="docutils literal notranslate"><span class="pre">true</span></code>, so strains that were
+never detected stay visible instead of being silently dropped. Measurement
+rows with no matching CSV row <em>are</em> dropped. The join lands on
+<code class="docutils literal notranslate"><span class="pre">deliverables/measurements.csv</span></code> and its derivatives —
+<code class="docutils literal notranslate"><span class="pre">master_measurements.csv</span></code> stays a clean, metadata-free archive.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">--study</span> <span class="pre">PATH</span></code></dt><dd><p>Optional <code class="docutils literal notranslate"><span class="pre">study.yaml</span></code> of REMBI Study-level fields (Title, License, Author,
 …) folded into <code class="docutils literal notranslate"><span class="pre">deliverables/rembi.yaml</span></code>; overrides constant

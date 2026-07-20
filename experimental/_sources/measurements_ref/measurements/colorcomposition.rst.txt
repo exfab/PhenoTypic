@@ -1,7 +1,7 @@
 ColorComposition
 ================
 
-Python object: ``phenotypic.schema._color_composition.ColorComposition``
+Python export: ``phenotypic.schema.ColorComposition``
 
 Classify colony pixels into 11 perceptual color categories and measure composition.
 

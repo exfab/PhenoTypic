@@ -1,7 +1,7 @@
 ColorHSV
 ========
 
-Python object: ``phenotypic.schema._color_hsv.ColorHSV``
+Python export: ``phenotypic.schema.ColorHSV``
 
 Robust HSV summary for a colony.
 

@@ -1,7 +1,7 @@
 CURATION
 ========
 
-Python object: ``phenotypic.schema._curation.CURATION``
+Python export: ``phenotypic.schema.CURATION``
 
 Curation-state columns attached to derived measurement frames.
 

@@ -45,6 +45,7 @@
       SubtractOpening
       FocusEdgePhase
       FocusEdgeMonogenicPhase
+      FocusEdgeTwoKPhase
       FocusEdgeColorPhase
       RankMedianEnhancer
       SubtractRollingBall

@@ -568,7 +568,7 @@
 <li class="toctree-l2"><a class="reference internal" href="grid_linreg_stats.html">GridLinReg</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">GridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="symmetric_zones.html">SymZones</a></li>
-<li class="toctree-l2"><a class="reference internal" href="orientation_zones.html">OrientZones</a></li>
+<li class="toctree-l2"><a class="reference internal" href="orientation_zone_primary.html">OrientZones</a></li>
 <li class="toctree-l2"><a class="reference internal" href="radial_expansion.html">RadialExpansion</a></li>
 </ul>
 </details></li>
@@ -581,19 +581,25 @@
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../quality-control/index.html">Quality Control</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_check.html">QC</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_count.html">QC_Count</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_occupancy.html">QC_Occupancy</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_icc.html">QC_ICC</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_mad.html">QC_MAD</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_se.html">QC_SE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_tukey.html">QC_Tukey</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_zmax.html">QC_ZMax</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_check.html">QUALITY_CHECK</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_count.html">QUALITY_COUNT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_occupancy.html">QUALITY_OCCUPANCY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_icc.html">QUALITY_ICC</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_mad.html">QUALITY_MAD</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_se.html">QUALITY_SE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_tukey.html">QUALITY_TUKEY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quality-control/quality_zmax.html">QUALITY_ZMAX</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quality-control/metadata_match.html">METADATA_MATCH</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quality-control/orientation_zone_diagnostic.html">ORIENTATION_ZONE_DIAGNOSTIC</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../curation-and-errors/index.html">Curation &amp; Errors</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../curation-and-errors/curation.html">Curation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../curation-and-errors/errorcategory.html">ErrorCategory</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../compatibility/index.html">Compatibility</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../compatibility/orientation_zones.html">OrientZones</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../metadata/index.html">Metadata</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -673,7 +679,7 @@
                   
   <section id="grid-spread">
 <h1>GRID_SPREAD<a class="headerlink" href="#grid-spread" title="Link to this heading">#</a></h1>
-<p>Python object: <code class="docutils literal notranslate"><span class="pre">phenotypic.schema._grid_spread.GRID_SPREAD</span></code></p>
+<p>Python export: <code class="docutils literal notranslate"><span class="pre">phenotypic.schema.GRID_SPREAD</span></code></p>
 <p>Quantify within-well colony dispersion using pairwise centroid distances.</p>
 <p>Compute the sum of squared pairwise Euclidean distances between all
 colony centroids in each grid section. High values indicate multiple

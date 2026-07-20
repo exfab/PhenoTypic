@@ -1,7 +1,7 @@
 LOG_GROWTH_MODEL
 ================
 
-Python object: ``phenotypic.schema._log_growth_model.LOG_GROWTH_MODEL``
+Python export: ``phenotypic.schema.LOG_GROWTH_MODEL``
 
 Fitted parameters and bounds of the logistic growth model.
 

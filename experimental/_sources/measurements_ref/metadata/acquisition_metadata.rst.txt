@@ -1,7 +1,7 @@
 ACQUISITION_METADATA
 ====================
 
-Python object: ``phenotypic.schema._experimental_tags._acquisition.ACQUISITION_METADATA``
+Python export: ``phenotypic.schema.ACQUISITION_METADATA``
 
 Recommended ``MetadataAcquisition_*`` tags describing image acquisition.
 

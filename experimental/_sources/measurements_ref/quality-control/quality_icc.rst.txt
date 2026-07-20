@@ -1,7 +1,7 @@
 QUALITY_ICC
 ===========
 
-Python object: ``phenotypic.schema._quality_icc.QUALITY_ICC``
+Python export: ``phenotypic.schema.QUALITY_ICC``
 
 Measurement info for the replicate-agreement ICC QC check.
 

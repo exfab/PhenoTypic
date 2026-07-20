@@ -41,7 +41,7 @@ strain, media, timepoint, plate, replicate. Example:
 :caption: metadata.csv — per-image sample metadata
 ```
 
-**How it joins.** The CSV is **inner-joined onto the measurements on every
+**How it joins.** The CSV is **left-joined onto the measurements on every
 column whose name it shares with them**. So a column only participates in the
 join if its header *exactly* matches a measurement column:
 
@@ -51,12 +51,30 @@ join if its header *exactly* matches a measurement column:
 - Join per **colony**: additionally include `Grid_RowNum` and `Grid_ColNum`.
   The row then applies to one grid cell.
 
+**Every row of your CSV survives the join.** A row that matches no measured
+object — a strain that failed to grow, or that detection missed — is kept in
+`deliverables/measurements.csv` with its metadata intact, every measurement
+column null, and `QC_MetadataOnly` set to `true`. Absence of a colony is data,
+so the sample stays visible instead of silently disappearing. To list what was
+never detected, filter on that column:
+
+```python
+import polars as pl
+
+mirror = pl.read_parquet("out/deliverables/measurements.parquet")
+missing = mirror.filter(pl.col("QC_MetadataOnly"))
+```
+
+The run also logs a `WARNING` naming how many CSV rows matched nothing.
+
 ```{warning}
 The join key must match the measurement column name **exactly**. After the
 REMBI namespace migration the image-name column is `MetadataImage_ImageName`
 (not the old `Metadata_ImageName`). A CSV that still uses the old header shares
-no column with the measurements and the join is skipped with a warning. Rows
-with no match are dropped (also warned); duplicate keys multiply rows.
+no column with the measurements and the join is skipped with a warning.
+Duplicate keys in the CSV multiply rows (also warned). Note the join is
+directional: *measurement* rows with no matching CSV row **are** dropped, so a
+CSV that omits an imaged plate silently removes it from the mirror.
 ```
 
 **Column names decide the REMBI module.** Use the recommended

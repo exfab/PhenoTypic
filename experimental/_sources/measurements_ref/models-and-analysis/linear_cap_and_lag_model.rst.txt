@@ -1,7 +1,7 @@
 LINEAR_CAP_AND_LAG_MODEL
 ========================
 
-Python object: ``phenotypic.schema._linear_cap_and_lag_model.LINEAR_CAP_AND_LAG_MODEL``
+Python export: ``phenotypic.schema.LINEAR_CAP_AND_LAG_MODEL``
 
 Fitted parameters of the double-softplus growth model (with saturation).
 

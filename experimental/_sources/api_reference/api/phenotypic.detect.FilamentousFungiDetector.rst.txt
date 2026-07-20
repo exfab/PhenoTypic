@@ -73,6 +73,8 @@ phenotypic.detect.FilamentousFungiDetector
       ~FilamentousFungiDetector.border_margin_px
       ~FilamentousFungiDetector.frag_reach_px
       ~FilamentousFungiDetector.gap_crossing_penalty
+      ~FilamentousFungiDetector.reconnect_strategy
+      ~FilamentousFungiDetector.reconnect_scope
       ~FilamentousFungiDetector.gauss_sigma
       ~FilamentousFungiDetector.tile_size
       ~FilamentousFungiDetector.tile_overlap

@@ -1274,7 +1274,9 @@
 <span class="sd">        This static method filters out rows in the DataFrame group where the values of a specific</span>
 <span class="sd">        column (`on`) are considered outliers. Outliers are determined by the provided multiplier</span>
 <span class="sd">        for the IQR. Rows with values outside the range defined by the lower and upper thresholds</span>
-<span class="sd">        (calculated using the IQR method) are excluded.</span>
+<span class="sd">        (calculated using the IQR method) are excluded. Rows whose ``on`` value is</span>
+<span class="sd">        NaN are preserved: NaN is ignored when computing the fences, and a NaN</span>
+<span class="sd">        never compares outside them.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            key: The group key (not used but required for joblib).</span>
@@ -1284,11 +1286,13 @@
 <span class="sd">                threshold for identifying outlier rows in the DataFrame group.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Filtered DataFrame containing rows that fall within the calculated IQR thresholds.</span>
+<span class="sd">            Filtered DataFrame containing rows that fall within the calculated IQR thresholds,</span>
+<span class="sd">            plus any rows whose ``on`` value is NaN.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">values</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="n">on</span><span class="p">]</span>
-        <span class="n">lower_fence</span><span class="p">,</span> <span class="n">upper_fence</span> <span class="o">=</span> <span class="n">_qc_math</span><span class="o">.</span><span class="n">tukey_fences</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span> <span class="n">k</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">group</span><span class="p">[(</span><span class="n">values</span> <span class="o">&gt;=</span> <span class="n">lower_fence</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">values</span> <span class="o">&lt;=</span> <span class="n">upper_fence</span><span class="p">)]</span></div>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">na_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">lower_fence</span><span class="p">,</span> <span class="n">upper_fence</span> <span class="o">=</span> <span class="n">_qc_math</span><span class="o">.</span><span class="n">tukey_fences</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+        <span class="n">is_outlier</span> <span class="o">=</span> <span class="p">(</span><span class="n">values</span> <span class="o">&lt;</span> <span class="n">lower_fence</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">values</span> <span class="o">&gt;</span> <span class="n">upper_fence</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">group</span><span class="p">[</span><span class="o">~</span><span class="n">is_outlier</span><span class="p">]</span></div>
 
 </pre></div>
 

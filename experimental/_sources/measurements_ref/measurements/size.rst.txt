@@ -1,7 +1,7 @@
 SIZE
 ====
 
-Python object: ``phenotypic.schema._size.SIZE``
+Python export: ``phenotypic.schema.SIZE``
 
 Measure colony area and integrated intensity as lightweight size proxies.
 

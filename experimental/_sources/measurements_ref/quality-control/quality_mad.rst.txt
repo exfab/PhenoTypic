@@ -1,7 +1,7 @@
 QUALITY_MAD
 ===========
 
-Python object: ``phenotypic.schema._quality_mad.QUALITY_MAD``
+Python export: ``phenotypic.schema.QUALITY_MAD``
 
 Measurement info for the replicate-agreement MAD QC check.
 

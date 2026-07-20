@@ -1,7 +1,7 @@
 ColorLab
 ========
 
-Python object: ``phenotypic.schema._color_lab.ColorLab``
+Python export: ``phenotypic.schema.ColorLab``
 
 Robust CIE L*a*b* colorimetric summary for a colony.
 

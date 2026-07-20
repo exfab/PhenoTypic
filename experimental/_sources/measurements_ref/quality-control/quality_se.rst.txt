@@ -1,7 +1,7 @@
 QUALITY_SE
 ==========
 
-Python object: ``phenotypic.schema._quality_se.QUALITY_SE``
+Python export: ``phenotypic.schema.QUALITY_SE``
 
 Measurement info for the replicate-agreement standard-error QC check.
 

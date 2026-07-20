@@ -1,7 +1,7 @@
 QUALITY_CHECK
 =============
 
-Python object: ``phenotypic.schema._quality_check.QUALITY_CHECK``
+Python export: ``phenotypic.schema.QUALITY_CHECK``
 
 Generic QC output columns emitted by every QualityCheck subclass.
 

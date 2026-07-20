@@ -12,6 +12,7 @@ for measurement outputs and metadata joins. Browse by group:
    models-and-analysis/index
    quality-control/index
    curation-and-errors/index
+   compatibility/index
    metadata/index
 
 .. grid:: 1 2 2 2
@@ -64,6 +65,18 @@ for measurement outputs and metadata joins. Browse by group:
          :expand:
 
          Browse Curation & Errors
+
+   .. grid-item-card:: Compatibility
+
+      +++
+
+      .. button-ref:: compatibility/index
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Browse Compatibility
 
    .. grid-item-card:: Metadata
 

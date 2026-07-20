@@ -1,7 +1,7 @@
 MODEL_METRICS
 =============
 
-Python object: ``phenotypic.schema._model_metrics.MODEL_METRICS``
+Python export: ``phenotypic.schema.MODEL_METRICS``
 
 Generic fit-quality metrics and diagnostics shared by all ModelFitter subclasses.
 

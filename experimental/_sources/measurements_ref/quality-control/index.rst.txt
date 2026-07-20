@@ -8,11 +8,13 @@ DataFrame column labels and descriptions.
    :maxdepth: 1
    :caption: Quality Control
 
-   QC <quality_check>
-   QC_Count <quality_count>
-   QC_Occupancy <quality_occupancy>
-   QC_ICC <quality_icc>
-   QC_MAD <quality_mad>
-   QC_SE <quality_se>
-   QC_Tukey <quality_tukey>
-   QC_ZMax <quality_zmax>
+   QUALITY_CHECK <quality_check>
+   QUALITY_COUNT <quality_count>
+   QUALITY_OCCUPANCY <quality_occupancy>
+   QUALITY_ICC <quality_icc>
+   QUALITY_MAD <quality_mad>
+   QUALITY_SE <quality_se>
+   QUALITY_TUKEY <quality_tukey>
+   QUALITY_ZMAX <quality_zmax>
+   METADATA_MATCH <metadata_match>
+   ORIENTATION_ZONE_DIAGNOSTIC <orientation_zone_diagnostic>

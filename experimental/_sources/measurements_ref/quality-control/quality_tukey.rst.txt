@@ -1,7 +1,7 @@
 QUALITY_TUKEY
 =============
 
-Python object: ``phenotypic.schema._quality_tukey.QUALITY_TUKEY``
+Python export: ``phenotypic.schema.QUALITY_TUKEY``
 
 Measurement info for the replicate-agreement Tukey-fence QC check.
 

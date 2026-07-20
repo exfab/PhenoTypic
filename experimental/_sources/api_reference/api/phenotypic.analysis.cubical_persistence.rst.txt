@@ -1,0 +1,6 @@
+phenotypic.analysis.cubical\_persistence
+========================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autofunction:: cubical_persistence

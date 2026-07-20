@@ -1,7 +1,7 @@
 GRID_LINREG_STATS
 =================
 
-Python object: ``phenotypic.schema._grid_linreg_stats.GRID_LINREG_STATS``
+Python export: ``phenotypic.schema.GRID_LINREG_STATS``
 
 Evaluate grid alignment quality using row-wise and column-wise linear regression.
 

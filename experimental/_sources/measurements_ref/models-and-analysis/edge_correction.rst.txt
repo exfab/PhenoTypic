@@ -1,7 +1,7 @@
 EDGE_CORRECTION
 ===============
 
-Python object: ``phenotypic.schema._edge_correction.EDGE_CORRECTION``
+Python export: ``phenotypic.schema.EDGE_CORRECTION``
 
 Measurement info container for edge correction analysis results.
 

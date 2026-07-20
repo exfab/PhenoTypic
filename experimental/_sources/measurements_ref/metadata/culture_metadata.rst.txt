@@ -1,7 +1,7 @@
 CULTURE_METADATA
 ================
 
-Python object: ``phenotypic.schema._experimental_tags._culture.CULTURE_METADATA``
+Python export: ``phenotypic.schema.CULTURE_METADATA``
 
 Recommended ``MetadataCulture_*`` tags describing culture and time course.
 

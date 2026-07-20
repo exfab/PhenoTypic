@@ -1,7 +1,7 @@
 SHAPE
 =====
 
-Python object: ``phenotypic.schema._shape.SHAPE``
+Python export: ``phenotypic.schema.SHAPE``
 
 Measure comprehensive morphological characteristics of detected colonies.
 

@@ -624,6 +624,27 @@
 
 <span class="n">FootprintShape</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;disk&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">]</span>
 
+<span class="c1">#: Boundary extension modes shared by SciPy-compatible numerical reconnection</span>
+<span class="c1">#: helpers. Each port must still freeze its own default and supported subset from</span>
+<span class="c1">#: the selected reference.</span>
+<span class="n">BoundaryMode</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;reflect&quot;</span><span class="p">,</span> <span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="s2">&quot;nearest&quot;</span><span class="p">,</span> <span class="s2">&quot;mirror&quot;</span><span class="p">,</span> <span class="s2">&quot;wrap&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Raster product selected by ``FilFinderDetector``. FilFinder exposes more</span>
+<span class="c1">#: graph and measurement products, but ``ObjectDetector`` returns exactly one</span>
+<span class="c1">#: of these three source-visible boolean rasters as consecutive labels.</span>
+<span class="n">FilFinderOutput</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;mask&quot;</span><span class="p">,</span> <span class="s2">&quot;skeleton&quot;</span><span class="p">,</span> <span class="s2">&quot;longest_path&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Branch-pruning criterion forwarded unchanged by ``FilFinderDetector`` when</span>
+<span class="c1">#: the selected output requires longest-path analysis.</span>
+<span class="n">FilFinderPruneCriteria</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="s2">&quot;intensity&quot;</span><span class="p">,</span> <span class="s2">&quot;length&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Candidate-path propagation used by ``FilamentousFungiDetector``. The</span>
+<span class="c1">#: legacy Dijkstra path remains the default; ``&quot;app2_gwdt&quot;`` opts into the</span>
+<span class="c1">#: source-faithful APP2 endpoint-average recurrence.</span>
+<span class="n">FilamentousFungiReconnectStrategy</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span>
+    <span class="s2">&quot;dijkstra&quot;</span><span class="p">,</span> <span class="s2">&quot;app2_gwdt&quot;</span>
+<span class="p">]</span>
+
 <span class="n">DetectMode</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="s2">&quot;MinRGB&quot;</span><span class="p">,</span> <span class="s2">&quot;LabL&quot;</span><span class="p">,</span> <span class="s2">&quot;LabA&quot;</span><span class="p">,</span> <span class="s2">&quot;LabB&quot;</span><span class="p">,</span> <span class="s2">&quot;HsvS&quot;</span><span class="p">,</span> <span class="s2">&quot;HsvV&quot;</span><span class="p">,</span> <span class="s2">&quot;InvS&quot;</span><span class="p">]</span>
 
 <span class="c1">#: Source layer an ``InputLayerMixin`` operation reads from. ``&quot;detect_mat&quot;``</span>

@@ -1,7 +1,7 @@
 LINEAR_LAG_MODEL
 ================
 
-Python object: ``phenotypic.schema._linear_lag_model.LINEAR_LAG_MODEL``
+Python export: ``phenotypic.schema.LINEAR_LAG_MODEL``
 
 Fitted parameters of the linear-softplus lag model (no saturation).
 

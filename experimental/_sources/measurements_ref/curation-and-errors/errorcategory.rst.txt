@@ -1,7 +1,7 @@
 ErrorCategory
 =============
 
-Python object: ``phenotypic.schema._error_category.ErrorCategory``
+Python export: ``phenotypic.schema.ErrorCategory``
 
 Closed taxonomy of detection-error categories for object triage.
 

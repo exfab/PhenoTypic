@@ -16,6 +16,7 @@
       :toctree:
       :nosignatures:
    
+      cubical_persistence
       filter_spec_json
       filter_spec_query
       render_error_analysis_html
@@ -42,6 +43,7 @@
       LogGrowthModel
       MADOutlierRemover
       MaxModifiedZScore
+      PersistencePairsResult
       RelativeMAD
       ReplicateAgreement
       TukeyOutlierFraction

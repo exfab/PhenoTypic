@@ -969,6 +969,36 @@
             <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detected_count</span><span class="p">(</span><span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of rows in *group* that are a real detected object.</span>
+
+<span class="sd">        Counts rows carrying an ``Object_Label`` rather than simply taking</span>
+<span class="sd">        ``len(group)``. A row with no label is not a detection: the CLI&#39;s</span>
+<span class="sd">        ``--metadata`` left join seeds the measurements mirror with rows for</span>
+<span class="sd">        strains that matched no measured object, and every measurement/info</span>
+<span class="sd">        column on such a row — ``Object_Label`` included — is null. Counting</span>
+<span class="sd">        them would report ``detected == expected`` for a strain detected</span>
+<span class="sd">        *nowhere*, i.e. a metric of 0.0 and a passing check, inverting the very</span>
+<span class="sd">        divergence this class measures.</span>
+
+<span class="sd">        No flag column is consulted, so this stays correct for a frame that</span>
+<span class="sd">        never went through the CLI. On any frame without null labels — every</span>
+<span class="sd">        frame today, and every notebook ``analyze()`` call — this equals</span>
+<span class="sd">        ``len(group)`` exactly, so existing results do not move.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            group: One group of the analyzed frame.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Count of rows with a non-null ``Object_Label``, or ``len(group)``</span>
+<span class="sd">            when the frame carries no label column at all.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">))</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute count-divergence metrics for one group.</span>
 
@@ -986,7 +1016,7 @@
 <span class="sd">            ``QC_Count_Detected``, ``QC_Count_Expected``,</span>
 <span class="sd">            ``QC_Count_Delta``, ``QC_Count_Metric``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">detected</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">))</span>
+        <span class="n">detected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detected_count</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
         <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_group_key</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
         <span class="n">expected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lookup_expected</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
 

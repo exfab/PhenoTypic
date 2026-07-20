@@ -1,7 +1,7 @@
 QUALITY_OCCUPANCY
 =================
 
-Python object: ``phenotypic.schema._quality_occupancy.QUALITY_OCCUPANCY``
+Python export: ``phenotypic.schema.QUALITY_OCCUPANCY``
 
 Measurement info for the grid-occupancy QC check.
 

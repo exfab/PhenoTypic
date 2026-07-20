@@ -1,7 +1,7 @@
 Colorxy
 =======
 
-Python object: ``phenotypic.schema._color_xy.Colorxy``
+Python export: ``phenotypic.schema.Colorxy``
 
 Measure colony color statistics across multiple perceptual color spaces.
 

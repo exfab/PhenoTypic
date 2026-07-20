@@ -1096,6 +1096,48 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dense_to_sparse</span><span class="p">(</span><span class="n">relabeled</span><span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="ObjectMap.drop_frame_background">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.drop_frame_background">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">drop_frame_background</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Zero the label that forms the image-border frame (the background).</span>
+
+<span class="sd">        Class-agnostic instance segmenters (SAM2 and friends) can emit the plate</span>
+<span class="sd">        background as its own positive-labelled &quot;object&quot; -- a single mask that</span>
+<span class="sd">        frames the image around the colonies. Left in place, that label survives</span>
+<span class="sd">        into measurement and, worse, bridges every colony it touches when</span>
+<span class="sd">        :meth:`relabel` binarizes ``objmap &gt; 0`` for connected components,</span>
+<span class="sd">        collapsing all instances into one blob. Zeroing it *before* ``relabel``</span>
+<span class="sd">        removes the bridge, so ``relabel`` then correctly merges fragments into</span>
+<span class="sd">        their surrounding colony and keeps distinct colonies apart.</span>
+
+<span class="sd">        The background is identified topologically and parameter-free: the label</span>
+<span class="sd">        owning the **plurality of the image-border pixels**. A colony never forms</span>
+<span class="sd">        the frame of a (cropped) plate, so this is the agar background. When no</span>
+<span class="sd">        positive label touches the border -- every ordinary threshold/​watershed</span>
+<span class="sd">        map, where the border is already background 0 -- this is a no-op.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: The zeroed background label, or 0 if none was found (no-op).</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Only the single plurality-owning label is zeroed; border-*touching*</span>
+<span class="sd">              colonies are left for an explicit border refiner (which carries its</span>
+<span class="sd">              own tolerance) to handle.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dense</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+        <span class="n">border</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span>
+            <span class="n">dense</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:],</span> <span class="n">dense</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:],</span> <span class="n">dense</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dense</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+        <span class="p">])</span>
+        <span class="n">border</span> <span class="o">=</span> <span class="n">border</span><span class="p">[</span><span class="n">border</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">border</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="n">values</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">border</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">background</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">counts</span><span class="o">.</span><span class="n">argmax</span><span class="p">()])</span>
+        <span class="n">dense</span><span class="p">[</span><span class="n">dense</span> <span class="o">==</span> <span class="n">background</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dense_to_sparse</span><span class="p">(</span><span class="n">dense</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">background</span></div>
+
+
 <div class="viewcode-block" id="ObjectMap.vmax">
 <a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.vmax">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">vmax</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>

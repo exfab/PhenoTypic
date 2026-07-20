@@ -1,7 +1,7 @@
 OBJECT
 ======
 
-Python object: ``phenotypic.schema._object.OBJECT``
+Python export: ``phenotypic.schema.OBJECT``
 
 Per-object identifier shared by every measurement table.
 

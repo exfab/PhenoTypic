@@ -1,7 +1,7 @@
 TEXTURE
 =======
 
-Python object: ``phenotypic.schema._texture.TEXTURE``
+Python export: ``phenotypic.schema.TEXTURE``
 
 Second-order texture features derived from the gray-level co-occurrence matrix (GLCM).
 

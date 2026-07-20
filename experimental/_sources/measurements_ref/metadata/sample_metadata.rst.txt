@@ -1,7 +1,7 @@
 SAMPLE_METADATA
 ===============
 
-Python object: ``phenotypic.schema._experimental_tags._sample.SAMPLE_METADATA``
+Python export: ``phenotypic.schema.SAMPLE_METADATA``
 
 Recommended ``MetadataSample_*`` tags identifying a sample and its provenance.
 

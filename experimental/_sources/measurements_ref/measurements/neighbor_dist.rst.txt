@@ -1,7 +1,7 @@
 NEIGHBOR_DIST
 =============
 
-Python object: ``phenotypic.schema._neighbor_dist.NEIGHBOR_DIST``
+Python export: ``phenotypic.schema.NEIGHBOR_DIST``
 
 Measure pixel-to-pixel distances to neighbors in adjacent grid cells.
 

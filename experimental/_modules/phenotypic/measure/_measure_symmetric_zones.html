@@ -1209,7 +1209,6 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._plotly_helpers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
             <span class="n">plotly_imshow</span><span class="p">,</span>
-            <span class="n">add_plotly_obj_labels</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">base_layer</span> <span class="o">==</span> <span class="s2">&quot;rgb&quot;</span><span class="p">:</span>
@@ -1227,7 +1226,6 @@
                 <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">display_w</span> <span class="o">//</span> <span class="mi">100</span><span class="p">,</span> <span class="n">display_h</span> <span class="o">//</span> <span class="mi">100</span><span class="p">),</span>
         <span class="p">)</span>
         <span class="n">fig</span><span class="o">.</span><span class="n">update_coloraxes</span><span class="p">(</span><span class="n">showscale</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        <span class="n">add_plotly_obj_labels</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span>
 
         <span class="n">MeasureSymmetricZones</span><span class="o">.</span><span class="n">_add_overlay_traces</span><span class="p">(</span>
                 <span class="n">fig</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">intermediates_cache</span><span class="p">,</span>

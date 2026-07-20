@@ -708,7 +708,7 @@ plate_002_t48.tif,BY4742,alpha,YPD,30,48,h,P2,1
 </pre></div>
 </div>
 </div>
-<p><strong>How it joins.</strong> The CSV is <strong>inner-joined onto the measurements on every
+<p><strong>How it joins.</strong> The CSV is <strong>left-joined onto the measurements on every
 column whose name it shares with them</strong>. So a column only participates in the
 join if its header <em>exactly</em> matches a measurement column:</p>
 <ul class="simple">
@@ -718,13 +718,28 @@ broadcasts to every colony of that image — the pattern shown above.</p></li>
 <li><p>Join per <strong>colony</strong>: additionally include <code class="docutils literal notranslate"><span class="pre">Grid_RowNum</span></code> and <code class="docutils literal notranslate"><span class="pre">Grid_ColNum</span></code>.
 The row then applies to one grid cell.</p></li>
 </ul>
+<p><strong>Every row of your CSV survives the join.</strong> A row that matches no measured
+object — a strain that failed to grow, or that detection missed — is kept in
+<code class="docutils literal notranslate"><span class="pre">deliverables/measurements.csv</span></code> with its metadata intact, every measurement
+column null, and <code class="docutils literal notranslate"><span class="pre">QC_MetadataOnly</span></code> set to <code class="docutils literal notranslate"><span class="pre">true</span></code>. Absence of a colony is data,
+so the sample stays visible instead of silently disappearing. To list what was
+never detected, filter on that column:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+
+<span class="n">mirror</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">&quot;out/deliverables/measurements.parquet&quot;</span><span class="p">)</span>
+<span class="n">missing</span> <span class="o">=</span> <span class="n">mirror</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;QC_MetadataOnly&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>The run also logs a <code class="docutils literal notranslate"><span class="pre">WARNING</span></code> naming how many CSV rows matched nothing.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>The join key must match the measurement column name <strong>exactly</strong>. After the
 REMBI namespace migration the image-name column is <code class="docutils literal notranslate"><span class="pre">MetadataImage_ImageName</span></code>
 (not the old <code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code>). A CSV that still uses the old header shares
-no column with the measurements and the join is skipped with a warning. Rows
-with no match are dropped (also warned); duplicate keys multiply rows.</p>
+no column with the measurements and the join is skipped with a warning.
+Duplicate keys in the CSV multiply rows (also warned). Note the join is
+directional: <em>measurement</em> rows with no matching CSV row <strong>are</strong> dropped, so a
+CSV that omits an imaged plate silently removes it from the mirror.</p>
 </div>
 <p><strong>Column names decide the REMBI module.</strong> Use the recommended
 <code class="docutils literal notranslate"><span class="pre">Metadata&lt;Topic&gt;_&lt;Label&gt;</span></code> vocabulary and each column routes itself to the right

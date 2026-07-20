@@ -714,8 +714,9 @@ the walkthrough will fill in.</p>
 </div>
 <p>The metadata schema mirrors the <code class="docutils literal notranslate"><span class="pre">Metadata_*</span></code> prefix convention from real
 PhenoTypic projects so the CSV is a valid input to <code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">--metadata</span></code>
-(an inner-join applied at finalize, landing in
-<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/measurements.csv</span></code> after the run finishes). Strain
+(a left-join applied at finalize, landing in
+<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/measurements.csv</span></code> after the run finishes; rows matching
+no detected colony survive there flagged with <code class="docutils literal notranslate"><span class="pre">QC_MetadataOnly</span></code>). Strain
 IDs, mating types, and media values are synthetic placeholders — pick the
 columns that match your own experiment when adapting the snippet.</p>
 <p>After the snippet runs, the directory layout is:</p>

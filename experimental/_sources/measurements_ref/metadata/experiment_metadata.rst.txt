@@ -1,7 +1,7 @@
 EXPERIMENT_METADATA
 ===================
 
-Python object: ``phenotypic.schema._experimental_tags._experiment.EXPERIMENT_METADATA``
+Python export: ``phenotypic.schema.EXPERIMENT_METADATA``
 
 Recommended ``MetadataExperiment_*`` tags for experiment-level bookkeeping.
 

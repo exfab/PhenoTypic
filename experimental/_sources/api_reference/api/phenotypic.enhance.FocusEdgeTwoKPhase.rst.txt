@@ -1,0 +1,69 @@
+phenotypic.enhance.FocusEdgeTwoKPhase
+=====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: FocusEdgeTwoKPhase
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FocusEdgeTwoKPhase.__init__
+      ~FocusEdgeTwoKPhase.apply
+      ~FocusEdgeTwoKPhase.construct
+      ~FocusEdgeTwoKPhase.copy
+      ~FocusEdgeTwoKPhase.dict
+      ~FocusEdgeTwoKPhase.from_json
+      ~FocusEdgeTwoKPhase.from_orm
+      ~FocusEdgeTwoKPhase.json
+      ~FocusEdgeTwoKPhase.model_construct
+      ~FocusEdgeTwoKPhase.model_copy
+      ~FocusEdgeTwoKPhase.model_dump
+      ~FocusEdgeTwoKPhase.model_dump_json
+      ~FocusEdgeTwoKPhase.model_json_schema
+      ~FocusEdgeTwoKPhase.model_parametrized_name
+      ~FocusEdgeTwoKPhase.model_post_init
+      ~FocusEdgeTwoKPhase.model_rebuild
+      ~FocusEdgeTwoKPhase.model_validate
+      ~FocusEdgeTwoKPhase.model_validate_json
+      ~FocusEdgeTwoKPhase.model_validate_strings
+      ~FocusEdgeTwoKPhase.parse_file
+      ~FocusEdgeTwoKPhase.parse_obj
+      ~FocusEdgeTwoKPhase.parse_raw
+      ~FocusEdgeTwoKPhase.schema
+      ~FocusEdgeTwoKPhase.schema_json
+      ~FocusEdgeTwoKPhase.to_json
+      ~FocusEdgeTwoKPhase.update_forward_refs
+      ~FocusEdgeTwoKPhase.validate
+      ~FocusEdgeTwoKPhase.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FocusEdgeTwoKPhase.model_computed_fields
+      ~FocusEdgeTwoKPhase.model_config
+      ~FocusEdgeTwoKPhase.model_extra
+      ~FocusEdgeTwoKPhase.model_fields
+      ~FocusEdgeTwoKPhase.model_fields_set
+      ~FocusEdgeTwoKPhase.n_orient
+      ~FocusEdgeTwoKPhase.min_wavelength
+      ~FocusEdgeTwoKPhase.k_strict
+      ~FocusEdgeTwoKPhase.k_loose
+      ~FocusEdgeTwoKPhase.seed_thresh
+      ~FocusEdgeTwoKPhase.cand_thresh
+      ~FocusEdgeTwoKPhase.norm
+   
+   

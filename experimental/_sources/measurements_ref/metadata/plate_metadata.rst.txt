@@ -1,7 +1,7 @@
 PLATE_METADATA
 ==============
 
-Python object: ``phenotypic.schema._experimental_tags._plate.PLATE_METADATA``
+Python export: ``phenotypic.schema.PLATE_METADATA``
 
 Recommended ``MetadataPlate_*`` tags describing the assay plate and its array.
 

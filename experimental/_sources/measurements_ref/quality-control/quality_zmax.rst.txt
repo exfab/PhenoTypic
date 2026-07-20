@@ -1,7 +1,7 @@
 QUALITY_ZMAX
 ============
 
-Python object: ``phenotypic.schema._quality_zmax.QUALITY_ZMAX``
+Python export: ``phenotypic.schema.QUALITY_ZMAX``
 
 Measurement info for the replicate-agreement modified Z-score QC check.
 

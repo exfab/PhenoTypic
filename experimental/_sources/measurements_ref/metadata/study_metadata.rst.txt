@@ -1,7 +1,7 @@
 STUDY_METADATA
 ==============
 
-Python object: ``phenotypic.schema._experimental_tags._study.STUDY_METADATA``
+Python export: ``phenotypic.schema.STUDY_METADATA``
 
 Recommended ``MetadataStudy_*`` tags for the REMBI Study component.
 

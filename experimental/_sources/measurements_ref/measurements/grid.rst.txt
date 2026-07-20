@@ -1,7 +1,7 @@
 GRID
 ====
 
-Python object: ``phenotypic.schema._grid.GRID``
+Python export: ``phenotypic.schema.GRID``
 
 Constants for grid structure in the PhenoTypic module.
 

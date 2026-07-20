@@ -754,11 +754,20 @@
     <span class="n">supports_batching</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">output_kind</span><span class="p">:</span> <span class="n">GpuOutputKind</span> <span class="o">=</span> <span class="s2">&quot;instance&quot;</span>
 
+    <span class="c1"># Post-inference cleanup: zero the background instance BEFORE relabeling. A</span>
+    <span class="c1"># class-agnostic segmenter (SAM2 etc.) can emit the plate background as a</span>
+    <span class="c1"># positive-labelled mask framing the image; left in place it survives into</span>
+    <span class="c1"># measurement and bridges every colony it touches when ``relabel`` binarizes</span>
+    <span class="c1"># ``objmap &gt; 0``, collapsing all instances into one blob. Zeroing the</span>
+    <span class="c1"># border-plurality label first removes the bridge (see</span>
+    <span class="c1"># ``ObjectMap.drop_frame_background``). ``instance`` output only.</span>
+    <span class="n">drop_frame_background</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="c1"># Post-inference cleanup: split a single instance label that spans spatially</span>
     <span class="c1"># disconnected blobs into separate instances by connected components. A SAM</span>
     <span class="c1"># mask (or a tile-merged objmap) can paint one label across distant regions;</span>
     <span class="c1"># relabeling by connectivity gives each connected region its own id. Binary</span>
-    <span class="c1"># connected-components, so two *touching* distinct labels merge into one.</span>
+    <span class="c1"># connected-components, so two *touching* distinct labels merge into one —</span>
+    <span class="c1"># which is why the background is dropped first, above.</span>
     <span class="c1"># ``instance`` output only — ``semantic`` already auto-labels by connectivity.</span>
     <span class="n">split_disconnected_labels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="c1"># Connectivity for the relabel (1 = 4-neighbour, 2 = 8-neighbour). Structural,</span>
@@ -819,9 +828,12 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Write one ``infer_batch`` result onto the image per ``output_kind``.</span>
 
 <span class="sd">        - ``instance`` -&gt; ``image.objmap[:]`` (detector-controlled labels).</span>
-<span class="sd">          When ``split_disconnected_labels`` is set, the written objmap is then</span>
-<span class="sd">          relabeled by connected components (``connectivity``) so one label</span>
-<span class="sd">          spanning spatially disconnected blobs becomes separate instances.</span>
+<span class="sd">          When ``drop_frame_background`` is set, the border-plurality background</span>
+<span class="sd">          label is zeroed first. When ``split_disconnected_labels`` is set, the</span>
+<span class="sd">          objmap is then relabeled by connected components (``connectivity``) so</span>
+<span class="sd">          one label spanning spatially disconnected blobs becomes separate</span>
+<span class="sd">          instances -- order matters: dropping the background before the relabel</span>
+<span class="sd">          stops it from bridging every colony into one blob.</span>
 <span class="sd">        - ``semantic`` -&gt; ``image.objmask[:]`` (auto-labels into the shared</span>
 <span class="sd">          ``objmap`` backend, exactly like a threshold detector; see Spec 1 §8).</span>
 <span class="sd">          Already connectivity-labeled, so ``split_disconnected_labels`` is a</span>
@@ -829,6 +841,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_kind</span> <span class="o">==</span> <span class="s2">&quot;instance&quot;</span><span class="p">:</span>
             <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_frame_background</span><span class="p">:</span>
+                <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">drop_frame_background</span><span class="p">()</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">split_disconnected_labels</span><span class="p">:</span>
                 <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">relabel</span><span class="p">(</span><span class="n">connectivity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connectivity</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>  <span class="c1"># semantic</span>

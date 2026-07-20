@@ -1,7 +1,7 @@
 SYMMETRIC_ZONES
 ===============
 
-Python object: ``phenotypic.schema._symmetric_zones.SYMMETRIC_ZONES``
+Python export: ``phenotypic.schema.SYMMETRIC_ZONES``
 
 Mask-based radial expansion measurements for colonies on solid media.
 

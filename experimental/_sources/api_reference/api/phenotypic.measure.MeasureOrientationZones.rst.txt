@@ -19,15 +19,18 @@ phenotypic.measure.MeasureOrientationZones
       ~MeasureOrientationZones.__init__
       ~MeasureOrientationZones.construct
       ~MeasureOrientationZones.copy
+      ~MeasureOrientationZones.cumulative_rotation_overlay
       ~MeasureOrientationZones.dash
       ~MeasureOrientationZones.dashboard
       ~MeasureOrientationZones.dict
+      ~MeasureOrientationZones.fiber_bend_overlay
       ~MeasureOrientationZones.figures
       ~MeasureOrientationZones.from_json
       ~MeasureOrientationZones.from_orm
       ~MeasureOrientationZones.inspect
       ~MeasureOrientationZones.iter_figures
       ~MeasureOrientationZones.json
+      ~MeasureOrientationZones.matched_cumulative_rotation_overlay
       ~MeasureOrientationZones.measure
       ~MeasureOrientationZones.model_construct
       ~MeasureOrientationZones.model_copy
@@ -65,6 +68,11 @@ phenotypic.measure.MeasureOrientationZones
       ~MeasureOrientationZones.intensity_source
       ~MeasureOrientationZones.sigma_d
       ~MeasureOrientationZones.sigma_i
+      ~MeasureOrientationZones.radial_ring_width
+      ~MeasureOrientationZones.long_range_lag
+      ~MeasureOrientationZones.outward_peak_window_rings
+      ~MeasureOrientationZones.outward_min_run_rings
+      ~MeasureOrientationZones.include_diagnostics
       ~MeasureOrientationZones.quiver_block
       ~MeasureOrientationZones.n_annuli
       ~MeasureOrientationZones.pelt_penalty

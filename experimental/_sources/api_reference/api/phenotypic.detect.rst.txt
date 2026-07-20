@@ -25,6 +25,8 @@
       ChanVeseDetector
       CompositeDetector
       FilamentousFungiDetector
+      TwoKFilamentousDetector
+      FilFinderDetector
       HysteresisDetector
       InoculumDetector
       MadHysteresisDetector

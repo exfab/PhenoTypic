@@ -164,7 +164,13 @@ Output Options
    ``master_measurements.csv``. The column is included by default.
 
 ``--metadata PATH``
-   CSV file to inner-join onto ``master_measurements.csv`` on shared columns.
+   CSV file to left-join onto the measurements mirror on shared columns. Every
+   CSV row survives: one that matches no measured object is kept with null
+   measurements and ``QC_MetadataOnly`` set to ``true``, so strains that were
+   never detected stay visible instead of being silently dropped. Measurement
+   rows with no matching CSV row *are* dropped. The join lands on
+   ``deliverables/measurements.csv`` and its derivatives —
+   ``master_measurements.csv`` stays a clean, metadata-free archive.
 
 ``--study PATH``
    Optional ``study.yaml`` of REMBI Study-level fields (Title, License, Author,

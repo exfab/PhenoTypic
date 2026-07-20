@@ -1,7 +1,7 @@
 GENETIC_METADATA
 ================
 
-Python object: ``phenotypic.schema._experimental_tags._genetic.GENETIC_METADATA``
+Python export: ``phenotypic.schema.GENETIC_METADATA``
 
 Recommended ``MetadataGenetic_*`` tags describing the organism and its genetics.
 

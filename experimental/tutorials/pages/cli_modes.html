@@ -849,8 +849,10 @@ the dashboard.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>recompile<span class="w"> </span>--output<span class="w"> </span>./out<span class="w"> </span>--metadata<span class="w"> </span>plate_layout.csv
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">--metadata</span></code> inner-joins the CSV onto <code class="docutils literal notranslate"><span class="pre">master_measurements.csv</span></code> on shared
-columns.</p>
+<p><code class="docutils literal notranslate"><span class="pre">--metadata</span></code> left-joins the CSV onto the measurements mirror on shared columns.
+Every CSV row survives — one that matches no measured object is kept with null
+measurements and <code class="docutils literal notranslate"><span class="pre">QC_MetadataOnly</span></code> set to <code class="docutils literal notranslate"><span class="pre">true</span></code>, so a strain that was never
+detected is visible rather than silently dropped.</p>
 <p>The output directory must already exist, and passing <code class="docutils literal notranslate"><span class="pre">--pipeline</span></code> is an error —
 <code class="docutils literal notranslate"><span class="pre">recompile</span></code> deliberately uses the pipeline the run was executed with, not
 whatever is on disk now.</p>

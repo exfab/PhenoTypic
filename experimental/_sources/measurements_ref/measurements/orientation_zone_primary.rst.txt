@@ -1,0 +1,49 @@
+ORIENTATION_ZONE_PRIMARY
+========================
+
+Python export: ``phenotypic.schema.ORIENTATION_ZONE_PRIMARY``
+
+Primary full-length outward-rotation traits by radial zone.
+
+.. list-table:: Category: **OrientZones**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+     - Type
+   * - ``OrientZones_OutwardRotationSustainedPeak-Mask-Overall``
+     - Largest rolling-median absolute cumulative rotation across consecutive supported literal skeleton-ring crossings from the inferred inoculum boundary through the full detected object extent. Reported in degrees, nonnegative with no fixed upper bound. The default three-ring window rejects a one-ring spike; NaN means no complete supported window.
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``OrientZones_OutwardRotationSustainedPeak-Mask-Dense``
+     - Largest rolling-median absolute cumulative rotation across consecutive supported literal skeleton-ring crossings from the inferred inoculum boundary to dense_end. Reported in degrees, nonnegative with no fixed upper bound. The default three-ring window rejects a one-ring spike; NaN means no complete supported window.
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``OrientZones_OutwardRotationSustainedPeak-Mask-Sparse``
+     - Largest rolling-median absolute cumulative rotation across consecutive supported literal skeleton-ring crossings from dense_end through the full detected object extent. Reported in degrees, nonnegative with no fixed upper bound. The default three-ring window rejects a one-ring spike; NaN means no complete supported window. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``OrientZones_OutwardRotationNet-Mask-Overall``
+     - Outer endpoint median minus inner endpoint median of cumulative literal skeleton-ring rotation along the longest supported run from the inferred inoculum boundary through the full detected object extent. Reported in signed degrees with no fixed bounds; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum.
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``OrientZones_OutwardRotationNet-Mask-Dense``
+     - Outer endpoint median minus inner endpoint median of cumulative literal skeleton-ring rotation along the longest supported run from the inferred inoculum boundary to dense_end. Reported in signed degrees with no fixed bounds; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum.
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``OrientZones_OutwardRotationNet-Mask-Sparse``
+     - Outer endpoint median minus inner endpoint median of cumulative literal skeleton-ring rotation along the longest supported run from dense_end through the full detected object extent. Reported in signed degrees with no fixed bounds; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum. Because this is a difference, cumulative rotation carried into Sparse cancels from the result.
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``OrientZones_OutwardRotationRate-Mask-Overall``
+     - Median of all pairwise cumulative-rotation slopes along the longest supported literal skeleton-ring run from the inferred inoculum boundary through the full detected object extent. Reported in signed degrees per pixel; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum.
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``OrientZones_OutwardRotationRate-Mask-Dense``
+     - Median of all pairwise cumulative-rotation slopes along the longest supported literal skeleton-ring run from the inferred inoculum boundary to dense_end. Reported in signed degrees per pixel; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum.
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``OrientZones_OutwardRotationRate-Mask-Sparse``
+     - Median of all pairwise cumulative-rotation slopes along the longest supported literal skeleton-ring run from dense_end through the full detected object extent. Reported in signed degrees per pixel; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum. The slope is unchanged by cumulative rotation carried into Sparse.
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``OrientZones_OutwardRotationConsistency-Mask-Overall``
+     - Absolute Kendall tau-b association between radius and cumulative literal skeleton-ring rotation along the longest supported run from the inferred inoculum boundary through the full detected object extent. Dimensionless in [0, 1]; 1 is fully monotonic and values near 0 indicate reversals, plateaus, or no ordered trend. Direction is carried by the rotation rate. NaN means the run is shorter than the configured minimum.
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``OrientZones_OutwardRotationConsistency-Mask-Dense``
+     - Absolute Kendall tau-b association between radius and cumulative literal skeleton-ring rotation along the longest supported run from the inferred inoculum boundary to dense_end. Dimensionless in [0, 1]; 1 is fully monotonic and values near 0 indicate reversals, plateaus, or no ordered trend. Direction is carried by the rotation rate. NaN means the run is shorter than the configured minimum.
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``OrientZones_OutwardRotationConsistency-Mask-Sparse``
+     - Absolute Kendall tau-b association between radius and cumulative literal skeleton-ring rotation along the longest supported run from dense_end through the full detected object extent. Dimensionless in [0, 1]; 1 is fully monotonic and values near 0 indicate reversals, plateaus, or no ordered trend. Direction is carried by the rotation rate, and the rank association is unchanged by rotation carried into Sparse. NaN means the run is shorter than the configured minimum.
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`

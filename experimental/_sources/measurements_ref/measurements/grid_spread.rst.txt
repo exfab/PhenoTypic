@@ -1,7 +1,7 @@
 GRID_SPREAD
 ===========
 
-Python object: ``phenotypic.schema._grid_spread.GRID_SPREAD``
+Python export: ``phenotypic.schema.GRID_SPREAD``
 
 Quantify within-well colony dispersion using pairwise centroid distances.
 
