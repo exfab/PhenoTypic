@@ -1,0 +1,9 @@
+Colony,Method,Support,AbsP95,RawPeak,Units,SupportDenominator,Hypotheses
+R3C4,Current radial matched rings,0.285185185185,93.7459753113,155.84177102,degrees,,
+R3C4,Bounded tangential ring graph,0.290740740741,98.6454611523,164.256767849,degrees,,
+R3C4,Cartesian director streamlines,0.944444444444,135.402145442,269.420243606,degrees; Support=supported seed fraction,36.0,35.0
+R3C4,Local bend + tangent occupancy,0.173480398034,0.916089458782,1.6762655394,degrees/pixel; Support=tangent pixel fraction,16682.0,2894.0
+R4C6,Current radial matched rings,0.425925925926,49.83176655,70.5264391982,degrees,,
+R4C6,Bounded tangential ring graph,0.430555555556,54.5026742871,83.3047064142,degrees,,
+R4C6,Cartesian director streamlines,0.888888888889,73.1771071486,76.9292654221,degrees; Support=supported seed fraction,36.0,33.0
+R4C6,Local bend + tangent occupancy,0.111195350013,0.774807452831,1.93778153911,degrees/pixel; Support=tangent pixel fraction,3957.0,440.0

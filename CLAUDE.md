@@ -34,7 +34,13 @@
 ### Linting & Type Checking
 
 - `uv run mypy src/phenotypic` — type checking
-- `uv run ruff check --fix` — format and lint
+- `uv run ruff check --fix <paths you changed>` — lint + autofix. **Always pass explicit
+  paths.** Bare `ruff check --fix` walks the entire repo and rewrites files you never
+  touched, burying your change in unrelated churn (and, in a parallel session, clobbering
+  someone else's in-flight work). `[tool.ruff] extend-exclude` keeps it off the vendored
+  upstream sources under `docs/superpowers/**/refs`, but nothing protects the rest of the
+  tree. If you already ran it bare: `git status`, then revert everything outside your
+  change before committing.
 
 ### CLI
 
@@ -53,9 +59,14 @@
   final HDF, measures, and deletes the sidecar. The output folder is identical to a
   single-pass run; resume is content-defined (HDF → sidecar → parquet) and progress is
   stage-tagged. `--mode process --layer objmap` exports objmaps after Stages 1–2.
-  On SLURM, the three stages submit as a **3-link `afterany` dependency chain** with
-  per-stage resources: Stages 1 & 3 on the CPU `--slurm` profile, Stage 2 as a GPU array
-  of resident-model shard-workers. Stage 2 survives walltime — each sidecar write is
+  On SLURM, the stages submit through the **shared drip-feed dispatcher** (the same one
+  the CPU path uses): Stages 1 & 3 on the CPU `--slurm` profile, Stage 2 as a GPU array
+  of resident-model shard-workers. Stages 1 & 3 auto-split into
+  `ceil(n_images / min(MaxArraySize, MaxSubmitJobs))` chunks (Stage 2 is never chunked —
+  one shard streams on one GPU); only chunk 0 + a tiny dispatcher are queued up front, and
+  each chunk's dispatcher submits the next after it ends. Peak queue occupancy stays at
+  ~1 chunk, so a large run dispatches without hitting "Invalid job array specification" or
+  the per-user `MaxSubmitJobs` cap. Stage 2 survives walltime — each sidecar write is
   atomic and the worker SIGTERM-resubmits its shard, so a `TIMEOUT` never loses work.
   Staged GPU flags (Spec 1 §10):
     - `--gpu-slurm key=value` — Stage-2 GPU SBATCH profile; **inherits/deltas over
@@ -217,6 +228,14 @@ behaviour with a golden fixture (all outputs) **and** behavioural controls → m
 the suite → prove the fixture fails when the bug it guards is reintroduced → one
 drift-register row per deviation, however small. The executable check it produces belongs
 under `docs/superpowers/logic_validation_scripts/` (see **Agentic AI File Rules**).
+
+**Vendored reference sources are read-only.** The upstream copies under
+`docs/superpowers/specs/*/refs/` are the artifact every `file:line` citation and
+line-by-line diff resolves against. They must stay **byte-identical to upstream** — never
+lint, format, autofix, "tidy", or fix a real bug in them. Their imports, style, and even
+their mistakes are the evidence; edit one and every claim ever cited against it silently
+stops meaning anything, with nothing failing to tell you. `[tool.ruff] extend-exclude`
+enforces this for ruff, but the rule binds regardless of the tool.
 
 ## Gotchas
 

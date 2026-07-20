@@ -1,0 +1,1457 @@
+{
+  "cases": {
+    "diagonal_touch_superlevel": {
+      "filtration": "superlevel",
+      "filtration_values": [
+        [
+          -0.0,
+          -2.0
+        ],
+        [
+          -2.0,
+          -0.0
+        ]
+      ],
+      "input": [
+        [
+          0.0,
+          2.0
+        ],
+        [
+          2.0,
+          0.0
+        ]
+      ],
+      "min_persistence": 0.0,
+      "public_contract": {
+        "birth_cells": [
+          [
+            [
+              0,
+              1
+            ]
+          ],
+          []
+        ],
+        "birth_values": [
+          [
+            2.0
+          ],
+          []
+        ],
+        "death_cells": [
+          [
+            [
+              -1,
+              -1
+            ]
+          ],
+          []
+        ],
+        "death_values": [
+          [
+            "-inf"
+          ],
+          []
+        ],
+        "essential_cells": [
+          [
+            [
+              0,
+              1
+            ]
+          ],
+          []
+        ],
+        "lifetimes": [
+          [
+            "+inf"
+          ],
+          []
+        ]
+      },
+      "source_visible": {
+        "all_cells": [
+          [
+            -0.0,
+            -0.0,
+            -2.0,
+            -2.0,
+            -2.0
+          ],
+          [
+            -0.0,
+            -0.0,
+            -2.0,
+            -2.0,
+            -2.0
+          ],
+          [
+            -2.0,
+            -2.0,
+            -2.0,
+            -2.0,
+            -2.0
+          ],
+          [
+            -2.0,
+            -2.0,
+            -2.0,
+            -0.0,
+            -0.0
+          ],
+          [
+            -2.0,
+            -2.0,
+            -2.0,
+            -0.0,
+            -0.0
+          ]
+        ],
+        "betti_numbers": [
+          1,
+          0,
+          0
+        ],
+        "dimension": 2,
+        "essential_coface_ids": [
+          [
+            2
+          ],
+          []
+        ],
+        "intervals_by_dimension": [
+          [
+            [
+              -2.0,
+              "+inf"
+            ]
+          ],
+          []
+        ],
+        "num_simplices": 25,
+        "regular_pair_coface_ids": [
+          [],
+          []
+        ],
+        "top_dimensional_cells": [
+          [
+            -0.0,
+            -2.0
+          ],
+          [
+            -2.0,
+            -0.0
+          ]
+        ]
+      }
+    },
+    "four_peaks_superlevel": {
+      "filtration": "superlevel",
+      "filtration_values": [
+        [
+          -5.0,
+          -1.0,
+          -4.0
+        ],
+        [
+          -1.0,
+          -0.0,
+          -1.0
+        ],
+        [
+          -3.0,
+          -1.0,
+          -2.0
+        ]
+      ],
+      "input": [
+        [
+          5.0,
+          1.0,
+          4.0
+        ],
+        [
+          1.0,
+          0.0,
+          1.0
+        ],
+        [
+          3.0,
+          1.0,
+          2.0
+        ]
+      ],
+      "min_persistence": 0.0,
+      "public_contract": {
+        "birth_cells": [
+          [
+            [
+              2,
+              0
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              2,
+              2
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          [
+            [
+              1,
+              2
+            ]
+          ]
+        ],
+        "birth_values": [
+          [
+            3.0,
+            4.0,
+            2.0,
+            5.0
+          ],
+          [
+            1.0
+          ]
+        ],
+        "death_cells": [
+          [
+            [
+              1,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              -1,
+              -1
+            ]
+          ],
+          [
+            [
+              1,
+              1
+            ]
+          ]
+        ],
+        "death_values": [
+          [
+            1.0,
+            1.0,
+            1.0,
+            "-inf"
+          ],
+          [
+            0.0
+          ]
+        ],
+        "essential_cells": [
+          [
+            [
+              0,
+              0
+            ]
+          ],
+          []
+        ],
+        "lifetimes": [
+          [
+            2.0,
+            3.0,
+            1.0,
+            "+inf"
+          ],
+          [
+            1.0
+          ]
+        ]
+      },
+      "source_visible": {
+        "all_cells": [
+          [
+            -5.0,
+            -5.0,
+            -5.0,
+            -1.0,
+            -4.0,
+            -4.0,
+            -4.0
+          ],
+          [
+            -5.0,
+            -5.0,
+            -5.0,
+            -1.0,
+            -4.0,
+            -4.0,
+            -4.0
+          ],
+          [
+            -5.0,
+            -5.0,
+            -5.0,
+            -1.0,
+            -4.0,
+            -4.0,
+            -4.0
+          ],
+          [
+            -1.0,
+            -1.0,
+            -1.0,
+            -0.0,
+            -1.0,
+            -1.0,
+            -1.0
+          ],
+          [
+            -3.0,
+            -3.0,
+            -3.0,
+            -1.0,
+            -2.0,
+            -2.0,
+            -2.0
+          ],
+          [
+            -3.0,
+            -3.0,
+            -3.0,
+            -1.0,
+            -2.0,
+            -2.0,
+            -2.0
+          ],
+          [
+            -3.0,
+            -3.0,
+            -3.0,
+            -1.0,
+            -2.0,
+            -2.0,
+            -2.0
+          ]
+        ],
+        "betti_numbers": [
+          1,
+          0,
+          0
+        ],
+        "dimension": 2,
+        "essential_coface_ids": [
+          [
+            0
+          ],
+          []
+        ],
+        "intervals_by_dimension": [
+          [
+            [
+              -3.0,
+              -1.0
+            ],
+            [
+              -4.0,
+              -1.0
+            ],
+            [
+              -2.0,
+              -1.0
+            ],
+            [
+              -5.0,
+              "+inf"
+            ]
+          ],
+          [
+            [
+              -1.0,
+              -0.0
+            ]
+          ]
+        ],
+        "num_simplices": 49,
+        "regular_pair_coface_ids": [
+          [
+            [
+              2,
+              1
+            ],
+            [
+              6,
+              3
+            ],
+            [
+              8,
+              5
+            ]
+          ],
+          [
+            [
+              7,
+              4
+            ]
+          ]
+        ],
+        "top_dimensional_cells": [
+          [
+            -5.0,
+            -1.0,
+            -4.0
+          ],
+          [
+            -1.0,
+            -0.0,
+            -1.0
+          ],
+          [
+            -3.0,
+            -1.0,
+            -2.0
+          ]
+        ]
+      }
+    },
+    "four_peaks_threshold_equality": {
+      "filtration": "superlevel",
+      "filtration_values": [
+        [
+          -5.0,
+          -1.0,
+          -4.0
+        ],
+        [
+          -1.0,
+          -0.0,
+          -1.0
+        ],
+        [
+          -3.0,
+          -1.0,
+          -2.0
+        ]
+      ],
+      "input": [
+        [
+          5.0,
+          1.0,
+          4.0
+        ],
+        [
+          1.0,
+          0.0,
+          1.0
+        ],
+        [
+          3.0,
+          1.0,
+          2.0
+        ]
+      ],
+      "min_persistence": 2.0,
+      "public_contract": {
+        "birth_cells": [
+          [
+            [
+              0,
+              2
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          []
+        ],
+        "birth_values": [
+          [
+            4.0,
+            5.0
+          ],
+          []
+        ],
+        "death_cells": [
+          [
+            [
+              0,
+              1
+            ],
+            [
+              -1,
+              -1
+            ]
+          ],
+          []
+        ],
+        "death_values": [
+          [
+            1.0,
+            "-inf"
+          ],
+          []
+        ],
+        "essential_cells": [
+          [
+            [
+              0,
+              0
+            ]
+          ],
+          []
+        ],
+        "lifetimes": [
+          [
+            3.0,
+            "+inf"
+          ],
+          []
+        ]
+      },
+      "source_visible": {
+        "all_cells": [
+          [
+            -5.0,
+            -5.0,
+            -5.0,
+            -1.0,
+            -4.0,
+            -4.0,
+            -4.0
+          ],
+          [
+            -5.0,
+            -5.0,
+            -5.0,
+            -1.0,
+            -4.0,
+            -4.0,
+            -4.0
+          ],
+          [
+            -5.0,
+            -5.0,
+            -5.0,
+            -1.0,
+            -4.0,
+            -4.0,
+            -4.0
+          ],
+          [
+            -1.0,
+            -1.0,
+            -1.0,
+            -0.0,
+            -1.0,
+            -1.0,
+            -1.0
+          ],
+          [
+            -3.0,
+            -3.0,
+            -3.0,
+            -1.0,
+            -2.0,
+            -2.0,
+            -2.0
+          ],
+          [
+            -3.0,
+            -3.0,
+            -3.0,
+            -1.0,
+            -2.0,
+            -2.0,
+            -2.0
+          ],
+          [
+            -3.0,
+            -3.0,
+            -3.0,
+            -1.0,
+            -2.0,
+            -2.0,
+            -2.0
+          ]
+        ],
+        "betti_numbers": [
+          1,
+          0,
+          0
+        ],
+        "dimension": 2,
+        "essential_coface_ids": [
+          [
+            0
+          ],
+          []
+        ],
+        "intervals_by_dimension": [
+          [
+            [
+              -4.0,
+              -1.0
+            ],
+            [
+              -5.0,
+              "+inf"
+            ]
+          ],
+          []
+        ],
+        "num_simplices": 49,
+        "regular_pair_coface_ids": [
+          [
+            [
+              6,
+              3
+            ]
+          ],
+          []
+        ],
+        "top_dimensional_cells": [
+          [
+            -5.0,
+            -1.0,
+            -4.0
+          ],
+          [
+            -1.0,
+            -0.0,
+            -1.0
+          ],
+          [
+            -3.0,
+            -1.0,
+            -2.0
+          ]
+        ]
+      }
+    },
+    "non_square_sublevel": {
+      "filtration": "sublevel",
+      "filtration_values": [
+        [
+          3.0,
+          -1.0,
+          2.0
+        ],
+        [
+          0.0,
+          4.0,
+          1.0
+        ]
+      ],
+      "input": [
+        [
+          3.0,
+          -1.0,
+          2.0
+        ],
+        [
+          0.0,
+          4.0,
+          1.0
+        ]
+      ],
+      "min_persistence": 0.0,
+      "public_contract": {
+        "birth_cells": [
+          [
+            [
+              0,
+              1
+            ]
+          ],
+          []
+        ],
+        "birth_values": [
+          [
+            -1.0
+          ],
+          []
+        ],
+        "death_cells": [
+          [
+            [
+              -1,
+              -1
+            ]
+          ],
+          []
+        ],
+        "death_values": [
+          [
+            "+inf"
+          ],
+          []
+        ],
+        "essential_cells": [
+          [
+            [
+              0,
+              1
+            ]
+          ],
+          []
+        ],
+        "lifetimes": [
+          [
+            "+inf"
+          ],
+          []
+        ]
+      },
+      "source_visible": {
+        "all_cells": [
+          [
+            3.0,
+            3.0,
+            -1.0,
+            -1.0,
+            -1.0,
+            2.0,
+            2.0
+          ],
+          [
+            3.0,
+            3.0,
+            -1.0,
+            -1.0,
+            -1.0,
+            2.0,
+            2.0
+          ],
+          [
+            0.0,
+            0.0,
+            -1.0,
+            -1.0,
+            -1.0,
+            1.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            4.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            4.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        ],
+        "betti_numbers": [
+          1,
+          0,
+          0
+        ],
+        "dimension": 2,
+        "essential_coface_ids": [
+          [
+            2
+          ],
+          []
+        ],
+        "intervals_by_dimension": [
+          [
+            [
+              -1.0,
+              "+inf"
+            ]
+          ],
+          []
+        ],
+        "num_simplices": 35,
+        "regular_pair_coface_ids": [
+          [],
+          []
+        ],
+        "top_dimensional_cells": [
+          [
+            3.0,
+            -1.0,
+            2.0
+          ],
+          [
+            0.0,
+            4.0,
+            1.0
+          ]
+        ]
+      }
+    },
+    "one_hole_sublevel": {
+      "filtration": "sublevel",
+      "filtration_values": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          2.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "input": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          2.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "min_persistence": 0.0,
+      "public_contract": {
+        "birth_cells": [
+          [
+            [
+              2,
+              2
+            ]
+          ],
+          [
+            [
+              1,
+              2
+            ]
+          ]
+        ],
+        "birth_values": [
+          [
+            0.0
+          ],
+          [
+            0.0
+          ]
+        ],
+        "death_cells": [
+          [
+            [
+              -1,
+              -1
+            ]
+          ],
+          [
+            [
+              1,
+              1
+            ]
+          ]
+        ],
+        "death_values": [
+          [
+            "+inf"
+          ],
+          [
+            2.0
+          ]
+        ],
+        "essential_cells": [
+          [
+            [
+              2,
+              2
+            ]
+          ],
+          []
+        ],
+        "lifetimes": [
+          [
+            "+inf"
+          ],
+          [
+            2.0
+          ]
+        ]
+      },
+      "source_visible": {
+        "all_cells": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            2.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "betti_numbers": [
+          1,
+          0,
+          0
+        ],
+        "dimension": 2,
+        "essential_coface_ids": [
+          [
+            8
+          ],
+          []
+        ],
+        "intervals_by_dimension": [
+          [
+            [
+              0.0,
+              "+inf"
+            ]
+          ],
+          [
+            [
+              0.0,
+              2.0
+            ]
+          ]
+        ],
+        "num_simplices": 49,
+        "regular_pair_coface_ids": [
+          [],
+          [
+            [
+              7,
+              4
+            ]
+          ]
+        ],
+        "top_dimensional_cells": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            2.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      }
+    },
+    "plateau_superlevel": {
+      "filtration": "superlevel",
+      "filtration_values": [
+        [
+          -2.0,
+          -2.0,
+          -0.0
+        ],
+        [
+          -2.0,
+          -1.0,
+          -0.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -0.0
+        ]
+      ],
+      "input": [
+        [
+          2.0,
+          2.0,
+          0.0
+        ],
+        [
+          2.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "min_persistence": 0.0,
+      "public_contract": {
+        "birth_cells": [
+          [
+            [
+              0,
+              1
+            ]
+          ],
+          []
+        ],
+        "birth_values": [
+          [
+            2.0
+          ],
+          []
+        ],
+        "death_cells": [
+          [
+            [
+              -1,
+              -1
+            ]
+          ],
+          []
+        ],
+        "death_values": [
+          [
+            "-inf"
+          ],
+          []
+        ],
+        "essential_cells": [
+          [
+            [
+              0,
+              1
+            ]
+          ],
+          []
+        ],
+        "lifetimes": [
+          [
+            "+inf"
+          ],
+          []
+        ]
+      },
+      "source_visible": {
+        "all_cells": [
+          [
+            -2.0,
+            -2.0,
+            -2.0,
+            -2.0,
+            -2.0,
+            -0.0,
+            -0.0
+          ],
+          [
+            -2.0,
+            -2.0,
+            -2.0,
+            -2.0,
+            -2.0,
+            -0.0,
+            -0.0
+          ],
+          [
+            -2.0,
+            -2.0,
+            -2.0,
+            -2.0,
+            -2.0,
+            -0.0,
+            -0.0
+          ],
+          [
+            -2.0,
+            -2.0,
+            -2.0,
+            -1.0,
+            -1.0,
+            -0.0,
+            -0.0
+          ],
+          [
+            -2.0,
+            -2.0,
+            -2.0,
+            -1.0,
+            -1.0,
+            -0.0,
+            -0.0
+          ],
+          [
+            -0.0,
+            -0.0,
+            -0.0,
+            -0.0,
+            -0.0,
+            -0.0,
+            -0.0
+          ],
+          [
+            -0.0,
+            -0.0,
+            -0.0,
+            -0.0,
+            -0.0,
+            -0.0,
+            -0.0
+          ]
+        ],
+        "betti_numbers": [
+          1,
+          0,
+          0
+        ],
+        "dimension": 2,
+        "essential_coface_ids": [
+          [
+            3
+          ],
+          []
+        ],
+        "intervals_by_dimension": [
+          [
+            [
+              -2.0,
+              "+inf"
+            ]
+          ],
+          []
+        ],
+        "num_simplices": 49,
+        "regular_pair_coface_ids": [
+          [],
+          []
+        ],
+        "top_dimensional_cells": [
+          [
+            -2.0,
+            -2.0,
+            -0.0
+          ],
+          [
+            -2.0,
+            -1.0,
+            -0.0
+          ],
+          [
+            -0.0,
+            -0.0,
+            -0.0
+          ]
+        ]
+      }
+    },
+    "single_sublevel": {
+      "filtration": "sublevel",
+      "filtration_values": [
+        [
+          2.5
+        ]
+      ],
+      "input": [
+        [
+          2.5
+        ]
+      ],
+      "min_persistence": 0.0,
+      "public_contract": {
+        "birth_cells": [
+          [
+            [
+              0,
+              0
+            ]
+          ],
+          []
+        ],
+        "birth_values": [
+          [
+            2.5
+          ],
+          []
+        ],
+        "death_cells": [
+          [
+            [
+              -1,
+              -1
+            ]
+          ],
+          []
+        ],
+        "death_values": [
+          [
+            "+inf"
+          ],
+          []
+        ],
+        "essential_cells": [
+          [
+            [
+              0,
+              0
+            ]
+          ],
+          []
+        ],
+        "lifetimes": [
+          [
+            "+inf"
+          ],
+          []
+        ]
+      },
+      "source_visible": {
+        "all_cells": [
+          [
+            2.5,
+            2.5,
+            2.5
+          ],
+          [
+            2.5,
+            2.5,
+            2.5
+          ],
+          [
+            2.5,
+            2.5,
+            2.5
+          ]
+        ],
+        "betti_numbers": [
+          1,
+          0,
+          0
+        ],
+        "dimension": 2,
+        "essential_coface_ids": [
+          [
+            0
+          ],
+          []
+        ],
+        "intervals_by_dimension": [
+          [
+            [
+              2.5,
+              "+inf"
+            ]
+          ],
+          []
+        ],
+        "num_simplices": 9,
+        "regular_pair_coface_ids": [
+          [],
+          []
+        ],
+        "top_dimensional_cells": [
+          [
+            2.5
+          ]
+        ]
+      }
+    },
+    "single_superlevel": {
+      "filtration": "superlevel",
+      "filtration_values": [
+        [
+          -2.5
+        ]
+      ],
+      "input": [
+        [
+          2.5
+        ]
+      ],
+      "min_persistence": 0.0,
+      "public_contract": {
+        "birth_cells": [
+          [
+            [
+              0,
+              0
+            ]
+          ],
+          []
+        ],
+        "birth_values": [
+          [
+            2.5
+          ],
+          []
+        ],
+        "death_cells": [
+          [
+            [
+              -1,
+              -1
+            ]
+          ],
+          []
+        ],
+        "death_values": [
+          [
+            "-inf"
+          ],
+          []
+        ],
+        "essential_cells": [
+          [
+            [
+              0,
+              0
+            ]
+          ],
+          []
+        ],
+        "lifetimes": [
+          [
+            "+inf"
+          ],
+          []
+        ]
+      },
+      "source_visible": {
+        "all_cells": [
+          [
+            -2.5,
+            -2.5,
+            -2.5
+          ],
+          [
+            -2.5,
+            -2.5,
+            -2.5
+          ],
+          [
+            -2.5,
+            -2.5,
+            -2.5
+          ]
+        ],
+        "betti_numbers": [
+          1,
+          0,
+          0
+        ],
+        "dimension": 2,
+        "essential_coface_ids": [
+          [
+            0
+          ],
+          []
+        ],
+        "intervals_by_dimension": [
+          [
+            [
+              -2.5,
+              "+inf"
+            ]
+          ],
+          []
+        ],
+        "num_simplices": 9,
+        "regular_pair_coface_ids": [
+          [],
+          []
+        ],
+        "top_dimensional_cells": [
+          [
+            -2.5
+          ]
+        ]
+      }
+    }
+  },
+  "oracle": {
+    "cell_convention": "top-dimensional cells",
+    "flat_order": "Fortran",
+    "homology_coeff_field": 11,
+    "module_filename": "__init__.py",
+    "module_origin": "locally pinned CPython 3.12 macOS universal wheel",
+    "numpy": "2.3.5",
+    "package": "gudhi",
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "python": "3.12.11",
+    "version": "3.13.0"
+  },
+  "schema_version": 1
+}

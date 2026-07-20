@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reconnecting Broken Networks — How Eight Fields Fix Fragmented Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f; --teal:#0f8a80;
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;overflow-wrap:break-word;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  .hero{padding:clamp(34px,7vw,64px) 0 14px;max-width:82ch}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
+  .hero-title{font-family:var(--serif);font-weight:700;font-size:clamp(30px,5.6vw,52px);line-height:1.03;margin:0 0 16px;color:var(--ink);letter-spacing:-.015em}
+  .hero-title em{font-style:italic;color:var(--vermillion)}
+  .lede{font-size:clamp(16px,2.3vw,19px);color:var(--text);margin:0 0 14px}
+  .lede b{color:var(--ink);font-weight:600}
+  .lede em{font-style:italic;color:var(--text-dim)}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:24px 0 8px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
+  .kpi__v{font-family:var(--serif);font-size:32px;font-weight:700;letter-spacing:-.5px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+  .kpi__l{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin-top:8px}
+
+  .band{padding:34px 0 4px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(21px,3.4vw,30px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 18px;max-width:80ch}
+  .section-sub b{color:var(--ink);font-weight:600}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:4px 0 20px}
+
+  /* ---- strategy families ---- */
+  .fam-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+  .fam{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .fam::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--fc,var(--blue))}
+  .fam h4{margin:0 0 4px;font-family:var(--serif);font-size:16px;font-weight:600;color:var(--ink);padding-left:6px}
+  .fam .fam-k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--fc,var(--blue));font-weight:600;display:block;margin:0 0 6px 6px}
+  .fam p{margin:0 0 8px;font-size:13px;color:var(--text-dim);padding-left:6px}
+  .fam p b{color:var(--ink);font-weight:600}
+  .fam .fam-fields{font-family:var(--mono);font-size:10.5px;color:var(--faint);padding-left:6px}
+
+  /* ---- field cards ---- */
+  .field{margin-top:22px;scroll-margin-top:70px}
+  .field__card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:0;overflow:hidden}
+  .field__head{display:flex;align-items:flex-start;gap:14px;padding:18px 20px 14px;border-bottom:1px solid var(--border);position:relative}
+  .field__head::before{content:'';position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--fc,var(--blue))}
+  .field__badge{font-family:var(--serif);font-weight:700;font-size:24px;width:46px;height:46px;display:grid;place-items:center;color:#fff;background:var(--fc,var(--blue));border-radius:11px;flex:none;position:relative;overflow:hidden}
+  .field__badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.25),transparent 60%)}
+  .field__ttl{flex:1;min-width:0}
+  .field__ttl h3{margin:0 0 3px;font-family:var(--serif);font-size:19px;font-weight:600;color:var(--ink);letter-spacing:-.01em}
+  .field__ttl .field__src{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+  .yes{font-family:var(--mono);font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap;background:rgba(213,94,0,.12);color:var(--vermillion);border:1px solid rgba(213,94,0,.3);align-self:center;display:inline-flex;align-items:center;gap:5px}
+  .yes::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+
+  .field__body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0}
+  .field__txt{padding:16px 20px 18px}
+  .field__viz{padding:16px 18px;border-left:1px solid var(--border);background:var(--surface-2);display:flex;flex-direction:column;justify-content:center}
+  .frow{margin:0 0 12px}
+  .frow:last-child{margin-bottom:0}
+  .frow .flabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--fc,var(--blue));font-weight:600;display:block;margin-bottom:3px}
+  .frow p{margin:0;font-size:13.5px;color:var(--text-dim)}
+  .frow p b{color:var(--ink);font-weight:600}
+  .frow code{font-family:var(--mono);font-size:12px;background:var(--inset);color:var(--ink);padding:1px 5px;border-radius:4px}
+
+  .mapchip{display:inline-block;font-family:var(--mono);font-size:10.5px;background:var(--inset);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:2px 8px;margin:3px 4px 0 0}
+  .mapchip b{color:var(--ink)}
+
+  /* ---- implementation-availability chips ---- */
+  .av2{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;font-weight:500;padding:2px 8px;border-radius:999px;border:1px solid transparent;margin:4px 5px 0 0;white-space:nowrap}
+  .av2::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+  .av2 code{font-family:var(--mono);font-size:.92em;opacity:.8;background:none;padding:0;border-radius:0}
+  .av2--pip{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .av2--oss{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.28)}
+  .av2--caveat{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .av2--port{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+  .avlegend{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:0 0 20px;box-shadow:var(--shadow);font-size:13px;color:var(--text-dim);line-height:2}
+  .avlegend .avl-t{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:8px}
+  .avlegend .avl-note{display:block;margin-top:10px;font-size:12.5px;line-height:1.6}
+  .avlegend .avl-note b{color:var(--ink);font-weight:600}
+  .avlegend .avl-note code{font-family:var(--mono);font-size:.95em}
+
+  figure.illo{margin:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 10px 6px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-s{font-family:var(--mono);font-size:11px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12px;color:var(--text-dim);margin-top:7px;line-height:1.4}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  .cite{font-size:12px;color:var(--text-dim);margin-top:10px;line-height:1.5}
+  .cite b{color:var(--ink);font-weight:600}
+
+  /* ---- comparison table ---- */
+  .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);background:var(--surface)}
+  table.cmp{border-collapse:collapse;width:100%;min-width:760px;font-size:13px}
+  table.cmp th,table.cmp td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+  table.cmp thead th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);background:var(--surface-2);position:sticky;top:0}
+  table.cmp tbody tr:last-child td{border-bottom:0}
+  table.cmp td b{color:var(--ink);font-weight:600}
+  table.cmp .fld{font-family:var(--serif);font-weight:600;color:var(--ink);white-space:nowrap}
+  table.cmp .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+
+  /* ---- references ---- */
+  .refs{columns:2;column-gap:32px}
+  @media(max-width:720px){.refs{columns:1}}
+  .refgrp{break-inside:avoid;margin:0 0 16px}
+  .refgrp h5{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--fc,var(--faint));margin:0 0 6px;font-weight:600}
+  .refgrp ol{margin:0;padding-left:18px}
+  .refgrp li{font-size:12.5px;color:var(--text-dim);margin:0 0 6px;line-height:1.45}
+  .refgrp li b{color:var(--ink);font-weight:600}
+
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);border-radius:10px;padding:16px 20px;margin:12px 0 0;box-shadow:var(--shadow);font-size:13.5px;color:var(--text-dim)}
+  .callout b{color:var(--ink);font-weight:600}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  .footer{margin-top:44px;border-top:1px solid var(--rule);padding:24px 0 56px;color:var(--text-dim);font-size:12.5px;font-family:var(--mono);line-height:1.7}
+
+  @media(max-width:820px){.field__body{grid-template-columns:1fr}.field__viz{border-left:0;border-top:1px solid var(--border)}}
+  @media print{body{background:#fff}.topbar{position:static}.kpi,.fam,.field__card,.callout,.tablewrap{box-shadow:none}.field,.fam{break-inside:avoid}}
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Reconnecting Broken Networks</b> · cross-field survey</span>
+  <nav>
+    <a href="index-fieldnotebook.html">↩ Method tree</a>
+    <a href="#families">Strategies</a>
+    <a href="#fields">Fields</a>
+    <a href="#refs">References</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-kicker">Follow-up to the hyphae-detection method tree · cross-field research</div>
+    <h1 class="hero-title">Everything thin detects as <em>fragments</em> — and every field reinvented how to reconnect it</h1>
+    <p class="lede">Start with the question that prompted this: in the <b>cosmic web</b>, filament detection is
+      notoriously broken. Skeletons come out as short, disconnected arcs salted with spurious segments, because the
+      network is traced from a <b>sparse, noisy point cloud</b> and topological ridge-finders faithfully skeletonize
+      the noise too. So cosmology built machinery to decide <b>real&nbsp;vs.&nbsp;spurious</b> and stitch the survivors
+      into one network — persistence thresholds, multiscale classifiers, stochastic and graph-regularized assembly.</p>
+    <p class="lede">The striking part: <b>the same problem, and strikingly similar fixes, recur in seven other
+      fields</b> that the fungi-detection method tree borrowed from. Thin curvilinear structures — filaments, neurons,
+      particle tracks, vessels, roads, roots, faults, cytoskeletal fibers — all detect as fragments under noise,
+      crossings, and occlusion, and each discipline independently converged on a small set of reconnection strategies.
+      <em>This report compiles what each field found, with citations, and maps every fix back to a method in the tree.</em></p>
+  </section>
+
+  <div class="kpis">
+    <div class="kpi"><div class="kpi__v">8</div><div class="kpi__l">Source fields surveyed</div></div>
+    <div class="kpi"><div class="kpi__v">7</div><div class="kpi__l">Reconstruction strategy families</div></div>
+    <div class="kpi"><div class="kpi__v">~55</div><div class="kpi__l">Papers retrieved &amp; cited</div></div>
+    <div class="kpi"><div class="kpi__v">1</div><div class="kpi__l">Shared underlying problem</div></div>
+  </div>
+
+  <!-- =============== STRATEGY FAMILIES =============== -->
+  <section class="band" id="families">
+    <h2 class="section-title">The seven reconstruction strategy families</h2>
+    <p class="section-sub">Across all eight fields, every fix falls into one of these families. Most fields combine
+      two or three. The recurring logic: <b>detect fragments → decide which are real → bridge or assemble the survivors</b>.</p>
+    <hr class="rule">
+    <div class="fam-grid">
+
+      <div class="fam" style="--fc:var(--purple)">
+        <span class="fam-k">A · significance thresholding</span>
+        <h4>Keep only what's real</h4>
+        <p>Score every candidate segment and delete the noise-born ones below a cut, so what remains can connect cleanly.</p>
+        <p class="fam-fields">persistence N&sigma; · Kalman hole-budget · length/intensity pruning · flow-accumulation threshold</p>
+      </div>
+
+      <div class="fam" style="--fc:var(--green)">
+        <span class="fam-k">B · least-cost / geodesic path</span>
+        <h4>Carve a corridor through the gap</h4>
+        <p>Build a cost/likelihood field and route a minimum-cost path between fragment ends; a broken-but-likely
+          structure still forms a cheap corridor.</p>
+        <p class="fam-fields">GWDT / Dijkstra · A* over a distance map · depression-filled D8 routing</p>
+      </div>
+
+      <div class="fam" style="--fc:var(--orange)">
+        <span class="fam-k">C · predict-and-coast tracking</span>
+        <h4>Extend through the gap along orientation</h4>
+        <p>Follow a hypothesised trajectory; when evidence is missing, propagate the prediction (coast) across the
+          dropout instead of terminating.</p>
+        <p class="fam-fields">combinatorial Kalman · streamline integration · stretching active contours</p>
+      </div>
+
+      <div class="fam" style="--fc:var(--blue)">
+        <span class="fam-k">D · global graph / optimization</span>
+        <h4>Assemble fragments into the network</h4>
+        <p>Solve for the entire connected structure jointly — pair fragments, classify edges, or regularize a spanning tree to build the whole structure — from global joint solutions (MST, GNN) to iterative cost-ranked terminus pairing.</p>
+        <p class="fam-fields">regularized MST (T-ReX) · GNN edge classification · SIFNE fragment-pairing · global tractography</p>
+      </div>
+
+      <div class="fam" style="--fc:var(--yellow)">
+        <span class="fam-k">E · swarm / voting reinforcement</span>
+        <h4>Let distributed evidence accumulate</h4>
+        <p>Many agents or votes reinforce coherent structure while incoherent noise fails to accumulate — connectivity
+          emerges statistically.</p>
+        <p class="fam-fields">seismic ant-tracking · tensor voting · Rolling Hough coherence · Bisous point process</p>
+      </div>
+
+      <div class="fam" style="--fc:var(--vermillion)">
+        <span class="fam-k">F · topology-aware learning</span>
+        <h4>Penalize breakage during training</h4>
+        <p>Replace pixel-overlap losses (which are topology-blind) with losses that reward an unbroken 1-D skeleton or
+          matching Betti numbers.</p>
+        <p class="fam-fields">clDice · persistent-homology / Betti loss · homotopy warping</p>
+      </div>
+
+      <div class="fam" style="--fc:var(--sky)">
+        <span class="fam-k">G · multiscale evidence recovery</span>
+        <h4>Recover the crest at the scale it survives</h4>
+        <p>A structure broken at one scale is coherent at another; decompose across scales, clean each, and recombine.</p>
+        <p class="fam-fields">NEXUS+ Hessian signature · getfilaments · curvelet denoising (CT-FIRE)</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- =============== FIELD CARDS =============== -->
+  <section class="band" id="fields">
+    <h2 class="section-title">Field by field</h2>
+    <p class="section-sub">Each card: is fragmentation common (and why), what causes it, how the field reconstructs, and
+      which method(s) in the <a href="index-fieldnotebook.html">detection method tree</a> embody that fix. Families in the
+      corner tags reference the taxonomy above.</p>
+    <hr class="rule">
+
+    <div class="avlegend">
+      <span class="avl-t">Implementation availability — verified against PyPI / GitHub during this survey</span>
+      <span class="av2 av2--pip">PIP</span> pip-installable, permissive, maintained &nbsp;·&nbsp;
+      <span class="av2 av2--oss">OSS</span> open source, git-install / compile / stale &nbsp;·&nbsp;
+      <span class="av2 av2--caveat">CAVEAT</span> GPL / non-commercial / commercial / heavy build &nbsp;·&nbsp;
+      <span class="av2 av2--port">PORT</span> no clean impl (MATLAB / C++ / paper-only) — port it
+      <span class="avl-note"><b>Takeaway:</b> a handful are genuinely pip-and-go — FilFinder, GUDHI, DIPY, clDice (via MONAI), D8 (via whitebox); most are open but need a git-clone/compile; and <b>seven need a real port</b> — APP2 tracing, HEP Hough seeding, tensor voting, SIFNE, the original FIRE, the Leitner root tracker, and seismic ant-tracking (a commercial Petrel feature). Each card's <b>Implementations</b> row shows the best available impl per method; <code>*</code> = third-party reimplementation, <code>¹</code> = Linux wheels only (compiles elsewhere).</span>
+    </div>
+
+    <!-- 1. COSMOLOGY -->
+    <article class="field" id="f-cosmo" style="--fc:var(--purple)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">Ω</div>
+          <div class="field__ttl"><h3>Cosmology — the cosmic web</h3><span class="field__src">DisPerSE · NEXUS+ · Bisous · T-ReX · families A·D·E·G</span></div>
+          <span class="yes">fragmentation: intrinsic</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why it fragments</span><p>Filaments are traced from a <b>discrete, sparse point cloud</b> (galaxies/particles). The density field must be estimated first, and every estimator injects <b>shot noise</b>; a Morse skeleton then faithfully traces each noise bump as its own short arc. Disagreement between methods is worst exactly where filaments are <b>faint</b> (signal ≈ noise).</p></div>
+            <div class="frow"><span class="flabel">How it reconnects</span><p><b>Persistence N&sigma; thresholding</b> (DisPerSE): pair each critical point with its topological partner and cancel low-persistence pairs — the principled real-vs-spurious cut (higher &sigma; = cleaner but sparser). Plus <b>pre-smoothing</b> to tame shot noise, <b>multiscale Hessian</b> classification (NEXUS+), a <b>stochastic marked point process</b> that builds connectivity into its prior (Bisous), and <b>bootstrap-averaged regularized minimum spanning trees</b> (T-ReX) that replace one jagged MST with a smooth traversal-frequency network.</p></div>
+            <div class="frow"><span class="flabel">Maps to method tree</span>
+              <span class="mapchip"><b>DisPerSE</b></span><span class="mapchip"><b>FilFinder</b></span><span class="mapchip"><b>PH/Morse (GUDHI)</b></span>
+            </div>
+            <div class="frow"><span class="flabel">Inputs</span><p><b>DisPerSE / NEXUS+</b> ← an estimated <b>density field</b> (DTFE / Delaunay) over the galaxy-or-particle point cloud; <b>Bisous / T-ReX</b> ← the raw <b>point set</b>; <b>FilFinder / GUDHI</b> ← a 2D intensity map / scalar field.</p></div>
+            <div class="frow"><span class="flabel">Implementations</span><span class="av2 av2--pip">FilFinder <code>fil-finder</code></span><span class="av2 av2--pip">GUDHI <code>gudhi</code></span><span class="av2 av2--pip">NEXUS+ <code>pycosmommf*</code></span><span class="av2 av2--caveat">DisPerSE <code>C++·CeCILL</code></span><span class="av2 av2--caveat">T-ReX <code>t-rex·GPL</code></span><span class="av2 av2--caveat">Bisous <code>Fortran·stale</code></span></div>
+            <p class="cite"><b>Key sources:</b> Sousbie 2011 (DisPerSE); Cautun+ 2013 (NEXUS+); Tempel+ 2016 (Bisous); Bonnaire+ 2020 (T-ReX); Libeskind+ 2018 (12-method comparison). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="Noisy galaxy point cloud yields fragmented ridges; a persistence threshold cancels short arcs to leave a connected filament web">
+                <text class="lbl" x="14" y="20">galaxies → noisy ridges</text>
+                <g fill="var(--faint)">
+                  <circle cx="30" cy="60" r="1.7"/><circle cx="58" cy="52" r="1.7"/><circle cx="86" cy="66" r="1.7"/><circle cx="52" cy="84" r="1.7"/><circle cx="92" cy="92" r="1.7"/><circle cx="34" cy="104" r="1.7"/><circle cx="72" cy="120" r="1.7"/><circle cx="110" cy="108" r="1.7"/><circle cx="120" cy="140" r="1.7"/><circle cx="46" cy="140" r="1.7"/>
+                </g>
+                <path class="struct" stroke="var(--purple)" d="M30,60 C55,58 70,70 92,92 C104,104 112,118 120,140"/>
+                <path class="struct" stroke="var(--purple)" opacity=".85" d="M34,104 C48,100 60,110 72,120"/>
+                <path class="struct" stroke="var(--rule)" stroke-dasharray="3 3" d="M52,84 C58,92 60,98 60,104"/>
+                <path class="struct" stroke="var(--rule)" stroke-dasharray="3 3" d="M110,108 C114,116 116,122 116,128"/>
+                <text class="lbl-s" x="128" y="150" fill="var(--purple)">spurious arcs ✕</text>
+                <!-- persistence bar -->
+                <g transform="translate(226,26)">
+                  <text class="lbl" x="0" y="6">persistence</text>
+                  <line class="axis" x1="6" y1="12" x2="6" y2="118"/>
+                  <line class="axis" x1="6" y1="70" x2="118" y2="70" stroke-dasharray="4 3"/>
+                  <text class="lbl-s" x="70" y="66" fill="var(--purple)">Nσ cut</text>
+                  <rect x="18" y="22" width="15" height="48" fill="rgba(184,99,143,.25)" stroke="var(--purple)" stroke-width="1.4"/>
+                  <rect x="40" y="14" width="15" height="56" fill="rgba(184,99,143,.25)" stroke="var(--purple)" stroke-width="1.4"/>
+                  <rect x="62" y="82" width="15" height="16" fill="rgba(213,94,0,.18)" stroke="var(--vermillion)" stroke-width="1.2"/>
+                  <rect x="84" y="88" width="15" height="10" fill="rgba(213,94,0,.18)" stroke="var(--vermillion)" stroke-width="1.2"/>
+                  <text class="lbl" x="16" y="112">keep · cancel</text>
+                </g>
+                <text class="lbl-s" x="180" y="200" text-anchor="middle" fill="var(--purple)">cancel low-persistence pairs → connected web</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> pair &amp; cancel critical points below an N&sigma; persistence lifetime, deleting noise-born arcs and leaving the robust ridge network.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 2. ISM ASTRONOMY -->
+    <article class="field" id="f-ism" style="--fc:var(--sky)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">✦</div>
+          <div class="field__ttl"><h3>Astronomy — ISM &amp; molecular-cloud filaments</h3><span class="field__src">FilFinder · Rolling Hough · getfilaments · families A·B·E·G</span></div>
+          <span class="yes">fragmentation: common</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why it fragments</span><p>A physically continuous filament is thresholded on a <b>noisy field with a bright, varying background</b>, so intensity dips along the crest sever the spine and noise spawns spurs. Green+ 2017 show extraction is acutely <b>parameter-sensitive</b> — varying DisPerSE/FilFinder inputs yields thousands of visibly different skeletons (historically chosen by eye; they propose MSSIM as an objective goodness-of-fit).</p></div>
+            <div class="frow"><span class="flabel">How it reconnects</span><p><b>FilFinder</b>: arctan-flatten → <b>adaptive (local-median) threshold</b> so faint crests survive → medial-axis skeleton → prune a spur only if deletion preserves connectivity <em>and</em> it is short <em>and</em> faint → convert to a weighted graph and take the <b>longest path</b> as the spine. <b>Rolling Hough Transform</b> abandons contiguous spines: an unsharp-mask bit-mask + a rolling circular window records orientation only where signal fills a <b>coherence fraction</b> Z — recovering faint diffuse fibers near the noise. <b>getfilaments</b> cleans each spatial scale separately then recombines.</p></div>
+            <div class="frow"><span class="flabel">Maps to method tree</span>
+              <span class="mapchip"><b>FilFinder</b></span><span class="mapchip"><b>Rolling Hough Transform</b></span>
+            </div>
+            <div class="frow"><span class="flabel">Inputs</span><p>Mostly a 2D <b>dust or HI intensity map</b> — <b>FilFinder</b> adaptive-masks it, <b>RHT</b> unsharp-masks it to a bitmask, <b>DisPerSE</b> uses the scalar field directly; <b>getsf</b> multi-scale-decomposes a <b>multi-wavelength image set</b>; <b>RadFil</b> ← FilFinder's mask + spine.</p></div>
+            <div class="frow"><span class="flabel">Implementations</span><span class="av2 av2--pip">FilFinder <code>fil-finder</code></span><span class="av2 av2--oss">RHT <code>seclark/RHT</code></span><span class="av2 av2--caveat">DisPerSE <code>C++·CeCILL</code></span><span class="av2 av2--caveat">getsf <code>Fortran·reg</code></span><span class="av2 av2--caveat">RadFil <code>radfil·GPL</code></span></div>
+            <p class="cite"><b>Key sources:</b> Koch &amp; Rosolowsky 2015 (FilFinder); Clark+ 2014 (RHT); Men'shchikov 2013 (getfilaments); Green+ 2017 (parameter sensitivity). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="A faint intensity dip is kept connected by the adaptive mask; the skeleton longest graph path then selects the spine">
+                <text class="lbl" x="14" y="20">faint dip · kept by adaptive mask</text>
+                <path class="struct" stroke="var(--sky)" stroke-width="9" opacity=".18" d="M20,70 C80,58 130,64 175,60"/>
+                <path class="struct" stroke="var(--sky)" stroke-width="9" opacity=".18" d="M205,58 C255,54 300,64 340,58"/>
+                <path class="struct" stroke="var(--ink)" d="M24,70 C80,60 128,66 174,61"/>
+                <path class="struct" stroke="var(--ink)" d="M206,59 C255,56 300,66 336,60"/>
+                <path class="struct" stroke="var(--rule)" stroke-dasharray="4 4" d="M174,61 L206,59"/>
+                <text class="lbl-s" x="181" y="46" fill="var(--vermillion)">dip</text>
+                <!-- spurs -->
+                <path class="struct" stroke="var(--rule)" stroke-dasharray="3 3" d="M100,64 C104,80 108,92 112,104"/>
+                <text class="lbl" x="96" y="120">spur pruned</text>
+                <!-- longest path -->
+                <path class="struct" stroke="var(--sky)" stroke-width="2.6" d="M24,150 C120,140 240,150 336,140"/>
+                <circle cx="24" cy="150" r="3.5" fill="var(--sky)"/><circle cx="336" cy="140" r="3.5" fill="var(--sky)"/>
+                <text class="lbl-s" x="180" y="200" text-anchor="middle" fill="var(--sky)">longest path through skeleton graph = spine</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> the adaptive local-median threshold keeps the faint crest connected across the dip; the medial-axis skeleton's longest graph path then selects the spine and pruning drops spurs.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 3. NEUROSCIENCE -->
+    <article class="field" id="f-neuro" style="--fc:var(--vermillion)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">ψ</div>
+          <div class="field__ttl"><h3>Neuroscience — neuron tracing &amp; dMRI tractography</h3><span class="field__src">APP2/GWDT · ACT · global tractography · families A·B·C·D</span></div>
+          <span class="yes">fragmentation: dominant error</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why it fragments</span><p>In microscopy tracing, <b>dim distal neurites, low SNR, and dense overlapping neuropil</b> make tracers drop or split branches — the BigNeuron benchmark found no single algorithm reconstructs all neurites. In tractography the analog is <b>premature streamline termination</b> at crossing/kissing fibers, since one voxel's orientation cannot resolve sub-voxel geometry.</p></div>
+            <div class="frow"><span class="flabel">How it reconnects</span><p>Tracing: a <b>grey-weighted distance transform</b> lets geodesic shortest-paths follow dim signal and bridge small gaps (APP2), after which the <b>over-connected distance-tree is hierarchically pruned</b> to keep true branches. Tractography: <b>Anatomically-Constrained Tractography</b> uses tissue priors so streamlines only terminate at the grey/white boundary (suppressing spurious mid-tract breaks), and <b>global tractography</b> fits the whole fiber configuration at once. The universal tension: fewer broken tracts ⇄ more false continuations.</p></div>
+            <div class="frow"><span class="flabel">Maps to method tree</span>
+              <span class="mapchip"><b>GWDT / APP2</b></span><span class="mapchip"><b>dMRI tractography</b></span>
+            </div>
+            <div class="frow"><span class="flabel">Inputs</span><p><b>APP2 / GWDT / Rivulet</b> ← a 3D <b>grayscale image stack</b> (+ an optional soma/root marker, else auto-detected); <b>DIPY / MRtrix tractography</b> ← a dMRI <b>orientation / ODF field</b> + seeds (<b>ACT</b> adds a tissue 5TT map); <b>FINTA</b> ← an existing streamline set (tractogram).</p></div>
+            <div class="frow"><span class="flabel">Implementations</span><span class="av2 av2--pip">DIPY tractography <code>dipy</code></span><span class="av2 av2--oss">MRtrix3 ACT/global <code>build·MPL</code></span><span class="av2 av2--oss">GWDT <code>rivuletpy·stale</code></span><span class="av2 av2--caveat">FINTA <code>tractolearn·NC</code></span><span class="av2 av2--port">APP2 <code>Vaa3D C++→port</code></span></div>
+            <p class="cite"><b>Key sources:</b> Xiao &amp; Peng 2013 (APP2); Peng+ 2011 (APP); Smith+ 2012 (ACT); Schilling+ 2019 (sensitivity/specificity); Manubens-Gil+ 2023 (BigNeuron). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="A grey-weighted distance transform lets a geodesic path bridge a faint gap in a neurite; a spur is pruned">
+                <text class="lbl" x="14" y="20">faint gap in neurite</text>
+                <path class="struct" stroke="var(--ink)" d="M24,150 C70,140 96,120 120,104"/>
+                <path class="struct" stroke="var(--rule)" stroke-dasharray="4 4" d="M120,104 C138,92 150,84 166,74"/>
+                <path class="struct" stroke="var(--ink)" d="M166,74 C210,58 250,66 300,50"/>
+                <text class="lbl-s" x="126" y="118" fill="var(--vermillion)">low SNR</text>
+                <!-- iso-cost rings (GWDT) -->
+                <circle cx="24" cy="150" r="4" fill="var(--vermillion)"/>
+                <ellipse cx="24" cy="150" rx="34" ry="26" class="axis" fill="none"/>
+                <ellipse cx="24" cy="150" rx="66" ry="50" class="axis" fill="none"/>
+                <text class="lbl" x="40" y="176">GWDT cost field</text>
+                <!-- geodesic bridge -->
+                <path class="struct" stroke="var(--vermillion)" stroke-width="2.6" d="M120,104 C140,90 152,82 166,74"/>
+                <!-- pruned spur -->
+                <path class="struct" stroke="var(--rule)" stroke-dasharray="3 3" d="M210,60 C218,74 224,84 228,96"/>
+                <line x1="222" y1="84" x2="234" y2="96" stroke="var(--vermillion)" stroke-width="1.6"/>
+                <line x1="234" y1="84" x2="222" y2="96" stroke="var(--vermillion)" stroke-width="1.6"/>
+                <text class="lbl" x="238" y="92">prune</text>
+                <text class="lbl-s" x="180" y="204" text-anchor="middle" fill="var(--vermillion)">geodesic bridges gap · hierarchical prune</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> a grey-weighted geodesic path follows dim intensity across the gap; over-reconstruct then hierarchically prune keeps the true branch (ACT separately constrains tractography termination with tissue priors).</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 4. HEP -->
+    <article class="field" id="f-hep" style="--fc:var(--orange)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">⁺</div>
+          <div class="field__ttl"><h3>High-energy physics — track finding</h3><span class="field__src">combinatorial Kalman · cellular automaton · GNN · families A·C·D</span></div>
+          <span class="yes">fragmentation: designed-for</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why it fragments</span><p>A particle doesn't leave a hit on every layer it crosses — <b>sensor inefficiency, dead modules, acceptance gaps, and high-occupancy pileup</b> all mask hits. A track that loses hits fragments into shorter candidates or is lost. Reconstruction treats missing hits as the <b>norm, not an anomaly</b>.</p></div>
+            <div class="frow"><span class="flabel">How it reconnects</span><p>The <b>combinatorial Kalman filter</b> predicts the next layer, opens a search road, and updates with any compatible hit — crucially it <b>coasts</b> when the gate is empty, recording a "hole" and continuing rather than terminating; a bounded <b>hole budget</b> rejects fragments. The <b>cellular-automaton</b> finder chains collinear segments, skipping to next-but-one layers to bridge a missing hit, keeping the longest chain at forks. <b>GNN pipelines</b> (Exa.TrkX) classify candidate edges — including gap-skipping edges — to connect hits into tracks. The dial everywhere: ghosts ⇄ efficiency.</p></div>
+            <div class="frow"><span class="flabel">Maps to method tree</span>
+              <span class="mapchip"><b>Kalman track finding</b></span><span class="mapchip"><b>Cellular-automaton track finder</b></span>
+            </div>
+            <div class="frow"><span class="flabel">Inputs</span><p>All take the per-event set of <b>detector hits</b> (3D space points across tracker layers); the combinatorial Kalman also needs a <b>seed</b>, and Hough builds a <b>(φ₀, q/pT)</b> track-parameter accumulator from those hits.</p></div>
+            <div class="frow"><span class="flabel">Implementations</span><span class="av2 av2--oss">Kalman finder <code>ACTS·C++</code></span><span class="av2 av2--oss">GNN <code>GNN4ITk·GPU</code></span><span class="av2 av2--pip">KF primitive <code>filterpy·stale</code></span><span class="av2 av2--caveat">CA finder <code>TrickTrack·archived</code></span><span class="av2 av2--port">Hough seeding <code>framework-only→port</code></span></div>
+            <p class="cite"><b>Key sources:</b> Bertacchi+ 2021 (Belle II CKF); Kisel 2016 &amp; Rohr+ 2017 (CA); Ju+ 2021 (Exa.TrkX GNN); Kiehn+ 2019 (TrackML). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="Kalman filter predicts a covariance ellipse and coasts across a missing detector layer, recording a hole">
+                <text class="lbl" x="14" y="20">detector layers · missing hit</text>
+                <g class="axis" stroke-dasharray="2 4">
+                  <line x1="40" y1="30" x2="40" y2="180"/><line x1="90" y1="30" x2="90" y2="180"/><line x1="140" y1="30" x2="140" y2="180"/><line x1="190" y1="30" x2="190" y2="180"/><line x1="240" y1="30" x2="240" y2="180"/><line x1="290" y1="30" x2="290" y2="180"/>
+                </g>
+                <g fill="var(--ink)">
+                  <circle cx="40" cy="150" r="3.5"/><circle cx="90" cy="132" r="3.5"/><circle cx="140" cy="116" r="3.5"/><circle cx="240" cy="86" r="3.5"/><circle cx="290" cy="70" r="3.5"/>
+                </g>
+                <!-- missing hit on layer 190 -->
+                <line x1="184" y1="94" x2="196" y2="106" stroke="var(--vermillion)" stroke-width="1.8"/>
+                <line x1="196" y1="94" x2="184" y2="106" stroke="var(--vermillion)" stroke-width="1.8"/>
+                <text class="lbl-s" x="176" y="126" fill="var(--vermillion)">hole</text>
+                <!-- prediction ellipse -->
+                <ellipse cx="190" cy="100" rx="20" ry="13" transform="rotate(-18 190 100)" fill="rgba(217,138,0,.14)" stroke="var(--orange)" stroke-width="2"/>
+                <text class="lbl-s" x="150" y="60" fill="var(--orange)">predict · gate</text>
+                <!-- coast path -->
+                <path class="struct" stroke="var(--orange)" stroke-width="2.6" d="M140,116 C165,108 178,104 240,86"/>
+                <text class="lbl-s" x="180" y="204" text-anchor="middle" fill="var(--orange)">coast across gap · bounded hole budget</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> predict a covariance road; if no hit lies inside, coast (predict-only) and record a hole, so one continuous track spans the gap instead of fragmenting.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 5. VASCULAR / ROADS -->
+    <article class="field" id="f-vessel" style="--fc:var(--blue)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">✚</div>
+          <div class="field__ttl"><h3>Vascular imaging &amp; aerial road networks</h3><span class="field__src">clDice · Betti loss · tensor voting · RoadTracer · families D·E·F</span></div>
+          <span class="yes">fragmentation: the core failure</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why it fragments</span><p>It is fundamentally a <b>topology</b> problem, not accuracy. Vessels/roads are thin, so standard <b>per-pixel losses (CE, Dice) are overlap measures</b>: missing the few pixels along a connector barely moves the loss, yet severs the structure. For roads, <b>trees, shadows, and overpasses</b> occlude the evidence exactly where continuity matters.</p></div>
+            <div class="frow"><span class="flabel">How it reconnects</span><p><b>Topology-aware losses</b>: <b>clDice</b> computes Dice on the soft centerline (rewards unbroken 1-D topology); <b>TopoLoss</b> matches <b>Betti numbers</b> via persistent homology; <b>homotopy warping</b> weights topologically critical pixels. <b>Iterative tensor voting</b> propagates orientation/saliency to bridge gaps classically. And instead of segment-then-skeletonize, <b>graph tracers</b> (RoadTracer, Sat2Graph) build the network directly, avoiding disconnections that pixel masks bake in; orientation-learning auxiliaries (Batra+ 2019) sharply cut broken segments.</p></div>
+            <div class="frow"><span class="flabel">Maps to method tree</span>
+              <span class="mapchip"><b>clDice</b></span><span class="mapchip"><b>Persistent-homology / Betti loss</b></span><span class="mapchip"><b>Tensor voting</b></span><span class="mapchip"><b>Orientation-aware tracing nets</b></span>
+            </div>
+            <div class="frow"><span class="flabel">Inputs</span><p>The topology losses take a <b>(predicted probability map, GT mask)</b> pair at training — clDice/Betti on the soft prediction, <b>homotopy warping</b> on the prediction thresholded to a binary mask; <b>tensor voting</b> ← curve tokens (points + orientations) from a <b>segmented, skeletonized network</b>; <b>B-COSFIRE / RoadTracer / Sat2Graph</b> ← the raw <b>image</b> (RoadTracer also a start vertex).</p></div>
+            <div class="frow"><span class="flabel">Implementations</span><span class="av2 av2--pip">clDice <code>monai / topolosses</code></span><span class="av2 av2--pip">Betti + warping <code>topolosses¹</code></span><span class="av2 av2--oss">B-COSFIRE <code>bcosfire_python</code></span><span class="av2 av2--oss">RoadTracer <code>mitroadmaps</code></span><span class="av2 av2--oss">Sat2Graph <code>songtaohe</code></span><span class="av2 av2--port">tensor voting <code>C++/MATLAB→port</code></span></div>
+            <p class="cite"><b>Key sources:</b> Shit+ 2021 (clDice); Hu+ 2019 (TopoLoss) &amp; 2022 (homotopy warping); Risser+ 2008 (tensor voting); Bastani+ 2018 (RoadTracer); He+ 2020 (Sat2Graph). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="A pixel mask scores high overlap yet leaves a broken vessel; clDice on the soft skeleton penalizes the single-pixel break">
+                <text class="lbl" x="14" y="20">high overlap, broken topology</text>
+                <!-- mask with a 1-px break -->
+                <path class="struct" stroke="var(--blue)" stroke-width="12" opacity=".18" d="M24,74 C90,60 150,86 210,70"/>
+                <path class="struct" stroke="var(--blue)" stroke-width="12" opacity=".18" d="M230,68 C280,60 310,80 340,68"/>
+                <!-- soft skeleton -->
+                <path class="struct" stroke="var(--blue)" stroke-width="2.4" d="M28,74 C92,62 150,86 208,71"/>
+                <path class="struct" stroke="var(--blue)" stroke-width="2.4" d="M232,68 C280,62 308,80 336,69"/>
+                <circle cx="220" cy="69" r="8" fill="none" stroke="var(--vermillion)" stroke-width="2"/>
+                <text class="lbl-s" x="166" y="108" fill="var(--vermillion)">1-px break = catastrophic</text>
+                <!-- clDice compares skeleton vs mask -->
+                <g transform="translate(0,130)">
+                  <text class="lbl" x="14" y="10">clDice: skeleton ∩ opposite mask</text>
+                  <path class="struct" stroke="var(--blue)" stroke-width="2.4" d="M28,44 C120,34 240,50 336,40"/>
+                  <path class="struct" stroke="var(--sky)" stroke-width="9" opacity=".2" d="M28,44 C120,34 240,50 336,40"/>
+                </g>
+                <text class="lbl-s" x="180" y="208" text-anchor="middle" fill="var(--blue)">centerline-Dice / Betti loss rewards connectivity</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> score the soft skeleton, not pixel overlap, so a single break — invisible to Dice — dominates a connectivity-aware loss (or trace the graph directly).</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 6. PLANT ROOTS -->
+    <article class="field" id="f-roots" style="--fc:var(--green)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">⋔</div>
+          <div class="field__ttl"><h3>Plant roots — root system architecture</h3><span class="field__src">RootNav · RootNav 2.0 · families B·D</span></div>
+          <span class="yes">fragmentation: defining challenge</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why it fragments</span><p>Roots are thin and low-contrast and repeatedly <b>cross, touch, and occlude one another</b>; in soil/agar/rhizotrons the background adds clutter. A single root reads as several disconnected components wherever it dips below contrast or passes <b>under</b> another root, and a crossing looks identical to a true branch point.</p></div>
+            <div class="frow"><span class="flabel">How it reconnects</span><p><b>RootNav</b>: expectation-maximization estimates a per-pixel <b>root-likelihood surface</b>, then <b>A* least-cost search</b> finds paths seed→apex — a broken-but-likely root still forms a low-cost corridor. <b>RootNav 2.0</b>: a CNN emits a 3-class segmentation plus <b>seed/tip heatmaps</b>, converts segmentation to a <b>distance map</b> (root centers cheap, non-root heavily penalized), and runs <b>A* least-cost search</b> to trace the connected hierarchy (first-order, then second-order), with separate graphs per order to reduce crossing confusion. Graph + architecture models explicitly distinguish overlaps from branches.</p></div>
+            <div class="frow"><span class="flabel">Maps to method tree</span>
+              <span class="mapchip"><b>Dijkstra least-cost reconnection</b> (branch_pathfinding)</span>
+            </div>
+            <div class="frow"><span class="flabel">Inputs</span><p><b>RootNav v1</b> ← an EM <b>root-likelihood surface</b> from the RGB image + seed points; <b>RootNav 2.0</b> ← the <b>RGB image</b> → CNN segmentation + seed/tip heatmaps → distance map; <b>RhizoVision</b> ← a binary <b>root mask</b>; <b>RSA</b> ← a segmented/binary root image (skeletonized to a graph internally).</p></div>
+            <div class="frow"><span class="flabel">Implementations</span><span class="av2 av2--oss">RootNav 2.0 <code>RootNav-2.0·BSD</code></span><span class="av2 av2--caveat">RootNav v1 <code>GUI·2017</code></span><span class="av2 av2--caveat">RhizoVision <code>GPL app</code></span><span class="av2 av2--port">RSA (Leitner) <code>MATLAB→port</code></span></div>
+            <p class="cite"><b>Key sources:</b> Pound+ 2013 (RootNav); Yasrab/Pound+ 2019 (RootNav 2.0, A*); Leitner+ 2014 (graph overlap model). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="Two crossing roots; a segment hidden under the crossing is rejoined by an A-star least-cost path over the root-likelihood field">
+                <text class="lbl" x="14" y="20">crossing occludes a segment</text>
+                <!-- root A: solid, a dashed gap AT the crossing (occluded), then resumes to the tip -->
+                <path class="struct" stroke="var(--green)" stroke-width="3" d="M60,40 C82,68 100,90 112,104"/>
+                <path class="struct" stroke="var(--green)" stroke-width="3" stroke-dasharray="4 4" d="M112,104 C122,111 130,117 138,124"/>
+                <path class="struct" stroke="var(--green)" stroke-width="3" d="M138,124 C160,150 180,174 205,196"/>
+                <!-- root B passes over the crossing, occluding A's gap -->
+                <path class="struct" stroke="var(--ink)" stroke-width="3" d="M40,150 C90,122 130,110 200,60"/>
+                <circle cx="125" cy="114" r="9" fill="none" stroke="var(--vermillion)" stroke-width="1.8"/>
+                <text class="lbl-s" x="132" y="106" fill="var(--vermillion)">occlusion</text>
+                <circle cx="60" cy="40" r="4" fill="var(--green)"/>
+                <text class="lbl" x="68" y="40">seed</text>
+                <circle cx="205" cy="196" r="4" fill="var(--green)"/>
+                <!-- A* corridor over likelihood -->
+                <g transform="translate(232,40)">
+                  <text class="lbl" x="0" y="6">likelihood → A*</text>
+                  <rect x="4" y="14" width="104" height="104" fill="rgba(11,155,118,.06)" stroke="var(--rule)" stroke-width="1"/>
+                  <path class="struct" stroke="var(--green)" stroke-width="2.4" d="M14,26 C40,50 46,74 78,104"/>
+                  <g fill="var(--green)"><circle cx="14" cy="26" r="2.4"/><circle cx="40" cy="52" r="2.4"/><circle cx="60" cy="78" r="2.4"/><circle cx="78" cy="104" r="2.4"/></g>
+                  <text class="lbl" x="6" y="132">low-cost corridor</text>
+                </g>
+                <text class="lbl-s" x="180" y="208" text-anchor="middle" fill="var(--green)">least-cost path bridges the hidden segment</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> route an A*/least-cost path from seed to tip over a per-pixel root-likelihood/distance map, so an occluded segment is rejoined as the cheapest corridor.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 7. GEOPHYSICS / HYDROLOGY -->
+    <article class="field" id="f-geo" style="--fc:var(--yellow)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">⛰</div>
+          <div class="field__ttl"><h3>Geophysics &amp; hydrology — faults &amp; drainage</h3><span class="field__src">seismic ant-tracking · D8 flow accumulation · families A·B·E</span></div>
+          <span class="yes">fragmentation: common (both)</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why it fragments</span><p><b>Seismic faults</b> are inferred from discontinuity attributes (coherence/variance) that respond to any reflector break — noise, footprint, channels — so a true fault appears as a <b>broken cloud of high-discontinuity voxels</b>. <b>DEM drainage</b>: raw elevation models contain spurious <b>pits and flats</b>, so steepest-descent routing dead-ends and the extracted stream network is discontinuous.</p></div>
+            <div class="frow"><span class="flabel">How it reconnects</span><p><b>Ant-tracking</b> (seismic): thousands of swarm agents walk the attribute along locally consistent fault orientations, depositing pheromone that <b>reinforces genuine planar trends</b> while isolated noise is not reinforced — connecting fault fragments into continuous surfaces. <b>Hydrology</b>: remove pits by <b>filling or breaching</b> (Lindsay's least-cost hybrid), then <b>D8</b> routes each cell to its steepest neighbour, guaranteeing a connected, rooted drainage network (a forest of trees, one per outlet); thresholding <b>flow accumulation</b> yields the stream network.</p></div>
+            <div class="frow"><span class="flabel">Maps to method tree</span>
+              <span class="mapchip"><b>Ant-colony oriented voting</b></span><span class="mapchip"><b>D8 flow accumulation</b></span>
+            </div>
+            <div class="frow"><span class="flabel">Inputs</span><p><b>Ant-tracking</b> ← a seismic <b>discontinuity-attribute volume</b> (coherence / variance); <b>FaultSeg3D</b> ← the raw 3D <b>amplitude volume</b>; <b>D8 / breach-fill</b> ← a <b>DEM</b> (elevation raster).</p></div>
+            <div class="frow"><span class="flabel">Implementations</span><span class="av2 av2--pip">D8 accumulation <code>whitebox / pysheds</code></span><span class="av2 av2--pip">breach/fill <code>whitebox</code></span><span class="av2 av2--caveat">FaultSeg3D <code>CC BY-NC</code></span><span class="av2 av2--port">ant-tracking <code>Petrel commercial→port</code></span></div>
+            <p class="cite"><b>Key sources:</b> Pedersen+ 2002 (ant-tracking); O'Callaghan &amp; Mark 1984 (D8); Lindsay 2016 (breach/fill); Wu+ 2019 (FaultSeg3D). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="Swarm agents reinforce broken fault attributes into a surface; a DEM pit is breached and D8 routes flow to an outlet">
+                <text class="lbl" x="14" y="20">fault fragments → ant swarm</text>
+                <!-- broken fault dashes -->
+                <g stroke="var(--yellow)" stroke-width="3" fill="none" stroke-linecap="round">
+                  <path d="M28,60 l16,10"/><path d="M52,74 l16,10"/><path d="M80,92 l16,10"/><path d="M108,110 l14,10"/>
+                </g>
+                <!-- ants / pheromone trail reinforcing -->
+                <path class="struct" stroke="var(--yellow)" stroke-width="2.4" stroke-dasharray="1 5" d="M28,60 C60,82 92,104 124,124"/>
+                <g fill="var(--ink)"><circle cx="60" cy="80" r="2.2"/><circle cx="92" cy="102" r="2.2"/></g>
+                <text class="lbl-s" x="16" y="150" fill="var(--yellow)">pheromone connects trend</text>
+                <!-- hydrology: pit + D8 to outlet -->
+                <g transform="translate(196,30)">
+                  <text class="lbl" x="0" y="8">DEM pit → breach + D8</text>
+                  <rect x="0" y="16" width="150" height="118" fill="rgba(184,144,31,.06)" stroke="var(--rule)" stroke-width="1"/>
+                  <circle cx="40" cy="70" r="7" fill="none" stroke="var(--vermillion)" stroke-width="1.6" stroke-dasharray="2 2"/>
+                  <text class="lbl" x="30" y="60">pit</text>
+                  <!-- D8 arrows to outlet -->
+                  <g stroke="var(--yellow)" stroke-width="2" fill="none">
+                    <path d="M40,70 l18,14"/><path d="M58,84 l18,14"/><path d="M76,98 l18,12"/><path d="M94,110 l20,10"/>
+                  </g>
+                  <path d="M110,118 l8,2 -3,7 z" fill="var(--yellow)"/>
+                  <circle cx="120" cy="122" r="4" fill="var(--vermillion)"/>
+                  <text class="lbl-s" x="98" y="132" fill="var(--vermillion)">outlet</text>
+                </g>
+                <text class="lbl-s" x="180" y="210" text-anchor="middle" fill="var(--yellow)">reinforce trends · guarantee a rooted network</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> swarm agents reinforce coherent fault orientation (noise doesn't accumulate); breaching + D8 routing guarantees a connected, rooted drainage network.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 8. CYTOSKELETON -->
+    <article class="field" id="f-cyto" style="--fc:var(--teal)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">≈</div>
+          <div class="field__ttl"><h3>Cytoskeleton &amp; biopolymer fiber networks</h3><span class="field__src">SOAX · SIFNE · CT-FIRE · families C·D·G</span></div>
+          <span class="yes">fragmentation: intrinsic output</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why it fragments</span><p>Broken filaments are the <b>expected</b> tracer output for actin/microtubule/collagen imaging: at <b>X/T crossings</b> a tracer can't decide which branch continues and terminates; <b>low/inhomogeneous SNR, photobleaching, and uneven labeling</b> leave sub-threshold gaps. Reconnection is a defining step of every major tool.</p></div>
+            <div class="frow"><span class="flabel">How it reconnects</span><p><b>SOAX</b>: stretching open active contours grow along ridges, a stretch force lets a tip <b>bridge gaps</b> to reach bright filament ahead; on collision they form <b>T-junctions</b> that are clustered and <b>spliced</b> for correct topology. <b>SIFNE</b>: oriented-filter detection → fragments (crossing points removed) → for each fragment terminus, search a fan for partner termini and score by <b>directional similarity + continuity</b> (proximity-gated), iteratively linking them by a <b>local, cost-ranked pairing rule</b> into composite filaments. <b>CT-FIRE</b>: curvelet denoise + distance-transform ridge tracing with nodal linking (explicit gap-fill remains its stated limitation).</p></div>
+            <div class="frow"><span class="flabel">Maps to method tree</span>
+              <span class="mapchip"><b>SOAX</b></span><span class="mapchip"><b>SIFNE</b></span><span class="mapchip"><b>CT-FIRE</b></span>
+            </div>
+            <div class="frow"><span class="flabel">Inputs</span><p>All take a 2D/3D <b>fluorescence or SHG image</b> — <b>SOAX</b> ridge-seeds it, <b>SIFNE</b> oriented-filters it into fragments, <b>CT-FIRE</b> curvelet-denoises then distance-transforms it (<b>FIRE</b> skips the curvelet step).</p></div>
+            <div class="frow"><span class="flabel">Implementations</span><span class="av2 av2--oss">SOAX <code>tix209/SOAX·BSD</code></span><span class="av2 av2--oss">PyFibre <code>Apache·not-pip</code></span><span class="av2 av2--caveat">TSOAX <code>LGPL</code></span><span class="av2 av2--caveat">CT-FIRE <code>MATLAB+CurveLab</code></span><span class="av2 av2--port">SIFNE <code>MATLAB→port</code></span><span class="av2 av2--port">FIRE <code>MATLAB→port</code></span></div>
+            <p class="cite"><b>Key sources:</b> Xu+ 2015 (SOAX); Zhang+ 2017 (SIFNE); Stein+ 2008 (FIRE); Bredfeldt+ 2014 (CT-FIRE). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="Filament fragments with tip orientations are joined by an iterative local directional pairing rule, and colliding active contours are spliced at a T-junction">
+                <text class="lbl" x="14" y="20">fragments + tip orientation</text>
+                <g class="struct" stroke="var(--teal)">
+                  <path d="M26,64 C44,58 62,58 80,66"/>
+                  <path d="M120,80 C138,90 150,104 158,120"/>
+                  <path d="M56,150 C74,146 92,148 108,158"/>
+                </g>
+                <!-- tip orientation ticks + pairing -->
+                <g stroke="var(--vermillion)" stroke-width="1.6"><path d="M80,66 l14,5"/><path d="M120,80 l-13,-4"/></g>
+                <path class="struct" stroke="var(--vermillion)" stroke-dasharray="4 3" d="M80,66 C96,70 106,74 120,80"/>
+                <text class="lbl-s" x="86" y="52" fill="var(--vermillion)">pair by direction + proximity</text>
+                <!-- T-junction splice -->
+                <g transform="translate(206,120)">
+                  <path class="struct" stroke="var(--teal)" d="M0,0 L86,0"/>
+                  <path class="struct" stroke="var(--teal)" d="M52,0 L70,-50"/>
+                  <circle cx="52" cy="0" r="5" fill="none" stroke="var(--ink)" stroke-width="1.6"/>
+                  <text class="lbl-s" x="6" y="20" fill="var(--teal)">stretch → splice T</text>
+                </g>
+                <text class="lbl-s" x="180" y="208" text-anchor="middle" fill="var(--teal)">local terminus pairing + T-splice → network</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> SOAC tips stretch across gaps and splice at clustered T-junctions; SIFNE joins fragments by an iterative, local directional-continuity pairing rule.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- =============== COMPARISON TABLE =============== -->
+  <section class="band">
+    <h2 class="section-title">Cross-field comparison</h2>
+    <p class="section-sub">The same three-step logic in every row — <b>detect fragments → decide significance → bridge or assemble</b> — instantiated differently by each field's substrate.</p>
+    <hr class="rule">
+    <div class="tablewrap">
+      <table class="cmp">
+        <thead>
+          <tr><th>Field</th><th>Detected on</th><th>Why it fragments</th><th>Reconstruction</th><th>Families</th><th>Method-tree analog</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="fld"><span class="dot" style="background:var(--purple)"></span>Cosmic web</td><td>galaxy/particle density field</td><td>shot noise on a sparse point cloud; faint filaments</td><td><b>persistence N&sigma;</b> cut; smoothing; NEXUS+ multiscale; T-ReX regularized MST; Bisous MPP</td><td>A·D·E·G</td><td>DisPerSE · GUDHI · FilFinder</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--sky)"></span>ISM filaments</td><td>dust/HI intensity maps</td><td>varying bright background; threshold sensitivity</td><td>adaptive mask → skeleton → prune → <b>longest path</b>; RHT coherence-fraction; getfilaments multiscale</td><td>A·B·E·G</td><td>FilFinder · Rolling Hough</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--vermillion)"></span>Neuroscience</td><td>fluorescence stacks; dMRI ODFs</td><td>dim neurites, crossings, dense neuropil</td><td><b>GWDT geodesic</b> + hierarchical prune; ACT tissue priors; global tractography</td><td>A·B·C·D</td><td>GWDT/APP2 · dMRI tractography</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--orange)"></span>HEP tracking</td><td>detector hit layers</td><td>inefficiency, dead modules, pileup → missing hits</td><td><b>Kalman coast</b> + hole budget; CA segment chains; GNN edge classification</td><td>A·C·D</td><td>Kalman · Cellular-automaton finder</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--blue)"></span>Vessels / roads</td><td>fundus/CT; satellite imagery</td><td>overlap-losses are topology-blind; occlusion</td><td><b>clDice / Betti loss</b>; tensor-voting gap-fill; direct graph tracers (RoadTracer)</td><td>D·E·F</td><td>clDice · Betti loss · Tensor voting · tracing nets</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--green)"></span>Plant roots</td><td>rhizotron / agar photos</td><td>crossing &amp; occluding roots; low contrast</td><td><b>A* least-cost path</b> over a root-likelihood/distance map (RootNav)</td><td>B·D</td><td>Dijkstra (branch_pathfinding)</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--yellow)"></span>Geo / hydro</td><td>seismic attributes; DEMs</td><td>noisy discontinuity clouds; DEM pits/flats</td><td><b>ant-tracking</b> swarm reinforcement; breach/fill + <b>D8</b> rooted routing</td><td>A·B·E</td><td>Ant-colony voting · D8 flow accumulation</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--teal)"></span>Cytoskeleton</td><td>actin/MT/collagen microscopy</td><td>X/T crossings; photobleaching; uneven label</td><td>SOAC <b>stretch + T-junction splice</b>; SIFNE <b>iterative fragment-pairing</b>; FIRE nodal linking</td><td>C·D·G</td><td>SOAX · SIFNE · CT-FIRE</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <b>The pattern the artifact was built around.</b> The fungi method tree's Phase-2 "reconnection" stage is not a
+      niche microbiology trick — it is the <b>same problem eight mature fields independently solved</b>. The transferable
+      lessons: (1) <b>decide significance explicitly</b> (a persistence / hole / length threshold) before you connect,
+      or you will connect noise; (2) <b>bridge over a cost field</b> rather than requiring contiguous evidence;
+      (3) for learned methods, <b>make the loss see topology</b> (clDice/Betti), because overlap losses reward broken
+      structures; (4) when local linking is ambiguous, <b>assemble globally</b> (MST/pairing/GNN) instead of greedily.
+    </div>
+  </section>
+
+  <!-- =============== REFERENCES =============== -->
+  <section class="band" id="refs">
+    <h2 class="section-title">References</h2>
+    <p class="section-sub">Retrieved via scientific-literature search during this survey; links are DOIs (or arXiv where a
+      DOI was not machine-confirmed). See the verification note below for items the research pass could not fully confirm.</p>
+    <hr class="rule">
+    <div class="refs">
+
+      <div class="refgrp" style="--fc:var(--purple)"><h5>Cosmic web</h5><ol>
+        <li>Sousbie 2011 — <b>DisPerSE</b>. MNRAS 414, 350. <a href="https://doi.org/10.1111/j.1365-2966.2011.18394.x">doi:10.1111/j.1365-2966.2011.18394.x</a></li>
+        <li>Cautun, van de Weygaert &amp; Jones 2013 — <b>NEXUS+</b>. <a href="https://arxiv.org/abs/1209.2043">arXiv:1209.2043</a></li>
+        <li>Tempel et al. 2016 — <b>Bisous</b> model. Astron. &amp; Comp. <a href="https://arxiv.org/abs/1603.08957">arXiv:1603.08957</a></li>
+        <li>Bonnaire et al. 2020 — <b>T-ReX</b>. A&amp;A 637, A18. <a href="https://doi.org/10.1051/0004-6361/201936859">doi:10.1051/0004-6361/201936859</a></li>
+        <li>Libeskind et al. 2018 — tracing the cosmic web (12-method comparison). <a href="https://arxiv.org/abs/1705.03021">arXiv:1705.03021</a></li>
+        <li>Euclid prep. (Malavasi et al.) 2025 — 2D DisPerSE quality vs. persistence &amp; photo-z. <a href="https://arxiv.org/abs/2508.15915">arXiv:2508.15915</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--sky)"><h5>ISM filaments</h5><ol>
+        <li>Koch &amp; Rosolowsky 2015 — <b>FilFinder</b>. MNRAS 452, 3435. <a href="https://doi.org/10.1093/mnras/stv1521">doi:10.1093/mnras/stv1521</a></li>
+        <li>Clark, Peek &amp; Putman 2014 — <b>Rolling Hough Transform</b>. ApJ 789, 82. <a href="https://doi.org/10.1088/0004-637X/789/1/82">doi:10.1088/0004-637X/789/1/82</a></li>
+        <li>Men'shchikov 2013 — <b>getfilaments</b>. A&amp;A 560, A63. <a href="https://doi.org/10.1051/0004-6361/201321885">doi:10.1051/0004-6361/201321885</a></li>
+        <li>Arzoumanian et al. 2011 — first DisPerSE on Herschel. A&amp;A 529, L6. <a href="https://doi.org/10.1051/0004-6361/201116596">doi:10.1051/0004-6361/201116596</a></li>
+        <li>Arzoumanian et al. 2019 — Herschel filament properties. A&amp;A 621, A42. <a href="https://doi.org/10.1051/0004-6361/201832725">doi:10.1051/0004-6361/201832725</a></li>
+        <li>Green et al. 2017 — extraction is parameter-sensitive. ApJL 840, L17. <a href="https://doi.org/10.3847/2041-8213/aa6e50">doi:10.3847/2041-8213/aa6e50</a></li>
+        <li>Men'shchikov 2021 — extraction benchmarks. A&amp;A 649, A89. <a href="https://doi.org/10.1051/0004-6361/202141533">doi:10.1051/0004-6361/202141533</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--vermillion)"><h5>Neuroscience</h5><ol>
+        <li>Xiao &amp; Peng 2013 — <b>APP2 / GWDT</b>. Bioinformatics. <a href="https://doi.org/10.1093/bioinformatics/btt170">doi:10.1093/bioinformatics/btt170</a></li>
+        <li>Peng et al. 2011 — <b>APP</b> (all-path pruning). <a href="https://doi.org/10.1093/bioinformatics/btr237">doi:10.1093/bioinformatics/btr237</a></li>
+        <li>Liu et al. 2016 — <b>Rivulet</b>. Neuroinformatics. <a href="https://doi.org/10.1007/s12021-016-9302-0">doi:10.1007/s12021-016-9302-0</a></li>
+        <li>Manubens-Gil et al. 2023 — <b>BigNeuron</b> benchmark. Nat. Methods. <a href="https://doi.org/10.1038/s41592-023-01848-5">doi:10.1038/s41592-023-01848-5</a></li>
+        <li>Smith et al. 2012 — <b>ACT</b>. NeuroImage. <a href="https://doi.org/10.1016/j.neuroimage.2012.06.005">doi:10.1016/j.neuroimage.2012.06.005</a></li>
+        <li>Schilling et al. 2019 — tractography sensitivity/specificity. <a href="https://doi.org/10.1016/j.neuroimage.2018.10.029">doi:10.1016/j.neuroimage.2018.10.029</a></li>
+        <li>Legarreta et al. 2021 — <b>FINTA</b> streamline filtering. <a href="https://doi.org/10.48550/arxiv.2010.04007">arXiv:2010.04007</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--orange)"><h5>HEP track finding</h5><ol>
+        <li>Bertacchi et al. 2021 — <b>combinatorial Kalman</b> track finding at Belle II. Comput. Phys. Commun. 259. <a href="https://doi.org/10.1016/j.cpc.2020.107610">doi:10.1016/j.cpc.2020.107610</a></li>
+        <li>Kisel 2016 — <b>cellular-automaton</b> + KF (CBM). <a href="https://doi.org/10.1051/epjconf/201610801006">doi:10.1051/epjconf/201610801006</a></li>
+        <li>Rohr et al. 2017 — GPU CA finder (ALICE HLT). <a href="https://arxiv.org/abs/1712.09430">arXiv:1712.09430</a></li>
+        <li>Ju et al. 2021 — <b>Exa.TrkX</b> GNN pipeline. EPJC. <a href="https://doi.org/10.1140/epjc/s10052-021-09675-8">doi:10.1140/epjc/s10052-021-09675-8</a></li>
+        <li>DeZoort et al. 2021 — edge-classifying interaction nets. <a href="https://arxiv.org/abs/2103.16701">arXiv:2103.16701</a></li>
+        <li>Kiehn et al. 2019 — <b>TrackML</b> tracking challenge on Kaggle. EPJ Web Conf. 214. <a href="https://doi.org/10.1051/epjconf/201921406037">doi:10.1051/epjconf/201921406037</a></li>
+        <li>Strandlie &amp; Frühwirth 2010 — track/vertex reconstruction review. <a href="https://doi.org/10.1103/RevModPhys.82.1419">doi:10.1103/RevModPhys.82.1419</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--blue)"><h5>Vessels &amp; roads</h5><ol>
+        <li>Shit et al. 2021 — <b>clDice</b>. CVPR. <a href="https://doi.org/10.48550/arXiv.2003.07311">arXiv:2003.07311</a></li>
+        <li>Hu et al. 2019 — <b>TopoLoss</b> (Betti). NeurIPS. <a href="https://doi.org/10.48550/arXiv.1906.05404">arXiv:1906.05404</a></li>
+        <li>Hu 2022 — <b>homotopy-warping</b> loss. <a href="https://doi.org/10.48550/arXiv.2112.07812">arXiv:2112.07812</a></li>
+        <li>Risser, Plouraboué &amp; Descombes 2008 — <b>tensor voting</b> gap-filling of 3-D microvascular networks. IEEE TMI 27(5). <a href="https://doi.org/10.1109/TMI.2007.913248">doi:10.1109/TMI.2007.913248</a></li>
+        <li>Azzopardi et al. 2015 — <b>B-COSFIRE</b> vessels. Med. Image Anal. <a href="https://doi.org/10.1016/j.media.2014.08.002">doi:10.1016/j.media.2014.08.002</a></li>
+        <li>Bastani et al. 2018 — <b>RoadTracer</b>. CVPR. <a href="https://doi.org/10.1109/CVPR.2018.00496">doi:10.1109/CVPR.2018.00496</a></li>
+        <li>He et al. 2020 — <b>Sat2Graph</b>. ECCV. <a href="https://doi.org/10.48550/arXiv.2007.09547">arXiv:2007.09547</a></li>
+        <li>Batra et al. 2019 — road connectivity via orientation learning. CVPR. <a href="https://doi.org/10.1109/CVPR.2019.01063">doi:10.1109/CVPR.2019.01063</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--green)"><h5>Plant roots</h5><ol>
+        <li>Pound et al. 2013 — <b>RootNav</b>. Plant Physiol. <a href="https://doi.org/10.1104/pp.113.221531">doi:10.1104/pp.113.221531</a></li>
+        <li>Yasrab, Pound, Atkinson et al. 2019 — <b>RootNav 2.0</b> (A*). GigaScience. <a href="https://doi.org/10.1093/gigascience/giz123">doi:10.1093/gigascience/giz123</a></li>
+        <li>Leitner et al. 2014 — graph root-tracking distinguishing overlaps (lupine neutron radiography). Plant Physiol. 164(1). <a href="https://doi.org/10.1104/pp.113.227892">doi:10.1104/pp.113.227892</a></li>
+        <li>Maize 3D TDA 2023 — persistent-homology root descriptors. Front. Plant Sci. <a href="https://doi.org/10.3389/fpls.2023.1260005">doi:10.3389/fpls.2023.1260005</a></li>
+        <li>Seethepalli et al. 2021 — <b>RhizoVision Explorer</b>. AoB Plants. <a href="https://doi.org/10.1093/aobpla/plab056">doi:10.1093/aobpla/plab056</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--yellow)"><h5>Geophysics &amp; hydrology</h5><ol>
+        <li>Pedersen et al. 2002 — <b>ant-tracking</b> faults. SEG. <a href="https://doi.org/10.1190/1.1817297">doi:10.1190/1.1817297</a></li>
+        <li>Wu et al. 2019 — <b>FaultSeg3D</b>. Geophysics. <a href="https://doi.org/10.1190/geo2018-0646.1">doi:10.1190/geo2018-0646.1</a></li>
+        <li>Marfurt et al. 1998 — semblance coherence attribute. <a href="https://doi.org/10.1190/1.1444415">doi:10.1190/1.1444415</a></li>
+        <li>O'Callaghan &amp; Mark 1984 — <b>D8</b> drainage networks. <a href="https://doi.org/10.1016/S0734-189X(84)80011-0">doi:10.1016/S0734-189X(84)80011-0</a></li>
+        <li>Lindsay 2016 — hybrid breach/fill sink removal. Hydrol. Process. <a href="https://doi.org/10.1002/hyp.10648">doi:10.1002/hyp.10648</a></li>
+        <li>Martz &amp; Garbrecht 1993 — automated drainage extraction. <a href="https://doi.org/10.1111/j.1752-1688.1993.tb03250.x">doi:10.1111/j.1752-1688.1993.tb03250.x</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--teal)"><h5>Cytoskeleton / fibers</h5><ol>
+        <li>Xu, Vavylonis et al. 2015 — <b>SOAX</b> (T-junction splicing). Sci. Rep. <a href="https://doi.org/10.1038/srep09081">doi:10.1038/srep09081</a></li>
+        <li>Xu, Vavylonis &amp; Huang 2014 — multiple-SOAC actin. Med. Image Anal. <a href="https://doi.org/10.1016/j.media.2013.10.015">doi:10.1016/j.media.2013.10.015</a></li>
+        <li>Zhang et al. 2017 — <b>SIFNE</b> (fragment-pairing). Mol. Biol. Cell. <a href="https://doi.org/10.1091/mbc.e16-06-0421">doi:10.1091/mbc.e16-06-0421</a></li>
+        <li>Stein et al. 2008 — <b>FIRE</b> collagen tracing. J. Microsc. <a href="https://doi.org/10.1111/j.1365-2818.2008.02141.x">doi:10.1111/j.1365-2818.2008.02141.x</a></li>
+        <li>Bredfeldt et al. 2014 — <b>CT-FIRE</b>. J. Biomed. Opt. <a href="https://doi.org/10.1117/1.jbo.19.1.016007">doi:10.1117/1.jbo.19.1.016007</a></li>
+        <li>Liu et al. 2020 — curvelet/CT-FIRE review (gap-fill limitation). Front. Bioeng. <a href="https://doi.org/10.3389/fbioe.2020.00198">doi:10.3389/fbioe.2020.00198</a></li>
+      </ol></div>
+
+    </div>
+
+    <div class="callout">
+      <b>Verification note.</b> Citations were surfaced by scientific-literature search, then audited by an 8-field
+      domain-reviewer pass that corrected four author/DOI misattributions (tensor voting → Risser, Plouraboué &amp;
+      Descombes 2008, doi:10.1109/TMI.2007.913248; Belle II CKF → Bertacchi et al. 2021; TrackML → Kiehn et al. 2019;
+      the root graph-tracking paper → Leitner et al. 2014) plus one framing error (RootNav v1 already uses A*, not just
+      v2). No citation was fabricated. Remaining caveats to treat with caution:
+      <ul>
+        <li>Full text was paywalled for several papers, so some <b>quantitative</b> claims (e.g. exact APLS/Betti deltas, "63–90% of voxels crossing") rest on abstracts + established method definitions, not verified full-text quotes.</li>
+        <li>The <b>Strandlie–Frühwirth</b> DOI and the <b>NEXUS+</b> / <b>FilFinder</b> identifiers were surfaced via search (arXiv IDs retrieved directly where DOIs weren't machine-confirmed).</li>
+        <li><b>RootNav</b> v1 (2013) already uses A* least-cost search (verified in Pound et al. 2013), not just v2; the "Dijkstra" method-tree mapping is a least-cost-family analogy — A* with a null heuristic reduces to Dijkstra.</li>
+        <li>Precise year/volume for the Euclid/Malavasi paper and a couple of geophysics author-years were not individually re-verified.</li>
+      </ul>
+      Re-check any load-bearing citation against its source before formal use.
+    </div>
+  </section>
+
+  <div class="footer">
+    PhenoTypic · cross-field reconnection survey · follow-up to index-fieldnotebook.html · compiled 2026-07-12 from
+    8 parallel literature-research streams (cosmology · ISM astronomy · neuroscience · HEP · vascular/roads · plant
+    roots · geophysics/hydrology · cytoskeleton). Method-tree mappings reference
+    <a href="index-fieldnotebook.html">the hyphae-detection method tree</a>. Biological/physical interpretation and any
+    load-bearing citation should be human-verified before external use.
+  </div>
+
+</main>
+</body>
+</html>

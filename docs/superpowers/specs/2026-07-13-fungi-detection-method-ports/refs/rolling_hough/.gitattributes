@@ -1,0 +1,11 @@
+*.md text eol=lf
+*.json text eol=lf
+*.sha256 text eol=lf
+*.py text eol=lf
+*.tex text eol=lf
+*.cfg text eol=lf
+*.rst text eol=lf
+source_clark/** text eol=lf
+source_filfinder/** text eol=lf
+*.gz -text
+*.pdf -text

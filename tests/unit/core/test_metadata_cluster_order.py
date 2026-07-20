@@ -146,14 +146,17 @@ def test_finalize_mirror_applies_cluster_order(tmp_path):
         "MetadataSample_SampleID",
         "MetadataGenetic_Strain",
         "MetadataCondition_Media",
-        # measurements
+        # measurements (the metadata-join flag has no producer enum and rides
+        # along here; every row matched, so it is all-False)
         "Shape_Area",
+        "QC_MetadataOnly",
         # framework image block
         "MetadataImage_ImageName",
         # per-object info block
         "Object_Label",
         "Grid_RowNum",
     ]
+    assert post_df["QC_MetadataOnly"].to_list() == [False]
 
 
 def test_join_metadata_prefixes_bare_columns(tmp_path):
@@ -210,3 +213,87 @@ def test_join_metadata_prefixed_then_ordered_lands_in_front(tmp_path):
 
     # Strain (now MetadataGenetic_Strain) leads, ahead of the measurements.
     assert ordered.index("MetadataGenetic_Strain") < ordered.index("Shape_Area")
+
+
+def test_join_metadata_inner_emits_no_phantom_flag(tmp_path):
+    """The default ``how="inner"`` is unchanged — no phantom rows, no flag column.
+
+    Backward-compat pin for the two inner call sites. ``_cli_chunk_writer`` joins
+    mid-run against a PARTIAL measurements frame, so a left join there would flag
+    every not-yet-processed strain as undetected in every checkpoint. The
+    sentinel column must never leak either.
+    """
+    import polars as pl
+    from phenotypic._cli._cli_output_manager import join_metadata
+    from phenotypic.schema import METADATA_MATCH
+
+    df = pl.DataFrame({"plate": ["A"], "Shape_Area": [1.0]})
+    csv = tmp_path / "m.csv"
+    # Plate B is metadata-only: an inner join must drop it silently, as today.
+    csv.write_text("plate,Strain\nA,BY4741\nB,BY4742\n")
+
+    out = join_metadata(df, csv)
+
+    assert out.height == 1
+    assert out["plate"].to_list() == ["A"]
+    assert str(METADATA_MATCH.METADATA_ONLY) not in out.columns
+    assert not [c for c in out.columns if c.startswith("__phenotypic")]
+
+
+def test_join_metadata_left_keeps_metadata_row_order(tmp_path):
+    """``maintain_order="left"`` — the mirror's row order follows the CSV."""
+    import polars as pl
+    from phenotypic._cli._cli_output_manager import join_metadata
+    from phenotypic.schema import METADATA_MATCH
+
+    df = pl.DataFrame({"plate": ["C", "A"], "Shape_Area": [3.0, 1.0]})
+    csv = tmp_path / "m.csv"
+    csv.write_text("plate,Strain\nA,s1\nB,s2\nC,s3\n")
+
+    out = join_metadata(df, csv, how="left")
+
+    assert out["plate"].to_list() == ["A", "B", "C"]
+    assert out[str(METADATA_MATCH.METADATA_ONLY)].to_list() == [False, True, False]
+    assert not [c for c in out.columns if c.startswith("__phenotypic")]
+
+
+def test_join_metadata_duplicate_keys_warn_is_height_independent(tmp_path, caplog):
+    """Duplicate keys are detected from the metadata frame's own uniqueness.
+
+    Fixture is chosen so the join's output height EQUALS the measurement height
+    (2 duplicate metadata rows for plate A fan out over 1 measured A, while
+    plate B is measured but unmatched). Any height-delta inference sees no change
+    and misses the duplicates entirely; ``n_unique`` still catches them.
+    """
+    import logging
+
+    import polars as pl
+    from phenotypic._cli._cli_output_manager import join_metadata
+
+    df = pl.DataFrame({"plate": ["A", "B"], "Shape_Area": [1.0, 2.0]})
+    csv = tmp_path / "m.csv"
+    csv.write_text("plate,Strain\nA,s1\nA,s2\n")
+
+    with caplog.at_level(logging.WARNING):
+        out = join_metadata(df, csv, how="left")
+
+    assert out.height == df.height  # the height-delta blind spot
+    assert "duplicate keys" in caplog.text
+
+
+def test_join_metadata_measurement_fanout_never_warns_duplicates(tmp_path, caplog):
+    """One metadata key -> many colonies is the NORMAL case; it must not warn."""
+    import logging
+
+    import polars as pl
+    from phenotypic._cli._cli_output_manager import join_metadata
+
+    df = pl.DataFrame({"plate": ["A", "A", "A"], "Shape_Area": [1.0, 2.0, 3.0]})
+    csv = tmp_path / "m.csv"
+    csv.write_text("plate,Strain\nA,s1\n")
+
+    with caplog.at_level(logging.WARNING):
+        out = join_metadata(df, csv, how="left")
+
+    assert out.height == 3
+    assert "duplicate keys" not in caplog.text

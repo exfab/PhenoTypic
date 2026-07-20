@@ -1,0 +1,11 @@
+docs/superpowers/plans/2026-07-13-fungi-detection-method-ports/algorithms/07-nfa.md
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/nfa/ATTRIBUTION.md
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/nfa/CLEAN_ROOM_ALLOWLIST.txt
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/nfa/CLEAN_ROOM_ATTESTATION.md
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/nfa/CLEAN_ROOM_HANDOFF.md
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/nfa/REFERENCE_CONTRACT.md
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/nfa/paper/2012_IPOL_LSD.pdf
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/nfa/paper/page-04.png
+docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/nfa/paper/page-05.png
+tests/fixtures/reconnect/nfa/lsd_source.json
+tests/fixtures/reconnect/nfa/contract_edges.json

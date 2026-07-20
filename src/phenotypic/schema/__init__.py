@@ -21,7 +21,10 @@ from ._measurement_info import (
     parse_qualified_header,
     qualified_header,
 )
-from ._rembi import REMBI_MODULE as REMBI_MODULE, header_to_module as header_to_module
+from ._rembi import (
+    REMBI_MODULE as REMBI_MODULE,
+    header_to_module as header_to_module,
+)
 from ._tiers import (
     DerivedMeasure as DerivedMeasure,
     DescriptiveTrait as DescriptiveTrait,
@@ -61,6 +64,7 @@ from ._model_metrics import MODEL_METRICS
 from ._object import OBJECT
 from ._curation import CURATION
 from ._error_category import ErrorCategory
+from ._metadata_match import METADATA_MATCH
 from ._quality_check import QUALITY_CHECK
 from ._quality_count import QUALITY_COUNT
 from ._quality_icc import QUALITY_ICC
@@ -70,7 +74,11 @@ from ._quality_se import QUALITY_SE
 from ._quality_tukey import QUALITY_TUKEY
 from ._quality_zmax import QUALITY_ZMAX
 from ._radial_expansion import RADIAL_EXPANSION
-from ._orientation_zones import ORIENTATION_ZONES
+from ._orientation_zones import (
+    ORIENTATION_ZONE_DIAGNOSTIC,
+    ORIENTATION_ZONE_PRIMARY,
+    ORIENTATION_ZONES,
+)
 from ._shape import SHAPE
 from ._size import SIZE
 from ._symmetric_zones import SYMMETRIC_ZONES
@@ -84,6 +92,7 @@ __all__ = [
     "REMBI_MODULE",
     "header_to_module",
     "METADATA",
+    "METADATA_MATCH",
     "ACQUISITION_METADATA",
     "CONDITION_METADATA",
     "CULTURE_METADATA",
@@ -123,6 +132,8 @@ __all__ = [
     "SHAPE",
     "SIZE",
     "ORIENTATION_ZONES",
+    "ORIENTATION_ZONE_DIAGNOSTIC",
+    "ORIENTATION_ZONE_PRIMARY",
     "SYMMETRIC_ZONES",
     "TEXTURE",
 ]

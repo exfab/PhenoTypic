@@ -469,6 +469,45 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
         relabeled = label(mask, connectivity=connectivity)
         self._root_image._data.sparse_object_map = self._dense_to_sparse(relabeled)
 
+    def drop_frame_background(self) -> int:
+        """Zero the label that forms the image-border frame (the background).
+
+        Class-agnostic instance segmenters (SAM2 and friends) can emit the plate
+        background as its own positive-labelled "object" -- a single mask that
+        frames the image around the colonies. Left in place, that label survives
+        into measurement and, worse, bridges every colony it touches when
+        :meth:`relabel` binarizes ``objmap > 0`` for connected components,
+        collapsing all instances into one blob. Zeroing it *before* ``relabel``
+        removes the bridge, so ``relabel`` then correctly merges fragments into
+        their surrounding colony and keeps distinct colonies apart.
+
+        The background is identified topologically and parameter-free: the label
+        owning the **plurality of the image-border pixels**. A colony never forms
+        the frame of a (cropped) plate, so this is the agar background. When no
+        positive label touches the border -- every ordinary threshold/​watershed
+        map, where the border is already background 0 -- this is a no-op.
+
+        Returns:
+            int: The zeroed background label, or 0 if none was found (no-op).
+
+        Notes:
+            - Only the single plurality-owning label is zeroed; border-*touching*
+              colonies are left for an explicit border refiner (which carries its
+              own tolerance) to handle.
+        """
+        dense = self._backend.toarray()
+        border = np.concatenate([
+            dense[0, :], dense[-1, :], dense[:, 0], dense[:, -1],
+        ])
+        border = border[border > 0]
+        if border.size == 0:
+            return 0
+        values, counts = np.unique(border, return_counts=True)
+        background = int(values[counts.argmax()])
+        dense[dense == background] = 0
+        self._root_image._data.sparse_object_map = self._dense_to_sparse(dense)
+        return background
+
     def vmax(self) -> int:
         """Returns the maximum value for the object map data type.
 

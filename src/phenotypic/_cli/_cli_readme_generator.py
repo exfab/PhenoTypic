@@ -87,7 +87,9 @@ Image Type: {self.config.image_type}{grid_info}"""
         """Generate output structure documentation."""
         dataset_list = "\n".join(f"|   +-- {d.name}/" for d in datasets[:5])
         if len(datasets) > 5:
-            dataset_list += f"\n|   +-- ... ({len(datasets) - 5} more datasets)"
+            dataset_list += (
+                f"\n|   +-- ... ({len(datasets) - 5} more datasets)"
+            )
 
         return f"""## Output Structure
 
@@ -191,7 +193,7 @@ No measurements configured in this pipeline."""
 
         return "\n".join(sections)
 
-    def _get_measurement_infoclasses(self, measurer) -> list:
+    def _get_measurement_infoclasses(self, measurer) -> list[type]:
         """Extract MeasurementInfo classes associated with a MeasureFeatures instance.
 
         Looks for class attributes that are MeasurementInfo subclasses or
@@ -209,24 +211,35 @@ No measurements configured in this pipeline."""
             GRID_SPREAD,
             GRID_LINREG_STATS,
             NEIGHBOR_DIST,
+            ORIENTATION_ZONE_DIAGNOSTIC,
+            ORIENTATION_ZONE_PRIMARY,
         )
 
         # Map measurer class names to their MeasurementInfo classes
-        measurer_to_info = {
-            "MeasureShape"           : [SHAPE],
-            "MeasureIntensity"       : [INTENSITY],
-            "MeasureTexture"         : [TEXTURE],
-            "MeasureColor"           : [ColorLab, ColorHSV],
+        measurer_to_info: dict[str, list[type]] = {
+            "MeasureShape": [SHAPE],
+            "MeasureIntensity": [INTENSITY],
+            "MeasureTexture": [TEXTURE],
+            "MeasureColor": [ColorLab, ColorHSV],
             "MeasureColorComposition": [ColorComposition],
-            "MeasureSize"            : [SIZE],
-            "MeasureBounds"          : [BBOX],
-            "MeasureGridLinRegStats" : [GRID_LINREG_STATS],
-            "MeasureGridSpread"      : [GRID_SPREAD],
-            "MeasureNeighborDist"    : [NEIGHBOR_DIST],
+            "MeasureSize": [SIZE],
+            "MeasureBounds": [BBOX],
+            "MeasureGridLinRegStats": [GRID_LINREG_STATS],
+            "MeasureGridSpread": [GRID_SPREAD],
+            "MeasureNeighborDist": [NEIGHBOR_DIST],
+            "MeasureOrientationZones": [
+                ORIENTATION_ZONE_PRIMARY,
+                ORIENTATION_ZONE_DIAGNOSTIC,
+            ],
         }
 
         class_name = measurer.__class__.__name__
-        return measurer_to_info.get(class_name, [])
+        infos = measurer_to_info.get(class_name, [])
+        if class_name == "MeasureOrientationZones" and not getattr(
+            measurer, "include_diagnostics", False
+        ):
+            return infos[:1]
+        return infos
 
     def _generate_measurement_table(self, info_cls) -> str:
         """Generate markdown table for a MeasurementInfo class."""

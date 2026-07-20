@@ -1,7 +1,7 @@
 [build-system]
-# setuptools>=62.3 is required for recursive ``**`` globs in
-# ``[tool.setuptools.package-data]`` (used to ship the GUI sub-app assets).
-requires = ["setuptools>=62.3", "wheel"]
+# setuptools>=77.0.3 is required for PEP 639 ``license-files`` support;
+# recursive ``**`` package-data globs also remain supported at this floor.
+requires = ["setuptools>=77.0.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -20,6 +20,7 @@ authors = [
 description = "An image processing framework created for Ex-FAB NSF BioFoundry that aims to streamline the development of image processing pipelines for images analysis of phenotypes."
 
 readme = "README.md"
+license-files = ["LICENSE", "NOTICE", "licenses/*.txt"]
 
 requires-python = ">=3.10, <3.13"
 
@@ -125,6 +126,10 @@ tune = [
     "optuna>=4.0",
     "sqlalchemy>=2.0",
     "psycopg[binary]>=3.1",
+]
+topology = [
+    "fil-finder==1.8",
+    "gudhi==3.13.0",
 ]
 
 [project.scripts]
@@ -244,6 +249,12 @@ constraint-dependencies = [
 
 [tool.ruff]
 line-length = 79
+# Vendored upstream reference sources are pristine third-party copies that the
+# `porting-a-reference-algorithm` workflow diffs our ports against line-by-line.
+# `ruff check --fix` (the documented lint command) is repo-wide, so without this
+# it silently rewrites them — stripping "unused" imports and reformatting calls —
+# and the diff against upstream stops meaning anything. Never lint or fix them.
+extend-exclude = ["docs/superpowers/**/refs"]
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]

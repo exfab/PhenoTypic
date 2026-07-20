@@ -146,7 +146,13 @@ class TestInferBatchDefault:
 class TestOperateRoutes:
     def test_instance_route_writes_objmap(self):
         image = load_synth_yeast_plate()
-        det = _FakeGpuDetector(output_kind="instance", threshold=0.3)
+        # drop_frame_background off: this checks the instance->objmap ROUTING,
+        # not background handling. The threshold fake emits one border-touching
+        # foreground blob, which the (default-on) background drop would zero;
+        # drop_frame_background has its own coverage in
+        # test_gpu_detector_split_disconnected.py::TestDropFrameBackground.
+        det = _FakeGpuDetector(output_kind="instance", threshold=0.3,
+                               drop_frame_background=False)
         out = det.apply(image, inplace=False)
         assert out.objmap[:].max() >= 1
         # objmask is the derived view of objmap

@@ -30,6 +30,7 @@ from phenotypic.sdk_ import (
     measurements_parquet_path,
 )
 from phenotypic._cli._cli_output_manager import (
+    _image_metadata_from_mirror,
     _collect_feature_headers,
     _load_pipeline_from_output_dir,
     aggregate_measurements,
@@ -517,3 +518,49 @@ class TestFinalizeCopiesMetadataCsv:
 
         assert not tools_.metadata_csv_deliverable_path(output_dir).exists()
         assert tools_.measurements_parquet_path(output_dir).exists()
+
+
+class TestRembiImageMetadataExcludesPhantoms:
+    """REMBI must not invent an image for a strain that was never captured.
+
+    ``--metadata`` is a left join, so the mirror carries a row for every CSV key
+    including strains that matched no measured object. REMBI is a publication
+    manifest: folding a phantom into ``image_data`` fabricates a record for an
+    image that does not exist.
+    """
+
+    @staticmethod
+    def _mirror(image_names, phantom_flags):
+        return pl.DataFrame({
+            str(METADATA.IMAGE_NAME): image_names,
+            "QC_MetadataOnly": phantom_flags,
+        })
+
+    def test_phantom_with_a_real_image_name_is_excluded(self):
+        """The documented per-image join: the phantom KEEPS the image name.
+
+        This is the case a null-name filter cannot catch — ``plateZ`` is the
+        join key, so it is emphatically not null. Without the flag filter REMBI
+        reported ``n_images: 3`` for two captured plates.
+        """
+        mirror = self._mirror(["plateA", "plateB", "plateZ"], [False, False, True])
+
+        rows = _image_metadata_from_mirror(mirror)
+
+        assert sorted(r["ImageName"] for r in rows) == ["plateA", "plateB"]
+
+    def test_phantom_with_a_null_image_name_is_excluded(self):
+        """The per-colony join (on Grid_RowNum/ColNum): the name IS null."""
+        mirror = self._mirror(["plateA", None], [False, True])
+
+        rows = _image_metadata_from_mirror(mirror)
+
+        assert [r["ImageName"] for r in rows] == ["plateA"]
+
+    def test_no_op_without_a_flag_column(self):
+        """A run without --metadata has no flag; every image must survive."""
+        mirror = pl.DataFrame({str(METADATA.IMAGE_NAME): ["plateA", "plateB"]})
+
+        rows = _image_metadata_from_mirror(mirror)
+
+        assert sorted(r["ImageName"] for r in rows) == ["plateA", "plateB"]

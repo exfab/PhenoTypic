@@ -1,0 +1,66 @@
+{
+  "subject": "A06 cellular automaton",
+  "gate_status": "blocked",
+  "gate_reason": "The executable source defines CA evolution on a caller-supplied detector graph, not the planned fungal image-space graph and colony-labelled result contract.",
+  "narrow_core_disposition": {
+    "status": "passed",
+    "scope": "tricktrack_ca evolution and exact-length extraction over caller-supplied ordered outer-neighbor CSR",
+    "deferred": [
+      "fungal graph construction",
+      "angle and distance semantics",
+      "colony ownership",
+      "rasterization",
+      "detector integration",
+      "exports and registries"
+    ],
+    "record": "G0_NARROW_CORE.md"
+  },
+  "paper": {
+    "title": "TrickTrack: An experiment-independent, cellular-automaton based track seeding library",
+    "authors": [
+      "Valentin Volkl",
+      "Felice Pantaleo",
+      "Benedikt Hegner"
+    ],
+    "venue": "Connecting the Dots 2018 proceedings",
+    "official_event_url": "https://indico.cern.ch/event/658267/contributions/2813731/",
+    "official_pdf_url": "https://indico.cern.ch/event/658267/papers/2813731/files/8339-cdt_proceedings_tricktrack.pdf",
+    "local_file": "tricktrack-paper.pdf",
+    "sha256": "f6500843ed0d9c5b0d8793c6e8c000c3cc6a8521bf72f7899109c939c40c8650",
+    "age_caveat": "The work is more than five years old as of 2026-07-13."
+  },
+  "executable_source": {
+    "repository": "https://github.com/HSF/TrickTrack.git",
+    "version": "1.0.9",
+    "commit": "b164fad1361505ff8dbf328107b645753ce331ac",
+    "commit_date": "2020-02-24T11:18:29+01:00",
+    "archive": "TrickTrack-b164fad.tar.gz",
+    "archive_sha256": "144e836fe1bc64fc97bf09b47a5b6dd60e31899f720d3b4d559931d36780fbe1",
+    "license": "Apache-2.0",
+    "license_file": "source/LICENSE",
+    "oracle_command_file": "RUN.md",
+    "verified_compiler": "Apple Clang 21.0.0",
+    "verified_result": "TrickTrack integration test successful"
+  },
+  "authority_scope": {
+    "supported": [
+      "detector hit doublets as cells",
+      "caller-supplied directed layer topology",
+      "caller-supplied compatibility callback",
+      "snapshot same-state neighbor increments",
+      "fixed min-hit-derived iteration schedule",
+      "root-state threshold",
+      "exact-length all-branch extraction in insertion order"
+    ],
+    "unsupported": [
+      "fungal radial layer construction",
+      "row-column and axial-angle conventions",
+      "angle and distance boundary rules",
+      "cycle and invalid-input rejection",
+      "canonical permutation-invariant ordering",
+      "fixed-point convergence semantics",
+      "colony ownership and conflict resolution",
+      "CATrackResult ragged-array schema"
+    ]
+  }
+}

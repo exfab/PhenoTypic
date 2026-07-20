@@ -64,12 +64,13 @@ def _build_reference_tree(tmp_path: Path, monkeypatch: MonkeyPatch) -> Path:
     return tmp_path / "measurements_ref"
 
 
-#: Group slugs (caption -> directory slug) for the 5-group reference tree.
+#: Group slugs (caption -> directory slug) for the reference tree.
 _GROUP_SLUGS = {
     "Measurements": "measurements",
     "Models & Analysis": "models-and-analysis",
     "Quality Control": "quality-control",
     "Curation & Errors": "curation-and-errors",
+    "Compatibility": "compatibility",
     "Metadata": "metadata",
 }
 
@@ -180,6 +181,22 @@ def test_generated_enum_pages_escape_rst_markup(
     assert ":class:" not in metadata_page
     assert ":meth:" not in quality_check_page
     assert r"\|mean\|" in quality_se_page
+
+
+def test_compatibility_alias_page_uses_public_export_name(
+        tmp_path: Path,
+        monkeypatch: MonkeyPatch,
+) -> None:
+    """An enum alias should not masquerade as a second canonical class page."""
+    docs_root = _build_reference_tree(tmp_path, monkeypatch)
+    alias_page = (
+        docs_root / "compatibility" / "orientation_zones.rst"
+    ).read_text()
+
+    assert alias_page.startswith("ORIENTATION_ZONES\n=================")
+    assert "phenotypic.schema.ORIENTATION_ZONES" in alias_page
+    assert "Compatibility alias for" in alias_page
+    assert "phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC" in alias_page
 
 
 def test_every_public_enum_lands_in_exactly_one_group(monkeypatch):

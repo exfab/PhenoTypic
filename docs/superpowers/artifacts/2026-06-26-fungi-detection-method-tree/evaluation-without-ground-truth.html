@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Judging a Detector With No Ground Truth — How Eight Fields Score Success Without Labels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f; --teal:#0f8a80;
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;overflow-wrap:break-word;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  .hero{padding:clamp(34px,7vw,64px) 0 14px;max-width:82ch}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
+  .hero-title{font-family:var(--serif);font-weight:700;font-size:clamp(30px,5.6vw,52px);line-height:1.03;margin:0 0 16px;color:var(--ink);letter-spacing:-.015em}
+  .hero-title em{font-style:italic;color:var(--vermillion)}
+  .lede{font-size:clamp(16px,2.3vw,19px);color:var(--text);margin:0 0 14px}
+  .lede b{color:var(--ink);font-weight:600}
+  .lede em{font-style:italic;color:var(--text-dim)}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:24px 0 8px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
+  .kpi__v{font-family:var(--serif);font-size:32px;font-weight:700;letter-spacing:-.5px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+  .kpi__l{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin-top:8px}
+
+  .band{padding:34px 0 4px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(21px,3.4vw,30px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 18px;max-width:80ch}
+  .section-sub b{color:var(--ink);font-weight:600}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:4px 0 20px}
+
+  /* ---- strategy families ---- */
+  .fam-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+  .fam{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .fam::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--fc,var(--blue))}
+  .fam h4{margin:0 0 4px;font-family:var(--serif);font-size:16px;font-weight:600;color:var(--ink);padding-left:6px}
+  .fam .fam-k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--fc,var(--blue));font-weight:600;display:block;margin:0 0 6px 6px}
+  .fam p{margin:0 0 8px;font-size:13px;color:var(--text-dim);padding-left:6px}
+  .fam p b{color:var(--ink);font-weight:600}
+  .fam .fam-fields{font-family:var(--mono);font-size:10.5px;color:var(--faint);padding-left:6px}
+
+  /* ---- field cards ---- */
+  .field{margin-top:22px;scroll-margin-top:70px}
+  .field__card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:0;overflow:hidden}
+  .field__head{display:flex;align-items:flex-start;gap:14px;padding:18px 20px 14px;border-bottom:1px solid var(--border);position:relative}
+  .field__head::before{content:'';position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--fc,var(--blue))}
+  .field__badge{font-family:var(--serif);font-weight:700;font-size:24px;width:46px;height:46px;display:grid;place-items:center;color:#fff;background:var(--fc,var(--blue));border-radius:11px;flex:none;position:relative;overflow:hidden}
+  .field__badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.25),transparent 60%)}
+  .field__ttl{flex:1;min-width:0}
+  .field__ttl h3{margin:0 0 3px;font-family:var(--serif);font-size:19px;font-weight:600;color:var(--ink);letter-spacing:-.01em}
+  .field__ttl .field__src{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+  .yes{font-family:var(--mono);font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap;background:rgba(213,94,0,.12);color:var(--vermillion);border:1px solid rgba(213,94,0,.3);align-self:center;display:inline-flex;align-items:center;gap:5px}
+  .yes::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+
+  .field__body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0}
+  .field__txt{padding:16px 20px 18px}
+  .field__viz{padding:16px 18px;border-left:1px solid var(--border);background:var(--surface-2);display:flex;flex-direction:column;justify-content:center}
+  .frow{margin:0 0 12px}
+  .frow:last-child{margin-bottom:0}
+  .frow .flabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--fc,var(--blue));font-weight:600;display:block;margin-bottom:3px}
+  .frow p{margin:0;font-size:13.5px;color:var(--text-dim)}
+  .frow p b{color:var(--ink);font-weight:600}
+  .frow code{font-family:var(--mono);font-size:12px;background:var(--inset);color:var(--ink);padding:1px 5px;border-radius:4px}
+
+  .mapchip{display:inline-block;font-family:var(--mono);font-size:10.5px;background:var(--inset);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:2px 8px;margin:3px 4px 0 0}
+  .mapchip b{color:var(--ink)}
+
+  /* ---- reference-free vs GT chips ---- */
+  .av2{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;font-weight:500;padding:2px 8px;border-radius:999px;border:1px solid transparent;margin:4px 5px 0 0;white-space:nowrap}
+  .av2::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+  .av2 code{font-family:var(--mono);font-size:.92em;opacity:.8;background:none;padding:0;border-radius:0}
+  .av2--free{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .av2--proxy{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.28)}
+  .av2--semi{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .av2--gt{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+  .avlegend{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:0 0 20px;box-shadow:var(--shadow);font-size:13px;color:var(--text-dim);line-height:2}
+  .avlegend .avl-t{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:8px}
+  .avlegend .avl-note{display:block;margin-top:10px;font-size:12.5px;line-height:1.6}
+  .avlegend .avl-note b{color:var(--ink);font-weight:600}
+  .avlegend .avl-note code{font-family:var(--mono);font-size:.95em}
+
+  figure.illo{margin:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 10px 6px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-s{font-family:var(--mono);font-size:11px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12px;color:var(--text-dim);margin-top:7px;line-height:1.4}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  .cite{font-size:12px;color:var(--text-dim);margin-top:10px;line-height:1.5}
+  .cite b{color:var(--ink);font-weight:600}
+
+  /* ---- comparison table ---- */
+  .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);background:var(--surface)}
+  table.cmp{border-collapse:collapse;width:100%;min-width:760px;font-size:13px}
+  table.cmp th,table.cmp td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+  table.cmp thead th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);background:var(--surface-2);position:sticky;top:0}
+  table.cmp tbody tr:last-child td{border-bottom:0}
+  table.cmp td b{color:var(--ink);font-weight:600}
+  table.cmp .fld{font-family:var(--serif);font-weight:600;color:var(--ink);white-space:nowrap}
+  table.cmp .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+
+  /* ---- references ---- */
+  .refs{columns:2;column-gap:32px}
+  @media(max-width:720px){.refs{columns:1}}
+  .refgrp{break-inside:avoid;margin:0 0 16px}
+  .refgrp h5{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--fc,var(--faint));margin:0 0 6px;font-weight:600}
+  .refgrp ol{margin:0;padding-left:18px}
+  .refgrp li{font-size:12.5px;color:var(--text-dim);margin:0 0 6px;line-height:1.45}
+  .refgrp li b{color:var(--ink);font-weight:600}
+
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);border-radius:10px;padding:16px 20px;margin:12px 0 0;box-shadow:var(--shadow);font-size:13.5px;color:var(--text-dim)}
+  .callout b{color:var(--ink);font-weight:600}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+  .callout code{font-family:var(--mono);font-size:12px;background:var(--inset);color:var(--ink);padding:1px 5px;border-radius:4px}
+
+  /* ---- battery / recommendation steps ---- */
+  .battery{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:6px}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px 15px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .step::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--fc,var(--green))}
+  .step .step-n{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--fc,var(--green));font-weight:600;display:block;margin:0 0 4px 6px}
+  .step h4{margin:0 0 5px;font-family:var(--serif);font-size:15.5px;font-weight:600;color:var(--ink);padding-left:6px}
+  .step p{margin:0;font-size:12.8px;color:var(--text-dim);padding-left:6px}
+  .step p b{color:var(--ink);font-weight:600}
+  .step p code{font-family:var(--mono);font-size:11.5px;background:var(--inset);color:var(--ink);padding:1px 4px;border-radius:4px}
+
+  .footer{margin-top:44px;border-top:1px solid var(--rule);padding:24px 0 56px;color:var(--text-dim);font-size:12.5px;font-family:var(--mono);line-height:1.7}
+
+  @media(max-width:820px){.field__body{grid-template-columns:1fr}.field__viz{border-left:0;border-top:1px solid var(--border)}}
+  @media print{body{background:#fff}.topbar{position:static}.kpi,.fam,.field__card,.callout,.tablewrap,.step{box-shadow:none}.field,.fam,.step{break-inside:avoid}}
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Scoring Without Ground Truth</b> · cross-field survey</span>
+  <nav>
+    <a href="index-fieldnotebook.html">↩ Method tree</a>
+    <a href="cross-field-reconnection.html">↩ Reconnection</a>
+    <a href="#families">Families</a>
+    <a href="#fields">Fields</a>
+    <a href="#battery">Battery</a>
+    <a href="#refs">References</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-kicker">Third in the series · after the method tree &amp; the reconnection survey</div>
+    <h1 class="hero-title">If you can't label every hypha, how do you know the detector <em>worked</em>?</h1>
+    <p class="lede">A dense mycelium has no answer key. No one can hand-trace every strand of an overlapping hyphal
+      network, so there is <b>no pixel-level ground truth</b> to score a segmentation against — and the reconnection
+      methods in the companion survey make this sharper, because a bridged gap is exactly where truth is least knowable.
+      So the question becomes: <b>without labels, what tells you a detection is good rather than a plausible fiction?</b></p>
+    <p class="lede">It turns out the eight fields that lent the method tree its algorithms all face the same wall —
+      cosmic filaments, neurons, particle tracks, vessels, roads, roots, river networks, cytoskeletal fibers all get
+      reconstructed where no truth exists — and each built <b>reference-free evaluation</b>: ways to judge an extraction
+      by what it must satisfy rather than by a label. <em>This report compiles those metrics, with citations, sorts them
+      into seven families, and closes with a concrete label-free evaluation battery for the hyphae methods.</em></p>
+  </section>
+
+  <div class="kpis">
+    <div class="kpi"><div class="kpi__v">8</div><div class="kpi__l">Fields surveyed for eval methods</div></div>
+    <div class="kpi"><div class="kpi__v">7</div><div class="kpi__l">Reference-free metric families</div></div>
+    <div class="kpi"><div class="kpi__v">~45</div><div class="kpi__l">Papers retrieved &amp; cited</div></div>
+    <div class="kpi"><div class="kpi__v">0</div><div class="kpi__l">Ground-truth masks required</div></div>
+  </div>
+
+  <div class="avlegend">
+    <span class="avl-t">Four ways a field substitutes for a missing answer key</span>
+    <span class="av2 av2--free">REFERENCE-FREE</span> scored against the data / itself, no labels at all &nbsp;·&nbsp;
+    <span class="av2 av2--semi">SEMI-GT</span> sparse expert tracing as a fallible proxy reference &nbsp;·&nbsp;
+    <span class="av2 av2--proxy">SYNTHETIC-GT</span> simulated data with known truth, used to calibrate &nbsp;·&nbsp;
+    <span class="av2 av2--gt">NEEDS-GT</span> classic metric that requires a real label (shown for contrast)
+    <span class="avl-note"><b>The through-line:</b> a truly label-free score never asks "does this match the truth?" — it asks
+      <b>"does this explain the data, survive a perturbation, obey a known law, or agree with an independent method?"</b>
+      Those four questions are the seven families below. Semi-GT (expert tracing) and synthetic-GT (phantoms) are the
+      honest fallbacks every field keeps on hand to <em>calibrate</em> the reference-free scores — not replace them.</span>
+  </div>
+
+  <!-- =============== EVALUATION FAMILIES =============== -->
+  <section class="band" id="families">
+    <h2 class="section-title">Seven families of reference-free evaluation</h2>
+    <p class="section-sub">Every no-ground-truth metric in the eight fields answers one of four questions —
+      <b>does it explain the data · is it significant · is it self-consistent · is it plausible/reproducible/agreed</b> —
+      which split into these seven families. Most fields lean on three or four at once.</p>
+    <hr class="rule">
+    <div class="fam-grid">
+
+      <div class="fam" style="--fc:var(--vermillion)">
+        <span class="fam-k">A · data-consistency / forward-model fit</span>
+        <h4>Does the mask explain the image?</h4>
+        <p>Render the extraction back into image space (predicted intensity / ridges) and score the residual against the raw
+          data. Structure that doesn't help predict the signal is down-weighted or deleted — <b>no label needed, the image is the reference</b>.</p>
+        <p class="fam-fields">SIFT / COMMIT · MSSIM skeleton-vs-image · SOAX F-function</p>
+      </div>
+
+      <div class="fam" style="--fc:var(--purple)">
+        <span class="fam-k">B · significance / false-alarm control</span>
+        <h4>Is it above the noise?</h4>
+        <p>Rank each candidate by a significance score and keep only what exceeds what noise alone would produce.
+          A principled real-vs-spurious cut set by the <b>data's own noise level</b>, not by a truth catalog.</p>
+        <p class="fam-fields">persistence Nσ · a-contrario NFA · flow-accumulation threshold</p>
+      </div>
+
+      <div class="fam" style="--fc:var(--blue)">
+        <span class="fam-k">C · topological self-consistency</span>
+        <h4>Is the skeleton internally sane?</h4>
+        <p>Score intrinsic topology of the extraction alone — connected-component count, spurious islands, spurious loops,
+          Betti numbers, dangling ends. Fewer broken fragments ≈ better, <b>with nothing to compare to</b>.</p>
+        <p class="fam-fields">component / island count · spurious-loop count · endpoint budget</p>
+      </div>
+
+      <div class="fam" style="--fc:var(--green)">
+        <span class="fam-k">D · scaling-law / physical plausibility</span>
+        <h4>Does it obey the domain's laws?</h4>
+        <p>Recovered structure must fall in expected physical ranges or obey a domain scaling law (widths, line-mass,
+          Horton/Hack ratios, branch-angle and length distributions). Violations flag over- or under-extraction.</p>
+        <p class="fam-fields">Horton / Hack laws · width &amp; line-mass bounds · trait / growth-model fit</p>
+      </div>
+
+      <div class="fam" style="--fc:var(--yellow)">
+        <span class="fam-k">E · stability / reproducibility</span>
+        <h4>Does it survive a perturbation?</h4>
+        <p>Nudge parameters, resample, or augment the input and measure how much the output recurs. Structure that flips
+          with a small change is a parameter artifact; edges that recur across resamples are trusted.</p>
+        <p class="fam-fields">bootstrap traversal-frequency · parameter plateaus · test-time-augmentation consistency</p>
+      </div>
+
+      <div class="fam" style="--fc:var(--sky)">
+        <span class="fam-k">F · cross-method / cross-modality agreement</span>
+        <h4>Do independent views converge?</h4>
+        <p>Run several independent detectors on the same data, or correlate with an independent measurement / modality.
+          Convergent structure is trusted; single-method-only detections are suspect. <b>No view is the truth</b> — the agreement is the signal.</p>
+        <p class="fam-fields">12-method comparison · data-vs-simulation · MRI-vs-CT, biomass correlation</p>
+      </div>
+
+      <div class="fam" style="--fc:var(--teal)">
+        <span class="fam-k">G · known-signal / learned no-reference</span>
+        <h4>Recover a signal you planted.</h4>
+        <p>Exploit a known physics anchor (a mass resonance) or a synthetic phantom with known truth, or train a
+          no-reference quality regressor on degraded masks. The planted signal <b>calibrates</b> the label-free score.</p>
+        <p class="fam-fields">tag-and-probe on resonances · synthetic phantoms · no-reference quality CNN · RCA</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- =============== FIELD CARDS =============== -->
+  <section class="band" id="fields">
+    <h2 class="section-title">Field by field</h2>
+    <p class="section-sub">Each card: why the field has <b>no usable ground truth</b>, the reference-free metrics it built
+      instead (named), and the mechanism sketched. Corner tags reference the seven families above; chips mark whether each
+      named metric is <span class="av2 av2--free" style="margin:0">reference-free</span>,
+      <span class="av2 av2--semi" style="margin:0">semi-GT</span>,
+      <span class="av2 av2--proxy" style="margin:0">synthetic-GT</span>, or a
+      <span class="av2 av2--gt" style="margin:0">needs-GT</span> contrast.</p>
+    <hr class="rule">
+
+    <!-- 1. NEUROSCIENCE -->
+    <article class="field" id="e-neuro" style="--fc:var(--vermillion)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">ψ</div>
+          <div class="field__ttl"><h3>Neuroscience — tractography &amp; neuron tracing</h3><span class="field__src">SIFT · COMMIT · ACT · test–retest · families A·E·D</span></div>
+          <span class="yes">no in-vivo truth</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why there's no ground truth</span><p>There is <b>no in-vivo geometry</b> for white-matter tracts or neurites. Histology is sparse, ex-vivo, cross-species; phantoms (FiberCup, ISMRM-2015) are simplified proxies. Maier-Hein 2017 quantified the wall: pipelines recover ~90% of valid bundles but emit on average <b>88±58 invalid bundles</b> — sensitivity is easy, specificity is the problem.</p></div>
+            <div class="frow"><span class="flabel">Reference-free metrics</span><p>The load-bearing idea is <b>forward-model fit</b>: <b>SIFT / SIFT2</b> filter or weight streamlines until tractogram density reproduces the measured FOD; <b>COMMIT / COMMIT2</b> cast the tractogram as a linear forward model of the diffusion signal and zero any streamline that doesn't help predict it. Complemented by <b>test–retest &amp; bootstrap</b> reproducibility and <b>anatomical-plausibility priors</b> (ACT: streamlines must start/end in grey matter). For neuron tracing the DIADEM metric needs GT — inter-annotator agreement is the reference-free substitute.</p></div>
+            <div class="frow"><span class="flabel">Named metrics</span>
+              <span class="av2 av2--free">SIFT / SIFT2 <code>fwd-fit</code></span><span class="av2 av2--free">COMMIT / COMMIT2 <code>fwd-fit</code></span><span class="av2 av2--free">test–retest / bootstrap</span><span class="av2 av2--free">ACT plausibility</span><span class="av2 av2--gt">DIADEM</span>
+            </div>
+            <p class="cite"><b>Key sources:</b> Smith+ 2013 (SIFT); Smith+ 2015 (SIFT2); Daducci+ 2015 (COMMIT); Schiavi+ 2020 (COMMIT2); Smith+ 2012 (ACT); Maier-Hein+ 2017 (challenge). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="Streamlines are rendered into a predicted signal, compared to the measured signal, and the residual weights each streamline; a non-explaining streamline is zeroed">
+                <text class="lbl" x="14" y="20">reconstruction → predict signal → residual</text>
+                <!-- streamlines -->
+                <path class="struct" stroke="var(--ink)" d="M24,58 C70,50 110,64 150,56"/>
+                <path class="struct" stroke="var(--ink)" d="M24,74 C70,80 110,70 150,78"/>
+                <path class="struct" stroke="var(--rule)" stroke-dasharray="4 3" d="M24,66 C70,40 110,96 150,66"/>
+                <text class="lbl" x="20" y="98">streamlines</text>
+                <!-- forward arrow -->
+                <path d="M158,66 L188,66" stroke="var(--vermillion)" stroke-width="1.6" marker-end="url(#ah)"/>
+                <defs><marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="var(--vermillion)"/></marker></defs>
+                <!-- predicted vs measured bars -->
+                <g transform="translate(196,34)">
+                  <text class="lbl" x="0" y="6">predicted</text><text class="lbl" x="78" y="6">measured</text>
+                  <rect x="0" y="12" width="16" height="52" fill="rgba(213,94,0,.22)" stroke="var(--vermillion)" stroke-width="1.3"/>
+                  <rect x="22" y="24" width="16" height="40" fill="rgba(213,94,0,.22)" stroke="var(--vermillion)" stroke-width="1.3"/>
+                  <rect x="78" y="18" width="16" height="46" fill="rgba(15,138,128,.2)" stroke="var(--teal)" stroke-width="1.3"/>
+                  <rect x="100" y="22" width="16" height="42" fill="rgba(15,138,128,.2)" stroke="var(--teal)" stroke-width="1.3"/>
+                  <line class="axis" x1="-2" y1="64" x2="120" y2="64"/>
+                </g>
+                <!-- zeroed streamline -->
+                <path class="struct" stroke="var(--rule)" stroke-dasharray="4 3" d="M24,150 C90,132 150,168 210,150"/>
+                <line x1="112" y1="142" x2="124" y2="154" stroke="var(--vermillion)" stroke-width="1.8"/>
+                <line x1="124" y1="142" x2="112" y2="154" stroke="var(--vermillion)" stroke-width="1.8"/>
+                <text class="lbl-s" x="176" y="176" text-anchor="middle" fill="var(--vermillion)">doesn't explain signal → weight 0</text>
+                <text class="lbl-s" x="180" y="206" text-anchor="middle" fill="var(--vermillion)">fit the reconstruction to the data, not to a label</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> a streamline earns its place only if it helps reproduce the measured diffusion signal; the residual — not a truth mask — is the score.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 2. ISM ASTRONOMY -->
+    <article class="field" id="e-ism" style="--fc:var(--sky)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">✦</div>
+          <div class="field__ttl"><h3>Astronomy — ISM &amp; molecular-cloud filaments</h3><span class="field__src">MSSIM goodness · parameter sweeps · width bounds · families A·E·D·F</span></div>
+          <span class="yes">skeleton undefined</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why there's no ground truth</span><p>A molecular cloud has <b>no "true" filament map</b> — the skeleton is a human construct, so nothing to score against. Green+ 2017 show extraction is acutely <b>parameter-sensitive</b>: DisPerSE/FilFinder produce thousands of visibly different skeletons, historically chosen by eye. Synthetic benchmarks with known inputs are the only true-GT setting, used as a proxy.</p></div>
+            <div class="frow"><span class="flabel">Reference-free metrics</span><p><b>MSSIM self-consistency</b> (Green+ 2017): compute the mean structural-similarity index between the extracted skeleton and the original intensity image — a scalar goodness-of-fit that objectively ranks the parameter-dependent skeletons and replaces visual selection. Plus <b>parameter-stability</b> (a network that flips under a small persistence/threshold nudge is an artifact), <b>physical-plausibility bounds</b> (radial profile, ~0.1 pc inner width, line-mass vs the ~16 M⊙/pc critical value), and <b>multi-tracer / multi-scale agreement</b> (getsf) — features surviving independent channels are trusted.</p></div>
+            <div class="frow"><span class="flabel">Named metrics</span>
+              <span class="av2 av2--free">MSSIM goodness-of-fit</span><span class="av2 av2--free">parameter-stability sweep</span><span class="av2 av2--free">width / line-mass bounds</span><span class="av2 av2--free">multi-tracer agreement</span><span class="av2 av2--proxy">getsf benchmark</span>
+            </div>
+            <p class="cite"><b>Key sources:</b> Green+ 2017 (MSSIM); Koch &amp; Rosolowsky 2015 (FilFinder); Arzoumanian+ 2019 (0.1 pc width); Panopoulou+ 2022 (width caveat); Men'shchikov 2021 (benchmarks). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="Two candidate skeletons overlaid on the same intensity ridge; the MSSIM goodness-of-fit score selects the one that tracks the ridge">
+                <text class="lbl" x="14" y="20">skeleton vs image · MSSIM picks the fit</text>
+                <!-- intensity ridge -->
+                <path class="struct" stroke="var(--sky)" stroke-width="11" opacity=".18" d="M22,84 C110,66 210,96 336,72"/>
+                <text class="lbl" x="250" y="58">intensity ridge</text>
+                <!-- good skeleton -->
+                <path class="struct" stroke="var(--ink)" stroke-width="2.4" d="M26,84 C110,67 210,95 332,72"/>
+                <!-- bad skeleton -->
+                <path class="struct" stroke="var(--rule)" stroke-dasharray="4 3" d="M26,100 C120,120 210,60 332,104"/>
+                <text class="lbl-s" x="150" y="132" fill="var(--vermillion)">off-ridge candidate</text>
+                <!-- MSSIM gauges -->
+                <g transform="translate(40,150)">
+                  <text class="lbl" x="0" y="6">MSSIM</text>
+                  <rect x="46" y="0" width="120" height="9" rx="4.5" fill="var(--inset)" stroke="var(--border)"/>
+                  <rect x="46" y="0" width="104" height="9" rx="4.5" fill="var(--sky)"/>
+                  <text class="lbl-s" x="176" y="8" fill="var(--sky)">0.87 ✓</text>
+                  <rect x="46" y="18" width="120" height="9" rx="4.5" fill="var(--inset)" stroke="var(--border)"/>
+                  <rect x="46" y="18" width="34" height="9" rx="4.5" fill="var(--vermillion)"/>
+                  <text class="lbl-s" x="176" y="26" fill="var(--vermillion)">0.29 ✕</text>
+                </g>
+                <text class="lbl-s" x="180" y="206" text-anchor="middle" fill="var(--sky)">the image is the reference — no truth skeleton</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> structural similarity between skeleton and raw intensity ranks the thousands of parameter-dependent extractions objectively, so selection stops being "by eye."</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 3. COSMOLOGY -->
+    <article class="field" id="e-cosmo" style="--fc:var(--purple)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">Ω</div>
+          <div class="field__ttl"><h3>Cosmology — the cosmic web</h3><span class="field__src">persistence Nσ · bootstrap · 12-method · distributions · families B·E·F·D</span></div>
+          <span class="yes">no true catalog</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why there's no ground truth</span><p>There is <b>no observed catalog of "true" filaments</b> for the real universe, so real-data evaluation is inherently reference-free. The only truth is a <b>simulation proxy</b> (N-body runs with a nominal skeleton) — which inherits the simulation's own assumptions and depends on how the "true" skeleton is even defined.</p></div>
+            <div class="frow"><span class="flabel">Reference-free metrics</span><p><b>Persistence Nσ significance</b> (DisPerSE): keep only topological pairs whose persistence exceeds what noise of a given amplitude produces — a false-alarm cut, not a catalog match. <b>Stability / bootstrap</b> (T-ReX): resample and build a <b>traversal-frequency map</b> — how often each region is crossed across resamples — so high-frequency edges are the reproducible filaments and frequency <em>is</em> the uncertainty. <b>Cross-method agreement</b> (Libeskind+ 2018): twelve independent classifiers on the same simulation, convergence treated as validity. <b>Physical-plausibility distributions</b>: recovered length/mass/connectivity matched to theoretical expectation.</p></div>
+            <div class="frow"><span class="flabel">Named metrics</span>
+              <span class="av2 av2--free">persistence Nσ</span><span class="av2 av2--free">bootstrap traversal-frequency</span><span class="av2 av2--free">12-method agreement</span><span class="av2 av2--free">length / connectivity distributions</span><span class="av2 av2--proxy">N-body proxy skeleton</span>
+            </div>
+            <p class="cite"><b>Key sources:</b> Sousbie 2011 (DisPerSE Nσ); Bonnaire+ 2020 (T-ReX bootstrap); Libeskind+ 2018 (12-method); Galárraga-Espinosa+ 2020 (distributions); Codis+ 2018 (connectivity). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="A network is resampled several times; edges that recur across bootstraps are drawn bold, low-frequency edges fade — traversal frequency is the reproducibility score">
+                <text class="lbl" x="14" y="20">bootstrap resamples → traversal frequency</text>
+                <!-- faint resampled variants -->
+                <g stroke="var(--purple)" fill="none" stroke-width="1.4" opacity=".28">
+                  <path d="M30,70 C90,80 150,64 210,84"/>
+                  <path d="M34,64 C92,74 150,60 208,78"/>
+                  <path d="M28,76 C88,86 152,70 212,90"/>
+                  <path d="M60,120 C110,110 150,120 210,84"/>
+                  <path d="M60,132 C112,122 152,128 208,86"/>
+                </g>
+                <!-- stable high-frequency edge -->
+                <path class="struct" stroke="var(--purple)" stroke-width="3.2" d="M31,70 C90,80 150,64 209,84"/>
+                <text class="lbl-s" x="66" y="56" fill="var(--purple)">recurs → bold</text>
+                <!-- low frequency -->
+                <path class="struct" stroke="var(--rule)" stroke-dasharray="3 3" d="M120,150 C140,140 150,150 168,140"/>
+                <text class="lbl" x="120" y="168">rare → dropped</text>
+                <!-- frequency scale -->
+                <g transform="translate(238,40)">
+                  <text class="lbl" x="0" y="6">freq</text>
+                  <rect x="0" y="14" width="16" height="96" fill="url(#pg)" stroke="var(--border)"/>
+                  <defs><linearGradient id="pg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="var(--inset)"/><stop offset="1" stop-color="var(--purple)"/></linearGradient></defs>
+                  <text class="lbl" x="22" y="20">1.0</text><text class="lbl" x="22" y="110">0</text>
+                </g>
+                <text class="lbl-s" x="180" y="206" text-anchor="middle" fill="var(--purple)">frequency across resamples = the confidence map</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> resample the point set many times; an edge's crossing-frequency across bootstraps is both its keep/drop criterion and its uncertainty — no truth catalog enters.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 4. HEP -->
+    <article class="field" id="e-hep" style="--fc:var(--orange)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">⁺</div>
+          <div class="field__ttl"><h3>High-energy physics — track reconstruction</h3><span class="field__src">tag-and-probe · mass-peak width · split-track · χ²/ndof · families G·A·E·F</span></div>
+          <span class="yes">no per-track truth on data</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why there's no ground truth</span><p>In simulation every hit carries a truth particle-ID, so efficiency and the TrackML score are computable. On <b>real detector data no per-track truth exists</b> — a reconstructed track can't be labelled right or wrong. Evaluation switches to <b>data-driven proxies</b>: known-physics anchors and internal fit consistency, validated by demonstrating data/simulation agreement.</p></div>
+            <div class="frow"><span class="flabel">Reference-free metrics</span><p><b>Tag-and-probe</b> on a known resonance (Z→μμ, J/ψ): one "tag" fixes the event, the tracker-independent "probe" measures efficiency directly from data (~99.9% for muons). <b>Invariant-mass-peak width</b> of the Z/J/ψ is a momentum-resolution proxy; the peak position gives the scale. <b>Cosmic split-track</b>: split one cosmic muon into upper/lower halves reconstructed independently — the parameter difference has variance = 2×resolution². <b>Fit self-consistency</b>: normalized χ²/ndof, unbiased hit residuals/pulls, hole fraction — all per-track on data. And the overarching <b>data-vs-simulation</b> distribution comparison.</p></div>
+            <div class="frow"><span class="flabel">Named metrics</span>
+              <span class="av2 av2--free">tag-and-probe efficiency</span><span class="av2 av2--free">mass-peak resolution</span><span class="av2 av2--free">cosmic split-track</span><span class="av2 av2--free">χ²/ndof · residuals</span><span class="av2 av2--gt">TrackML score</span>
+            </div>
+            <p class="cite"><b>Key sources:</b> CMS 2014 (tag-and-probe, split-track, residuals); ATLAS 2014b (mass resolution); ATLAS 2021 (Run-2 muons); Amrouche+ 2019 (TrackML, needs truth). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="A dimuon invariant-mass histogram forms a peak at the known Z mass; the fitted width is the momentum-resolution proxy">
+                <text class="lbl" x="14" y="20">known resonance · fitted peak width = resolution</text>
+                <line class="axis" x1="30" y1="170" x2="336" y2="170"/>
+                <line class="axis" x1="30" y1="40" x2="30" y2="170"/>
+                <!-- histogram bars forming a peak -->
+                <g fill="rgba(217,138,0,.22)" stroke="var(--orange)" stroke-width="1">
+                  <rect x="40" y="158" width="18" height="12"/><rect x="60" y="150" width="18" height="20"/>
+                  <rect x="80" y="132" width="18" height="38"/><rect x="100" y="98" width="18" height="72"/>
+                  <rect x="120" y="60" width="18" height="110"/><rect x="140" y="52" width="18" height="118"/>
+                  <rect x="160" y="86" width="18" height="84"/><rect x="180" y="126" width="18" height="44"/>
+                  <rect x="200" y="146" width="18" height="24"/><rect x="220" y="156" width="18" height="14"/>
+                </g>
+                <!-- fit curve -->
+                <path class="struct" stroke="var(--ink)" d="M40,160 C110,150 130,54 149,52 C168,54 190,150 250,162"/>
+                <!-- width markers -->
+                <line x1="122" y1="100" x2="176" y2="100" stroke="var(--vermillion)" stroke-width="1.6"/>
+                <line x1="122" y1="94" x2="122" y2="106" stroke="var(--vermillion)" stroke-width="1.6"/>
+                <line x1="176" y1="94" x2="176" y2="106" stroke="var(--vermillion)" stroke-width="1.6"/>
+                <text class="lbl-s" x="150" y="90" text-anchor="middle" fill="var(--vermillion)">σ</text>
+                <text class="lbl-s" x="149" y="188" text-anchor="middle" fill="var(--orange)">known Z mass</text>
+                <text class="lbl" x="300" y="168">m(μμ)</text>
+                <text class="lbl-s" x="184" y="208" text-anchor="middle" fill="var(--orange)">a planted signal calibrates the detector on data</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> the physics supplies a known mass; the reconstructed peak's width and position measure resolution and scale directly from data, with no per-track label.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 5. VASCULAR / ROADS -->
+    <article class="field" id="e-vessel" style="--fc:var(--blue)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">✚</div>
+          <div class="field__ttl"><h3>Vascular imaging &amp; aerial road networks</h3><span class="field__src">topology self-consistency · no-reference CNN · RCA · TTA · families C·G·E</span></div>
+          <span class="yes">GT-heavy field, thin no-GT</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why there's no ground truth</span><p>Honest framing: this field is <b>overwhelmingly GT-driven</b> — Dice, clDice, Betti-error, APLS all need a reference mask/graph. Reference-free evaluation here is <b>genuinely thin</b>, which is itself the lesson: the label-free tools that <em>do</em> exist are the intrinsic and learned ones below.</p></div>
+            <div class="frow"><span class="flabel">Reference-free metrics</span><p><b>Topological self-consistency</b> (heuristic): count connected components, spurious islands, spurious holes on the skeleton as an <em>intrinsic</em> signal — fewer disconnected fragments ≈ better — used inside self-training road pipelines. <b>No-reference quality CNN</b> (Galdran+ 2018): degrade expert masks, train a network to regress mask-vs-GT similarity, then predict quality of unseen segmentations with no reference (its heuristics explicitly reward segment connectivity). <b>Reverse Classification Accuracy</b> (Valindria+ 2017): predict per-image Dice with no GT via a reverse classifier + reference atlas. <b>Test-time-augmentation consistency</b> (Wang+ 2019): variance under augmentations/MC-dropout as a label-free failure flag.</p></div>
+            <div class="frow"><span class="flabel">Named metrics</span>
+              <span class="av2 av2--free">component / island / loop count</span><span class="av2 av2--free">TTA consistency</span><span class="av2 av2--free">no-reference quality CNN</span><span class="av2 av2--semi">Reverse Classification Accuracy</span><span class="av2 av2--gt">clDice · Betti · APLS</span>
+            </div>
+            <p class="cite"><b>Key sources:</b> Galdran+ 2018 (no-reference CNN); Valindria+ 2017 (RCA); Wang+ 2019 (TTA); Yang+ 2017 (unsupervised eval); Shit+ 2021 (clDice, needs GT). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="An extracted skeleton is scored purely by counting its connected components, spurious islands, and spurious loops — no reference mask">
+                <text class="lbl" x="14" y="20">count topology, not overlap</text>
+                <!-- main connected tree -->
+                <path class="struct" stroke="var(--blue)" d="M30,150 C70,120 90,96 120,70 C140,54 168,50 196,44"/>
+                <path class="struct" stroke="var(--blue)" d="M120,70 C140,88 160,96 190,104"/>
+                <path class="struct" stroke="var(--blue)" d="M90,96 C70,110 56,118 40,132"/>
+                <text class="lbl-s" x="150" y="150" fill="var(--blue)">1 component ✓</text>
+                <!-- spurious island -->
+                <path class="struct" stroke="var(--vermillion)" stroke-dasharray="4 3" d="M232,60 C250,66 262,74 276,86"/>
+                <circle cx="232" cy="60" r="3" fill="var(--vermillion)"/><circle cx="276" cy="86" r="3" fill="var(--vermillion)"/>
+                <text class="lbl-s" x="230" y="50" fill="var(--vermillion)">island ✕</text>
+                <!-- spurious loop -->
+                <path class="struct" stroke="var(--vermillion)" stroke-dasharray="4 3" d="M250,132 C282,120 300,142 288,164 C278,180 252,168 250,132 Z"/>
+                <text class="lbl-s" x="256" y="196" fill="var(--vermillion)">spurious loop ✕</text>
+                <!-- tally -->
+                <g transform="translate(300,44)" font-family="var(--mono)">
+                  <text class="lbl-s" x="0" y="0">C=2</text><text class="lbl-s" x="0" y="16">L=1</text><text class="lbl-s" x="0" y="32">ends=5</text>
+                </g>
+                <text class="lbl-s" x="180" y="214" text-anchor="middle" fill="var(--blue)">intrinsic Betti tally — no reference needed</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> the skeleton's own topology — component count, spurious islands, spurious loops, dangling ends — is a score computable with nothing to compare against.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 6. PLANT ROOTS -->
+    <article class="field" id="e-roots" style="--fc:var(--green)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">⋔</div>
+          <div class="field__ttl"><h3>Plant root system architecture (RSA)</h3><span class="field__src">trait reproducibility · growth-model fit · cross-modality · families D·F·E</span></div>
+          <span class="yes">destructive sampling loses truth</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why there's no ground truth</span><p>Intact roots in soil <b>can't be labelled without destroying the architecture</b> — excavation severs fine laterals, sectioning loses 3-D topology. The field treats <b>expert manual tracing as a <em>semi</em>-GT</b> proxy: operator-dependent, tedious, and itself carrying inter-operator disagreement, not a gold standard.</p></div>
+            <div class="frow"><span class="flabel">Reference-free metrics</span><p><b>Trait reproducibility &amp; biological plausibility</b>: recovered total length, tip/lateral counts, branching-angle and diameter distributions checked against expected physiological ranges and across replicates — consistency substitutes for pixel GT. <b>Growth-model consistency</b>: fit a dynamic RSA/growth model (Leitner) to recovered traits, or recover parameters on synthetic roots (Ziegler's likelihood-free ABC) — a good fit validates without pixel GT. <b>Cross-modality correlation</b>: image traits vs independent MRI/CT, shovelomics biomass, manual counts. <b>Interactive-correction effort</b>: how much editing RootNav needs is a usability quality proxy. <b>Persistent-homology barcodes</b> as representation-robust descriptors.</p></div>
+            <div class="frow"><span class="flabel">Named metrics</span>
+              <span class="av2 av2--free">trait reproducibility across replicates</span><span class="av2 av2--free">growth-model / ABC fit</span><span class="av2 av2--free">cross-modality correlation</span><span class="av2 av2--free">persistent-homology descriptors</span><span class="av2 av2--semi">manual-trace agreement · correction effort</span>
+            </div>
+            <p class="cite"><b>Key sources:</b> Pound+ 2013 &amp; Yasrab+ 2019 (RootNav, semi-GT); Leitner+ 2014 (growth-model); Ziegler+ 2019 (ABC); Metzner+ 2015 (MRI-vs-CT); Li+ 2018 (persistent homology). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="Recovered traits across replicates cluster in an expected band, and image traits correlate with an independent measurement along a fit line">
+                <text class="lbl" x="14" y="20">traits reproducible + cross-modality agreement</text>
+                <!-- left: trait band across replicates -->
+                <g transform="translate(24,36)">
+                  <text class="lbl" x="0" y="0">total length / replicate</text>
+                  <rect x="0" y="10" width="130" height="40" fill="rgba(11,155,118,.12)" stroke="none"/>
+                  <line class="axis" x1="0" y1="30" x2="130" y2="30" stroke-dasharray="3 3"/>
+                  <text class="lbl-s" x="132" y="14" fill="var(--green)">expected</text>
+                  <g fill="var(--green)"><circle cx="16" cy="26" r="3"/><circle cx="40" cy="34" r="3"/><circle cx="64" cy="24" r="3"/><circle cx="88" cy="32" r="3"/><circle cx="112" cy="28" r="3"/></g>
+                  <circle cx="64" cy="70" r="3" fill="var(--vermillion)"/>
+                  <text class="lbl-s" x="72" y="74" fill="var(--vermillion)">outlier</text>
+                </g>
+                <!-- right: scatter with fit line -->
+                <g transform="translate(210,40)">
+                  <text class="lbl" x="0" y="0">image trait</text>
+                  <line class="axis" x1="0" y1="10" x2="0" y2="110"/>
+                  <line class="axis" x1="0" y1="110" x2="120" y2="110"/>
+                  <path class="struct" stroke="var(--green)" d="M6,104 L114,20"/>
+                  <g fill="var(--green)"><circle cx="18" cy="98" r="3"/><circle cx="40" cy="82" r="3"/><circle cx="58" cy="72" r="3"/><circle cx="78" cy="52" r="3"/><circle cx="98" cy="36" r="3"/></g>
+                  <text class="lbl" x="42" y="126">vs biomass / MRI</text>
+                </g>
+                <text class="lbl-s" x="180" y="214" text-anchor="middle" fill="var(--green)">plausible + independent agreement, no pixel truth</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> traits that land in the biological band across replicates and track an independent measurement (biomass, MRI) validate the extraction where destructive truth is impossible.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 7. GEOPHYSICS / HYDROLOGY -->
+    <article class="field" id="e-geo" style="--fc:var(--yellow)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">△</div>
+          <div class="field__ttl"><h3>Geophysics &amp; hydrology — faults &amp; river networks</h3><span class="field__src">Horton / Hack laws · threshold sensitivity · inter-interpreter · families D·E·F</span></div>
+          <span class="yes">subsurface unobservable</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why there's no ground truth</span><p>The "true" network is <b>unobservable</b>: the subsurface is imaged only indirectly through reflection amplitudes (no labeled fault set), and basin-scale channel networks are rarely field-mapped. Near-truth is sparse and local — well-log picks, a few field-surveyed channel heads — so quality is judged by internal consistency and physical plausibility.</p></div>
+            <div class="frow"><span class="flabel">Reference-free metrics</span><p><b>Scaling-law consistency</b> (the primary hydrology test): extracted networks should obey <b>Horton's laws</b> (near-constant bifurcation/length/area ratios across Strahler orders) and <b>Hack's law</b> (L ∝ A^h, h≈0.5–0.6). <b>Threshold / drainage-density sensitivity</b>: a defensible network is one where density is stable over a plausible support-area band, or the threshold is fixed by channel-initiation physics. Seismic: <b>inter-interpreter agreement</b> (dispersion among independent experts quantifies uncertainty when no truth exists) and <b>geological plausibility</b> (fault continuity, throw consistency). <b>FaultSeg3D</b> supplies synthetic labeled seismic as a proxy — flagged as simulated, not field, truth.</p></div>
+            <div class="frow"><span class="flabel">Named metrics</span>
+              <span class="av2 av2--free">Horton / Hack law fit</span><span class="av2 av2--free">drainage-density threshold stability</span><span class="av2 av2--free">geological plausibility</span><span class="av2 av2--semi">inter-interpreter agreement · well tie</span><span class="av2 av2--proxy">FaultSeg3D synthetic</span>
+            </div>
+            <p class="cite"><b>Key sources:</b> Rigon+ 1996 (Hack); Kirchner 1993 (Horton caveat); Montgomery &amp; Dietrich 1992 &amp; Clubb+ 2014 (channel-head threshold); Schaaf &amp; Bond 2019 (inter-interpreter); Wu+ 2019 (FaultSeg3D). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="Log stream-count versus Strahler order falls on a straight line — Horton's law — validating the extracted network without a truth map, with the Kirchner caveat noted">
+                <text class="lbl" x="14" y="20">Horton's law: log Nₒ vs stream order</text>
+                <line class="axis" x1="40" y1="40" x2="40" y2="168"/>
+                <line class="axis" x1="40" y1="168" x2="320" y2="168"/>
+                <text class="lbl" x="8" y="46">log N</text><text class="lbl" x="300" y="184">order ω</text>
+                <!-- straight-line fit -->
+                <path class="struct" stroke="var(--yellow)" d="M60,60 L300,156"/>
+                <g fill="var(--yellow)">
+                  <circle cx="60" cy="62" r="3.5"/><circle cx="120" cy="86" r="3.5"/><circle cx="180" cy="110" r="3.5"/><circle cx="240" cy="132" r="3.5"/><circle cx="300" cy="156" r="3.5"/>
+                </g>
+                <text class="lbl-s" x="150" y="86" fill="var(--yellow)">constant ratio → passes</text>
+                <!-- deviating point -->
+                <circle cx="180" cy="78" r="3.5" fill="var(--vermillion)"/>
+                <line x1="180" y1="82" x2="180" y2="106" stroke="var(--vermillion)" stroke-width="1" stroke-dasharray="2 2"/>
+                <text class="lbl-s" x="186" y="74" fill="var(--vermillion)">over-extraction</text>
+                <text class="lbl" x="180" y="204" text-anchor="middle">Kirchner '93: necessary, not sufficient</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> a physically-correct network's stream counts fall on a Horton line; deviation flags mis-extraction — but Kirchner showed the law is a statistical near-inevitability, so it is necessary, not sufficient.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 8. CYTOSKELETON -->
+    <article class="field" id="e-cyto" style="--fc:var(--teal)">
+      <div class="field__card">
+        <div class="field__head">
+          <div class="field__badge">≣</div>
+          <div class="field__ttl"><h3>Cytoskeleton &amp; collagen fiber networks</h3><span class="field__src">SOAX F-function · SNR plateaus · network stats · temporal · families A·E·D</span></div>
+          <span class="yes">dense nets can't be traced</span>
+        </div>
+        <div class="field__body">
+          <div class="field__txt">
+            <div class="frow"><span class="flabel">Why there's no ground truth</span><p>Dense, overlapping real networks (actin, microtubules, collagen) <b>cannot be exhaustively hand-labeled</b>; manual tracing is feasible only for sparse, non-crossing filaments and is annotator-biased (Özdemir &amp; Nikoloski 2023). Every "gold standard" is a proxy — synthetic phantoms with defined truth, or manual tracing on a small subset. This is the <b>closest analog to dense hyphae</b>.</p></div>
+            <div class="frow"><span class="flabel">Reference-free metrics</span><p><b>SOAX F-function</b> (Xu+ 2015), the canonical no-GT metric: F = total extracted contour length minus the length of contour lying in <b>low-local-SNR regions</b> — rewards completeness while penalizing traces that stray off genuine intensity ridges; used to auto-select parameters. It is simultaneously a <b>reconstruction-vs-image consistency</b> check. <b>Parameter/SNR-stability plateaus</b> (SIFNE): sweep thresholds and report the size of the stable optimal region — a wide plateau signals a trustworthy extraction (reliability collapses below ~14 PSNR). <b>Network-statistic plausibility</b>: recovered length, persistence length (worm-like-chain), mesh size, nematic order vs polymer-physics expectation. <b>Temporal coherence</b> (TSOAX): consistent topology across time-lapse frames is itself the quality signal.</p></div>
+            <div class="frow"><span class="flabel">Named metrics</span>
+              <span class="av2 av2--free">SOAX F-function</span><span class="av2 av2--free">parameter / SNR stability plateau</span><span class="av2 av2--free">network-statistic plausibility</span><span class="av2 av2--free">temporal coherence</span><span class="av2 av2--semi">sparse manual tracing</span>
+            </div>
+            <p class="cite"><b>Key sources:</b> Xu+ 2015 (SOAX F-function); Zhang+ 2017 (SIFNE stability); Xu+ 2019 (TSOAX temporal); Stein+ 2008 (FIRE network stats); Özdemir &amp; Nikoloski 2023 (review). See <a href="#refs">references</a>.</p>
+          </div>
+          <div class="field__viz">
+            <figure class="illo">
+              <svg viewBox="0 0 360 220" role="img" aria-label="The F-function rewards contour length on high-SNR ridges and subtracts length in low-SNR regions; a parameter sweep shows a broad stable plateau at the optimum">
+                <text class="lbl" x="14" y="20">F = length − low-SNR penalty · pick the plateau</text>
+                <line class="axis" x1="40" y1="36" x2="40" y2="150"/>
+                <line class="axis" x1="40" y1="150" x2="330" y2="150"/>
+                <text class="lbl" x="14" y="42">F</text><text class="lbl" x="270" y="166">threshold τ</text>
+                <!-- F curve with broad plateau -->
+                <path class="struct" stroke="var(--teal)" d="M48,146 C90,120 110,66 150,60 C190,56 210,58 250,64 C280,70 300,120 322,146"/>
+                <!-- plateau band -->
+                <rect x="150" y="52" width="100" height="20" fill="rgba(15,138,128,.14)" stroke="none"/>
+                <line x1="150" y1="52" x2="250" y2="52" stroke="var(--teal)" stroke-dasharray="3 2" stroke-width="1.2"/>
+                <text class="lbl-s" x="200" y="46" text-anchor="middle" fill="var(--teal)">stable plateau ✓</text>
+                <!-- spiky optimum contrast -->
+                <path class="struct" stroke="var(--rule)" stroke-dasharray="3 3" d="M280,150 C288,150 290,110 294,110 C298,110 300,150 308,150"/>
+                <text class="lbl-s" x="300" y="104" text-anchor="middle" fill="var(--vermillion)">narrow ✕</text>
+                <text class="lbl-s" x="184" y="200" text-anchor="middle" fill="var(--teal)">width of the stable region is the trust signal</text>
+              </svg>
+              <figcaption><b>Mechanism:</b> the F-function scores traces against the image's own SNR field (no label); a broad optimal plateau under parameter sweeps means the extraction is robust, a narrow spike means it is tuned to noise.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- =============== COMPARISON TABLE =============== -->
+  <section class="band">
+    <h2 class="section-title">Cross-field comparison</h2>
+    <p class="section-sub">The same substitution in every row — <b>with no answer key, score against the data, a threshold, itself, a law, a perturbation, or another method</b>. The rightmost column is what each field keeps as a fallback proxy.</p>
+    <hr class="rule">
+    <div class="tablewrap">
+      <table class="cmp">
+        <thead>
+          <tr><th>Field</th><th>Why no ground truth</th><th>Headline reference-free metric</th><th>Families</th><th>Fallback proxy</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="fld"><span class="dot" style="background:var(--vermillion)"></span>Neuroscience</td><td>no in-vivo tract/neurite geometry</td><td><b>forward-model fit</b> (SIFT/COMMIT): does the tractogram reproduce the signal?</td><td>A·E·D</td><td>phantoms; inter-annotator agreement</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--sky)"></span>ISM filaments</td><td>"true" skeleton is undefined</td><td><b>MSSIM</b> skeleton-vs-image goodness-of-fit</td><td>A·E·D·F</td><td>synthetic filament benchmarks</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--purple)"></span>Cosmic web</td><td>no observed filament catalog</td><td><b>persistence Nσ</b> + <b>bootstrap traversal-frequency</b></td><td>B·E·F·D</td><td>N-body simulation skeleton</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--orange)"></span>HEP tracking</td><td>no per-track truth on real data</td><td><b>tag-and-probe</b> + mass-peak width on known resonances</td><td>G·A·E·F</td><td>MC truth (TrackML score)</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--blue)"></span>Vessels / roads</td><td>GT-heavy; no-GT is thin</td><td><b>topological self-consistency</b> + no-reference quality CNN</td><td>C·G·E</td><td>degraded-mask training corpus; RCA atlas</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--green)"></span>Plant roots</td><td>destructive sampling loses architecture</td><td><b>trait reproducibility</b> + growth-model &amp; cross-modality fit</td><td>D·F·E</td><td>expert tracing (semi-GT); phantoms</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--yellow)"></span>Geo / hydro</td><td>subsurface / basin unobservable</td><td><b>Horton / Hack</b> scaling-law consistency + threshold stability</td><td>D·E·F</td><td>well ties; FaultSeg3D synthetic</td></tr>
+          <tr><td class="fld"><span class="dot" style="background:var(--teal)"></span>Cytoskeleton</td><td>dense nets can't be hand-labeled</td><td><b>SOAX F-function</b> (ridge-overlap − low-SNR penalty)</td><td>A·E·D</td><td>synthetic phantoms; sparse tracing</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <b>The recurring answer.</b> No field waits for a label it can't get. Each asks the extraction to satisfy something
+      it <em>can</em> check without truth: <b>(A) explain the raw data</b> (render it back and score the residual),
+      <b>(B) clear a noise-defined significance bar</b>, <b>(C) be topologically self-consistent</b>, <b>(D) obey the
+      domain's laws</b>, <b>(E) survive a perturbation</b>, and <b>(F) agree with an independent method or modality</b> —
+      with <b>(G) planted signals and synthetic phantoms</b> kept only to calibrate the thresholds. The honest caveats
+      recur too: Kirchner showed a plausibility law can be a statistical inevitability (necessary, not sufficient), and
+      Maier-Hein showed self-consistency without a specificity check lets false structure survive. A good battery mixes
+      families so no single blind spot passes.
+    </div>
+  </section>
+
+  <!-- =============== RECOMMENDED BATTERY =============== -->
+  <section class="band" id="battery">
+    <h2 class="section-title">A label-free evaluation battery for the hyphae methods</h2>
+    <p class="section-sub">Translating the eight fields into a concrete recipe for scoring the reconnection methods in the
+      <a href="cross-field-reconnection.html">companion survey</a> — <b>with no hand-labeled mycelium</b>. Each step names the
+      family it comes from and, where it exists, the hook already in the port spec. Mix them: any one alone has a known blind spot.</p>
+    <hr class="rule">
+    <div class="battery">
+
+      <div class="step" style="--fc:var(--vermillion)">
+        <span class="step-n">Family A · forward-model residual</span>
+        <h4>Does the mask explain the image?</h4>
+        <p>Render the reconnected skeleton back to a predicted ridge/intensity map and score the residual against
+          <code>detect_mat</code>. A bridged gap that adds no explanatory power is a false link — the SIFT/COMMIT idea, transplanted.</p>
+      </div>
+
+      <div class="step" style="--fc:var(--purple)">
+        <span class="step-n">Family B · significance gate</span>
+        <h4>Did each link clear the noise bar?</h4>
+        <p>Every bridge must pass an <b>a-contrario NFA</b> / persistence threshold set by the image's own noise — already the
+          <code>NFA gate</code> and <code>persistence denoise</code> in the port spec's Tier B. This is the cheapest, most principled first filter.</p>
+      </div>
+
+      <div class="step" style="--fc:var(--blue)">
+        <span class="step-n">Family C · topological self-consistency</span>
+        <h4>Count fragments before and after.</h4>
+        <p>Tally connected components, spurious loops, and dangling endpoints on the skeleton pre/post reconnection. Reconnection
+          should <b>reduce component count without inventing loops</b> — a pure-Python check needing zero labels.</p>
+      </div>
+
+      <div class="step" style="--fc:var(--green)">
+        <span class="step-n">Family D · biological plausibility</span>
+        <h4>Do the traits land in range?</h4>
+        <p>Check total hyphal length, tip density, and branching-angle distributions against known mycelial ranges; optionally
+          fit a hyphal growth model (AMF L-System) for consistency. Flags over-connection that inflates length implausibly.</p>
+      </div>
+
+      <div class="step" style="--fc:var(--yellow)">
+        <span class="step-n">Family E · stability</span>
+        <h4>Does it survive a perturbation?</h4>
+        <p>Bootstrap / jitter parameters or augment the input and keep the <b>traversal-frequency</b> of each edge. Report edges
+          that recur; a bridge that appears only at one parameter setting is an artifact, not a hypha.</p>
+      </div>
+
+      <div class="step" style="--fc:var(--sky)">
+        <span class="step-n">Family F · cross-method agreement</span>
+        <h4>Do independent detectors converge?</h4>
+        <p>Run two or more independent enhancers (Jerman vs bowler-hat vs phase-congruency) and trust structure they
+          <b>agree on</b>. Divergent-only branches are candidates for the significance gate to re-examine.</p>
+      </div>
+
+      <div class="step" style="--fc:var(--teal)">
+        <span class="step-n">Family G · synthetic calibration</span>
+        <h4>Tune thresholds on planted truth.</h4>
+        <p>Use synthetic hyphae (the <code>load_synth_yeast_plate</code> analog) with known geometry to calibrate every threshold
+          above — the semi/synthetic-GT that sets the dials, never the headline score on real plates.</p>
+      </div>
+
+    </div>
+    <div class="callout">
+      <b>Where to start.</b> Families <b>B</b> (already specced as the NFA gate) and <b>C</b> (a topology tally) are nearly
+      free and catch the most common failure — noise-born bridges that fragment or over-loop the network. Add <b>A</b>
+      (forward-model residual) as the strongest single discriminator of "explains the image vs plausible fiction," then
+      <b>E</b> (stability) to separate robust structure from parameter artifacts. <b>D</b> and <b>F</b> are the biological and
+      independent-view sanity checks; <b>G</b> calibrates them all. None requires a hand-labeled mycelium — which is the
+      whole point.
+    </div>
+  </section>
+
+  <!-- =============== REFERENCES =============== -->
+  <section class="band" id="refs">
+    <h2 class="section-title">References</h2>
+    <p class="section-sub">Retrieved via scientific-literature search across eight parallel research streams; links are DOIs
+      (or arXiv where a DOI was not machine-confirmed). See the verification note for items flagged during the research pass.</p>
+    <hr class="rule">
+    <div class="refs">
+
+      <div class="refgrp" style="--fc:var(--vermillion)"><h5>Neuroscience</h5><ol>
+        <li>Smith et al. 2013 — <b>SIFT</b>. NeuroImage. <a href="https://doi.org/10.1016/j.neuroimage.2012.11.049">doi:10.1016/j.neuroimage.2012.11.049</a></li>
+        <li>Smith et al. 2015 — <b>SIFT2</b>. NeuroImage. <a href="https://doi.org/10.1016/j.neuroimage.2015.06.092">doi:10.1016/j.neuroimage.2015.06.092</a></li>
+        <li>Daducci et al. 2015 — <b>COMMIT</b>. IEEE TMI. <a href="https://doi.org/10.1109/TMI.2014.2352414">doi:10.1109/TMI.2014.2352414</a></li>
+        <li>Schiavi et al. 2020 — <b>COMMIT2</b>. Science Advances. <a href="https://doi.org/10.1126/sciadv.aba8245">doi:10.1126/sciadv.aba8245</a></li>
+        <li>Smith et al. 2012 — <b>ACT</b>. NeuroImage. <a href="https://doi.org/10.1016/j.neuroimage.2012.06.005">doi:10.1016/j.neuroimage.2012.06.005</a></li>
+        <li>Maier-Hein et al. 2017 — ISMRM-2015 challenge (specificity wall). Nat. Commun. <a href="https://doi.org/10.1038/s41467-017-01285-x">doi:10.1038/s41467-017-01285-x</a></li>
+        <li>Gillette et al. 2011 — <b>DIADEM</b> (needs GT). Neuroinformatics. <a href="https://doi.org/10.1007/s12021-011-9117-y">doi:10.1007/s12021-011-9117-y</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--sky)"><h5>ISM filaments</h5><ol>
+        <li>Green et al. 2017 — <b>MSSIM</b> goodness-of-fit. ApJL 840, L17. <a href="https://doi.org/10.3847/2041-8213/aa6e50">doi:10.3847/2041-8213/aa6e50</a></li>
+        <li>Koch &amp; Rosolowsky 2015 — <b>FilFinder</b>. MNRAS 452, 3435. <a href="https://doi.org/10.1093/mnras/stv1521">doi:10.1093/mnras/stv1521</a></li>
+        <li>Men'shchikov 2021 — extraction benchmarks. A&amp;A 654, A78. <a href="https://doi.org/10.1051/0004-6361/202141533">doi:10.1051/0004-6361/202141533</a></li>
+        <li>Arzoumanian et al. 2019 — filament width ≈0.1 pc. A&amp;A 621, A42. <a href="https://doi.org/10.1051/0004-6361/201832725">doi:10.1051/0004-6361/201832725</a></li>
+        <li>Panopoulou et al. 2022 — width is resolution-dependent (caveat). A&amp;A 657, L13. <a href="https://doi.org/10.1051/0004-6361/202142281">doi:10.1051/0004-6361/202142281</a></li>
+        <li>Sousbie 2011 — <b>DisPerSE</b> persistence. MNRAS 414, 350. <a href="https://doi.org/10.1111/j.1365-2966.2011.18394.x">doi:10.1111/j.1365-2966.2011.18394.x</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--purple)"><h5>Cosmic web</h5><ol>
+        <li>Sousbie 2011 — <b>DisPerSE</b>, persistence Nσ. MNRAS 414, 350. <a href="https://doi.org/10.1111/j.1365-2966.2011.18394.x">doi:10.1111/j.1365-2966.2011.18394.x</a></li>
+        <li>Bonnaire et al. 2020 — <b>T-ReX</b> bootstrap traversal-frequency. A&amp;A 637, A18. <a href="https://doi.org/10.1051/0004-6361/201936859">doi:10.1051/0004-6361/201936859</a></li>
+        <li>Libeskind et al. 2018 — 12-method comparison. MNRAS 473, 1195. <a href="https://doi.org/10.1093/mnras/stx1976">doi:10.1093/mnras/stx1976</a></li>
+        <li>Galárraga-Espinosa et al. 2020 — filament property distributions. A&amp;A 641, A173. <a href="https://doi.org/10.1051/0004-6361/202037986">doi:10.1051/0004-6361/202037986</a></li>
+        <li>Codis, Pogosyan &amp; Pichon 2018 — cosmic-web connectivity. MNRAS 479, 973. <a href="https://doi.org/10.1093/mnras/sty1643">doi:10.1093/mnras/sty1643</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--orange)"><h5>HEP track reconstruction</h5><ol>
+        <li>CMS Collaboration 2014 — tracking performance; tag-and-probe, cosmic split-track, residuals. JINST 9, P10009. <a href="https://doi.org/10.1088/1748-0221/9/10/P10009">doi:10.1088/1748-0221/9/10/P10009</a></li>
+        <li>ATLAS Collaboration 2014 — efficiency/scale/resolution, dimuon-mass fits. EPJC 74, 3034. <a href="https://doi.org/10.1140/epjc/s10052-014-3034-9">doi:10.1140/epjc/s10052-014-3034-9</a></li>
+        <li>ATLAS Collaboration 2021 — muon reconstruction, full Run 2. EPJC 81, 578. <a href="https://doi.org/10.1140/epjc/s10052-021-09233-2">doi:10.1140/epjc/s10052-021-09233-2</a></li>
+        <li>CMS Collaboration 2023 — tracking Run 2 / early Run 3. <a href="https://arxiv.org/abs/2312.08017">arXiv:2312.08017</a></li>
+        <li>Amrouche et al. 2019 — <b>TrackML</b> (MC-truth score). <a href="https://arxiv.org/abs/1904.06778">arXiv:1904.06778</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--blue)"><h5>Vessels &amp; roads</h5><ol>
+        <li>Galdran et al. 2018 — <b>no-reference</b> vessel-quality CNN. MICCAI. <a href="https://doi.org/10.1007/978-3-030-00928-1_10">doi:10.1007/978-3-030-00928-1_10</a></li>
+        <li>Valindria et al. 2017 — <b>Reverse Classification Accuracy</b>. IEEE TMI. <a href="https://doi.org/10.1109/TMI.2017.2665165">doi:10.1109/TMI.2017.2665165</a></li>
+        <li>Cosarinsky et al. 2025 — In-Context / Conformal RCA. <a href="https://arxiv.org/abs/2503.04522">arXiv:2503.04522</a></li>
+        <li>Wang et al. 2019 — aleatoric uncertainty via <b>test-time augmentation</b>. Neurocomputing. <a href="https://doi.org/10.1016/j.neucom.2019.01.103">doi:10.1016/j.neucom.2019.01.103</a></li>
+        <li>Yang et al. 2017 — unsupervised segmentation-quality evaluation. Sensors 17, 2427. <a href="https://doi.org/10.3390/s17102427">doi:10.3390/s17102427</a></li>
+        <li>Shit et al. 2021 — <b>clDice</b> (GT-based, for contrast). CVPR. <a href="https://doi.org/10.48550/arXiv.2003.07311">arXiv:2003.07311</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--green)"><h5>Plant roots</h5><ol>
+        <li>Pound et al. 2013 — <b>RootNav</b> (correction effort). Plant Physiol. <a href="https://doi.org/10.1104/pp.113.221531">doi:10.1104/pp.113.221531</a></li>
+        <li>Yasrab et al. 2019 — <b>RootNav 2.0</b> (semi-GT benchmark). GigaScience. <a href="https://doi.org/10.1093/gigascience/giz123">doi:10.1093/gigascience/giz123</a></li>
+        <li>Leitner et al. 2014 — <b>growth-model</b> consistency. Plant Physiol. 164(1). <a href="https://doi.org/10.1104/pp.113.227892">doi:10.1104/pp.113.227892</a></li>
+        <li>Ziegler, Dyson &amp; Johnston 2019 — likelihood-free (<b>ABC</b>) parameter recovery. J. R. Soc. Interface. <a href="https://doi.org/10.1098/rsif.2019.0293">doi:10.1098/rsif.2019.0293</a></li>
+        <li>Metzner et al. 2015 — <b>MRI-vs-CT</b> cross-modality. Plant Methods. <a href="https://doi.org/10.1186/s13007-015-0060-z">doi:10.1186/s13007-015-0060-z</a></li>
+        <li>Seethepalli et al. 2020 — RhizoVision Crown validation. Plant Phenomics. <a href="https://doi.org/10.34133/2020/3074916">doi:10.34133/2020/3074916</a></li>
+        <li>Li et al. 2018 — <b>persistent-homology</b> descriptors. Plant Physiol. <a href="https://doi.org/10.1104/pp.18.00104">doi:10.1104/pp.18.00104</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--yellow)"><h5>Geophysics &amp; hydrology</h5><ol>
+        <li>Kirchner 1993 — Horton's laws are a statistical inevitability (key caveat). Geology 21, 591. <a href="https://doi.org/10.1130/0091-7613(1993)021%3C0591:SIOHSL%3E2.3.CO;2">doi:10.1130/0091-7613(1993)021&lt;0591:SIOHSL&gt;2.3.CO;2</a></li>
+        <li>Rigon et al. 1996 — "On <b>Hack's law</b>". Water Resour. Res. 32, 3367. <a href="https://doi.org/10.1029/96WR02397">doi:10.1029/96WR02397</a></li>
+        <li>Montgomery &amp; Dietrich 1992 — channel initiation &amp; landscape scale (threshold). Science 255, 826. <a href="https://doi.org/10.1126/science.255.5046.826">doi:10.1126/science.255.5046.826</a></li>
+        <li>Clubb et al. 2014 — objective channel-head extraction. Water Resour. Res. <a href="https://doi.org/10.1002/2013WR015167">doi:10.1002/2013WR015167</a></li>
+        <li>Schaaf &amp; Bond 2019 — inter-interpreter uncertainty (seismic). Solid Earth 10, 1049. <a href="https://doi.org/10.5194/se-10-1049-2019">doi:10.5194/se-10-1049-2019</a></li>
+        <li>Wu et al. 2019 — <b>FaultSeg3D</b> synthetic proxy. Geophysics 84, IM35. <a href="https://doi.org/10.1190/geo2018-0646.1">doi:10.1190/geo2018-0646.1</a></li>
+      </ol></div>
+
+      <div class="refgrp" style="--fc:var(--teal)"><h5>Cytoskeleton / fibers</h5><ol>
+        <li>Xu, Vavylonis et al. 2015 — <b>SOAX</b> F-function. Sci. Rep. 5, 9081. <a href="https://doi.org/10.1038/srep09081">doi:10.1038/srep09081</a></li>
+        <li>Zhang et al. 2017 — <b>SIFNE</b> parameter/SNR sensitivity. Mol. Biol. Cell. <a href="https://doi.org/10.1091/mbc.E16-06-0421">doi:10.1091/mbc.E16-06-0421</a></li>
+        <li>Xu et al. 2019 — <b>TSOAX</b> temporal coherence. Sci. Rep. 9, 2110. <a href="https://doi.org/10.1038/s41598-018-37182-6">doi:10.1038/s41598-018-37182-6</a></li>
+        <li>Stein et al. 2008 — <b>FIRE</b> network statistics. J. Microsc. <a href="https://doi.org/10.1111/j.1365-2818.2008.02141.x">doi:10.1111/j.1365-2818.2008.02141.x</a></li>
+        <li>Bredfeldt et al. 2014 — <b>CT-FIRE</b> (manual-trace agreement). J. Biomed. Opt. <a href="https://doi.org/10.1117/1.JBO.19.1.016007">doi:10.1117/1.JBO.19.1.016007</a></li>
+        <li>Özdemir &amp; Nikoloski 2023 — review: manual tracing infeasible in dense nets. Comput. Struct. Biotechnol. J. <a href="https://doi.org/10.1016/j.csbj.2022.12.023">doi:10.1016/j.csbj.2022.12.023</a></li>
+      </ol></div>
+
+    </div>
+
+    <div class="callout">
+      <b>Verification note.</b> Citations were surfaced by scientific-literature search across eight parallel streams and
+      carry the DOIs returned by those tools; no citation was fabricated. Items to treat with caution before formal use:
+      <ul>
+        <li>Several papers were <b>paywalled</b>, so quantitative claims (e.g. Maier-Hein's "88±58 invalid bundles", SIFNE's
+          "~14 PSNR" reliability floor, the ~0.1 pc filament width) rest on abstracts and established method definitions,
+          not verified full-text quotes.</li>
+        <li>A few <b>first-author attributions and DOIs</b> were flagged by the research pass as returned by title/DOI lookup
+          but not fully cross-checked (some ATLAS/CMS volume numbers; the roots ABC and cross-modality entries).</li>
+        <li>The <b>NFA-gate / persistence-denoise</b> hooks referenced in the battery are the Tier-B items in the port design
+          spec (<code>docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/</code>), not an existing implementation.</li>
+      </ul>
+      Re-check any load-bearing citation against its source before external use.
+    </div>
+  </section>
+
+  <div class="footer">
+    PhenoTypic · reference-free evaluation survey · third in the series after
+    <a href="index-fieldnotebook.html">the hyphae-detection method tree</a> and
+    <a href="cross-field-reconnection.html">the cross-field reconnection survey</a> · compiled 2026-07-13 from 8 parallel
+    literature-research streams (neuroscience · ISM astronomy · cosmology · HEP · vascular/roads · plant roots ·
+    geophysics/hydrology · cytoskeleton). The recommended battery maps onto the Tier-A/B port design spec. Biological
+    interpretation and any load-bearing citation should be human-verified before external use.
+  </div>
+
+</main>
+</body>
+</html>

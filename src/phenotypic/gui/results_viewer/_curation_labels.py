@@ -128,12 +128,30 @@ def _join_on_keys(
 
 
 def _keys_of(df: pl.DataFrame) -> set[tuple[str, int]]:
-    """Extract the (image_file, object_label) key set from a frame."""
+    """Extract the (image_file, object_label) key set from a frame.
+
+    Rows whose ``Object_Label`` is null are skipped: the post-applied
+    ``measurements.parquet`` mirror is built with a **left** join against the
+    ``--metadata`` table, so it carries "phantom" rows — metadata for strains
+    that were never detected, with a null label and null measurements. A
+    phantom is not a curatable object (there is nothing on the plate to mark),
+    so it can never contribute a curation key, and ``int(None)`` would raise.
+    The phantom rows themselves are deliberately left in the mirror — the
+    viewer must show the user which strains went undetected.
+
+    Args:
+        df: Any frame exposing both key columns (typically a filtered view of
+            the mirror).
+
+    Returns:
+        The ``(image_file, object_label)`` key set of the real (detected) rows.
+    """
+    keyed = df.filter(pl.col(KEY_COLUMNS[1]).is_not_null())
     return {
         (str(f), int(lbl))
         for f, lbl in zip(
-            df.get_column(KEY_COLUMNS[0]).to_list(),
-            df.get_column(KEY_COLUMNS[1]).to_list(),
+            keyed.get_column(KEY_COLUMNS[0]).to_list(),
+            keyed.get_column(KEY_COLUMNS[1]).to_list(),
         )
     }
 
@@ -405,14 +423,23 @@ class CurationLabels:
     def _master_index(
         master_df: pl.DataFrame,
     ) -> tuple[dict[LabelKey, tuple[float, float]], dict[str, list[tuple[int, float, float]]]]:
-        """Build (exact-key -> centroid) and (image -> [(label, rr, cc)]) indexes."""
+        """Build (exact-key -> centroid) and (image -> [(label, rr, cc)]) indexes.
+
+        Rows with a null ``Object_Label`` are skipped. ``_read_clean_master``
+        normally supplies the CLEAN master (which has no such rows), but it
+        falls back to the post-applied mirror when the master parquet is
+        missing or corrupt — and the mirror's ``--metadata`` left join carries
+        phantom rows for undetected strains, whose null label is not an
+        indexable object identity (and would raise on ``int(None)``).
+        """
         exact: dict[LabelKey, tuple[float, float]] = {}
         per_image: dict[str, list[tuple[int, float, float]]] = {}
         has_fp = KEY_CENTER_RR in master_df.columns and KEY_CENTER_CC in master_df.columns
         cols = [KEY_IMAGE_FILE, KEY_OBJECT_LABEL]
         if has_fp:
             cols += [KEY_CENTER_RR, KEY_CENTER_CC]
-        for row in master_df.select(cols).iter_rows(named=True):
+        indexable = master_df.filter(pl.col(KEY_OBJECT_LABEL).is_not_null())
+        for row in indexable.select(cols).iter_rows(named=True):
             image_file = str(row[KEY_IMAGE_FILE])
             label = int(row[KEY_OBJECT_LABEL])
             rr = float(row[KEY_CENTER_RR]) if has_fp else float("nan")

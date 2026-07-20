@@ -24,7 +24,7 @@ def test_metadata_run_copies_source_csv_to_deliverables(
 ) -> None:
     out = tmp_path / "out"
     # A real, readable metadata CSV. ``Metadata_ImageName`` is a column the
-    # measurement frame carries, so this also exercises a normal inner-join
+    # measurement frame carries, so this also exercises a normal left-join
     # onto the post-applied MIRROR (deliverables/measurements.parquet) — the
     # master_measurements.* archive stays metadata-free (spec §8.2). A non-ASCII
     # cell guards against an accidental text-mode re-encode in a future

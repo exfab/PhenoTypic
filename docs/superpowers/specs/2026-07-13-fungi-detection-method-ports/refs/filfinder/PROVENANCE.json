@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-07-13",
+  "package": {
+    "name": "fil-finder",
+    "version": "1.8",
+    "release_date": "2025-05-12",
+    "latest_stable_at_check": true,
+    "pypi_json": "https://pypi.org/pypi/fil-finder/1.8/json",
+    "license": "MIT",
+    "license_evidence": "upstream/LICENSE.rst:1-21 and upstream/PKG-INFO:1-21",
+    "sdist": {
+      "url": "https://files.pythonhosted.org/packages/7a/d2/58eff9171d0126c67ae14a25f4ac0d5fd00189dbcfc605cd7b4a57d27b53/fil_finder-1.8.tar.gz",
+      "sha256": "a253d2217d1d5eef8311100e00766eed71207f3fc9d79cc8b378896a9b89a9e8"
+    },
+    "wheel": {
+      "url": "https://files.pythonhosted.org/packages/e2/93/0a7882b35a1d339a6ab38594a1853861c361bcc7140da11f06596677e141/fil_finder-1.8-py3-none-any.whl",
+      "sha256": "8d7a2b2844346c037685c2af198566344426fbef9ca04833c9261175d75c833e"
+    },
+    "git_tag": "v1.8",
+    "git_tag_object": "2a2167803a525dbec731954afa548da8579b7d67",
+    "git_commit": "22539cf2176ad9b717658652e8da749158597f4d",
+    "repository": "https://github.com/e-koch/FilFinder",
+    "local_source_file_count": 59,
+    "local_source_aggregate_sha256": "73db4ddb96269a1602a66f1afdc9d6b036faf79f3d374861cf4544761a590174"
+  },
+  "paper": {
+    "authors": "Eric W. Koch and Erik W. Rosolowsky",
+    "title": "Filament Identification through Mathematical Morphology",
+    "publication_year": 2015,
+    "doi": "10.1093/mnras/stv1521",
+    "arxiv": "1507.02289",
+    "url": "https://arxiv.org/pdf/1507.02289",
+    "local_pdf": "paper/Koch_Rosolowsky_2015.pdf",
+    "local_text": "paper/Koch_Rosolowsky_2015.txt",
+    "pdf_sha256": "c9c8941e242281e09473923afe4c1ff7d52060e7e779551f54b6a1cb3f7480a5"
+  },
+  "oracle": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/upstream uv run --with fil-finder==1.8 python docs/superpowers/specs/2026-07-13-fungi-detection-method-ports/refs/filfinder/generate_fixture.py",
+    "fixture": "tests/fixtures/reconnect/filfinder/oracle.json",
+    "python": "3.12.11",
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "dependencies": {
+      "astropy": "8.0.1",
+      "fil-finder": "1.8",
+      "h5py": "3.15.1",
+      "matplotlib": "3.10.7",
+      "networkx": "3.6",
+      "numba": "0.62.1",
+      "numpy": "2.3.5",
+      "pandas": "2.3.3",
+      "scikit-image": "0.25.2",
+      "scipy": "1.16.3",
+      "skan": "0.13.1"
+    }
+  }
+}

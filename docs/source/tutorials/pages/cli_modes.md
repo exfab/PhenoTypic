@@ -184,8 +184,10 @@ Reach for it when the *numbers* are right but the *presentation* is not:
 python -m phenotypic --mode recompile --output ./out --metadata plate_layout.csv
 ```
 
-`--metadata` inner-joins the CSV onto `master_measurements.csv` on shared
-columns.
+`--metadata` left-joins the CSV onto the measurements mirror on shared columns.
+Every CSV row survives — one that matches no measured object is kept with null
+measurements and `QC_MetadataOnly` set to `true`, so a strain that was never
+detected is visible rather than silently dropped.
 
 The output directory must already exist, and passing `--pipeline` is an error —
 `recompile` deliberately uses the pipeline the run was executed with, not

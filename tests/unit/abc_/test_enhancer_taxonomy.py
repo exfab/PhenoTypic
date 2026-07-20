@@ -37,6 +37,7 @@ TAXONOMY: dict[type, tuple[str, ...]] = {
     FocusEdge             : (
         "FocusEdgePhase",
         "FocusEdgeMonogenicPhase",
+        "FocusEdgeTwoKPhase",
         "FocusEdgeHessian",
         "FocusEdgeMeijering",
         "FocusEdgeFrangi",

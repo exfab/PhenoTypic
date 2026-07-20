@@ -17,8 +17,9 @@ from typing import Any, Dict, List, Sequence, TypeVar
 from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
 from phenotypic.sdk_.slurm import (
     SlurmArrayScriptSpec,
-    _sbatch,
+    calculate_optimal_array_chunks,
     get_slurm_array_limit,
+    get_slurm_max_submit_jobs,
     write_slurm_array_script,
 )
 from phenotypic.sdk_.typing_ import ImageTypeName
@@ -86,8 +87,16 @@ def _stage_worker_body(
     manifest_path: Path,
     ext: str,
     n_shards: int | None = None,
+    index_var: str = "$SLURM_ARRAY_TASK_ID",
 ) -> str:
-    """The per-array-task command line that invokes the staged SLURM worker."""
+    """The per-array-task command line that invokes the staged SLURM worker.
+
+    ``index_var`` is the shell expression the worker uses as its manifest index.
+    Image stages (1 & 3) pass ``$CURRENT_TASK_INDEX`` — the per-chunk
+    ``TASK_INDICES`` window maps a 0-based array id to the ABSOLUTE manifest
+    index, so a chunked stage never emits an array index above ``MaxArraySize``.
+    Stage 2 keeps ``$SLURM_ARRAY_TASK_ID`` (the shard index; never chunked).
+    """
     q = shlex.quote
     parts = [
         f"{python_str} -m phenotypic._cli._cli_staged_slurm_worker",
@@ -96,7 +105,7 @@ def _stage_worker_body(
         f"--output-dir {q(str(output_dir.absolute()))}",
         f"--image-type {image_type}",
         f"--manifest {q(str(manifest_path.absolute()))}",
-        "--index $SLURM_ARRAY_TASK_ID",
+        f"--index {index_var}",
         f"--ext {q(ext)}",
     ]
     if stage == 2:
@@ -110,12 +119,20 @@ def _write_stage_script(
     stage_name: str,
     job_name: str,
     slurm_args: Dict[str, Any],
-    array_size: int,
+    task_indices: Sequence[int],
     body: str,
     signal_grace: int | None = None,
     requeue: bool = False,
 ) -> Path:
-    """Render + write one stage SBATCH array script (returns its path)."""
+    """Render + write one stage SBATCH array script (returns its path).
+
+    ``task_indices`` are the manifest indices this array covers. The rendered
+    ``--array`` directive is always 0-based over ``len(task_indices)`` and the
+    ``TASK_INDICES`` bash array maps the array id to the (possibly offset)
+    manifest index — so a chunk covering images 2500-3217 is submitted as
+    ``--array=0-717`` with ``TASK_INDICES=(2500 … 3217)``, never an index that
+    exceeds the cluster ``MaxArraySize``.
+    """
     out_log = log_dir / f"{stage_name}_%A_%a.log"
     err_log = log_dir / f"{stage_name}_%A_%a.err"
     path = script_dir / f"{stage_name}.sh"
@@ -128,7 +145,7 @@ def _write_stage_script(
             slurm_args=slurm_args,
             log_path=out_log,
             error_log_path=err_log,
-            task_indices=list(range(max(1, array_size))),
+            task_indices=list(task_indices) or [0],
             body=body,
             prelude=SLURM_THREAD_PIN_BASH,
             comments=[f"# Stage: {stage_name}"],
@@ -136,6 +153,40 @@ def _write_stage_script(
             requeue=requeue,
         ),
     )
+
+
+def _write_image_stage_chunks(
+    *,
+    script_dir: Path,
+    log_dir: Path,
+    stage: int,
+    slurm_args: Dict[str, Any],
+    body: str,
+    chunks: List[tuple[int, int]],
+) -> List[Path]:
+    """Write one CPU array script per image chunk for stage 1 or 3.
+
+    A single chunk keeps the plain ``stageN.sh`` name (byte-identical to the
+    pre-chunking output); multiple chunks are ``stageN_chunk{i}.sh``. Each
+    covers the absolute manifest window ``[start, end)`` via its ``TASK_INDICES``
+    array, so no chunk's SLURM array index reaches the cluster ``MaxArraySize``.
+    """
+    single = len(chunks) == 1
+    scripts: List[Path] = []
+    for i, (start, end) in enumerate(chunks):
+        stage_name = f"stage{stage}" if single else f"stage{stage}_chunk{i}"
+        scripts.append(
+            _write_stage_script(
+                script_dir,
+                log_dir,
+                stage_name,
+                f"phenotypic-stage{stage}",
+                slurm_args,
+                list(range(start, end)),
+                body,
+            )
+        )
+    return scripts
 
 
 def generate_staged_scripts(
@@ -149,13 +200,19 @@ def generate_staged_scripts(
     n_shards: int,
     signal_grace: int = 120,
     ext: str = ".tiff",
-) -> Dict[str, Path]:
-    """Write the three per-stage SBATCH array scripts (no submission).
+    array_limit: int | None = None,
+) -> Dict[str, Any]:
+    """Write the per-stage SBATCH array scripts (no submission).
 
     Stage 1 & 3 are arrays over images (CPU ``cpu_slurm_args``); Stage 2 is an
     array over shards (GPU args resolved from ``gpu_slurm_args`` over the CPU
-    profile, auto-1-GPU). The manifest is written to disk for the workers to
-    index. Returns ``{"stage1": path, "stage2": path, "stage3": path}``.
+    profile, auto-1-GPU). When the image count exceeds ``array_limit`` (the
+    cluster ``MaxArraySize``, queried when ``None``), the two image stages are
+    split into ``ceil(n_images / array_limit)`` chunk scripts; Stage 2 is never
+    chunked. The manifest is written to disk for the workers to index.
+
+    Returns ``{"stage1": [Path, ...], "stage2": Path, "stage3": [Path, ...]}`` —
+    the image stages are always lists (length 1 when unchunked).
     """
     script_dir = slurm_scripts_dir(output_dir)
     script_dir.mkdir(parents=True, exist_ok=True)
@@ -170,64 +227,106 @@ def generate_staged_scripts(
     python_cmd, _ = get_python_command(for_slurm=True)
     python_str = " ".join(python_cmd)
     n_images = len(datasets_manifest)
+    if array_limit is None:
+        array_limit = get_slurm_array_limit()
     gpu_args = resolve_stage_slurm_args(gpu_slurm_args, cpu_slurm_args)
 
-    return {
-        "stage1": _write_stage_script(
-            script_dir,
-            log_dir,
-            "stage1",
-            "phenotypic-stage1",
-            cpu_slurm_args,
-            n_images,
-            _stage_worker_body(
-                python_str,
-                1,
-                pipeline_path,
-                output_dir,
-                image_type,
-                manifest_path,
-                ext,
-            ),
+    # Image chunks tile the manifest into <=array_limit-wide windows; each stage-1
+    # and stage-3 chunk resolves its absolute index via $CURRENT_TASK_INDEX.
+    chunks = calculate_optimal_array_chunks(n_images, array_limit) or [(0, 1)]
+
+    def _image_stage_body(stage: int) -> str:
+        return _stage_worker_body(
+            python_str,
+            stage,
+            pipeline_path,
+            output_dir,
+            image_type,
+            manifest_path,
+            ext,
+            index_var="$CURRENT_TASK_INDEX",
+        )
+
+    stage1 = _write_image_stage_chunks(
+        script_dir=script_dir,
+        log_dir=log_dir,
+        stage=1,
+        slurm_args=cpu_slurm_args,
+        body=_image_stage_body(1),
+        chunks=chunks,
+    )
+    stage2 = _write_stage_script(
+        script_dir,
+        log_dir,
+        "stage2",
+        "phenotypic-stage2",
+        gpu_args,
+        list(range(max(1, n_shards))),
+        _stage_worker_body(
+            python_str,
+            2,
+            pipeline_path,
+            output_dir,
+            image_type,
+            manifest_path,
+            ext,
+            n_shards=n_shards,
         ),
-        "stage2": _write_stage_script(
-            script_dir,
-            log_dir,
-            "stage2",
-            "phenotypic-stage2",
-            gpu_args,
-            n_shards,
-            _stage_worker_body(
-                python_str,
-                2,
-                pipeline_path,
-                output_dir,
-                image_type,
-                manifest_path,
-                ext,
-                n_shards=n_shards,
-            ),
-            signal_grace=signal_grace,
-            requeue=True,
-        ),
-        "stage3": _write_stage_script(
-            script_dir,
-            log_dir,
-            "stage3",
-            "phenotypic-stage3",
-            cpu_slurm_args,
-            n_images,
-            _stage_worker_body(
-                python_str,
-                3,
-                pipeline_path,
-                output_dir,
-                image_type,
-                manifest_path,
-                ext,
-            ),
-        ),
-    }
+        signal_grace=signal_grace,
+        requeue=True,
+    )
+    stage3 = _write_image_stage_chunks(
+        script_dir=script_dir,
+        log_dir=log_dir,
+        stage=3,
+        slurm_args=cpu_slurm_args,
+        body=_image_stage_body(3),
+        chunks=chunks,
+    )
+    return {"stage1": stage1, "stage2": stage2, "stage3": stage3}
+
+
+def flatten_staged_scripts(scripts: Dict[str, Any]) -> List[Path]:
+    """Ordered flat chunk list for the drip-feed dispatcher.
+
+    Order: every Stage-1 chunk, then Stage 2, then every Stage-3 chunk. The
+    dispatcher submits them one at a time (chunk N+1 only after chunk N ends),
+    so the linear order encodes the stage dependencies.
+    """
+    return [*scripts["stage1"], scripts["stage2"], *scripts["stage3"]]
+
+
+def submit_staged_chain(
+    scripts: Dict[str, Any],
+    *,
+    output_dir: Path,
+    slurm_args: Dict[str, Any],
+    console: Any = None,
+) -> List[str]:
+    """Submit the staged scripts via the shared drip-feed dispatcher.
+
+    Reuses :func:`submit_slurm_script_chain` (the same funnel the CPU
+    autonomous path uses) so **only the first chunk + a dispatcher job are
+    queued up front**; when chunk N finishes, its dispatcher submits chunk N+1.
+    Peak queue occupancy stays at ~1 chunk + 1 dispatcher instead of every
+    chunk at once — critical because a run's total array tasks
+    (~2 x n_images) otherwise blows ``MaxSubmitJobs`` (Spec 1 §7/§9). The tiny
+    dispatcher runs on the CPU ``slurm_args`` profile. Returns the initially
+    submitted job ids (chunk 0 and, if multiple chunks, dispatcher 1).
+    """
+    # Local import avoids a circular import at module load
+    # (_cli_slurm_submission -> sdk_ -> ... ).
+    from rich.console import Console
+
+    from ._cli_slurm_submission import submit_slurm_script_chain
+
+    submission = submit_slurm_script_chain(
+        flat_chunk_scripts=flatten_staged_scripts(scripts),
+        output_dir=output_dir,
+        slurm_args=slurm_args,
+        console=console or Console(),
+    )
+    return submission.job_ids
 
 
 class StagedSlurmStrategy(ExecutionStrategy):
@@ -244,15 +343,19 @@ class StagedSlurmStrategy(ExecutionStrategy):
             for img in ds.images
         ]
 
+        # Chunk to the TIGHTER of MaxArraySize and the conservative
+        # MaxSubmitJobs estimate. Reserve one submission slot for the dependent
+        # dispatcher that is queued alongside the active array chunk.
         array_limit = get_slurm_array_limit()
-        if len(manifest) > array_limit or cfg.gpu_shards > array_limit:
-            logger.warning(
-                "staged SLURM work-list (%d images / %d shards) exceeds the "
-                "array limit (%d); per-stage chunking is not implemented — "
-                "submit fewer items or raise MaxArraySize.",
-                len(manifest),
-                cfg.gpu_shards,
-                array_limit,
+        max_submit = get_slurm_max_submit_jobs()
+        submit_capacity = max(1, max_submit - 1) if max_submit else array_limit
+        chunk_limit = min(array_limit, submit_capacity)
+        # Image stages chunk to fit the limit; the Stage-2 shard array cannot
+        # (a shard worker streams its whole shard on one GPU), so guard it.
+        if max(1, cfg.gpu_shards) > chunk_limit:
+            raise ValueError(
+                f"--gpu-shards ({cfg.gpu_shards}) exceeds the SLURM chunk limit "
+                f"({chunk_limit}); reduce the shard count."
             )
 
         scripts = generate_staged_scripts(
@@ -264,20 +367,22 @@ class StagedSlurmStrategy(ExecutionStrategy):
             gpu_slurm_args=cfg.gpu_slurm_args,
             n_shards=max(1, cfg.gpu_shards),
             ext=cfg.ext,
+            array_limit=chunk_limit,
         )
 
-        # 3-link afterany chain: stage1 -> stage2 -> stage3. submit_script uses
-        # --dependency afterany:<prev>, so a few per-image failures in one stage
-        # never block the next (Spec 1 §7/§9).
-        job1 = _sbatch.submit_script(scripts["stage1"])
-        job2 = _sbatch.submit_script(scripts["stage2"], dependency_job_id=job1)
-        job3 = _sbatch.submit_script(scripts["stage3"], dependency_job_id=job2)
-        self.submitted_job_ids = [job1, job2, job3]
+        # Drip-feed dispatcher: only chunk 0 + a dispatcher are queued now; each
+        # chunk's dispatcher submits the next after it ends. Keeps peak queue at
+        # ~1 chunk (never the ~2 x n_images tasks that blow MaxSubmitJobs) while
+        # afterany between chunks lets per-image failures pass (Spec 1 §7/§9).
+        self.submitted_job_ids = submit_staged_chain(
+            scripts, output_dir=output_dir, slurm_args=cfg.slurm_args
+        )
         logger.info(
-            "Submitted staged GPU chain: stage1=%s -> stage2=%s -> stage3=%s",
-            job1,
-            job2,
-            job3,
+            "Submitted staged GPU chain via drip-feed dispatcher "
+            "(%d stage-1 chunks -> stage2 -> %d stage-3 chunks): initial jobs=%s",
+            len(scripts["stage1"]),
+            len(scripts["stage3"]),
+            self.submitted_job_ids,
         )
 
         return ExecutionResults(

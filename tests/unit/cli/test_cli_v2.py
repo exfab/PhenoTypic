@@ -66,13 +66,19 @@ from phenotypic.sdk_ import (
     order_measurement_columns,
     pipeline_json_path,
 )
-from phenotypic.schema import CONDITION_METADATA, EXPERIMENT_METADATA, METADATA
+from phenotypic.schema import (
+    CONDITION_METADATA,
+    EXPERIMENT_METADATA,
+    METADATA,
+    METADATA_MATCH,
+)
 
 
 DATASET_HEADER = str(EXPERIMENT_METADATA.DATASET)
 IMAGE_NAME_HEADER = str(METADATA.IMAGE_NAME)
 TREATMENT_LABEL = CONDITION_METADATA.TREATMENT.label
 TREATMENT_HEADER = str(CONDITION_METADATA.TREATMENT)
+METADATA_ONLY_HEADER = str(METADATA_MATCH.METADATA_ONLY)
 
 
 @pytest.fixture
@@ -1903,8 +1909,12 @@ class TestAggregateMeasurements:
         assert "concentration" not in master.columns
         assert "area" in master.columns
 
-    def test_aggregate_measurements_metadata_partial_match(self, temp_output_dir):
-        """Inner join: unmatched measurement rows are dropped."""
+    def test_aggregate_measurements_measurement_unmatched_is_dropped(self, temp_output_dir):
+        """Left join is asymmetric: *measurement* rows with no metadata are dropped.
+
+        Measurements are the RIGHT frame, so plate C — measured but absent from
+        the metadata CSV — does not survive, and no surviving row is a phantom.
+        """
         import pandas as pd
 
         self._create_measurement_csvs(temp_output_dir, {
@@ -1932,15 +1942,23 @@ class TestAggregateMeasurements:
         master = pd.read_csv(result)
         assert TREATMENT_HEADER not in master.columns
         assert set(master["plate"].tolist()) == {"A", "B", "C"}
-        # Mirror reflects the inner join: plate C dropped, treatment present.
+        # Mirror drops plate C (measurement-unmatched), treatment present.
         mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         assert len(mirror) == 2
         assert TREATMENT_HEADER in mirror.columns
         assert set(mirror["plate"].tolist()) == {"A", "B"}
         assert mirror[TREATMENT_HEADER].notna().all()
+        # Every metadata row matched, so nothing is a phantom.
+        assert not mirror[METADATA_ONLY_HEADER].any()
 
     def test_aggregate_measurements_metadata_duplicate_keys_warns(self, temp_output_dir, caplog):
-        """Duplicate keys in metadata CSV inflate rows and produce a warning."""
+        """Duplicate keys in metadata CSV inflate rows and produce a warning.
+
+        The signal is computed from the metadata frame's own key uniqueness, not
+        from a row-count delta: under the left join 2 metadata rows fan out to 2
+        output rows, so a height comparison would see no change at all. The
+        duplicates are also not phantoms — both matched plate A.
+        """
         import pandas as pd
 
         self._create_measurement_csvs(temp_output_dir, {
@@ -1973,6 +1991,166 @@ class TestAggregateMeasurements:
         mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         assert len(mirror) == 2
         assert "duplicate keys" in caplog.text
+        # Duplicate-key fan-out is independent of the phantom signal.
+        assert not mirror[METADATA_ONLY_HEADER].any()
+        assert "matched no measured object" not in caplog.text
+
+    def _write_unmatched_metadata_fixture(self, temp_output_dir):
+        """Metadata for plates {A, B, C}; only A and B were ever measured."""
+        import pandas as pd
+
+        self._create_measurement_csvs(temp_output_dir, {
+            "ds1": [
+                ("img_001", pd.DataFrame({"plate": ["A", "B"], "area": [10, 20]})),
+            ],
+        })
+        metadata_path = temp_output_dir / "metadata.csv"
+        pd.DataFrame({
+            "plate": ["A", "B", "C"],
+            TREATMENT_LABEL: ["control", "drug_X", "drug_Y"],
+        }).to_csv(metadata_path, index=False)
+        return metadata_path
+
+    def test_aggregate_measurements_metadata_unmatched_becomes_phantom_row(
+        self, temp_output_dir
+    ):
+        """A metadata key that matched no measured object survives as a phantom.
+
+        Absence of a colony is data: plate C was never detected, so it must stay
+        in the mirror carrying its metadata, null measurements, and the
+        QC_MetadataOnly flag. The master archive stays clean.
+        """
+        import pandas as pd
+
+        metadata_path = self._write_unmatched_metadata_fixture(temp_output_dir)
+
+        result = aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["ds1"],
+            include_dataset_column=False,
+            metadata_csv=metadata_path,
+        )
+
+        assert result is not None
+        # Master archive stays clean: only measured rows, no metadata, no flag.
+        master = pd.read_csv(result)
+        assert set(master["plate"].tolist()) == {"A", "B"}
+        assert TREATMENT_HEADER not in master.columns
+        assert METADATA_ONLY_HEADER not in master.columns
+
+        # Mirror keeps the undetected strain.
+        mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
+        assert len(mirror) == 3
+        assert set(mirror["plate"].tolist()) == {"A", "B", "C"}
+        phantom = mirror.loc[mirror["plate"] == "C"]
+        # Metadata values carried; measurements null.
+        assert phantom[TREATMENT_HEADER].tolist() == ["drug_Y"]
+        assert phantom["area"].isna().all()
+        # Flagged, and only C is flagged.
+        assert phantom[METADATA_ONLY_HEADER].tolist() == [True]
+        assert not mirror.loc[mirror["plate"] != "C", METADATA_ONLY_HEADER].any()
+
+    def test_aggregate_measurements_metadata_unmatched_warns(
+        self, temp_output_dir, caplog
+    ):
+        """Undetected metadata rows are reported at WARNING — the point of the join."""
+        metadata_path = self._write_unmatched_metadata_fixture(temp_output_dir)
+
+        with caplog.at_level(logging.WARNING):
+            result = aggregate_measurements(
+                output_dir=temp_output_dir,
+                dataset_names=["ds1"],
+                include_dataset_column=False,
+                metadata_csv=metadata_path,
+            )
+
+        assert result is not None
+        warnings_text = "\n".join(
+            r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING
+        )
+        assert "matched no measured object" in warnings_text
+        assert "1/3" in warnings_text
+
+    def test_phantom_row_does_not_float_promote_int_columns_under_post(
+        self, temp_output_dir
+    ):
+        """An ``Int64`` column survives a phantom row + a post op as an integer.
+
+        ``_apply_post_to_master`` round-trips the frame through pandas so post
+        ops can run. ``to_pandas()`` has no nullable-int representation by
+        default, so an ``Int64`` column carrying a phantom's null is promoted to
+        ``float64`` and comes back as polars ``Float64`` — permanently. The
+        mirror's dtype would then depend on whether a post op happened to be
+        configured, which is unrelated to the data.
+
+        This is the ONLY combination that triggers it: phantom row (supplies the
+        null) AND a configured post op (supplies the round-trip). Neither alone
+        reproduces it, which is why nothing else in the suite covers it.
+        """
+        import polars as pl
+
+        from phenotypic import ImagePipeline
+        from phenotypic.abc_._post_measurement import PostMeasurement
+
+        class TouchNothing(PostMeasurement):
+            """Forces the pandas round-trip without altering any value."""
+
+            def _operate(self, df):
+                return df
+
+        metadata_path = self._write_unmatched_metadata_fixture(temp_output_dir)
+
+        aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["ds1"],
+            include_dataset_column=False,
+            metadata_csv=metadata_path,
+            pipeline=ImagePipeline(post=[TouchNothing()]),
+        )
+
+        mirror = pl.read_parquet(measurements_parquet_path(temp_output_dir))
+        # The phantom is present (so a null really did reach the round-trip)...
+        assert mirror.filter(pl.col(METADATA_ONLY_HEADER)).height == 1
+        # ...and the integer column is still an integer, not Float64.
+        assert mirror.schema["area"] == pl.Int64, (
+            f"'area' float-promoted to {mirror.schema['area']} by the pandas "
+            "round-trip; the integer-dtype restore did not fire"
+        )
+        # The real rows keep their exact integer values.
+        real = mirror.filter(~pl.col(METADATA_ONLY_HEADER))
+        assert sorted(real["area"].to_list()) == [10, 20]
+
+    def test_metadata_only_flag_round_trips_as_bool_in_both_mirrors(
+        self, temp_output_dir
+    ):
+        """``QC_MetadataOnly`` re-reads as a real bool from parquet AND csv.
+
+        The flag is the user-facing handle for "which strains went undetected" —
+        the documented way to find them is a truth filter over the mirror
+        (``mirror.filter(pl.col("QC_MetadataOnly"))`` /
+        ``df[df["QC_MetadataOnly"]]``). If a writer ever emitted it as a string,
+        every value would be truthy (``bool("False") is True``) and that filter
+        would silently return *every* row instead of the missing strains.
+        """
+        import pandas as pd
+        from pandas.api.types import is_bool_dtype
+
+        metadata_path = self._write_unmatched_metadata_fixture(temp_output_dir)
+
+        aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["ds1"],
+            include_dataset_column=False,
+            metadata_csv=metadata_path,
+        )
+
+        from_parquet = pd.read_parquet(measurements_parquet_path(temp_output_dir))
+        from_csv = pd.read_csv(measurements_csv_path(temp_output_dir))
+
+        assert is_bool_dtype(from_parquet[METADATA_ONLY_HEADER])
+        assert is_bool_dtype(from_csv[METADATA_ONLY_HEADER])
+        assert from_parquet[METADATA_ONLY_HEADER].sum() == 1
+        assert from_csv[METADATA_ONLY_HEADER].sum() == 1
 
     def test_aggregate_measurements_metadata_dtype_mismatch(self, temp_output_dir):
         """Join columns with mismatched dtypes (int vs str) still match."""

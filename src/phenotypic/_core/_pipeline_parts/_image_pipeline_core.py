@@ -849,7 +849,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 if self._benchmark and self._verbose and has_tqdm:
                     pbar.close()
                 op_class = type(operation).__name__
-                raise type(exc)(
+                raise RuntimeError(
                         f"[{op_class}] (step {i + 1}/{len(self._ops)}, "
                         f"key='{key}'): {exc}"
                 ) from exc
@@ -1094,7 +1094,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 if self._benchmark and self._verbose and has_tqdm:
                     pbar.close()
                 meas_class = type(measurement).__name__
-                raise type(exc)(
+                raise RuntimeError(
                         f"[{meas_class}] (step {i + 1}/{len(self._meas)}, "
                         f"key='{key}'): {exc}"
                 ) from exc

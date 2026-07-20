@@ -56,23 +56,59 @@ trio.
 
 ## SLURM chaining (`_cli_staged_slurm.py` + `_cli_staged_slurm_worker.py`)
 
+> **Queue all SLURM work through the drip-feed dispatcher — never submit array
+> chunks eagerly.** Every SLURM submission path in this package (the CPU
+> autonomous strategy, the staged GPU strategy, `--recompile`) funnels its
+> ordered chunk scripts through `submit_slurm_script_chain`
+> (`_cli_slurm_submission.py`) → `generate_dispatcher_chain` +
+> `submit_drip_feed_start` (`sdk_/slurm/_dispatcher.py`). The dispatcher submits
+> **only chunk 0 + a tiny dispatcher job** up front; when chunk N ends, its
+> dispatcher submits chunk N+1. Peak queue occupancy stays at ~1 chunk + 1
+> dispatcher, so a run's full task count (which for the staged path is
+> ~2 × n_images) never trips the per-user `MaxSubmitJobs`. A new SLURM
+> submission site MUST reuse this helper, not loop `submit_script` over all
+> chunks — eager submission is what caused the `AssocMaxSubmitJobLimit` failures.
+
 `StagedSlurmStrategy` writes its **own** per-stage SBATCH scripts via
 `format_sbatch_directives` (the array generator's fixed path + per-image
-`_cli_process_single` body cannot be reused per stage) and submits a **3-link
-`afterany` chain** (`submit_script(stage, dependency_job_id=prev)`):
+`_cli_process_single` body cannot be reused per stage), flattens them into one
+ordered list `[*stage1_chunks, stage2, *stage3_chunks]`
+(`flatten_staged_scripts`), and hands that to the shared drip-feed dispatcher via
+`submit_staged_chain` → `submit_slurm_script_chain`. The linear order encodes the
+stage dependencies (a chunk is submitted only after the prior one ends), so
+Stage 2 starts after the last Stage-1 chunk and Stage 3 after Stage 2:
 
 - Stage 1 / Stage 3 = arrays over **images**; Stage 2 = an array over
   **shards** (`--gpu-shards`, `partition_shards`), each a resident-model
-  `run_stage2_shard`.
+  `run_stage2_shard`. The tiny dispatcher jobs run on `config.slurm_args` (CPU).
+- **Array chunking (`min(MaxArraySize, MaxSubmitJobs - 1)`):** the image count is
+  split into `ceil(n_images / chunk_limit)` chunk scripts
+  (`calculate_optimal_array_chunks` → `_write_image_stage_chunks`), where
+  `get_slurm_max_submit_jobs()` conservatively uses the smallest configured QoS
+  or user-association limit, and `chunk_limit` reserves one submission slot for
+  the dependent dispatcher queued alongside the active array. A single chunk
+  must fit **both** the array-index cap and the remaining per-user submit
+  capacity.
+  Each chunk is a 0-based `--array=0-(k-1)` whose `TASK_INDICES` window holds the
+  **absolute** manifest indices and whose worker reads
+  `--index $CURRENT_TASK_INDEX`, so no array index ever reaches the limit. A
+  single chunk keeps the plain `stage1.sh`/`stage3.sh` name; multiple become
+  `stageN_chunk{i}.sh`. Stage 2 is **never chunked** (a shard worker streams its
+  whole shard on one GPU); `--gpu-shards > chunk_limit` raises.
+  `generate_staged_scripts` returns
+  `{"stage1": [Path…], "stage2": Path, "stage3": [Path…]}` — image stages are
+  always lists.
 - Per-stage resources: Stages 1 & 3 use `config.slurm_args` (CPU); Stage 2 uses
   `resolve_stage_slurm_args(gpu_slurm_args, slurm_args)` — inherit/delta over the
   CPU profile, auto-add `slurm_gpus_per_node=1` (explicit `=0` **omits** the
   directive so a CPU partition can run the GPU stage, e.g. tests).
 - **Walltime survival:** the Stage-2 script carries `#SBATCH --signal=B:TERM@<g>`
   + `#SBATCH --requeue`; the worker catches the SIGTERM and **`scontrol
-  requeue`s its own array task** (NOT a new job) so Stage 3's `afterany`
-  dependency naturally waits for the continuation. An `attempted` set stops a
-  deterministic failure from requeuing forever.
+  requeue`s its own array task** (NOT a new job). Because the requeued task keeps
+  its job id and `afterany` waits for terminal state, the dispatcher that submits
+  the first Stage-3 chunk (it depends `afterany` on the Stage-2 job) naturally
+  waits for the continuation. An `attempted` set stops a deterministic failure
+  from requeuing forever.
 - Per-image isolation: a missing prereq (S6) is recorded and skipped, never an
   unhandled raise that aborts a shard.
 
@@ -130,9 +166,26 @@ the post-applied mirror the GUI reads/curates. Per-image parquets in
 `pipeline.measure(image, apply_post=False)` on the per-image path. Post is applied once
 at the end of aggregation against the merged master, and the post-applied frame is what
 `analysis.{csv,parquet}` and `measurements_by_feature/<feature>.{csv,parquet}` derive
-from. The external `--metadata` CSV inner-join also lands on the post-applied frame
+from. The external `--metadata` CSV **left-join** also lands on the post-applied frame
 (inside `finalize_post_master_outputs`), so the mirror, per-feature splits, and
 `analysis.*` carry metadata while the master archive stays post-free and metadata-free.
+The join is **left** so metadata rows matching no measured object survive as **phantom
+rows** — metadata + join keys populated, every measurement/info column null, and
+`QC_MetadataOnly=true` (`schema.METADATA_MATCH`) — which is how a user sees the strains
+that were never detected. Measurement rows with no metadata are still dropped
+(measurements are the join's right frame). `join_metadata(df, csv, *, how=...)` defaults
+to `how="inner"`: **only** `finalize_post_master_outputs` passes `how="left"`. The
+mid-run `_cli_chunk_writer` and the dashboard `_analysis_data` sidecar keep `inner` on
+purpose — they join against a **partial** frame, where a left join would flag every
+not-yet-processed strain as missing.
+
+`QC_MetadataOnly` is a **user-facing output column, not internal machinery** — it is how a
+user filters the mirror for "which strains went undetected". Analysis/QC/post code must
+**not** branch on it. Those ops are public API (a notebook calls them on frames that never
+saw the CLI and carry no flag), so they detect a phantom the same way they detect any
+missing value: **drop/ignore NaN**. A phantom row is null in every measurement/info column,
+so NaN-native math (`notna()`, `nanpercentile`, `np.isfinite`, `dropna`) handles it, needs
+no flag column to exist, and is automatically a no-op on frames that have none.
 Feed analysis plugins/dashboards from `measurements.parquet`, not
 `master_measurements.*`.
 

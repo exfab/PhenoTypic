@@ -35,9 +35,15 @@ class ExpandMetadata(PostMeasurement):
             adjacent to the source column. The source column is always
             kept.
 
+    Notes:
+        Rows whose source value is missing (``NA``/``NaN``) are excluded from
+        both the split and the arity check, and come back as ``NaN`` in every
+        new column. An undetected colony carries no filename to expand, so it
+        neither crashes the split nor trips the "wrong number of parts" guard.
+
     Raises:
-        ValueError: If labels is empty, or if any row produces a different
-            number of parts than len(labels).
+        ValueError: If labels is empty, or if any row with a present source
+            value produces a different number of parts than len(labels).
         KeyError: If the source column does not exist in the DataFrame.
 
     Examples:
@@ -57,6 +63,12 @@ class ExpandMetadata(PostMeasurement):
         >>> result = expand.apply(df)
         >>> list(result["MetadataGenetic_Strain"])
         ['WT', 'mut']
+
+        A row with no source value expands to NaN instead of raising:
+
+        >>> df.loc[1, "MetadataImage_ImageName"] = None
+        >>> list(expand.apply(df)["MetadataGenetic_Strain"])
+        ['WT', nan]
     """
 
     column: str = ""
@@ -82,6 +94,57 @@ class ExpandMetadata(PostMeasurement):
         """
         return [ensure_metadata_prefix(lbl) for lbl in labels] if labels else []
 
+    def _split_to_labels(self, source: pd.Series) -> pd.DataFrame:
+        """Split *source* into one column per label, aligned to *source*'s index.
+
+        Rows with no source value have nothing to split and no arity to check;
+        they are reindexed back in as NaN. Splitting them would either yield the
+        literal ``"nan"`` (regex branch) or a non-list NaN that breaks the
+        ``len`` count (non-regex branch). No-op when nothing is NA.
+
+        Args:
+            source: The source metadata column.
+
+        Returns:
+            A DataFrame of ``self.labels`` columns on ``source``'s index; rows
+            whose source value is NA are NaN throughout.
+
+        Raises:
+            ValueError: If a row with a present source value splits into a
+                number of parts other than ``len(self.labels)``.
+        """
+        present = source[source.notna()]
+        if present.empty:
+            # Nothing to split, and no dtype to trust: an all-NA column arrives as
+            # float64, whose `.str` accessor would raise. Every output is NaN.
+            return pd.DataFrame(index=source.index, columns=self.labels, dtype=object)
+
+        if self.regex:
+            parts = present.apply(lambda x: re.split(self.delimiter, str(x)))
+        else:
+            parts = present.str.split(self.delimiter)
+
+        # Validate that every present row has the expected number of parts
+        n_expected = len(self.labels)
+        counts = parts.apply(len)
+        bad_mask = counts != n_expected
+        if bad_mask.any():
+            # Positional lookup: `bad_mask`/`counts`/`present` share one index,
+            # so locating by position is correct even for a non-integer or
+            # duplicated index (the label-vs-position mix-up this replaces).
+            first_bad_pos = int(bad_mask.to_numpy().argmax())
+            raise ValueError(
+                f"Column '{self.column}' split produced "
+                f"{counts.iloc[first_bad_pos]} parts for value "
+                f"'{present.iloc[first_bad_pos]}', but {n_expected} labels were "
+                f"provided: {self.labels}"
+            )
+
+        # Restore the NA rows as all-NaN
+        return pd.DataFrame(
+            parts.tolist(), columns=self.labels, index=present.index
+        ).reindex(source.index)
+
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Split the metadata column and insert new columns.
 
@@ -90,6 +153,7 @@ class ExpandMetadata(PostMeasurement):
 
         Returns:
             DataFrame with new columns inserted after the source column.
+            Rows whose source value is NA get NaN in every new column.
         """
         if self.column not in df.columns:
             raise KeyError(
@@ -97,28 +161,7 @@ class ExpandMetadata(PostMeasurement):
                 f"Available columns: {list(df.columns)}"
             )
 
-        # Split the column values
-        if self.regex:
-            parts = df[self.column].apply(lambda x: re.split(self.delimiter, str(x)))
-        else:
-            parts = df[self.column].str.split(self.delimiter)
-
-        # Validate that every row has the expected number of parts
-        n_expected = len(self.labels)
-        counts = parts.apply(len)
-        bad_mask = counts != n_expected
-        if bad_mask.any():
-            first_bad_idx = bad_mask.idxmax()
-            first_bad_val = df[self.column].iloc[first_bad_idx]
-            first_bad_count = counts.iloc[first_bad_idx]
-            raise ValueError(
-                f"Column '{self.column}' split produced {first_bad_count} parts "
-                f"for value '{first_bad_val}', but {n_expected} labels were "
-                f"provided: {self.labels}"
-            )
-
-        # Build new columns DataFrame
-        split_df = pd.DataFrame(parts.tolist(), columns=self.labels, index=df.index)
+        split_df = self._split_to_labels(df[self.column])
 
         # Insert new columns after the source column
         src_pos = df.columns.get_loc(self.column)

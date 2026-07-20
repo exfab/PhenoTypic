@@ -231,8 +231,11 @@ def test_margin_ring_pre_mounted_offscreen(page: Page, hub_url: str) -> None:
     # of (populated) columns fit visibly, so the margin ring beyond them is
     # pre-mounted off-screen for instant step-in (mirrors the Browse margin-ring
     # test's deliberately-small viewport).
-    page.set_viewport_size({"width": 600, "height": 450})
     _open_timeline(page, hub_url)
+    # Configure the timeline at the normal viewport before shrinking it. At the
+    # deliberately narrow test width, the sticky tab bar can cover the dropdown
+    # menu and prevent this setup helper from selecting the plate grouping.
+    page.set_viewport_size({"width": 600, "height": 450})
     page.wait_for_selector(".timeline-cell--focused")
     # Poll until the warm sweep has mounted a margin-ring <img> that sits
     # outside the viewport's visible rectangle (pre-mounted for instant step-in).

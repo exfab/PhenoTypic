@@ -1,0 +1,76 @@
+{
+  "source_notebook": "/Users/alex/Projects/Neurospora/notebooks/LightDetectFungi_Workflow.ipynb",
+  "source_image": "/Volumes/T9/exfab/UCR-010-I-D_Neurospora/data/denoised_media_subsets_FrameIdx10-12/xylan/d000273_300_001_2025-12-12_02-00-49_rgb.tiff",
+  "processed_shape": [
+    2812,
+    4716
+  ],
+  "segmentation_labels": 1755,
+  "foreground_fraction": 0.09902331519949037,
+  "workflow_stats": {
+    "branch_p99": NaN,
+    "center_p99": NaN
+  },
+  "selected_source_label": 285,
+  "selected_section_index": 1,
+  "section_shape": [
+    548,
+    516
+  ],
+  "analysis_tile_shape": [
+    283,
+    248
+  ],
+  "analysis_label": 285,
+  "analysis_centre_rc": [
+    141.0,
+    106.0
+  ],
+  "radii": {
+    "symmetric": 134.16354130406148,
+    "core_end": 9.815113346263509,
+    "dense_end": 41.57748734163765,
+    "sparse_end": 127.9712068997951
+  },
+  "metrics_radial": {
+    "Overall": {
+      "R": 0.15430079411233258,
+      "turning_rad_per_px": 0.054854046533590765,
+      "coherence": 0.5152947203619698
+    },
+    "Dense": {
+      "R": 0.22004629252206395,
+      "turning_rad_per_px": 0.06433913105488728,
+      "coherence": 0.38715502666274226
+    },
+    "Sparse": {
+      "R": 0.16254945376680655,
+      "turning_rad_per_px": 0.05376961754848419,
+      "coherence": 0.5326151032055758
+    }
+  },
+  "measurement_columns": [
+    {
+      "Object_Label": 285,
+      "OrientZones_Concentration-Radial-Overall": 0.15430079411233258,
+      "OrientZones_Concentration-Radial-Dense": 0.22004629252206395,
+      "OrientZones_Concentration-Radial-Sparse": 0.16254945376680655,
+      "OrientZones_Concentration-Mask-Overall": 0.12793983349735624,
+      "OrientZones_Concentration-Mask-Dense": 0.2016192212759342,
+      "OrientZones_Concentration-Mask-Sparse": 0.1734811581759993,
+      "OrientZones_Turning-Radial-Overall": 0.054854046533590765,
+      "OrientZones_Turning-Radial-Dense": 0.06433913105488728,
+      "OrientZones_Turning-Radial-Sparse": 0.05376961754848419,
+      "OrientZones_Turning-Mask-Overall": 0.051366849700661056,
+      "OrientZones_Turning-Mask-Dense": 0.06443692494400764,
+      "OrientZones_Turning-Mask-Sparse": 0.04908392929102329,
+      "OrientZones_Coherence-Radial-Overall": 0.5152947203619698,
+      "OrientZones_Coherence-Radial-Dense": 0.38715502666274226,
+      "OrientZones_Coherence-Radial-Sparse": 0.5326151032055758,
+      "OrientZones_Coherence-Mask-Overall": 0.5032955428061074,
+      "OrientZones_Coherence-Mask-Dense": 0.3787196263671051,
+      "OrientZones_Coherence-Mask-Sparse": 0.535707500060835
+    }
+  ],
+  "block_size_px": 24
+}

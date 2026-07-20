@@ -1,0 +1,92 @@
+[
+  {
+    "_id": "3271",
+    "abstract": [
+      {
+        "lang": "eng",
+        "text": "In this paper we present an efficient framework for computation of persis- tent homology of cubical data in arbitrary dimensions. An existing algorithm using simplicial complexes is adapted to the setting of cubical complexes. The proposed approach enables efficient application of persistent homology in domains where the data is naturally given in a cubical form. By avoiding triangulation of the data, we significantly reduce the size of the complex. We also present a data-structure de- signed to compactly store and quickly manipulate cubical complexes. By means of numerical experiments, we show high speed and memory efficiency of our ap- proach. We compare our framework to other available implementations, showing its superiority. Finally, we report performance on selected 3D and 4D data-sets."
+      }
+    ],
+    "alternative_title": [
+      "Theory, Algorithms, and Applications"
+    ],
+    "author": [
+      {
+        "first_name": "Hubert",
+        "full_name": "Wagner, Hubert",
+        "last_name": "Wagner"
+      },
+      {
+        "first_name": "Chao",
+        "full_name": "Chen, Chao",
+        "id": "3E92416E-F248-11E8-B48F-1D18A9856A87",
+        "last_name": "Chen"
+      },
+      {
+        "first_name": "Erald",
+        "full_name": "Vuçini, Erald",
+        "last_name": "Vuçini"
+      }
+    ],
+    "citation": {
+      "ama": "Wagner H, Chen C, Vuçini E. Efficient computation of persistent homology for cubical data. In: Peikert R, Hauser H, Carr H, Fuchs R, eds. <i>Topological Methods in Data Analysis and Visualization II</i>. Springer; 2011:91-106. doi:<a href=\"https://doi.org/10.1007/978-3-642-23175-9_7\">10.1007/978-3-642-23175-9_7</a>",
+      "apa": "Wagner, H., Chen, C., &#38; Vuçini, E. (2011). Efficient computation of persistent homology for cubical data. In R. Peikert, H. Hauser, H. Carr, &#38; R. Fuchs (Eds.), <i>Topological Methods in Data Analysis and Visualization II</i> (pp. 91–106). Springer. <a href=\"https://doi.org/10.1007/978-3-642-23175-9_7\">https://doi.org/10.1007/978-3-642-23175-9_7</a>",
+      "chicago": "Wagner, Hubert, Chao Chen, and Erald Vuçini. “Efficient Computation of Persistent Homology for Cubical Data.” In <i>Topological Methods in Data Analysis and Visualization II</i>, edited by Ronald Peikert, Helwig Hauser, Hamish Carr, and Raphael Fuchs, 91–106. Springer, 2011. <a href=\"https://doi.org/10.1007/978-3-642-23175-9_7\">https://doi.org/10.1007/978-3-642-23175-9_7</a>.",
+      "ieee": "H. Wagner, C. Chen, and E. Vuçini, “Efficient computation of persistent homology for cubical data,” in <i>Topological Methods in Data Analysis and Visualization II</i>, R. Peikert, H. Hauser, H. Carr, and R. Fuchs, Eds. Springer, 2011, pp. 91–106.",
+      "ista": "Wagner H, Chen C, Vuçini E. 2011.Efficient computation of persistent homology for cubical data. In: Topological Methods in Data Analysis and Visualization II. Theory, Algorithms, and Applications, , 91–106.",
+      "mla": "Wagner, Hubert, et al. “Efficient Computation of Persistent Homology for Cubical Data.” <i>Topological Methods in Data Analysis and Visualization II</i>, edited by Ronald Peikert et al., Springer, 2011, pp. 91–106, doi:<a href=\"https://doi.org/10.1007/978-3-642-23175-9_7\">10.1007/978-3-642-23175-9_7</a>.",
+      "short": "H. Wagner, C. Chen, E. Vuçini, in:, R. Peikert, H. Hauser, H. Carr, R. Fuchs (Eds.), Topological Methods in Data Analysis and Visualization II, Springer, 2011, pp. 91–106."
+    },
+    "date_created": "2018-12-11T12:02:23Z",
+    "date_published": "2011-11-14T00:00:00Z",
+    "date_updated": "2021-01-12T07:42:18Z",
+    "day": "14",
+    "department": [
+      {
+        "_id": "HeEd"
+      }
+    ],
+    "doi": "10.1007/978-3-642-23175-9_7",
+    "editor": [
+      {
+        "first_name": "Ronald",
+        "full_name": "Peikert, Ronald",
+        "last_name": "Peikert"
+      },
+      {
+        "first_name": "Helwig",
+        "full_name": "Hauser, Helwig",
+        "last_name": "Hauser"
+      },
+      {
+        "first_name": "Hamish",
+        "full_name": "Carr, Hamish",
+        "last_name": "Carr"
+      },
+      {
+        "first_name": "Raphael",
+        "full_name": "Fuchs, Raphael",
+        "last_name": "Fuchs"
+      }
+    ],
+    "language": [
+      {
+        "iso": "eng"
+      }
+    ],
+    "month": "11",
+    "oa_version": "None",
+    "page": "91 - 106",
+    "publication": "Topological Methods in Data Analysis and Visualization II",
+    "publication_status": "published",
+    "publisher": "Springer",
+    "publist_id": "3375",
+    "quality_controlled": "1",
+    "scopus_import": 1,
+    "status": "public",
+    "title": "Efficient computation of persistent homology for cubical data",
+    "type": "book_chapter",
+    "user_id": "4435EBFC-F248-11E8-B48F-1D18A9856A87",
+    "year": "2011"
+  }
+]

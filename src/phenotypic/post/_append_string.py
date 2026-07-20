@@ -4,7 +4,7 @@ import pandas as pd
 from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
-from ._utils import ensure_metadata_prefix
+from ._utils import affix_preserving_na, ensure_metadata_prefix
 
 
 class AppendString(PostMeasurement):
@@ -23,6 +23,10 @@ class AppendString(PostMeasurement):
     Returns:
         pd.DataFrame: A copy of the input DataFrame with the modified column.
 
+    Notes:
+        Missing values (``NA``/``NaN``) stay missing — they are not stringified
+        into ``"nanC"``. Only present values get the suffix.
+
     Raises:
         KeyError: If the column does not exist in the DataFrame.
 
@@ -39,6 +43,12 @@ class AppendString(PostMeasurement):
         >>> result = op.apply(df)
         >>> list(result["MetadataCulture_Temperature"])
         ['30C', '37C']
+
+        An undetected colony's missing value stays missing:
+
+        >>> df.loc[1, "MetadataCulture_Temperature"] = None
+        >>> list(op.apply(df)["MetadataCulture_Temperature"])
+        ['30C', nan]
     """
 
     column: str = ""
@@ -57,7 +67,7 @@ class AppendString(PostMeasurement):
             df: Measurement DataFrame containing the target column.
 
         Returns:
-            DataFrame with the modified column.
+            DataFrame with the modified column. NA cells are left as NA.
         """
         if self.column not in df.columns:
             raise KeyError(
@@ -65,5 +75,7 @@ class AppendString(PostMeasurement):
                 f"Available columns: {list(df.columns)}"
             )
         result = df.copy()
-        result[self.column] = result[self.column].astype(str) + self.value
+        result[self.column] = affix_preserving_na(
+            result[self.column], suffix=self.value
+        )
         return result

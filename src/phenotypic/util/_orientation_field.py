@@ -24,9 +24,14 @@ def orientation_field(
         eps: Numerical floor for the coherence denominator.
 
     Returns:
-        ``(phi, coherence, grad_phi)`` — orientation in radians in
-        ``(-pi/2, pi/2]``, coherence in ``[0, 1]``, and the doubled-angle
-        (pi-safe) orientation-gradient magnitude ``|grad phi|`` in rad/px.
+        ``(phi, coherence, grad_phi)``. ``phi`` is the dominant
+        **gradient-normal** axis in radians in ``(-pi/2, pi/2]``; the local
+        fiber axis is ``phi + pi/2`` modulo ``pi``. ``coherence`` is in
+        ``[0, 1]``. ``grad_phi`` is the doubled-angle (pi-safe)
+        orientation-gradient magnitude ``|grad phi|`` in rad/px. A global
+        quarter-turn does not change ``grad_phi`` or resultant-length
+        concentration, so downstream scalar metrics may use ``phi`` directly
+        while visualizations must rotate it to show the fiber axis.
     """
     intensity = np.asarray(intensity, dtype=np.float64)
     # Gaussian-derivative gradients at the derivative scale. scipy `order` is

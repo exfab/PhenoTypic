@@ -759,7 +759,11 @@ def _print_process_only_dry_run_plan(
     "metadata_csv",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,
-    help="CSV file to inner-join onto master_measurements.csv on shared columns",
+    help=(
+        "CSV file to left-join onto the measurements mirror on shared columns. "
+        "Rows that match no measured object are kept with null measurements and "
+        "QC_MetadataOnly=true, so undetected strains stay visible."
+    ),
 )
 @click.option(
     "--study",

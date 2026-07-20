@@ -1,0 +1,115 @@
+{
+  "selected": [
+    {
+      "label": 1116,
+      "section_index": 35,
+      "area": 9721.0,
+      "dense_absolute_axis_deg": 8.770193454593795,
+      "current_metrics": {
+        "Overall": {
+          "R": 0.13250130782638078,
+          "turning_rad_per_px": 0.06167937728503867,
+          "coherence": 0.43105028828161035
+        },
+        "Dense": {
+          "R": 0.3365734920986849,
+          "turning_rad_per_px": 0.05804262945201073,
+          "coherence": 0.43719791845435424
+        },
+        "Sparse": {
+          "R": 0.04109972262128863,
+          "turning_rad_per_px": 0.06131084958604344,
+          "coherence": 0.4558173060444913
+        }
+      },
+      "proposed_metrics": {
+        "Dense": {
+          "radial_order": 0.1534166719726562,
+          "radial_delta_concentration": 0.16224851583060457,
+          "mean_abs_delta_deg": 39.69844730877979,
+          "radial_turning_rad_per_px": 0.037591493048671556,
+          "effective_support_qc": 2142.836083607315,
+          "occupied_angle_fraction_qc": 0.9861111111111112,
+          "formation_peaks_deg": [
+            27.5,
+            67.5,
+            157.5,
+            207.5,
+            322.5
+          ]
+        },
+        "Sparse": {
+          "radial_order": 0.3965628514583232,
+          "radial_delta_concentration": 0.40948661814726256,
+          "mean_abs_delta_deg": 29.675668344248805,
+          "radial_turning_rad_per_px": 0.03576573855831708,
+          "effective_support_qc": 1988.2297468421552,
+          "occupied_angle_fraction_qc": 0.875,
+          "formation_peaks_deg": [
+            22.5,
+            87.5,
+            172.5,
+            202.5,
+            277.5
+          ]
+        }
+      }
+    },
+    {
+      "label": 626,
+      "section_index": 18,
+      "area": 13480.0,
+      "dense_absolute_axis_deg": 99.859419895125,
+      "current_metrics": {
+        "Overall": {
+          "R": 0.1781646295815088,
+          "turning_rad_per_px": 0.055570495763126865,
+          "coherence": 0.49542874579264007
+        },
+        "Dense": {
+          "R": 0.4937294393468941,
+          "turning_rad_per_px": 0.05905008799418972,
+          "coherence": 0.43253961043320055
+        },
+        "Sparse": {
+          "R": 0.1722045539755287,
+          "turning_rad_per_px": 0.055162808742123044,
+          "coherence": 0.5028569427809708
+        }
+      },
+      "proposed_metrics": {
+        "Dense": {
+          "radial_order": -0.3916692457979928,
+          "radial_delta_concentration": 0.41536967639884287,
+          "mean_abs_delta_deg": 59.7633750694293,
+          "radial_turning_rad_per_px": 0.03814690061436644,
+          "effective_support_qc": 1071.0954037565275,
+          "occupied_angle_fraction_qc": 1.0,
+          "formation_peaks_deg": [
+            72.5,
+            172.5,
+            287.5
+          ]
+        },
+        "Sparse": {
+          "radial_order": 0.37717138315460097,
+          "radial_delta_concentration": 0.4469964669780725,
+          "mean_abs_delta_deg": 30.958210425883102,
+          "radial_turning_rad_per_px": 0.032389990266004545,
+          "effective_support_qc": 7189.649595781751,
+          "occupied_angle_fraction_qc": 0.9305555555555556,
+          "formation_peaks_deg": [
+            27.5,
+            142.5,
+            177.5,
+            207.5,
+            287.5,
+            317.5,
+            352.5
+          ]
+        }
+      }
+    }
+  ],
+  "top_candidates": []
+}

@@ -1,0 +1,46 @@
+{
+  "method": "A11 cubical-persistence analysis",
+  "scope": "analysis-only; scalar denoising and feature cancellation deferred",
+  "captured_on": "2026-07-13",
+  "executable_reference": {
+    "name": "GUDHI",
+    "version": "3.13.0",
+    "repository": "https://github.com/GUDHI/gudhi-devel",
+    "tag": "tags/gudhi-release-3.13.0",
+    "commit": "5dbe510bed5d8d700ec7243fd915769fb67964a2",
+    "tag_archive_url": "https://github.com/GUDHI/gudhi-devel/archive/refs/tags/tags/gudhi-release-3.13.0.tar.gz",
+    "tag_archive_sha256": "7640d716d6a118b7787602826e4144bfa1ad5903a31f4a760a7f3a1e68cfdc02",
+    "selected_source_corpus_aggregate_sha256": "6c1c21e26de626126b24457fd0425a91b3f59d1ad330571addf189d8a92a3087",
+    "license": "MIT",
+    "license_evidence": "upstream/LICENSE:1-21",
+    "version_evidence": "upstream/CMakeGUDHIVersion.txt:1-6",
+    "authority": "official release tag and official PyPI wheel"
+  },
+  "oracle_wheel": {
+    "filename": "gudhi-3.13.0-cp312-cp312-macosx_14_0_universal2.whl",
+    "sha256": "3c8ff10b40f560222902112d6b4520a6d5aed11c8a6a0cc5409a4e9f2f9c6f68",
+    "pypi_metadata_evidence": "pypi-gudhi-3.13.0.json:191-206",
+    "requires_python": ">=3.10",
+    "local_fixture_sha256": "5d8c0a17c1467fc8095cbb26b1b149fcd8b43bac551bec04f127ee565f25f35b"
+  },
+  "theory_reference": {
+    "title": "Efficient computation of persistent homology for cubical data",
+    "authors": ["Hubert Wagner", "Chao Chen", "Erald Vucini"],
+    "publication_year": 2011,
+    "publication": "Topological Methods in Data Analysis and Visualization II",
+    "pages": "91-106",
+    "doi": "10.1007/978-3-642-23175-9_7",
+    "author_pdf_url": "https://chaochen.github.io/publications/chen_topoinvis_2011.pdf",
+    "author_pdf_sha256": "a221175173ddaea435e2dbbfa5897bf58f993938a8cccdcf611793ce3149ba29",
+    "author_pdf_license": "No explicit open-content license was found; retained as reference evidence, not copied into production or implementation.",
+    "metadata_authority": "ISTA Research Explorer",
+    "metadata_url": "https://research-explorer.ista.ac.at/record/3271.json",
+    "local_metadata_evidence": "wagner-chen-vucini-2011-metadata.json:1-90",
+    "full_text_status": "Pinned from coauthor Chao Chen's official publication site and extracted with page markers. The executable contract is derived from the pinned GUDHI source; the paper uses a different vertex/4-connectivity image convention."
+  },
+  "reconstruction_search": {
+    "result": "No scalar-field cancellation/reconstruction implementation found in the selected GUDHI cubical and persistent-cohomology corpus.",
+    "epistemic_limit": "This is no source found in the selected corpus, not evidence of absence from all literature or software.",
+    "decision": "Select analysis-only Path 1 and defer all persistence-denoising/enhancer claims."
+  }
+}

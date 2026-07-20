@@ -282,6 +282,22 @@ class ModelFitter(SetAnalyzer, ABC):
             **self._extra_loss_kwargs(group),
         }
 
+        # A group with nothing finite to fit (every ``on`` value NaN) has no
+        # curve. Today this still lands on the NaN result row, but only by way
+        # of ``_initial_guess`` producing a NaN x0 and scipy happening to raise
+        # ValueError("x0 must be finite") — correct by accident, and silently
+        # wrong if scipy ever raises a different type or returns NaN params
+        # without raising. Decide it up front instead of inferring it from an
+        # exception. Unreachable on any group with a real measurement, so
+        # existing fits are untouched.
+        if not np.isfinite(np.asarray(y_data, dtype=float)).any():
+            return pd.DataFrame(
+                    data=self._nan_fit_columns(),
+                    index=pd.MultiIndex.from_tuples(
+                            tuples=[group_key], names=self.groupby
+                    ),
+            )
+
         try:
             out = optimize.least_squares(
                     self._loss_func,

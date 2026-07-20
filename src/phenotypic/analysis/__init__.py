@@ -7,6 +7,7 @@ modeling across time courses, and Tukey-style outlier removal for colony metrics
 """
 
 from ._linear_cap_and_lag_model import LinearCapAndLagModel
+from ._cubical_persistence import PersistencePairsResult, cubical_persistence
 from .edge import EdgeCorrector
 from ._error_cutoffs import ErrorCutoffFinder
 from ._helper import (
@@ -39,10 +40,12 @@ __all__ = [
     "LogGrowthModel",
     "MADOutlierRemover",
     "MaxModifiedZScore",
+    "PersistencePairsResult",
     "RelativeMAD",
     "ReplicateAgreement",
     "TukeyOutlierFraction",
     "TukeyOutlierRemover",
+    "cubical_persistence",
     "filter_spec_json",
     "filter_spec_query",
     "render_error_analysis_html",

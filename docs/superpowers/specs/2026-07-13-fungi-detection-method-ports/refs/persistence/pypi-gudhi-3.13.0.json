@@ -1,0 +1,404 @@
+{
+  "info": {
+    "author": "GUDHI Editorial Board <https://gudhi.inria.fr/contact/>",
+    "author_email": null,
+    "bugtrack_url": null,
+    "classifiers": [
+      "Operating System :: MacOS",
+      "Operating System :: Microsoft :: Windows",
+      "Operating System :: POSIX",
+      "Operating System :: Unix",
+      "Programming Language :: Python :: 3.10",
+      "Programming Language :: Python :: 3.11",
+      "Programming Language :: Python :: 3.12",
+      "Programming Language :: Python :: 3.13",
+      "Programming Language :: Python :: 3.14",
+      "Topic :: Scientific/Engineering :: Information Analysis",
+      "Topic :: Scientific/Engineering :: Mathematics"
+    ],
+    "description": "The Gudhi library is an open source library for Computational Topology and\nTopological Data Analysis (TDA). It offers state-of-the-art algorithms\nto construct various types of simplicial complexes, data structures to\nrepresent them, and algorithms to compute geometric approximations of shapes\nand persistent homology.\n\nThe GUDHI library offers the following interoperable modules:\n\n* Complexes:\n   * Cubical\n   * Simplicial: Rips, Witness, Alpha and Čech complexes\n   * Cover: Nerve and Graph induced complexes\n* Data structures and basic operations:\n   * Simplex tree, Skeleton blockers and Toplex map\n   * Construction, update, filtration and simplification\n* Topological descriptors computation\n* Manifold reconstruction\n* Topological descriptors tools:\n   * Bottleneck distance\n   * Statistical tools\n   * Persistence diagram and barcode\n\nFor more information about Topological Data Analysis and its workflow, please\nrefer to the `Wikipedia TDA dedicated page <https://en.wikipedia.org/wiki/Topological_data_analysis>`_.",
+    "description_content_type": "text/x-rst",
+    "docs_url": null,
+    "download_url": null,
+    "downloads": {
+      "last_day": -1,
+      "last_month": -1,
+      "last_week": -1
+    },
+    "dynamic": null,
+    "home_page": null,
+    "keywords": "topological data analysis, persistent homology, persistence diagrams, mapper, simplicial complex, manifold reconstruction, machine learning, classification, deep-learning",
+    "license": null,
+    "license_expression": null,
+    "license_files": null,
+    "maintainer": null,
+    "maintainer_email": null,
+    "name": "gudhi",
+    "package_url": "https://pypi.org/project/gudhi/",
+    "platform": null,
+    "project_url": "https://pypi.org/project/gudhi/",
+    "project_urls": {
+      "Bug Tracker": "https://github.com/GUDHI/gudhi-devel/issues",
+      "Documentation": "https://gudhi.inria.fr/python/latest/",
+      "License": "https://gudhi.inria.fr/licensing/",
+      "Source Code": "https://github.com/GUDHI/gudhi-devel"
+    },
+    "provides_extra": null,
+    "release_url": "https://pypi.org/project/gudhi/3.13.0/",
+    "requires_dist": null,
+    "requires_python": ">=3.10",
+    "summary": "The Gudhi library is an open source library for Computational Topology and Topological Data Analysis (TDA).",
+    "version": "3.13.0",
+    "yanked": false,
+    "yanked_reason": null
+  },
+  "last_serial": 38622821,
+  "ownership": {
+    "organization": null,
+    "roles": [
+      {
+        "role": "Owner",
+        "user": "VincentRouvreau"
+      }
+    ]
+  },
+  "urls": [
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "63b65466eb439610c0499d70f24be716fcfd947e7e4bb8c794cdabecb9579840",
+        "md5": "245d30cae44e1aba624a605b3dc06c7a",
+        "sha256": "6ac1de688f33a7adcf15eba3ee9806da0415117d009732ba7f6f7bbec535263c"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "has_sig": false,
+      "md5_digest": "245d30cae44e1aba624a605b3dc06c7a",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp310",
+      "requires_python": ">=3.10",
+      "size": 4495120,
+      "upload_time": "2026-07-02T09:11:16",
+      "upload_time_iso_8601": "2026-07-02T09:11:16.030710Z",
+      "url": "https://files.pythonhosted.org/packages/63/b6/5466eb439610c0499d70f24be716fcfd947e7e4bb8c794cdabecb9579840/gudhi-3.13.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "06c901e878c0a33d20108a013f074a538b30c420cba412b3eaaf41eb981e9d50",
+        "md5": "2cd7fd45ab8c8e507080f265dd927732",
+        "sha256": "5fc359084f2ecf3330b38a59d96331babce2f2d1aff2405c4be1bef2a64a3059"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp310-cp310-win_amd64.whl",
+      "has_sig": false,
+      "md5_digest": "2cd7fd45ab8c8e507080f265dd927732",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp310",
+      "requires_python": ">=3.10",
+      "size": 3924442,
+      "upload_time": "2026-07-02T09:30:35",
+      "upload_time_iso_8601": "2026-07-02T09:30:35.273347Z",
+      "url": "https://files.pythonhosted.org/packages/06/c9/01e878c0a33d20108a013f074a538b30c420cba412b3eaaf41eb981e9d50/gudhi-3.13.0-cp310-cp310-win_amd64.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "3cb87d2b0a22a07ab5b34b5d5d404721adbcdf0ab32cecc37e0bd920df42417a",
+        "md5": "36158a1d01b3b7cc3d590c650918cd4e",
+        "sha256": "800ad3798718ca344a084fa538d7ceb5ab2c4f91ff1e9b35024208a1703803ca"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp311-cp311-macosx_14_0_universal2.whl",
+      "has_sig": false,
+      "md5_digest": "36158a1d01b3b7cc3d590c650918cd4e",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp311",
+      "requires_python": ">=3.10",
+      "size": 8636728,
+      "upload_time": "2026-07-03T08:00:42",
+      "upload_time_iso_8601": "2026-07-03T08:00:42.671168Z",
+      "url": "https://files.pythonhosted.org/packages/3c/b8/7d2b0a22a07ab5b34b5d5d404721adbcdf0ab32cecc37e0bd920df42417a/gudhi-3.13.0-cp311-cp311-macosx_14_0_universal2.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "663c372f9e8acea6cf013913b5fdfd3dd44e67d3de9838a2b789723a334c8f1b",
+        "md5": "fe00a24d8ef68857ba13721e049d87c7",
+        "sha256": "312f411388bbfdaaf0034455dfe84190b1fcbcb222584694b8c7cf97e02a92f0"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "has_sig": false,
+      "md5_digest": "fe00a24d8ef68857ba13721e049d87c7",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp311",
+      "requires_python": ">=3.10",
+      "size": 4488330,
+      "upload_time": "2026-07-02T09:11:17",
+      "upload_time_iso_8601": "2026-07-02T09:11:17.781965Z",
+      "url": "https://files.pythonhosted.org/packages/66/3c/372f9e8acea6cf013913b5fdfd3dd44e67d3de9838a2b789723a334c8f1b/gudhi-3.13.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "72bdfd3c2943b25192038d2d09288bea07e8ae860f0e14996b20ea9adda8963d",
+        "md5": "6f0e4ee82ea94f0513d6c7c6d3f8672d",
+        "sha256": "e70c5dbe1c43935afa465f70131362c754fc67ecc5179fb6b860fa6dcefe0982"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp311-cp311-win_amd64.whl",
+      "has_sig": false,
+      "md5_digest": "6f0e4ee82ea94f0513d6c7c6d3f8672d",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp311",
+      "requires_python": ">=3.10",
+      "size": 3921107,
+      "upload_time": "2026-07-02T09:23:44",
+      "upload_time_iso_8601": "2026-07-02T09:23:44.636477Z",
+      "url": "https://files.pythonhosted.org/packages/72/bd/fd3c2943b25192038d2d09288bea07e8ae860f0e14996b20ea9adda8963d/gudhi-3.13.0-cp311-cp311-win_amd64.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "f352f95943e7592c33edb16cfb48d34cd8a079344906f845e8f781b23f72dd43",
+        "md5": "a9ad52d1d27ed292f4c789b2c734937b",
+        "sha256": "3c8ff10b40f560222902112d6b4520a6d5aed11c8a6a0cc5409a4e9f2f9c6f68"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp312-cp312-macosx_14_0_universal2.whl",
+      "has_sig": false,
+      "md5_digest": "a9ad52d1d27ed292f4c789b2c734937b",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp312",
+      "requires_python": ">=3.10",
+      "size": 8594767,
+      "upload_time": "2026-07-03T08:01:21",
+      "upload_time_iso_8601": "2026-07-03T08:01:21.500310Z",
+      "url": "https://files.pythonhosted.org/packages/f3/52/f95943e7592c33edb16cfb48d34cd8a079344906f845e8f781b23f72dd43/gudhi-3.13.0-cp312-cp312-macosx_14_0_universal2.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "02fbfad8db68c325617708b8033f196c09633fea0962c0878ccc73571ce889b2",
+        "md5": "0879bc37acfeef2b1b4a3a184f9aac99",
+        "sha256": "d7ce52905d147a7e599607758843c7f37525c98e7aeaca87cbbbcbd3adb71598"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "has_sig": false,
+      "md5_digest": "0879bc37acfeef2b1b4a3a184f9aac99",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp312",
+      "requires_python": ">=3.10",
+      "size": 4461745,
+      "upload_time": "2026-07-02T09:11:19",
+      "upload_time_iso_8601": "2026-07-02T09:11:19.216825Z",
+      "url": "https://files.pythonhosted.org/packages/02/fb/fad8db68c325617708b8033f196c09633fea0962c0878ccc73571ce889b2/gudhi-3.13.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "ee6063ee83f1130f748e793277337a932c5f90e08a63791a554be753ec70a04e",
+        "md5": "e7dd074172af683cd017beecb7ce2c4e",
+        "sha256": "4800d1bc1e839b4806576207956a04f3604180d6f6f58f081ed90e28674fc1e2"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp312-cp312-win_amd64.whl",
+      "has_sig": false,
+      "md5_digest": "e7dd074172af683cd017beecb7ce2c4e",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp312",
+      "requires_python": ">=3.10",
+      "size": 3902627,
+      "upload_time": "2026-07-02T09:29:41",
+      "upload_time_iso_8601": "2026-07-02T09:29:41.951958Z",
+      "url": "https://files.pythonhosted.org/packages/ee/60/63ee83f1130f748e793277337a932c5f90e08a63791a554be753ec70a04e/gudhi-3.13.0-cp312-cp312-win_amd64.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "6baeaaa6e391d8a2703b32c493f5f21204a05236733333f9dba19902ff13dbee",
+        "md5": "071603f8dcdfcf1d31ad87d39e150407",
+        "sha256": "221c20f5f7897d1021c2d199ed3474069779d081fbd6f5a19cf73aeec3253fee"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp313-cp313-macosx_14_0_universal2.whl",
+      "has_sig": false,
+      "md5_digest": "071603f8dcdfcf1d31ad87d39e150407",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp313",
+      "requires_python": ">=3.10",
+      "size": 8593646,
+      "upload_time": "2026-07-03T08:03:17",
+      "upload_time_iso_8601": "2026-07-03T08:03:17.929501Z",
+      "url": "https://files.pythonhosted.org/packages/6b/ae/aaa6e391d8a2703b32c493f5f21204a05236733333f9dba19902ff13dbee/gudhi-3.13.0-cp313-cp313-macosx_14_0_universal2.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "b4cbeab94a9f8aeec15e17c120bc4ec0e7cac9be3628acc52a7493d3a4197381",
+        "md5": "c5137135877a3aef399a3ea6c820b59d",
+        "sha256": "0773fedf128089a5cd952ed5e63b5a5ea13c1de5cf883e4089e9a0e94fb3f88d"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "has_sig": false,
+      "md5_digest": "c5137135877a3aef399a3ea6c820b59d",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp313",
+      "requires_python": ">=3.10",
+      "size": 4461127,
+      "upload_time": "2026-07-02T09:11:21",
+      "upload_time_iso_8601": "2026-07-02T09:11:21.038038Z",
+      "url": "https://files.pythonhosted.org/packages/b4/cb/eab94a9f8aeec15e17c120bc4ec0e7cac9be3628acc52a7493d3a4197381/gudhi-3.13.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "dcb29334e6eecfdc3356a55a018e571293f58d04501894f16a73ae7966baf8ab",
+        "md5": "252984fa101c46fcd54f83e3995b1694",
+        "sha256": "2fcf5a2b931163880f53611f0803f8c93f3ccc36538a1c07dbce5f2c9ddbd8db"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp313-cp313-win_amd64.whl",
+      "has_sig": false,
+      "md5_digest": "252984fa101c46fcd54f83e3995b1694",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp313",
+      "requires_python": ">=3.10",
+      "size": 3901455,
+      "upload_time": "2026-07-02T09:31:04",
+      "upload_time_iso_8601": "2026-07-02T09:31:04.621638Z",
+      "url": "https://files.pythonhosted.org/packages/dc/b2/9334e6eecfdc3356a55a018e571293f58d04501894f16a73ae7966baf8ab/gudhi-3.13.0-cp313-cp313-win_amd64.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "e867bd267fedfd4af57172b515c8875344b0d06197e5c5126605d200811a309a",
+        "md5": "b84e3b445e6176a6a356a592bc5598ca",
+        "sha256": "3fe42053d3dd3177f0d4ad8776bf62e19086069df1b4b88e0428f8cc8ae30e12"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp314-cp314-macosx_14_0_universal2.whl",
+      "has_sig": false,
+      "md5_digest": "b84e3b445e6176a6a356a592bc5598ca",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp314",
+      "requires_python": ">=3.10",
+      "size": 8593947,
+      "upload_time": "2026-07-03T08:01:48",
+      "upload_time_iso_8601": "2026-07-03T08:01:48.585819Z",
+      "url": "https://files.pythonhosted.org/packages/e8/67/bd267fedfd4af57172b515c8875344b0d06197e5c5126605d200811a309a/gudhi-3.13.0-cp314-cp314-macosx_14_0_universal2.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "1d0a44790777e90b36a0e036f33fb408a6a5f51893fbfee26455772ceeb40e6f",
+        "md5": "4369dbc2c6a628ee6fc91daebce1f4d4",
+        "sha256": "5a1dc1f027852837b9ad740cfeb63863bd5a0df64de42da278b4c20d6aaa5ee0"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "has_sig": false,
+      "md5_digest": "4369dbc2c6a628ee6fc91daebce1f4d4",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp314",
+      "requires_python": ">=3.10",
+      "size": 4461916,
+      "upload_time": "2026-07-02T09:11:23",
+      "upload_time_iso_8601": "2026-07-02T09:11:23.125139Z",
+      "url": "https://files.pythonhosted.org/packages/1d/0a/44790777e90b36a0e036f33fb408a6a5f51893fbfee26455772ceeb40e6f/gudhi-3.13.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": null,
+      "core-metadata": {
+        "sha256": "949b02f7fb0c397d314a1189ac1d0da111e03ed3d4a8768348391d1edbc04dd3"
+      },
+      "digests": {
+        "blake2b_256": "244bc1333477354071f3bc6d666befd4fd418b469304914b34b31a866fb71c66",
+        "md5": "626f7df03b936da185df7d227ce7a9eb",
+        "sha256": "974f50b87b6252240947dfa8152c7a60dcbccea4afbc4c02394edb7b477f2d46"
+      },
+      "downloads": -1,
+      "filename": "gudhi-3.13.0-cp314-cp314-win_amd64.whl",
+      "has_sig": false,
+      "md5_digest": "626f7df03b936da185df7d227ce7a9eb",
+      "packagetype": "bdist_wheel",
+      "python_version": "cp314",
+      "requires_python": ">=3.10",
+      "size": 4011295,
+      "upload_time": "2026-07-02T10:04:56",
+      "upload_time_iso_8601": "2026-07-02T10:04:56.265653Z",
+      "url": "https://files.pythonhosted.org/packages/24/4b/c1333477354071f3bc6d666befd4fd418b469304914b34b31a866fb71c66/gudhi-3.13.0-cp314-cp314-win_amd64.whl",
+      "yanked": false,
+      "yanked_reason": null
+    }
+  ],
+  "vulnerabilities": []
+}

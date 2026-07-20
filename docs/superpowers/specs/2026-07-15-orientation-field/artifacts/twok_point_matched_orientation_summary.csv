@@ -1,0 +1,7 @@
+Colony,Policy,Crossings,SupportedPoints,AcceptedEdges,SupportFraction,RawCumulativePeakDeg
+R3C4,reciprocal_one_to_one,602,53,22,0.0880398671096,25.3366530503
+R3C4,independent_many_to_one,602,123,92,0.204318936877,45.0765739104
+R3C4,global_one_to_one,602,57,26,0.0946843853821,19.5803801538
+R4C6,reciprocal_one_to_one,200,45,17,0.225,18.1764549466
+R4C6,independent_many_to_one,200,62,34,0.31,30.4988317711
+R4C6,global_one_to_one,200,45,17,0.225,18.1764549466
