@@ -1,33 +1,39 @@
-# Custom Plotter
+# Custom pipeline plot
 
-Create a custom visualization that registers with PhenoTypic's plot
-accessor system.
-
-## Plot Accessor Pattern
-
-PhenoTypic's plot system uses registered plotters accessible via
-`image.plot.<method_name>()`. Custom plotters integrate into this
-system so they appear alongside built-in methods.
-
-## Basic Pattern
+Plot classes are ordinary serializable models that opt into a lifecycle from
+`phenotypic.abc_.plotting`. Add the same configured object to its normal pipeline
+slot and to `ImagePipeline(plots=[...])`; the serialized plot binding preserves that
+shared identity.
 
 ```python
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from pydantic import BaseModel, ConfigDict
 
-def plot_intensity_profile(image, row=None, figsize=(10, 4)):
-    """Plot the horizontal intensity profile across the plate center."""
-    gray = image.gray[:]
-    center_row = row or gray.shape[0] // 2
-    profile = gray[center_row, :]
+from phenotypic.abc_.plotting import PlotMeas
 
-    fig, ax = plt.subplots(figsize=figsize)
-    ax.plot(profile)
-    ax.set_xlabel("Column (pixels)")
-    ax.set_ylabel("Intensity")
-    ax.set_title(f"Intensity profile at row {center_row}")
-    return fig, ax
+
+class PlotColonyArea(BaseModel, PlotMeas):
+    model_config = ConfigDict(extra="forbid")
+
+    area_column: str = "Size_Area"
+
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        del for_save, overrides
+        if subject is None:
+            raise TypeError("PlotColonyArea requires measurements")
+        return go.Figure(
+            go.Histogram(x=subject[self.area_column], name=self.area_column)
+        )
+
+    def report(self, subject=None, **overrides):
+        return self.inspect(subject, **overrides)
 ```
 
-Custom plotters should return `(fig, ax)` tuples for consistency with
-the built-in methods. The caller is responsible for calling
-`plt.close(fig)` to free memory.
+Use `PlotImage` for per-image output, `PlotMeas` for the post-applied measurement
+mirror, `PlotAnalysis` for a named analysis table, and `PlotQc` for QC-aware output.
+`inspect()` returns the primary saveable figure. `report()` returns the complete
+interactive report. Plotly and Matplotlib figures are both accepted by the CLI
+publisher.
+
+The CLI writes plots below `deliverables/plots/<ClassName>/`. A multi-page plot may
+return `PlotOutput` with deterministically keyed `PlotPage` entries.

@@ -378,6 +378,11 @@ def _build_stores(filtered_state: "CurationLabels") -> Component:
                 storage_type="memory",
             ),
             dcc.Store(
+                id=ids.STORE_PLOT_REFRESH_REVISION,
+                data=0,
+                storage_type="memory",
+            ),
+            dcc.Store(
                 id=ids.STORE_COLONY_SELECTION,
                 data={"anchor": None, "selected": []},
                 storage_type="memory",

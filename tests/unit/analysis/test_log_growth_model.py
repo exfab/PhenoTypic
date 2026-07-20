@@ -459,8 +459,8 @@ class TestLogGrowthModel:
         assert not results_mean.empty
         assert not results_median.empty
 
-    def test_dash_returns_figure(self, sample_data):
-        """Test that dash() returns a Plotly figure with traces."""
+    def test_inspect_returns_figure(self, sample_data):
+        """Test that inspect() returns a Plotly figure with traces."""
         go = pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
@@ -468,13 +468,13 @@ class TestLogGrowthModel:
         )
         model.analyze(sample_data)
 
-        fig = model.dash(criteria={"MetadataExperiment_Dataset": "Test"})
+        fig = model.inspect(criteria={"MetadataExperiment_Dataset": "Test"})
         assert isinstance(fig, go.Figure)
         # 1 group -> 2 traces (line + markers)
         assert len(fig.data) >= 2
 
-    def test_dash_with_criteria(self, sample_data):
-        """Test dash() filtering produces correct trace count."""
+    def test_inspect_with_criteria(self, sample_data):
+        """Test inspect() filtering produces correct trace count."""
         go = pytest.importorskip("plotly.graph_objects")
 
         strain2_data = sample_data.copy()
@@ -489,12 +489,12 @@ class TestLogGrowthModel:
         model.analyze(combined_data)
 
         # Filter to one strain -> 2 traces (1 line + 1 scatter)
-        fig = model.dash(criteria={"MetadataGenetic_Strain": "Strain1"})
+        fig = model.inspect(criteria={"MetadataGenetic_Strain": "Strain1"})
         assert isinstance(fig, go.Figure)
         assert len(fig.data) == 2
 
-    def test_dash_empty_criteria_warns(self, sample_data):
-        """Test dash() with non-matching criteria warns and returns empty."""
+    def test_inspect_empty_criteria_warns(self, sample_data):
+        """Test inspect() with non-matching criteria warns and returns empty."""
         go = pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
@@ -503,12 +503,12 @@ class TestLogGrowthModel:
         model.analyze(sample_data)
 
         with pytest.warns(UserWarning, match="No data found"):
-            fig = model.dash(criteria={"MetadataExperiment_Dataset": "NonExistent"})
+            fig = model.inspect(criteria={"MetadataExperiment_Dataset": "NonExistent"})
         assert isinstance(fig, go.Figure)
         assert len(fig.data) == 0
 
-    def test_dash_hover_data(self, sample_data):
-        """Test that dash() traces contain expected hover information."""
+    def test_inspect_hover_data(self, sample_data):
+        """Test that inspect() traces contain expected hover information."""
         pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
@@ -516,7 +516,7 @@ class TestLogGrowthModel:
         )
         model.analyze(sample_data)
 
-        fig = model.dash(criteria={"MetadataExperiment_Dataset": "Test"})
+        fig = model.inspect(criteria={"MetadataExperiment_Dataset": "Test"})
 
         line_trace = fig.data[0]
         assert line_trace.mode == "lines"
@@ -529,8 +529,8 @@ class TestLogGrowthModel:
         assert "Mean:" in marker_trace.hovertemplate
         assert "SE:" in marker_trace.hovertemplate
 
-    def test_dash_no_legend(self, sample_data):
-        """Test dash() with legend disabled."""
+    def test_inspect_no_legend(self, sample_data):
+        """Test inspect() with legend disabled."""
         pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
@@ -538,11 +538,13 @@ class TestLogGrowthModel:
         )
         model.analyze(sample_data)
 
-        fig = model.dash(criteria={"MetadataExperiment_Dataset": "Test"}, legend=False)
+        fig = model.inspect(
+                criteria={"MetadataExperiment_Dataset": "Test"}, legend=False
+        )
         assert fig.layout.showlegend is False
 
-    def test_dash_tmax(self, sample_data):
-        """Test dash() with custom tmax limits prediction range."""
+    def test_inspect_tmax(self, sample_data):
+        """Test inspect() with custom tmax limits prediction range."""
         pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
@@ -550,15 +552,18 @@ class TestLogGrowthModel:
         )
         model.analyze(sample_data)
 
-        fig = model.dash(criteria={"MetadataExperiment_Dataset": "Test"}, tmax=5)
+        fig = model.inspect(
+                criteria={"MetadataExperiment_Dataset": "Test"}, tmax=5
+        )
         line_trace = fig.data[0]
         assert max(line_trace.x) <= 6.0  # tmax + step
 
 
-def test_set_analyzer_dash_not_implemented():
-    """Test that SetAnalyzer.dash() raises NotImplementedError."""
+def test_non_plotting_set_analyzer_has_no_legacy_dash_api():
+    """Non-plotting analyzers do not inherit the plotting lifecycle."""
     from phenotypic.analysis.filter._tukey_outlier import TukeyOutlierRemover
 
     analyzer = TukeyOutlierRemover(on="Shape_Area", groupby=["Group"], k=1.5)
-    with pytest.raises(NotImplementedError, match="does not implement"):
-        analyzer.dash()
+    assert not hasattr(analyzer, "dash")
+    assert not hasattr(analyzer, "inspect")
+    assert not hasattr(analyzer, "report")

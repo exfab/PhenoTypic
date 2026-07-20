@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
+import weakref
 
 import numpy as np
 import pandas as pd
@@ -235,17 +236,21 @@ def test_public_zone_angles_are_converted_from_radians_to_degrees():
     operation = MeasureOrientationZones(include_diagnostics=True)
     row: dict[str, float] = {}
 
-    per_zone, radial_relative, _long_range, _ring_profile = (
-        operation._fill_metrics(
-            row,
-            segmentation,
-            object_mask,
-            phi,
-            coherence,
-            gradient,
-            distance,
-            centre,
-        )
+    (
+        _outward_rotation,
+        per_zone,
+        radial_relative,
+        _long_range,
+        _ring_profile,
+    ) = operation._fill_metrics(
+        row,
+        segmentation,
+        object_mask,
+        phi,
+        coherence,
+        gradient,
+        distance,
+        centre,
     )
 
     dense_selector = zone_selector(
@@ -337,7 +342,7 @@ def test_literal_crossing_primary_and_diagnostic_values_use_public_units():
     )
     row: dict[str, float] = {}
 
-    operation._fill_literal_crossing_metrics(
+    cached_primary = operation._fill_literal_crossing_metrics(
         row,
         segmentation,
         object_mask,
@@ -362,6 +367,11 @@ def test_literal_crossing_primary_and_diagnostic_values_use_public_units():
     assert row[
         "OrientZones_OutwardRotationRawPeak-Mask-Overall"
     ] == pytest.approx(np.degrees(0.35), abs=0.25)
+    assert cached_primary["Overall"][
+        "OutwardRotationSustainedPeak"
+    ] == pytest.approx(
+        row["OrientZones_OutwardRotationSustainedPeak-Mask-Overall"]
+    )
 
 
 def test_r3c4_real_crop_preserves_literal_crossing_regression() -> None:
@@ -880,6 +890,9 @@ def test_measure_cache_is_compact():
     op = MeasureOrientationZones()
     op.measure(image)
     assert op._cache, "cache should be populated"
+    assert not hasattr(op, "_cache_image")
+    assert isinstance(op._cache_image_ref, weakref.ReferenceType)
+    assert op._cache_image_ref() is image
     forbidden = {"tile", "phi", "coherence", "grad_phi", "dist_map", "seg"}
     for rec in op._cache.values():
         assert forbidden.isdisjoint(rec), (
@@ -887,6 +900,11 @@ def test_measure_cache_is_compact():
         )
         assert "quiver" in rec
         assert "ring_profile" in rec
+        assert set(rec["outward_rotation"]) == {
+            "Overall",
+            "Dense",
+            "Sparse",
+        }
         for v in rec.values():
             if isinstance(v, np.ndarray):
                 assert v.size <= 4096, (
@@ -961,16 +979,42 @@ def test_inspect_builds_figure():
         if trace.name == "Zone metrics (hover centres)"
     )
     assert any(
-        "RTilt=" in str(text)
-        and "OutT=" in str(text)
-        and "Long range" in str(text)
-        and "DenseToSparse" in str(text)
-        and "Support=" in str(text)
+        "Primary outward-rotation metrics" in str(text)
+        and "Sustained peak=" in str(text)
+        and "Net=" in str(text)
+        and "Rate=" in str(text)
+        and "Consistency=" in str(text)
         for text in hover.text
     )
     assert all("deg/px" in str(text) for text in hover.text)
+    assert all(
+        "Diagnostic orientation metrics" not in str(text)
+        for text in hover.text
+    )
     fig_save = op.inspect(image, for_save=True)
     assert isinstance(fig_save, go.Figure)
+
+
+def test_inspect_includes_legacy_metrics_only_when_diagnostics_are_enabled():
+    image = load_synth_filamentous_plate()
+    op = MeasureOrientationZones(include_diagnostics=True)
+    op.measure(image)
+
+    figure = op.inspect(image)
+    hover = next(
+        trace
+        for trace in figure.data
+        if trace.name == "Zone metrics (hover centres)"
+    )
+
+    assert any(
+        "Diagnostic orientation metrics" in str(text)
+        and "RTilt=" in str(text)
+        and "OutT=" in str(text)
+        and "Long range" in str(text)
+        and "DenseToSparse" in str(text)
+        for text in hover.text
+    )
 
 
 def test_cumulative_rotation_overlay_uses_degrees_and_excludes_inoculum(
@@ -1244,15 +1288,18 @@ def test_fiber_bend_overlay_is_multiscale_unsigned_and_excludes_core(
         centroid_global=centre,
     )
     base = np.exp(-((distance - 50.0) ** 2) / 40.0)
-    image = SimpleNamespace(
-        detect_mat=base,
-        gray=base,
-        rgb=np.repeat(base[..., None], 3, axis=2),
-    )
+
+    class _WeakReferenceableImage:
+        pass
+
+    image = _WeakReferenceableImage()
+    image.detect_mat = base
+    image.gray = base
+    image.rgb = np.repeat(base[..., None], 3, axis=2)
     op = MeasureOrientationZones()
     original_cache = {1: {"sentinel": True}}
     op._cache = original_cache
-    op._cache_image = image
+    op._cache_image_ref = weakref.ref(image)
     op._cache_signature = op.model_dump_json()
     monkeypatch.setattr(
         MeasureOrientationZones,
@@ -1424,11 +1471,11 @@ def test_inspect_remeasures_when_explicit_image_changes():
     second = plate.grid[19]
     op = MeasureOrientationZones()
     op.measure(first)
-    assert op._cache_image is first
+    assert op._cached_image() is first
 
     op.inspect(second)
 
-    assert op._cache_image is second
+    assert op._cached_image() is second
     previous_signature = op._cache_signature
     op.long_range_lag = 32.0
 
@@ -1442,20 +1489,60 @@ def test_inspect_remeasures_when_explicit_image_changes():
     )
 
 
-def test_dashboard_builds_composed_figure():
+def test_report_builds_composed_figure():
     import plotly.graph_objects as go
 
     image = load_synth_filamentous_plate()
     op = MeasureOrientationZones()
     op.measure(image)
-    fig = op.dashboard(image, show=False)
+    fig = op.report(subject=image, show=False)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) > 0
     # the go.Table summary panel must survive composition (base composer can't
-    # host it — proves the custom dash() override with per-row specs works).
+    # host it — proves the custom report() override with per-row specs works).
     assert any(getattr(tr, "type", None) == "table" for tr in fig.data)
+    table = next(tr for tr in fig.data if getattr(tr, "type", None) == "table")
+    assert list(table.header.values) == [
+        "Zone",
+        "Sustained peak (deg)",
+        "Net rotation (deg)",
+        "Rotation rate (deg/px)",
+        "Consistency",
+    ]
     # coherence heatmap present too
     assert any(getattr(tr, "type", None) == "heatmap" for tr in fig.data)
+
+
+def test_orientation_plot_uses_plot_image_without_legacy_report_aliases():
+    from phenotypic.abc_.plotting import PlotImage
+    from phenotypic.measure._measure_orientation_zones import (
+        _OrientationZonesReport,
+    )
+
+    op = MeasureOrientationZones()
+    assert isinstance(op, PlotImage)
+    assert not hasattr(op, "dashboard")
+    assert not hasattr(op, "dash")
+
+    report = _OrientationZonesReport()
+    assert isinstance(report, PlotImage)
+    assert vars(report) == {}
+
+    specs = op.iter_figures()
+    assert [spec.name for spec in specs] == [
+        "inspect",
+        "cumulative_rotation_overlay",
+        "matched_cumulative_rotation_overlay",
+    ]
+    assert all(spec.wants_subject for spec in specs)
+    assert all(set(spec.controls) == {"base_layer"} for spec in specs)
+
+
+def test_plot_only_fields_follow_measurement_fields_in_schema_order():
+    fields = list(MeasureOrientationZones.model_fields)
+
+    assert fields[-1] == "quiver_block"
+    assert fields.index("quiver_block") > fields.index("tau_sparse")
 
 
 def test_non_grid_image_uses_expanded_crop_fallback():

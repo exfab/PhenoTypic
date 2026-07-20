@@ -25,7 +25,7 @@ BaseOperation
 │   └── GridMeasureFeatures
 │       └── GridFinder                   # Detects grid structure
 
-Standalone: MeasurementInfo (enum base, now in `phenotypic.schema`; re-exported here for back-compat), PrefabPipeline (inherits ImagePipeline)
+Standalone: MeasurementInfo (enum base, now in `phenotypic.schema`; re-exported here for back-compat), PrefabPipeline (inherits ImagePipeline), and plotting capabilities under `phenotypic.abc_.plotting` (`PhtPlot`, `PlotImage`, `PlotMeas`, `PlotAnalysis`, `PlotQc`)
 ```
 
 ---
@@ -72,17 +72,26 @@ live in [`enhance/CLAUDE.md`](../enhance/CLAUDE.md).
 - **Operations must be instantiable with no required args** for `from_json()` to work.
   Operations that need mandatory args (e.g., `ColorCorrector` needs a fitted profile)
   cannot be generically deserialized and must be excluded from round-trip tests.
+- **`ImageOperation` image caches must use weak references only.** If an operation
+  needs to remember which `Image` populated a reusable cache, store a
+  `weakref.ref[Image]`, never the `Image` itself or one of its accessors. Treat a
+  released weak reference as a cache miss and recompute. Compact derived arrays may
+  be cached only when they own their buffers and cannot pin a whole-image allocation.
 - **Tuple attributes survive JSON round-trip** only if you coerce them back: JSON has no
   tuple type, so tuples become lists on `from_json()`. Add a
   `field_validator(..., mode="before")` that coerces the incoming list back to a tuple.
   See [`enhance/_focus_edge_frangi.py`](../enhance/_focus_edge_frangi.py) (`_coerce_sigmas`)
   and `enhance/_focus_edge_hessian.py` for the pattern.
-- **Optional `inspect()` on `MeasureFeatures`** — implementing
-  `def inspect(self, image=None, base_layer="gray", *, for_save=False)` returning an mpl or
-  plotly Figure opts a subclass into the CLI's `--save-inspect` auto-discovery (saves a
-  PNG per image under `results/<ds>/inspect/<step>/<stem>.png`). Contract details in the
-  `MeasureFeatures` class docstring; reference impl in [
-  `measure/_measure_symmetric_zones.py`](../measure/_measure_symmetric_zones.py).
+- **Plotting is an explicit lifecycle capability.** Combine an existing Pydantic
+  operation or analyzer with exactly one of `PlotImage`, `PlotMeas`,
+  `PlotAnalysis`, or `PlotQc`, then configure that same object under
+  `ImagePipeline.plots`. `inspect(subject, *, for_save=False)` returns the primary
+  saveable figure; `report(subject)` returns the complete notebook report.
+  `PlotImage` receives an `Image` at call time and must never cache it strongly.
+  Compact derived measurements may be cached, but cached NumPy crops must own
+  their buffers rather than retain a whole-image backing array. CLI output is
+  published under `deliverables/plots/<binding-id>/`. Reference implementation:
+  [`measure/_measure_symmetric_zones.py`](../measure/_measure_symmetric_zones.py).
 
 ---
 

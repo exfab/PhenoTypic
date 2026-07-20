@@ -13,6 +13,7 @@ import pytest
 
 matplotlib.use("Agg")
 import matplotlib.figure  # noqa: E402
+from dash import dcc  # noqa: E402
 
 from phenotypic.analysis import (  # noqa: E402
     EdgeCorrector,
@@ -23,6 +24,7 @@ from phenotypic.gui.analysis._plot_controls import (  # noqa: E402
     plotting_params,
 )
 from phenotypic.gui.analysis._render import render_plot  # noqa: E402
+from phenotypic.plotting import PlotOutput, PlotPage  # noqa: E402
 
 
 def _edge() -> EdgeCorrector:
@@ -41,7 +43,7 @@ class TestPlottingParams:
     """Signature introspection picks the right method and params."""
 
     def test_edge_corrector_specs(self) -> None:
-        # EdgeCorrector does not override ``dash`` -> ``show`` is used.
+        # EdgeCorrector has no plotting capability, so ``show`` is used.
         specs = {s.name: s for s in plotting_params(_edge())}
         assert set(specs) == {"figsize", "max_groups", "collapsed"}
         assert specs["figsize"].dtype == "tuple"
@@ -53,8 +55,8 @@ class TestPlottingParams:
         assert "ax" not in names
         assert "criteria" not in names
 
-    def test_model_specs_from_dash_signature(self) -> None:
-        # LogGrowthModel overrides ``dash`` -> the dash signature is used.
+    def test_model_specs_from_inspect_signature(self) -> None:
+        # PlotAnalysis models expose explicit controls on ``inspect``.
         specs = {s.name: s for s in plotting_params(_model())}
         assert set(specs) == {"tmax", "figsize", "cmap", "legend"}
         assert specs["figsize"].dtype == "tuple"   # default (6, 4)
@@ -94,30 +96,30 @@ class TestCollectPlotKwargs:
         assert collect_plot_kwargs("filter", 0, _edge(), prefs) == {}
 
 
-class _FakeDashNode:
-    """Node whose ``dash`` records kwargs and returns a plotly figure."""
+class _FakeReportNode:
+    """Plot-capable node whose ``report`` records rendering kwargs."""
 
     def __init__(self) -> None:
-        self.dash_kwargs: dict[str, Any] | None = None
+        self.report_kwargs: dict[str, Any] | None = None
 
-    def dash(self, **kwargs: Any) -> Any:
+    def inspect(self, **kwargs: Any) -> Any:
+        return self.report(**kwargs)
+
+    def report(self, **kwargs: Any) -> Any:
         import plotly.graph_objects as go
 
-        self.dash_kwargs = kwargs
+        self.report_kwargs = kwargs
         return go.Figure()
 
-    def show(self, **kwargs: Any) -> Any:  # pragma: no cover - dash path wins
-        raise AssertionError("show() should not run when dash() succeeds")
+    def show(self, **kwargs: Any) -> Any:  # pragma: no cover - report path wins
+        raise AssertionError("show() should not run when report() succeeds")
 
 
 class _FakeShowNode:
-    """Node whose ``dash`` defers and whose ``show`` records kwargs."""
+    """Non-plot-capable node whose ``show`` records kwargs."""
 
     def __init__(self) -> None:
         self.show_kwargs: dict[str, Any] | None = None
-
-    def dash(self, **kwargs: Any) -> Any:
-        raise NotImplementedError
 
     def show(self, **kwargs: Any) -> Any:
         self.show_kwargs = kwargs
@@ -127,10 +129,10 @@ class _FakeShowNode:
 class TestRenderPlotKwargPassthrough:
     """``render_plot`` forwards kwargs to whichever viz method runs."""
 
-    def test_kwargs_reach_dash(self) -> None:
-        node = _FakeDashNode()
+    def test_kwargs_reach_report(self) -> None:
+        node = _FakeReportNode()
         render_plot(node, figsize=(3, 2), cmap="viridis")
-        assert node.dash_kwargs == {"figsize": (3, 2), "cmap": "viridis"}
+        assert node.report_kwargs == {"figsize": (3, 2), "cmap": "viridis"}
 
     def test_kwargs_reach_show_on_fallback(self) -> None:
         node = _FakeShowNode()
@@ -138,9 +140,27 @@ class TestRenderPlotKwargPassthrough:
         assert node.show_kwargs == {"figsize": (3, 2), "collapsed": False}
 
     def test_no_kwargs_is_still_valid(self) -> None:
-        node = _FakeDashNode()
+        node = _FakeReportNode()
         render_plot(node)
-        assert node.dash_kwargs == {}
+        assert node.report_kwargs == {}
+
+    def test_multi_page_report_renders_tab_selector(self) -> None:
+        import plotly.graph_objects as go
+
+        class MultiPageNode:
+            def report(self) -> PlotOutput:
+                return PlotOutput(
+                    pages=(
+                        PlotPage(key="strain-a", label="Strain A", figure=go.Figure()),
+                        PlotPage(key="strain-b", label="Strain B", figure=go.Figure()),
+                    )
+                )
+
+        component = render_plot(MultiPageNode())
+
+        assert isinstance(component, dcc.Tabs)
+        assert component.value == "strain-a"
+        assert [tab.label for tab in component.children] == ["Strain A", "Strain B"]
 
 
 if __name__ == "__main__":  # pragma: no cover

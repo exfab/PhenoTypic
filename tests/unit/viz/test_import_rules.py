@@ -1,6 +1,6 @@
 """Enforce the figure-layer import rule by static analysis.
 
-The contract (``abc_/_figure_provider.py``) must import only stdlib at module
+The contract (``abc_/plotting/_pht_plot.py``) must import only stdlib at module
 level — no UI toolkit and not even plotly (it touches plotly lazily). The theme
 (``tools_/viz/figures/_theme.py``) may import plotly but no UI toolkit. UI toolkits
 (dash / ipywidgets / panel / bokeh / param) are confined to the shells.
@@ -33,7 +33,9 @@ def _toplevel_imports(path: Path) -> set[str]:
 
 
 def test_contract_imports_stdlib_only():
-    imports = _toplevel_imports(_SRC / "abc_" / "_figure_provider.py")
+    imports = _toplevel_imports(
+        _SRC / "abc_" / "plotting" / "_pht_plot.py"
+    )
     # no UI toolkit and not plotly (applied lazily)
     assert not (imports & _UI_TOOLKITS), f"contract imports UI toolkit: {imports}"
     assert "plotly" not in imports, "contract must touch plotly lazily, not at import"

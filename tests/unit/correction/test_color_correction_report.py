@@ -1,12 +1,15 @@
 """Tests for the Plotly :class:`ColorCorrectionReport` (Panel→Plotly Phase 5).
 
-Covers the notebook-only ``FigureProvider`` that replaces the legacy Panel
+Covers the notebook-only ``PhtPlot`` that replaces the legacy Panel
 ``ColorCorrectionDashboard``: figure discovery, per-figure trace types,
-image-dependent section gating, and the ``profile.dashboard`` / corrector
+image-dependent section gating, and the ``profile.report`` / corrector
 delegation returning a composed ``go.Figure`` (control-free → not a widget).
 """
 
 from __future__ import annotations
+
+import gc
+import weakref
 
 import numpy as np
 import plotly.graph_objects as go
@@ -17,6 +20,7 @@ from phenotypic.correction import ColorCheckerProfile, ColorCorrector
 from phenotypic.correction._color_correction._color_correction_report import (
     ColorCorrectionReport,
 )
+from phenotypic.abc_.plotting import PhtPlot
 
 # Reuse the synthetic-checker builders proven in the corrector test suite.
 from .test_color_corrector import (
@@ -41,10 +45,11 @@ def fitted_profile() -> ColorCheckerProfile:
 
 
 @pytest.fixture()
-def fitted_profile_with_image() -> ColorCheckerProfile:
+def fitted_profile_with_image(request) -> ColorCheckerProfile:
     """A ColorCheckerProfile fitted from a framed-checker image (image + ROIs)."""
-    img = make_synthetic_framed_checker_image()
-    return ColorCheckerProfile(degree=2).fit(Image(arr=img, bit_depth=8))
+    image = Image(arr=make_synthetic_framed_checker_image(), bit_depth=8)
+    request.node._color_checker_image = image
+    return ColorCheckerProfile(degree=2).fit(image)
 
 
 # ---------------------------------------------------------------------------
@@ -58,6 +63,7 @@ class TestReportFigures:
     def test_iter_figures_patch_fit_excludes_image_sections(self, fitted_profile):
         """A patch-color fit (no image) exposes only the delta_e + patches figures."""
         report = ColorCorrectionReport(fitted_profile)
+        assert isinstance(report, PhtPlot)
         names = [spec.name for spec in report.iter_figures()]
         assert names == ["fig_delta_e", "fig_patch_swatches"]
 
@@ -94,7 +100,7 @@ class TestReportFigures:
         }
 
     def test_no_controls_declared(self, fitted_profile_with_image):
-        """No figure declares a Control → dash() yields a composed go.Figure."""
+        """No figure declares a Control, so report() yields a composed figure."""
         report = ColorCorrectionReport(
             fitted_profile_with_image,
             image=fitted_profile_with_image._image,
@@ -150,26 +156,45 @@ class TestReportFigures:
 # ---------------------------------------------------------------------------
 
 
-class TestDashboardEntryPoints:
-    """profile.dashboard / corrector.dashboard return a control-free go.Figure."""
+class TestReportEntryPoints:
+    """Profile and corrector report methods return a control-free go.Figure."""
 
-    def test_profile_dashboard_returns_figure(self, fitted_profile):
-        """profile.dashboard(show=False) returns a composed go.Figure, not a widget."""
-        result = fitted_profile.dashboard(show=False)
+    def test_profile_report_returns_figure(self, fitted_profile):
+        """profile.report(show=False) returns a composed figure, not a widget."""
+        result = fitted_profile.report(show=False)
         assert isinstance(result, go.Figure)
 
-    def test_profile_dashboard_with_image_returns_figure(
+    def test_profile_and_report_do_not_retain_source_image(self):
+        image = Image(
+            arr=make_synthetic_framed_checker_image(),
+            bit_depth=8,
+        )
+        image_ref = weakref.ref(image)
+        profile = ColorCheckerProfile(degree=2).fit(image)
+        report = ColorCorrectionReport(profile, image=image, rois=profile.rois)
+
+        del image
+        gc.collect()
+
+        assert image_ref() is None
+        assert profile._image is None
+        assert [spec.name for spec in report.iter_figures()] == [
+            "fig_delta_e",
+            "fig_patch_swatches",
+        ]
+
+    def test_profile_report_with_image_returns_figure(
         self, fitted_profile_with_image
     ):
-        """An image-backed profile dashboard also returns a composed go.Figure."""
-        result = fitted_profile_with_image.dashboard(show=False)
+        """An image-backed profile report also returns a composed go.Figure."""
+        result = fitted_profile_with_image.report(show=False)
         assert isinstance(result, go.Figure)
 
-    def test_image_dashboard_preserves_nested_subplot_axes(
+    def test_image_report_preserves_nested_subplot_axes(
         self, fitted_profile_with_image
     ):
-        """Pipeline stage panels stay on separate axes in the composed dashboard."""
-        result = fitted_profile_with_image.dashboard(show=False)
+        """Pipeline stage panels stay on separate axes in the composed report."""
+        result = fitted_profile_with_image.report(show=False)
         layout = result.layout.to_plotly_json()
         image_axes = []
         for trace in result.data:
@@ -210,11 +235,11 @@ class TestDashboardEntryPoints:
 
         assert len(stage_axes) == len(stage_labels)
 
-    def test_patch_color_dashboard_preserves_shapes_and_swatch_hover(
+    def test_patch_color_report_preserves_shapes_and_swatch_hover(
         self, fitted_profile
     ):
-        """No-image dashboards keep Delta-E refs and swatch hover metadata."""
-        result = fitted_profile.dashboard(show=False)
+        """No-image reports keep Delta-E refs and swatch hover metadata."""
+        result = fitted_profile.report(show=False)
 
         assert len(result.layout.shapes) >= 3
         labels = [annotation.text for annotation in result.layout.annotations]
@@ -226,8 +251,8 @@ class TestDashboardEntryPoints:
         assert swatch.hovertemplate == "%{customdata}<extra></extra>"
         assert swatch.customdata is not None
 
-    def test_image_dashboard_handles_multiple_rois(self):
-        """Composed dashboard domains stay valid for multiple image ROIs."""
+    def test_image_report_handles_multiple_rois(self):
+        """Composed report domains stay valid for multiple image ROIs."""
         card = make_synthetic_framed_checker_image()
         gap = np.zeros((card.shape[0], 20, 3), dtype=card.dtype)
         combined = np.concatenate([card, gap, card], axis=1)
@@ -238,13 +263,14 @@ class TestDashboardEntryPoints:
             slice(0, card.shape[0]),
             slice(right_start, right_start + card.shape[1]),
         )
+        source_image = Image(arr=combined, bit_depth=8)
         report = ColorCorrectionReport(
             profile,
-            image=Image(arr=combined, bit_depth=8),
+            image=source_image,
             rois=[left, right],
         )
 
-        result = report.dash()
+        result = report.report()
 
         layout = result.layout.to_plotly_json()
         y_domains = [
@@ -256,7 +282,7 @@ class TestDashboardEntryPoints:
         for domain in y_domains:
             assert 0.0 <= domain[0] <= domain[1] <= 1.0
 
-    def test_dashboard_composer_supports_domain_traces(self):
+    def test_report_composer_supports_domain_traces(self):
         """Domain-based traces should stay domain-based when remapped."""
         composed = go.Figure()
         source = go.Figure(
@@ -277,16 +303,23 @@ class TestDashboardEntryPoints:
         assert composed.data[0].type == "table"
         assert tuple(composed.data[0].domain.y) == (0.2, 0.6)
 
-    def test_corrector_dashboard_delegates(self, fitted_profile):
-        """ColorCorrector.dashboard delegates to the profile and returns a go.Figure."""
+    def test_corrector_report_delegates(self, fitted_profile):
+        """ColorCorrector.report delegates and returns a go.Figure."""
         corrector = ColorCorrector(profile=fitted_profile)
-        result = corrector.dashboard(show=False)
+        result = corrector.report(show=False)
         assert isinstance(result, go.Figure)
 
     def test_unfitted_profile_raises(self):
-        """An unfitted profile cannot build a dashboard."""
+        """An unfitted profile cannot build a report."""
         with pytest.raises(RuntimeError, match="unfitted"):
-            ColorCheckerProfile().dashboard(show=False)
+            ColorCheckerProfile().report(show=False)
+
+    def test_legacy_report_aliases_are_absent(self, fitted_profile):
+        report = ColorCorrectionReport(fitted_profile)
+        assert not hasattr(report, "dash")
+        assert not hasattr(report, "dashboard")
+        assert not hasattr(fitted_profile, "dashboard")
+        assert not hasattr(ColorCorrector, "dashboard")
 
 
 # ---------------------------------------------------------------------------

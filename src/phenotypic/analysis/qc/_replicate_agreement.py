@@ -18,13 +18,14 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
+from phenotypic.abc_.plotting import PlotQc
 from phenotypic.schema import CULTURE_METADATA, QUALITY_SE
 from phenotypic.sdk_ import ColumnRef
 
 _TIME = str(CULTURE_METADATA.TIME)
 
 
-class ReplicateAgreement(QualityCheck):
+class ReplicateAgreement(QualityCheck, PlotQc):
     """Flag ``(group, time)`` bins with poor agreement across replicates.
 
     For each combination of ``self.groupby`` columns, this check splits
@@ -211,7 +212,13 @@ class ReplicateAgreement(QualityCheck):
         out[n_col] = out[n_col].astype(int)
         return out
 
-    def dash(self, **kwargs: Any) -> go.Figure:
+    def inspect(
+        self,
+        subject: Any = None,
+        *,
+        for_save: bool = False,
+        **kwargs: Any,
+    ) -> go.Figure:
         """Render mean ± SE bands per group across time.
 
         For each ``self.groupby`` combination the plot draws the
@@ -232,6 +239,7 @@ class ReplicateAgreement(QualityCheck):
         Raises:
             RuntimeError: If :meth:`analyze` has not been called yet.
         """
+        del subject, for_save
         df = self._latest_measurements
         if df.empty:
             raise RuntimeError("call analyze() first")
@@ -328,3 +336,7 @@ class ReplicateAgreement(QualityCheck):
             hovermode="closest",
         )
         return fig
+
+    def report(self, subject: Any = None, **kwargs: Any) -> go.Figure:
+        """Return the complete replicate-agreement report."""
+        return self.inspect(subject, **kwargs)

@@ -1162,10 +1162,10 @@ class AutoGridFinder(GridFinder):
             )
 
     # ------------------------------------------------------------------
-    # Diagnostic dashboard() method
+    # Diagnostic report() method
     #
     # Panels are built by the transient ``GridFitReport`` Plotly provider
-    # (``grid/_grid_fit_report.py``); ``dashboard()`` only runs the timed
+    # (``grid/_grid_fit_report.py``); ``report()`` only runs the timed
     # pipeline, computes the per-axis stats, and hands them to the report.
     # ------------------------------------------------------------------
 
@@ -1209,7 +1209,7 @@ class AutoGridFinder(GridFinder):
                     from ipywidgets import IntProgress
                     from IPython.display import display
                     pbar = IntProgress(
-                        min=0, max=len(steps), description="Grid dashboard:",
+                        min=0, max=len(steps), description="Grid report:",
                     )
                     display(pbar)
                 except ImportError:
@@ -1218,7 +1218,7 @@ class AutoGridFinder(GridFinder):
             if pbar is None:
                 try:
                     from tqdm import tqdm
-                    pbar = tqdm(total=len(steps), desc="Grid dashboard")
+                    pbar = tqdm(total=len(steps), desc="Grid report")
                 except ImportError:
                     pass
 
@@ -1307,8 +1307,8 @@ class AutoGridFinder(GridFinder):
             "pipeline_path": pipeline_path,
         }
 
-    def dashboard(self, image: Image, show_progress: bool = True) -> Any:
-        """Notebook Plotly diagnostic dashboard for grid fitting.
+    def report(self, image: Image, show_progress: bool = True) -> Any:
+        """Notebook Plotly diagnostic report for grid fitting.
 
         Profiles the grid-fitting pipeline and returns a single composed
         :class:`plotly.graph_objects.Figure` stacking the timing breakdown,
@@ -1319,7 +1319,7 @@ class AutoGridFinder(GridFinder):
 
         The figures are built by the transient
         :class:`~phenotypic.grid._grid_fit_report.GridFitReport` provider;
-        because every panel is control-free, ``report.dash()`` composes them
+        because every panel is control-free, ``report.report()`` composes them
         into one vertical subplot figure. Uses an ipywidgets progress bar in
         Jupyter, tqdm otherwise.
 
@@ -1333,11 +1333,9 @@ class AutoGridFinder(GridFinder):
             panels stacked vertically.
 
         Notes:
-            The ``inspect()`` name is reserved across the codebase for
-            methods returning a saveable figure consumed by the CLI's
-            ``--save-inspect`` flag. This diagnostic surface is exposed
-            under :meth:`dashboard` instead, and ``AutoGridFinder`` does not
-            mix in ``FigureProvider`` so no ``inspect()`` is auto-discovered.
+            ``inspect()`` is the primary saveable-figure lifecycle on
+            ``PhtPlot``. This helper exposes only the complete diagnostic via
+            :meth:`report`; ``AutoGridFinder`` does not mix in ``PhtPlot``.
 
         Examples:
             >>> from phenotypic.data import load_synth_yeast_plate
@@ -1346,7 +1344,7 @@ class AutoGridFinder(GridFinder):
             >>> image = load_synth_yeast_plate()
             >>> image = OtsuDetector().apply(image)
             >>> finder = AutoGridFinder(nrows=8, ncols=12)
-            >>> dashboard = finder.dashboard(image)
+            >>> report = finder.report(image)
         """
         from phenotypic.grid._grid_fit_report import GridFitReport
 
@@ -1373,7 +1371,7 @@ class AutoGridFinder(GridFinder):
             image_shape=image.shape,
             num_objects=image.num_objects,
         )
-        return report.dash()
+        return report.report()
 
 
 AutoGridFinder.measure.__doc__ = AutoGridFinder._operate.__doc__

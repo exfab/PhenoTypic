@@ -12,8 +12,7 @@ from scipy import fft as scipy_fft
 from scipy.stats import norm
 from skimage.filters import sobel
 
-from phenotypic.abc_ import Control, FigureProvider, figure
-from phenotypic.sdk_.register import register_plotter
+from phenotypic.abc_.plotting import Control, PhtPlot, figure
 from phenotypic.util.image_metrics import ImageMetricsCalculator, THRESHOLDS
 from phenotypic.sdk_.viz.figures._theme import NAVY, OKABE_ITO
 
@@ -64,8 +63,7 @@ _GOOD_COLOR = "#27ae60"  # green — above marginal threshold
 AXIS_ANNOTATION_BORDER = "#cccccc"
 
 
-@register_plotter
-class DiagnosticsPlotter(BasePlotter, FigureProvider):
+class DiagnosticsPlotter(BasePlotter, PhtPlot):
     """Generates comprehensive image quality diagnostics for preprocessing pipeline development.
 
     This class provides multi-panel figures analyzing noise, contrast, structure, and
@@ -77,14 +75,14 @@ class DiagnosticsPlotter(BasePlotter, FigureProvider):
 
     The metrics computation is delegated to :class:`ImageMetricsCalculator` from
     ``phenotypic.util.image_metrics``, shared by the static matplotlib figure and
-    the interactive ``image.plot.dash.diagnostics()`` view.
+    the standalone ``PlotDiagnostics`` report.
 
     Dual renderer:
         The static matplotlib :meth:`diagnostics` (returning
         ``(matplotlib Figure, metrics dict)``) is preserved unchanged. In
-        addition, this class mixes in :class:`~phenotypic.abc_.FigureProvider`
+        addition, this class mixes in :class:`~phenotypic.abc_.plotting.PhtPlot`
         and declares a parallel set of interactive Plotly ``@figure`` methods
-        (named ``fig_*``) that surface the uniform ``.inspect()`` / ``.dash()``
+        (named ``fig_*``) that surface the uniform ``.inspect()`` / ``.report()``
         / dashboard contract. The Plotly figures mirror the matplotlib panels
         one-for-one; control-bearing figures (structure σ, ridge method,
         background σ) recompute on demand from a fresh
@@ -95,14 +93,16 @@ class DiagnosticsPlotter(BasePlotter, FigureProvider):
 
         >>> from phenotypic.data import load_synth_yeast_plate
         >>> image = load_synth_yeast_plate()
-        >>> fig, metrics = image.plot.diagnostics()
+        >>> plotter = DiagnosticsPlotter(image)
+        >>> fig, metrics = plotter.diagnostics()
         >>> print(f"SNR: {metrics['noise']['snr']:.2f}")
         >>> plt.savefig("diagnostics.png", dpi=150, bbox_inches="tight")
         >>> plt.close(fig)
 
         Analyze specific sections:
 
-        >>> fig, metrics = image.plot.diagnostics(sections=["noise", "contrast"])
+        >>> plotter = DiagnosticsPlotter(image)
+        >>> fig, metrics = plotter.diagnostics(sections=["noise", "contrast"])
         >>> plt.close(fig)
     """
 
@@ -118,7 +118,7 @@ class DiagnosticsPlotter(BasePlotter, FigureProvider):
         return ImageMetricsCalculator(self._root_image.detect_mat[:])
 
     def _figure_subject(self) -> Any:
-        """Subject for the ``FigureProvider`` mixin.
+        """Subject for the ``PhtPlot`` mixin.
 
         This plotter is a *helper* provider: each ``@figure`` method reads
         ``self`` directly and takes no subject parameter, so the returned
@@ -1316,7 +1316,7 @@ class DiagnosticsPlotter(BasePlotter, FigureProvider):
     ) -> tuple[plt.Figure, dict[str, Any]]:
         """Generate comprehensive image quality diagnostics as a static matplotlib figure.
 
-        For an interactive dashboard, use ``image.plot.dash.diagnostics()`` instead.
+        For the interactive report, use ``PlotDiagnostics().report(image)``.
 
         Args:
             sections: Which sections to include. "all" for complete diagnostics, or a
@@ -1351,14 +1351,16 @@ class DiagnosticsPlotter(BasePlotter, FigureProvider):
 
             >>> from phenotypic.data import load_synth_yeast_plate
             >>> image = load_synth_yeast_plate()
-            >>> fig, metrics = image.plot.diagnostics()
+            >>> plotter = DiagnosticsPlotter(image)
+            >>> fig, metrics = plotter.diagnostics()
             >>> print(f"SNR: {metrics['noise']['snr']:.2f}")
             >>> plt.savefig("diagnostics.png", dpi=150, bbox_inches="tight")
             >>> plt.close(fig)
 
             For an interactive dashboard:
 
-            >>> dashboard = image.plot.dash.diagnostics()  # doctest: +SKIP
+            >>> from phenotypic.plotting import PlotDiagnostics
+            >>> dashboard = PlotDiagnostics().report(image)  # doctest: +SKIP
         """
         # Default ridge scales
         if ridge_scales is None:

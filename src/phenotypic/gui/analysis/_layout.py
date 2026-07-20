@@ -6,7 +6,7 @@ The page is a vertical stepper:
 2. Pipeline summary chip.
 3. Recompile banner (post edits need a CLI re-run to land in master).
 4. Post section stack — table preview UX (col-name + top-5 before/after).
-5. Filter section stack — plot preview UX (autodetect dash vs PNG).
+5. Filter section stack — plot preview UX (PlotAnalysis vs PNG).
 6. Model section (single) — plot preview UX.
 7. Sticky run console (button + spinner + status).
 """

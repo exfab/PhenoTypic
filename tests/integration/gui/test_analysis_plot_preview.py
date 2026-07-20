@@ -205,8 +205,25 @@ class TestPreviewFlow:
         kwargs = collect_plot_kwargs("model", 0, node, {"model-0-cmap": "viridis"})
         component = render_plot(node, **kwargs)
 
-        # LogGrowthModel overrides dash() -> plotly fast path -> dcc.Graph.
+        # LogGrowthModel reports through PlotAnalysis -> dcc.Graph fast path.
         assert isinstance(component, dcc.Graph)
+
+    def test_matplotlib_report_renders_an_image_and_closes_figure(self) -> None:
+        import matplotlib.pyplot as plt
+
+        figure = plt.figure()
+        figure_number = figure.number
+
+        class MatplotlibReport:
+            def report(self, **kwargs: Any) -> Any:
+                return figure
+
+        component = render_plot(MatplotlibReport())
+
+        assert isinstance(component, html.Img)
+        assert component.src.startswith("data:image/png;base64,")
+        assert component.className == "analysis-section-plot"
+        assert not plt.fignum_exists(figure_number)
 
     def test_preview_honours_plotting_prefs(
         self, output_root: OutputRoot

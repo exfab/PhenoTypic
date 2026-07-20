@@ -1,7 +1,7 @@
 """Notebook-only Plotly report for color-correction diagnostics.
 
 Ports the legacy Panel ``ColorCorrectionDashboard`` to the renderer-neutral
-:class:`~phenotypic.abc_.FigureProvider` protocol. The report is a *helper*
+:class:`~phenotypic.abc_.plotting.PhtPlot` protocol. The report is a *helper*
 provider: it holds the data it needs from a fitted
 :class:`~phenotypic.correction.ColorCheckerProfile` (and the optional source
 image / ROIs), so every ``@figure`` method reads ``self`` and takes no subject
@@ -9,7 +9,7 @@ parameter.
 
 The four legacy ``show_*`` toggles become ``section`` tags (collapsible cards),
 per migration design decision D12 — they are *not* :class:`Control`\\ s. With no
-controls declared, :meth:`~phenotypic.abc_.FigureProvider.dash` composes the
+controls declared, :meth:`~phenotypic.abc_.plotting.PhtPlot.report` composes the
 figures into a single stacked ``go.Figure`` rather than an ipywidgets shell.
 The interactive ROI-selector control specified in design.md §9 is deferred
 (see ``DEFERRED.md`` → "Scope reductions recorded post-review"); this report
@@ -29,13 +29,14 @@ Sections
 from __future__ import annotations
 
 import copy
+import weakref
 from typing import TYPE_CHECKING, Any
 
 import colour
 import numpy as np
 import plotly.graph_objects as go
 
-from phenotypic.abc_ import FigureProvider, figure
+from phenotypic.abc_.plotting import PhtPlot, figure
 from phenotypic.sdk_.viz.figures._theme import GOLD, NAVY, OKABE_ITO
 
 if TYPE_CHECKING:
@@ -132,7 +133,7 @@ def _normalize_display(arr: np.ndarray) -> np.ndarray:
     Returns:
         A float64 RGB array clipped to ``[0, 1]``.
     """
-    display = arr.astype(np.float64)
+    display: np.ndarray = arr.astype(np.float64)
     peak = float(display.max()) if display.size else 0.0
     if peak > 1.0:
         display = display / peak
@@ -167,17 +168,17 @@ def _remap_domain_value(value: float, y0: float, y1: float) -> float:
     return min(1.0, max(0.0, remapped))
 
 
-class ColorCorrectionReport(FigureProvider):
+class ColorCorrectionReport(PhtPlot):
     """Plotly diagnostic report for a fitted color-correction profile.
 
-    A notebook-only :class:`~phenotypic.abc_.FigureProvider` replacing the
-    legacy Panel ``ColorCorrectionDashboard``. It holds the diagnostics (and
-    optional source image / ROIs) extracted from a fitted
-    :class:`~phenotypic.correction.ColorCheckerProfile` and exposes one
+    A notebook-only :class:`~phenotypic.abc_.plotting.PhtPlot` replacing the
+    legacy Panel ``ColorCorrectionDashboard``. It holds the diagnostics and
+    ROIs extracted from a fitted profile, while referring weakly to an optional
+    source image so the report cannot extend the image lifetime. It exposes one
     ``@figure`` method per legacy panel.
 
-    The figures declare no :class:`~phenotypic.abc_.Control`, so
-    :meth:`~phenotypic.abc_.FigureProvider.dash` returns a composed
+    The figures declare no :class:`~phenotypic.abc_.plotting.Control`, so
+    :meth:`~phenotypic.abc_.plotting.PhtPlot.report` returns a composed
     ``go.Figure`` (not an ipywidgets shell). The legacy ``show_*`` visibility
     toggles map to per-figure ``section`` tags (collapsible cards) per design
     decision D12.
@@ -221,16 +222,17 @@ class ColorCorrectionReport(FigureProvider):
         rois: list[tuple[slice, slice]] | None = None,
     ) -> None:
         self.profile = profile
-        self._image = image
+        self._image_ref = weakref.ref(image) if image is not None else None
         self._rois = rois
-        # bool(rois) guards the empty-list case: rois=[] would otherwise enable
-        # the image sections and crash make_subplots(rows=0, ...).
-        self._has_image = image is not None and bool(rois)
+
+    def _source_image(self) -> Image | None:
+        """Return the weakly held source image when it is still live."""
+        return self._image_ref() if self._image_ref is not None else None
 
     # -- subject resolution -------------------------------------------------
 
     def _figure_subject(self) -> Any:
-        """Return the held subject for the ``FigureProvider`` mixin.
+        """Return the held subject for the ``PhtPlot`` mixin.
 
         This report is a helper provider: every ``@figure`` method reads
         ``self`` directly, so the returned subject is informational only (the
@@ -245,34 +247,42 @@ class ColorCorrectionReport(FigureProvider):
 
         The pipeline-step and segmentation figures require a source image and
         ROIs (the legacy "hide when fitted from patch colors" behaviour); when
-        either is missing those specs are omitted so :meth:`dash` and
+        either is missing those specs are omitted so :meth:`report` and
         :meth:`inspect` only consider renderable figures.
 
         Returns:
-            The list of :class:`~phenotypic.abc_.FigureSpec` to render.
+            The list of :class:`~phenotypic.abc_.plotting.FigureSpec` to render.
         """
         specs = super().iter_figures()
-        if self._has_image:
+        # bool(rois) guards the empty-list case: rois=[] would otherwise enable
+        # the image sections and crash make_subplots(rows=0, ...).
+        if self._source_image() is not None and bool(self._rois):
             return specs
         image_only = {_SECTION_PIPELINE, _SECTION_SEGMENTATION}
         return [spec for spec in specs if spec.section not in image_only]
 
-    # -- composed dashboard -------------------------------------------------
+    # -- composed report ----------------------------------------------------
 
-    def dash(self, subject: Any = None) -> go.Figure:
+    def report(self, subject: Any = None, **overrides: Any) -> go.Figure:
         """Compose report figures while preserving child subplot layouts.
 
-        The base ``FigureProvider`` composer is intentionally trace-only. This
+        The base ``PhtPlot`` composer is intentionally trace-only. This
         report renders nested subplot grids for the pipeline and segmentation
         sections, so it needs to remap each child figure into its own vertical
         domain instead of reassigning every trace to one subplot row.
 
         Args:
-            subject: Unused; accepted for ``FigureProvider`` signature parity.
+            subject: Unused; accepted for ``PhtPlot`` signature parity.
+            **overrides: Plot-specific overrides are unsupported.
 
         Returns:
             A single themed ``plotly.graph_objects.Figure``.
         """
+        if overrides:
+            raise ValueError(
+                f"report(): unsupported override(s) {sorted(overrides)}"
+            )
+
         from phenotypic.sdk_.viz.figures._theme import apply_theme
 
         specs = self.iter_figures()
@@ -497,11 +507,13 @@ class ColorCorrectionReport(FigureProvider):
             A ``_RoiPreprocessing`` named tuple of every preprocessing stage.
         """
         row_sl, col_sl = self._rois[roi_idx]  # type: ignore[index]
-        return self.profile._preprocess_roi(
-            self._image,  # type: ignore[arg-type]
-            row_sl,
-            col_sl,
-        )
+        image = self._source_image()
+        if image is None:
+            raise RuntimeError(
+                "The color-correction source image has been released. "
+                "Keep it alive while rendering image-dependent report sections."
+            )
+        return self.profile._preprocess_roi(image, row_sl, col_sl)
 
     def _sorted_patches(self, *, key: str) -> list[tuple[str, dict[str, Any]]]:
         """Return per-patch diagnostics sorted worst-first by *key*.
@@ -627,7 +639,9 @@ class ColorCorrectionReport(FigureProvider):
         n = len(sorted_items)
         # Rows top-to-bottom = worst patch first; go.Image draws row 0 at the
         # top, which already matches the worst-first ordering.
-        swatches = np.zeros((max(n, 1), 3, 3), dtype=np.float64)
+        swatches: np.ndarray = np.zeros(
+            (max(n, 1), 3, 3), dtype=np.float64
+        )
         row_labels: list[str] = []
         for idx, (name, patch) in enumerate(sorted_items):
             for col, key in enumerate(

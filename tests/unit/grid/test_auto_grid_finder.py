@@ -708,29 +708,26 @@ class TestSectionNumberDtype:
             assert result[col_name].cat.categories.dtype == pd.UInt16Dtype()
 
 
-class TestInspectDashboardRename:
-    """Regression guard for the inspect()→dashboard() rename.
+class TestInspectReportCutover:
+    """Regression guard for the diagnostic ``report()`` hard cutover.
 
-    The ``inspect()`` name is reserved across the codebase for methods
-    returning a saveable matplotlib or plotly figure consumed by the
-    CLI's ``--save-inspect`` flag. AutoGridFinder's diagnostic surface
-    returns a ``panel.Column`` (interactive, not flattenable to a
-    static raster) so it is exposed under ``dashboard()`` instead.
-    These checks catch an accidental revert of the rename, which would
-    cause the CLI to auto-save a non-figure return type and emit
-    confusing warnings.
+    ``inspect()`` is the primary saveable-figure lifecycle on ``PhtPlot``.
+    AutoGridFinder is not plot-capable and exposes only its complete diagnostic
+    through ``report()``. These checks prevent the old dashboard name or a
+    misleading inspect method from returning.
     """
 
-    def test_dashboard_method_exists(self):
-        assert hasattr(AutoGridFinder, "dashboard"), (
-            "AutoGridFinder.dashboard() must exist after the inspect→dashboard rename"
+    def test_report_method_exists(self):
+        assert hasattr(AutoGridFinder, "report"), (
+            "AutoGridFinder.report() must expose the full diagnostic report"
         )
-        assert callable(AutoGridFinder.dashboard)
+        assert callable(AutoGridFinder.report)
 
     def test_inspect_method_does_not_exist(self):
         assert not hasattr(AutoGridFinder, "inspect"), (
-            "AutoGridFinder.inspect() must NOT exist — it would be auto-picked "
-            "up by the CLI's --save-inspect dispatch and produce a panel.Column "
-            "(unsupported figure type). Use dashboard() for the interactive "
-            "diagnostic surface."
+            "AutoGridFinder.inspect() must NOT exist; use report() for the "
+            "complete diagnostic surface."
         )
+
+    def test_dashboard_method_does_not_exist(self):
+        assert not hasattr(AutoGridFinder, "dashboard")

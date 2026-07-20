@@ -13,6 +13,7 @@ import scipy.optimize as optimize
 from joblib import Parallel, delayed
 from pydantic import Field, PrivateAttr
 
+from phenotypic.abc_.plotting import PlotAnalysis
 from phenotypic.schema import CULTURE_METADATA, MeasurementInfo, MODEL_METRICS, qualified_header
 from phenotypic.sdk_ import ColumnRef
 
@@ -38,14 +39,14 @@ See :func:`scipy.optimize.least_squares` for the exact ρ formulas.
 """
 
 
-class ModelFitter(SetAnalyzer, ABC):
+class ModelFitter(SetAnalyzer, PlotAnalysis, ABC):
     """Template base class for grouped least-squares model fitting.
 
     Subclasses provide the mathematical model (`model_func`), the loss
     function (`_loss_func`), an initial parameter guess, parameter bounds,
     and a small set of hooks that let the base class drive ``analyze``,
-    ``show``, ``dash``, and ``results`` without hard-coding parameter
-    names.
+    ``show``, ``inspect``, ``report``, and ``results`` without hard-coding
+    parameter names.
 
     Fit-quality metrics (MAE, MSE, RMSE, R²) and optimizer diagnostics
     (loss, status, sample count) are emitted under the shared
@@ -616,8 +617,8 @@ class ModelFitter(SetAnalyzer, ABC):
     # ------------------------------------------------------------------ #
     # Plotly visualization
     # ------------------------------------------------------------------ #
-    def dash(
-            self,
+    def _build_plotly_figure(
+            self, *,
             tmax: int | float | None = None,
             criteria: Dict[str, Union[Any, List[Any]]] | None = None,
             figsize=(6, 4),
@@ -625,7 +626,7 @@ class ModelFitter(SetAnalyzer, ABC):
             legend: bool | str = True,
             **kwargs,
     ) -> "go.Figure":
-        """Interactive Plotly version of :meth:`show`.
+        """Build the interactive Plotly version of :meth:`show`.
 
         Hover tooltips are populated from ``_hover_fields`` so subclasses
         can expose whichever fitted parameters and metrics are most
@@ -877,3 +878,62 @@ class ModelFitter(SetAnalyzer, ABC):
         )
 
         return fig
+
+    # A producer-owned plot intentionally narrows away PhtPlot's table subject.
+    def inspect(  # type: ignore[override]
+            self, *,
+            for_save: bool = False,
+            tmax: int | float | None = None,
+            criteria: Dict[str, Union[Any, List[Any]]] | None = None,
+            figsize=(6, 4),
+            cmap: str | None = "tab20",
+            legend: bool | str = True,
+            **kwargs,
+    ) -> "go.Figure":
+        """Return the saveable Plotly figure for the latest fitted state.
+
+        All parameters are keyword-only so plotting-capability discovery cannot
+        mistake ``tmax`` for a runtime analysis-table subject. The figure reads
+        the private state populated by the most recent :meth:`analyze` call and
+        never refits the model.
+
+        Args:
+            for_save: Lifecycle hint for save-oriented consumers. Model figures
+                currently use the same representation for display and saving.
+            tmax: Upper bound of the prediction curve. If ``None``, uses the
+                maximum observed time.
+            criteria: Column/value filter applied to fitted results and source
+                measurements.
+            figsize: Logical figure size in inches; height controls Plotly pixels.
+            cmap: Matplotlib colormap name or Plotly-compatible color string.
+            legend: Legend grouping behavior; see :meth:`show`.
+            **kwargs: Plot title and axis-label overrides.
+
+        Returns:
+            A Plotly figure built from the latest analyzed state.
+        """
+        del for_save
+        return self._build_plotly_figure(
+                tmax=tmax,
+                criteria=criteria,
+                figsize=figsize,
+                cmap=cmap,
+                legend=legend,
+                **kwargs,
+        )
+
+    # The complete report consumes the same producer-owned state.
+    def report(  # type: ignore[override]
+            self, **plot_kwargs: Any
+    ) -> "go.Figure":
+        """Return the complete interactive report for the latest fitted state.
+
+        Args:
+            **plot_kwargs: Keyword-only plotting parameters accepted by
+                :meth:`inspect` other than ``for_save``.
+
+        Returns:
+            A Plotly figure built from the latest analyzed state.
+        """
+        plot_kwargs.pop("for_save", None)
+        return self._build_plotly_figure(**plot_kwargs)

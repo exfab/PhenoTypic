@@ -157,25 +157,9 @@ Detailed documentation for individual color space operations is available in a d
 Visualization & Plotting
 ------------------------
 
-.. autoproperty:: Image.plot
-   :no-index:
-
-The ``plot`` property provides quality-of-life visualizations for pipeline development,
-specifically designed for colony detection parameter tuning on arrayed microbe cultures
-on agar plates. These methods help understand how morphological operations, size filtering,
-and spatial patterns affect detection results.
-
-All methods support flexible data requirements, automatically detecting whether labeled
-objects (objmap) or binary masks (objmask) are available.
-
-**PlotAccessor API:**
-
-.. autoclass:: phenotypic._core._image_parts.accessors._plot_accessor.PlotAccessor
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Detailed documentation for individual plotting methods is available in a dedicated section.
+Use :meth:`Image.show` for Matplotlib display and :meth:`Image.dash` for Plotly
+display. Reproducible pipeline plots use the lifecycle mixins documented on the
+dedicated plotting page; ``Image`` has no ``plot`` accessor.
 
 .. toctree::
    :maxdepth: 2

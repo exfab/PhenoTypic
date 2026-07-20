@@ -58,7 +58,7 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.phenotypicCLI import _copy_pipeline_to_output, phenotypic_cli
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.sdk_ import (
-    analysis_parquet_path,
+    deliverables_dir,
     master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_csv_path,
@@ -2119,7 +2119,6 @@ class TestAggregateMeasurements:
         # The real rows keep their exact integer values.
         real = mirror.filter(~pl.col(METADATA_ONLY_HEADER))
         assert sorted(real["area"].to_list()) == [10, 20]
-
     def test_metadata_only_flag_round_trips_as_bool_in_both_mirrors(
         self, temp_output_dir
     ):
@@ -2323,7 +2322,9 @@ class TestAggregateMeasurements:
         # Mirror equals master when there's no pipeline to apply post.
         assert mirror.equals(master_df)
         # Pipeline-conditional artifacts are absent.
-        assert not analysis_parquet_path(temp_output_dir).exists()
+        assert not (
+            deliverables_dir(temp_output_dir) / "analysis_manifest.json"
+        ).exists()
         assert not pipeline_json_path(temp_output_dir).exists()
 
     def test_finalize_post_master_outputs_post_failure_falls_back_to_clean(
@@ -2433,6 +2434,35 @@ def test_process_only_warns_ignored_flags(
     )
     assert r.exit_code == 0, r.output
     assert "ignored" in r.output.lower()
+
+
+def test_no_qc_is_preserved_on_execution_config(
+    monkeypatch, tmp_path, simple_pipeline_json, synth_one_level_input
+):
+    captured = {}
+
+    def _capture_dry_run(config, datasets, output_dir):
+        captured["config"] = config
+
+    monkeypatch.setattr(
+        "phenotypic.phenotypicCLI.execute_dry_run", _capture_dry_run
+    )
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--pipeline",
+            str(simple_pipeline_json),
+            "--input",
+            str(synth_one_level_input),
+            "--output",
+            str(tmp_path / "no-qc-output"),
+            "--no-qc",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert captured["config"].no_qc is True
 
 
 def test_process_only_dry_run_lists_plan(

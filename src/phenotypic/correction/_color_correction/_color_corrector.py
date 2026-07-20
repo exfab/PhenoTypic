@@ -237,10 +237,10 @@ class ColorCorrector(ImageCorrector):
 
         return image
 
-    def dashboard(self, show: bool = True) -> Any:
+    def report(self, show: bool = True) -> Any:
         """Build the Plotly color-correction diagnostic report.
 
-        Delegates to the underlying profile's :meth:`ColorCheckerProfile.dashboard`.
+        Delegates to the underlying profile's :meth:`ColorCheckerProfile.report`.
 
         Args:
             show: When ``True`` and running inside a Jupyter notebook, display
@@ -250,4 +250,4 @@ class ColorCorrector(ImageCorrector):
             A ``plotly.graph_objects.Figure`` (always returned, even after an
             inline display).
         """
-        return self.profile.dashboard(show=show)
+        return self.profile.report(show=show)

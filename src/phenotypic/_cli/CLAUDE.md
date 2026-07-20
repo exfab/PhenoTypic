@@ -94,10 +94,14 @@ Stage 2 starts after the last Stage-1 chunk and Stage 3 after Stage 2:
   `--index $CURRENT_TASK_INDEX`, so no array index ever reaches the limit. A
   single chunk keeps the plain `stage1.sh`/`stage3.sh` name; multiple become
   `stageN_chunk{i}.sh`. Stage 2 is **never chunked** (a shard worker streams its
-  whole shard on one GPU); `--gpu-shards > chunk_limit` raises.
-  `generate_staged_scripts` returns
-  `{"stage1": [Path…], "stage2": Path, "stage3": [Path…]}` — image stages are
-  always lists.
+  whole shard on one GPU); `--gpu-shards > chunk_limit` raises. `generate_staged_scripts`
+  returns `{"stage1": [Path…], "stage2": Path, "stage3": [Path…],
+  "finalizer": Path}` — image stages are always lists. The finalizer is a
+  one-task CPU job that reloads the canonical pipeline and runs the same
+  aggregate/finalize path as ordinary SLURM, including named analysis and plot
+  publication. The shared dispatcher drip-feeds the ordered scripts, including
+  the finalizer, so only one chunk array and one tiny dispatcher are queued at a
+  time while each chunk's array still fans out.
 - Per-stage resources: Stages 1 & 3 use `config.slurm_args` (CPU); Stage 2 uses
   `resolve_stage_slurm_args(gpu_slurm_args, slurm_args)` — inherit/delta over the
   CPU profile, auto-add `slurm_gpus_per_node=1` (explicit `=0` **omits** the
@@ -145,7 +149,9 @@ Stage 2 starts after the last Stage-1 chunk and Stage 3 after Stage 2:
 
 User-facing run outputs live under `<output>/deliverables/` (hard cutover):
 `master_measurements.{csv,parquet}`, `measurements.{csv,parquet}`,
-`measurements_by_feature/<feature>.{csv,parquet}`, `analysis.{csv,parquet}`,
+`measurements_by_feature/<feature>.{csv,parquet}`,
+`<AnalysisClass>.{csv,parquet}`, `analysis_manifest.json`,
+`plots/<plot-id>/...`,
 `dashboard.html`, `analysis.html`, `processing_report.html`, `README.md`,
 `pipeline.json`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
 **per-image** parquets in `results/<ds>/measurements/` (and the rest of `results/`,
@@ -165,10 +171,13 @@ the post-applied mirror the GUI reads/curates. Per-image parquets in
 `results/<ds>/measurements/` are also clean — the CLI calls
 `pipeline.measure(image, apply_post=False)` on the per-image path. Post is applied once
 at the end of aggregation against the merged master, and the post-applied frame is what
-`analysis.{csv,parquet}` and `measurements_by_feature/<feature>.{csv,parquet}` derive
-from. The external `--metadata` CSV **left-join** also lands on the post-applied frame
+the class-named analysis artifacts and `measurements_by_feature/<feature>.{csv,parquet}`
+derive from. Analysis consumers resolve tables through `analysis_manifest.json`, never
+by constructing filenames. The external `--metadata` CSV **left-join** also lands on
+the post-applied frame
 (inside `finalize_post_master_outputs`), so the mirror, per-feature splits, and
-`analysis.*` carry metadata while the master archive stays post-free and metadata-free.
+named analysis artifacts carry metadata while the master archive stays post-free and
+metadata-free.
 The join is **left** so metadata rows matching no measured object survive as **phantom
 rows** — metadata + join keys populated, every measurement/info column null, and
 `QC_MetadataOnly=true` (`schema.METADATA_MATCH`) — which is how a user sees the strains

@@ -1,28 +1,19 @@
-"""Registry utilities for PhenoTypic components.
-
-Provides registration decorators and lookup functions for extensible
-components like plotters and dashboards.
+"""Registry utilities for PhenoTypic analysis dashboard components.
 
 Examples:
-    Register a new plotter::
+    Register a new analysis plugin::
 
-        from phenotypic.sdk_.register import register_plotter
+        from phenotypic.sdk_.register import register_analysis
 
-        @register_plotter
-        class MyPlotter(BasePlotter):
-            name = "my_plot"
+        @register_analysis
+        class MyAnalysisPlugin(BaseAnalysisPlugin):
+            call_name = "my_analysis"
 
-            def my_plot(self, **kwargs):
-                ...
+    Query available analysis plugins::
 
-    Query available plotters::
+        from phenotypic.sdk_.register import available_analysis_plugins
 
-        from phenotypic.sdk_.register import available_plotters, get_plotter
-
-        print(available_plotters())
-        # ('all', 'diagnostics', 'morph_progression', ...)
-
-        plotter_cls = get_plotter("overlay")
+        print(available_analysis_plugins())
 """
 
 from ._analysis_plugin_registry import (
@@ -32,21 +23,11 @@ from ._analysis_plugin_registry import (
     register_analysis,
 )
 from ._base_registry import BaseRegistry
-from ._plotter_registry import (
-    PlotterRegistry,
-    available_plotters,
-    get_plotter,
-    register_plotter,
-)
 
 __all__ = [
     "AnalysisPluginRegistry",
     "BaseRegistry",
-    "PlotterRegistry",
     "available_analysis_plugins",
-    "available_plotters",
     "get_analysis_plugin",
-    "get_plotter",
     "register_analysis",
-    "register_plotter",
 ]

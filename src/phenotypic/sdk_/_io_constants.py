@@ -71,6 +71,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -174,28 +175,105 @@ MEASUREMENTS_PARQUET: Final[str] = "measurements.parquet"
 #: Best-effort co-located copy of the run's ``--metadata`` source CSV,
 #: written into :data:`DIR_DELIVERABLES` by
 #: :func:`phenotypic._cli._cli_output_manager.finalize_post_master_outputs`.
-#: The post-applied mirror (:data:`MEASUREMENTS_CSV`) carries the metadata
-#: columns but the join is *inner* — rows with no matching key are dropped —
-#: so this preserves the full, portable original mapping next to the other
-#: deliverables (spec §8 / D6). The copy is best-effort and never blocks the
-#: run; a missing/unreadable source is logged and skipped.
+#: The post-applied mirror carries the metadata columns, while this file
+#: preserves the full portable original mapping.
 DELIVERABLES_METADATA_CSV: Final[str] = "metadata.csv"
+
+#: Authoritative index for class-named analysis table artifacts.
+ANALYSIS_MANIFEST_FILENAME: Final[str] = "analysis_manifest.json"
+ANALYSIS_MANIFEST_SCHEMA_VERSION: Final[int] = 1
+
+_ANALYSIS_ID_PATTERN = re.compile(
+    r"[A-Za-z][A-Za-z0-9_.-]{0,127}\Z", re.ASCII
+)
+def _reserved_analysis_artifact_stems() -> frozenset[str]:
+    """Return CSV/Parquet stems that share the deliverables root."""
+    return frozenset(
+        Path(filename).stem.casefold()
+        for filename in (
+            MASTER_MEASUREMENTS_CSV,
+            MASTER_MEASUREMENTS_PARQUET,
+            MEASUREMENTS_CSV,
+            MEASUREMENTS_PARQUET,
+            DELIVERABLES_METADATA_CSV,
+            ERROR_ANALYSIS_CSV,
+            ERROR_ANALYSIS_PARQUET,
+            VERIFIED_PARQUET,
+        )
+    )
+
+
+def validate_analysis_id(analysis_id: str) -> str:
+    """Validate an analysis ID used as a deliverables artifact stem.
+
+    Args:
+        analysis_id: Candidate stable analysis identity.
+
+    Returns:
+        The unchanged validated ID.
+
+    Raises:
+        TypeError: If ``analysis_id`` is not a string.
+        ValueError: If the ID is unsafe or collides with a canonical table.
+    """
+    if not isinstance(analysis_id, str):
+        raise TypeError("analysis_id must be a string")
+    if not _ANALYSIS_ID_PATTERN.fullmatch(analysis_id):
+        raise ValueError(
+            "analysis_id must be 1-128 ASCII characters, start with a letter, "
+            "and contain only letters, digits, '_', '-', or '.'"
+        )
+    if analysis_id.casefold() in _reserved_analysis_artifact_stems():
+        raise ValueError(
+            f"analysis_id {analysis_id!r} collides with a canonical "
+            "deliverables table"
+        )
+    return analysis_id
+
+
+@dataclass(frozen=True)
+class AnalysisArtifactPaths:
+    """Concrete paths for one named analysis generation."""
+
+    csv: Path
+    parquet: Path
+    manifest: Path
+
+
+def analysis_manifest_path(deliverables_base: Path) -> Path:
+    """Return the analysis manifest inside a deliverables directory."""
+    return Path(deliverables_base) / ANALYSIS_MANIFEST_FILENAME
+
+
+def named_analysis_csv_path(
+    deliverables_base: Path, analysis_id: str
+) -> Path:
+    """Return the named CSV artifact path for ``analysis_id``."""
+    return Path(deliverables_base) / f"{validate_analysis_id(analysis_id)}.csv"
+
+
+def named_analysis_parquet_path(
+    deliverables_base: Path, analysis_id: str
+) -> Path:
+    """Return the named Parquet artifact path for ``analysis_id``."""
+    return Path(deliverables_base) / f"{validate_analysis_id(analysis_id)}.parquet"
+
+
+def named_analysis_paths(
+    deliverables_base: Path, analysis_id: str
+) -> AnalysisArtifactPaths:
+    """Return all persisted paths associated with one analysis ID."""
+    return AnalysisArtifactPaths(
+        csv=named_analysis_csv_path(deliverables_base, analysis_id),
+        parquet=named_analysis_parquet_path(deliverables_base, analysis_id),
+        manifest=analysis_manifest_path(deliverables_base),
+    )
 
 #: REMBI run manifest filename, flat under deliverables/ beside metadata.csv.
 #: Written best-effort by
 #: :func:`phenotypic.sdk_._rembi_manifest.write_rembi_manifest` in finalize;
 #: folds the post-applied measurements mirror up to each REMBI module's scope.
 REMBI_MANIFEST_YAML: Final[str] = "rembi.yaml"
-
-#: Output filename of the model-fit summary written by the CLI when the
-#: pipeline has a ``model`` configured (and re-emitted by the analysis
-#: GUI's "Run analysis" button). Human-readable mirror of
-#: :data:`ANALYSIS_PARQUET`.
-ANALYSIS_CSV: Final[str] = "analysis.csv"
-
-#: Parquet companion of :data:`ANALYSIS_CSV` — primary downstream
-#: artifact since it preserves dtypes the CSV cannot.
-ANALYSIS_PARQUET: Final[str] = "analysis.parquet"
 
 #: Canonical pipeline-spec filename written into the output root by the
 #: CLI (and rewritten by the analysis GUI on every recipe edit). Captures
@@ -401,11 +479,8 @@ DIR_HDF: Final[str] = "hdf"
 #: Overlay PNG subdirectory: ``<output>/deliverables/overlays/<ds>/``.
 DIR_OVERLAYS: Final[str] = "overlays"
 
-#: Inspect-figure PNG subdirectory:
-#: ``<output>/results/<ds>/inspect/<measurer-step>/``. Provisioned only
-#: when the CLI's ``--save-inspect`` flag is set; per-measurer
-#: subdirectories are created lazily by ``OutputManager.save_inspect``.
-DIR_INSPECT: Final[str] = "inspect"
+#: Configured plot outputs: ``<output>/deliverables/plots/``.
+DIR_PLOTS: Final[str] = "plots"
 
 #: Mid-run chunk parquet subdirectory: ``<progress>/chunks/``.
 DIR_CHUNKS: Final[str] = "chunks"
@@ -647,6 +722,11 @@ def deliverables_dir(output_dir: Path) -> Path:
     is a one-line change.
     """
     return output_dir / DIR_DELIVERABLES
+
+
+def plots_dir(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/plots/``."""
+    return deliverables_dir(output_dir) / DIR_PLOTS
 
 
 def event_log_path(output_dir: Path) -> Path:
@@ -1151,16 +1231,6 @@ def phenotypic_cache_pipeline_json_path(output_dir: Path) -> Path:
     reproducibility copy. Distinct from :func:`pipeline_json_path`, which roots
     under ``deliverables/`` (process-only writes no deliverables)."""
     return phenotypic_cache_dir(output_dir) / PIPELINE_JSON
-
-
-def analysis_csv_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/analysis.csv``."""
-    return deliverables_dir(output_dir) / ANALYSIS_CSV
-
-
-def analysis_parquet_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/analysis.parquet``."""
-    return deliverables_dir(output_dir) / ANALYSIS_PARQUET
 
 
 def dashboard_html_path(output_dir: Path) -> Path:
@@ -1809,6 +1879,11 @@ class BundleLayout:
         return self.deliverables_base / MEASUREMENTS_CSV
 
     @property
+    def plots_dir(self) -> Path:
+        """Return the resolved ``plots/`` directory inside the bundle."""
+        return self.deliverables_base / DIR_PLOTS
+
+    @property
     def pipeline_config_path(self) -> Path:
         """Return path to ``pipeline.json`` in the deliverables base."""
         return self.deliverables_base / PIPELINE_JSON
@@ -1894,16 +1969,6 @@ class BundleLayout:
     def verified_parquet(self) -> Path:
         """Return path to ``verified.parquet`` (GUI-written verified-good archive)."""
         return self.deliverables_base / VERIFIED_PARQUET
-
-    @property
-    def analysis_parquet(self) -> Path:
-        """Return path to ``analysis.parquet`` in the deliverables base."""
-        return self.deliverables_base / ANALYSIS_PARQUET
-
-    @property
-    def analysis_csv(self) -> Path:
-        """Return path to ``analysis.csv`` in the deliverables base."""
-        return self.deliverables_base / ANALYSIS_CSV
 
     def error_category_parquet(self, category: str) -> Path:
         """Return path to ``errors/<category>.parquet``.

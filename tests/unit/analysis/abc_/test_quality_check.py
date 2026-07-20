@@ -323,7 +323,7 @@ class TestSetAnalyzerOverrides:
 
     def test_show_raises_not_implemented(self):
         check = DummyQC(on="Size_Area", groupby=[str(METADATA.IMAGE_NAME)])
-        with pytest.raises(NotImplementedError, match="dash"):
+        with pytest.raises(NotImplementedError, match=r"inspect\(\)"):
             check.show()
 
 

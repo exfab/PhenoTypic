@@ -61,6 +61,7 @@ dependencies = [
     "imagecodecs>=2025.3.30",
     "findiff>=0.12.2",
     "numba>=0.62.1",
+    "matplotlib>=3.8",
     "plotly>=6.0.0",
     "pyarrow>=23.0.1",
     "kaleido>=1.2.0",

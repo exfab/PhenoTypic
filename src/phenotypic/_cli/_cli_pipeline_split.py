@@ -49,6 +49,17 @@ def split_pipeline_at_gpu(pipeline: ImagePipeline) -> StagePlan:
     pre_ops = {k: ops[k] for k in keys[:cut]}
     post_ops = {k: ops[k] for k in keys[cut + 1:]}
 
+    for binding in pipeline.get_plots():
+        ref = binding.ref
+        if ref is None or ref.slot != "ops":
+            continue
+        if ref.key == gpu_key or ref.key in pre_ops:
+            raise ValueError(
+                f"plot {binding.id!r} references pre-GPU operation "
+                f"{ref.key!r}; staged plotting supports only post-GPU "
+                "operations, measurers, aggregate slots, and inline plots"
+            )
+
     pre_pipeline = ImagePipeline(
         ops=pre_ops, nrows=pipeline.nrows, ncols=pipeline.ncols
     )
@@ -59,6 +70,7 @@ def split_pipeline_at_gpu(pipeline: ImagePipeline) -> StagePlan:
         filters=pipeline.get_filters(),
         model=pipeline.get_model(),
         qc=pipeline.get_qc(),
+        plots=pipeline.get_plots(),
         nrows=pipeline.nrows,
         ncols=pipeline.ncols,
     )

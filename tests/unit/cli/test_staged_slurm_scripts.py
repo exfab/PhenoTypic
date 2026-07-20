@@ -1,16 +1,22 @@
 """Shard partitioning + per-stage SLURM args resolution (Spec 1 §7, Plan 3)."""
 
+import json
+from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 from phenotypic._cli._cli_staged_slurm import (
     STAGE_DEPENDENCY,
     StagedSlurmStrategy,
+    _write_staged_job_metadata,
     flatten_staged_scripts,
     generate_staged_scripts,
     partition_shards,
     resolve_stage_slurm_args,
     submit_staged_chain,
 )
+from phenotypic._cli._cli_types import Dataset
+from phenotypic.sdk_ import JOB_METADATA_JSON, progress_dir
 
 
 def _manifest(n):
@@ -58,12 +64,15 @@ def test_gpu_stage_omits_gpu_directive_when_zero():
 
 def test_gpu_stage_inherits_shared_keys_and_overrides_partition():
     args = resolve_stage_slurm_args(
-        gpu_slurm_args={"slurm_partition": "exfab", "slurm_account": "exfab_acct"},
+        gpu_slurm_args={
+            "slurm_partition": "exfab",
+            "slurm_account": "exfab_acct",
+        },
         cpu_slurm_args={"slurm_partition": "short", "slurm_qos": "normal"},
     )
-    assert args["slurm_partition"] == "exfab"      # gpu overrides cpu
-    assert args["slurm_account"] == "exfab_acct"   # added for the gpu partition
-    assert args["slurm_qos"] == "normal"           # inherited from --slurm
+    assert args["slurm_partition"] == "exfab"  # gpu overrides cpu
+    assert args["slurm_account"] == "exfab_acct"  # added for the gpu partition
+    assert args["slurm_qos"] == "normal"  # inherited from --slurm
     assert args["slurm_gpus_per_node"] == 1
 
 
@@ -77,12 +86,13 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
         gpu_slurm_args={"slurm_partition": "gpu"},
         n_shards=2,
     )
-    assert set(scripts) == {"stage1", "stage2", "stage3"}
+    assert set(scripts) == {"stage1", "stage2", "stage3", "finalizer"}
     # Image-arrayed stages return a list of chunk scripts (one chunk here);
     # the GPU stage is a single shard-arrayed script.
     s1 = scripts["stage1"][0].read_text(encoding="utf-8")
     s2 = scripts["stage2"].read_text(encoding="utf-8")
     s3 = scripts["stage3"][0].read_text(encoding="utf-8")
+    finalizer = scripts["finalizer"].read_text(encoding="utf-8")
 
     # Stage 1 & 3 on the CPU partition; Stage 2 on the GPU partition + 1 GPU
     assert "--partition=batch" in s1 and "--partition=batch" in s3
@@ -92,6 +102,9 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
     assert "--array=0-1" in s2
     # Stage 2 invokes the shard worker
     assert "_cli_staged_slurm_worker" in s2
+    assert "_cli_checkpoint_handler" in finalizer
+    assert "--checkpoint-type finalize" in finalizer
+    assert "--partition=batch" in finalizer
 
 
 def test_chain_uses_afterany_dependencies():
@@ -159,7 +172,7 @@ def test_chunk_windows_map_to_absolute_manifest_indices(tmp_path):
     assert "--index $CURRENT_TASK_INDEX" in c0
     assert "    0\n    1" in c0  # window [0, 2)
     assert "    2\n    3" in c1  # window [2, 4)
-    assert "    4" in c2         # window [4, 5)
+    assert "    4" in c2  # window [4, 5)
 
 
 def test_single_chunk_keeps_plain_script_names(tmp_path):
@@ -189,7 +202,9 @@ def test_multi_chunk_scripts_get_indexed_names(tmp_path):
         array_limit=2,
     )
     assert [p.name for p in scripts["stage1"]] == [
-        "stage1_chunk0.sh", "stage1_chunk1.sh", "stage1_chunk2.sh",
+        "stage1_chunk0.sh",
+        "stage1_chunk1.sh",
+        "stage1_chunk2.sh",
     ]
 
 
@@ -198,11 +213,17 @@ def test_flatten_staged_scripts_orders_chunks_then_stages():
         "stage1": [Path("s1c0.sh"), Path("s1c1.sh")],
         "stage2": Path("s2.sh"),
         "stage3": [Path("s3c0.sh"), Path("s3c1.sh")],
+        "finalizer": Path("finalizer.sh"),
     }
     # Order encodes the stage dependencies for the drip-feed dispatcher:
-    # every Stage-1 chunk, then Stage 2, then every Stage-3 chunk.
+    # every Stage-1 chunk, Stage 2, every Stage-3 chunk, then finalization.
     assert [p.name for p in flatten_staged_scripts(scripts)] == [
-        "s1c0.sh", "s1c1.sh", "s2.sh", "s3c0.sh", "s3c1.sh",
+        "s1c0.sh",
+        "s1c1.sh",
+        "s2.sh",
+        "s3c0.sh",
+        "s3c1.sh",
+        "finalizer.sh",
     ]
 
 
@@ -227,15 +248,24 @@ def test_submit_staged_chain_uses_drip_feed_dispatcher(monkeypatch):
         "stage1": [Path("s1c0.sh"), Path("s1c1.sh")],
         "stage2": Path("s2.sh"),
         "stage3": [Path("s3c0.sh")],
+        "finalizer": Path("finalizer.sh"),
     }
     job_ids = submit_staged_chain(
-        scripts, output_dir=Path("/out"), slurm_args={"slurm_partition": "short"}
+        scripts,
+        output_dir=Path("/out"),
+        slurm_args={"slurm_partition": "short"},
     )
 
     # Only the drip-feed's initial jobs come back (chunk 0 + dispatcher 1), NOT
     # one job per chunk — the rest are auto-submitted by each chunk's dispatcher.
     assert job_ids == ["chunk0", "dispatch1"]
-    assert captured["flat"] == ["s1c0.sh", "s1c1.sh", "s2.sh", "s3c0.sh"]
+    assert captured["flat"] == [
+        "s1c0.sh",
+        "s1c1.sh",
+        "s2.sh",
+        "s3c0.sh",
+        "finalizer.sh",
+    ]
     # The tiny dispatcher runs on the CPU (short) profile.
     assert captured["slurm_args"] == {"slurm_partition": "short"}
 
@@ -261,6 +291,7 @@ def test_strategy_reserves_max_submit_slot_for_dispatcher(
             "stage1": [tmp_path / "s1.sh"],
             "stage2": tmp_path / "s2.sh",
             "stage3": [tmp_path / "s3.sh"],
+            "finalizer": tmp_path / "finalizer.sh",
         }
 
     monkeypatch.setattr(
@@ -282,6 +313,10 @@ def test_strategy_reserves_max_submit_slot_for_dispatcher(
             "gpu_slurm_args": {},
             "gpu_shards": 1,
             "ext": None,
+            "include_dataset_column": False,
+            "metadata_csv": None,
+            "no_qc": False,
+            "input_path": tmp_path / "inputs",
         },
     )()
     strategy = object.__new__(StagedSlurmStrategy)
@@ -289,3 +324,44 @@ def test_strategy_reserves_max_submit_slot_for_dispatcher(
     strategy.execute([], tmp_path)
 
     assert captured["array_limit"] == 4
+
+
+def test_staged_job_metadata_supports_canonical_finalizer(tmp_path):
+    images = [tmp_path / f"image_{index}.tif" for index in range(3)]
+    datasets = [
+        Dataset(
+            name="plate",
+            images=images,
+            input_dir=tmp_path,
+            output_dir=tmp_path,
+        )
+    ]
+    scripts = {
+        "stage1": [Path("s1c0.sh"), Path("s1c1.sh")],
+        "stage2": Path("s2.sh"),
+        "stage3": [Path("s3c0.sh"), Path("s3c1.sh")],
+        "finalizer": Path("finalizer.sh"),
+    }
+    config = SimpleNamespace(
+        include_dataset_column=True,
+        metadata_csv=tmp_path / "metadata.csv",
+        input_path=tmp_path / "inputs",
+        no_qc=True,
+    )
+
+    metadata_path = _write_staged_job_metadata(
+        datasets=datasets,
+        output_dir=tmp_path,
+        config=config,
+        scripts=scripts,
+        job_ids=["s1a"],
+        start_time=datetime(2026, 7, 16),
+    )
+
+    assert metadata_path == progress_dir(tmp_path) / JOB_METADATA_JSON
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    assert metadata["datasets"]["plate"]["total"] == 3
+    assert metadata["chunk_job_ids"] == {"0": "s1a"}
+    assert metadata["chunk_scripts"][-1] == "finalizer.sh"
+    assert metadata["no_qc"] is True
+    assert metadata["image_task_mapping"] == {}

@@ -20,7 +20,10 @@ pytestmark = pytest.mark.skipif(
     reason="SLURM checkpoint handler only runs on POSIX",
 )
 
-from phenotypic._cli._cli_checkpoint_handler import _run_finalize, _run_manifest
+from phenotypic._cli._cli_checkpoint_handler import (  # noqa: E402
+    _run_finalize,
+    _run_manifest,
+)
 
 
 NESTED_DATASETS = {
@@ -31,7 +34,12 @@ FLAT_DATASETS = {"ds1": 3, "ds2": 2}
 EXPECTED_TOTALS = {"ds1": 3, "ds2": 2}
 
 
-def _write_job_metadata(progress_dir: Path, datasets_field: dict) -> None:
+def _write_job_metadata(
+    progress_dir: Path,
+    datasets_field: dict,
+    *,
+    no_qc: bool = False,
+) -> None:
     """Write a minimal job_metadata.json with the given datasets shape."""
     progress_dir.mkdir(parents=True, exist_ok=True)
     (progress_dir / "job_metadata.json").write_text(
@@ -45,6 +53,7 @@ def _write_job_metadata(progress_dir: Path, datasets_field: dict) -> None:
                 "image_task_mapping": {},
                 "include_dataset_column": True,
                 "metadata_csv": None,
+                "no_qc": no_qc,
                 "input_path": "fake",
             }
         ),
@@ -88,6 +97,34 @@ class TestRunManifestCoercion:
             _run_manifest(output_dir, progress_dir)
 
         mock_build_manifest.assert_not_called()
+
+    def test_finalize_propagates_no_qc_to_aggregation(
+        self, tmp_path: Path
+    ) -> None:
+        output_dir = tmp_path / "out"
+        progress_dir = output_dir / "progress"
+        _write_job_metadata(progress_dir, NESTED_DATASETS, no_qc=True)
+
+        with (
+            patch(
+                "phenotypic._cli._cli_checkpoint_handler._wait_for_completion"
+            ),
+            patch(
+                "phenotypic._cli._cli_output_manager.aggregate_measurements"
+            ) as mock_aggregate,
+            patch(
+                "phenotypic._cli._dashboard._manifest_builder.build_manifest"
+            ),
+            patch(
+                "phenotypic._cli._cli_chunk_writer._run_analysis_plugins"
+            ),
+            patch(
+                "phenotypic._cli._dashboard._generator.generate_dashboard"
+            ),
+        ):
+            _run_finalize(output_dir, progress_dir)
+
+        assert mock_aggregate.call_args.kwargs["no_qc"] is True
 
 
 class TestRunFinalizeCoercion:

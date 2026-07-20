@@ -13,6 +13,7 @@ from pydantic import (
     Field,
     PrivateAttr,
     field_validator,
+    model_validator,
 )
 
 from phenotypic.schema import OBJECT
@@ -37,6 +38,7 @@ from phenotypic.analysis.abc_._set_analyzer import SetAnalyzer
 # never pulls in qc._runner / _cli / gui at module load.
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_.mixin import LazyWidgetMixin
+from phenotypic.plotting._bindings import PlotBinding, normalize_plot_bindings
 
 logger = logging.getLogger("ImagePipeline")
 
@@ -214,6 +216,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     # dedicated entry shape, so it must not also leak through the generic
     # pydantic dump.
     qc: List[QcRecipeEntry] = Field(default_factory=list, exclude=True)
+    # Plot bindings are serialized through the pipeline envelope so live object
+    # identity can be represented as a slot reference. Generic ``model_dump``
+    # must never copy or recursively serialize the resolved plot object.
+    plots: List[Any] = Field(default_factory=list, exclude=True)
 
     # Internal (non-config) benchmarking state — never serialized.
     _operation_times: Dict[str, float] = PrivateAttr(default_factory=dict)
@@ -306,6 +312,36 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 f"qc must be a list of QcRecipeEntry or None, got {type(value)}"
         )
 
+    @field_validator("plots", mode="before")
+    @classmethod
+    def _normalize_plots_collection(cls, value: Any) -> Any:
+        """Coerce ``None`` to an empty ordered plot list."""
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise TypeError(
+                f"plots must be a list of plot objects or bindings, got {type(value)}"
+            )
+        return value
+
+    @model_validator(mode="after")
+    def _resolve_plot_bindings(self) -> "ImagePipelineCore":
+        """Resolve plots only after every regular pipeline slot is validated."""
+        for key, operation in self.ops.items():
+            if isinstance(operation, ImagePipelineCore) and operation.plots:
+                raise ValueError(
+                    f"nested pipeline operation {key!r} contains plots; nested plot "
+                    "execution is not supported"
+                )
+        bindings = normalize_plot_bindings(
+            self.plots,
+            self._plot_object_registry(),
+        )
+        # Bypass validate_assignment to avoid recursively invoking this model
+        # validator while replacing raw entries with their resolved bindings.
+        object.__setattr__(self, "plots", bindings)
+        return self
+
     # ------------------------------------------------------------------ #
     # Legacy attribute shims.
     #
@@ -392,6 +428,15 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     @_qc.setter
     def _qc(self, value: List[QcRecipeEntry]) -> None:
         self.qc = value
+
+    @property
+    def _plots(self) -> List[PlotBinding]:
+        """Legacy-style alias for the normalized plot binding list."""
+        return self.plots
+
+    @_plots.setter
+    def _plots(self, value: List[Any]) -> None:
+        self.plots = value
 
     @property
     def _benchmark(self) -> bool:
@@ -623,6 +668,43 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 checks are configured.
         """
         return list(self._qc)
+
+    def set_plots(self, plots: Optional[List[Any]]) -> None:
+        """Set and normalize configured plot bindings.
+
+        Args:
+            plots: Plot-capable objects or explicit bindings. ``None`` clears
+                the configured plots.
+        """
+        values = plots if plots is not None else []
+        bindings = normalize_plot_bindings(
+            values,
+            self._plot_object_registry(),
+        )
+        object.__setattr__(self, "plots", bindings)
+
+    def get_plots(self) -> List[PlotBinding]:
+        """Return a shallow copy of the normalized plot bindings."""
+        return list(self._plots)
+
+    def _plot_object_registry(self) -> dict[tuple[str, str | None], Any]:
+        """Return the identity registry used by plot binding normalization."""
+        registry: dict[tuple[str, str | None], Any] = {}
+        for slot, values in (
+            ("ops", self.ops),
+            ("meas", self.meas),
+            ("post", self.post),
+            ("filters", self.filters),
+        ):
+            registry.update(
+                ((slot, key), value) for key, value in values.items()
+            )
+        if self.model is not None:
+            registry[("model", None)] = self.model
+        registry.update(
+            (("qc", entry.instance_id), entry) for entry in self.qc
+        )
+        return registry
 
     def analyze(self, df: pd.DataFrame) -> pd.DataFrame:
         """Run the analysis chain (filters then model) against an aggregate frame.

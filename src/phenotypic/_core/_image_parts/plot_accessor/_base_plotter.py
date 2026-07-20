@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import weakref
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
@@ -8,7 +9,7 @@ import numpy as np
 from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base import ImageAccessorBase
 
 if TYPE_CHECKING:
-    pass
+    from phenotypic._core._image import Image
 
 
 class BasePlotter(ImageAccessorBase):
@@ -18,6 +19,21 @@ class BasePlotter(ImageAccessorBase):
     plotting accessors in PhenoTypic. It provides utilities for memory management,
     figure handling, and common plotting patterns.
     """
+
+    def __init__(self, root_image: Image) -> None:
+        """Bind the call-time image without extending its lifetime."""
+        self._root_image_ref = weakref.ref(root_image)
+
+    @property
+    def _root_image(self) -> Image:
+        """Return the live image or fail after its caller releases it."""
+        image = self._root_image_ref()
+        if image is None:
+            raise RuntimeError(
+                "The image bound to this plotter has been released. Keep the "
+                "image alive while interacting with its report."
+            )
+        return image
 
     @property
     def _accessor_property_name(self) -> str:

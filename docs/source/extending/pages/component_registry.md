@@ -1,7 +1,7 @@
 # Component Registry System
 
 PhenoTypic uses Python's import system as its component registry.
-Operations, plotters, and dashboards are discoverable by class name,
+Operations and serializable pipeline components are discoverable by class name,
 enabling JSON serialization and dynamic pipeline construction.
 
 ## How It Works
@@ -38,12 +38,12 @@ class MyCustomEnhancer(ImageEnhancer):
 When loading a pipeline that contains `MyCustomEnhancer`, ensure
 `my_package` is installed and importable.
 
-## Plot Registry
+## Pipeline plot bindings
 
-Plotters follow a similar pattern — they register through Python's
-class system and are accessible via the `image.plot` accessor. Static
-figures come from `image.plot.<name>()`; interactive views are served
-through the `image.plot.dash.<name>()` sub-namespace.
+There is no image-level plot registry. Plot-capable objects opt into one of the
+lifecycles in `phenotypic.abc_.plotting` and are listed explicitly in
+`ImagePipeline(plots=[...])`. Serialization records either an identity-preserving
+reference to another pipeline slot or an inline plot model.
 
 ## Naming Conventions
 

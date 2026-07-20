@@ -474,7 +474,7 @@ class QualityCheck(SetAnalyzer, ABC):
         )
 
     def show(self, *args: Any, **kwargs: Any) -> Any:
-        """QualityCheck plots are Plotly-only — see :meth:`dash`.
+        """QualityCheck plots are Plotly-only through ``PlotQc.inspect``.
 
         :class:`SetAnalyzer`'s matplotlib ``show()`` is not implemented
         for QC because the QC tab is Plotly-driven. Raising rather than
@@ -482,11 +482,11 @@ class QualityCheck(SetAnalyzer, ABC):
         right method.
 
         Raises:
-            NotImplementedError: Always; use :meth:`dash` instead.
+            NotImplementedError: Always; use :meth:`inspect` instead.
         """
         raise NotImplementedError(
             f"{type(self).__name__} does not implement matplotlib "
-            f"show(); use dash() for interactive output."
+            f"show(); use inspect() for interactive output."
         )
 
     def __init_subclass__(cls, **kwargs: Any) -> None:

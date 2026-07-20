@@ -675,8 +675,8 @@ def _filter_kwargs_to_signature(cls: type, kwargs: dict[str, Any]) -> dict[str, 
 def _run_inline(recipe: Any, layout: "BundleLayout") -> Any:
     """Read measurements.parquet, run analyze, atomic-write outputs.
 
-    Resolves both the read (the post-applied mirror) and the write
-    (``analysis.{csv,parquet}``) through ``layout`` rather than a bare
+    Resolves both the read (the post-applied mirror) and the named analysis
+    artifact writes through ``layout`` rather than a bare
     output root, so a standalone deliverables bundle — whose viewer ``root`` IS
     the deliverables folder — never double-joins ``deliverables/``.
     """
@@ -712,9 +712,29 @@ def _run_inline(recipe: Any, layout: "BundleLayout") -> Any:
             style={"color": OI_VERMILION_TEXT},
         )
 
-    written, n_rows = result
+    written = result.artifacts.parquet if result.artifacts is not None else None
+    if written is None:
+        return html.Span(
+            "Analysis ran but its artifacts were not published.",
+            style={"color": OI_VERMILION_TEXT},
+        )
+    try:
+        from phenotypic.gui._plot_refresh import refresh_analysis_plots
+
+        refresh_analysis_plots(
+            recipe.pipeline,
+            layout,
+            master_pl.to_pandas(),
+            result,
+        )
+    except Exception:  # noqa: BLE001 - analysis artifact remains authoritative
+        logger.warning(
+            "GUI analysis plot refresh failed after publishing %s",
+            written.name,
+            exc_info=True,
+        )
     return html.Span(
-        f"Wrote {written.name} ({n_rows} rows · {duration:.1f}s)",
+        f"Wrote {written.name} ({len(result.table)} rows · {duration:.1f}s)",
         style={"color": OI_GREEN_TEXT},
     )
 

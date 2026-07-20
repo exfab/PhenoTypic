@@ -124,7 +124,6 @@ from ._metadata_accessor import MetadataAccessor
 from ..color_space_accessors._hsv_accessor import HsvAccessor
 from ._grid_accessor import GridAccessor
 from ._color_accessor import ColorAccessor
-from ._plot_accessor import PlotAccessor
 
 # Color space accessors (for backward compatibility and internal use)
 from ..color_space_accessors._xyz_accessor import XyzAccessor
@@ -148,5 +147,4 @@ __all__ = [
     "XyzD65Accessor",
     "CieLabAccessor",
     "xyChromaticityAccessor",
-    "PlotAccessor",
 ]

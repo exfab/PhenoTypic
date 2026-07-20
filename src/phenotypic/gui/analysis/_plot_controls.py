@@ -1,6 +1,6 @@
 """Session-scoped plotting controls for filter / model section cards.
 
-Analyzer visualization methods (``show`` / ``dash``) take *plotting*
+Analyzer visualization methods (``show`` / ``inspect``) take *plotting*
 parameters — ``figsize``, ``collapsed``, ``cmap``, ``legend``,
 ``max_groups``, ``tmax`` — that are plain method arguments, **not**
 pydantic fields. They therefore have no schema and never serialize into
@@ -26,7 +26,6 @@ from typing import TYPE_CHECKING, Any
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 
-from phenotypic.analysis.abc_ import SetAnalyzer
 from phenotypic.gui._design import COLOR_MUTED
 from phenotypic.gui.analysis import _ids as ids
 
@@ -38,7 +37,7 @@ logger = logging.getLogger(__name__)
 #: Method parameters never surfaced as widgets — ``ax`` is an internal
 #: matplotlib hand-off and ``criteria`` is a nested filter dict with no
 #: sensible scalar widget.
-_EXCLUDED_PARAMS: frozenset[str] = frozenset({"ax", "criteria"})
+_EXCLUDED_PARAMS: frozenset[str] = frozenset({"ax", "criteria", "for_save"})
 
 #: Widget dtypes a :class:`PlotParamSpec` can carry.
 PlotDType = str  # one of: "bool", "number", "tuple", "str"
@@ -64,14 +63,15 @@ class PlotParamSpec:
 def _viz_method(node: Any) -> Any:
     """Return the bound visualization method ``render_plot`` will call.
 
-    ``render_plot`` tries ``dash`` first and falls back to ``show`` on
-    ``NotImplementedError``. A subclass that leaves ``dash`` inherited
-    from :class:`SetAnalyzer` raises that error, so ``show`` is what
-    actually runs; a subclass that overrides ``dash`` (every
-    ``ModelFitter``) uses ``dash``.
+    Plot-capable models expose explicit controls on ``inspect`` while
+    ``render_plot`` passes those values to ``report``. Other analyzers use
+    their Matplotlib ``show`` method.
     """
-    overrides_dash = type(node).dash is not SetAnalyzer.dash
-    return node.dash if overrides_dash else node.show
+    inspect_plot = getattr(node, "inspect", None)
+    report_plot = getattr(node, "report", None)
+    if callable(inspect_plot) and callable(report_plot):
+        return inspect_plot
+    return node.show
 
 
 def _classify(default: Any, annotation: Any) -> PlotDType:

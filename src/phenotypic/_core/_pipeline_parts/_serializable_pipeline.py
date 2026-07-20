@@ -185,6 +185,14 @@ class SerializablePipeline(NapariPipelineViewer):
         if qc_entries:
             config["qc"] = qc_entries
 
+        plot_bindings = pipeline.get_plots()
+        if plot_bindings:
+            from phenotypic.plotting._bindings import serialize_plot_binding
+
+            config["plots"] = [
+                serialize_plot_binding(binding) for binding in plot_bindings
+            ]
+
         # Omit when unset so legacy JSONs round-trip unchanged.
         if pipeline._nrows is not None:
             config["nrows"] = pipeline._nrows
@@ -374,12 +382,47 @@ class SerializablePipeline(NapariPipelineViewer):
         # reconstruction).
         from phenotypic._core._image_pipeline import ImagePipeline
 
-        return ImagePipeline(
+        pipeline = ImagePipeline(
             ops=ops, meas=meas, post=post, filters=filters, model=model,
             qc=qc,
             benchmark=benchmark, verbose=verbose,
             name=name, desc=desc, reset=reset, nrows=nrows, ncols=ncols,
         )
+        # Plot references can only be resolved after all ordinary slots have
+        # been reconstructed. This preserves shared identity for objects that
+        # are both producers and configured plot providers.
+        plot_entries = config.get("plots", []) or []
+        if plot_entries:
+            from phenotypic.plotting._bindings import deserialize_plot_bindings
+
+            skipped_refs: set[tuple[str, str | None]] = set()
+            if skip_unknown_analyzers and skipped is not None:
+                for warning in skipped:
+                    if warning.slot == "filter":
+                        skipped_refs.add(("filters", warning.name))
+                    elif warning.slot == "model":
+                        skipped_refs.add(("model", None))
+                    elif warning.slot == "qc":
+                        skipped_refs.add(("qc", warning.name))
+            skipped_inline: list[tuple[str, str]] | None = (
+                [] if skip_unknown_analyzers else None
+            )
+            pipeline.plots = deserialize_plot_bindings(
+                plot_entries,
+                pipeline._plot_object_registry(),
+                skipped_refs=frozenset(skipped_refs),
+                skipped_inline=skipped_inline,
+            )
+            if skipped is not None and skipped_inline:
+                skipped.extend(
+                    PipelineLoadWarning(
+                        slot="plot",
+                        name=binding_id,
+                        class_name=qualified_name,
+                    )
+                    for binding_id, qualified_name in skipped_inline
+                )
+        return pipeline
 
     # ------------------------------------------------------------------ #
     # Operation / measurement / post serialization

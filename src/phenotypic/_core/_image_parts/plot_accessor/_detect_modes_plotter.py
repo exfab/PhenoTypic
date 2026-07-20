@@ -1,4 +1,4 @@
-"""Faceted detection-mode comparison plotter (notebook Plotly ``FigureProvider``).
+"""Faceted detection-mode comparison plotter (notebook Plotly ``PhtPlot``).
 
 Plotly successor to the Panel ``DetectModeDashboard``: instead of a dropdown +
 thumbnail Panel layout, it renders one faceted ``go.Figure`` with a subplot per
@@ -14,15 +14,13 @@ from typing import Any
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from phenotypic.abc_ import FigureProvider, figure
+from phenotypic.abc_.plotting import PhtPlot, figure
 from phenotypic.sdk_._plotly_helpers import plotly_imshow
-from phenotypic.sdk_.register import register_plotter
 
 from ._base_plotter import BasePlotter
 
 
-@register_plotter
-class DetectModesPlotter(BasePlotter, FigureProvider):
+class DetectModesPlotter(BasePlotter, PhtPlot):
     """Compare every registered detection mode as a faceted Plotly figure.
 
     This is the notebook-only Plotly replacement for the Panel
@@ -34,22 +32,22 @@ class DetectModesPlotter(BasePlotter, FigureProvider):
 
     Modes that require RGB data are skipped when the image has none.
 
-    The single ``@figure`` method :meth:`detect_modes` is control-free, so both
-    ``image.plot.detect_modes()`` (the themed faceted figure) and
-    ``image.plot.dash.detect_modes()`` (``.dash()`` on the provider) return the
+    The single ``@figure`` method :meth:`detect_modes` is control-free, so the
+    standalone provider's ``.inspect(image)`` and ``.report(image)`` return the
     same ``go.Figure`` directly.
 
     Examples:
         >>> from phenotypic.data import load_synth_yeast_plate
         >>> image = load_synth_yeast_plate()
-        >>> fig = image.plot.detect_modes()
+        >>> from phenotypic.plotting import PlotDetectModes
+        >>> fig = PlotDetectModes().inspect(image)
         >>> # fig.show()  # interactive faceted comparison in a notebook
     """
 
     call_name = "detect_modes"
 
     def _figure_subject(self) -> Any:
-        """Subject for the ``FigureProvider`` mixin.
+        """Subject for the ``PhtPlot`` mixin.
 
         This plotter is a *helper* provider: the ``@figure`` method reads
         ``self`` directly and takes no subject parameter, so the returned

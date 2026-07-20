@@ -31,13 +31,6 @@ from ._grid_object_refiner import GridObjectRefiner
 from ._grid_measure import GridMeasureFeatures
 from ._grid_finder import GridFinder
 from ._base_operation import BaseOperation
-from ._figure_provider import (
-    BoundFigures,
-    Control,
-    FigureProvider,
-    FigureSpec,
-    figure,
-)
 from ._grid_object_detector import GridObjectDetector
 from ._prefab_pipeline import PrefabPipeline
 from ._post_measurement import PostMeasurement
@@ -75,9 +68,4 @@ __all__ = [
     "PostMeasurement",
     "DetectionMode",
     "register_detection_mode",
-    "Control",
-    "FigureSpec",
-    "figure",
-    "FigureProvider",
-    "BoundFigures",
 ]

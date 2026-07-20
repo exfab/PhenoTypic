@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import shutil
+import uuid
 import warnings
 from pathlib import Path
 from typing import (
@@ -31,6 +32,7 @@ import polars as pl
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic._core._image_pipeline import ImagePipeline
+    from phenotypic.plotting import AnalysisResult
 
 from ._cli_types import Dataset
 from ._measurement_sources import (
@@ -45,15 +47,11 @@ from phenotypic.sdk_ import (
     DIR_RESULTS,
     DIR_MEASUREMENTS,
     DIR_HDF,
-    DIR_INSPECT,
-    ANALYSIS_CSV,
-    ANALYSIS_PARQUET,
     PARQUET_WRITE_OPTIONS,
     EnvVar,
-    analysis_csv_path,
-    analysis_parquet_path,
     atomic_write_with_writer,
     dataset_overlays_dir,
+    deliverables_dir,
     master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_by_feature_dir,
@@ -62,6 +60,7 @@ from phenotypic.sdk_ import (
     metadata_csv_deliverable_path,
     logs_dir,
     pipeline_json_path,
+    qc_duckdb_path,
     resolve_pipeline_config_path,
     resolve_processing_state_path,
 )
@@ -465,8 +464,8 @@ def _emit_analysis_outputs(
     pipeline: "ImagePipeline",
     *,
     deliverables_base: Optional[Path] = None,
-) -> Optional[tuple[Path, int]]:
-    """Run ``pipeline.analyze`` and atomic-write ``analysis.{csv,parquet}``.
+) -> Optional["AnalysisResult"]:
+    """Run ``pipeline.analyze`` and publish class-named analysis artifacts.
 
     No-op when the pipeline has no model configured (``pipeline.get_model()``
     returns ``None``); the auto-emit trigger is the presence of an analysis
@@ -475,7 +474,7 @@ def _emit_analysis_outputs(
 
     Args:
         output_dir: Output root directory. Used to resolve the
-            ``analysis.{csv,parquet}`` write location via
+            named analysis write location via
             ``deliverables_dir(output_dir)`` UNLESS ``deliverables_base`` is
             supplied.
         df: The frame to analyze (polars). The CLI passes the
@@ -486,22 +485,21 @@ def _emit_analysis_outputs(
             before calling this.
         pipeline: Pipeline whose ``model`` (and optional ``filters``)
             define the analysis chain.
-        deliverables_base: When given, write ``analysis.{csv,parquet}``
+        deliverables_base: When given, write named analysis artifacts
             directly into this folder instead of ``deliverables_dir(output_dir)``.
             The GUI analysis sub-app passes ``layout.deliverables_base`` here so a
             standalone deliverables bundle (where the viewer ``root`` IS the
             deliverables folder) does not double-join ``deliverables/``.
 
     Returns:
-        ``(analysis_parquet_path, row_count)`` on success — the GUI's
-        run console reads the row count without re-decoding the parquet.
-        ``None`` when no model is configured or the analysis raised;
-        failure is logged at WARNING.
+        Runtime result retaining the exact analyzed table and producer on
+        success. ``None`` when no model is configured or publication failed.
     """
-    if pipeline.get_model() is None:
+    model = pipeline.get_model()
+    if model is None:
         logger.debug(
             "Pipeline has no analysis model configured; skipping "
-            "analysis.{csv,parquet}",
+            "named analysis artifacts",
         )
         return None
 
@@ -515,37 +513,97 @@ def _emit_analysis_outputs(
         )
         return None
 
-    if deliverables_base is not None:
-        csv_path = deliverables_base / ANALYSIS_CSV
-        pq_path = deliverables_base / ANALYSIS_PARQUET
-    else:
-        csv_path = analysis_csv_path(output_dir)
-        pq_path = analysis_parquet_path(output_dir)
+    from phenotypic.plotting import (
+        AnalysisManifestEntry,
+        AnalysisResult,
+        file_sha256,
+        publish_analysis_manifest_entry,
+        recover_analysis_publication,
+        write_analysis_publication_journal,
+    )
 
-    try:
-        atomic_write_with_writer(csv_path, fit_pl.write_csv)
-    except Exception:
-        logger.warning("Failed to write analysis.csv")
-        return None
+    analysis_id = type(model).__name__
+    base = (
+        Path(deliverables_base)
+        if deliverables_base is not None
+        else deliverables_dir(output_dir)
+    )
+    from phenotypic.plotting._analysis_artifacts import (
+        _analysis_publication_paths,
+    )
+    from phenotypic.sdk_._file_locking import exclusive_path_lock
 
-    try:
-        atomic_write_with_writer(
-            pq_path,
-            lambda p: fit_pl.write_parquet(p, **PARQUET_WRITE_OPTIONS),
-        )
-    except Exception:
-        logger.warning(
-            "Failed to write analysis.parquet (analysis.csv was written)"
-        )
-        return None
+    transaction = _analysis_publication_paths(
+        base, analysis_id, uuid.uuid4().hex
+    )
+    paths = transaction.canonical
+    with exclusive_path_lock(transaction.lock):
+        staged_csv = transaction.staged_csv
+        staged_parquet = transaction.staged_parquet
+        backup_csv = transaction.backup_csv
+        backup_parquet = transaction.backup_parquet
+        try:
+            recover_analysis_publication(base)
+            fit_pl.write_csv(staged_csv)
+            fit_pl.write_parquet(staged_parquet, **PARQUET_WRITE_OPTIONS)
+            entry = AnalysisManifestEntry(
+                producer_class=type(model).__name__,
+                csv=paths.csv.name,
+                parquet=paths.parquet.name,
+                rows=len(fit_pd),
+                columns=tuple(fit_pd.columns),
+                csv_sha256=file_sha256(staged_csv),
+                parquet_sha256=file_sha256(staged_parquet),
+            )
+            write_analysis_publication_journal(
+                base,
+                analysis_id=analysis_id,
+                token=transaction.token,
+                old_csv_exists=paths.csv.exists(),
+                old_parquet_exists=paths.parquet.exists(),
+                entry=entry,
+            )
+            if paths.csv.exists():
+                os.replace(paths.csv, backup_csv)
+            if paths.parquet.exists():
+                os.replace(paths.parquet, backup_parquet)
+            os.replace(staged_csv, paths.csv)
+            os.replace(staged_parquet, paths.parquet)
+            publish_analysis_manifest_entry(base, analysis_id, entry)
+            recover_analysis_publication(base)
+        except Exception:
+            try:
+                recover_analysis_publication(base)
+            except Exception:  # noqa: BLE001 - preserve journal for next recovery
+                logger.error(
+                    "Could not recover interrupted analysis publication for %s",
+                    analysis_id,
+                    exc_info=True,
+                )
+            logger.warning(
+                "Failed to publish analysis artifacts for %s; restored the "
+                "previous generation",
+                analysis_id,
+                exc_info=True,
+            )
+            return None
+        finally:
+            for temporary in (staged_csv, staged_parquet):
+                temporary.unlink(missing_ok=True)
 
     logger.info(
         "Wrote analysis (%d rows x %d cols) to %s",
         fit_pl.height,
         fit_pl.width,
-        pq_path.name,
+        paths.parquet.name,
     )
-    return pq_path, fit_pl.height
+    return AnalysisResult(
+        analysis_id=analysis_id,
+        table=fit_pd,
+        producer=model,
+        artifacts=paths,
+        manifest_entry=entry,
+    )
 
 
 def _apply_post_to_master(
@@ -862,8 +920,24 @@ def finalize_post_master_outputs(
         )
 
     if pipeline is not None:
+        from phenotypic.plotting import AnalysisRegistry, PlotCoordinator
+
         _persist_pipeline_to_output_dir(output_dir, pipeline)
-        _emit_analysis_outputs(output_dir, post_df, pipeline)
+        measurements_pd = post_df.to_pandas()
+        coordinator = PlotCoordinator(pipeline, output_dir)
+        registry = AnalysisRegistry(deliverables_dir(output_dir))
+        coordinator.emit_measurements(measurements_pd)
+
+        analysis_result = _emit_analysis_outputs(output_dir, post_df, pipeline)
+        if analysis_result is not None:
+            registry.register(
+                analysis_result.analysis_id,
+                analysis_result.table,
+                producer=analysis_result.producer,
+                artifacts=analysis_result.artifacts,
+                manifest_entry=analysis_result.manifest_entry,
+            )
+        coordinator.emit_analyses(measurements_pd, registry)
 
         # QC compute + review-progress reset. A fresh CLI run is "a different
         # run", so the GUI-owned review_state.json is cleared regardless of
@@ -872,6 +946,7 @@ def finalize_post_master_outputs(
         # when QC is enabled and configured; failures are isolated so the
         # authoritative master files are never affected.
         _reset_qc_review_state(output_dir)
+        successful_qc: dict[str, Any] = {}
         if not no_qc and pipeline.get_qc():
             try:
                 # Import the submodule directly (not ``phenotypic.qc``) so QC
@@ -879,12 +954,25 @@ def finalize_post_master_outputs(
                 # the qc package __init__ free of an eager _runner import.
                 from phenotypic.sdk_._qc_recipe._runner import run_qc
 
-                run_qc(post_df.to_pandas(), pipeline, output_dir)
+                successful = run_qc(measurements_pd, pipeline, output_dir)
+                successful_qc = {
+                    module.instance_id: module for module in successful
+                }
             except Exception:
                 logger.warning(
                     "QC compute failed (master/measurements still written)",
                     exc_info=True,
                 )
+        coordinator.emit_qc(
+            measurements_pd,
+            registry,
+            successful_modules=successful_qc,
+            qc_database=(
+                qc_duckdb_path(output_dir)
+                if successful_qc
+                else None
+            ),
+        )
     else:
         logger.warning(
             "Pipeline not available — skipping analysis, QC, and "
@@ -1182,7 +1270,6 @@ class OutputManager:
         include_dataset_column: bool = True,
         overlay_alpha: float = 0.3,
         save_overlays: bool = True,
-        save_inspects: bool = False,
     ):
         """
         Initialize OutputManager.
@@ -1200,10 +1287,6 @@ class OutputManager:
                 ``overlays/`` directory per dataset and workers will save
                 a PNG overlay per image. Defaults to True; set False only
                 for measure-mode reruns that should not regenerate overlays.
-            save_inspects: If True, ``create_structure`` provisions an
-                ``inspect/`` directory per dataset and workers will call
-                :meth:`save_inspect` for every measurer with a ``.inspect()``
-                method. Defaults to False (opt-in via ``--save-inspect``).
         """
         self.base_dir = Path(base_dir)
         self.save_layers = save_layers
@@ -1211,7 +1294,6 @@ class OutputManager:
         self.include_dataset_column = include_dataset_column
         self.overlay_alpha = overlay_alpha
         self.save_overlays = save_overlays
-        self.save_inspects = save_inspects
 
         # Results directory for dataset outputs (images, measurements, overlays)
         self.results_dir = self.base_dir / DIR_RESULTS
@@ -1227,7 +1309,6 @@ class OutputManager:
         include_dataset_column: bool = True,
         overlay_alpha: float = 0.3,
         save_overlays: bool = True,
-        save_inspects: bool = False,
     ) -> "OutputManager":
         """Create an OutputManager configured for HDF-centric forward runs.
 
@@ -1247,10 +1328,6 @@ class OutputManager:
                 dataset and save an overlay per image. Pass False only
                 for measure-mode reruns that should not regenerate
                 overlays.
-            save_inspects: If True, provision ``inspect/`` per dataset
-                and call :meth:`save_inspect` for every measurer that
-                implements ``.inspect()``. Defaults to False (opt-in
-                via the CLI's ``--save-inspect`` flag).
         """
         return cls(
             base_dir=base_dir,
@@ -1259,7 +1336,6 @@ class OutputManager:
             include_dataset_column=include_dataset_column,
             overlay_alpha=overlay_alpha,
             save_overlays=save_overlays,
-            save_inspects=save_inspects,
         )
 
     def create_structure(self, datasets: List[Dataset]) -> None:
@@ -1295,12 +1371,6 @@ class OutputManager:
                 dataset_overlays_dir(self.base_dir, dataset.name).mkdir(
                     parents=True, exist_ok=True
                 )
-            if self.save_inspects:
-                # Per-measurer subdirs (inspect/<measurer-key>/) are
-                # created lazily by :meth:`save_inspect`; we only
-                # provision the parent here so workers don't race on
-                # the first dispatch.
-                (dataset_dir / DIR_INSPECT).mkdir(exist_ok=True)
 
     def get_output_path(
         self, dataset_name: str, layer: str, image_stem: str
@@ -1405,177 +1475,6 @@ class OutputManager:
             )
 
         return output_path
-
-    def save_inspect(
-        self,
-        measurer: Any,
-        image: "Image",
-        dataset_name: str,
-        image_stem: str,
-        *,
-        measurer_key: str,
-    ) -> Optional[Path]:
-        """Render ``measurer.inspect(image, for_save=True)`` and write a PNG.
-
-        Lands at ``<results>/<dataset>/inspect/<measurer-key>/<stem>.png``.
-        Dispatches on the returned figure's type — matplotlib and plotly
-        figures are both supported. Any other return type, or any
-        exception raised by the inspect call or the writer, is logged at
-        WARNING and skipped (the run continues).
-
-        Precondition: the caller must invoke this method immediately
-        after ``pipeline.apply_and_measure(image)`` / ``pipeline.measure(image)``
-        on the same ``image`` instance. Measurer implementations rely
-        on a per-instance diagnostic cache populated during ``_operate()``
-        keyed on object identity; calling ``inspect()`` against a
-        different image silently triggers a full recompute.
-
-        Args:
-            measurer: A ``MeasureFeatures`` subclass instance with an
-                ``inspect(image, *, for_save=True)`` method (duck-typed).
-            image: The Image just measured by ``measurer``.
-            dataset_name: Dataset name (used in the output path).
-            image_stem: Image filename stem (used in the output path).
-            measurer_key: Pipeline step key for the measurer; used as
-                the subdirectory under ``inspect/`` so distinct
-                instances of the same class land in distinct folders.
-
-        Returns:
-            The written PNG path on success, or ``None`` if the inspect
-            call raised, returned an unsupported figure type, or the
-            writer failed.
-        """
-        inspect_dir = (
-            self.results_dir / dataset_name / DIR_INSPECT / measurer_key
-        )
-        output_path = inspect_dir / f"{image_stem}.png"
-        try:
-            fig = measurer.inspect(image, for_save=True)
-        except Exception as e:
-            logger.warning(
-                "save_inspect: inspect() raised for %s/%s/%s: %s: %s",
-                dataset_name,
-                image_stem,
-                measurer_key,
-                type(e).__name__,
-                e,
-            )
-            return None
-
-        try:
-            writer = self._build_inspect_writer(fig, image_stem)
-        except TypeError as e:
-            logger.warning(
-                "save_inspect: unsupported figure type for %s/%s/%s: %s",
-                dataset_name,
-                image_stem,
-                measurer_key,
-                e,
-            )
-            return None
-
-        try:
-            atomic_write_with_writer(output_path, writer)
-        except Exception as e:
-            logger.warning(
-                "save_inspect: writer failed for %s/%s/%s: %s: %s",
-                dataset_name,
-                image_stem,
-                measurer_key,
-                type(e).__name__,
-                e,
-            )
-            return None
-        return output_path
-
-    @staticmethod
-    def _build_inspect_writer(
-        fig: Any,
-        image_stem: str,
-    ) -> Callable[[str], None]:
-        """Return a writer callable that prepends ``image_stem`` to the
-        figure title then writes a PNG at the given path.
-
-        Title mutation is deferred into the returned writer (not applied
-        eagerly) so that calling this builder twice on the same figure
-        does not compound the prepended stem. This matters for any
-        future measurer that returns a cached figure object from
-        ``inspect()`` — without the deferral, a second
-        ``save_inspect`` call on the same cache hit would produce
-        ``"img2 — img1 — original-title"``.
-
-        Raises:
-            TypeError: When *fig* is neither a matplotlib nor a plotly
-                Figure instance. Caller logs and skips.
-        """
-        try:
-            from matplotlib.figure import Figure as MplFigure
-        except ImportError:
-            MplFigure = None  # type: ignore[assignment]
-
-        try:
-            from plotly.graph_objects import Figure as PlotlyFigure
-        except ImportError:
-            PlotlyFigure = None  # type: ignore[assignment]
-
-        if MplFigure is not None and isinstance(fig, MplFigure):
-            # Capture the title at builder construction. The writer
-            # mutates the figure, writes the PNG, then restores the
-            # original title so a second write on the same cached
-            # figure does not see a stem-prefixed baseline.
-            original_mpl_title = (
-                fig._suptitle.get_text() if fig._suptitle else ""  # type: ignore[attr-defined]
-            )
-
-            def _write_mpl(path: str) -> None:
-                # The atomic helper writes through a ``.tmp`` suffix, so force
-                # ``format="png"`` because matplotlib infers from the
-                # extension otherwise.
-                import matplotlib.pyplot as plt
-
-                fig.suptitle(
-                    f"{image_stem} — {original_mpl_title}".rstrip(" —")
-                )
-                try:
-                    fig.savefig(
-                        path,
-                        format="png",
-                        dpi=150,
-                        bbox_inches="tight",
-                    )
-                finally:
-                    fig.suptitle(original_mpl_title)
-                plt.close(fig)
-
-            return _write_mpl
-
-        if PlotlyFigure is not None and isinstance(fig, PlotlyFigure):
-            original_plotly_title = ""
-            title = fig.layout.title
-            if title is not None and title.text:
-                original_plotly_title = str(title.text)
-
-            def _write_plotly(path: str) -> None:
-                # Force ``format="png"`` for the same reason as the mpl
-                # branch: kaleido would otherwise infer from the ``.tmp``
-                # temp-file extension.
-                new_text = f"{image_stem} — {original_plotly_title}".rstrip(
-                    " —"
-                )
-                fig.update_layout(title={"text": new_text})
-                try:
-                    fig.write_image(path, format="png", scale=2)
-                finally:
-                    fig.update_layout(
-                        title={"text": original_plotly_title},
-                    )
-
-            return _write_plotly
-
-        raise TypeError(
-            f"figure type {type(fig).__name__} is not matplotlib.figure.Figure "
-            f"or plotly.graph_objects.Figure"
-        )
 
     def _save_layer_safely(
         self,

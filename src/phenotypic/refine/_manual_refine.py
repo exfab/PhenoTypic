@@ -87,7 +87,7 @@ class ManualRefine(ObjectRefiner, PointPickerMixin, FootprintMixin):
         displays only ``rgb``, ``gray``, and ``detect_mat`` layers — it
         does **not** overlay the existing ``objmap``. Before calling
         ``ManualRefine.napari(image)``, preview what is available to pick
-        with ``image.objmap.show()`` or ``image.plot.show()`` so you can
+        with ``image.objmap.show()`` or ``image.show(overlay=True)`` so you can
         see which detections exist.
 
     See Also:

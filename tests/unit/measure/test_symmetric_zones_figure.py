@@ -1,18 +1,21 @@
-"""Phase 3 proof: ``MeasureSymmetricZones.inspect`` routed onto ``@figure``.
+"""PlotImage contract tests for ``MeasureSymmetricZones``.
 
 Verifies the pydantic operation gains the figure protocol (themed ``inspect``,
-a ``base_layer`` select Control, an ipywidgets ``.dash()``, control-driven
+a ``base_layer`` select Control, an ipywidgets ``.report()``, control-driven
 recompute) WITHOUT changing the CLI ``inspect`` contract (``for_save`` flatten)
 or its pydantic schema / serialization.
 """
 
 from __future__ import annotations
 
+import weakref
+
 import numpy as np
 import plotly.graph_objects as go
 import pytest
 
 from phenotypic import Image
+from phenotypic.abc_.plotting import PlotImage
 from phenotypic.measure import MeasureSymmetricZones
 from phenotypic.measure._measure_symmetric_zones import BASE_LAYER
 from phenotypic.sdk_ import CONFIG_SUFFIX_OPERATION, ensure_typed_json_suffix
@@ -82,11 +85,19 @@ def test_iter_figures_primary_and_control(measured):
     assert spec.wants_subject is True  # `image` is the subject
 
 
-def test_dash_returns_ipywidget(measured):
+def test_report_returns_ipywidget(measured):
     op, image = measured
     widgets = pytest.importorskip("ipywidgets")
-    dashboard = op.dash(image)
-    assert isinstance(dashboard, widgets.Widget)
+    report = op.report(image)
+    assert isinstance(report, widgets.Widget)
+
+
+def test_uses_plot_image_lifecycle_without_legacy_report_aliases(measured):
+    op, _ = measured
+
+    assert isinstance(op, PlotImage)
+    assert not hasattr(op, "dash")
+    assert not hasattr(op, "dashboard")
 
 
 def test_base_layer_drives_recompute(measured):
@@ -96,8 +107,67 @@ def test_base_layer_drives_recompute(measured):
     f_gray = bound.render(spec, base_layer="gray")
     f_rgb = bound.render(spec, base_layer="rgb")
     f_gray_again = bound.render(spec, base_layer="gray")
-    assert f_gray is f_gray_again  # cached for the same control value
+    assert f_gray is not f_gray_again  # rendered figures are not retained
     assert f_gray is not f_rgb  # recomputed for a different value
+
+
+def test_inspect_reuses_measurement_cache_for_same_image(measured, monkeypatch):
+    op, image = measured
+
+    def _unexpected_recompute(*args, **kwargs):
+        raise AssertionError("inspect recomputed cached zone intermediates")
+
+    monkeypatch.setattr(
+        MeasureSymmetricZones,
+        "_compute_intermediates",
+        _unexpected_recompute,
+    )
+
+    fig = op.inspect(image)
+
+    assert isinstance(fig, go.Figure)
+
+
+def test_inspect_recomputes_cache_after_measurement_parameter_change(
+    measured, monkeypatch
+):
+    op, image = measured
+    original_compute = MeasureSymmetricZones._compute_intermediates
+    recomputed_labels: list[int | None] = []
+
+    def record_recompute(self, subject, object_label=None, prop=None):
+        recomputed_labels.append(object_label)
+        return original_compute(
+            self,
+            subject,
+            object_label=object_label,
+            prop=prop,
+        )
+
+    monkeypatch.setattr(
+        MeasureSymmetricZones,
+        "_compute_intermediates",
+        record_recompute,
+    )
+    op.tau_core = 0.85
+
+    fig = op.inspect(image)
+
+    assert isinstance(fig, go.Figure)
+    assert recomputed_labels
+    assert (
+        getattr(op, "_MeasureSymmetricZones__cache_signature")
+        == op.model_dump_json()
+    )
+
+
+def test_measurement_cache_does_not_retain_whole_image(measured):
+    op, image = measured
+
+    image_ref = getattr(op, "_MeasureSymmetricZones__cache_image_ref")
+    assert isinstance(image_ref, weakref.ReferenceType)
+    assert image_ref() is image
+    assert not hasattr(op, "_MeasureSymmetricZones__cache_image")
 
 
 def test_inspect_rejects_invalid_base_layer(measured):
@@ -133,7 +203,7 @@ def test_operation_to_json_file_uses_typed_suffix(tmp_path):
 
 
 def test_inspect_for_save_png_export_if_chrome(measured, tmp_path):
-    """The kaleido PNG path that ``--save-inspect`` uses (skipped without Chrome)."""
+    """The Kaleido PNG path used by plot publication (skipped without Chrome)."""
     op, image = measured
     fig = op.inspect(image, for_save=True)
     out = tmp_path / "inspect.png"

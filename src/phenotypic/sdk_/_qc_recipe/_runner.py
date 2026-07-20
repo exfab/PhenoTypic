@@ -48,6 +48,7 @@ import re
 import threading
 import time
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -93,13 +94,22 @@ _WRITER_LOCKS_GUARD = threading.Lock()
 _WRITER_LOCKS: dict[Path, threading.Lock] = {}
 
 
+@dataclass(frozen=True)
+class SuccessfulQcModule:
+    """One analyzed check whose tables were published successfully."""
+
+    instance_id: str
+    check: "QualityCheck"
+    table_spec: "QcTableSpec"
+
+
 def run_qc(
     measurements_df: pd.DataFrame,
     pipeline: "ImagePipeline",
     output_dir: Path,
     *,
     qc_output_dir: Path | None = None,
-) -> None:
+) -> list[SuccessfulQcModule]:
     """Run enabled QC checks and atomically (re)build ``qc.duckdb``.
 
     Always a FULL rebuild: a temp DB is built then ``os.replace``-d over the
@@ -138,6 +148,10 @@ def run_qc(
         Writes or removes ``deliverables/qc/qc.duckdb`` (via a unique
         ``.tmp`` + atomic replace for successful rebuilds). Never touches
         ``review_state.json`` or ``measurements.parquet``.
+
+    Returns:
+        Successful modules with the exact analyzed check instances reused for
+        plotting. Modules that failed table publication are not returned.
     """
     output_dir = Path(output_dir)
     if qc_output_dir is not None:
@@ -153,42 +167,62 @@ def run_qc(
                 "No enabled QC entries; removing stale qc.duckdb if present"
             )
             _remove_qc_db_if_present(target)
-            return
+            return []
 
         tmp = _qc_temp_db_path(target)
 
         # Thread `entry` alongside the built frames so the catalog row carries the
         # real params snapshot (QcTableSpec does not hold params).
         built: list[
-            tuple[QcRecipeEntry, "QcTableSpec", pd.DataFrame, pd.DataFrame]
+            tuple[
+                QcRecipeEntry,
+                "QualityCheck",
+                "QcTableSpec",
+                pd.DataFrame,
+                pd.DataFrame,
+            ]
         ] = []
         for entry in entries:
             result = _run_one_check(entry, measurements_df)
             if result is not None:
-                spec, table_df, summary_df = result
-                built.append((entry, spec, table_df, summary_df))
+                check, spec, table_df, summary_df = result
+                built.append((entry, check, spec, table_df, summary_df))
 
         if not built:
             logger.info(
                 "No QC check produced a table; removing stale qc.duckdb"
             )
             _remove_qc_db_if_present(target)
-            return
+            return []
 
         # Build the temp DB; on *any* failure (catalog DDL, the per-module
         # ingest, or the atomic swap) never leave a stale ``.tmp`` behind.
         try:
             written = 0
+            successful: list[SuccessfulQcModule] = []
             con = duckdb.connect(str(tmp))
             try:
                 _create_catalog(con)
-                for ordinal, (entry, spec, table_df, summary_df) in enumerate(
+                for ordinal, (
+                    entry,
+                    check,
+                    spec,
+                    table_df,
+                    summary_df,
+                ) in enumerate(
                     built
                 ):
                     if _create_module_tables(
                         con, entry, spec, table_df, summary_df, ordinal
                     ):
                         written += 1
+                        successful.append(
+                            SuccessfulQcModule(
+                                instance_id=entry.instance_id,
+                                check=check,
+                                table_spec=spec,
+                            )
+                        )
             finally:
                 con.close()
 
@@ -198,7 +232,7 @@ def run_qc(
                 )
                 _remove_tmp_if_present(tmp)
                 _remove_qc_db_if_present(target)
-                return
+                return []
 
             _atomic_replace_with_retry(tmp, target)
         except Exception:
@@ -206,6 +240,7 @@ def run_qc(
             raise
 
     logger.info("Wrote QC DuckDB for %d module(s) -> %s", written, target)
+    return successful
 
 
 def _writer_lock(target: Path) -> threading.Lock:
@@ -306,7 +341,9 @@ def _create_module_tables(
 def _run_one_check(
     entry: QcRecipeEntry,
     measurements_df: pd.DataFrame,
-) -> tuple["QcTableSpec", pd.DataFrame, pd.DataFrame] | None:
+) -> tuple[
+    "QualityCheck", "QcTableSpec", pd.DataFrame, pd.DataFrame
+] | None:
     """Instantiate + analyze one entry, returning its catalog spec + frames.
 
     Tolerant: any construction or analysis/build failure is logged at
@@ -348,7 +385,7 @@ def _run_one_check(
         )
         return None
 
-    return spec, table_df, summary_df
+    return check, spec, table_df, summary_df
 
 
 def _build_summary_frame(check: "QualityCheck") -> pd.DataFrame:

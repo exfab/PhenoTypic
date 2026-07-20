@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import polars as pl
 import pytest
@@ -259,11 +260,19 @@ class TestAggregateMeasurementsAutoResolve:
         })
         row.write_parquet(ds_dir / "img1.parquet")
 
-        master_path = aggregate_measurements(
-            output_dir=output_dir,
-            dataset_names=["ds1"],
-            include_dataset_column=True,
-        )
+        # Staged finalization calls aggregate_measurements without a pipeline.
+        # Recovering the copied config must still reach the configured plotting
+        # lifecycle rather than silently stopping after the mirror/splits.
+        with patch(
+            "phenotypic.plotting.PlotCoordinator.emit_measurements"
+        ) as mock_emit_measurements:
+            master_path = aggregate_measurements(
+                output_dir=output_dir,
+                dataset_names=["ds1"],
+                include_dataset_column=True,
+            )
+
+        mock_emit_measurements.assert_called_once()
 
         assert master_path == master_measurements_csv_path(output_dir)
         assert master_path.exists()
