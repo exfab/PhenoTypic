@@ -665,6 +665,15 @@ grouping, time, object identity, QC, and known analysis columns. An explicit non
 list limits or orders rows. Requesting no output is expressed by omitting the plot from
 the pipeline rather than by an empty explicit measurement selection.
 
+`PlotColonyMetricOverTime` is the ready-to-use, single-metric specialization of this
+grouping model. Its required `on: ColumnRef` parameter selects any numeric measurement
+column without exposing the generic class's multi-row `measurements` list. It defaults
+to one page per `MetadataGenetic_Strain`, one environmental subplot per
+`MetadataCondition_Media`, one trace per `MetadataSample_BioReplicate`, and time on
+`MetadataCulture_Time`. All grouping fields remain configurable, including
+multi-column environmental groups. For a radius-growth report, use a public column
+such as `on="Shape_MeanRadius"`; there is no public `Shape_Radius` column.
+
 The first implementation builds Plotly figures only. Backend neutrality belongs to
 `FigureAdapter`, which accepts both Plotly and Matplotlib figures from any producer;
 duplicating this plot's subplot algorithm across two backends is out of scope.
@@ -1084,6 +1093,8 @@ programmatic consumers resolve the manifest instead.
 - plot failures do not suppress canonical data artifacts.
 - `PlotMeasTimeSeries` writes one file per strain under its class-named folder and a
   manifest that maps raw strain labels to filenames.
+- `PlotColonyMetricOverTime` exercises a concrete `on="Shape_MeanRadius"` case with
+  multi-column environmental groups and unaggregated replicate traces.
 - recipe-backed `PlotQc` receives the analyzed check returned by `run_qc()` plus its
   dynamically resolved table in one `QcPlotSubject`.
 

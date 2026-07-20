@@ -19,6 +19,7 @@ from phenotypic.plotting import (
     AnalysisInput,
     PipelineObjectRef,
     PlotBinding,
+    PlotColonyMetricOverTime,
     PlotMeasTimeSeries,
 )
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
@@ -83,6 +84,19 @@ def test_inline_builtin_round_trip_uses_module_and_qualname() -> None:
     assert payload["plots"][0]["inline"]["module"] == type(plot).__module__
     loaded = ImagePipeline.from_json(json.dumps(payload))
     assert loaded.get_plots()[0].plot == plot
+
+
+def test_colony_metric_plot_round_trip_preserves_on_and_overrides() -> None:
+    plot = PlotColonyMetricOverTime(
+        on="Shape_MedianRadius",
+        environment_by=["MetadataCondition_Treatment"],
+    )
+
+    loaded = ImagePipeline.from_json(ImagePipeline(plots=[plot]).to_json())
+
+    loaded_plot = loaded.get_plots()[0].plot
+    assert isinstance(loaded_plot, PlotColonyMetricOverTime)
+    assert loaded_plot == plot
 
 
 def test_duplicate_ids_fail_with_ids_in_message() -> None:

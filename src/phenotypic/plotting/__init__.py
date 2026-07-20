@@ -21,6 +21,7 @@ _EXPORTS = {
     "canonical_group_key": "._output",
     "publish_plot_output": "._writer",
     "safe_path_component": "._writer",
+    "PlotColonyMetricOverTime": "._plot_colony_metric_over_time",
     "PlotMeasTimeSeries": "._plot_meas_time_series",
     "PlotDetectModes": "._image_plots",
     "PlotDiagnostics": "._image_plots",

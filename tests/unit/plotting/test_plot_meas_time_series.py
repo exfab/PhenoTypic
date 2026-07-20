@@ -7,8 +7,13 @@ from datetime import date, datetime, timedelta
 
 import pandas as pd
 import pytest
+from pydantic import ValidationError
 
-from phenotypic.plotting import PlotMeasTimeSeries, publish_plot_output
+from phenotypic.plotting import (
+    PlotColonyMetricOverTime,
+    PlotMeasTimeSeries,
+    publish_plot_output,
+)
 from phenotypic.plotting._writer import FigureAdapter
 
 
@@ -150,3 +155,167 @@ def test_overlapping_roles_rejected() -> None:
             replicate_by=["replicate"],
             time="time",
         )
+
+
+def _radius_frame() -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    for strain_index, strain in enumerate(("BY4741", "RM11-1a")):
+        for medium_index, medium in enumerate(("SC", "YPD")):
+            for treatment_index, treatment in enumerate(("control", "salt")):
+                for replicate_index, replicate in enumerate(("bio-1", "bio-2")):
+                    for time in (0, 12, 24):
+                        rows.append(
+                            {
+                                "MetadataGenetic_Strain": strain,
+                                "MetadataCondition_Media": medium,
+                                "MetadataCondition_Treatment": treatment,
+                                "MetadataSample_BioReplicate": replicate,
+                                "MetadataCulture_Time": time,
+                                "Shape_MeanRadius": float(
+                                    10 * strain_index
+                                    + 3 * medium_index
+                                    + 2 * treatment_index
+                                    + replicate_index
+                                    + time
+                                ),
+                            }
+                        )
+    return pd.DataFrame(rows)
+
+
+def test_colony_radius_pages_group_conditions_and_preserve_replicates(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plot = PlotColonyMetricOverTime(
+        on="Shape_MeanRadius",
+        environment_by=[
+            "MetadataCondition_Media",
+            "MetadataCondition_Treatment",
+        ]
+    )
+    frame = _radius_frame()
+    duplicate = frame[
+        (frame["MetadataGenetic_Strain"] == "BY4741")
+        & (frame["MetadataCondition_Media"] == "SC")
+        & (frame["MetadataCondition_Treatment"] == "control")
+        & (frame["MetadataSample_BioReplicate"] == "bio-1")
+        & (frame["MetadataCulture_Time"] == 12)
+    ].copy()
+    duplicate["Shape_MeanRadius"] = 99.0
+    frame = pd.concat([frame, duplicate], ignore_index=True)
+
+    output = plot.inspect(frame)
+
+    assert [page.label for page in output.pages] == ["BY4741", "RM11-1a"]
+    for page in output.pages:
+        figure = page.figure
+        assert len(figure.data) == 8  # four conditions, two replicates each
+        assert {trace.name for trace in figure.data} == {
+            "MetadataSample_BioReplicate=bio-1",
+            "MetadataSample_BioReplicate=bio-2",
+        }
+        assert len(figure.layout.annotations) == 4
+
+    by4741_traces = output.pages[0].figure.data
+    assert [trace.xaxis for trace in by4741_traces] == [
+        "x",
+        "x",
+        "x2",
+        "x2",
+        "x3",
+        "x3",
+        "x4",
+        "x4",
+    ]
+    assert list(by4741_traces[0].x) == [0, 12, 12, 24]
+    assert list(by4741_traces[0].y) == [0.0, 12.0, 99.0, 24.0]
+    assert list(by4741_traces[1].y) == [1.0, 13.0, 25.0]
+    assert list(by4741_traces[2].y) == [2.0, 14.0, 26.0]
+    assert list(by4741_traces[4].y) == [3.0, 15.0, 27.0]
+    assert list(by4741_traces[6].y) == [5.0, 17.0, 29.0]
+
+    rm11_traces = output.pages[1].figure.data
+    assert all(list(trace.x) == [0, 12, 24] for trace in rm11_traces)
+    assert list(rm11_traces[0].y) == [10.0, 22.0, 34.0]
+
+    monkeypatch.setattr(
+        FigureAdapter,
+        "save_png",
+        lambda _figure, path: path.write_bytes(b"png"),
+    )
+    destination = (
+        tmp_path
+        / "deliverables"
+        / "plots"
+        / type(plot).__name__
+    )
+
+    manifest = publish_plot_output(
+        output,
+        destination,
+        plot_id=type(plot).__name__,
+    )
+
+    assert [page["file"] for page in manifest["pages"]] == [
+        "BY4741.png",
+        "RM11-1a.png",
+    ]
+    assert (destination / "BY4741.png").read_bytes() == b"png"
+    assert (destination / "RM11-1a.png").read_bytes() == b"png"
+
+
+def test_colony_metric_defaults_use_public_schema_columns() -> None:
+    plot = PlotColonyMetricOverTime(on="Intensity_MeanIntensity")
+    schema = type(plot).model_json_schema()
+
+    assert plot.on == "Intensity_MeanIntensity"
+    assert plot.page_by == ["MetadataGenetic_Strain"]
+    assert plot.environment_by == ["MetadataCondition_Media"]
+    assert plot.replicate_by == ["MetadataSample_BioReplicate"]
+    assert plot.time == "MetadataCulture_Time"
+    assert "on" in schema["required"]
+    assert "measurements" not in schema["properties"]
+
+
+def test_colony_metric_on_accepts_any_numeric_measurement() -> None:
+    plot = PlotColonyMetricOverTime(
+        on="custom_numeric",
+        page_by=["strain"],
+        environment_by=["environment"],
+        replicate_by=["replicate"],
+        time="time",
+    )
+
+    output = plot.inspect(_frame())
+
+    figure = output.pages[0].figure
+    y_titles = [axis.title.text for axis in figure.select_yaxes() if axis.title.text]
+    assert y_titles == ["custom_numeric"]
+    assert list(figure.data[0].y) == [3.0, 4.0]
+
+
+def test_colony_metric_rejects_removed_measurements_override() -> None:
+    plot = PlotColonyMetricOverTime(
+        on="custom_numeric",
+        page_by=["strain"],
+        environment_by=["environment"],
+        replicate_by=["replicate"],
+        time="time",
+    )
+
+    with pytest.raises(ValidationError, match="measurements"):
+        plot.inspect(_frame(), measurements=["Size_Area"])
+
+
+def test_colony_metric_report_rejects_unknown_override() -> None:
+    plot = PlotColonyMetricOverTime(
+        on="custom_numeric",
+        page_by=["strain"],
+        environment_by=["environment"],
+        replicate_by=["replicate"],
+        time="time",
+    )
+
+    with pytest.raises(ValidationError, match="typo"):
+        plot.report(_frame(), typo=True)

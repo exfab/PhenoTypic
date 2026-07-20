@@ -47,6 +47,9 @@ Built-in plots
 .. autoclass:: PlotMeasTimeSeries
    :members: inspect, report
 
+.. autoclass:: PlotColonyMetricOverTime
+   :members: inspect, report
+
 .. autoclass:: AnalysisInput
 
 .. autoclass:: MeasurementInput
