@@ -1,22 +1,19 @@
-"""SLURM 3-stage chaining for the staged GPU engine (Spec 1 §7).
-
-Stage 1 (CPU array over images) -> Stage 2 (GPU array over shards, resident
-model) -> Stage 3 (CPU array over images), wired with ``afterany`` between
-stages so a few per-image failures never block the next stage.
-"""
+"""Crash-recoverable SLURM orchestration for the staged GPU engine."""
 
 from __future__ import annotations
 
-import json
 import logging
 import shlex
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, TypeVar
 
 from phenotypic.sdk_ import (
-    JOB_METADATA_JSON,
     JobMetadataKey,
+    atomic_write_json,
+    event_log_path,
+    job_metadata_path,
     logs_dir,
     progress_dir,
     slurm_scripts_dir,
@@ -28,21 +25,36 @@ from phenotypic.sdk_.slurm import (
     get_slurm_max_submit_jobs,
     write_slurm_array_script,
 )
+from phenotypic.sdk_._file_locking import exclusive_path_lock
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_execution_strategies import ExecutionStrategy
-from ._cli_types import Dataset, DatasetResults, ExecutionConfig, ExecutionResults
+from ._cli_staged_orchestration import (
+    StagedManifestEntry,
+    completed_inventory_images,
+    deactivate_orchestration,
+    initialize_orchestration,
+    load_orchestration_state,
+    new_orchestration_epoch,
+    orchestration_lock_path,
+    save_orchestration_state,
+    snapshot_inventory_parquets,
+    staged_completion_matches,
+    submit_with_intent,
+    write_staged_manifest,
+)
+from ._cli_types import (
+    Dataset,
+    DatasetResults,
+    ExecutionConfig,
+    ExecutionResults,
+    ImageFailure,
+)
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 
 logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
-
-#: Dependency type linking the three stages. ``afterany`` (not ``afterok``) so a
-#: handful of per-image failures in one stage never block the next — the staged
-#: workers are content-defined and skip already-done images.
-STAGE_DEPENDENCY = "afterany"
-
 
 def partition_shards(items: List[_T], n_shards: int) -> List[List[_T]]:
     """Split *items* into up to *n_shards* near-even contiguous shards (no loss)."""
@@ -92,6 +104,8 @@ def _stage_worker_body(
     image_type: ImageTypeName,
     manifest_path: Path,
     ext: str,
+    epoch: str,
+    resume: bool,
     n_shards: int | None = None,
     index_var: str = "$SLURM_ARRAY_TASK_ID",
 ) -> str:
@@ -113,7 +127,10 @@ def _stage_worker_body(
         f"--manifest {q(str(manifest_path.absolute()))}",
         f"--index {index_var}",
         f"--ext {q(ext)}",
+        f"--epoch {q(epoch)}",
     ]
+    if resume:
+        parts.append("--resume")
     if stage == 2:
         parts.append(f"--n-shards {n_shards}")
     return " \\\n    ".join(parts)
@@ -127,8 +144,6 @@ def _write_stage_script(
     slurm_args: Dict[str, Any],
     task_indices: Sequence[int],
     body: str,
-    signal_grace: int | None = None,
-    requeue: bool = False,
 ) -> Path:
     """Render + write one stage SBATCH array script (returns its path).
 
@@ -142,8 +157,6 @@ def _write_stage_script(
     out_log = log_dir / f"{stage_name}_%A_%a.log"
     err_log = log_dir / f"{stage_name}_%A_%a.err"
     path = script_dir / f"{stage_name}.sh"
-    # ``--requeue`` lets the Stage-2 worker requeue its own array task on the
-    # pre-walltime SIGTERM (so Stage 3's afterany dependency waits for it).
     return write_slurm_array_script(
         path,
         SlurmArrayScriptSpec(
@@ -155,8 +168,6 @@ def _write_stage_script(
             body=body,
             prelude=SLURM_THREAD_PIN_BASH,
             comments=[f"# Stage: {stage_name}"],
-            signal_grace=signal_grace,
-            requeue=requeue,
         ),
     )
 
@@ -195,27 +206,37 @@ def _write_image_stage_chunks(
     return scripts
 
 
-def _finalizer_body(python_str: str, output_dir: Path) -> str:
+def _finalizer_body(python_str: str, output_dir: Path, epoch: str) -> str:
     """Build the canonical aggregate/finalize command for staged runs."""
     return (
         f"{python_str} -m phenotypic._cli._cli_checkpoint_handler "
         f"--output-dir {shlex.quote(str(output_dir.absolute()))} "
-        "--checkpoint-type finalize"
+        "--checkpoint-type finalize "
+        f"--epoch {shlex.quote(epoch)}"
+    )
+
+
+def _controller_body(python_str: str, config_path: Path) -> str:
+    """Build the command for one controller transition."""
+    return (
+        f"{python_str} -m phenotypic._cli._cli_staged_controller "
+        f"--config {shlex.quote(str(config_path.absolute()))}"
     )
 
 
 def generate_staged_scripts(
     *,
     pipeline_path: Path,
-    datasets_manifest: Sequence[Sequence[str]],
+    datasets_manifest: Sequence[StagedManifestEntry],
     output_dir: Path,
     image_type: ImageTypeName,
     cpu_slurm_args: Dict[str, Any],
     gpu_slurm_args: Dict[str, Any],
     n_shards: int,
-    signal_grace: int = 120,
     ext: str = ".tiff",
     array_limit: int | None = None,
+    epoch: str,
+    resume: bool = False,
 ) -> Dict[str, Any]:
     """Write the per-stage SBATCH array scripts (no submission).
 
@@ -237,9 +258,7 @@ def generate_staged_scripts(
     log_dir.mkdir(parents=True, exist_ok=True)
 
     manifest_path = script_dir / "staged_manifest.json"
-    manifest_path.write_text(
-        json.dumps([list(e) for e in datasets_manifest]), encoding="utf-8"
-    )
+    write_staged_manifest(manifest_path, datasets_manifest)
 
     python_cmd, _ = get_python_command(for_slurm=True)
     python_str = " ".join(python_cmd)
@@ -261,6 +280,8 @@ def generate_staged_scripts(
             image_type,
             manifest_path,
             ext,
+            epoch,
+            resume,
             index_var="$CURRENT_TASK_INDEX",
         )
 
@@ -287,10 +308,10 @@ def generate_staged_scripts(
             image_type,
             manifest_path,
             ext,
+            epoch,
+            resume,
             n_shards=n_shards,
         ),
-        signal_grace=signal_grace,
-        requeue=True,
     )
     stage3 = _write_image_stage_chunks(
         script_dir=script_dir,
@@ -307,67 +328,53 @@ def generate_staged_scripts(
         "phenotypic-finalize",
         cpu_slurm_args,
         [0],
-        _finalizer_body(python_str, output_dir),
+        _finalizer_body(python_str, output_dir, epoch),
+    )
+    controller_config = script_dir / "staged_controller.json"
+    controller = _write_stage_script(
+        script_dir,
+        log_dir,
+        "controller",
+        "phenotypic-controller",
+        cpu_slurm_args,
+        [0],
+        _controller_body(python_str, controller_config),
+    )
+    atomic_write_json(
+        controller_config,
+        {
+            "version": 1,
+            "epoch": epoch,
+            "output_dir": str(output_dir.absolute()),
+            "resume": resume,
+            "manifest_path": str(manifest_path.absolute()),
+            "stage1_scripts": [str(path.absolute()) for path in stage1],
+            "stage2_script": str(stage2.absolute()),
+            "stage3_scripts": [str(path.absolute()) for path in stage3],
+            "finalizer_script": str(finalizer.absolute()),
+            "controller_script": str(controller.absolute()),
+        },
     )
     return {
         "stage1": stage1,
         "stage2": stage2,
         "stage3": stage3,
         "finalizer": finalizer,
+        "controller": controller,
+        "controller_config": controller_config,
+        "manifest": manifest_path,
     }
 
 
 def _ordered_staged_scripts(scripts: Dict[str, Any]) -> List[Path]:
-    """Return staged scripts in their strict submission order."""
+    """Return all scripts in logical lifecycle order."""
     return [
         *scripts["stage1"],
+        scripts["controller"],
         scripts["stage2"],
         *scripts["stage3"],
         scripts["finalizer"],
     ]
-
-
-def flatten_staged_scripts(scripts: Dict[str, Any]) -> List[Path]:
-    """Ordered flat chunk list for the drip-feed dispatcher.
-
-    Order: every Stage-1 chunk, Stage 2, every Stage-3 chunk, then the aggregate
-    finalizer. The dispatcher submits them one at a time, so the linear order
-    encodes both stage dependencies and final publication.
-    """
-    return _ordered_staged_scripts(scripts)
-
-
-def submit_staged_chain(
-    scripts: Dict[str, Any],
-    *,
-    output_dir: Path,
-    slurm_args: Dict[str, Any],
-    console: Any = None,
-) -> List[str]:
-    """Submit the staged scripts via the shared drip-feed dispatcher.
-
-    Reuses :func:`submit_slurm_script_chain` (the same funnel the CPU
-    autonomous path uses) so **only the first chunk + a dispatcher job are
-    queued up front**; when chunk N finishes, its dispatcher submits chunk N+1.
-    Peak queue occupancy stays at ~1 chunk + 1 dispatcher instead of every
-    chunk at once — critical because a run's total array tasks
-    (~2 x n_images) otherwise blows ``MaxSubmitJobs`` (Spec 1 §7/§9). The tiny
-    dispatcher runs on the CPU ``slurm_args`` profile. Returns the initially
-    submitted job ids (chunk 0 and, if multiple chunks, dispatcher 1).
-    """
-    # Local import avoids a circular import at module load
-    # (_cli_slurm_submission -> sdk_ -> ... ).
-    from rich.console import Console
-
-    from ._cli_slurm_submission import submit_slurm_script_chain
-
-    submission = submit_slurm_script_chain(
-        flat_chunk_scripts=flatten_staged_scripts(scripts),
-        output_dir=output_dir,
-        slurm_args=slurm_args,
-        console=console or Console(),
-    )
-    return submission.job_ids
 
 
 def _write_staged_job_metadata(
@@ -378,6 +385,7 @@ def _write_staged_job_metadata(
     scripts: Dict[str, Any],
     job_ids: Sequence[str],
     start_time: datetime,
+    epoch: str,
 ) -> Path:
     """Write the metadata consumed by the canonical SLURM finalizer.
 
@@ -391,14 +399,19 @@ def _write_staged_job_metadata(
 
     ordered_scripts = _ordered_staged_scripts(scripts)
     metadata = {
-        JobMetadataKey.START_TIME: start_time.isoformat(timespec="milliseconds"),
+        JobMetadataKey.START_TIME: start_time.isoformat(
+            timespec="milliseconds"
+        ),
         JobMetadataKey.EXECUTION_MODE: "slurm",
         JobMetadataKey.DATASETS: {
-            dataset.name: {
-                "total": len(dataset.images),
-                "images": [image.name for image in dataset.images],
-            }
-            for dataset in datasets
+            name: {"total": len(images), "images": images}
+            for name, images in (
+                getattr(config, "full_dataset_inventory", {})
+                or {
+                    ds.name: [image.name for image in ds.images]
+                    for ds in datasets
+                }
+            ).items()
         },
         JobMetadataKey.CHUNK_SCRIPTS: [str(path) for path in ordered_scripts],
         JobMetadataKey.CHUNK_JOB_IDS: {
@@ -411,12 +424,19 @@ def _write_staged_job_metadata(
         ),
         JobMetadataKey.NO_QC: config.no_qc,
         JobMetadataKey.INPUT_PATH: config.input_path.stem,
+        JobMetadataKey.ORCHESTRATION_EPOCH: epoch,
+        JobMetadataKey.PIPELINE_PATH: str(
+            Path(getattr(config, "pipeline_json", "pipeline.json")).absolute()
+        ),
+        JobMetadataKey.IMAGE_TYPE: getattr(config, "image_type", "Image"),
+        JobMetadataKey.NROWS: getattr(config, "nrows", None),
+        JobMetadataKey.NCOLS: getattr(config, "ncols", None),
+        JobMetadataKey.SLURM_JOB_IDS: {
+            str(index): str(job_id) for index, job_id in enumerate(job_ids)
+        },
     }
-    metadata_path = prog_dir / JOB_METADATA_JSON
-    metadata_path.write_text(
-        json.dumps(metadata, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    metadata_path = job_metadata_path(output_dir)
+    atomic_write_json(metadata_path, metadata)
     return metadata_path
 
 
@@ -429,17 +449,27 @@ class StagedSlurmStrategy(ExecutionStrategy):
         start = datetime.now()
         cfg = self.config
         manifest = [
-            (ds.name, img.stem, str(Path(img).absolute()))
+            StagedManifestEntry(
+                dataset=ds.name,
+                image_name=img.name,
+                stem=img.stem,
+                input_path=str(Path(img).absolute()),
+            )
             for ds in datasets
             for img in ds.images
         ]
 
         # Chunk to the TIGHTER of MaxArraySize and the conservative
-        # MaxSubmitJobs estimate. Reserve one submission slot for the dependent
-        # dispatcher that is queued alongside the active array chunk.
+        # MaxSubmitJobs estimate. Reserve slots for the running controller and
+        # its pre-armed recovery controller while an array is active.
         array_limit = get_slurm_array_limit()
         max_submit = get_slurm_max_submit_jobs()
-        submit_capacity = max(1, max_submit - 1) if max_submit else array_limit
+        if max_submit is not None and max_submit < 3:
+            raise ValueError(
+                "SLURM MaxSubmitJobs must be at least 3 for staged GPU "
+                "orchestration (controller, array, recovery controller)."
+            )
+        submit_capacity = max_submit - 2 if max_submit else array_limit
         chunk_limit = min(array_limit, submit_capacity)
         # Image stages chunk to fit the limit; the Stage-2 shard array cannot
         # (a shard worker streams its whole shard on one GPU), so guard it.
@@ -449,6 +479,7 @@ class StagedSlurmStrategy(ExecutionStrategy):
                 f"({chunk_limit}); reduce the shard count."
             )
 
+        epoch = new_orchestration_epoch()
         scripts = generate_staged_scripts(
             pipeline_path=cfg.pipeline_json,
             datasets_manifest=manifest,
@@ -459,47 +490,164 @@ class StagedSlurmStrategy(ExecutionStrategy):
             n_shards=max(1, cfg.gpu_shards),
             ext=cfg.ext,
             array_limit=chunk_limit,
-        )
-
-        # Drip-feed dispatcher: only chunk 0 + a dispatcher are queued now; each
-        # chunk's dispatcher submits the next after it ends. Keeps peak queue at
-        # ~1 chunk (never the ~2 x n_images tasks that blow MaxSubmitJobs) while
-        # afterany between chunks lets per-image failures pass (Spec 1 §7/§9).
-        self.submitted_job_ids = submit_staged_chain(
-            scripts, output_dir=output_dir, slurm_args=cfg.slurm_args
+            epoch=epoch,
+            resume=getattr(cfg, "resume", False),
         )
         _write_staged_job_metadata(
             datasets=datasets,
             output_dir=output_dir,
             config=cfg,
             scripts=scripts,
-            job_ids=self.submitted_job_ids[:1],
+            job_ids=[],
             start_time=start,
+            epoch=epoch,
         )
+        state = initialize_orchestration(
+            output_dir,
+            epoch=epoch,
+            mode=(
+                "restart"
+                if getattr(cfg, "restart", False)
+                else "resume"
+                if getattr(cfg, "resume", False)
+                else "fresh"
+            ),
+            controller_config_path=scripts["controller_config"],
+        )
+        if getattr(cfg, "restart", False):
+            state["restart_parquet_fingerprints"] = snapshot_inventory_parquets(
+                output_dir, cfg.full_dataset_inventory
+            )
+        state.update({"phase": "stage1", "stage1_index": 0})
+        save_orchestration_state(output_dir, state)
+        try:
+            controller_id = submit_with_intent(
+                output_dir,
+                epoch=epoch,
+                token="controller-initial",
+                role="controller",
+                round_index=0,
+                script_path=scripts["controller"],
+            )
+        except Exception:
+            deactivate_orchestration(output_dir, "failed")
+            raise
+        self.submitted_job_ids = [controller_id]
+        with exclusive_path_lock(
+            orchestration_lock_path(output_dir), timeout=60.0
+        ):
+            current = load_orchestration_state(output_dir)
+            if current is not None and current.get("epoch") == epoch:
+                if current.get("expected_controller_id") is None:
+                    current["expected_controller_id"] = controller_id
+                    save_orchestration_state(output_dir, current)
         logger.info(
-            "Submitted staged GPU chain via drip-feed dispatcher "
-            "(%d stage-1 chunks -> stage2 -> %d stage-3 chunks -> finalizer): "
-            "initial jobs=%s",
+            "Submitted staged GPU controller lifecycle "
+            "(%d stage-1 chunks -> stage2 rounds -> %d stage-3 chunks -> finalizer): "
+            "initial controller=%s",
             len(scripts["stage1"]),
             len(scripts["stage3"]),
-            self.submitted_job_ids,
+            controller_id,
         )
 
+        if not cfg.wait:
+            return self._submitted_results(start)
+        return self._wait_for_finalizer(output_dir, start, epoch)
+
+    def _submitted_results(self, start: datetime) -> ExecutionResults:
+        """Return immediately after SLURM accepted the initial jobs."""
+        inventory = self.config.full_dataset_inventory
         return ExecutionResults(
             datasets={
-                ds.name: DatasetResults(
-                    name=ds.name,
-                    total=len(ds.images),
-                    completed=0,
-                    failed=0,
-                    failures=[],
-                )
-                for ds in datasets
+                name: DatasetResults(name, len(images), 0, 0, [])
+                for name, images in inventory.items()
             },
-            total_images=len(manifest),
+            total_images=sum(len(images) for images in inventory.values()),
             total_completed=0,
             total_failed=0,
             execution_mode="slurm",
             start_time=start,
             end_time=datetime.now(),
+            submitted=True,
+            remote_managed=True,
+        )
+
+    def _wait_for_finalizer(
+        self, output_dir: Path, start: datetime, epoch: str
+    ) -> ExecutionResults:
+        """Monitor the active epoch until its remote finalizer is terminal."""
+        detached = False
+        try:
+            while True:
+                state = load_orchestration_state(output_dir)
+                if state is None or state.get("epoch") != epoch:
+                    raise RuntimeError(
+                        "Staged orchestration state was replaced"
+                    )
+                if state.get("phase") in {"complete", "failed", "cancelled"}:
+                    break
+                time.sleep(10)
+        except KeyboardInterrupt:
+            detached = True
+        return self._results_from_events(output_dir, start, epoch, detached)
+
+    def _results_from_events(
+        self, output_dir: Path, start: datetime, epoch: str, detached: bool
+    ) -> ExecutionResults:
+        """Build full-inventory results from terminal Stage-3 events."""
+        from ._cli_update_state import aggregate_state_from_events
+
+        states = aggregate_state_from_events(event_log_path(output_dir))
+        inventory = self.config.full_dataset_inventory
+        dataset_results: dict[str, DatasetResults] = {}
+        for name, images in inventory.items():
+            ds_state = states.get(name)
+            completed = completed_inventory_images(output_dir, name, images)
+            event_failed = set() if ds_state is None else ds_state.failed
+            failed = (set(images) - completed) | event_failed
+            failed -= completed
+            errors = {} if ds_state is None else ds_state.errors
+            failures = [
+                ImageFailure(
+                    dataset=name,
+                    image_filename=image_name,
+                    error_type="StageFailure",
+                    error_message=errors.get(
+                        image_name, "Staged processing failed"
+                    ),
+                    traceback="",
+                    timestamp=datetime.now(),
+                )
+                for image_name in sorted(failed)
+            ]
+            dataset_results[name] = DatasetResults(
+                name=name,
+                total=len(images),
+                completed=len(completed),
+                failed=len(failed),
+                failures=failures,
+            )
+        state = load_orchestration_state(output_dir) or {}
+        succeeded = (
+            state.get("epoch") == epoch
+            and state.get("phase") == "complete"
+            and staged_completion_matches(output_dir, epoch)
+        )
+        return ExecutionResults(
+            datasets=dataset_results,
+            total_images=sum(
+                result.total for result in dataset_results.values()
+            ),
+            total_completed=sum(
+                result.completed for result in dataset_results.values()
+            ),
+            total_failed=sum(
+                result.failed for result in dataset_results.values()
+            ),
+            execution_mode="slurm",
+            start_time=start,
+            end_time=datetime.now(),
+            detached=detached,
+            remote_finalized=succeeded,
+            remote_managed=True,
         )

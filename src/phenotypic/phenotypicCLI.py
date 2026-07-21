@@ -211,7 +211,9 @@ def setup_logging(debug: bool = False):
     """Configure logging for CLI."""
     level = logging.DEBUG if debug else logging.INFO
     handler = logging.StreamHandler()
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     handler.setFormatter(formatter)
 
     root_logger = logging.getLogger()
@@ -219,7 +221,9 @@ def setup_logging(debug: bool = False):
     root_logger.addHandler(handler)
 
 
-def error_exit(message: str, details: Optional[str] = None, code: int = 1) -> None:
+def error_exit(
+    message: str, details: Optional[str] = None, code: int = 1
+) -> None:
     """Exit with consistent error formatting.
 
     Args:
@@ -242,7 +246,9 @@ def _parse_slurm_args(slurm_args: Sequence[str]) -> dict:
     return parse_slurm_args(slurm_args)
 
 
-def _validate_resume_input_images(state, current_datasets) -> tuple[bool, Optional[str]]:
+def _validate_resume_input_images(
+    state, current_datasets
+) -> tuple[bool, Optional[str]]:
     """
     Validate that input image set matches between resume runs.
 
@@ -413,7 +419,10 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
 
     # Create table
     table = Table(
-        title="Execution Configuration", show_header=False, box=None, padding=(0, 2)
+        title="Execution Configuration",
+        show_header=False,
+        box=None,
+        padding=(0, 2),
     )
     table.add_column("Setting", style="cyan", no_wrap=True)
     table.add_column("Value", style="white")
@@ -544,7 +553,10 @@ def _print_process_only_dry_run_plan(
         for img in dataset.images[:2]:
             sample_paths.append(
                 process_only_output_path(
-                    output_dir, img, config.input_path, layer  # type: ignore[arg-type]
+                    output_dir,
+                    img,
+                    config.input_path,
+                    layer,  # type: ignore[arg-type]
                 )
             )
 
@@ -583,7 +595,9 @@ def _print_process_only_dry_run_plan(
     "-i",
     "--input",
     "input_path",
-    type=click.Path(exists=True, dir_okay=True, file_okay=True, path_type=Path),
+    type=click.Path(
+        exists=True, dir_okay=True, file_okay=True, path_type=Path
+    ),
     default=None,
     help="Input image file or directory to process.",
 )
@@ -665,8 +679,8 @@ def _print_process_only_dry_run_plan(
     type=int,
     default=1,
     show_default=True,
-    help="Model replicas packed per physical GPU (Stage 2) to fill a GPU for "
-    "small models.",
+    help="Reserved Stage-2 replica count. Values are recorded but the current "
+    "worker launches one resident model per GPU shard.",
 )
 @click.option(
     "--gpu-shards",
@@ -772,8 +786,8 @@ def _print_process_only_dry_run_plan(
     default=None,
     metavar="PATH",
     help="Optional study.yaml of REMBI Study-level fields (Title, License, "
-         "Author, ...) folded into deliverables/rembi.yaml. CLI study file "
-         "overrides constant Metadata_* columns.",
+    "Author, ...) folded into deliverables/rembi.yaml. CLI study file "
+    "overrides constant Metadata_* columns.",
 )
 @click.option(
     "--checkpoint-interval",
@@ -791,8 +805,8 @@ def _print_process_only_dry_run_plan(
     "no_qc",
     is_flag=True,
     help="Skip the QC compute step in finalize. QC otherwise runs "
-         "whenever the pipeline has a non-empty 'qc' section (writing the "
-         "qc/ artifact and resetting GUI review progress).",
+    "whenever the pipeline has a non-empty 'qc' section (writing the "
+    "qc/ artifact and resetting GUI review progress).",
 )
 @click.option(
     "--layer",
@@ -873,7 +887,9 @@ def phenotypic_cli(
         _reject_unexpected_positional_args(ctx.args)
 
         include_dataset_column = not no_dataset_column
-        cli_mode = cast(CliMode, mode)  # Click's Choice has already validated this.
+        cli_mode = cast(
+            CliMode, mode
+        )  # Click's Choice has already validated this.
         measure_only = cli_mode == "measure"
         recompile_only = cli_mode == "recompile"
         process_only_layer: Optional[ProcessOnlyLayer] = None
@@ -882,7 +898,9 @@ def phenotypic_cli(
                 raise click.UsageError("--mode process requires --layer.")
             process_only_layer = cast(ProcessOnlyLayer, layer)
         elif layer is not None:
-            raise click.UsageError("--layer can only be used with --mode process.")
+            raise click.UsageError(
+                "--layer can only be used with --mode process."
+            )
 
         if measure_only or recompile_only:
             if input_path is not None:
@@ -935,7 +953,8 @@ def phenotypic_cli(
             # Check for deprecated parameters
             if "time_min" in slurm_args_dict:
                 click.echo(
-                    "Warning: 'time_min' is deprecated. Use 'time' instead.", err=True
+                    "Warning: 'time_min' is deprecated. Use 'time' instead.",
+                    err=True,
                 )
                 # Auto-migrate
                 if "time" not in slurm_args_dict:
@@ -1075,18 +1094,23 @@ def phenotypic_cli(
             sys.exit(1)
 
         if restart and resume:
-            click.echo("Error: --restart and --resume are mutually exclusive", err=True)
+            click.echo(
+                "Error: --restart and --resume are mutually exclusive",
+                err=True,
+            )
             sys.exit(1)
 
         if overwrite and resume:
             click.echo(
-                "Error: --overwrite and --resume are mutually exclusive", err=True
+                "Error: --overwrite and --resume are mutually exclusive",
+                err=True,
             )
             sys.exit(1)
 
         # Validate metadata CSV early
         if metadata_csv is not None:
             import pandas as pd
+
             try:
                 meta_df = pd.read_csv(metadata_csv)
                 if len(meta_df) == 0:
@@ -1103,11 +1127,17 @@ def phenotypic_cli(
         # substitute output_dir to satisfy the dataclass's non-optional
         # ``input_path`` (the measure path never consults it for image
         # discovery).
-        assert pipeline_json is not None  # narrowed by earlier UsageError branches
-        effective_input_path = input_path if input_path is not None else output_dir
+        assert (
+            pipeline_json is not None
+        )  # narrowed by earlier UsageError branches
+        effective_input_path = (
+            input_path if input_path is not None else output_dir
+        )
         # Click's Choice() validated image_type against {"Image", "GridImage"};
         # narrow to the typed alias for ExecutionConfig's Literal-typed field.
-        narrowed_image_type: ImageTypeName = "GridImage" if image_type == "GridImage" else "Image"
+        narrowed_image_type: ImageTypeName = (
+            "GridImage" if image_type == "GridImage" else "Image"
+        )
         config = ExecutionConfig(
             pipeline_json=pipeline_json,
             input_path=effective_input_path,
@@ -1129,6 +1159,7 @@ def phenotypic_cli(
             resume=resume,
             retry_failures=retry_failures,
             skip_validation=skip_validation,
+            restart=restart,
             metadata_csv=metadata_csv,
             no_qc=no_qc,
             checkpoint_interval=checkpoint_interval,
@@ -1139,12 +1170,27 @@ def phenotypic_cli(
             gpu_slurm_args=_parse_slurm_args(gpu_slurm_args),
         )
 
+        if (restart or overwrite) and output_dir.exists():
+            from phenotypic._cli._cli_staged_orchestration import (
+                active_ledger_job_ids,
+            )
+
+            active_jobs = active_ledger_job_ids(output_dir)
+            if active_jobs:
+                click.echo(
+                    "Error: Cannot restart or overwrite while staged SLURM "
+                    f"jobs are active: {', '.join(active_jobs)}",
+                    err=True,
+                )
+                sys.exit(1)
+
         # Handle resume mode BEFORE creating output directory
         if config.resume:
             # Check if output directory exists
             if not output_dir.exists():
                 click.echo(
-                    f"Error: Output directory does not exist: {output_dir}", err=True
+                    f"Error: Output directory does not exist: {output_dir}",
+                    err=True,
                 )
                 click.echo(
                     "\nCannot resume from a directory that doesn't exist. "
@@ -1156,7 +1202,10 @@ def phenotypic_cli(
             # Check for processing state file (tolerate a legacy-root run)
             state_file = resolve_processing_state_path(output_dir)
             if not state_file.exists():
-                click.echo(f"Error: No processing state found in {output_dir}", err=True)
+                click.echo(
+                    f"Error: No processing state found in {output_dir}",
+                    err=True,
+                )
                 click.echo(f"\nLooking for: {state_file}", err=True)
                 click.echo(
                     "\nThis directory may not contain PhenoTypic processing results, "
@@ -1167,7 +1216,9 @@ def phenotypic_cli(
                 if output_dir.is_dir():
                     contents = list(output_dir.iterdir())
                     if contents:
-                        click.echo(f"\nDirectory contents ({len(contents)} items):")
+                        click.echo(
+                            f"\nDirectory contents ({len(contents)} items):"
+                        )
                         for item in sorted(contents)[:10]:  # Show first 10
                             click.echo(f"  - {item.name}")
                         if len(contents) > 10:
@@ -1185,6 +1236,11 @@ def phenotypic_cli(
         # prior run's events.
         if restart:
             if output_dir.exists():
+                from phenotypic._cli._cli_staged_orchestration import (
+                    clear_stage2_sidecars,
+                )
+
+                removed_sidecars = clear_stage2_sidecars(output_dir)
                 if clear_machine_state(output_dir):
                     click.echo(
                         f"✓ Cleared previous machine-state (.phenotypic/) from {output_dir}"
@@ -1192,6 +1248,10 @@ def phenotypic_cli(
                 else:
                     click.echo(
                         f"Note: No previous state found in {output_dir} (starting fresh)"
+                    )
+                if removed_sidecars:
+                    click.echo(
+                        f"✓ Cleared {removed_sidecars} transient Stage 2 sidecar(s)"
                     )
             else:
                 click.echo(
@@ -1224,7 +1284,9 @@ def phenotypic_cli(
 
         # Scan directory structure (or discover HDFs in measure mode)
         if measure_only:
-            click.echo(f"Discovering HDF outputs under {output_dir}/results/...")
+            click.echo(
+                f"Discovering HDF outputs under {output_dir}/results/..."
+            )
             try:
                 datasets = scan_hdf_outputs(output_dir)
             except ValueError as e:
@@ -1236,13 +1298,17 @@ def phenotypic_cli(
             click.echo(f"Scanning {input_path}...")
             try:
                 image_paths_by_dataset = scan_directory_structure(input_path)
-                datasets = organize_by_dataset(image_paths_by_dataset, output_dir)
+                datasets = organize_by_dataset(
+                    image_paths_by_dataset, output_dir
+                )
             except (FileNotFoundError, ValueError) as e:
                 click.echo(f"Error: {e}", err=True)
                 sys.exit(1)
 
         total_images = sum(len(d.images) for d in datasets)
-        click.echo(f"Found {total_images} images in {len(datasets)} dataset(s)")
+        click.echo(
+            f"Found {total_images} images in {len(datasets)} dataset(s)"
+        )
 
         # Validate configuration
         if not config.skip_validation:
@@ -1253,26 +1319,32 @@ def phenotypic_cli(
 
             # Step 1: Validate execution config
             with console.status(
-                "[bold cyan]Validating execution configuration...", spinner="dots"
+                "[bold cyan]Validating execution configuration...",
+                spinner="dots",
             ):
                 config_valid, config_error = validate_execution_config(config)
 
             if not config_valid:
                 console.print(
-                    "[bold red]✗ Execution config validation failed:", style="bold red"
+                    "[bold red]✗ Execution config validation failed:",
+                    style="bold red",
                 )
                 console.print(f"  - {config_error}", style="red")
                 sys.exit(1)
             console.print("[green]✓ Execution configuration validated")
 
             # Step 2: Validate pipeline loading
-            with console.status("[bold cyan]Loading pipeline config...", spinner="dots"):
+            with console.status(
+                "[bold cyan]Loading pipeline config...", spinner="dots"
+            ):
                 pipeline_valid, pipeline_error = validate_pipeline(
                     config.pipeline_json, config.skip_validation
                 )
 
             if not pipeline_valid:
-                console.print("[bold red]✗ Pipeline loading failed:", style="bold red")
+                console.print(
+                    "[bold red]✗ Pipeline loading failed:", style="bold red"
+                )
                 console.print(f"  - {pipeline_error}", style="red")
                 sys.exit(1)
             console.print("[green]✓ Pipeline loaded successfully")
@@ -1303,23 +1375,35 @@ def phenotypic_cli(
 
         # Handle sample mode
         if config.sample is not None:
-            click.echo(f"\nSample mode: processing {config.sample} images per dataset")
+            click.echo(
+                f"\nSample mode: processing {config.sample} images per dataset"
+            )
             datasets = get_sample_datasets(
                 datasets, config.sample, output_dir, random_seed
             )
             total_images = sum(len(d.images) for d in datasets)
             click.echo(f"Processing {total_images} sample images\n")
 
+        config.full_dataset_inventory = {
+            dataset.name: [image.name for image in dataset.images]
+            for dataset in datasets
+        }
+
         # Handle resume mode - get remaining images
         if config.resume:
             # State was already validated earlier, just load it
             resume_state = load_processing_state(output_dir)
             if resume_state is None:
-                click.echo(f"Error: No processing state found in {output_dir}", err=True)
+                click.echo(
+                    f"Error: No processing state found in {output_dir}",
+                    err=True,
+                )
                 sys.exit(1)
 
             # Validate compatibility
-            is_compatible, error = validate_resume_compatibility(resume_state, config)
+            is_compatible, error = validate_resume_compatibility(
+                resume_state, config
+            )
             if not is_compatible:
                 click.echo(f"Error: Cannot resume - {error}", err=True)
                 click.echo(
@@ -1353,7 +1437,9 @@ def phenotypic_cli(
                 click.echo("✓ All images already processed!")
                 sys.exit(0)
 
-            click.echo(f"Resuming processing ({remaining_images} images remaining)")
+            click.echo(
+                f"Resuming processing ({remaining_images} images remaining)"
+            )
             if config.retry_failures:
                 click.echo("  - Including previously failed images")
 
@@ -1366,7 +1452,9 @@ def phenotypic_cli(
             if config.resume:
                 assert resume_state is not None
                 state = update_state_from_events(resume_state, output_dir)
-                state.execution_mode = "slurm" if config.is_slurm_mode() else "local"
+                state.execution_mode = (
+                    "slurm" if config.is_slurm_mode() else "local"
+                )
                 state.pipeline_path = config.pipeline_json
                 state.input_path = config.input_path
                 state.output_dir = output_dir
@@ -1416,15 +1504,23 @@ def phenotypic_cli(
                 click.echo(f"  Pipeline: {cache_copy}")
             except OSError as e:
                 logger.warning(f"Failed to copy pipeline config: {e}")
-                click.echo(f"⚠ Warning: Could not copy pipeline config ({e})", err=True)
+                click.echo(
+                    f"⚠ Warning: Could not copy pipeline config ({e})",
+                    err=True,
+                )
         elif not measure_only:
             try:
-                copied = _copy_pipeline_to_output(config.pipeline_json, output_dir)
+                copied = _copy_pipeline_to_output(
+                    config.pipeline_json, output_dir
+                )
                 if copied:
                     click.echo(f"  Pipeline: {copied}")
             except OSError as e:
                 logger.warning(f"Failed to copy pipeline config: {e}")
-                click.echo(f"⚠ Warning: Could not copy pipeline config ({e})", err=True)
+                click.echo(
+                    f"⚠ Warning: Could not copy pipeline config ({e})",
+                    err=True,
+                )
 
         # Create execution strategy
         strategy = create_execution_strategy(config, output_manager)
@@ -1434,6 +1530,43 @@ def phenotypic_cli(
         click.echo(f"\nStarting {execution_mode} processing...")
 
         results = strategy.execute(datasets, output_dir)
+
+        if results.remote_managed:
+            if results.submitted:
+                click.echo("\n" + "=" * 60)
+                click.echo("PROCESSING SUBMITTED")
+                click.echo("=" * 60)
+                click.echo(
+                    "Staged SLURM jobs are running. Progress is available "
+                    "through scheduler logs; final deliverables are published "
+                    "after Stage 3."
+                )
+                click.echo(f"\nResults will be published under: {output_dir}")
+                sys.exit(0)
+            if results.detached:
+                click.echo(
+                    "\nMonitoring detached. Staged SLURM jobs continue running."
+                )
+                sys.exit(0)
+            if not results.remote_finalized:
+                click.echo(
+                    "\nSTAGED PROCESSING FAILED: the finalizer did not write its "
+                    "completion marker.",
+                    err=True,
+                )
+                sys.exit(1)
+
+            click.echo("\n" + "=" * 60)
+            click.echo("PROCESSING COMPLETE")
+            click.echo("=" * 60)
+            click.echo(
+                f"Completed: {results.total_completed}/{results.total_images}"
+            )
+            click.echo(f"Failed:    {results.total_failed}")
+            click.echo(f"Success rate: {results.success_rate * 100:.1f}%")
+            click.echo(f"Duration: {_format_duration(results.duration)}")
+            click.echo(f"\nResults saved to: {output_dir}")
+            sys.exit(0 if results.total_failed == 0 else 1)
 
         # Process-only (apply-only) runs export image layers + a progress
         # manifest only — no measurement aggregation, HTML report, README,
@@ -1467,7 +1600,9 @@ def phenotypic_cli(
         study_config: Optional[dict] = None
         if study is not None:
             try:
-                study_config = yaml.safe_load(Path(study).read_text(encoding="utf-8"))
+                study_config = yaml.safe_load(
+                    Path(study).read_text(encoding="utf-8")
+                )
             except Exception as e:
                 logger.warning(f"Failed to read --study file {study}: {e}")
 
@@ -1491,8 +1626,13 @@ def phenotypic_cli(
 
             # Write analysis sidecar data for the dashboard
             try:
-                from phenotypic._cli._dashboard._analysis_data import write_analysis_sidecar
-                write_analysis_sidecar(output_dir, metadata_csv=config.metadata_csv)
+                from phenotypic._cli._dashboard._analysis_data import (
+                    write_analysis_sidecar,
+                )
+
+                write_analysis_sidecar(
+                    output_dir, metadata_csv=config.metadata_csv
+                )
             except Exception:
                 logger.warning("Analysis sidecar write failed", exc_info=True)
 
@@ -1524,7 +1664,9 @@ def phenotypic_cli(
         click.echo("\n" + "=" * 60)
         click.echo("PROCESSING COMPLETE")
         click.echo("=" * 60)
-        click.echo(f"Completed: {results.total_completed}/{results.total_images}")
+        click.echo(
+            f"Completed: {results.total_completed}/{results.total_images}"
+        )
         click.echo(f"Failed:    {results.total_failed}")
         click.echo(f"Success rate: {results.success_rate * 100:.1f}%")
         click.echo(f"Duration: {_format_duration(results.duration)}")
@@ -1582,7 +1724,11 @@ def _regenerate_missing_overlays(
 
     from rich.console import Console
     from rich.progress import (
-        BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn,
+        BarColumn,
+        MofNCompleteColumn,
+        Progress,
+        TextColumn,
+        TimeElapsedColumn,
     )
 
     console = Console()
@@ -1641,7 +1787,10 @@ def _regenerate_missing_overlays(
         task_id = progress.add_task("overlays", total=len(work))
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
-                pool.submit(_render_one, ds_name, hdf_path): (ds_name, hdf_path)
+                pool.submit(_render_one, ds_name, hdf_path): (
+                    ds_name,
+                    hdf_path,
+                )
                 for ds_name, hdf_path in work
             }
             for future in as_completed(futures):
@@ -1733,7 +1882,9 @@ def _handle_recompile_slurm(
     finalizer_task_index: Optional[int] = None
     if tasks and tasks[-1].get("task_type") == TASK_FINALIZE:
         finalizer_task_index = len(tasks) - 1
-        tasks[-1][JobMetadataKey.METADATA_CSV] = str(metadata_csv) if metadata_csv else None
+        tasks[-1][JobMetadataKey.METADATA_CSV] = (
+            str(metadata_csv) if metadata_csv else None
+        )
         tasks[-1][JobMetadataKey.NO_QC] = no_qc
 
     console.print("[cyan]Querying SLURM array limits...[/cyan]")
@@ -1774,7 +1925,9 @@ def _handle_recompile_slurm(
         recompile_dir(progress_dir(output_dir)) / RECOMPILE_TASK_MANIFEST_JSON
     )
     job_metadata = {
-        JobMetadataKey.START_TIME: datetime.now().isoformat(timespec="milliseconds"),
+        JobMetadataKey.START_TIME: datetime.now().isoformat(
+            timespec="milliseconds"
+        ),
         JobMetadataKey.EXECUTION_MODE: "slurm",
         JobMetadataKey.DATASETS: _build_recompile_job_metadata_datasets(
             output_dir,
@@ -1784,7 +1937,9 @@ def _handle_recompile_slurm(
         JobMetadataKey.CHUNK_SCRIPTS: [str(script) for script in flat_scripts],
         JobMetadataKey.CHUNK_JOB_IDS: {"0": str(job_ids[0])},
         JobMetadataKey.INCLUDE_DATASET_COLUMN: include_dataset_column,
-        JobMetadataKey.METADATA_CSV: str(metadata_csv) if metadata_csv else None,
+        JobMetadataKey.METADATA_CSV: str(metadata_csv)
+        if metadata_csv
+        else None,
         JobMetadataKey.INPUT_PATH: str(output_dir),
         "recompile": {
             "task_manifest": str(recompile_manifest_path),
@@ -1799,9 +1954,7 @@ def _handle_recompile_slurm(
     console.print(f"[green]Job metadata: {metadata_path}[/green]")
 
     generate_dashboard(output_dir, execution_mode="slurm")
-    console.print(
-        f"[green]Dashboard: {output_dir / 'dashboard.html'}[/green]"
-    )
+    console.print(f"[green]Dashboard: {output_dir / 'dashboard.html'}[/green]")
 
     if wait:
         console.print(
@@ -1816,7 +1969,9 @@ def _handle_recompile_slurm(
         click.echo("  squeue -u $USER --array")
         from phenotypic.sdk_ import logs_dir
 
-        click.echo(f"  tail -f {logs_dir(output_dir) / 'slurm' / 'recompile'}/*.log")
+        click.echo(
+            f"  tail -f {logs_dir(output_dir) / 'slurm' / 'recompile'}/*.log"
+        )
 
 
 def _discover_recompile_dataset_names(
@@ -1825,6 +1980,7 @@ def _discover_recompile_dataset_names(
 ) -> list[str]:
     """Discover datasets using the local recompile precedence."""
     from phenotypic.sdk_ import DIR_MEASUREMENTS
+
     results_dir = output_dir / DIR_RESULTS
     dataset_names: list[str] = []
     if results_dir.is_dir():
@@ -1862,9 +2018,12 @@ def _build_recompile_job_metadata_datasets(
     return datasets
 
 
-def _recompile_dataset_image_names(output_dir: Path, dataset_name: str) -> list[str]:
+def _recompile_dataset_image_names(
+    output_dir: Path, dataset_name: str
+) -> list[str]:
     """Infer image names from per-image measurement Parquets or HDFs."""
     from phenotypic.sdk_ import DIR_MEASUREMENTS, DIR_HDF
+
     dataset_dir = output_dir / DIR_RESULTS / dataset_name
     meas_dir = dataset_dir / DIR_MEASUREMENTS
     if meas_dir.is_dir():
@@ -1896,6 +2055,7 @@ def _wait_for_recompile_finalizer_status(
     import time
 
     from phenotypic.sdk_ import task_status_path
+
     status_path = task_status_path(output_dir, finalizer_task_index)
     deadline = time.monotonic() + timeout if timeout is not None else None
     while True:
@@ -1903,7 +2063,9 @@ def _wait_for_recompile_finalizer_status(
             try:
                 status = json.loads(status_path.read_text(encoding="utf-8"))
             except Exception:
-                logger.warning("Failed to read recompile status %s", status_path)
+                logger.warning(
+                    "Failed to read recompile status %s", status_path
+                )
             else:
                 state = status.get("status")
                 if state == "completed":
@@ -2022,7 +2184,8 @@ def _handle_recompile(
         if meas_dir.is_dir():
             datasets_totals[name] = len(
                 [
-                    p for p in meas_dir.glob("*.parquet")
+                    p
+                    for p in meas_dir.glob("*.parquet")
                     if not p.name.startswith("_")
                 ]
             )

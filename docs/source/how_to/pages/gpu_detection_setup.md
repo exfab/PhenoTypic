@@ -507,7 +507,7 @@ Pre-cache checkpoints on the login node before submitting (see
 ### SLURM Staged GPU Detection
 
 A forward GPU run on SLURM (`--slurm ...` with a `GpuDetector` pipeline) runs as
-the staged engine above, submitted as a **3-link `afterany` dependency chain**
+the staged engine above, coordinated by an **epoch-fenced dependent controller**
 with **per-stage resources**:
 
 - **Stage 1** — a CPU array over images (preprocess → staged HDF), on the
@@ -518,8 +518,8 @@ with **per-stage resources**:
 - **Stage 3** — a CPU array over images (merge sidecar → measure), on the
   `--slurm` profile.
 
-`afterany` between stages means a handful of per-image failures never block the
-next stage. Because Stage 2 writes a `.npy` sidecar with the HDF opened
+Controllers wait with `afterany`, so a handful of per-image failures never block
+the next decision. Because Stage 2 writes a `.npy` sidecar with the HDF opened
 read-only, there is **no HDF5 write-locking on the GPU nodes**; Stages 1 & 3
 write the HDF atomically (temp + rename) on CPU nodes.
 
@@ -530,18 +530,29 @@ python -m phenotypic --pipeline sam2_pipeline.json --input /plates/ -o /output/ 
     --gpu-slurm slurm_partition=gpu --gpu-shards 2
 ```
 
-The resource nesting is two levels: `--gpu-shards` (whole GPUs, across nodes)
-→ `--gpu-workers-per-gpu` (replicas packed per GPU for small models).
+GPU distribution uses `--gpu-shards` (whole GPUs, across nodes).
+`--gpu-workers-per-gpu` is reserved; the current worker uses one model per shard.
 `--gpu-slurm` inherits/deltas over `--slurm`, so shared keys
 (account, qos, time) carry over and only the GPU partition/account need
 restating; one GPU is requested automatically.
 
-**Walltime survival.** The Stage-2 script carries `#SBATCH --signal=B:TERM@120`,
-so SLURM sends `SIGTERM` shortly before the walltime. The shard-worker catches
-it and `sbatch`-resubmits its shard (`afterany` on itself); content-defined skip
-means the continuation processes only the remaining sidecar-less images, and it
-repeats until the shard is complete — so a `TIMEOUT` never loses work and never
-needs a manual restart.
+**Walltime survival.** Before a controller decides what comes next, it has a
+dependent recovery controller in the queue. After a Stage-2 array terminates,
+the controller checks atomic sidecars, resume parquets, missing Stage-1 HDFs,
+and the current epoch's terminal-failure journal. If retryable images remain,
+it submits another Stage-2 array and moves the recovery controller behind that
+array master. Workers do not install a walltime signal handler and do not call
+`scontrol requeue`.
+
+One unchanged retryable-set round is retried. If a second consecutive round
+makes no progress, the remaining images become terminal failures and Stage 3
+continues for completed images. All dynamic job IDs are written to the run
+ledger, which cancellation uses after atomically deactivating the epoch.
+
+Without `--wait`, the command prints `PROCESSING SUBMITTED` and returns. The
+dependent finalizer alone publishes aggregate measurements, QC, analyses,
+dashboard, HTML report, README, and the atomic completion marker. With
+`--wait`, the CLI monitors that marker; Ctrl+C only detaches monitoring.
 
 **Pre-staging gated weights.** For offline compute nodes, download checkpoints on
 the login node first and export `HF_HUB_OFFLINE=1` (and `hf auth login` for gated

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Callable, Dict, Iterator, Optional
 
 from phenotypic import GridImage, Image
 from phenotypic.abc_ import GpuDetector
@@ -27,6 +27,13 @@ from ._cli_pipeline_split import StagePlan
 from ._cli_sidecar import delete_sidecar, load_sidecar, write_sidecar
 from ._stages import StageTag
 from ._cli_update_state import append_completion_event, append_event
+
+ActiveCheck = Callable[[], None]
+
+
+def _check_active(active_check: ActiveCheck | None) -> None:
+    if active_check is not None:
+        active_check()
 
 
 def _image_class(image_type: ImageTypeName):
@@ -49,11 +56,17 @@ def stage_event(
         yield
     except Exception as e:
         append_event(
-            event_log, dataset, image, "failed",
-            error_msg=f"{type(e).__name__}: {e}", stage=stage,
+            event_log,
+            dataset,
+            image,
+            "failed",
+            error_msg=f"{type(e).__name__}: {e}",
+            stage=stage,
         )
         raise
-    append_completion_event(event_log, dataset, image, "completed", stage=stage)
+    append_completion_event(
+        event_log, dataset, image, "completed", stage=stage
+    )
 
 
 def emit_missing_prereq(
@@ -64,8 +77,12 @@ def emit_missing_prereq(
     *what* is e.g. ``"staged HDF"`` (Stage 2) or ``"objmap sidecar"`` (Stage 3).
     """
     append_event(
-        event_log, dataset, image, "failed",
-        error_msg=f"{stage} skipped: {what} missing", stage=stage,
+        event_log,
+        dataset,
+        image,
+        "failed",
+        error_msg=f"{stage} skipped: {what} missing",
+        stage=stage,
     )
 
 
@@ -78,6 +95,7 @@ def stage1_preprocess_core(
     output_manager: OutputManager,
     image_type: ImageTypeName,
     read_kwargs: Optional[Dict[str, Any]] = None,
+    active_check: ActiveCheck | None = None,
 ) -> None:
     """Read raw image, apply the pre-detector ops, save the staged HDF."""
     read_kwargs = dict(read_kwargs or {})
@@ -87,6 +105,7 @@ def stage1_preprocess_core(
     if detect_mode != "gray":
         image.set_detect_mode(detect_mode)
     plan.pre_pipeline.apply(image, inplace=True)
+    _check_active(active_check)
     output_manager.save_image_hdf(image, dataset_name, image_stem)
 
 
@@ -96,6 +115,7 @@ def stage2_detect_core(
     dataset_name: str,
     image_stem: str,
     image_type: ImageTypeName = "Image",
+    active_check: ActiveCheck | None = None,
 ) -> None:
     """Load the input layer (HDF read-only), run inference, write the sidecar.
 
@@ -109,6 +129,7 @@ def stage2_detect_core(
     sample = detector._preprocess(array)
     batch = detector._collate([sample])
     result = detector._infer_batch(batch)[0]
+    _check_active(active_check)
     write_sidecar(output_dir, dataset_name, image_stem, result)
 
 
@@ -119,6 +140,7 @@ def stage3_merge_measure_core(
     image_stem: str,
     output_manager: OutputManager,
     image_type: ImageTypeName,
+    active_check: ActiveCheck | None = None,
 ) -> None:
     """Merge the sidecar, apply post-ops + measure, re-save HDF, delete sidecar."""
     image_cls = _image_class(image_type)
@@ -134,13 +156,19 @@ def stage3_merge_measure_core(
     plan.post_pipeline.apply(image, inplace=True)
     measurements = plan.post_pipeline.measure(image, apply_post=False)
 
+    _check_active(active_check)
     output_manager.save_measurements(measurements, dataset_name, image_stem)
-    output_manager.save_image_hdf(image, dataset_name, image_stem)  # atomic re-save
+    _check_active(active_check)
+    output_manager.save_image_hdf(
+        image, dataset_name, image_stem
+    )  # atomic re-save
     from phenotypic.plotting import PlotCoordinator
 
+    _check_active(active_check)
     PlotCoordinator(plan.post_pipeline, output_dir).emit_image(
         image,
         dataset=dataset_name,
         image_stem=image_stem,
     )
+    _check_active(active_check)
     delete_sidecar(output_dir, dataset_name, image_stem)  # mandatory cleanup

@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import json
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from click.testing import CliRunner
 
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
@@ -23,6 +25,16 @@ pytestmark = pytest.mark.skipif(
 from phenotypic._cli._cli_checkpoint_handler import (  # noqa: E402
     _run_finalize,
     _run_manifest,
+    main,
+)
+from phenotypic._cli._cli_file_locking import FileLockTimeout  # noqa: E402
+from phenotypic._cli._cli_staged_orchestration import (  # noqa: E402
+    initialize_orchestration,
+    staged_completion_path,
+)
+from phenotypic.sdk_ import (  # noqa: E402
+    atomic_write_json,
+    progress_dir as progress_dir_helper,
 )
 
 
@@ -198,3 +210,72 @@ class TestRunFinalizeCoercion:
         mock_wait.assert_not_called()
         mock_aggregate.assert_not_called()
         mock_build_manifest.assert_not_called()
+
+    def test_staged_finalize_fails_when_no_current_measurements(
+        self, tmp_path: Path
+    ) -> None:
+        output_dir = tmp_path / "out"
+        progress_dir = progress_dir_helper(output_dir)
+        _write_job_metadata(progress_dir, NESTED_DATASETS)
+        initialize_orchestration(
+            output_dir,
+            epoch="epoch-1",
+            mode="restart",
+            controller_config_path=progress_dir / "controller.json",
+        )
+
+        with (
+            patch(
+                "phenotypic._cli._cli_output_manager.aggregate_measurements",
+                return_value=None,
+            ),
+            pytest.raises(
+                RuntimeError,
+                match="No current-epoch measurements",
+            ),
+        ):
+            _run_finalize(output_dir, progress_dir, epoch="epoch-1")
+
+    def test_duplicate_finalizer_waits_for_matching_marker(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        output_dir = tmp_path / "out"
+        output_dir.mkdir()
+        progress_dir = progress_dir_helper(output_dir)
+        initialize_orchestration(
+            output_dir,
+            epoch="epoch-1",
+            mode="fresh",
+            controller_config_path=progress_dir / "controller.json",
+        )
+        attempts = 0
+
+        @contextmanager
+        def fake_file_lock(*args, **kwargs):
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise FileLockTimeout("winner still publishing")
+            atomic_write_json(
+                staged_completion_path(output_dir), {"epoch": "epoch-1"}
+            )
+            yield
+
+        monkeypatch.setattr(
+            "phenotypic._cli._cli_checkpoint_handler.file_lock", fake_file_lock
+        )
+
+        result = CliRunner().invoke(
+            main,
+            [
+                "--output-dir",
+                str(output_dir),
+                "--checkpoint-type",
+                "finalize",
+                "--epoch",
+                "epoch-1",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert attempts == 2

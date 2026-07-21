@@ -29,6 +29,7 @@ Wired effects (per ``GUI_SPEC_V1.md`` section 5):
     * Log tail — :class:`LocalRunner.snapshot_log` poll on a
       :class:`dcc.Interval`.
 """
+
 from __future__ import annotations
 
 import json
@@ -104,7 +105,9 @@ def _format_exception(exc: BaseException) -> str:
     return f"{type(exc).__name__}: {exc}"
 
 
-def _trigger_kind_path(triggered: Any, expected_type: str) -> Optional[Tuple[str, str]]:
+def _trigger_kind_path(
+    triggered: Any, expected_type: str
+) -> Optional[Tuple[str, str]]:
     """Validate a directory-tree click and return ``(kind, path)``."""
     if not isinstance(triggered, dict):
         return None
@@ -299,7 +302,9 @@ def _form_inputs_to_state(
     metadata_csv: str | None = None
     if sandbox is not None:
         resolved_metadata = resolve_metadata_csv(sandbox, metadata_payload)
-        metadata_csv = str(resolved_metadata) if resolved_metadata is not None else None
+        metadata_csv = (
+            str(resolved_metadata) if resolved_metadata is not None else None
+        )
 
     return {
         "pipeline_path": pipeline_path,
@@ -309,7 +314,9 @@ def _form_inputs_to_state(
         "mode": mode or "local",
         "dry_run": "dry_run" in flag_set,
         "resume": "resume" in flag_set,
-        "advanced_args": {k: v for k, v in advanced.items() if v not in (None, "")},
+        "advanced_args": {
+            k: v for k, v in advanced.items() if v not in (None, "")
+        },
         "slurm_args": slurm_args,
     }
 
@@ -411,7 +418,9 @@ def _has_pending_slurm() -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _dashboard_url(rel_path: str, *, url_prefix: str = DEFAULT_URL_PREFIX) -> str:
+def _dashboard_url(
+    rel_path: str, *, url_prefix: str = DEFAULT_URL_PREFIX
+) -> str:
     """Build the iframe ``src`` for ``rel_path``.
 
     The shell mounts ``/runs/<rel>/<file>`` regardless of the Dash sub-app's
@@ -466,12 +475,22 @@ def register_callbacks(
     # callbacks in a loop so the per-modal IDs read top-to-bottom.
 
     _modal_buttons: list[tuple[str, str, str]] = [
-        (ids.RC_MODAL_PIPELINE, ids.RC_BTN_PICK_PIPELINE, ids.RC_BTN_PIPELINE_CANCEL),
+        (
+            ids.RC_MODAL_PIPELINE,
+            ids.RC_BTN_PICK_PIPELINE,
+            ids.RC_BTN_PIPELINE_CANCEL,
+        ),
         (ids.RC_MODAL_INPUT, ids.RC_BTN_PICK_INPUT, ids.RC_BTN_INPUT_CANCEL),
-        (ids.RC_MODAL_OUTPUT, ids.RC_BTN_PICK_OUTPUT, ids.RC_BTN_OUTPUT_CANCEL),
+        (
+            ids.RC_MODAL_OUTPUT,
+            ids.RC_BTN_PICK_OUTPUT,
+            ids.RC_BTN_OUTPUT_CANCEL,
+        ),
     ]
 
-    def _register_modal_toggle(modal_id: str, button_id: str, *, open_value: bool) -> None:
+    def _register_modal_toggle(
+        modal_id: str, button_id: str, *, open_value: bool
+    ) -> None:
         """Register an open/close callback for a single picker button."""
 
         @app.callback(
@@ -616,7 +635,11 @@ def register_callbacks(
         if not n_clicks:
             return (no_update,) * 6
         if not dir_value:
-            return (no_update, no_update, *_toast("Pick a folder first", ok=False))
+            return (
+                no_update,
+                no_update,
+                *_toast("Pick a folder first", ok=False),
+            )
         chosen = Path(dir_value)
         # Cheap "any image files?" probe — count entries with an image-ish
         # extension in the depth-1 listing.
@@ -802,7 +825,9 @@ def register_callbacks(
                 return is_open
             return not is_open
 
-    _register_collapse_toggle(ids.RC_COLLAPSE_ADVANCED, ids.RC_BTN_TOGGLE_ADVANCED)
+    _register_collapse_toggle(
+        ids.RC_COLLAPSE_ADVANCED, ids.RC_BTN_TOGGLE_ADVANCED
+    )
     _register_collapse_toggle(ids.RC_COLLAPSE_SLURM, ids.RC_BTN_TOGGLE_SLURM)
 
     # ----------------------------------------------------------------------
@@ -950,8 +975,12 @@ def register_callbacks(
         Output(ids.RC_STORE_ACTIVE_RUN_ID, "data", allow_duplicate=True),
         Output(ids.RC_STORE_ACTIVE_REL_PATH, "data", allow_duplicate=True),
         Output(ids.RC_INTERVAL_LOG, "disabled", allow_duplicate=True),
-        Output(ids.RC_INTERVAL_DASHBOARD_POLL, "disabled", allow_duplicate=True),
-        Output(ids.RC_INTERVAL_DASHBOARD_POLL, "n_intervals", allow_duplicate=True),
+        Output(
+            ids.RC_INTERVAL_DASHBOARD_POLL, "disabled", allow_duplicate=True
+        ),
+        Output(
+            ids.RC_INTERVAL_DASHBOARD_POLL, "n_intervals", allow_duplicate=True
+        ),
         Output(ids.RC_BTN_CANCEL, "disabled", allow_duplicate=True),
         Output(ids.RC_STORE_RECENTS_REFRESH, "data", allow_duplicate=True),
         Input(ids.RC_BTN_RUN, "n_clicks"),
@@ -1093,10 +1122,26 @@ def register_callbacks(
             return (no_update,) * 6
         try:
             stopped = runner.stop(run_id)
-            if stopped:
+            cancelled_jobs: list[str] = []
+            record = registry.get(run_id)
+            if record is not None:
+                from phenotypic._cli._cli_staged_orchestration import (
+                    cancel_staged_jobs,
+                )
+
+                cancelled_jobs = cancel_staged_jobs(record.output_dir)
+            if stopped or cancelled_jobs:
                 registry.update_status(run_id, "cancelled")
                 return (
-                    *_toast(f"Cancelled {run_id}", ok=True),
+                    *_toast(
+                        f"Cancelled {run_id}"
+                        + (
+                            f" ({len(cancelled_jobs)} SLURM job(s))"
+                            if cancelled_jobs
+                            else ""
+                        ),
+                        ok=True,
+                    ),
                     True,
                     True,
                 )
@@ -1121,7 +1166,9 @@ def register_callbacks(
         Output(ids.RC_IFRAME, "src", allow_duplicate=True),
         Output(ids.RC_IFRAME, "style", allow_duplicate=True),
         Output(ids.RC_IFRAME_PLACEHOLDER, "style", allow_duplicate=True),
-        Output(ids.RC_INTERVAL_DASHBOARD_POLL, "disabled", allow_duplicate=True),
+        Output(
+            ids.RC_INTERVAL_DASHBOARD_POLL, "disabled", allow_duplicate=True
+        ),
         Input(ids.RC_INTERVAL_DASHBOARD_POLL, "n_intervals"),
         State(ids.RC_STORE_ACTIVE_REL_PATH, "data"),
         prevent_initial_call=True,
@@ -1182,9 +1229,7 @@ def register_callbacks(
         else:
             running = runner.is_running(run_id)
             status = "running" if running else record.status
-            banner = (
-                f"{record.mode} | {record.rel_path} | status={status}"
-            )
+            banner = f"{record.mode} | {record.rel_path} | status={status}"
         return text, banner
 
     # ----------------------------------------------------------------------
@@ -1307,7 +1352,10 @@ def register_callbacks(
     def click_recents_row(_clicks: List[int]) -> Tuple[Any, ...]:
         """Re-point the iframe at a clicked recent-run dashboard."""
         triggered = ctx.triggered_id
-        if not isinstance(triggered, dict) or triggered.get("type") != "rc-recents-row":
+        if (
+            not isinstance(triggered, dict)
+            or triggered.get("type") != "rc-recents-row"
+        ):
             return (no_update,) * 4
         if not ctx.triggered or not ctx.triggered[0].get("value"):
             return (no_update,) * 4
@@ -1355,16 +1403,16 @@ def register_callbacks(
             return (no_update,) * 4
         if not name or not name.strip():
             return _toast("Name the preset first", ok=False)
-        safe_name = "".join(c for c in name.strip() if c.isalnum() or c in "-_")
+        safe_name = "".join(
+            c for c in name.strip() if c.isalnum() or c in "-_"
+        )
         if not safe_name:
             return _toast("Invalid preset name", ok=False)
         try:
             target = _presets_dir(sandbox) / f"{safe_name}.json"
             state = run_state_from_json(form_state or {})
             payload = run_state_to_json(state)
-            target.write_text(
-                json.dumps(payload, indent=2), encoding="utf-8"
-            )
+            target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
             return _toast(f"Saved preset {safe_name}", ok=True)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Save preset failed")
@@ -1388,9 +1436,7 @@ def register_callbacks(
         if not preset_path:
             return (no_update,) * 9
         try:
-            payload = json.loads(
-                Path(preset_path).read_text(encoding="utf-8")
-            )
+            payload = json.loads(Path(preset_path).read_text(encoding="utf-8"))
             state = run_state_from_json(payload)
             flags: List[str] = []
             if state.dry_run:
@@ -1403,9 +1449,7 @@ def register_callbacks(
                 state.output_dir,
                 state.mode,
                 flags,
-                *_toast(
-                    f"Loaded preset {Path(preset_path).stem}", ok=True
-                ),
+                *_toast(f"Loaded preset {Path(preset_path).stem}", ok=True),
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Load preset failed")
@@ -1478,10 +1522,9 @@ def register_callbacks(
 
         caps = selection.get("capabilities") or {}
         is_dir = bool(selection.get("is_dir"))
-        looks_like_json = (
-            caps.get("has_pipeline_json", False)
-            or matches_any_suffix(path, PIPELINE_CONFIG_SUFFIXES)
-        )
+        looks_like_json = caps.get(
+            "has_pipeline_json", False
+        ) or matches_any_suffix(path, PIPELINE_CONFIG_SUFFIXES)
 
         return (
             {"display": "flex"},
@@ -1530,8 +1573,13 @@ def register_callbacks(
             # is not torn down as a side-effect of dismissing the
             # hand-off banner.
             return (
-                no_update, no_update, no_update,
-                no_update, no_update, no_update, no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
                 None,
             )
 
@@ -1539,7 +1587,9 @@ def register_callbacks(
         abs_path = (selection or {}).get("abs_path") if selection else None
         if not path:
             return (
-                no_update, no_update, no_update,
+                no_update,
+                no_update,
+                no_update,
                 *_toast("No sidebar selection", ok=False),
                 no_update,
             )
@@ -1551,21 +1601,26 @@ def register_callbacks(
 
         if triggered == ids.RC_HANDOFF_USE_PIPELINE:
             return (
-                target, no_update, no_update,
+                target,
+                no_update,
+                no_update,
                 *_toast(f"Set as pipeline: {path}", ok=True),
                 None,
             )
         if triggered == ids.RC_HANDOFF_USE_INPUT:
             return (
-                no_update, target, no_update,
+                no_update,
+                target,
+                no_update,
                 *_toast(f"Set as input dir: {path}", ok=True),
                 None,
             )
         if triggered == ids.RC_HANDOFF_USE_OUTPUT:
             return (
-                no_update, no_update, target,
+                no_update,
+                no_update,
+                target,
                 *_toast(f"Set as output dir: {path}", ok=True),
                 None,
             )
         return (no_update,) * 8
-
