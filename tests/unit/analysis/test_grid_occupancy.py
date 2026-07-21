@@ -190,16 +190,16 @@ class TestSerializationRoundTrip:
         assert (result["QC_Occupancy_Metric"] == 1.0).all()
 
 
-class TestDash:
+class TestInspect:
     """Plotly output."""
 
-    def test_dash_returns_figure_after_analyze(self) -> None:
+    def test_inspect_returns_figure_after_analyze(self) -> None:
         chk = GridOccupancy(metadata=_layout(), groupby=[str(METADATA.IMAGE_NAME)])
         chk.analyze(_measurements("plate1.png", list(range(80))))
-        fig = chk.dash()
+        fig = chk.inspect()
         assert isinstance(fig, go.Figure)
 
-    def test_dash_before_analyze_raises(self) -> None:
+    def test_inspect_before_analyze_raises(self) -> None:
         chk = GridOccupancy(metadata=_layout(), groupby=[str(METADATA.IMAGE_NAME)])
         with pytest.raises(RuntimeError, match="analyze"):
-            chk.dash()
+            chk.inspect()

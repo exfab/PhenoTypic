@@ -7,10 +7,9 @@ per-axis dashboard stats, and exposes a set of control-free ``@figure``
 methods that port the former matplotlib ``_plot_*`` panels to raw
 ``plotly.graph_objects`` figures.
 
-Because every ``@figure`` here is control-free, :meth:`AutoGridFinder.dashboard`
-calls ``GridFitReport(...).dash()`` and gets back a single composed,
-vertically-stacked ``go.Figure`` (the repo-wide ``.dash() -> go.Figure``
-contract for control-free providers). No Panel, no Dash, no ipywidgets.
+Because every ``@figure`` here is control-free, :meth:`AutoGridFinder.report`
+calls ``GridFitReport(...).report()`` and gets back a single composed,
+vertically-stacked ``go.Figure``. No Panel, no Dash, no ipywidgets.
 
 The report is a *helper* provider: it overrides :meth:`_figure_subject`
 to return ``None`` (the figures read the stored data on ``self`` and take
@@ -24,7 +23,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import plotly.graph_objects as go
 
-from phenotypic.abc_ import FigureProvider, figure
+from phenotypic.abc_.plotting import PhtPlot, figure
 from phenotypic.schema import BBOX, GRID
 from phenotypic.sdk_.viz.figures._theme import MUTED, NAVY, OKABE_ITO
 
@@ -49,7 +48,7 @@ _SECTION_AXIS = "axis"
 _SECTION_SUMMARY = "summary"
 
 
-class GridFitReport(FigureProvider):
+class GridFitReport(PhtPlot):
     """Notebook Plotly report for one :class:`AutoGridFinder` grid fit.
 
     Holds the output of :meth:`AutoGridFinder._run_timed_pipeline` together
@@ -80,7 +79,7 @@ class GridFitReport(FigureProvider):
         >>> image = phenotypic.GridImage(load_synth_yeast_plate())
         >>> image = OtsuDetector().apply(image, inplace=False)
         >>> finder = AutoGridFinder(nrows=8, ncols=12)
-        >>> fig = finder.dashboard(image, show_progress=False)
+        >>> fig = finder.report(image, show_progress=False)
         >>> type(fig).__name__
         'Figure'
     """
@@ -110,12 +109,12 @@ class GridFitReport(FigureProvider):
     # stored result/stats on ``self`` directly and takes no subject parameter,
     # so the inherited ``_figure_subject() -> None`` is left unoverridden.
 
-    # -- composed dashboard -------------------------------------------------
+    # -- composed report ----------------------------------------------------
 
-    def dash(self, subject: Any = None) -> go.Figure:
+    def report(self, subject: Any = None, **overrides: Any) -> go.Figure:
         """Compose every control-free panel into one stacked ``go.Figure``.
 
-        Overrides :meth:`FigureProvider.dash`. The base mixin composes via
+        Overrides :meth:`PhtPlot.report`. The base mixin composes via
         ``make_subplots`` with uniform ``xy`` cells, which cannot host the
         summary ``go.Table``. This override builds the subplot grid with
         per-row ``specs`` — ``type="table"`` for the summary row, ``type="xy"``
@@ -125,12 +124,18 @@ class GridFitReport(FigureProvider):
 
         Args:
             subject: Unused (this helper holds its own data); accepted only
-                to match the :meth:`FigureProvider.dash` signature.
+                to match the :meth:`PhtPlot.report` signature.
+            **overrides: Plot-specific overrides are unsupported.
 
         Returns:
             A single themed ``plotly.graph_objects.Figure`` stacking all
             panels vertically.
         """
+        if overrides:
+            raise ValueError(
+                f"report(): unsupported override(s) {sorted(overrides)}"
+            )
+
         from plotly.subplots import make_subplots
 
         from phenotypic.sdk_.viz.figures._theme import apply_theme

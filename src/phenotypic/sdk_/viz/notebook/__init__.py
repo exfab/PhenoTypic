@@ -1,7 +1,7 @@
 """Notebook (ipywidgets) rendering shell for the figure protocol.
 
 Exposes :func:`build_notebook_dashboard`, used by
-:meth:`phenotypic.abc_.FigureProvider.dash` when a provider's figures declare
+:meth:`phenotypic.abc_.plotting.PhtPlot.report` when a provider's figures declare
 ``Control``s. ipywidgets is imported lazily inside the builder.
 """
 

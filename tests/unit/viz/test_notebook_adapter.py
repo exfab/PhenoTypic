@@ -9,7 +9,7 @@ from __future__ import annotations
 import plotly.graph_objects as go
 import pytest
 
-from phenotypic.abc_ import Control, FigureProvider, figure
+from phenotypic.abc_.plotting import Control, PhtPlot, figure
 from phenotypic.sdk_.viz.notebook._adapter import (
     control_owners,
     initial_control_state,
@@ -21,7 +21,7 @@ SIGMA = Control(label="Sigma", kind="float", default=1.5, bounds=(0.0, 5.0))
 METHOD = Control(label="Method", kind="select", default="meijering", options=("meijering", "sato"))
 
 
-class _Provider(FigureProvider):
+class _Provider(PhtPlot):
     @figure(title="Ridge", section="structure", controls={"sigma": SIGMA, "method": METHOD})
     def ridge(self, *, sigma, method) -> go.Figure:
         return go.Figure(go.Scatter(x=[sigma], y=[1], name=method))
@@ -69,7 +69,7 @@ def test_build_notebook_dashboard_does_not_emit_plotly_repr(capsys):
     pytest.importorskip("ipywidgets")
     pytest.importorskip("IPython")
 
-    dashboard = _Provider().dash()
+    dashboard = _Provider().report()
 
     captured = capsys.readouterr()
     assert captured.out == ""

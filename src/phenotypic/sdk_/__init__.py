@@ -8,8 +8,7 @@ for persisting plate datasets and measurements.
 Advanced users can access GridInferenceMixin and FootprintMixin for creating custom
 grid-based operations and morphological footprints.
 
-The ``register`` submodule provides registry utilities for extensible components
-like plotters and analysis plugins.
+The ``register`` submodule provides registry utilities for analysis dashboard plugins.
 
 The ``_io_constants`` submodule is the single source of truth for CLI ↔ GUI
 artifact filenames, directory names, JSON contract keys, and path helpers
@@ -37,16 +36,16 @@ from ._atomic_io import (
 from ._column_ref import ColumnRef, ColumnRefList, ColumnSource
 from ._io_constants import (
     # Filenames (CLI artifacts)
-    ANALYSIS_CSV,
     CURATION_LABELS_PARQUET,
     CUSTOM_CATEGORIES_JSON,
     DIR_ERRORS,
     ERROR_ANALYSIS_CSV,
     ERROR_ANALYSIS_HTML,
     ERROR_ANALYSIS_PARQUET,
+    ANALYSIS_MANIFEST_FILENAME,
+    ANALYSIS_MANIFEST_SCHEMA_VERSION,
     ANALYSIS_FULL_PARQUET,
     ANALYSIS_HTML,
-    ANALYSIS_PARQUET,
     ANALYSIS_SCATTER_JSON,
     BEST_PARAMS_JSON,
     BEST_PIPELINE_JSON,
@@ -64,11 +63,11 @@ from ._io_constants import (
     DIR_CHUNKS,
     DIR_DELIVERABLES,
     DIR_HDF,
-    DIR_INSPECT,
     DIR_LOGS,
     DIR_MEASUREMENTS,
     DIR_MEASUREMENTS_BY_FEATURE,
     DIR_OVERLAYS,
+    DIR_PLOTS,
     DIR_PARETO,
     DIR_PHENOTYPIC,
     DIR_PHT_TUNE_CACHE,
@@ -121,11 +120,11 @@ from ._io_constants import (
     JobMetadataKey,
     ModulePath,
     ProcessingStateKey,
+    AnalysisArtifactPaths,
     # Path helpers
-    analysis_csv_path,
     analysis_full_parquet_path,
+    analysis_manifest_path,
     analysis_html_path,
-    analysis_parquet_path,
     analysis_scatter_json_path,
     best_pipeline_path,
     best_params_path,
@@ -144,6 +143,7 @@ from ._io_constants import (
     dataset_overlays_dir,
     dataset_results_dir,
     overlays_dir,
+    plots_dir,
     default_output_dir_name,
     curation_labels_parquet_path,
     custom_categories_json_path,
@@ -168,6 +168,9 @@ from ._io_constants import (
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
+    named_analysis_csv_path,
+    named_analysis_parquet_path,
+    named_analysis_paths,
     metadata_csv_deliverable_path,
     matches_any_suffix,
     overlay_manifest_path,
@@ -218,6 +221,7 @@ from ._io_constants import (
     tune_cache_study_db_path,
     tuning_spec_path,
     verified_parquet_path,
+    validate_analysis_id,
 )
 from .funcs_ import is_binary_mask, timed_execution
 from .hdf_ import HDF
@@ -227,6 +231,7 @@ from ._metadata_helpers import (
     is_metadata_header,
     metadata_category_for_label,
     metadata_category_prefixes,
+    metadata_only_mask,
     order_measurement_columns,
 )
 from .mixin import (
@@ -266,6 +271,7 @@ __all__ = [
     "is_metadata_header",
     "metadata_category_for_label",
     "metadata_category_prefixes",
+    "metadata_only_mask",
     "order_measurement_columns",
     "napari_",
     "register",
@@ -279,15 +285,15 @@ __all__ = [
     # I/O constants module (also re-exported below)
     "_io_constants",
     # Filename constants
-    "ANALYSIS_CSV",
     "ANALYSIS_FULL_PARQUET",
+    "ANALYSIS_MANIFEST_FILENAME",
+    "ANALYSIS_MANIFEST_SCHEMA_VERSION",
     "CURATION_LABELS_PARQUET",
     "CUSTOM_CATEGORIES_JSON",
     "ERROR_ANALYSIS_CSV",
     "ERROR_ANALYSIS_HTML",
     "ERROR_ANALYSIS_PARQUET",
     "ANALYSIS_HTML",
-    "ANALYSIS_PARQUET",
     "ANALYSIS_SCATTER_JSON",
     "BEST_PARAMS_JSON",
     "BEST_PIPELINE_JSON",
@@ -338,11 +344,11 @@ __all__ = [
     "DIR_DELIVERABLES",
     "DIR_ERRORS",
     "DIR_HDF",
-    "DIR_INSPECT",
     "DIR_LOGS",
     "DIR_MEASUREMENTS",
     "DIR_MEASUREMENTS_BY_FEATURE",
     "DIR_OVERLAYS",
+    "DIR_PLOTS",
     "DIR_PARETO",
     "DIR_PHENOTYPIC",
     "DIR_PHT_TUNE_CACHE",
@@ -364,12 +370,12 @@ __all__ = [
     "JobMetadataKey",
     "ModulePath",
     "ProcessingStateKey",
+    "AnalysisArtifactPaths",
     # Path helpers
     "BundleLayout",
-    "analysis_csv_path",
     "analysis_full_parquet_path",
+    "analysis_manifest_path",
     "analysis_html_path",
-    "analysis_parquet_path",
     "analysis_scatter_json_path",
     "best_pipeline_path",
     "best_params_path",
@@ -387,6 +393,7 @@ __all__ = [
     "dataset_overlays_dir",
     "dataset_results_dir",
     "overlays_dir",
+    "plots_dir",
     "curation_labels_parquet_path",
     "custom_categories_json_path",
     "default_output_dir_name",
@@ -411,6 +418,9 @@ __all__ = [
     "measurements_by_feature_dir",
     "measurements_csv_path",
     "measurements_parquet_path",
+    "named_analysis_csv_path",
+    "named_analysis_parquet_path",
+    "named_analysis_paths",
     "metadata_csv_deliverable_path",
     "matches_any_suffix",
     "migrate_legacy_machine_state",
@@ -461,4 +471,5 @@ __all__ = [
     "tune_cache_study_db_path",
     "tuning_spec_path",
     "verified_parquet_path",
+    "validate_analysis_id",
 ]

@@ -109,6 +109,26 @@ def _seed_stale_qc_db(tmp_path: Path) -> Path:
 class TestCatalog:
     """``qc_modules`` catalog rows, ordering, roles, and params snapshot."""
 
+    def test_returns_exact_analyzed_check_after_publication(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        check = ReplicateAgreement(
+            on="Size_Area", groupby=[str(METADATA.IMAGE_NAME)]
+        )
+        entry = QcRecipeEntry(
+            cls=ReplicateAgreement,
+            params={},
+            instance_id="qc-SE-reused",
+            enabled=True,
+        )
+        monkeypatch.setattr(entry, "instantiate", lambda: check)
+        modules = run_qc(
+            _measurements(), ImagePipeline(qc=[entry]), tmp_path
+        )
+        assert len(modules) == 1
+        assert modules[0].instance_id == entry.instance_id
+        assert modules[0].check is check
+
     def test_one_catalog_row_per_enabled_instance_in_order(
         self, tmp_path: Path, layout_csv: Path
     ) -> None:

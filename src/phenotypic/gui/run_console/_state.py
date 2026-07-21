@@ -82,9 +82,6 @@ class RunConsoleState:
             CLI just validates inputs without processing images.
         resume: When ``True``, append ``--resume`` so the CLI picks up where
             a previous run left off.
-        save_inspect: When ``True``, append ``--save-inspect`` to the CLI
-            argv so :meth:`MeasureFeatures.inspect` figures are saved as
-            PNGs per processed image.
         advanced_args: Optional advanced flag bucket. Recognised keys:
             ``sample`` (int), ``nrows`` (int), ``ncols`` (int),
             ``image_type`` (str), ``workers`` (int), ``log_level`` (str).
@@ -104,7 +101,6 @@ class RunConsoleState:
     mode: ExecutionMode = "local"
     dry_run: bool = False
     resume: bool = False
-    save_inspect: bool = False
     advanced_args: dict[str, Any] = field(default_factory=dict)
     slurm_args: dict[str, Any] = field(default_factory=dict)
 
@@ -137,7 +133,6 @@ def run_state_to_json(state: RunConsoleState) -> dict[str, Any]:
         "mode": state.mode,
         "dry_run": bool(state.dry_run),
         "resume": bool(state.resume),
-        "save_inspect": bool(state.save_inspect),
         "advanced_args": dict(state.advanced_args or {}),
         "slurm_args": _slurm_args_to_json(state.slurm_args or {}),
     }
@@ -180,7 +175,6 @@ def run_state_from_json(payload: dict[str, Any]) -> RunConsoleState:
         mode=mode,
         dry_run=bool(payload.get("dry_run", False)),
         resume=bool(payload.get("resume", False)),
-        save_inspect=bool(payload.get("save_inspect", False)),
         advanced_args=advanced_args,
         slurm_args=slurm_args,
     )
@@ -296,8 +290,6 @@ def to_argv(state: RunConsoleState) -> list[str]:
         argv.append("--dry-run")
     if state.resume:
         argv.append("--resume")
-    if state.save_inspect:
-        argv.append("--save-inspect")
 
     advanced = state.advanced_args or {}
     sample = advanced.get("sample")

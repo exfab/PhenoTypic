@@ -983,7 +983,7 @@ def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
     try:
         # Write directly into the bundle's resolved qc dir so a standalone
         # deliverables bundle (root == deliverables folder) never double-joins.
-        run_qc(
+        successful = run_qc(
             frame,
             pipeline,
             Path(output_root.root),
@@ -994,6 +994,20 @@ def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
             "In-session QC recompute (full rebuild) failed", exc_info=True
         )
         return False
+    try:
+        from phenotypic.gui._plot_refresh import refresh_qc_plots
+
+        refresh_qc_plots(
+            pipeline,
+            output_root.layout,
+            frame,
+            successful,
+        )
+    except Exception:  # noqa: BLE001 - QC database remains authoritative
+        logger.warning(
+            "GUI QC plot refresh failed after qc.duckdb rebuild",
+            exc_info=True,
+        )
     return True
 
 

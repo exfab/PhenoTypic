@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+import weakref
 from typing import ClassVar, Literal
 
 import numpy as np
 import pandas as pd
 from pydantic import PrivateAttr, field_validator, model_validator
 
-# Control/FigureProvider/figure are re-exported from phenotypic.abc_ (this is
-# exactly what _measure_symmetric_zones.py imports).
-from phenotypic.abc_ import Control, FigureProvider, MeasureFeatures, figure
+from phenotypic.abc_ import MeasureFeatures
+from phenotypic.abc_.plotting import Control, PlotImage, figure
 from phenotypic.schema import (
     OBJECT,
     ORIENTATION_ZONE_DIAGNOSTIC,
@@ -888,7 +888,7 @@ def _resultant_direction(phi, coherence, selector):
     )
 
 
-class MeasureOrientationZones(MeasureFeatures, FigureProvider):
+class MeasureOrientationZones(MeasureFeatures, PlotImage):
     """Measure absolute and radial-relative hyphal orientation by growth zone.
 
     Computes the structure-tensor orientation field over a mask-free tile (grid
@@ -923,7 +923,6 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         include_diagnostics: Emit validation comparators, quality support, raw
             peak, rate-gradient, and legacy orientation-zone columns. Defaults
             to ``False`` so only primary outward-rotation metrics are returned.
-        quiver_block: inspect() quiver downsample block size in pixels.
         n_annuli: Number of equal-area annuli in the shared zone segmentation.
         pelt_penalty: PELT penalty controlling core-changepoint sensitivity.
         symmetry_threshold: Minimum angular coverage for symmetric growth.
@@ -935,6 +934,8 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         tau_core: Colony-ness threshold for the core/dense boundary.
         tau_dense: Colony-ness threshold for the dense/sparse boundary.
         tau_sparse: Colony-ness threshold for the sparse/outside boundary.
+        quiver_block: inspect() quiver downsample block size in pixels. Plotting
+            parameters follow the measurement parameters in the public schema.
 
     Examples:
         >>> from phenotypic.data import load_synth_filamentous_plate
@@ -958,7 +959,6 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
     outward_peak_window_rings: int = 3
     outward_min_run_rings: int = 6
     include_diagnostics: bool = False
-    quiver_block: int = 12
     # --- zone passthrough (defaults identical to MeasureSymmetricZones) ---
     n_annuli: int = 100
     pelt_penalty: float = 5.0
@@ -971,10 +971,15 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
     tau_core: float = 0.9
     tau_dense: float = 0.5
     tau_sparse: float = 0.1
+    # Plot-only fields stay after every measurement field so constructor,
+    # schema, and GUI form order follow the operation's functional parameters.
+    quiver_block: int = 12
     # Per-object figure intermediates, populated by _operate. PrivateAttr keeps
     # it out of model_dump()/JSON (mirrors MeasureSymmetricZones' cache pattern).
     _cache: dict = PrivateAttr(default_factory=dict)
-    _cache_image: "object | None" = PrivateAttr(default=None)
+    _cache_image_ref: "weakref.ReferenceType[object] | None" = PrivateAttr(
+        default=None
+    )
     _cache_signature: str | None = PrivateAttr(default=None)
 
     @field_validator("sigma_d", "sigma_i")
@@ -1158,7 +1163,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         """Yield (prop, seg, obj_mask, phi, coh, grad, dist_map, centre) per object.
 
         SINGLE source of truth for the heavy orientation compute — reused by
-        _operate() (which keeps only compact summaries) and by dashboard()'s
+        _operate() (which keeps only compact summaries) and by report()'s
         coherence panel (which recomputes on demand). The full-resolution arrays
         yielded here are consumed and discarded by each caller; nothing full-res
         is retained on the instance. Tiny objects (area<10) are skipped.
@@ -1193,9 +1198,8 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             r.update({h: np.nan for h in headers})
             base[prop.label] = r
         self._cache.clear()  # compact per-object figure records only
-        self._cache_image = (
-            image  # single reference (not a copy) for no-arg figures
-        )
+        # Preserve no-argument notebook figures without retaining a full Image.
+        self._cache_image_ref = weakref.ref(image)
         for (
             prop,
             seg,
@@ -1206,17 +1210,21 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             dist_map,
             centre,
         ) in self._iter_object_fields(image, props, label2section):
-            per_zone, radial_relative, long_range, ring_profile = (
-                self._fill_metrics(
-                    base[prop.label],
-                    seg,
-                    obj_mask,
-                    phi,
-                    coh,
-                    grad,
-                    dist_map,
-                    centre,
-                )
+            (
+                outward_rotation,
+                per_zone,
+                radial_relative,
+                long_range,
+                ring_profile,
+            ) = self._fill_metrics(
+                base[prop.label],
+                seg,
+                obj_mask,
+                phi,
+                coh,
+                grad,
+                dist_map,
+                centre,
             )
             # LEAN CACHE: store compact summaries only — NO full-res tile/phi/coh/
             # grad/dist_map and NO seg dataclass. Bounds memory to O(objects*blocks).
@@ -1231,6 +1239,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
                     "sparse_end": seg.sparse_end_radius,
                 },
                 "zones_computed": seg.zones_computed,
+                "outward_rotation": outward_rotation,
                 "quiver": _downsample_quiver(
                     phi, coh, self.quiver_block
                 ),  # block-res
@@ -1258,7 +1267,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         coherence: np.ndarray,
         dist_map: np.ndarray,
         centre: tuple[float, float],
-    ) -> None:
+    ) -> dict[str, dict[str, float]]:
         """Write full-length literal-crossing primary and diagnostic metrics.
 
         The complete detected object is skeletonized before the inoculum
@@ -1266,7 +1275,12 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         extent and are never trimmed to the symmetric radius.
         """
 
-        def _write_missing() -> None:
+        primary_by_zone = {
+            zone: {metric: np.nan for metric in _PRIMARY_OUTWARD_METRICS}
+            for zone in _ZONES
+        }
+
+        def _write_missing() -> dict[str, dict[str, float]]:
             for zone in _ZONES:
                 for metric in _PRIMARY_OUTWARD_METRICS:
                     row[f"OrientZones_{metric}-Mask-{zone}"] = np.nan
@@ -1276,17 +1290,16 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
                         f"OrientZones_{metric}-Mask-{zone}",
                         np.nan,
                     )
+            return primary_by_zone
 
         if not seg.zones_computed:
-            _write_missing()
-            return
+            return _write_missing()
         inner_radius = float(seg.core_end_radius)
         outside_core = (
             obj_mask & np.isfinite(dist_map) & (dist_map >= inner_radius)
         )
         if not outside_core.any():
-            _write_missing()
-            return
+            return _write_missing()
 
         object_extent_radius = float(np.max(dist_map[outside_core]))
         radial_span = np.nextafter(object_extent_radius, np.inf) - inner_radius
@@ -1355,6 +1368,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             }
             for metric, value in primary_values.items():
                 row[f"OrientZones_{metric}-Mask-{zone}"] = value
+            primary_by_zone[zone] = primary_values
 
             diagnostic_values = {
                 "OutwardRotationRawPeak": float(np.degrees(metrics.raw_peak)),
@@ -1382,6 +1396,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
                     f"OrientZones_{metric}-Mask-{zone}",
                     value,
                 )
+        return primary_by_zone
 
     def _fill_metrics(
         self,
@@ -1402,7 +1417,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         """
         per_zone = {}
         radial_relative = {}
-        self._fill_literal_crossing_metrics(
+        outward_rotation = self._fill_literal_crossing_metrics(
             row,
             seg,
             obj_mask,
@@ -1503,7 +1518,13 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             coh,
             dist_map,
         )
-        return per_zone, radial_relative, long_range, ring_profile
+        return (
+            outward_rotation,
+            per_zone,
+            radial_relative,
+            long_range,
+            ring_profile,
+        )
 
     def _fill_long_range_metrics(
         self,
@@ -1685,7 +1706,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
     def _coherence_canvas(self, image, downsample: int = 4):
         """Recompute per-object coherence and composite onto a plate canvas.
 
-        Used only by dashboard()'s heatmap. Full-res fields are recomputed via
+        Used only by report()'s heatmap. Full-res fields are recomputed via
         _iter_object_fields and discarded here — the heatmap costs compute, not
         persistent memory. Returned canvas is downsampled for a light figure.
         """
@@ -1714,12 +1735,31 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
 
     def _require_cache_image(self):
         """Return the cached image or raise if :meth:`measure` has not run."""
-        if self._cache_image is None:
+        image = self._cached_image()
+        if image is None:
             raise RuntimeError(
-                "MeasureOrientationZones: diagnostic cache is empty. "
-                "Call .measure(image) before .inspect()/.dashboard()."
+                "MeasureOrientationZones: no live image subject is available. "
+                "Pass an image to .inspect()/.report(), or keep the measured "
+                "image alive for no-argument rendering."
             )
-        return self._cache_image
+        return image
+
+    def _cached_image(self):
+        """Return the weakly held image subject without extending its lifetime."""
+        return (
+            self._cache_image_ref()
+            if self._cache_image_ref is not None
+            else None
+        )
+
+    def _ensure_diagnostic_cache(self, image) -> None:
+        """Measure ``image`` when its compact diagnostic cache is stale."""
+        if (
+            not self._cache
+            or self._cached_image() is not image
+            or self._cache_signature != self.model_dump_json()
+        ):
+            self.measure(image)
 
     @figure(
         title="Orientation-field overlay",
@@ -1750,7 +1790,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
                 (``"rgb"``, ``"gray"`` or ``"detect_mat"``).
             for_save: When *True*, every legend-only overlay trace is force-shown
                 so the figure renders meaningfully as a static raster (the CLI's
-                ``--save-inspect`` flag passes this). Defaults to *False*.
+                PlotImage publication passes this). Defaults to *False*.
 
         Returns:
             A ``plotly.graph_objects.Figure`` with toggleable overlay layers.
@@ -1780,12 +1820,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
 
         if image is None:
             image = self._require_cache_image()
-        if (
-            not self._cache
-            or self._cache_image is not image
-            or self._cache_signature != self.model_dump_json()
-        ):
-            self.measure(image)
+        self._ensure_diagnostic_cache(image)
 
         base = getattr(image, base_layer)[:]
         h, w = base.shape[:2]
@@ -1903,12 +1938,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             )
         if image is None:
             image = self._require_cache_image()
-        if (
-            not self._cache
-            or self._cache_image is not image
-            or self._cache_signature != self.model_dump_json()
-        ):
-            self.measure(image)
+        self._ensure_diagnostic_cache(image)
 
         base = getattr(image, base_layer)[:]
         height, width = base.shape[:2]
@@ -2037,12 +2067,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             raise ValueError("allow_restarts must be a boolean")
         if image is None:
             image = self._require_cache_image()
-        if (
-            not self._cache
-            or self._cache_image is not image
-            or self._cache_signature != self.model_dump_json()
-        ):
-            self.measure(image)
+        self._ensure_diagnostic_cache(image)
 
         base = getattr(image, base_layer)[:]
         height, width = base.shape[:2]
@@ -2163,12 +2188,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             )
         if image is None:
             image = self._require_cache_image()
-        if (
-            not self._cache
-            or self._cache_image is not image
-            or self._cache_signature != self.model_dump_json()
-        ):
-            self.measure(image)
+        self._ensure_diagnostic_cache(image)
 
         base = np.asarray(getattr(image, base_layer)[:])
         height, width = base.shape[:2]
@@ -3359,42 +3379,61 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         for record in self._cache.values():
             cy, cx = record["centroid_global"]
             lines = [
-                "<b>Zone metrics</b>",
-                "R = parallel concentration; T = turning (deg/px); C = coherence",
-                "RTilt = absolute tilt from radial (deg); "
-                "OutT = outward radial turning (deg/px); "
-                "Support = reliable sector fraction (QC)",
+                "<b>Primary outward-rotation metrics</b>",
+                "Peak and net are degrees; rate is deg/px; consistency is "
+                "dimensionless",
             ]
-            for variant in _VARIANTS:
-                lines.append(f"<b>{variant} selector</b>")
-                for zone in _ZONES:
-                    R, turning, coherence, _direction = record["per_zone"][
-                        (variant, zone)
-                    ]
-                    lines.append(
-                        f"{zone}: R={_value(R, 3)}, "
-                        f"T={_value(turning, 4)}, C={_value(coherence, 3)}"
-                    )
-            lines.append("<b>Detected structure · radial-relative</b>")
             for zone in _ZONES:
-                radial_tilt, radial_turning, radial_support = record[
-                    "radial_relative"
-                ][zone]
+                values = record["outward_rotation"][zone]
                 lines.append(
-                    f"{zone}: RTilt={_value(radial_tilt, 3)}, "
-                    f"OutT={_value(radial_turning, 4)}, "
-                    f"Support={_value(radial_support, 3)}"
+                    f"{zone}: Sustained peak="
+                    f"{_value(values['OutwardRotationSustainedPeak'], 2)}°, "
+                    f"Net={_value(values['OutwardRotationNet'], 2)}°, "
+                    f"Rate={_value(values['OutwardRotationRate'], 4)} deg/px, "
+                    f"Consistency="
+                    f"{_value(values['OutwardRotationConsistency'], 3)}"
                 )
-            lines.append(
-                f"<b>Long range · {self.long_range_lag:g} px ring lag</b>"
-            )
-            for region in (*_ZONES, "DenseToSparse"):
-                magnitude, signed, support = record["long_range"][region]
+            if self.include_diagnostics:
+                lines.extend(
+                    [
+                        "<b>Diagnostic orientation metrics</b>",
+                        "R = parallel concentration; T = turning (deg/px); "
+                        "C = coherence",
+                        "RTilt = absolute tilt from radial (deg); "
+                        "OutT = outward radial turning (deg/px); "
+                        "Support = reliable sector fraction (QC)",
+                    ]
+                )
+                for variant in _VARIANTS:
+                    lines.append(f"<b>{variant} selector</b>")
+                    for zone in _ZONES:
+                        R, turning, coherence, _direction = record["per_zone"][
+                            (variant, zone)
+                        ]
+                        lines.append(
+                            f"{zone}: R={_value(R, 3)}, "
+                            f"T={_value(turning, 4)}, C={_value(coherence, 3)}"
+                        )
+                lines.append("<b>Detected structure · radial-relative</b>")
+                for zone in _ZONES:
+                    radial_tilt, radial_turning, radial_support = record[
+                        "radial_relative"
+                    ][zone]
+                    lines.append(
+                        f"{zone}: RTilt={_value(radial_tilt, 3)}, "
+                        f"OutT={_value(radial_turning, 4)}, "
+                        f"Support={_value(radial_support, 3)}"
+                    )
                 lines.append(
-                    f"{region}: |Δ|={_value(magnitude, 2)}°, "
-                    f"signed Δ={_value(signed, 2)}°, "
-                    f"Support={_value(support, 3)}"
+                    f"<b>Long range · {self.long_range_lag:g} px ring lag</b>"
                 )
+                for region in (*_ZONES, "DenseToSparse"):
+                    magnitude, signed, support = record["long_range"][region]
+                    lines.append(
+                        f"{region}: |Δ|={_value(magnitude, 2)}°, "
+                        f"signed Δ={_value(signed, 2)}°, "
+                        f"Support={_value(support, 3)}"
+                    )
             xs.append(float(cx))
             ys.append(float(cy))
             hover_text.append("<br>".join(lines))
@@ -3413,19 +3452,20 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             )
         )
 
-    def dashboard(self, image=None, show: bool = True):
+    def report(self, subject=None, *, show: bool = True, **overrides):
         """Composed notebook diagnostic (returns a single ``go.Figure``).
 
         Stacks three vertically-arranged panels: the :meth:`inspect` overview,
-        a recomputed coherence heatmap, and a per-zone concentration/turning
+        a recomputed coherence heatmap, and a per-zone primary outward-rotation
         summary table. Calls :meth:`measure` first when the compact cache is
         empty or was built for a different image.
 
         Args:
-            image: Detected Image to render. If *None*, the image cached by the
+            subject: Detected Image to render. If *None*, the image cached by the
                 most recent :meth:`measure` call is reused.
             show: When *True*, call ``fig.show()`` before returning (best-effort;
                 swallowed outside a display context). Defaults to *True*.
+            **overrides: Report-specific overrides are unsupported.
 
         Returns:
             A single composed ``plotly.graph_objects.Figure`` stacking the three
@@ -3435,20 +3475,18 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             >>> from phenotypic.data import load_synth_filamentous_plate
             >>> from phenotypic.measure import MeasureOrientationZones
             >>> op = MeasureOrientationZones()
-            >>> fig = op.dashboard(load_synth_filamentous_plate(), show=False)
+            >>> fig = op.report(load_synth_filamentous_plate(), show=False)
             >>> any(getattr(tr, "type", None) == "table" for tr in fig.data)
             True
         """
-        if image is None:
-            image = self._require_cache_image()
-        if (
-            not self._cache
-            or self._cache_image is not image
-            or self._cache_signature != self.model_dump_json()
-        ):
-            self.measure(image)
-        report = _OrientationZonesReport(self, image, self._cache)
-        fig = report.dash()
+        if overrides:
+            raise ValueError(
+                f"report(): unsupported override(s) {sorted(overrides)}"
+            )
+        image = subject if subject is not None else self._require_cache_image()
+        self._ensure_diagnostic_cache(image)
+        report = _OrientationZonesReport()
+        fig = report.report(image, producer=self)
         if show:
             try:
                 fig.show()
@@ -3457,30 +3495,21 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         return fig
 
 
-class _OrientationZonesReport(FigureProvider):
-    """Transient control-free FigureProvider composing the orientation diagnostic.
+class _OrientationZonesReport(PlotImage):
+    """Stateless image consumer composing the orientation diagnostic.
 
-    Holds a reference to the owning :class:`MeasureOrientationZones`, the subject
-    image, and the operator's compact cache. Overrides :meth:`dash` (the
-    ``GridFitReport`` pattern) because the base composer builds a uniform ``xy``
-    subplot grid that cannot host the ``go.Table`` summary panel. Discard after
-    rendering.
+    The image and producing operation are call-time inputs only. The report
+    instance retains neither, avoiding a second object graph that keeps image
+    data or measurement caches alive after composition.
     """
 
-    def __init__(
-        self, op: "MeasureOrientationZones", image, cache: dict
-    ) -> None:
-        self._op = op
-        self._image = image
-        self._cache = cache
-
-    @figure(title="Orientation-field overlay")
-    def _panel_overview(self):
+    @staticmethod
+    def _panel_overview(image, producer: "MeasureOrientationZones"):
         """Panel A: the saveable inspect() overview (legend layers flattened)."""
-        return self._op.inspect(self._image, for_save=True)
+        return producer.inspect(image, for_save=True)
 
-    @figure(title="Coherence map")
-    def _panel_coherence(self):
+    @staticmethod
+    def _panel_coherence(image, producer: "MeasureOrientationZones"):
         """Panel B: the coherence heatmap.
 
         Recomputed on demand via ``_coherence_canvas`` (the lean cache holds no
@@ -3488,7 +3517,7 @@ class _OrientationZonesReport(FigureProvider):
         """
         import plotly.graph_objects as go
 
-        canvas = self._op._coherence_canvas(self._image)
+        canvas = producer._coherence_canvas(image)
         fig = go.Figure(
             go.Heatmap(
                 z=canvas,
@@ -3501,80 +3530,46 @@ class _OrientationZonesReport(FigureProvider):
         fig.update_yaxes(autorange="reversed")
         return fig
 
-    @figure(title="Per-zone absolute & radial-relative orientation")
-    def _panel_summary(self):
-        """Panel C: table of absolute and radial-relative zone measurements.
+    @staticmethod
+    def _panel_summary(producer: "MeasureOrientationZones"):
+        """Panel C: table of primary outward-rotation measurements.
 
-        One row per ``(Variant, Zone)``, aggregated across objects as
-        ``np.nanmean`` over the cached per-zone scalars. Requires the custom
-        :meth:`dash` override (the base composer cannot host a ``go.Table``).
+        One row per radial zone, aggregated across objects as ``np.nanmean``
+        over the compact primary-metric cache. Requires the custom
+        :meth:`report` override because the base composer cannot host a table.
         """
         import plotly.graph_objects as go
 
-        rows: list[tuple[str, str, str, str, str, str]] = []
-        for variant in _VARIANTS:
-            for zone in _ZONES:
-                if self._cache:
-                    conc_vals = [
-                        rec["per_zone"][(variant, zone)][0]
-                        for rec in self._cache.values()
-                    ]
-                    turn_vals = [
-                        rec["per_zone"][(variant, zone)][1]
-                        for rec in self._cache.values()
-                    ]
-                    conc = _safe_nanmean(conc_vals)
-                    turn = _safe_nanmean(turn_vals)
-                    if variant == "Mask":
-                        radial_tilt = _safe_nanmean(
-                            [
-                                rec["radial_relative"][zone][0]
-                                for rec in self._cache.values()
-                            ]
-                        )
-                        radial_turn = _safe_nanmean(
-                            [
-                                rec["radial_relative"][zone][1]
-                                for rec in self._cache.values()
-                            ]
-                        )
-                        radial_support = _safe_nanmean(
-                            [
-                                rec["radial_relative"][zone][2]
-                                for rec in self._cache.values()
-                            ]
-                        )
-                    else:
-                        radial_tilt = radial_turn = radial_support = np.nan
-                else:
-                    conc = turn = radial_tilt = radial_turn = (
-                        radial_support
-                    ) = np.nan
-                rows.append(
-                    (
-                        f"{variant} · {zone}",
-                        f"{conc:.3f}",
-                        f"{turn:.4f}",
-                        f"{radial_tilt:.3f}"
-                        if np.isfinite(radial_tilt)
-                        else "",
-                        f"{radial_turn:.4f}"
-                        if np.isfinite(radial_turn)
-                        else "",
-                        f"{radial_support:.3f}"
-                        if np.isfinite(radial_support)
-                        else "",
-                    )
+        def _mean(zone: str, metric: str) -> float:
+            return _safe_nanmean(
+                [
+                    record["outward_rotation"][zone][metric]
+                    for record in producer._cache.values()
+                ]
+            )
+
+        def _format(value: float, digits: int) -> str:
+            return f"{value:.{digits}f}" if np.isfinite(value) else ""
+
+        rows = []
+        for zone in _ZONES:
+            rows.append(
+                (
+                    zone,
+                    _format(_mean(zone, "OutwardRotationSustainedPeak"), 2),
+                    _format(_mean(zone, "OutwardRotationNet"), 2),
+                    _format(_mean(zone, "OutwardRotationRate"), 4),
+                    _format(_mean(zone, "OutwardRotationConsistency"), 3),
                 )
+            )
         header = [
-            "Variant · Zone",
-            "Concentration (R)",
-            "Turning (deg/px)",
-            "Radial tilt (deg)",
-            "Outward turning (deg/px)",
-            "Reliable-sector support (QC)",
+            "Zone",
+            "Sustained peak (deg)",
+            "Net rotation (deg)",
+            "Rotation rate (deg/px)",
+            "Consistency",
         ]
-        cols = list(zip(*rows)) if rows else [(), (), (), (), (), ()]
+        cols = list(zip(*rows)) if rows else [(), (), (), (), ()]
         return go.Figure(
             go.Table(
                 header=dict(values=header),
@@ -3582,28 +3577,54 @@ class _OrientationZonesReport(FigureProvider):
             )
         )
 
-    def dash(self, subject=None):
+    def report(
+        self,
+        subject=None,
+        *,
+        producer: "MeasureOrientationZones | None" = None,
+        **overrides,
+    ):
         """Compose the three panels into one stacked ``go.Figure``.
 
-        Mirrors :meth:`GridFitReport.dash`: render each ``@figure`` spec, detect
-        table vs xy panels, build ``make_subplots`` with matching per-row
-        ``specs``, transfer traces, carry the overview panel's shapes/annotations
-        (zone rings and R/turning badges are shapes/annotations the generic
-        trace-copy would drop), and apply the house theme.
+        Renders the three panels from call-time inputs, detects table versus xy
+        panels, builds matching subplots, transfers traces, carries the overview
+        shapes and annotations, and applies the house theme.
 
         Args:
-            subject: Unused (this helper holds its own state); accepted only to
-                match the :meth:`FigureProvider.dash` signature.
+            subject: Image consumed by this ``PlotImage`` report.
+            producer: The :class:`MeasureOrientationZones` operation whose
+                settings and compact cache supply the summaries. It is not
+                stored on this object.
+            **overrides: Plot-specific overrides are unsupported.
 
         Returns:
             A single themed ``plotly.graph_objects.Figure``.
         """
+        if not isinstance(producer, MeasureOrientationZones):
+            raise ValueError(
+                "report(): a MeasureOrientationZones producer is required"
+            )
+        if overrides:
+            raise ValueError(
+                f"report(): unsupported override(s) {sorted(overrides)}"
+            )
+        if subject is None:
+            raise ValueError("report(): an image subject is required")
+
         from plotly.subplots import make_subplots
 
         from phenotypic.sdk_.viz.figures._theme import apply_theme
 
-        specs = self.iter_figures()
-        rendered = [self._render_spec(spec) for spec in specs]
+        titles = (
+            "Orientation-field overlay",
+            "Coherence map",
+            "Primary outward-rotation metrics",
+        )
+        rendered = [
+            self._panel_overview(subject, producer),
+            self._panel_coherence(subject, producer),
+            self._panel_summary(producer),
+        ]
         is_table = [
             bool(fig.data) and fig.data[0].type == "table" for fig in rendered
         ]
@@ -3612,14 +3633,14 @@ class _OrientationZonesReport(FigureProvider):
             for tbl in is_table
         ]
         composed = make_subplots(
-            rows=len(specs),
+            rows=len(rendered),
             cols=1,
-            subplot_titles=[s.title for s in specs],
+            subplot_titles=titles,
             specs=row_specs,
             vertical_spacing=0.06,
         )
         # ``xy_row`` counts cartesian panels: a table cell creates no x/y axis,
-        # so the Nth xy panel owns axis number N (mirrors GridFitReport.dash).
+        # so the Nth xy panel owns axis number N (mirrors GridFitReport.report).
         xy_row = 0
         for row, (sub, tbl) in enumerate(zip(rendered, is_table), start=1):
             for trace in sub.data:
@@ -3643,7 +3664,7 @@ class _OrientationZonesReport(FigureProvider):
                         payload[key] = f"{axis}{axis_suffix}{suffix}"
                 composed.add_annotation(payload)
         composed.update_layout(
-            height=420 * len(specs),
+            height=420 * len(rendered),
             title_text="Orientation-Field Diagnostics",
         )
         return apply_theme(composed)

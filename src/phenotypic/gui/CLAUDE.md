@@ -169,8 +169,6 @@ from phenotypic.gui._config import (
     MASTER_MEASUREMENTS_PARQUET,  # "master_measurements.parquet"
     MEASUREMENTS_CSV,             # "measurements.csv"
     MEASUREMENTS_PARQUET,         # "measurements.parquet"
-    ANALYSIS_CSV,                 # "analysis.csv"
-    ANALYSIS_PARQUET,             # "analysis.parquet"
     PIPELINE_JSON,                # "pipeline.json.pht-pipe"
     RESULTS_DIRNAME,              # "results"
     PROGRESS_DIRNAME,             # "progress"
@@ -187,7 +185,8 @@ filenames (e.g. test fixtures, CLI integration tests).
 
 **Output layout — `deliverables/`.** These are *filenames*, not full
 paths. The user-facing run artifacts (`master_measurements.*`,
-`measurements.*`, `measurements_by_feature/`, `analysis.*`,
+`measurements.*`, `measurements_by_feature/`, named analysis tables plus
+`analysis_manifest.json`,
 `dashboard.html`, `analysis.html`, `processing_report.html`,
 `README.md`, `pipeline.json`) now live under `<output>/deliverables/`
 (`DELIVERABLES_DIRNAME` = `"deliverables"`, underlying

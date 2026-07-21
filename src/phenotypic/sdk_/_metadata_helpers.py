@@ -13,9 +13,13 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from functools import lru_cache
+from typing import TYPE_CHECKING
 
 import phenotypic.schema as _schema
 from phenotypic.schema import MeasurementInfo
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 @lru_cache(maxsize=1)
@@ -223,3 +227,57 @@ def _label_to_category() -> dict[str, str]:
 def metadata_category_for_label(label: str) -> str | None:
     """Category that owns a bare label (``'Strain' -> 'MetadataGenetic'``), or None."""
     return _label_to_category().get(label)
+
+
+def metadata_only_mask(df: "pd.DataFrame") -> "pd.Series":
+    """Mask of ``--metadata`` phantom rows; all-``False`` when unknowable.
+
+    A *phantom* row is one the CLI's ``--metadata`` left join carried through
+    from the metadata CSV even though no measured object matched its key — every
+    measurement/info column on it is null. Those rows are marked with the
+    :attr:`~phenotypic.schema.METADATA_MATCH.METADATA_ONLY` (``QC_MetadataOnly``)
+    boolean column.
+
+    The flag is CLI-only, so public analysis/post entry points that a user calls
+    on a hand-built or :meth:`~phenotypic._core._image.Image.measure` frame see
+    no flag at all. This helper degrades to an all-``False`` mask in that case,
+    which reproduces exactly the pre-left-join behavior for every caller.
+
+    The dtype check is deliberately **strict**: only a real boolean column is
+    trusted. An object/string column is rejected rather than coerced, because
+    ``pd.Series(["False", "True"]).astype(bool)`` is ``[True, True]`` — the
+    string ``"False"`` is truthy — which would silently mark every row a
+    phantom. Rejecting costs nothing (it falls back to today's behavior); a
+    lenient coercion would corrupt every result. Both real CLI round-trips
+    preserve the dtype: parquet stores a native ``bool``, and polars'
+    ``write_csv`` emits ``true``/``false``, which ``pd.read_csv`` parses to
+    ``bool``.
+
+    Args:
+        df: Any measurement-shaped DataFrame.
+
+    Returns:
+        Boolean Series aligned to ``df.index``: ``True`` where the row is a
+        metadata-only phantom, ``False`` everywhere else (and everywhere when
+        the flag column is absent or not a boolean column).
+
+    Examples:
+        >>> import pandas as pd
+        >>> from phenotypic.sdk_ import metadata_only_mask
+        >>> # A frame from a notebook ``image.measure()`` carries no flag.
+        >>> metadata_only_mask(pd.DataFrame({"Shape_Area": [10.0, 12.0]})).tolist()
+        [False, False]
+        >>> # A CLI mirror does: the undetected strain is flagged.
+        >>> mirror = pd.DataFrame({"QC_MetadataOnly": [False, True]})
+        >>> metadata_only_mask(mirror).tolist()
+        [False, True]
+    """
+    import pandas as pd
+    from pandas.api.types import is_bool_dtype
+
+    from phenotypic.schema import METADATA_MATCH
+
+    col = df.get(str(METADATA_MATCH.METADATA_ONLY))
+    if col is not None and is_bool_dtype(col):
+        return col.fillna(False).astype(bool)
+    return pd.Series(False, index=df.index)

@@ -58,7 +58,7 @@ GridFinder algorithm.
     grid_img_384 = GridImage('plate_384well.jpg', nrows=16, ncols=24)
     
     # Show with gridlines overlay
-    grid_img.plot.overlay(show_grid=True)
+    grid_img.show(overlay=True, show_grid=True)
 
 .. automethod:: GridImage.copy
 
@@ -169,14 +169,10 @@ All the following are available:
 
 **Visualization & Plotting:**
 
-- :attr:`Image.plot` - Unified PlotAccessor interface
-
-  - ``Image.plot.morph_progression()`` - Visualize morphological operation effects
-  - ``Image.plot.structural_response_curve()`` - Quantify detection sensitivity
-  - ``Image.plot.boundary_displacement()`` - Spatial sensitivity heatmap
-  - ``Image.plot.size_distribution()`` - Comprehensive size analysis
-  - ``Image.plot.spatial_size_map()`` - Pseudo-color size distribution map
-  - ``Image.plot.size_scatter()`` - Size-intensity correlation scatter plot
+- :meth:`Image.show` - Matplotlib display
+- :meth:`Image.dash` - Plotly display, including grid and object overlays
+- :class:`phenotypic.plotting.PlotDiagnostics` - Standalone image diagnostics
+- :class:`phenotypic.plotting.PlotDetectModes` - Detection-mode comparison
 
 For detailed documentation of these inherited methods, see :doc:`image_methods`.
 
@@ -208,13 +204,14 @@ capabilities.
     detected = detector.apply(grid_img)
     
     # Show with grid overlay and labels
-    detected.plot.overlay(
+    detected.show(
+        overlay=True,
         show_grid=True,
         show_labels=True,
     )
 
     # Show with grid overlay (gridlines and section boxes)
-    detected.plot.overlay(show_grid=True)
+    detected.show(overlay=True, show_grid=True)
 
 **Grid-Specific Visualization Methods:**
 
@@ -230,7 +227,7 @@ The GridImage class provides additional grid-aware visualization methods:
 .. code-block:: python
 
     # Highlight control wells - show grid overlay
-    detected.plot.overlay(show_grid=True)
+    detected.show(overlay=True, show_grid=True)
 
 **Example - Well-Level Heatmap:**
 
@@ -293,7 +290,7 @@ GridImage inherits image manipulation methods from :class:`Image`:
     rotated = grid_img.rotate(angle=2.5)
     
     # Grid detection will be re-run on first access
-    rotated.plot.overlay(show_grid=True)
+    rotated.show(overlay=True, show_grid=True)
 
 Metadata Management (Inherited)
 --------------------------------

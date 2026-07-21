@@ -1130,6 +1130,7 @@ def phenotypic_cli(
             retry_failures=retry_failures,
             skip_validation=skip_validation,
             metadata_csv=metadata_csv,
+            no_qc=no_qc,
             checkpoint_interval=checkpoint_interval,
             measure_only=measure_only,
             process_only_layer=process_only_layer,  # type: ignore[arg-type]

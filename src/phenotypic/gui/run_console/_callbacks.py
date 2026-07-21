@@ -309,7 +309,6 @@ def _form_inputs_to_state(
         "mode": mode or "local",
         "dry_run": "dry_run" in flag_set,
         "resume": "resume" in flag_set,
-        "save_inspect": "save_inspect" in flag_set,
         "advanced_args": {k: v for k, v in advanced.items() if v not in (None, "")},
         "slurm_args": slurm_args,
     }
@@ -1398,8 +1397,6 @@ def register_callbacks(
                 flags.append("dry_run")
             if state.resume:
                 flags.append("resume")
-            if state.save_inspect:
-                flags.append("save_inspect")
             return (
                 state.pipeline_path,
                 state.input_dir,

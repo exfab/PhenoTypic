@@ -640,6 +640,11 @@ STORE_CATEGORY_VOCAB_REVISION = "store-category-vocab-revision"
 #: curation survives a page refresh.
 STORE_REMOVED_KEYS = "store-removed-keys"
 
+#: Hidden revision store bumped after configured ``PlotMeas`` outputs refresh
+#: from a GUI curation update. It serializes the side effect behind
+#: ``STORE_REMOVED_KEYS`` without coupling any visible component to file writes.
+STORE_PLOT_REFRESH_REVISION = "store-plot-refresh-revision"
+
 #: ``dcc.Store`` holding the tile-spotlight ``dim`` strength (a float in
 #: ``[TILE_DIM_MIN, TILE_DIM_MAX]``) shared by **both** the colony-view and
 #: QC-Review tile galleries. The ``−``/``+`` steppers in each toolbar write
@@ -857,6 +862,7 @@ __all__ = [
     "COLONY_BULK_MARK_DROPDOWN_ID",
     "STORE_CATEGORY_VOCAB_REVISION",
     "STORE_REMOVED_KEYS",
+    "STORE_PLOT_REFRESH_REVISION",
     "STORE_TILE_DIM_ALPHA",
     "STORE_COLONY_SELECTION",
     "STORE_COLONY_SELECTION_DELTA",

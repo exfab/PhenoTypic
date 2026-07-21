@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import gc
+import weakref
+from dataclasses import fields
+
 import numpy as np
 import pandas as pd
 
@@ -182,6 +186,31 @@ class TestMeasureSymmetricZones:
     CORE_AREA_COL = "SymZones_CoreArea"
     DENSE_AREA_COL = "SymZones_DenseArea"
     SPARSE_AREA_COL = "SymZones_SparseArea"
+
+    def test_diagnostic_cache_owns_arrays_without_retaining_image(self):
+        """Compact per-object arrays may persist, but the plate image may not."""
+        gray, objmap = _make_circular_colony(
+            shape=(120, 120),
+            center=(60, 60),
+            core_radius=15,
+            outer_radius=35,
+        )
+        image = _make_image_with_objmap(gray, objmap)
+        image_ref = weakref.ref(image)
+        op = MeasureSymmetricZones()
+
+        op.measure(image)
+        cache = op._MeasureSymmetricZones__cache_intermediates
+        assert cache
+        for intermediates in cache.values():
+            for item in fields(intermediates):
+                value = getattr(intermediates, item.name)
+                if isinstance(value, np.ndarray):
+                    assert value.base is None
+
+        del image
+        gc.collect()
+        assert image_ref() is None
 
     # ------------------------------------------------------------------
     # Test 1 — symmetric circular colony.
@@ -645,7 +674,7 @@ class TestMeasureSymmetricZones:
 
         The default ``inspect()`` figure intentionally hides several
         overlay layers behind ``visible="legendonly"`` so users can
-        toggle them from the plotly legend. The CLI's ``--save-inspect``
+        toggle them from the Plotly legend. The pipeline plot publication
         path flattens the figure to a static PNG, so the saver passes
         ``for_save=True`` to force every diagnostic trace visible — a
         legend-only trace would otherwise be invisible in the artifact.

@@ -8,6 +8,7 @@ providing serializable diagnostics for quality assessment.
 from __future__ import annotations
 
 import logging
+import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, NamedTuple
 
@@ -268,7 +269,7 @@ class ColorCheckerProfile(BaseModel):
             ``mean + outlier_sigma * stddev`` are rejected as outliers.
         rois: List of ``(row_slice, col_slice)`` tuples delimiting checker
             card regions in the source image.  Stored for use by
-            :meth:`fit` and :meth:`dashboard`.
+            :meth:`fit` and :meth:`report`.
 
     Attributes:
         correction_matrix: Fitted correction matrix once :meth:`fit`
@@ -328,8 +329,13 @@ class ColorCheckerProfile(BaseModel):
     is_fitted: bool = False
     capture_metadata: CaptureMetadata | None = None
 
-    # -- transient (set by fit(), never serialized) ------------------------
-    _image: "Image | None" = PrivateAttr(default=None)
+    # -- transient (set weakly by fit(), never serialized) -----------------
+    _image_ref: "weakref.ReferenceType[Image] | None" = PrivateAttr(default=None)
+
+    @property
+    def _image(self) -> Image | None:
+        """Return the live calibration image without retaining it strongly."""
+        return self._image_ref() if self._image_ref is not None else None
 
     @field_validator("degree")
     @classmethod
@@ -446,7 +452,7 @@ class ColorCheckerProfile(BaseModel):
         """
         if self.rois is None:
             self.rois = [(slice(None), slice(None))]
-        self._image = image
+        self._image_ref = weakref.ref(image)
         self.capture_metadata = CaptureMetadata.from_image(image)
         return self._fit_from_rois(image, self.rois)
 
@@ -458,7 +464,7 @@ class ColorCheckerProfile(BaseModel):
     ) -> _RoiPreprocessing:
         """Run per-ROI preprocessing and canonical Lab conversion.
 
-        Shared by :meth:`_fit_from_rois` and the diagnostic dashboard so
+        Shared by :meth:`_fit_from_rois` and the diagnostic report so
         both observe the same pixels: ``pad_checker`` controls whether
         ``trim_background_edges`` and ``center_and_pad_checker`` run, and
         Lab is always produced via :pyattr:`Image.color.Lab` (the same
@@ -763,8 +769,8 @@ class ColorCheckerProfile(BaseModel):
 
         # --- Build arrays for fitting -------------------------------------
         n_kept = len(kept_names)
-        measured_arr = np.zeros((n_kept, 3), dtype=np.float64)
-        reference_arr = np.zeros((n_kept, 3), dtype=np.float64)
+        measured_arr: np.ndarray = np.zeros((n_kept, 3), dtype=np.float64)
+        reference_arr: np.ndarray = np.zeros((n_kept, 3), dtype=np.float64)
 
         for i, name in enumerate(kept_names):
             measured_arr[i] = measured_linear[name]
@@ -920,19 +926,20 @@ class ColorCheckerProfile(BaseModel):
         """
         return _load_reference_data(self.checker_type, self.target_illuminant)
 
-    # -- dashboard ---------------------------------------------------------
+    # -- report ------------------------------------------------------------
 
-    def dashboard(self, show: bool = True) -> Any:
+    def report(self, show: bool = True) -> Any:
         """Build the Plotly color-correction diagnostic report.
 
         Constructs a :class:`ColorCorrectionReport` from this fitted profile and
-        returns its :meth:`~phenotypic.abc_.FigureProvider.dash` rendering. The
-        report declares no interactive controls, so ``dash()`` composes the
+        returns its :meth:`~phenotypic.abc_.plotting.PhtPlot.report` rendering.
+        The report declares no interactive controls, so ``report()`` composes the
         per-section figures into a single ``plotly.graph_objects.Figure``.
 
-        Uses the image and ROIs stored during :meth:`fit`. When fitted via
-        :meth:`_fit_from_patch_colors` (no source image), the pipeline-step and
-        segmentation figures are omitted.
+        Uses the weak image reference and ROIs recorded during :meth:`fit`.
+        Callers must keep the source image alive while rendering. When the
+        image has been released, or the profile was fitted from patch colors,
+        the pipeline-step and segmentation figures are omitted.
 
         Args:
             show: When ``True`` and running inside a Jupyter notebook, display
@@ -948,14 +955,13 @@ class ColorCheckerProfile(BaseModel):
         """
         if not self.is_fitted:
             raise RuntimeError(
-                    "Cannot create dashboard for an unfitted profile."
+                    "Cannot create report for an unfitted profile."
             )
         from ._color_correction_report import ColorCorrectionReport
 
-        report = ColorCorrectionReport(
-                profile=self, image=self._image, rois=self.rois,
-        )
-        figure = report.dash()
+        image = self._image_ref() if self._image_ref is not None else None
+        report = ColorCorrectionReport(profile=self, image=image, rois=self.rois)
+        figure = report.report()
 
         if show and _in_jupyter_notebook():
             figure.show()

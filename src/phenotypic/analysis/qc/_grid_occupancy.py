@@ -220,7 +220,13 @@ class GridOccupancy(ExpectedVsDetectedCount):
         merged[self.flag_col()] = merged[self.status_col()] == "fail"
         return merged
 
-    def dash(self, **kwargs: Any) -> go.Figure:
+    def inspect(
+        self,
+        subject: Any = None,
+        *,
+        for_save: bool = False,
+        **kwargs: Any,
+    ) -> go.Figure:
         """Render a horizontal bar of per-group occupancy, colored by status.
 
         Args:
@@ -234,6 +240,7 @@ class GridOccupancy(ExpectedVsDetectedCount):
         Raises:
             RuntimeError: If :meth:`analyze` has not been called yet.
         """
+        del subject, for_save
         df = self._latest_measurements
         if df.empty:
             raise RuntimeError("call analyze() first")
@@ -274,3 +281,7 @@ class GridOccupancy(ExpectedVsDetectedCount):
             height=kwargs.get("height", max(240, 24 * len(labels) + 80)),
         )
         return fig
+
+    def report(self, subject: Any = None, **kwargs: Any) -> go.Figure:
+        """Return the complete grid-occupancy report."""
+        return self.inspect(subject, **kwargs)

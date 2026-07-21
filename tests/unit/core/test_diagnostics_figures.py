@@ -53,9 +53,15 @@ EXPECTED_TRACE_TYPE: dict[str, type] = {
 
 
 @pytest.fixture(scope="module")
-def plotter() -> DiagnosticsPlotter:
-    """A DiagnosticsPlotter bound to the synthetic yeast plate."""
-    image = load_synth_yeast_plate()
+def diagnostics_image() -> Image:
+    """Keep the call-time image alive while its plotter is in use."""
+    return load_synth_yeast_plate()
+
+
+@pytest.fixture(scope="module")
+def plotter(diagnostics_image: Image) -> DiagnosticsPlotter:
+    """A DiagnosticsPlotter weakly bound to the synthetic yeast plate."""
+    image = diagnostics_image
     return DiagnosticsPlotter(image)
 
 
@@ -230,9 +236,9 @@ def test_flat_image_psd_returns_annotated_empty_state() -> None:
 
 
 def test_matplotlib_diagnostics_regression() -> None:
-    """Regression: diagnostics() still returns (matplotlib Figure, dict)."""
+    """The retained private builder still returns its Matplotlib payload."""
     image = load_synth_yeast_plate()
-    result = image.plot.diagnostics()
+    result = DiagnosticsPlotter(image).diagnostics()
     assert isinstance(result, tuple)
     assert len(result) == 2
     fig, metrics = result

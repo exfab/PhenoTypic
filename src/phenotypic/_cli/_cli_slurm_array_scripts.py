@@ -286,12 +286,6 @@ def generate_array_job_script(
     else:
         cmd_parts.append("--save-overlays")
 
-    # --save-inspect is honored in BOTH forward and measure modes,
-    # since re-measurement repopulates the diagnostic cache that
-    # MeasureFeatures.inspect() depends on. Never relevant in process-only mode.
-    if config.save_inspects and not config.process_only_layer:
-        cmd_parts.append("--save-inspect")
-
     # Add event log
     cmd_parts.extend(["--event-log", shlex.quote(str(event_log.absolute()))])
 

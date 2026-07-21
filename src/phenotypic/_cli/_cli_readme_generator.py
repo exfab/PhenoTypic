@@ -100,8 +100,10 @@ output_folder/
 |   +-- measurements.csv              # Editable copy used by the GUI results viewer (refreshed on every run)
 |   +-- measurements.parquet          # Parquet companion of measurements.csv
 |   +-- pipeline.json                 # Reproducibility spec (operations + filters + model)
-|   +-- analysis.csv                  # Model-fit output (only when pipeline has a `model` configured)
-|   +-- analysis.parquet              # Parquet companion of analysis.csv
+|   +-- <AnalysisClass>.csv           # Class-named model-fit output
+|   +-- <AnalysisClass>.parquet       # Parquet companion
+|   +-- analysis_manifest.json        # Named-analysis artifact index and checksums
+|   +-- plots/                         # Configured plot outputs and page manifests
 |   +-- dashboard.html                # Live processing dashboard
 |   +-- analysis.html                 # Analysis & visualization
 |   +-- processing_report.html        # HTML summary report
@@ -275,7 +277,7 @@ No measurements configured in this pipeline."""
 
         Renders only when the pipeline has a ``model`` configured. Column
         headers embed the fitted metric (``model.on``) so the README matches
-        the actual ``analysis.csv`` produced by this run.
+        the actual class-named analysis CSV produced by this run.
         """
         from phenotypic.schema import MODEL_METRICS, qualified_header
         from phenotypic.util._measurement_outputs import metric_token
@@ -294,7 +296,7 @@ No measurements configured in this pipeline."""
             "## Models & Analysis",
             "",
             f"Model `{model_name}` fit on metric `{model.on}` "
-            "(output written to `deliverables/analysis.csv`).",
+            f"(output written to `deliverables/{model_name}.csv`).",
             "",
             "Output columns follow `<Model>_<metric>_<parameter>`; for this "
             f"run `<metric>` = `{token}`.",

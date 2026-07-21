@@ -21,6 +21,7 @@ from pydantic import (
 )
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
+from phenotypic.abc_.plotting import PlotQc
 from phenotypic.sdk_ import ColumnRef
 from phenotypic.schema import OBJECT, QUALITY_COUNT
 
@@ -61,7 +62,7 @@ _MetadataField = Annotated[
 ]
 
 
-class ExpectedVsDetectedCount(QualityCheck):
+class ExpectedVsDetectedCount(QualityCheck, PlotQc):
     """Flag groups whose detected colony count diverges from metadata.
 
     For each ``groupby`` combination the check compares the number of rows
@@ -465,7 +466,13 @@ class ExpectedVsDetectedCount(QualityCheck):
         self.unmatched_groups = []
         return super().analyze(data)
 
-    def dash(self, **kwargs: Any) -> go.Figure:
+    def inspect(
+        self,
+        subject: Any = None,
+        *,
+        for_save: bool = False,
+        **kwargs: Any,
+    ) -> go.Figure:
         """Render a horizontal lollipop chart of ``Delta`` per group.
 
         Each group's signed ``Delta`` is drawn as a horizontal stem from
@@ -485,6 +492,7 @@ class ExpectedVsDetectedCount(QualityCheck):
         Raises:
             RuntimeError: If :meth:`analyze` has not been called yet.
         """
+        del subject, for_save
         df = self._latest_measurements
         if df.empty:
             raise RuntimeError("call analyze() first")
@@ -568,3 +576,7 @@ class ExpectedVsDetectedCount(QualityCheck):
             height=kwargs.get("height", max(240, 24 * len(labels) + 80)),
         )
         return fig
+
+    def report(self, subject: Any = None, **kwargs: Any) -> go.Figure:
+        """Return the complete expected-count report."""
+        return self.inspect(subject, **kwargs)

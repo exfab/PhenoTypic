@@ -285,24 +285,24 @@ class TestBehavioralEdges:
 
 
 # --------------------------------------------------------------------------- #
-# dash()
+# inspect()
 # --------------------------------------------------------------------------- #
 
 
-class TestDash:
+class TestInspect:
     """Plotly figure construction and the pre-analyze guard."""
 
-    def test_dash_returns_plotly_figure(
+    def test_inspect_returns_plotly_figure(
         self, tight_replicates: pd.DataFrame
     ) -> None:
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
         chk.analyze(tight_replicates)
-        fig = chk.dash()
+        fig = chk.inspect()
         assert isinstance(fig, go.Figure)
         # At least one trace per group.
         assert len(fig.data) >= 1
 
-    def test_dash_raises_before_analyze(self) -> None:
+    def test_inspect_raises_before_analyze(self) -> None:
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
         with pytest.raises(RuntimeError, match="call analyze\\(\\) first"):
-            chk.dash()
+            chk.inspect()

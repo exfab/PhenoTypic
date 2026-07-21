@@ -14,7 +14,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, TypeVar
 
-from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
+from phenotypic.sdk_ import (
+    JOB_METADATA_JSON,
+    JobMetadataKey,
+    logs_dir,
+    progress_dir,
+    slurm_scripts_dir,
+)
 from phenotypic.sdk_.slurm import (
     SlurmArrayScriptSpec,
     calculate_optimal_array_chunks,
@@ -25,7 +31,7 @@ from phenotypic.sdk_.slurm import (
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_execution_strategies import ExecutionStrategy
-from ._cli_types import Dataset, DatasetResults, ExecutionResults
+from ._cli_types import Dataset, DatasetResults, ExecutionConfig, ExecutionResults
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 
 logger = logging.getLogger(__name__)
@@ -189,6 +195,15 @@ def _write_image_stage_chunks(
     return scripts
 
 
+def _finalizer_body(python_str: str, output_dir: Path) -> str:
+    """Build the canonical aggregate/finalize command for staged runs."""
+    return (
+        f"{python_str} -m phenotypic._cli._cli_checkpoint_handler "
+        f"--output-dir {shlex.quote(str(output_dir.absolute()))} "
+        "--checkpoint-type finalize"
+    )
+
+
 def generate_staged_scripts(
     *,
     pipeline_path: Path,
@@ -211,8 +226,10 @@ def generate_staged_scripts(
     split into ``ceil(n_images / array_limit)`` chunk scripts; Stage 2 is never
     chunked. The manifest is written to disk for the workers to index.
 
-    Returns ``{"stage1": [Path, ...], "stage2": Path, "stage3": [Path, ...]}`` —
-    the image stages are always lists (length 1 when unchunked).
+    Returns ``{"stage1": [Path, ...], "stage2": Path, "stage3": [Path, ...],
+    "finalizer": Path}`` — the image stages are always lists (length 1 when
+    unchunked). The one-task finalizer uses the CPU profile and invokes the same
+    aggregate/finalize entry point as ordinary SLURM runs.
     """
     script_dir = slurm_scripts_dir(output_dir)
     script_dir.mkdir(parents=True, exist_ok=True)
@@ -283,17 +300,41 @@ def generate_staged_scripts(
         body=_image_stage_body(3),
         chunks=chunks,
     )
-    return {"stage1": stage1, "stage2": stage2, "stage3": stage3}
+    finalizer = _write_stage_script(
+        script_dir,
+        log_dir,
+        "finalizer",
+        "phenotypic-finalize",
+        cpu_slurm_args,
+        [0],
+        _finalizer_body(python_str, output_dir),
+    )
+    return {
+        "stage1": stage1,
+        "stage2": stage2,
+        "stage3": stage3,
+        "finalizer": finalizer,
+    }
+
+
+def _ordered_staged_scripts(scripts: Dict[str, Any]) -> List[Path]:
+    """Return staged scripts in their strict submission order."""
+    return [
+        *scripts["stage1"],
+        scripts["stage2"],
+        *scripts["stage3"],
+        scripts["finalizer"],
+    ]
 
 
 def flatten_staged_scripts(scripts: Dict[str, Any]) -> List[Path]:
     """Ordered flat chunk list for the drip-feed dispatcher.
 
-    Order: every Stage-1 chunk, then Stage 2, then every Stage-3 chunk. The
-    dispatcher submits them one at a time (chunk N+1 only after chunk N ends),
-    so the linear order encodes the stage dependencies.
+    Order: every Stage-1 chunk, Stage 2, every Stage-3 chunk, then the aggregate
+    finalizer. The dispatcher submits them one at a time, so the linear order
+    encodes both stage dependencies and final publication.
     """
-    return [*scripts["stage1"], scripts["stage2"], *scripts["stage3"]]
+    return _ordered_staged_scripts(scripts)
 
 
 def submit_staged_chain(
@@ -327,6 +368,56 @@ def submit_staged_chain(
         console=console or Console(),
     )
     return submission.job_ids
+
+
+def _write_staged_job_metadata(
+    *,
+    datasets: Sequence[Dataset],
+    output_dir: Path,
+    config: ExecutionConfig,
+    scripts: Dict[str, Any],
+    job_ids: Sequence[str],
+    start_time: datetime,
+) -> Path:
+    """Write the metadata consumed by the canonical SLURM finalizer.
+
+    The drip-feed submission knows only the first chunk job id at launch; later
+    chunk ids are allocated by dispatcher jobs. Stage workers remain observable
+    through their stage-tagged event records, so the initial metadata records
+    the known ids and leaves the optional image/task mapping empty.
+    """
+    prog_dir = progress_dir(output_dir)
+    prog_dir.mkdir(parents=True, exist_ok=True)
+
+    ordered_scripts = _ordered_staged_scripts(scripts)
+    metadata = {
+        JobMetadataKey.START_TIME: start_time.isoformat(timespec="milliseconds"),
+        JobMetadataKey.EXECUTION_MODE: "slurm",
+        JobMetadataKey.DATASETS: {
+            dataset.name: {
+                "total": len(dataset.images),
+                "images": [image.name for image in dataset.images],
+            }
+            for dataset in datasets
+        },
+        JobMetadataKey.CHUNK_SCRIPTS: [str(path) for path in ordered_scripts],
+        JobMetadataKey.CHUNK_JOB_IDS: {
+            str(index): str(job_id) for index, job_id in enumerate(job_ids)
+        },
+        JobMetadataKey.IMAGE_TASK_MAPPING: {},
+        JobMetadataKey.INCLUDE_DATASET_COLUMN: config.include_dataset_column,
+        JobMetadataKey.METADATA_CSV: (
+            str(config.metadata_csv) if config.metadata_csv else None
+        ),
+        JobMetadataKey.NO_QC: config.no_qc,
+        JobMetadataKey.INPUT_PATH: config.input_path.stem,
+    }
+    metadata_path = prog_dir / JOB_METADATA_JSON
+    metadata_path.write_text(
+        json.dumps(metadata, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return metadata_path
 
 
 class StagedSlurmStrategy(ExecutionStrategy):
@@ -377,9 +468,18 @@ class StagedSlurmStrategy(ExecutionStrategy):
         self.submitted_job_ids = submit_staged_chain(
             scripts, output_dir=output_dir, slurm_args=cfg.slurm_args
         )
+        _write_staged_job_metadata(
+            datasets=datasets,
+            output_dir=output_dir,
+            config=cfg,
+            scripts=scripts,
+            job_ids=self.submitted_job_ids[:1],
+            start_time=start,
+        )
         logger.info(
             "Submitted staged GPU chain via drip-feed dispatcher "
-            "(%d stage-1 chunks -> stage2 -> %d stage-3 chunks): initial jobs=%s",
+            "(%d stage-1 chunks -> stage2 -> %d stage-3 chunks -> finalizer): "
+            "initial jobs=%s",
             len(scripts["stage1"]),
             len(scripts["stage3"]),
             self.submitted_job_ids,

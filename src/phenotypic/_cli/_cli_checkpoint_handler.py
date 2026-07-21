@@ -136,6 +136,7 @@ def _run_finalize(output_dir: Path, progress_dir: Path) -> None:
         dataset_names=list(datasets_totals.keys()),
         include_dataset_column=job_metadata.get(JobMetadataKey.INCLUDE_DATASET_COLUMN, True),
         metadata_csv=metadata_csv,
+        no_qc=bool(job_metadata.get(JobMetadataKey.NO_QC, False)),
     )
 
     # Final manifest

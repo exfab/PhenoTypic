@@ -49,11 +49,15 @@ callback below mirrors that ordering so the JS-side
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import dash
-from dash import ALL, Input, Output
+from dash import ALL, Input, Output, State, no_update
 
-from phenotypic.gui._config import CFG_FILTERED_STATE
+from phenotypic.gui._config import (
+    CFG_FILTERED_STATE,
+    CFG_QC_PIPELINE,
+)
 from phenotypic.gui.results_viewer import (
     _filter_offcanvas,
     _filter_panel,
@@ -62,6 +66,7 @@ from phenotypic.gui.results_viewer import (
     _viewer_card,
 )
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+from phenotypic.gui.results_viewer._filtered_state import get_curated_frame
 from phenotypic.gui.results_viewer._error_tab import register_error_callbacks
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._heatmap_tab import register_heatmap_callbacks
@@ -103,7 +108,49 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     register_qc_callbacks(app)
     register_error_callbacks(app, output_root, filtered_state)
     _timeline_callbacks.register_callbacks(app, output_root)
+    _register_plot_refresh_callback(app, output_root, filtered_state)
     _register_clientside_callbacks(app)
+
+
+def _register_plot_refresh_callback(
+    app: dash.Dash,
+    output_root: OutputRoot,
+    filtered_state: CurationLabels,
+) -> None:
+    """Refresh configured ``PlotMeas`` outputs after each GUI curation write."""
+
+    @app.callback(
+        Output(ids.STORE_PLOT_REFRESH_REVISION, "data"),
+        Input(ids.STORE_REMOVED_KEYS, "data"),
+        State(ids.STORE_PLOT_REFRESH_REVISION, "data"),
+        prevent_initial_call=True,
+    )
+    def _refresh_measurement_plots(
+        _removed_keys: list | None,
+        revision: int | None,
+    ) -> int | Any:
+        pipeline = app.server.config.get(CFG_QC_PIPELINE)
+        if pipeline is None:
+            return no_update
+        try:
+            from phenotypic.gui._plot_refresh import refresh_measurement_plots
+
+            measurements = get_curated_frame(
+                filtered_state,
+                output_root,
+            ).to_pandas()
+            refresh_measurement_plots(
+                pipeline,
+                output_root.layout,
+                measurements,
+            )
+        except Exception:  # noqa: BLE001 - curation remains authoritative
+            logger.warning(
+                "GUI measurement plot refresh failed after curation",
+                exc_info=True,
+            )
+            return no_update
+        return (revision or 0) + 1
 
 
 def _register_clientside_callbacks(app: dash.Dash) -> None:

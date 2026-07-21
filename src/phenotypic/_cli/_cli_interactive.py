@@ -127,7 +127,9 @@ def _display_output_structure(config: ExecutionConfig, datasets: List[Dataset], 
     click.echo("    ├── master_measurements.csv")
     click.echo("    ├── measurements.csv  (editable copy for GUI; refreshed on every run)")
     click.echo("    ├── pipeline.json  (reproducibility spec — read by the analysis GUI)")
-    click.echo("    ├── analysis.csv   (model fit; written when pipeline has a `model` configured)")
+    click.echo("    ├── <AnalysisClass>.csv   (named model fit; when configured)")
+    click.echo("    ├── analysis_manifest.json")
+    click.echo("    ├── plots/   (configured PlotImage/PlotMeas/PlotAnalysis/PlotQc outputs)")
     click.echo("    └── ... (other results)")
 
 

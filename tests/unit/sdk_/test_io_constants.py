@@ -9,8 +9,6 @@ from typing import get_args
 import pytest
 
 from phenotypic.sdk_ import (
-    ANALYSIS_CSV,
-    ANALYSIS_PARQUET,
     DELIVERABLES_METADATA_CSV,
     DIR_HDF,
     DIR_MEASUREMENTS,
@@ -36,6 +34,7 @@ from phenotypic.sdk_ import (
     PROCESSING_STATE_JSON,
     TUNING_CONFIG_SUFFIXES,
     TUNING_SPEC_JSON,
+    BundleLayout,
     ChunkManifestKey,
     ChunkStateKey,
     DashboardManifestKey,
@@ -43,8 +42,6 @@ from phenotypic.sdk_ import (
     HdfAttr,
     JobMetadataKey,
     ModulePath,
-    analysis_csv_path,
-    analysis_parquet_path,
     checkpoint_lock_filename,
     chunk_parquet_filename,
     dashboard_html_path,
@@ -194,12 +191,18 @@ class TestFilenameConstants:
         assert MEASUREMENTS_CSV == "measurements.csv"
         assert MEASUREMENTS_PARQUET == "measurements.parquet"
 
+    def test_bundle_layout_resolves_plots_inside_deliverables_base(
+        self, tmp_path: Path
+    ) -> None:
+        layout = BundleLayout(
+            deliverables_base=tmp_path / "portable-bundle",
+            output_root=None,
+        )
+
+        assert layout.plots_dir == tmp_path / "portable-bundle" / "plots"
+
     def test_metadata_csv_deliverable_filename(self) -> None:
         assert DELIVERABLES_METADATA_CSV == "metadata.csv"
-
-    def test_analysis_filenames(self) -> None:
-        assert ANALYSIS_CSV == "analysis.csv"
-        assert ANALYSIS_PARQUET == "analysis.parquet"
 
     def test_pipeline_state_filenames(self) -> None:
         assert PIPELINE_JSON == "pipeline.json.pht-pipe"
@@ -351,11 +354,6 @@ class TestPathHelpers:
     def test_metadata_csv_deliverable_path(self, output: Path) -> None:
         deliv = output / "deliverables"
         assert metadata_csv_deliverable_path(output) == deliv / "metadata.csv"
-
-    def test_analysis_paths(self, output: Path) -> None:
-        deliv = output / "deliverables"
-        assert analysis_csv_path(output) == deliv / "analysis.csv"
-        assert analysis_parquet_path(output) == deliv / "analysis.parquet"
 
     def test_pipeline_json_path(self, output: Path) -> None:
         assert pipeline_json_path(output) == output / "deliverables" / PIPELINE_JSON
@@ -531,8 +529,6 @@ class TestDeliverablesLayout:
             "measurements_csv_path": measurements_csv_path,
             "measurements_parquet_path": measurements_parquet_path,
             "measurements_by_feature_dir": measurements_by_feature_dir,
-            "analysis_csv_path": analysis_csv_path,
-            "analysis_parquet_path": analysis_parquet_path,
             "dashboard_html_path": dashboard_html_path,
             "pipeline_json_path": pipeline_json_path,
             "readme_md_path": readme_md_path,

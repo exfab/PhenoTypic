@@ -136,4 +136,11 @@ def stage3_merge_measure_core(
 
     output_manager.save_measurements(measurements, dataset_name, image_stem)
     output_manager.save_image_hdf(image, dataset_name, image_stem)  # atomic re-save
+    from phenotypic.plotting import PlotCoordinator
+
+    PlotCoordinator(plan.post_pipeline, output_dir).emit_image(
+        image,
+        dataset=dataset_name,
+        image_stem=image_stem,
+    )
     delete_sidecar(output_dir, dataset_name, image_stem)  # mandatory cleanup

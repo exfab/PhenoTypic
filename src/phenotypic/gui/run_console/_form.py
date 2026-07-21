@@ -2,8 +2,8 @@
 
 Builds the left-column form for the Run console: three picker buttons
 (pipeline config, input directory, output directory), a Local/SLURM mode
-toggle, inline ``Dry-run`` / ``Resume`` / ``Save inspect figures``
-checkboxes, an Advanced collapse (``--sample``, ``--nrows``, ``--ncols``,
+toggle, inline ``Dry-run`` / ``Resume`` checkboxes, an Advanced collapse
+(``--sample``, ``--nrows``, ``--ncols``,
 ``--image-type``, ``--workers``, ``--log-level``), and a SLURM config
 collapse (typed common fields plus a free-form ``k=v`` textarea).
 
@@ -572,7 +572,7 @@ def build_form(sandbox: SandboxRoot) -> html.Div:
            open modal pickers; the selected path is shown in monospace
            next to each button.
         2. Mode toggle (Local / SLURM radio).
-        3. Inline checkboxes (``Dry-run``, ``Resume``, ``Save inspect``).
+        3. Inline checkboxes (``Dry-run``, ``Resume``).
         4. Advanced collapse (default closed).
         5. SLURM-config collapse (default closed).
         6. Action buttons row (``Validate``, ``Run``, ``Cancel``,
@@ -631,7 +631,6 @@ def build_form(sandbox: SandboxRoot) -> html.Div:
                 options=[
                     {"label": "Dry-run", "value": "dry_run"},
                     {"label": "Resume", "value": "resume"},
-                    {"label": "Save inspect figures (debug)", "value": "save_inspect"},
                 ],
                 value=[],
                 inline=True,

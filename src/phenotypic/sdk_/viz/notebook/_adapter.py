@@ -1,8 +1,8 @@
-"""ipywidgets notebook shell for :class:`~phenotypic.abc_.FigureProvider`.
+"""ipywidgets notebook shell for :class:`~phenotypic.abc_.plotting.PhtPlot`.
 
 Invoked only when a provider's figures declare ``Control``s (control-free
 providers render as a composed ``go.Figure`` instead — see
-:meth:`FigureProvider.dash`). The render-loop logic is factored into pure,
+:meth:`PhtPlot.report`). The render-loop logic is factored into pure,
 ipywidgets-free module-level helpers so it can be unit-tested without a kernel;
 ``ipywidgets`` is imported lazily inside :func:`build_notebook_dashboard`.
 
@@ -16,10 +16,10 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
 
-from phenotypic.abc_._figure_provider import Control, FigureSpec
+from phenotypic.abc_.plotting import Control, FigureSpec
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from phenotypic.abc_._figure_provider import FigureProvider
+    from phenotypic.abc_.plotting import PhtPlot
 
 __all__ = [
     "unique_controls",
@@ -130,7 +130,7 @@ def _plotly_display_payload(fig: Any) -> dict[str, Any]:
     }
 
 
-def build_notebook_dashboard(provider: "FigureProvider", subject: Any = None) -> Any:
+def build_notebook_dashboard(provider: "PhtPlot", subject: Any = None) -> Any:
     """Build an ipywidgets dashboard for ``provider``'s figures.
 
     One widget per unique control (deduped by identity); changing a control
@@ -138,7 +138,7 @@ def build_notebook_dashboard(provider: "FigureProvider", subject: Any = None) ->
     collapsible ``Accordion`` cards by their ``section`` tag.
 
     Args:
-        provider: The :class:`FigureProvider` to render.
+        provider: The :class:`PhtPlot` to render.
         subject: Subject to bind (operations); ``None`` uses the held subject.
 
     Returns:

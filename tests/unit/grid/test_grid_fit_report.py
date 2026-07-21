@@ -1,5 +1,5 @@
 """Tests for the notebook Plotly ``GridFitReport`` and the rewired
-``AutoGridFinder.dashboard`` (Panel -> Plotly migration, Phase 5)."""
+``AutoGridFinder.report`` (Panel -> Plotly migration, Phase 5)."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
 from phenotypic.grid import AutoGridFinder
 from phenotypic.grid._grid_fit_report import GridFitReport
+from phenotypic.abc_.plotting import PhtPlot
 
 
 # ---------------------------------------------------------------------------
@@ -58,33 +59,33 @@ def report(detected_image):
 
 
 # ---------------------------------------------------------------------------
-# AutoGridFinder.dashboard()
+# AutoGridFinder.report()
 # ---------------------------------------------------------------------------
 
 
-class TestDashboardReturnsGoFigure:
-    def test_dashboard_returns_go_figure(self, detected_image):
+class TestReportReturnsGoFigure:
+    def test_report_returns_go_figure(self, detected_image):
         finder = AutoGridFinder(nrows=8, ncols=12)
-        fig = finder.dashboard(detected_image, show_progress=False)
+        fig = finder.report(detected_image, show_progress=False)
         assert isinstance(fig, go.Figure)
 
-    def test_dashboard_is_composed_multiple_traces(self, detected_image):
+    def test_report_is_composed_multiple_traces(self, detected_image):
         finder = AutoGridFinder(nrows=8, ncols=12)
-        fig = finder.dashboard(detected_image, show_progress=False)
+        fig = finder.report(detected_image, show_progress=False)
         # Composed: timing bar + size histograms + scatter + diffs + occupancy
         # bars + summary table => well more than one trace.
         assert len(fig.data) > 1
 
-    def test_dashboard_carries_all_panel_trace_types(self, detected_image):
+    def test_report_carries_all_panel_trace_types(self, detected_image):
         finder = AutoGridFinder(nrows=8, ncols=12)
-        fig = finder.dashboard(detected_image, show_progress=False)
+        fig = finder.report(detected_image, show_progress=False)
         trace_types = {type(t).__name__ for t in fig.data}
         # The composed figure mixes bar, histogram, scatter, and table panels.
         assert {"Bar", "Histogram", "Scatter", "Table"} <= trace_types
 
-    def test_dashboard_preserves_grid_edge_shapes(self, detected_image):
+    def test_report_preserves_grid_edge_shapes(self, detected_image):
         finder = AutoGridFinder(nrows=8, ncols=12)
-        fig = finder.dashboard(detected_image, show_progress=False)
+        fig = finder.report(detected_image, show_progress=False)
         # Grid-edge + pitch reference lines survive composition as shapes.
         assert len(fig.layout.shapes) > 0
 
@@ -105,6 +106,7 @@ class TestGridFitReportFigures:
     ]
 
     def test_iter_figures_count(self, report):
+        assert isinstance(report, PhtPlot)
         specs = report.iter_figures()
         assert len(specs) == len(self.EXPECTED_FIGURES)
 
@@ -149,14 +151,14 @@ class TestGridFitReportFigures:
         assert isinstance(fig, go.Figure)
         assert fig.data[0].type == "table"
 
-    def test_dash_composes_to_single_figure(self, report):
-        fig = report.dash()
+    def test_report_composes_to_single_figure(self, report):
+        fig = report.report()
         assert isinstance(fig, go.Figure)
         assert len(fig.data) > 1
 
-    def test_dash_carries_reference_line_labels(self, report):
+    def test_report_carries_reference_line_labels(self, report):
         """add_vline annotation labels survive composition (F5)."""
-        fig = report.dash()
+        fig = report.report()
         labels = [a.text for a in fig.layout.annotations if a.text]
         assert any("fit (" in t for t in labels), (
             "pitch-fit label lost in compose"
@@ -238,10 +240,16 @@ class TestGridFitReportEmptyState:
             num_objects=image.num_objects,
         )
 
-    def test_empty_dash_returns_figure(self, empty_report):
-        fig = empty_report.dash()
+    def test_empty_report_returns_figure(self, empty_report):
+        fig = empty_report.report()
         assert isinstance(fig, go.Figure)
 
     def test_empty_summary_table_still_renders(self, empty_report):
         fig = empty_report.fig_summary_table()
         assert fig.data[0].type == "table"
+
+
+def test_plotting_objects_have_no_legacy_report_aliases(report):
+    assert not hasattr(report, "dash")
+    assert not hasattr(report, "dashboard")
+    assert not hasattr(AutoGridFinder, "dashboard")

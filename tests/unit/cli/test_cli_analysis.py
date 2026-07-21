@@ -2,7 +2,7 @@
 analysis GUI: ``_persist_pipeline_to_output_dir`` writes the canonical
 ``pipeline.json`` next to the master measurements, and
 ``_emit_analysis_outputs`` runs ``pipeline.analyze`` and writes
-``analysis.{csv,parquet}`` whenever the pipeline has a ``model``
+class-named CSV/Parquet artifacts whenever the pipeline has a ``model``
 configured.
 """
 
@@ -16,10 +16,11 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import LogGrowthModel, TukeyOutlierRemover
-from phenotypic.sdk_ import (
-    analysis_csv_path,
-    analysis_parquet_path,
-    pipeline_json_path,
+from phenotypic.sdk_ import deliverables_dir, pipeline_json_path
+from phenotypic.plotting import (
+    analysis_manifest_path,
+    named_analysis_csv_path,
+    named_analysis_parquet_path,
 )
 from phenotypic._cli._cli_output_manager import (
     _emit_analysis_outputs,
@@ -87,8 +88,9 @@ class TestEmitAnalysisOutputs:
         master = _synthetic_growth_master()
         result = _emit_analysis_outputs(tmp_path, master, ImagePipeline())
         assert result is None
-        assert not analysis_csv_path(tmp_path).exists()
-        assert not analysis_parquet_path(tmp_path).exists()
+        base = deliverables_dir(tmp_path)
+        assert not named_analysis_csv_path(base, "LogGrowthModel").exists()
+        assert not named_analysis_parquet_path(base, "LogGrowthModel").exists()
 
     def test_writes_csv_and_parquet_when_model_configured(
         self, tmp_path: Path
@@ -104,12 +106,15 @@ class TestEmitAnalysisOutputs:
         )
         result = _emit_analysis_outputs(tmp_path, master, pipeline)
         assert result is not None
-        path, n_rows = result
-        assert path == analysis_parquet_path(tmp_path)
-        assert n_rows > 0
-        assert analysis_csv_path(tmp_path).exists()
-        assert analysis_parquet_path(tmp_path).exists()
-        assert pl.read_parquet(path).height == n_rows
+        base = deliverables_dir(tmp_path)
+        path = named_analysis_parquet_path(base, "LogGrowthModel")
+        assert result.artifacts is not None
+        assert result.artifacts.parquet == path
+        assert len(result.table) > 0
+        assert named_analysis_csv_path(base, "LogGrowthModel").exists()
+        assert path.exists()
+        assert analysis_manifest_path(base).exists()
+        assert pl.read_parquet(path).height == len(result.table)
 
     def test_filter_chain_runs_before_model(self, tmp_path: Path) -> None:
         master = _synthetic_growth_master()
@@ -130,7 +135,11 @@ class TestEmitAnalysisOutputs:
         )
         result = _emit_analysis_outputs(tmp_path, master, pipeline)
         assert result is not None
-        loaded = pl.read_parquet(analysis_parquet_path(tmp_path))
+        loaded = pl.read_parquet(
+            named_analysis_parquet_path(
+                deliverables_dir(tmp_path), "LogGrowthModel"
+            )
+        )
         # One fit per strain group.
         assert loaded.height <= master["Metadata_Strain"].n_unique()
         assert loaded.height > 0
@@ -157,12 +166,15 @@ class TestEmitAnalysisOutputs:
             tmp_path, master, pipeline, deliverables_base=bundle
         )
         assert result is not None
-        path, _ = result
+        assert result.artifacts is not None
+        path = result.artifacts.parquet
         # Written into the bundle directly, NOT under deliverables_dir(tmp_path).
-        assert path == bundle / "analysis.parquet"
-        assert (bundle / "analysis.csv").exists()
-        assert (bundle / "analysis.parquet").exists()
-        assert not analysis_parquet_path(tmp_path).exists()
+        assert path == bundle / "LogGrowthModel.parquet"
+        assert (bundle / "LogGrowthModel.csv").exists()
+        assert (bundle / "LogGrowthModel.parquet").exists()
+        assert not named_analysis_parquet_path(
+            deliverables_dir(tmp_path), "LogGrowthModel"
+        ).exists()
 
     def test_analysis_failure_is_non_fatal(self, tmp_path: Path) -> None:
         # Master frame missing the column the model needs.
@@ -177,8 +189,51 @@ class TestEmitAnalysisOutputs:
         )
         result = _emit_analysis_outputs(tmp_path, master, pipeline)
         assert result is None
-        assert not analysis_csv_path(tmp_path).exists()
-        assert not analysis_parquet_path(tmp_path).exists()
+        base = deliverables_dir(tmp_path)
+        assert not named_analysis_csv_path(base, "LogGrowthModel").exists()
+        assert not named_analysis_parquet_path(base, "LogGrowthModel").exists()
+
+    def test_manifest_failure_restores_previous_artifact_generation(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        import phenotypic.plotting as plotting
+
+        master = _synthetic_growth_master()
+        pipeline = ImagePipeline(
+            model=LogGrowthModel(
+                on="Shape_Area",
+                groupby=["Metadata_Strain"],
+                time_label="Metadata_Time",
+                n_jobs=1,
+            ),
+        )
+        assert _emit_analysis_outputs(tmp_path, master, pipeline) is not None
+        base = deliverables_dir(tmp_path)
+        csv_path = named_analysis_csv_path(base, "LogGrowthModel")
+        parquet_path = named_analysis_parquet_path(base, "LogGrowthModel")
+        manifest_path = analysis_manifest_path(base)
+        previous = (
+            csv_path.read_bytes(),
+            parquet_path.read_bytes(),
+            manifest_path.read_bytes(),
+        )
+
+        def fail_manifest(*_args, **_kwargs):
+            raise OSError("manifest unavailable")
+
+        monkeypatch.setattr(
+            plotting, "publish_analysis_manifest_entry", fail_manifest
+        )
+        changed = master.with_columns(
+            (pl.col("Shape_Area") * 1.5).alias("Shape_Area")
+        )
+
+        assert _emit_analysis_outputs(tmp_path, changed, pipeline) is None
+        assert (
+            csv_path.read_bytes(),
+            parquet_path.read_bytes(),
+            manifest_path.read_bytes(),
+        ) == previous
 
 
 class TestLoadPipelinePrefersCanonical:

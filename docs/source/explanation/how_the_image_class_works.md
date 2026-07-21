@@ -56,7 +56,7 @@ through the accessor.
 - **`image.color`** — Color space conversions (Lab, HSV, XYZ, xy)
 - **`image.grid`** — Grid layout and section operations (GridImage only)
 - **`image.metadata`** — EXIF data and custom metadata
-- **`image.plot`** — Visualization methods
+- **`image.show()` / `image.dash()`** — Direct Matplotlib or Plotly display
 - **`image.objects`** — Iterate over detected objects
 
 ## Image vs GridImage

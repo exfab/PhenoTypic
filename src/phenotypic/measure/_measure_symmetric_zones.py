@@ -8,7 +8,9 @@ remain angularly uniform?
 
 from __future__ import annotations
 
-from typing import ClassVar, Literal, TYPE_CHECKING
+import weakref
+from dataclasses import fields, replace
+from typing import ClassVar, Literal, TYPE_CHECKING, TypeAlias
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -18,7 +20,8 @@ import pandas as pd
 from pydantic import PrivateAttr
 from skimage.measure import approximate_polygon, find_contours, regionprops
 
-from phenotypic.abc_ import Control, FigureProvider, MeasureFeatures, figure
+from phenotypic.abc_ import MeasureFeatures
+from phenotypic.abc_.plotting import Control, PlotImage, figure
 from phenotypic.measure._zone_segmentation import (
     ZoneSegmentation,
     ZoneSegmentationParams,
@@ -29,7 +32,24 @@ from phenotypic.schema import SYMMETRIC_ZONES
 
 # Back-compat alias so the rest of this module (inspect/_operate/overlay
 # helpers) keeps referring to the relocated dataclass by its old name.
-_SymmetryIntermediates = ZoneSegmentation
+_SymmetryIntermediates: TypeAlias = ZoneSegmentation
+
+
+def _own_intermediate_arrays(
+    intermediates: _SymmetryIntermediates,
+) -> _SymmetryIntermediates:
+    """Return compact intermediates whose arrays own their memory.
+
+    A cropped NumPy view can retain the complete plate-sized backing array.
+    Plot caches therefore copy every derived array before retaining the
+    per-object record. Scalar measurement results are unchanged.
+    """
+    owned = {
+        item.name: value.copy()
+        for item in fields(intermediates)
+        if isinstance((value := getattr(intermediates, item.name)), np.ndarray)
+    }
+    return replace(intermediates, **owned)
 
 _NEIGHBOR_KERNEL = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.int32)
 
@@ -61,7 +81,7 @@ BASE_LAYER = Control(
 )
 
 
-class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
+class MeasureSymmetricZones(MeasureFeatures, PlotImage):
     """Measure colony radial expansion and angular symmetry from the object mask alone.
 
     Quantifies each colony by four scalars derived directly from its binary
@@ -206,10 +226,12 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
     # Diagnostic cache populated by ``measure()`` so ``inspect()`` /
     # ``napari()`` can reuse the per-object intermediates. Pure runtime
     # state — never a constructor parameter — so modeled as private attrs.
-    __cache_image: "Image | None" = PrivateAttr(default=None)
-    __cache_props: "list | None" = PrivateAttr(default=None)
+    __cache_image_ref: "weakref.ReferenceType[Image] | None" = PrivateAttr(
+        default=None
+    )
     __cache_intermediates: "dict[int, _SymmetryIntermediates]" = PrivateAttr(
             default_factory=dict)
+    __cache_signature: str | None = PrivateAttr(default=None)
 
     # ── shared pipeline for one object ───────────────────────────────
 
@@ -279,8 +301,7 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
         )
 
         # Refresh cache so inspect() can reuse these results
-        self.__cache_image = image
-        self.__cache_props = props
+        self.__cache_image_ref = weakref.ref(image)
         self.__cache_intermediates = {}
 
         # Zone columns get 0.0 for tiny objects (no zones to resolve);
@@ -311,7 +332,7 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
                 )
                 continue  # leave NaN
 
-            self.__cache_intermediates[prop.label] = inter
+            self.__cache_intermediates[prop.label] = _own_intermediate_arrays(inter)
 
             measurements[str(SYMMETRIC_ZONES.CORE_RADIUS)][idx] = inter.core_radius
             measurements[str(SYMMETRIC_ZONES.SYMMETRIC_RADIUS)][
@@ -331,18 +352,29 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
 
         df = pd.DataFrame(measurements)
         df.insert(0, OBJECT.LABEL, image.objects.labels2series())
+        self.__cache_signature = self.model_dump_json()
         return df
 
     # ── cache helpers ────────────────────────────────────────────────
 
     def _require_cache_image(self) -> Image:
         """Return the cached image or raise if :meth:`measure` has not run."""
-        if self.__cache_image is None:
+        image = self.__cached_image()
+        if image is None:
             raise RuntimeError(
-                    "MeasureSymmetricZones: diagnostic cache is empty. "
-                    "Call .measure(image) before .inspect()."
+                    "MeasureSymmetricZones: no live image subject is available. "
+                    "Pass an image to .inspect(), or keep the measured image "
+                    "alive for no-argument rendering."
             )
-        return self.__cache_image
+        return image
+
+    def __cached_image(self) -> Image | None:
+        """Return the weakly held image without extending its lifetime."""
+        return (
+            self.__cache_image_ref()
+            if self.__cache_image_ref is not None
+            else None
+        )
 
     def _get_local_obj_mask(self, label: int) -> np.ndarray:
         """Local (bbox-cropped) boolean mask for the object with ``label``."""
@@ -433,7 +465,9 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
             ``ceil(360 / stride) + 1`` (closed).
         """
         cx, cy = centroid_xy
-        angles_deg = np.arange(0, _N_ANGULAR_SECTORS, stride, dtype=np.int32)
+        angles_deg: np.ndarray = np.arange(
+            0, _N_ANGULAR_SECTORS, stride, dtype=np.int32
+        )
         theta = np.deg2rad(angles_deg)
         radii = r_per_angle[angles_deg].astype(np.float64)
         xs = cx + radii * np.cos(theta)
@@ -468,7 +502,9 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
         if stride <= 0:
             raise ValueError(f"stride must be positive, got {stride}")
         cx, cy = centroid_xy
-        angles_deg = np.arange(0, _N_ANGULAR_SECTORS, stride, dtype=np.int32)
+        angles_deg: np.ndarray = np.arange(
+            0, _N_ANGULAR_SECTORS, stride, dtype=np.int32
+        )
         theta = np.deg2rad(angles_deg)
         r_out = r_outer_per_angle[angles_deg].astype(np.float64)
         r_in = r_inner_per_angle[angles_deg].astype(np.float64)
@@ -509,7 +545,7 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
             for_save: When *True*, every overlay trace is force-shown
                 (no ``visible="legendonly"``) so the figure renders
                 meaningfully as a static raster. The CLI's
-                ``--save-inspect`` flag passes this. Defaults to *False*
+                PlotImage publication passes this. Defaults to *False*
                 (interactive Jupyter use, with overlay layers toggleable
                 from the legend).
 
@@ -540,22 +576,26 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
                 intensity_image=image.gray[:].astype(np.float64, copy=False),
         )
         intermediates_cache: dict[int, _SymmetryIntermediates] = {}
+        cache_is_current = (
+            self.__cached_image() is image
+            and self.__cache_signature == self.model_dump_json()
+        )
         for prop in props:
             if (
-                    self.__cache_image is image
+                    cache_is_current
                     and prop.label in self.__cache_intermediates
             ):
                 intermediates_cache[prop.label] = self.__cache_intermediates[prop.label]
                 continue
             try:
                 inter = self._compute_intermediates(image, prop.label, prop=prop)
-                intermediates_cache[prop.label] = inter
+                intermediates_cache[prop.label] = _own_intermediate_arrays(inter)
             except Exception:
                 continue
 
-        self.__cache_image = image
-        self.__cache_props = props
+        self.__cache_image_ref = weakref.ref(image)
         self.__cache_intermediates = intermediates_cache
+        self.__cache_signature = self.model_dump_json()
 
         if not intermediates_cache:
             fig = go.Figure()
@@ -749,13 +789,13 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
 
             # Zone radii are scalars; broadcast to per-angle arrays so the
             # existing polar-polygon helpers draw concentric circles.
-            r_core_arr = np.full(
+            r_core_arr: np.ndarray = np.full(
                     _N_ANGULAR_SECTORS, inter.core_end_radius, dtype=np.float64,
             )
-            r_dense_arr = np.full(
+            r_dense_arr: np.ndarray = np.full(
                     _N_ANGULAR_SECTORS, inter.dense_end_radius, dtype=np.float64,
             )
-            r_outer_arr = np.full(
+            r_outer_arr: np.ndarray = np.full(
                     _N_ANGULAR_SECTORS, inter.sparse_end_radius, dtype=np.float64,
             )
 

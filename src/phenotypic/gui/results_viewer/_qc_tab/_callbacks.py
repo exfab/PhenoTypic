@@ -31,7 +31,7 @@ GUI export button.
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterable, Iterator, Literal
+from typing import Any, cast, Iterable, Iterator, Literal
 
 import dash
 import pandas as pd
@@ -41,6 +41,7 @@ from dash import ALL, Input, Output, State, ctx, html, no_update
 from dash.exceptions import PreventUpdate
 from flask import current_app
 
+from phenotypic.abc_.plotting import PlotQc
 from phenotypic.gui._config import (
     CFG_FILTERED_STATE,
     CFG_OPERATION_REGISTRY,
@@ -612,15 +613,19 @@ def register_qc_callbacks(app: dash.Dash) -> None:
                 continue
 
             try:
-                figure = check.dash()
+                if not isinstance(check, PlotQc):
+                    raise TypeError(
+                        f"{type(check).__name__} does not implement PlotQc"
+                    )
+                figure = check.inspect()
                 # Stamp the shared theme so QC check figures carry the
                 # Okabe-Ito colorway, mono numeric axes, and brand chrome.
                 apply_theme(figure)
             except Exception as exc:  # noqa: BLE001
-                logger.warning("QC dash() failed: %s", exc, exc_info=True)
+                logger.warning("QC inspect() failed: %s", exc, exc_info=True)
                 figure = _error_figure(check_name=type(check).__name__, message=str(exc))
 
-            summary = check.summary()
+            summary = cast(Any, check).summary()
             summaries.append(_render_summary_strip(summary))
             worst = _worst_status(summary)
             badge_text.append(worst)

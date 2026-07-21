@@ -303,7 +303,7 @@ class MeasureFeatures(BaseOperation, ABC):
         Implementing :meth:`inspect` on a subclass is optional. If a
         subclass defines an
         ``inspect(self, image=None, *, for_save=False, **kwargs)`` method,
-        the ``phenotypic`` CLI's ``--save-inspect`` flag will
+        a configured ``PlotImage`` pipeline binding will
         automatically render and save its output for every processed
         image to
         ``results/<dataset>/inspect/<step-name>/<image-stem>.png``.

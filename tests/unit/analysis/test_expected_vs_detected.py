@@ -230,10 +230,10 @@ class TestEmittedColumns:
             assert isinstance(label, int)
 
 
-class TestDash:
+class TestInspect:
     """Plotly figure rendering and pre-analyze guard."""
 
-    def test_dash_returns_plotly_figure(self) -> None:
+    def test_inspect_returns_plotly_figure(self) -> None:
         metadata = _make_96well_metadata()
         measurements = _make_measurements("plate1.png", 96)
         chk = ExpectedVsDetectedCount(
@@ -241,19 +241,19 @@ class TestDash:
         )
         chk.analyze(measurements)
 
-        fig = chk.dash()
+        fig = chk.inspect()
 
         assert isinstance(fig, go.Figure)
         assert len(fig.data) >= 1
 
-    def test_dash_raises_before_analyze(self) -> None:
+    def test_inspect_raises_before_analyze(self) -> None:
         metadata = _make_96well_metadata()
         chk = ExpectedVsDetectedCount(
             metadata=metadata, groupby=[str(METADATA.IMAGE_NAME)]
         )
 
         with pytest.raises(RuntimeError, match="analyze"):
-            chk.dash()
+            chk.inspect()
 
 
 class TestClassFlags:

@@ -5,9 +5,8 @@ evaluating detection matrices before colony detection. Metrics include
 noise estimation, contrast analysis, structural coherence, and
 background uniformity assessment.
 
-The :class:`ImageMetricsCalculator` computes metrics used by the
-:class:`DiagnosticsPlotter` for both its static matplotlib figures and
-its interactive ``image.plot.dash.diagnostics()`` views.
+The :class:`ImageMetricsCalculator` computes metrics used by diagnostic
+plot classes for both static and interactive figures.
 
 Examples:
     >>> from phenotypic.data import load_synth_yeast_plate

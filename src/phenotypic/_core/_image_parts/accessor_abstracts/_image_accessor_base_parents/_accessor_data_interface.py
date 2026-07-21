@@ -43,9 +43,8 @@ class AccessorDataInterface(ABC):
     def _subject_arr(self) -> np.ndarray:
         raise NotImplementedError
 
-    # Concrete override so that subclasses which do not implement
-    # _subject_arr (e.g. PlotAccessor) are not forced
-    # to be abstract themselves.  The original monolithic class had
+    # Concrete override retained for subclasses that provide a non-array
+    # data interface. The original monolithic class had
     # this same pattern — an @abstractmethod declaration followed by a
     # second @property that shadowed it on the same class.
     @_subject_arr.getter  # type: ignore[attr-defined]

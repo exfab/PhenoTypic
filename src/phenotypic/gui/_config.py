@@ -21,8 +21,7 @@ injection helper (:func:`_design.inject_design_tokens`) that this
 module shouldn't pull in.
 
 The CLI ↔ GUI shared output filenames (``MASTER_MEASUREMENTS_PARQUET``,
-``MEASUREMENTS_CSV``, ``MEASUREMENTS_PARQUET``, ``ANALYSIS_CSV``,
-``ANALYSIS_PARQUET``, ``PIPELINE_JSON``, ``RESULTS_DIRNAME``,
+``MEASUREMENTS_CSV``, ``MEASUREMENTS_PARQUET``, ``PIPELINE_JSON``,
 ``PROGRESS_DIRNAME``, ``DELIVERABLES_DIRNAME``, ``DASHBOARD_FILENAME``)
 are re-exports of canonical constants in :mod:`phenotypic.sdk_._io_constants`.
 The single source of truth is one level up; this module re-exports for
@@ -52,11 +51,8 @@ from typing import Literal
 from urllib.parse import urlsplit
 
 from phenotypic.sdk_ import (
-    ANALYSIS_CSV,
-    ANALYSIS_PARQUET,
     DASHBOARD_HTML,
     DIR_DELIVERABLES,
-    DIR_INSPECT,
     DIR_MEASUREMENTS,
     DIR_PHENOTYPIC,
     DIR_PROGRESS,
@@ -120,8 +116,6 @@ __all__ = [
     "MASTER_MEASUREMENTS_PARQUET",
     "MEASUREMENTS_CSV",
     "MEASUREMENTS_PARQUET",
-    "ANALYSIS_CSV",
-    "ANALYSIS_PARQUET",
     "PIPELINE_JSON",
     "JOB_METADATA_JSON",
     "MANIFEST_JSON",
@@ -132,7 +126,6 @@ __all__ = [
     "PROGRESS_DIRNAME",
     "QC_DIRNAME",
     "DELIVERABLES_DIRNAME",
-    "DIR_INSPECT",
     "DIR_MEASUREMENTS",
     # Dashboard filename — re-exported from phenotypic.sdk_
     "DASHBOARD_FILENAME",
@@ -378,7 +371,6 @@ RAW_IMAGE_EXTS: frozenset[str] = frozenset({".cr2", ".cr3", ".nef", ".arw", ".dn
 # Available re-exports (imported at module top):
 #   MASTER_MEASUREMENTS_CSV, MASTER_MEASUREMENTS_PARQUET,
 #   MEASUREMENTS_CSV, MEASUREMENTS_PARQUET,
-#   ANALYSIS_CSV, ANALYSIS_PARQUET,
 #   PIPELINE_JSON, JOB_METADATA_JSON, MANIFEST_JSON, STDOUT_LOG,
 #   QC_REVIEW_STATE_JSON,
 #   DIR_RESULTS, DIR_PROGRESS, DIR_QC, DIR_DELIVERABLES, DASHBOARD_HTML

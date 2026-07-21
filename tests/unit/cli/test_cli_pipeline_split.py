@@ -5,6 +5,8 @@ from phenotypic.enhance import GaussianBlur
 from phenotypic.detect import OtsuDetector
 from phenotypic.refine import SmallObjectRemover
 from phenotypic.measure import MeasureSize
+from phenotypic.measure import MeasureSymmetricZones
+from phenotypic.abc_.plotting import PlotImage
 from phenotypic._cli._cli_pipeline_split import (
     split_pipeline_at_gpu,
     StagePlan,
@@ -35,4 +37,25 @@ def test_rejects_more_than_one_gpu_detector():
 def test_rejects_no_gpu_detector():
     pipe = ImagePipeline(ops=[GaussianBlur(), OtsuDetector()])
     with pytest.raises(ValueError, match="no GpuDetector"):
+        split_pipeline_at_gpu(pipe)
+
+
+def test_measurer_plot_binding_survives_into_stage_three():
+    zones = MeasureSymmetricZones()
+    pipe = ImagePipeline(
+        ops=[FakeGpuDetector()], meas={"zones": zones}, plots=[zones]
+    )
+    plan = split_pipeline_at_gpu(pipe)
+    assert plan.post_pipeline.get_plots()[0].plot is zones
+    assert plan.post_pipeline.get_plots()[0].ref.key == "zones"
+
+
+class _PreGpuPlot(GaussianBlur, PlotImage):
+    pass
+
+
+def test_pre_gpu_plot_reference_is_rejected():
+    pre = _PreGpuPlot()
+    pipe = ImagePipeline(ops={"pre": pre, "gpu": FakeGpuDetector()}, plots=[pre])
+    with pytest.raises(ValueError, match="references pre-GPU operation"):
         split_pipeline_at_gpu(pipe)

@@ -1,4 +1,4 @@
-"""Tests for the Plotly ``DetectModesPlotter`` faceted detection-mode figure."""
+"""Tests for the standalone ``PlotDetectModes`` image plot."""
 
 from __future__ import annotations
 
@@ -8,10 +8,8 @@ from phenotypic._core._image_parts.detection_modes import (
     available_modes,
     get_detection_mode,
 )
-from phenotypic._core._image_parts.plot_accessor._detect_modes_plotter import (
-    DetectModesPlotter,
-)
 from phenotypic.data import load_synth_yeast_plate
+from phenotypic.plotting import PlotDetectModes
 
 
 def _num_computable_modes(image) -> int:
@@ -26,22 +24,14 @@ def _num_computable_modes(image) -> int:
     return count + 1  # + the appended current detect_mat panel
 
 
-def test_iter_figures_single_control_free_spec() -> None:
-    """The provider declares exactly one control-free figure named ``detect_modes``."""
-    image = load_synth_yeast_plate()
-    specs = DetectModesPlotter(image).iter_figures()
-
-    assert len(specs) == 1
-    spec = specs[0]
-    assert spec.name == "detect_modes"
-    assert spec.controls == {}
+def test_plot_detect_modes_is_fieldless_serializable_model() -> None:
+    assert PlotDetectModes().model_dump() == {}
 
 
 def test_plot_detect_modes_returns_faceted_figure() -> None:
-    """``image.plot.detect_modes()`` returns a faceted ``go.Figure`` with one
-    subplot (and image trace) per detection mode plus the current detect_mat."""
+    """``inspect(image)`` returns one panel per mode plus detect_mat."""
     image = load_synth_yeast_plate()
-    fig = image.plot.detect_modes()
+    fig = PlotDetectModes().inspect(image)
 
     assert isinstance(fig, go.Figure)
 
@@ -56,10 +46,10 @@ def test_plot_detect_modes_returns_faceted_figure() -> None:
     assert len(xaxes) == expected_panels
 
 
-def test_dash_detect_modes_returns_figure_directly() -> None:
-    """A single control-free ``@figure`` → ``dash()`` returns the ``go.Figure``."""
+def test_report_detect_modes_returns_figure_directly() -> None:
+    """The full report is the same single faceted figure."""
     image = load_synth_yeast_plate()
-    fig = image.plot.dash.detect_modes()
+    fig = PlotDetectModes().report(image)
 
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == _num_computable_modes(image)
