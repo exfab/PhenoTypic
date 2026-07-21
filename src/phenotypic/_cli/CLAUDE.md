@@ -39,10 +39,11 @@ and runs three content-defined stages. The per-image stage cores live in
    apply post-ops + `measure(apply_post=False)`, atomically re-save the HDF,
    **delete the sidecar** (mandatory).
 
-**Resume is content-defined.** Stage 1 skips when the HDF exists; Stage 2 skips
-when the sidecar **or** the terminal artifact (parquet, or the objmap layer in
-process mode) exists — Stage 3 deletes the sidecar, so the terminal artifact is
-the durable "done" marker; Stage 3 skips when the parquet exists. The output is
+**Resume is content-defined.** Plain `--resume` includes failed staged GPU images.
+A missing or invalid HDF selects Stage 1; a valid HDF without a sidecar selects
+Stage 2; and a valid HDF with a sidecar selects Stage 3. Stage 3 writes an atomic
+terminal marker after publishing the parquet, HDF, and plot, then deletes the
+sidecar. The output is
 byte-identical to a single-pass run.
 
 **Progress events.** Stages emit stage-tagged events via the `stage` field on
@@ -111,8 +112,8 @@ persisting the returned ID.
   directive so a CPU partition can run the GPU stage, e.g. tests).
 - **Walltime survival:** Stage 2 does not install a signal handler or self-requeue.
   After each array reaches a terminal scheduler state, its dependent controller
-  reclassifies the manifest from atomic sidecars/parquets, terminal failures,
-  and Stage-1 HDFs. Remaining images launch another array round. One unchanged
+  reclassifies the manifest from valid HDFs, atomic sidecars, Stage-3 markers,
+  and terminal failures. Remaining images launch another array round. One unchanged
   retryable-set round is retried; a second unchanged round terminalizes the
   remainder and advances to Stage 3.
 - Every worker checks the active epoch immediately before publishing HDF,

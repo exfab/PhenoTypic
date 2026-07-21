@@ -71,8 +71,16 @@ class PlotCoordinator:
         *,
         dataset: str,
         image_stem: str,
+        strict: bool = False,
     ) -> None:
-        """Emit every ``PlotImage`` after one image has been measured."""
+        """Emit every ``PlotImage`` after one image has been measured.
+
+        Args:
+            image: Image passed to each image plot binding.
+            dataset: Dataset name used in output paths.
+            image_stem: Image stem used in output paths.
+            strict: Re-raise publication failures instead of logging them.
+        """
         for binding in self._bindings(PlotImage):
             try:
                 value = binding.plot.inspect(image, for_save=True)
@@ -83,6 +91,8 @@ class PlotCoordinator:
                     image_stem=image_stem,
                 )
             except Exception:  # noqa: BLE001 - plot output is best-effort
+                if strict:
+                    raise
                 logger.warning(
                     "Plot %s failed during image inspect", binding.id,
                     exc_info=True,

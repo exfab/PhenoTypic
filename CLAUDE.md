@@ -57,7 +57,8 @@
   resident-model GPU detect → CPU measure — reusing the per-image HDF. Stage 2 writes a
   per-image `.npy` objmap **sidecar** (HDF opened read-only); Stage 3 merges it into the
   final HDF, measures, and deletes the sidecar. The output folder is identical to a
-  single-pass run; resume is content-defined (HDF → sidecar → parquet) and progress is
+  single-pass run; resume is content-defined (valid HDF → sidecar → atomic Stage-3
+  completion marker) and progress is
   stage-tagged. `--mode process --layer objmap` exports objmaps after Stages 1–2.
   On SLURM, the stages submit through an **epoch-fenced recoverable controller**:
   Stages 1 & 3 use the CPU `--slurm` profile, and Stage 2 is a GPU array

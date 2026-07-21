@@ -110,8 +110,9 @@ pipelines on two different images.
 
 ### Surviving interruptions
 
-`--resume` skips images that already have output, so an interrupted run picks up
-where it stopped. If everything is already done, the CLI says so and exits:
+`--resume` skips completed work. Staged GPU pipelines infer the earliest required
+stage from their HDF, sidecar, and Stage-3 marker, including images with recorded
+intermediate-stage failures. If everything is already done, the CLI says so and exits:
 
 ```bash
 python -m phenotypic --pipeline pipe.json --input ./plates --output ./out \
@@ -122,12 +123,12 @@ python -m phenotypic --pipeline pipe.json --input ./plates --output ./out \
 Four flags control what happens to prior state, and the CLI enforces the
 combinations:
 
-- `--resume` — skip completed images. Failed images stay failed.
-- `--retry-failures` — also re-process the failures. **Requires `--resume`.**
+- `--resume` — skip completed images. Staged GPU failures resume automatically.
+- `--retry-failures` — also re-process recorded CPU/legacy failures. **Requires `--resume`.**
 - `--restart` — clear the state file and start over. **Mutually exclusive with `--resume`.**
 - `--overwrite` — delete the output directory contents first. **Mutually exclusive with `--resume`.**
 
-Use `--resume --retry-failures` after fixing whatever broke — a corrupt input
+For CPU pipelines, use `--resume --retry-failures` after fixing whatever broke — a corrupt input
 file, an out-of-memory detector — to reprocess only the images that failed.
 
 ## `measure` — new numbers, same segmentation

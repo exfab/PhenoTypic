@@ -323,8 +323,9 @@ Stage boundaries are **content-defined**:
   exists. Cheap to check (a file stat — no need to open the HDF) and **immune to any
   pre-stage detector's objmap** in the `.h5`, which is why the D12 objmap-clear is
   unnecessary under the sidecar design.
-- Stage 3 done for an id ⇔ its per-image measurement parquet exists under
-  `results/<ds>/measurements/` (Stage 3 also deletes the now-merged sidecar).
+- Stage 3 done for an id ⇔ its atomic per-image Stage-3 completion marker exists.
+  The marker is published after the parquet, HDF, and plot; Stage 3 then deletes
+  the now-merged sidecar.
 
 The **sidecar-presence check is the primary Stage-2 completion predicate** (review C2):
 `np.save` to `*.tmp` + `os.rename` makes the sidecar appear atomically, so a worker that
@@ -332,7 +333,8 @@ dies mid-batch leaves each id either done (sidecar present → skip) or not (abs
 reprocess), with no double-counting. A dependent, epoch-fenced controller waits for the
 array master to terminate and then classifies every image as done, terminal, or retryable.
 It submits another Stage-2 round only while retryable images remain; workers never
-self-requeue. During resume, an existing measurement parquet also counts as done. Current
+self-requeue. Legacy parquet-only runs are migrated to Stage-3 markers when no
+sidecar remains. Current
 epoch terminal failures and missing Stage-1 HDFs count as terminal.
 
 The controller stores an atomic state record and append-only job ledger. Every scheduler
@@ -347,8 +349,9 @@ existing infrastructure:
 
 1. **Truth = content-defined artifacts** (above). The source of truth for resume *and*
    for each stage worker's work-list. Robust to lost/partial logs: any worker re-derives
-   an image's furthest stage by checking HDF presence → **objmap sidecar presence** →
-   per-image parquet presence. This is what makes `afterany` chaining safe — a stage
+   an image's furthest stage by checking valid HDF → **objmap sidecar presence** →
+   atomic Stage-3 completion marker. Legacy parquet-only completions are migrated
+   before the marker contract is enabled. This is what makes `afterany` chaining safe — a stage
    processes exactly the artifacts the prior stage actually produced.
 2. **Live progress = the existing append-only event log** (`event_log_path`,
    `append_event` / `append_completion_event`), extended with **stage-tagged statuses**:

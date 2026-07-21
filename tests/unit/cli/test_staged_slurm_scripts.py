@@ -138,6 +138,7 @@ def test_stage2_script_uses_controller_not_signal_requeue(tmp_path):
     s2 = scripts["stage2"].read_text(encoding="utf-8")
     assert "--signal=" not in s2
     assert "--requeue" not in s2
+    assert "--stage3-markers-required" in s2
     assert "--epoch epoch-1" in s2
 
 
@@ -203,6 +204,23 @@ def test_single_chunk_keeps_plain_script_names(tmp_path):
     assert [p.name for p in scripts["stage3"]] == ["stage3.sh"]
 
 
+def test_empty_manifest_generates_no_image_stage_arrays(tmp_path):
+    scripts = generate_staged_scripts(
+        pipeline_path=tmp_path / "p.json",
+        datasets_manifest=[],
+        output_dir=tmp_path,
+        image_type="Image",
+        cpu_slurm_args={"slurm_partition": "batch"},
+        gpu_slurm_args={"slurm_partition": "gpu"},
+        n_shards=1,
+        array_limit=1000,
+        epoch="epoch-1",
+    )
+
+    assert scripts["stage1"] == []
+    assert scripts["stage3"] == []
+
+
 def test_multi_chunk_scripts_get_indexed_names(tmp_path):
     scripts = generate_staged_scripts(
         pipeline_path=tmp_path / "p.json",
@@ -222,8 +240,21 @@ def test_multi_chunk_scripts_get_indexed_names(tmp_path):
     ]
 
 
+@pytest.mark.parametrize(
+    ("resume_phase", "finalizer_only", "expected_phase", "stage3_index"),
+    [
+        (None, False, "stage1", 0),
+        ("stage2", False, "stage2", 0),
+        ("stage3", True, "stage3", 1),
+    ],
+)
 def test_strategy_reserves_two_max_submit_slots_for_controllers(
-    monkeypatch, tmp_path
+    monkeypatch,
+    tmp_path,
+    resume_phase,
+    finalizer_only,
+    expected_phase,
+    stage3_index,
 ):
     """The array plus running and successor controllers fit MaxSubmitJobs."""
     captured = {}
@@ -279,6 +310,9 @@ def test_strategy_reserves_two_max_submit_slots_for_controllers(
             "input_path": tmp_path / "inputs",
             "resume": False,
             "restart": False,
+            "staged_resume_phase": resume_phase,
+            "staged_finalizer_only": finalizer_only,
+            "staged_stage3_markers": True,
             "wait": False,
             "full_dataset_inventory": {},
             "nrows": None,
@@ -293,7 +327,9 @@ def test_strategy_reserves_two_max_submit_slots_for_controllers(
     assert submitted_roles == ["controller"]
     state = load_orchestration_state(tmp_path)
     assert state is not None
+    assert state["phase"] == expected_phase
     assert state["stage1_index"] == 0
+    assert state["stage3_index"] == stage3_index
     assert state["active_job_id"] is None
 
 

@@ -25,6 +25,10 @@ from phenotypic.sdk_.typing_ import ImageTypeName
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import StagePlan
 from ._cli_sidecar import delete_sidecar, load_sidecar, write_sidecar
+from ._cli_staged_resume import (
+    valid_staged_hdf,
+    write_stage3_completion_marker,
+)
 from ._stages import StageTag
 from ._cli_update_state import append_completion_event, append_event
 
@@ -106,7 +110,13 @@ def stage1_preprocess_core(
         image.set_detect_mode(detect_mode)
     plan.pre_pipeline.apply(image, inplace=True)
     _check_active(active_check)
-    output_manager.save_image_hdf(image, dataset_name, image_stem)
+    saved_hdf = output_manager.save_image_hdf(
+        image, dataset_name, image_stem
+    )
+    if saved_hdf is None or not valid_staged_hdf(saved_hdf):
+        raise RuntimeError(
+            f"Stage 1 HDF publication failed for {dataset_name}/{image_stem}"
+        )
 
 
 def stage2_detect_core(
@@ -141,6 +151,7 @@ def stage3_merge_measure_core(
     output_manager: OutputManager,
     image_type: ImageTypeName,
     active_check: ActiveCheck | None = None,
+    image_name: str | None = None,
 ) -> None:
     """Merge the sidecar, apply post-ops + measure, re-save HDF, delete sidecar."""
     image_cls = _image_class(image_type)
@@ -159,9 +170,13 @@ def stage3_merge_measure_core(
     _check_active(active_check)
     output_manager.save_measurements(measurements, dataset_name, image_stem)
     _check_active(active_check)
-    output_manager.save_image_hdf(
+    saved_hdf = output_manager.save_image_hdf(
         image, dataset_name, image_stem
     )  # atomic re-save
+    if saved_hdf is None or not valid_staged_hdf(saved_hdf):
+        raise RuntimeError(
+            f"Stage 3 HDF publication failed for {dataset_name}/{image_stem}"
+        )
     from phenotypic.plotting import PlotCoordinator
 
     _check_active(active_check)
@@ -169,6 +184,14 @@ def stage3_merge_measure_core(
         image,
         dataset=dataset_name,
         image_stem=image_stem,
+        strict=True,
+    )
+    _check_active(active_check)
+    write_stage3_completion_marker(
+        output_dir,
+        dataset_name,
+        image_name or image_stem,
+        image_stem,
     )
     _check_active(active_check)
     delete_sidecar(output_dir, dataset_name, image_stem)  # mandatory cleanup

@@ -144,7 +144,10 @@ from phenotypic._cli._cli_directory_scanner import (
     scan_directory_structure,
     scan_hdf_outputs,
 )
-from phenotypic._cli._cli_execution_strategies import create_execution_strategy
+from phenotypic._cli._cli_execution_strategies import (
+    create_execution_strategy,
+    uses_staged_gpu_strategy,
+)
 from phenotypic._cli._cli_interactive import (
     execute_dry_run,
     get_sample_datasets,
@@ -158,6 +161,12 @@ from phenotypic._cli._cli_state_management import (
     save_processing_state,
     update_state_from_events,
     validate_resume_compatibility,
+)
+from phenotypic._cli._cli_staged_resume import (
+    build_staged_resume_plan,
+    migrate_legacy_stage3_markers,
+    pipeline_content_digest,
+    reconcile_stage3_publications,
 )
 from phenotypic._cli._cli_types import Dataset, ExecutionConfig
 from phenotypic._cli._cli_utils import (
@@ -756,7 +765,8 @@ def _print_process_only_dry_run_plan(
 @click.option(
     "--retry-failures",
     is_flag=True,
-    help="Include failed images when resuming (requires --resume)",
+    help="Include recorded CPU/legacy failures when resuming. Staged GPU "
+    "pipelines always resume incomplete artifacts (requires --resume).",
 )
 @click.option(
     "--restart",
@@ -1170,7 +1180,7 @@ def phenotypic_cli(
             gpu_slurm_args=_parse_slurm_args(gpu_slurm_args),
         )
 
-        if (restart or overwrite) and output_dir.exists():
+        if (restart or overwrite or resume) and output_dir.exists():
             from phenotypic._cli._cli_staged_orchestration import (
                 active_ledger_job_ids,
             )
@@ -1178,7 +1188,7 @@ def phenotypic_cli(
             active_jobs = active_ledger_job_ids(output_dir)
             if active_jobs:
                 click.echo(
-                    "Error: Cannot restart or overwrite while staged SLURM "
+                    "Error: Cannot resume, restart, or overwrite while staged SLURM "
                     f"jobs are active: {', '.join(active_jobs)}",
                     err=True,
                 )
@@ -1384,12 +1394,14 @@ def phenotypic_cli(
             total_images = sum(len(d.images) for d in datasets)
             click.echo(f"Processing {total_images} sample images\n")
 
+        full_datasets = list(datasets)
         config.full_dataset_inventory = {
             dataset.name: [image.name for image in dataset.images]
             for dataset in datasets
         }
 
         # Handle resume mode - get remaining images
+        staged_gpu_resume = False
         if config.resume:
             # State was already validated earlier, just load it
             resume_state = load_processing_state(output_dir)
@@ -1427,21 +1439,89 @@ def phenotypic_cli(
                 )
                 sys.exit(1)
 
-            # Get remaining images
-            datasets = get_remaining_images_for_datasets(
-                resume_state, datasets, config.retry_failures
-            )
-            remaining_images = sum(len(d.images) for d in datasets)
+            staged_gpu_resume = uses_staged_gpu_strategy(config)
+            if staged_gpu_resume:
+                marker_contract = bool(
+                    resume_state.config.get("staged_stage3_markers", False)
+                )
+                resume_plan = build_staged_resume_plan(
+                    datasets=datasets,
+                    output_dir=output_dir,
+                    input_root=config.input_path,
+                    process_only_layer=config.process_only_layer,
+                    markers_required=marker_contract,
+                )
+                if not marker_contract:
+                    migrate_legacy_stage3_markers(output_dir, resume_plan)
+                reconcile_stage3_publications(
+                    output_dir,
+                    config.full_dataset_inventory,
+                    namespace="resume-preflight",
+                )
+                config.staged_stage3_markers = True
+                config.staged_resume_phase = resume_plan.initial_stage
+                datasets = resume_plan.datasets
+                counts = resume_plan.counts
+                remaining_images = sum(len(dataset.images) for dataset in datasets)
+                if remaining_images == 0:
+                    from phenotypic._cli._cli_staged_orchestration import (
+                        staged_completion_path,
+                    )
 
-            if remaining_images == 0:
-                click.echo("✓ All images already processed!")
-                sys.exit(0)
+                    if (
+                        config.process_only_layer is None
+                        and not staged_completion_path(output_dir).is_file()
+                    ):
+                        config.staged_finalizer_only = True
+                        config.staged_resume_phase = "stage3"
+                        if not config.is_slurm_mode():
+                            datasets = full_datasets
+                        click.echo(
+                            "Resuming staged GPU finalization (image stages complete)"
+                        )
+                    else:
+                        click.echo("✓ All images already processed!")
+                        sys.exit(0)
+                else:
+                    if not config.is_slurm_mode():
+                        from phenotypic._cli._cli_staged_orchestration import (
+                            staged_completion_path,
+                        )
 
-            click.echo(
-                f"Resuming processing ({remaining_images} images remaining)"
-            )
-            if config.retry_failures:
-                click.echo("  - Including previously failed images")
+                        staged_completion_path(output_dir).unlink(
+                            missing_ok=True
+                        )
+                    click.echo(
+                        "Resuming staged GPU processing "
+                        f"({remaining_images} incomplete): "
+                        f"Stage 1 {counts['stage1']}, "
+                        f"Stage 2 {counts['stage2']}, "
+                        f"Stage 3 {counts['stage3']}"
+                    )
+            else:
+                datasets = get_remaining_images_for_datasets(
+                    resume_state, datasets, config.retry_failures
+                )
+                remaining_images = sum(len(d.images) for d in datasets)
+                if remaining_images == 0:
+                    skipped_failures = sum(
+                        len(dataset.failed)
+                        for dataset in resume_state.datasets.values()
+                    )
+                    if skipped_failures and not config.retry_failures:
+                        click.echo(
+                            "No resumable images; "
+                            f"{skipped_failures} recorded failure(s) skipped. "
+                            "Use --retry-failures to include them."
+                        )
+                    else:
+                        click.echo("✓ All images already processed!")
+                    sys.exit(0)
+                click.echo(
+                    f"Resuming processing ({remaining_images} images remaining)"
+                )
+                if config.retry_failures:
+                    click.echo("  - Including previously failed images")
 
         # Ensure output directory exists for processing
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -1469,11 +1549,15 @@ def phenotypic_cli(
                     "ext": config.ext,
                     "save_overlays": config.save_overlays,
                     "process_only_layer": config.process_only_layer,
+                    "pipeline_sha256": pipeline_content_digest(
+                        config.pipeline_json
+                    ),
+                    "staged_stage3_markers": config.staged_stage3_markers,
+                    "include_dataset_column": config.include_dataset_column,
+                    "overlay_alpha": config.overlay_alpha,
                 }
             else:
                 state = create_initial_state(config, datasets, output_dir)
-                # Recorded for diagnostic transparency; no longer drives
-                # resume compatibility (overlays are always-on).
                 state.config["save_overlays"] = config.save_overlays
             save_processing_state(state, output_dir)
 
@@ -1530,6 +1614,15 @@ def phenotypic_cli(
         click.echo(f"\nStarting {execution_mode} processing...")
 
         results = strategy.execute(datasets, output_dir)
+
+        finalization_datasets = (
+            full_datasets if config.resume and staged_gpu_resume else datasets
+        )
+        local_staged_publication = (
+            uses_staged_gpu_strategy(config)
+            and not config.is_slurm_mode()
+            and config.process_only_layer is None
+        )
 
         if results.remote_managed:
             if results.submitted:
@@ -1588,6 +1681,7 @@ def phenotypic_cli(
         # Load pipeline once for the finalizer — reused by both the
         # per-feature split in aggregate_master_csv and the README generator.
         finalizer_pipeline: Optional[ImagePipeline] = None
+        finalization_succeeded = True
         try:
             finalizer_pipeline = ImagePipeline.from_json(config.pipeline_json)
         except Exception as e:
@@ -1608,9 +1702,15 @@ def phenotypic_cli(
 
         # Aggregate master CSV (if we have completed results)
         if results.total_completed > 0:
+            if local_staged_publication and config.staged_stage3_markers:
+                reconcile_stage3_publications(
+                    output_dir,
+                    config.full_dataset_inventory,
+                    namespace="local-finalization",
+                )
             click.echo("\nAggregating measurements...")
             master_path = output_manager.aggregate_master_csv(
-                datasets,
+                finalization_datasets,
                 metadata_csv=config.metadata_csv,
                 pipeline=finalizer_pipeline,
                 no_qc=no_qc,
@@ -1619,6 +1719,7 @@ def phenotypic_cli(
             if master_path:
                 click.echo(f"✓ Master measurements: {master_path}")
             else:
+                finalization_succeeded = False
                 click.echo(
                     "⚠ Warning: Could not aggregate master CSV (check logs for details)",
                     err=True,
@@ -1634,6 +1735,7 @@ def phenotypic_cli(
                     output_dir, metadata_csv=config.metadata_csv
                 )
             except Exception:
+                finalization_succeeded = False
                 logger.warning("Analysis sidecar write failed", exc_info=True)
 
         # Generate HTML report
@@ -1654,11 +1756,51 @@ def phenotypic_cli(
                 else ImagePipeline.from_json(config.pipeline_json)
             )
             readme_gen = READMEGenerator(config, readme_pipeline)
-            readme_path = readme_gen.generate(output_dir, datasets)
+            readme_path = readme_gen.generate(
+                output_dir, finalization_datasets
+            )
             click.echo(f"✓ README: {readme_path}")
         except Exception as e:
+            finalization_succeeded = False
             logger.warning(f"Failed to generate README: {e}")
             click.echo(f"⚠ Warning: Could not generate README ({e})", err=True)
+
+        full_stage3_complete = False
+        if local_staged_publication:
+            from phenotypic._cli._cli_staged_resume import (
+                stage3_completion_exists,
+            )
+
+            full_stage3_complete = all(
+                stage3_completion_exists(output_dir, dataset, Path(image).stem)
+                for dataset, images in config.full_dataset_inventory.items()
+                for image in images
+            )
+        if (
+            local_staged_publication
+            and finalization_succeeded
+            and results.total_failed == 0
+            and full_stage3_complete
+        ):
+            from phenotypic._cli._cli_staged_orchestration import (
+                mark_local_staged_complete,
+            )
+
+            mark_local_staged_complete(
+                output_dir, pipeline_content_digest(config.pipeline_json)
+            )
+
+        if local_staged_publication and not (
+            finalization_succeeded
+            and results.total_failed == 0
+            and full_stage3_complete
+        ):
+            click.echo(
+                "\nSTAGED FINALIZATION FAILED: required outputs were not "
+                "fully published. Run again with --resume.",
+                err=True,
+            )
+            sys.exit(1)
 
         # Print summary
         click.echo("\n" + "=" * 60)

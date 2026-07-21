@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import h5py
+import numpy as np
 import pytest
 
 from phenotypic._cli._cli_staged_controller import run_staged_controller
@@ -39,7 +41,11 @@ def _controller_fixture(tmp_path: Path, epoch: str = "epoch-1") -> Path:
     write_staged_manifest(manifest_path, entries)
     hdf = dataset_hdf_dir(tmp_path, "plate") / "image.h5"
     hdf.parent.mkdir(parents=True, exist_ok=True)
-    hdf.touch()
+    with h5py.File(hdf, "w") as handle:
+        handle.attrs["schema_version"] = 2
+        layers = handle.create_group("layers")
+        for name in ("gray", "detect_mat", "objmap"):
+            layers.create_dataset(name, data=np.zeros((2, 2)))
     config_path = tmp_path / "controller.json"
     config_path.write_text(
         json.dumps(
@@ -477,6 +483,35 @@ def test_restart_completion_requires_parquet_replacement(tmp_path: Path) -> None
     replacement = parquet.with_suffix(".replacement")
     replacement.write_bytes(b"current epoch")
     replacement.replace(parquet)
+    assert completed_inventory_images(tmp_path, "plate", ["image.tif"]) == {
+        "image.tif"
+    }
+
+
+def test_current_marker_contract_does_not_count_partial_parquet(
+    tmp_path: Path,
+) -> None:
+    parquet = dataset_measurements_dir(tmp_path, "plate") / "image.parquet"
+    parquet.parent.mkdir(parents=True, exist_ok=True)
+    parquet.write_bytes(b"partial")
+    state = initialize_orchestration(
+        tmp_path,
+        epoch="current-epoch",
+        mode="resume",
+        controller_config_path=tmp_path / "controller.json",
+    )
+    state["stage3_markers_required"] = True
+    save_orchestration_state(tmp_path, state)
+
+    assert completed_inventory_images(tmp_path, "plate", ["image.tif"]) == set()
+
+    from phenotypic._cli._cli_staged_resume import (
+        write_stage3_completion_marker,
+    )
+
+    write_stage3_completion_marker(
+        tmp_path, "plate", "image.tif", "image"
+    )
     assert completed_inventory_images(tmp_path, "plate", ["image.tif"]) == {
         "image.tif"
     }

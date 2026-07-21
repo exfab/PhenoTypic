@@ -459,10 +459,11 @@ path when processing a directory:
 The output folder is identical to a single-pass run — staging is an internal
 optimization, not a different output contract.
 
-**Resume is content-defined.** Re-running the same command skips any image whose
-work already exists: Stage 1 skips when the HDF exists, Stage 2 skips when the
-sidecar *or* the measurement parquet exists (Stage 3 deletes the sidecar, so the
-parquet is the durable "done" marker), and Stage 3 skips when the parquet exists.
+**Resume is content-defined.** Re-running the same command classifies each image:
+a missing or invalid HDF selects Stage 1, a valid HDF without a sidecar selects
+Stage 2, and a valid HDF with a sidecar selects Stage 3. Stage 3 writes an atomic
+completion marker after publishing the parquet, HDF, and plot, then deletes the
+sidecar. Plain `--resume` automatically includes failed staged images.
 Progress is **stage-tagged** in the event log, so the run dashboard can show how
 far each image has moved through the three stages. If Stage 1 fails for an image
 (e.g. an unreadable file), Stages 2 and 3 skip it and record a structured failure
@@ -538,7 +539,7 @@ restating; one GPU is requested automatically.
 
 **Walltime survival.** Before a controller decides what comes next, it has a
 dependent recovery controller in the queue. After a Stage-2 array terminates,
-the controller checks atomic sidecars, resume parquets, missing Stage-1 HDFs,
+the controller checks valid HDFs, atomic sidecars, Stage-3 markers,
 and the current epoch's terminal-failure journal. If retryable images remain,
 it submits another Stage-2 array and moves the recovery controller behind that
 array master. Workers do not install a walltime signal handler and do not call

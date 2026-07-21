@@ -106,10 +106,14 @@ Resume and Recovery
 -------------------
 
 ``--resume``
-   Continue from a previous run. Skips already-processed images.
+   Continue from a previous run. Staged GPU runs select Stage 1, 2, or 3 from
+   valid HDF, sidecar, and terminal-marker artifacts and automatically include
+   intermediate-stage failures.
 
 ``--retry-failures``
-   Re-process only images that failed. Requires ``--resume``.
+   Include recorded CPU or legacy single-pass failures in addition to unfinished
+   images. Staged GPU failures are already included by ``--resume``. Requires
+   ``--resume``.
 
 ``--restart``
    Clear all state and start fresh. Mutually exclusive with ``--resume``.

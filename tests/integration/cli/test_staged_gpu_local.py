@@ -1,7 +1,10 @@
 """End-to-end tests for the local staged GPU engine (Spec 1, Plan 2)."""
 
 import phenotypic
+import numpy as np
 import pytest
+from click.testing import CliRunner
+from datetime import datetime
 
 from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
@@ -9,25 +12,31 @@ from phenotypic.measure import MeasureSize
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
 from phenotypic._cli._cli_process_only import process_only_output_path
-from phenotypic._cli._cli_sidecar import sidecar_exists
+from phenotypic._cli._cli_sidecar import sidecar_exists, write_sidecar
 from phenotypic._cli._cli_staged_orchestration import (
     StagedManifestEntry,
     append_stage2_terminal_failure,
     initialize_orchestration,
 )
 from phenotypic._cli._cli_staged_strategy import StagedGpuStrategy
+from phenotypic._cli._cli_staged_resume import (
+    build_staged_resume_plan,
+    reconcile_stage3_publications,
+    stage3_completion_exists,
+)
 from phenotypic._cli._cli_staged_workers import (
     stage1_preprocess_core,
     stage2_detect_core,
     stage3_merge_measure_core,
 )
-from phenotypic._cli._cli_types import Dataset, ExecutionConfig
+from phenotypic._cli._cli_types import Dataset, ExecutionConfig, ExecutionResults
 from phenotypic._cli._cli_update_state import (
     aggregate_stage_state_from_events,
     parse_event_line,
 )
 from phenotypic.sdk_ import dataset_hdf_dir, event_log_path
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
+from phenotypic.phenotypicCLI import phenotypic_cli
 
 
 def _config(out, pipe_path, resume=False):
@@ -299,6 +308,365 @@ def test_stage2_publication_is_fenced_for_stale_epoch(tmp_path):
             ),
         )
     assert not sidecar_exists(out, "ds", "img")
+
+
+def test_plain_resume_reuses_stage1_hdf_after_stage2_failure(
+    tmp_path, monkeypatch
+):
+    image_path = _write_image(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    pipe = ImagePipeline(
+        ops=[FakeGpuDetector(threshold=0.3)], meas=[MeasureSize()]
+    )
+    pipe_path = out / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    om.create_structure([Dataset("ds", [image_path], tmp_path, out)])
+    datasets = [Dataset("ds", [image_path], tmp_path, out)]
+
+    original_infer = FakeGpuDetector._infer_one
+    monkeypatch.setattr(
+        FakeGpuDetector,
+        "_infer_one",
+        lambda self, sample: (_ for _ in ()).throw(RuntimeError("GPU failed")),
+    )
+    failed = StagedGpuStrategy(_config(out, pipe_path), om).execute(
+        datasets, out
+    )
+    assert failed.total_failed == 1
+    assert (dataset_hdf_dir(out, "ds") / "img.h5").is_file()
+    monkeypatch.setattr(FakeGpuDetector, "_infer_one", original_infer)
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_strategy.stage1_preprocess_core",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("Stage 1 reran")
+        ),
+    )
+    resumed = StagedGpuStrategy(
+        _config(out, pipe_path, resume=True), om
+    ).execute(datasets, out)
+
+    assert resumed.total_completed == 1
+    assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
+    assert stage3_completion_exists(out, "ds", "img")
+
+
+def test_cli_plain_resume_includes_recorded_stage2_failure(
+    tmp_path, monkeypatch
+):
+    images = tmp_path / "images"
+    images.mkdir()
+    image_path = _write_image(images)
+    second_image = images / "img2.tiff"
+    second_image.write_bytes(image_path.read_bytes())
+    out = tmp_path / "out"
+    pipe = ImagePipeline(
+        ops=[FakeGpuDetector(threshold=0.3)], meas=[MeasureSize()]
+    )
+    pipe_path = tmp_path / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    args = [
+        "--pipeline",
+        str(pipe_path),
+        "--input",
+        str(images),
+        "--output",
+        str(out),
+        "--image-type",
+        "Image",
+        "--force-local",
+        "--skip-validation",
+        "--njobs",
+        "1",
+    ]
+    original_infer = FakeGpuDetector._infer_one
+    infer_calls = 0
+
+    def fail_second_inference(self, sample):
+        nonlocal infer_calls
+        infer_calls += 1
+        if infer_calls == 2:
+            raise RuntimeError("GPU failed")
+        return original_infer(self, sample)
+
+    monkeypatch.setattr(FakeGpuDetector, "_infer_one", fail_second_inference)
+    first = CliRunner().invoke(phenotypic_cli, args)
+    assert first.exit_code == 1
+    from phenotypic._cli._cli_staged_orchestration import staged_completion_path
+
+    assert not staged_completion_path(out).is_file()
+    assert (dataset_hdf_dir(out, images.name) / f"{image_path.stem}.h5").is_file()
+
+    monkeypatch.setattr(FakeGpuDetector, "_infer_one", original_infer)
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_strategy.stage1_preprocess_core",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("Stage 1 reran")
+        ),
+    )
+    aggregated_images: list[str] = []
+    original_aggregate = OutputManager.aggregate_master_csv
+
+    def capture_full_inventory(self, datasets, *args, **kwargs):
+        aggregated_images.extend(
+            image.name for dataset in datasets for image in dataset.images
+        )
+        return original_aggregate(self, datasets, *args, **kwargs)
+
+    monkeypatch.setattr(
+        OutputManager, "aggregate_master_csv", capture_full_inventory
+    )
+    resumed = CliRunner().invoke(phenotypic_cli, [*args, "--resume"])
+
+    assert resumed.exit_code == 0, resumed.output
+    assert "Resuming staged GPU processing" in resumed.output
+    assert "Stage 2 1" in resumed.output
+    assert sorted(aggregated_images) == ["img.tiff", "img2.tiff"]
+
+
+def test_cli_resumes_finalizer_only_when_image_stages_are_complete(
+    tmp_path, monkeypatch
+):
+    images = tmp_path / "images"
+    images.mkdir()
+    _write_image(images)
+    out = tmp_path / "out"
+    pipe = ImagePipeline(
+        ops=[FakeGpuDetector(threshold=0.3)], meas=[MeasureSize()]
+    )
+    pipe_path = tmp_path / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    base_args = [
+        "--pipeline",
+        str(pipe_path),
+        "--input",
+        str(images),
+        "--output",
+        str(out),
+        "--image-type",
+        "Image",
+        "--skip-validation",
+        "--njobs",
+        "1",
+    ]
+    first = CliRunner().invoke(phenotypic_cli, [*base_args, "--force-local"])
+    assert first.exit_code == 0, first.output
+    from phenotypic._cli._cli_staged_orchestration import staged_completion_path
+
+    staged_completion_path(out).unlink()
+    observed: dict[str, object] = {}
+
+    class SubmittedStrategy:
+        def execute(self, datasets, output_dir):
+            observed["datasets"] = datasets
+            now = datetime.now()
+            return ExecutionResults(
+                datasets={},
+                total_images=1,
+                total_completed=0,
+                total_failed=0,
+                execution_mode="slurm",
+                start_time=now,
+                end_time=now,
+                submitted=True,
+                remote_managed=True,
+            )
+
+    def fake_strategy(config, output_manager):
+        observed["finalizer_only"] = config.staged_finalizer_only
+        observed["phase"] = config.staged_resume_phase
+        return SubmittedStrategy()
+
+    monkeypatch.setattr(
+        "phenotypic.phenotypicCLI.create_execution_strategy", fake_strategy
+    )
+    resumed = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            *base_args,
+            "--resume",
+            "--slurm",
+            "slurm_partition=test",
+        ],
+    )
+
+    assert resumed.exit_code == 0, resumed.output
+    assert "Resuming staged GPU finalization" in resumed.output
+    assert observed == {
+        "finalizer_only": True,
+        "phase": "stage3",
+        "datasets": [],
+    }
+
+
+def test_cli_local_resume_republishes_missing_final_outputs(
+    tmp_path, monkeypatch
+):
+    from phenotypic._cli._cli_readme_generator import READMEGenerator
+
+    images = tmp_path / "images"
+    images.mkdir()
+    _write_image(images)
+    out = tmp_path / "out"
+    pipe = ImagePipeline(
+        ops=[FakeGpuDetector(threshold=0.3)], meas=[MeasureSize()]
+    )
+    pipe_path = tmp_path / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    args = [
+        "--pipeline",
+        str(pipe_path),
+        "--input",
+        str(images),
+        "--output",
+        str(out),
+        "--image-type",
+        "Image",
+        "--skip-validation",
+        "--njobs",
+        "1",
+        "--force-local",
+    ]
+    original_generate = READMEGenerator.generate
+    monkeypatch.setattr(
+        READMEGenerator,
+        "generate",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            RuntimeError("README publication failed")
+        ),
+    )
+    first = CliRunner().invoke(phenotypic_cli, args)
+    assert first.exit_code == 1
+    assert "STAGED FINALIZATION FAILED" in first.output
+    assert "PROCESSING COMPLETE" not in first.output
+
+    from phenotypic._cli._cli_staged_orchestration import staged_completion_path
+
+    marker = staged_completion_path(out)
+    assert not marker.is_file()
+    monkeypatch.setattr(READMEGenerator, "generate", original_generate)
+    monkeypatch.setattr(
+        FakeGpuDetector,
+        "_ensure_model_loaded",
+        lambda self: (_ for _ in ()).throw(AssertionError("model loaded")),
+    )
+
+    resumed = CliRunner().invoke(phenotypic_cli, [*args, "--resume"])
+
+    assert resumed.exit_code == 0, resumed.output
+    assert "Resuming staged GPU finalization" in resumed.output
+    assert marker.is_file()
+
+
+def test_stage3_resume_does_not_load_gpu_model(tmp_path, monkeypatch):
+    import phenotypic._cli._cli_staged_slurm_worker as worker
+
+    out, pipe_path = _stage1_only(tmp_path)
+    worker.run_stage2_shard(
+        pipeline_path=pipe_path,
+        output_dir=out,
+        image_type="Image",
+        manifest=[("ds", "img")],
+        shard_index=0,
+        n_shards=1,
+    )
+    monkeypatch.setattr(
+        FakeGpuDetector,
+        "_ensure_model_loaded",
+        lambda self: (_ for _ in ()).throw(AssertionError("model loaded")),
+    )
+    image_path = tmp_path / "img.tiff"
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+
+    result = StagedGpuStrategy(
+        _config(out, pipe_path, resume=True), om
+    ).execute([Dataset("ds", [image_path], tmp_path, out)], out)
+
+    assert result.total_completed == 1
+
+
+def test_stage3_partial_publication_keeps_sidecar_and_is_resumable(
+    tmp_path, monkeypatch
+):
+    import phenotypic._cli._cli_staged_slurm_worker as worker
+
+    out, pipe_path = _stage1_only(tmp_path)
+    worker.run_stage2_shard(
+        pipeline_path=pipe_path,
+        output_dir=out,
+        image_type="Image",
+        manifest=[("ds", "img")],
+        shard_index=0,
+        n_shards=1,
+    )
+    plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipe_path))
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    monkeypatch.setattr(
+        om,
+        "save_image_hdf",
+        lambda *args, **kwargs: None,
+    )
+
+    with pytest.raises(RuntimeError, match="Stage 3 HDF publication failed"):
+        stage3_merge_measure_core(
+            plan,
+            out,
+            "ds",
+            "img",
+            om,
+            image_type="Image",
+            image_name="img.tiff",
+        )
+
+    assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
+    assert sidecar_exists(out, "ds", "img")
+    assert not stage3_completion_exists(out, "ds", "img")
+    resume_plan = build_staged_resume_plan(
+        datasets=[Dataset("ds", [tmp_path / "img.tiff"], tmp_path, out)],
+        output_dir=out,
+        input_root=tmp_path,
+        process_only_layer=None,
+        markers_required=True,
+    )
+    assert resume_plan.initial_stage == "stage3"
+
+
+def test_stage3_reconciliation_cleans_sidecar_and_excludes_partial_parquet(
+    tmp_path,
+):
+    out = tmp_path / "out"
+    complete = out / "results" / "ds" / "measurements" / "done.parquet"
+    partial = out / "results" / "ds" / "measurements" / "partial.parquet"
+    complete.parent.mkdir(parents=True, exist_ok=True)
+    complete.write_bytes(b"complete")
+    partial.write_bytes(b"partial")
+    write_sidecar(out, "ds", "done", np.zeros((2, 2)))
+    from phenotypic._cli._cli_staged_resume import (
+        write_stage3_completion_marker,
+    )
+
+    write_stage3_completion_marker(out, "ds", "done.tiff", "done")
+
+    moved = reconcile_stage3_publications(
+        out,
+        {"ds": ["done.tiff", "partial.tiff"]},
+        namespace="test",
+    )
+
+    assert moved == 1
+    assert not sidecar_exists(out, "ds", "done")
+    assert complete.is_file()
+    assert not partial.exists()
+    assert (
+        out
+        / ".phenotypic"
+        / "progress"
+        / "unpublished_stage3"
+        / "test"
+        / "ds"
+        / "partial.parquet"
+    ).is_file()
 
 
 def _stage1_only(tmp_path):

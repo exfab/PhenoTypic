@@ -1,9 +1,9 @@
 """Durable orchestration state for staged SLURM GPU runs.
 
-The staged controller is deliberately artifact-driven.  Per-image HDF, objmap
-sidecar, and parquet files decide what work remains; this module supplies the
-small amount of durable coordination needed to make scheduler submissions and
-run cancellation crash-recoverable.
+The staged controller is deliberately artifact-driven. Per-image HDF, objmap
+sidecar, and terminal Stage 3 markers decide what work remains. This module
+supplies the small amount of durable coordination needed to make scheduler
+submissions and run cancellation crash-recoverable.
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ from phenotypic.sdk_ import (
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 from ._cli_file_locking import atomic_append, atomic_read
+from ._cli_staged_resume import stage3_completion_exists
 
 _MANIFEST_VERSION = 2
 _STATE_FILENAME = "staged_orchestration.json"
@@ -246,13 +247,19 @@ def retryable_digest(
 def completed_inventory_images(
     output_dir: Path, dataset: str, image_names: Sequence[str]
 ) -> set[str]:
-    """Return full-inventory image names with atomically published parquets."""
+    """Return full-inventory image names with terminal staged artifacts."""
     measurements = dataset_measurements_dir(output_dir, dataset)
     state = load_orchestration_state(output_dir) or {}
+    markers_required = bool(state.get("stage3_markers_required", False))
     old_fingerprints = state.get("restart_parquet_fingerprints", {})
     completed: set[str] = set()
     for image_name in image_names:
-        parquet = measurements / f"{Path(image_name).stem}.parquet"
+        stem = Path(image_name).stem
+        if markers_required:
+            if stage3_completion_exists(output_dir, dataset, stem):
+                completed.add(image_name)
+            continue
+        parquet = measurements / f"{stem}.parquet"
         try:
             stat = parquet.stat()
         except FileNotFoundError:
@@ -768,6 +775,18 @@ def mark_staged_complete(output_dir: Path, epoch: str) -> None:
         save_orchestration_state(output_dir, state)
 
 
+def mark_local_staged_complete(output_dir: Path, pipeline_sha256: str) -> None:
+    """Atomically mark successful local staged publication."""
+    atomic_write_json(
+        staged_completion_path(output_dir),
+        {
+            "mode": "local",
+            "pipeline_sha256": pipeline_sha256,
+            "completed_at": datetime.now().isoformat(timespec="milliseconds"),
+        },
+    )
+
+
 def iter_manifest_entries(path: Path) -> Iterator[StagedManifestEntry]:
     """Yield entries from a staged manifest."""
     yield from load_staged_manifest(path)
@@ -799,6 +818,7 @@ __all__ = [
     "initialize_orchestration",
     "load_orchestration_state",
     "load_staged_manifest",
+    "mark_local_staged_complete",
     "mark_staged_complete",
     "mark_job_observed_terminal",
     "new_orchestration_epoch",

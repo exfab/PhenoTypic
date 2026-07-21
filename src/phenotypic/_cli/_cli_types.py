@@ -134,6 +134,11 @@ class ExecutionConfig:
     # Remote finalization uses it so fully completed datasets are not omitted.
     full_dataset_inventory: Dict[str, List[str]] = field(default_factory=dict)
 
+    # Internal artifact-derived entry point for staged resume orchestration.
+    staged_resume_phase: Optional[str] = None
+    staged_finalizer_only: bool = False
+    staged_stage3_markers: bool = True
+
     # Metadata join
     metadata_csv: Optional[Path] = None
 

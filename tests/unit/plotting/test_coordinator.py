@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import pytest
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 from types import SimpleNamespace
 
@@ -32,6 +33,11 @@ class _ImagePlot(BaseModel, PlotImage):
     def inspect(self, subject=None, *, for_save=False, **overrides):
         self._seen = subject
         return plt.figure()
+
+
+class _FailingImagePlot(BaseModel, PlotImage):
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        raise RuntimeError("plot publication failed")
 
 
 class _MeasPlot(BaseModel, PlotMeas):
@@ -87,6 +93,20 @@ def test_image_plot_uses_deliverables_plot_layout(tmp_path) -> None:
     written = list((plots_dir(tmp_path) / "image" / "dataset").glob("*.png"))
     assert len(written) == 1
     assert written[0].name.startswith("plate-1-")
+
+
+def test_image_plot_strict_mode_propagates_publication_failure(tmp_path) -> None:
+    pipeline = ImagePipeline(
+        plots=[PlotBinding(id="image", plot=_FailingImagePlot())]
+    )
+
+    with pytest.raises(RuntimeError, match="plot publication failed"):
+        PlotCoordinator(pipeline, tmp_path).emit_image(
+            object(),
+            dataset="dataset",
+            image_stem="plate-1",
+            strict=True,
+        )
 
 
 def test_image_plot_disambiguates_sanitized_and_casefold_collisions(

@@ -12,8 +12,6 @@ import os
 from pathlib import Path
 from typing import Sequence
 
-import h5py
-
 from phenotypic import ImagePipeline
 from phenotypic.sdk_ import (
     dataset_hdf_dir,
@@ -35,6 +33,11 @@ from ._cli_staged_orchestration import (
     terminal_stage2_identities,
 )
 from ._cli_staged_slurm import partition_shards
+from ._cli_staged_resume import (
+    clear_downstream_artifacts_for_stage1,
+    stage3_completion_exists,
+    valid_staged_hdf,
+)
 from ._cli_staged_workers import (
     emit_missing_prereq,
     stage1_preprocess_core,
@@ -45,14 +48,6 @@ from ._cli_staged_workers import (
 from ._stages import STAGE_GPU_DETECT, STAGE_MEASURE, STAGE_PREPROCESS
 
 Manifest = Sequence[StagedManifestEntry]
-
-
-def _valid_hdf(path: Path) -> bool:
-    """Return whether *path* is a readable HDF5 container."""
-    try:
-        return path.is_file() and h5py.is_hdf5(path)
-    except OSError:
-        return False
 
 
 def _active_check(output_dir: Path, epoch: str | None):
@@ -94,11 +89,15 @@ def run_stage1_step(
     """Preprocess one manifest image into its staged HDF."""
     item = _entry(manifest[index])
     hdf = dataset_hdf_dir(output_dir, item.dataset) / f"{item.stem}.h5"
-    if resume and _valid_hdf(hdf):
+    if resume and valid_staged_hdf(hdf):
         return
     check = _active_check(output_dir, epoch)
     if check is not None:
         check()
+    if resume:
+        clear_downstream_artifacts_for_stage1(
+            output_dir, item.dataset, item.stem
+        )
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     output_manager = OutputManager.from_config(
         output_dir, ext, save_overlays=False
@@ -127,6 +126,7 @@ def run_stage2_shard(
     *,
     epoch: str | None = None,
     resume: bool = False,
+    markers_required: bool = True,
 ) -> None:
     """Stream one pending shard through one resident GPU model."""
     check = _active_check(output_dir, epoch)
@@ -145,11 +145,15 @@ def run_stage2_shard(
         if item.identity not in terminal
         if not sidecar_exists(output_dir, item.dataset, item.stem)
         and not (
-            resume
-            and (
+            stage3_completion_exists(output_dir, item.dataset, item.stem)
+            or (
+                resume
+                and not markers_required
+                and (
                 dataset_measurements_dir(output_dir, item.dataset)
                 / f"{item.stem}.parquet"
-            ).is_file()
+                ).is_file()
+            )
         )
     ]
     if not candidates:
@@ -161,7 +165,7 @@ def run_stage2_shard(
     pending: list[StagedManifestEntry] = []
     for item in candidates:
         hdf = dataset_hdf_dir(output_dir, item.dataset) / f"{item.stem}.h5"
-        if hdf.is_file():
+        if valid_staged_hdf(hdf):
             pending.append(item)
             continue
         emit_missing_prereq(
@@ -224,6 +228,7 @@ def run_stage3_step(
     *,
     epoch: str | None = None,
     resume: bool = False,
+    markers_required: bool = True,
 ) -> None:
     """Merge one sidecar, measure it, and publish final per-image outputs."""
     item = _entry(manifest[index])
@@ -231,7 +236,9 @@ def run_stage3_step(
         dataset_measurements_dir(output_dir, item.dataset)
         / f"{item.stem}.parquet"
     )
-    if resume and parquet.is_file():
+    if stage3_completion_exists(output_dir, item.dataset, item.stem) or (
+        resume and not markers_required and parquet.is_file()
+    ):
         return
     check = _active_check(output_dir, epoch)
     if check is not None:
@@ -259,6 +266,7 @@ def run_stage3_step(
             output_manager,
             image_type,
             active_check=check,
+            image_name=item.image_name,
         )
 
 
@@ -285,6 +293,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--ext", default=".tiff")
     parser.add_argument("--epoch", required=True)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--stage3-markers-required", action="store_true")
     args = parser.parse_args(argv)
 
     _preload_custom_op_modules()
@@ -311,6 +320,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             manifest,
             args.index,
             args.n_shards,
+            markers_required=args.stage3_markers_required,
             **common,
         )
     else:
@@ -321,6 +331,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             manifest,
             args.index,
             args.ext,
+            markers_required=args.stage3_markers_required,
             **common,
         )
     return 0

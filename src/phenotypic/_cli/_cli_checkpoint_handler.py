@@ -195,10 +195,24 @@ def _run_finalize(
     _check_epoch()
     if epoch is not None:
         from ._cli_staged_orchestration import (
+            load_orchestration_state,
             quarantine_unchanged_restart_parquets,
         )
 
         quarantine_unchanged_restart_parquets(output_dir, epoch)
+        orchestration = load_orchestration_state(output_dir) or {}
+        if bool(orchestration.get("stage3_markers_required", False)):
+            from ._cli_staged_resume import reconcile_stage3_publications
+
+            reconcile_stage3_publications(
+                output_dir,
+                {
+                    name: list(info.get("images", []))
+                    for name, info in datasets_raw.items()
+                    if isinstance(info, dict)
+                },
+                namespace=epoch,
+            )
         _check_epoch()
 
     metadata_csv_str = job_metadata.get(JobMetadataKey.METADATA_CSV)

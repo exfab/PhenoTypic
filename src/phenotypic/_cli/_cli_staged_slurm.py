@@ -106,6 +106,7 @@ def _stage_worker_body(
     ext: str,
     epoch: str,
     resume: bool,
+    markers_required: bool = True,
     n_shards: int | None = None,
     index_var: str = "$SLURM_ARRAY_TASK_ID",
 ) -> str:
@@ -131,6 +132,8 @@ def _stage_worker_body(
     ]
     if resume:
         parts.append("--resume")
+    if markers_required:
+        parts.append("--stage3-markers-required")
     if stage == 2:
         parts.append(f"--n-shards {n_shards}")
     return " \\\n    ".join(parts)
@@ -237,6 +240,7 @@ def generate_staged_scripts(
     array_limit: int | None = None,
     epoch: str,
     resume: bool = False,
+    markers_required: bool = True,
 ) -> Dict[str, Any]:
     """Write the per-stage SBATCH array scripts (no submission).
 
@@ -269,7 +273,7 @@ def generate_staged_scripts(
 
     # Image chunks tile the manifest into <=array_limit-wide windows; each stage-1
     # and stage-3 chunk resolves its absolute index via $CURRENT_TASK_INDEX.
-    chunks = calculate_optimal_array_chunks(n_images, array_limit) or [(0, 1)]
+    chunks = calculate_optimal_array_chunks(n_images, array_limit) if n_images else []
 
     def _image_stage_body(stage: int) -> str:
         return _stage_worker_body(
@@ -282,6 +286,7 @@ def generate_staged_scripts(
             ext,
             epoch,
             resume,
+            markers_required,
             index_var="$CURRENT_TASK_INDEX",
         )
 
@@ -310,6 +315,7 @@ def generate_staged_scripts(
             ext,
             epoch,
             resume,
+            markers_required,
             n_shards=n_shards,
         ),
     )
@@ -347,6 +353,7 @@ def generate_staged_scripts(
             "epoch": epoch,
             "output_dir": str(output_dir.absolute()),
             "resume": resume,
+            "stage3_markers_required": markers_required,
             "manifest_path": str(manifest_path.absolute()),
             "stage1_scripts": [str(path.absolute()) for path in stage1],
             "stage2_script": str(stage2.absolute()),
@@ -492,6 +499,7 @@ class StagedSlurmStrategy(ExecutionStrategy):
             array_limit=chunk_limit,
             epoch=epoch,
             resume=getattr(cfg, "resume", False),
+            markers_required=getattr(cfg, "staged_stage3_markers", True),
         )
         _write_staged_job_metadata(
             datasets=datasets,
@@ -518,7 +526,20 @@ class StagedSlurmStrategy(ExecutionStrategy):
             state["restart_parquet_fingerprints"] = snapshot_inventory_parquets(
                 output_dir, cfg.full_dataset_inventory
             )
-        state.update({"phase": "stage1", "stage1_index": 0})
+        initial_phase = getattr(cfg, "staged_resume_phase", None) or "stage1"
+        state.update(
+            {
+                "phase": initial_phase,
+                "stage1_index": 0,
+                "resume_initial_phase": initial_phase,
+                "stage3_markers_required": getattr(
+                    cfg, "staged_stage3_markers", True
+                ),
+            }
+        )
+        if getattr(cfg, "staged_finalizer_only", False):
+            state["phase"] = "stage3"
+            state["stage3_index"] = len(scripts["stage3"])
         save_orchestration_state(output_dir, state)
         try:
             controller_id = submit_with_intent(

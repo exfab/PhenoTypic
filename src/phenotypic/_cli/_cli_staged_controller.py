@@ -12,6 +12,7 @@ from phenotypic.sdk_ import dataset_hdf_dir, dataset_measurements_dir
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 from ._cli_sidecar import sidecar_exists
+from ._cli_staged_resume import stage3_completion_exists, valid_staged_hdf
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
     append_stage2_terminal_failure,
@@ -64,6 +65,7 @@ def _classify_stage2(
     output_dir = Path(config["output_dir"])
     epoch = str(config["epoch"])
     resume = bool(config.get("resume", False))
+    markers_required = bool(config.get("stage3_markers_required", True))
     failed = terminal_stage2_identities(output_dir, epoch)
     retryable: list[StagedManifestEntry] = []
     terminal: list[StagedManifestEntry] = []
@@ -72,15 +74,17 @@ def _classify_stage2(
             dataset_measurements_dir(output_dir, entry.dataset)
             / f"{entry.stem}.parquet"
         )
-        if sidecar_exists(output_dir, entry.dataset, entry.stem) or (
-            resume and parquet.is_file()
-        ):
+        if sidecar_exists(output_dir, entry.dataset, entry.stem):
+            continue
+        if stage3_completion_exists(
+            output_dir, entry.dataset, entry.stem
+        ) or (resume and not markers_required and parquet.is_file()):
             continue
         if entry.identity in failed:
             terminal.append(entry)
             continue
         hdf = dataset_hdf_dir(output_dir, entry.dataset) / f"{entry.stem}.h5"
-        if not hdf.is_file():
+        if not valid_staged_hdf(hdf):
             append_stage2_terminal_failure(
                 output_dir,
                 epoch=epoch,
