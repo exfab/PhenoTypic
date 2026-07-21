@@ -668,11 +668,14 @@ the pipeline rather than by an empty explicit measurement selection.
 `PlotColonyMetricOverTime` is the ready-to-use, single-metric specialization of this
 grouping model. Its required `on: ColumnRef` parameter selects any numeric measurement
 column without exposing the generic class's multi-row `measurements` list. It defaults
-to one page per `MetadataGenetic_Strain`, one environmental subplot per
-`MetadataCondition_Media`, one trace per `MetadataSample_BioReplicate`, and time on
-`MetadataCulture_Time`. All grouping fields remain configurable, including
-multi-column environmental groups. For a radius-growth report, use a public column
-such as `on="Shape_MeanRadius"`; there is no public `Shape_Radius` column.
+to `strain_label="MetadataGenetic_Strain"`, one environmental subplot per
+`groupby=["MetadataCondition_Media"]`, one trace per
+`replicate_label="MetadataSample_BioReplicate"`, and time on
+`MetadataCulture_Time`. `groupby` remains a `ColumnRefList`, so each subplot may be
+defined by a multi-column environmental group. `strain_label` and `replicate_label`
+are scalar `ColumnRef` fields because each has one semantic role. For a radius-growth
+report, use a public column such as `on="Shape_MeanRadius"`; there is no public
+`Shape_Radius` column.
 
 The first implementation builds Plotly figures only. Backend neutrality belongs to
 `FigureAdapter`, which accepts both Plotly and Matplotlib figures from any producer;

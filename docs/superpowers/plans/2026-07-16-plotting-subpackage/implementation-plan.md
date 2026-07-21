@@ -305,8 +305,9 @@ Required tests:
   types, duplicate timepoints, automatic/explicit columns, custom numeric columns, no
   aggregation, empty input, validation failures, and input immutability.
 - `PlotColonyMetricOverTime` required `on` metric, schema-backed grouping defaults,
-  multi-column condition subplots, raw replicate traces, per-strain publication, and
-  pipeline serialization overrides.
+  scalar `strain_label` and `replicate_label`, multi-column `groupby` condition
+  subplots, raw replicate traces, per-strain publication, and pipeline serialization
+  overrides.
 - `Image.plot` and plotter-registry absence while `Image.napari()`, `Image.dash()`, and
   every channel accessor `dash()` behavior, including objmap/objmask, remains unchanged.
 - Image-consumer lifetime tests proving report helpers store no image/data state and

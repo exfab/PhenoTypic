@@ -189,7 +189,7 @@ def test_colony_radius_pages_group_conditions_and_preserve_replicates(
 ) -> None:
     plot = PlotColonyMetricOverTime(
         on="Shape_MeanRadius",
-        environment_by=[
+        groupby=[
             "MetadataCondition_Media",
             "MetadataCondition_Treatment",
         ]
@@ -270,20 +270,47 @@ def test_colony_metric_defaults_use_public_schema_columns() -> None:
     schema = type(plot).model_json_schema()
 
     assert plot.on == "Intensity_MeanIntensity"
-    assert plot.page_by == ["MetadataGenetic_Strain"]
-    assert plot.environment_by == ["MetadataCondition_Media"]
-    assert plot.replicate_by == ["MetadataSample_BioReplicate"]
+    assert plot.strain_label == "MetadataGenetic_Strain"
+    assert plot.groupby == ["MetadataCondition_Media"]
+    assert plot.replicate_label == "MetadataSample_BioReplicate"
     assert plot.time == "MetadataCulture_Time"
     assert "on" in schema["required"]
     assert "measurements" not in schema["properties"]
+    assert set(schema["properties"]) == {
+        "connect",
+        "groupby",
+        "on",
+        "replicate_label",
+        "strain_label",
+        "time",
+    }
+
+
+@pytest.mark.parametrize(
+    ("removed_name", "value"),
+    [
+        ("page_by", ["strain"]),
+        ("environment_by", ["environment"]),
+        ("replicate_by", ["replicate"]),
+    ],
+)
+def test_colony_metric_rejects_removed_grouping_fields(
+    removed_name: str,
+    value: list[str],
+) -> None:
+    with pytest.raises(ValidationError, match=removed_name):
+        PlotColonyMetricOverTime(
+            on="Shape_MeanRadius",
+            **{removed_name: value},
+        )
 
 
 def test_colony_metric_on_accepts_any_numeric_measurement() -> None:
     plot = PlotColonyMetricOverTime(
         on="custom_numeric",
-        page_by=["strain"],
-        environment_by=["environment"],
-        replicate_by=["replicate"],
+        strain_label="strain",
+        groupby=["environment"],
+        replicate_label="replicate",
         time="time",
     )
 
@@ -298,9 +325,9 @@ def test_colony_metric_on_accepts_any_numeric_measurement() -> None:
 def test_colony_metric_rejects_removed_measurements_override() -> None:
     plot = PlotColonyMetricOverTime(
         on="custom_numeric",
-        page_by=["strain"],
-        environment_by=["environment"],
-        replicate_by=["replicate"],
+        strain_label="strain",
+        groupby=["environment"],
+        replicate_label="replicate",
         time="time",
     )
 
@@ -311,9 +338,9 @@ def test_colony_metric_rejects_removed_measurements_override() -> None:
 def test_colony_metric_report_rejects_unknown_override() -> None:
     plot = PlotColonyMetricOverTime(
         on="custom_numeric",
-        page_by=["strain"],
-        environment_by=["environment"],
-        replicate_by=["replicate"],
+        strain_label="strain",
+        groupby=["environment"],
+        replicate_label="replicate",
         time="time",
     )
 

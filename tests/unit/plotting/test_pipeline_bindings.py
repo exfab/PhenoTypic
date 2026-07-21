@@ -89,12 +89,24 @@ def test_inline_builtin_round_trip_uses_module_and_qualname() -> None:
 def test_colony_metric_plot_round_trip_preserves_on_and_overrides() -> None:
     plot = PlotColonyMetricOverTime(
         on="Shape_MedianRadius",
-        environment_by=["MetadataCondition_Treatment"],
+        groupby=["MetadataCondition_Treatment"],
+        replicate_label="MetadataSample_TechnicalReplicate",
     )
 
-    loaded = ImagePipeline.from_json(ImagePipeline(plots=[plot]).to_json())
+    serialized = ImagePipeline(plots=[plot]).to_json()
+    payload = json.loads(serialized)
+    params = payload["plots"][0]["inline"]["params"]
+    loaded = ImagePipeline.from_json(serialized)
 
     loaded_plot = loaded.get_plots()[0].plot
+    assert set(params) == {
+        "connect",
+        "groupby",
+        "on",
+        "replicate_label",
+        "strain_label",
+        "time",
+    }
     assert isinstance(loaded_plot, PlotColonyMetricOverTime)
     assert loaded_plot == plot
 

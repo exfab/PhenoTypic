@@ -29,10 +29,10 @@ class PlotColonyMetricOverTime(BaseModel, PlotMeas):
 
     Args:
         on: Numeric measurement column plotted on the y-axis.
-        page_by: Columns defining separate figure pages. Defaults to strain.
-        environment_by: Columns defining environmental subplot groups.
-            Defaults to growth medium.
-        replicate_by: Columns identifying replicate traces. Defaults to the
+        strain_label: Column defining the strain on each figure page.
+        groupby: Columns defining the subplot groups on each page. Defaults
+            to growth medium.
+        replicate_label: Column identifying replicate traces. Defaults to the
             biological replicate identifier.
         time: Numeric or ordered time column used on the x-axis.
         connect: Whether to connect points within each replicate trace.
@@ -41,15 +41,11 @@ class PlotColonyMetricOverTime(BaseModel, PlotMeas):
     model_config = ConfigDict(extra="forbid")
 
     on: ColumnRef
-    page_by: ColumnRefList = Field(
-        default_factory=lambda: [str(GENETIC_METADATA.STRAIN)]
-    )
-    environment_by: ColumnRefList = Field(
+    strain_label: ColumnRef = str(GENETIC_METADATA.STRAIN)
+    groupby: ColumnRefList = Field(
         default_factory=lambda: [str(CONDITION_METADATA.MEDIA)]
     )
-    replicate_by: ColumnRefList = Field(
-        default_factory=lambda: [str(SAMPLE_METADATA.BIO_REPLICATE)]
-    )
+    replicate_label: ColumnRef = str(SAMPLE_METADATA.BIO_REPLICATE)
     time: ColumnRef = str(CULTURE_METADATA.TIME)
     connect: bool = True
 
@@ -76,9 +72,9 @@ class PlotColonyMetricOverTime(BaseModel, PlotMeas):
             else self
         )
         delegate = PlotMeasTimeSeries(
-            page_by=configured.page_by,
-            environment_by=configured.environment_by,
-            replicate_by=configured.replicate_by,
+            page_by=[configured.strain_label],
+            environment_by=configured.groupby,
+            replicate_by=[configured.replicate_label],
             time=configured.time,
             measurements=[configured.on],
             connect=configured.connect,
