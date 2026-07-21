@@ -20,7 +20,6 @@ phenotypic.analysis.TukeyOutlierFraction
       ~TukeyOutlierFraction.analyze
       ~TukeyOutlierFraction.construct
       ~TukeyOutlierFraction.copy
-      ~TukeyOutlierFraction.dash
       ~TukeyOutlierFraction.dict
       ~TukeyOutlierFraction.flag_col
       ~TukeyOutlierFraction.flagged_keys

@@ -27,12 +27,12 @@
       is_metadata_header
       metadata_category_for_label
       metadata_category_prefixes
+      metadata_only_mask
       order_measurement_columns
       timed_execution
-      analysis_csv_path
       analysis_full_parquet_path
+      analysis_manifest_path
       analysis_html_path
-      analysis_parquet_path
       analysis_scatter_json_path
       best_pipeline_path
       best_params_path
@@ -50,6 +50,7 @@
       dataset_overlays_dir
       dataset_results_dir
       overlays_dir
+      plots_dir
       curation_labels_parquet_path
       custom_categories_json_path
       default_output_dir_name
@@ -74,6 +75,9 @@
       measurements_by_feature_dir
       measurements_csv_path
       measurements_parquet_path
+      named_analysis_csv_path
+      named_analysis_parquet_path
+      named_analysis_paths
       metadata_csv_deliverable_path
       matches_any_suffix
       migrate_legacy_machine_state
@@ -124,6 +128,7 @@
       tune_cache_study_db_path
       tuning_spec_path
       verified_parquet_path
+      validate_analysis_id
    
    
 
@@ -152,6 +157,7 @@
       JobMetadataKey
       ModulePath
       ProcessingStateKey
+      AnalysisArtifactPaths
       BundleLayout
    
    

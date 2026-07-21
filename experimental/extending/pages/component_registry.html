@@ -561,7 +561,7 @@
 <li class="toctree-l1"><a class="reference internal" href="custom_refiner.html">Custom Refiner</a></li>
 <li class="toctree-l1"><a class="reference internal" href="custom_measurement.html">Custom Measurement</a></li>
 <li class="toctree-l1"><a class="reference internal" href="using_mixins.html">Using Mixins</a></li>
-<li class="toctree-l1"><a class="reference internal" href="custom_plotter.html">Custom Plotter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_plotter.html">Custom pipeline plot</a></li>
 <li class="toctree-l1"><a class="reference internal" href="custom_dashboard.html">Custom Dashboard</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Explanation</span></p>
@@ -632,7 +632,7 @@
   <section class="tex2jax_ignore mathjax_ignore" id="component-registry-system">
 <h1>Component Registry System<a class="headerlink" href="#component-registry-system" title="Link to this heading">#</a></h1>
 <p>PhenoTypic uses Python’s import system as its component registry.
-Operations, plotters, and dashboards are discoverable by class name,
+Operations and serializable pipeline components are discoverable by class name,
 enabling JSON serialization and dynamic pipeline construction.</p>
 <section id="how-it-works">
 <h2>How It Works<a class="headerlink" href="#how-it-works" title="Link to this heading">#</a></h2>
@@ -667,12 +667,12 @@ enabling JSON serialization and dynamic pipeline construction.</p>
 <p>When loading a pipeline that contains <code class="docutils literal notranslate"><span class="pre">MyCustomEnhancer</span></code>, ensure
 <code class="docutils literal notranslate"><span class="pre">my_package</span></code> is installed and importable.</p>
 </section>
-<section id="plot-registry">
-<h2>Plot Registry<a class="headerlink" href="#plot-registry" title="Link to this heading">#</a></h2>
-<p>Plotters follow a similar pattern — they register through Python’s
-class system and are accessible via the <code class="docutils literal notranslate"><span class="pre">image.plot</span></code> accessor. Static
-figures come from <code class="docutils literal notranslate"><span class="pre">image.plot.&lt;name&gt;()</span></code>; interactive views are served
-through the <code class="docutils literal notranslate"><span class="pre">image.plot.dash.&lt;name&gt;()</span></code> sub-namespace.</p>
+<section id="pipeline-plot-bindings">
+<h2>Pipeline plot bindings<a class="headerlink" href="#pipeline-plot-bindings" title="Link to this heading">#</a></h2>
+<p>There is no image-level plot registry. Plot-capable objects opt into one of the
+lifecycles in <code class="docutils literal notranslate"><span class="pre">phenotypic.abc_.plotting</span></code> and are listed explicitly in
+<code class="docutils literal notranslate"><span class="pre">ImagePipeline(plots=[...])</span></code>. Serialization records either an identity-preserving
+reference to another pipeline slot or an inline plot model.</p>
 </section>
 <section id="naming-conventions">
 <h2>Naming Conventions<a class="headerlink" href="#naming-conventions" title="Link to this heading">#</a></h2>
@@ -711,7 +711,7 @@ pipeline JSON files and should be self-documenting</p></li>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-it-works">How It Works</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#registering-custom-operations">Registering Custom Operations</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#plot-registry">Plot Registry</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pipeline-plot-bindings">Pipeline plot bindings</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#naming-conventions">Naming Conventions</a></li>
 </ul>
   </nav></div>

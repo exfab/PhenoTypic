@@ -1,6 +1,0 @@
-phenotypic.sdk\_.register.available\_plotters
-=============================================
-
-.. currentmodule:: phenotypic.sdk_.register
-
-.. autofunction:: available_plotters

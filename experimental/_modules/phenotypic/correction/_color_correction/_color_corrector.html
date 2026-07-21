@@ -843,12 +843,12 @@
 
         <span class="k">return</span> <span class="n">image</span>
 
-<div class="viewcode-block" id="ColorCorrector.dashboard">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCorrector.html#phenotypic.correction.ColorCorrector.dashboard">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<div class="viewcode-block" id="ColorCorrector.report">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCorrector.html#phenotypic.correction.ColorCorrector.report">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the Plotly color-correction diagnostic report.</span>
 
-<span class="sd">        Delegates to the underlying profile&#39;s :meth:`ColorCheckerProfile.dashboard`.</span>
+<span class="sd">        Delegates to the underlying profile&#39;s :meth:`ColorCheckerProfile.report`.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            show: When ``True`` and running inside a Jupyter notebook, display</span>
@@ -858,7 +858,7 @@
 <span class="sd">            A ``plotly.graph_objects.Figure`` (always returned, even after an</span>
 <span class="sd">            inline display).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">dashboard</span><span class="p">(</span><span class="n">show</span><span class="o">=</span><span class="n">show</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">report</span><span class="p">(</span><span class="n">show</span><span class="o">=</span><span class="n">show</span><span class="p">)</span></div>
 </div>
 
 </pre></div>

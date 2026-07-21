@@ -32,6 +32,7 @@ phenotypic.prefab.HeavyOtsuPipeline
       ~HeavyOtsuPipeline.get_meas
       ~HeavyOtsuPipeline.get_model
       ~HeavyOtsuPipeline.get_ops
+      ~HeavyOtsuPipeline.get_plots
       ~HeavyOtsuPipeline.get_post
       ~HeavyOtsuPipeline.get_qc
       ~HeavyOtsuPipeline.json
@@ -56,6 +57,7 @@ phenotypic.prefab.HeavyOtsuPipeline
       ~HeavyOtsuPipeline.set_meas
       ~HeavyOtsuPipeline.set_model
       ~HeavyOtsuPipeline.set_ops
+      ~HeavyOtsuPipeline.set_plots
       ~HeavyOtsuPipeline.set_post
       ~HeavyOtsuPipeline.set_qc
       ~HeavyOtsuPipeline.to_json
@@ -90,5 +92,6 @@ phenotypic.prefab.HeavyOtsuPipeline
       ~HeavyOtsuPipeline.filters
       ~HeavyOtsuPipeline.model
       ~HeavyOtsuPipeline.qc
+      ~HeavyOtsuPipeline.plots
    
    

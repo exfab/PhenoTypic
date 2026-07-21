@@ -51,8 +51,10 @@ long-running fits where you don't need the rest of the hub:
 - **Run analysis**: click `Run analysis`. The sub-app reads
   `<output>/deliverables/measurements.parquet` (the curated mirror), runs
   the chain via `pipeline.analyze(...)`, and writes
-  `<output>/deliverables/analysis.csv` and
-  `<output>/deliverables/analysis.parquet` next to the master.
+  `<output>/deliverables/<AnalysisClass>.csv` and
+  `<output>/deliverables/<AnalysisClass>.parquet`, with
+  `<output>/deliverables/analysis_manifest.json` recording the available
+  analysis tables for downstream consumers.
 
 ## Loaded state
 

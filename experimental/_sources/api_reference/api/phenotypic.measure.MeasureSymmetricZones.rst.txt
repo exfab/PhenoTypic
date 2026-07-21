@@ -19,7 +19,6 @@ phenotypic.measure.MeasureSymmetricZones
       ~MeasureSymmetricZones.__init__
       ~MeasureSymmetricZones.construct
       ~MeasureSymmetricZones.copy
-      ~MeasureSymmetricZones.dash
       ~MeasureSymmetricZones.dict
       ~MeasureSymmetricZones.figures
       ~MeasureSymmetricZones.from_json
@@ -42,6 +41,7 @@ phenotypic.measure.MeasureSymmetricZones
       ~MeasureSymmetricZones.parse_file
       ~MeasureSymmetricZones.parse_obj
       ~MeasureSymmetricZones.parse_raw
+      ~MeasureSymmetricZones.report
       ~MeasureSymmetricZones.schema
       ~MeasureSymmetricZones.schema_json
       ~MeasureSymmetricZones.to_json

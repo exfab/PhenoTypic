@@ -611,9 +611,13 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">lru_cache</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_schema</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 
 <span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
@@ -838,6 +842,63 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">metadata_category_for_label</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Category that owns a bare label (``&#39;Strain&#39; -&gt; &#39;MetadataGenetic&#39;``), or None.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_label_to_category</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">label</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="metadata_only_mask">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.metadata_only_mask.html#phenotypic.sdk_.metadata_only_mask">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">metadata_only_mask</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="s2">&quot;pd.DataFrame&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;pd.Series&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mask of ``--metadata`` phantom rows; all-``False`` when unknowable.</span>
+
+<span class="sd">    A *phantom* row is one the CLI&#39;s ``--metadata`` left join carried through</span>
+<span class="sd">    from the metadata CSV even though no measured object matched its key — every</span>
+<span class="sd">    measurement/info column on it is null. Those rows are marked with the</span>
+<span class="sd">    :attr:`~phenotypic.schema.METADATA_MATCH.METADATA_ONLY` (``QC_MetadataOnly``)</span>
+<span class="sd">    boolean column.</span>
+
+<span class="sd">    The flag is CLI-only, so public analysis/post entry points that a user calls</span>
+<span class="sd">    on a hand-built or :meth:`~phenotypic._core._image.Image.measure` frame see</span>
+<span class="sd">    no flag at all. This helper degrades to an all-``False`` mask in that case,</span>
+<span class="sd">    which reproduces exactly the pre-left-join behavior for every caller.</span>
+
+<span class="sd">    The dtype check is deliberately **strict**: only a real boolean column is</span>
+<span class="sd">    trusted. An object/string column is rejected rather than coerced, because</span>
+<span class="sd">    ``pd.Series([&quot;False&quot;, &quot;True&quot;]).astype(bool)`` is ``[True, True]`` — the</span>
+<span class="sd">    string ``&quot;False&quot;`` is truthy — which would silently mark every row a</span>
+<span class="sd">    phantom. Rejecting costs nothing (it falls back to today&#39;s behavior); a</span>
+<span class="sd">    lenient coercion would corrupt every result. Both real CLI round-trips</span>
+<span class="sd">    preserve the dtype: parquet stores a native ``bool``, and polars&#39;</span>
+<span class="sd">    ``write_csv`` emits ``true``/``false``, which ``pd.read_csv`` parses to</span>
+<span class="sd">    ``bool``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        df: Any measurement-shaped DataFrame.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Boolean Series aligned to ``df.index``: ``True`` where the row is a</span>
+<span class="sd">        metadata-only phantom, ``False`` everywhere else (and everywhere when</span>
+<span class="sd">        the flag column is absent or not a boolean column).</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.sdk_ import metadata_only_mask</span>
+<span class="sd">        &gt;&gt;&gt; # A frame from a notebook ``image.measure()`` carries no flag.</span>
+<span class="sd">        &gt;&gt;&gt; metadata_only_mask(pd.DataFrame({&quot;Shape_Area&quot;: [10.0, 12.0]})).tolist()</span>
+<span class="sd">        [False, False]</span>
+<span class="sd">        &gt;&gt;&gt; # A CLI mirror does: the undetected strain is flagged.</span>
+<span class="sd">        &gt;&gt;&gt; mirror = pd.DataFrame({&quot;QC_MetadataOnly&quot;: [False, True]})</span>
+<span class="sd">        &gt;&gt;&gt; metadata_only_mask(mirror).tolist()</span>
+<span class="sd">        [False, True]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pandas.api.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_bool_dtype</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">METADATA_MATCH</span>
+
+    <span class="n">col</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">METADATA_MATCH</span><span class="o">.</span><span class="n">METADATA_ONLY</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">is_bool_dtype</span><span class="p">(</span><span class="n">col</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">col</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span></div>
 
 </pre></div>
 

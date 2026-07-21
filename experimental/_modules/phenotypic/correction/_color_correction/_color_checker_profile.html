@@ -606,6 +606,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">weakref</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">NamedTuple</span>
 
@@ -868,7 +869,7 @@
 <span class="sd">            ``mean + outlier_sigma * stddev`` are rejected as outliers.</span>
 <span class="sd">        rois: List of ``(row_slice, col_slice)`` tuples delimiting checker</span>
 <span class="sd">            card regions in the source image.  Stored for use by</span>
-<span class="sd">            :meth:`fit` and :meth:`dashboard`.</span>
+<span class="sd">            :meth:`fit` and :meth:`report`.</span>
 
 <span class="sd">    Attributes:</span>
 <span class="sd">        correction_matrix: Fitted correction matrix once :meth:`fit`</span>
@@ -928,8 +929,13 @@
     <span class="n">is_fitted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">capture_metadata</span><span class="p">:</span> <span class="n">CaptureMetadata</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="c1"># -- transient (set by fit(), never serialized) ------------------------</span>
-    <span class="n">_image</span><span class="p">:</span> <span class="s2">&quot;Image | None&quot;</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="c1"># -- transient (set weakly by fit(), never serialized) -----------------</span>
+    <span class="n">_image_ref</span><span class="p">:</span> <span class="s2">&quot;weakref.ReferenceType[Image] | None&quot;</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_image</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the live calibration image without retaining it strongly.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image_ref</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image_ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;degree&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
@@ -1054,7 +1060,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rois</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">rois</span> <span class="o">=</span> <span class="p">[(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">))]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="n">image</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_image_ref</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">capture_metadata</span> <span class="o">=</span> <span class="n">CaptureMetadata</span><span class="o">.</span><span class="n">from_image</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_from_rois</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">)</span></div>
 
@@ -1067,7 +1073,7 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_RoiPreprocessing</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Run per-ROI preprocessing and canonical Lab conversion.</span>
 
-<span class="sd">        Shared by :meth:`_fit_from_rois` and the diagnostic dashboard so</span>
+<span class="sd">        Shared by :meth:`_fit_from_rois` and the diagnostic report so</span>
 <span class="sd">        both observe the same pixels: ``pad_checker`` controls whether</span>
 <span class="sd">        ``trim_background_edges`` and ``center_and_pad_checker`` run, and</span>
 <span class="sd">        Lab is always produced via :pyattr:`Image.color.Lab` (the same</span>
@@ -1372,8 +1378,8 @@
 
         <span class="c1"># --- Build arrays for fitting -------------------------------------</span>
         <span class="n">n_kept</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">kept_names</span><span class="p">)</span>
-        <span class="n">measured_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_kept</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-        <span class="n">reference_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_kept</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">measured_arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_kept</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">reference_arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_kept</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">kept_names</span><span class="p">):</span>
             <span class="n">measured_arr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">measured_linear</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
@@ -1529,21 +1535,22 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">_load_reference_data</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span><span class="p">)</span>
 
-    <span class="c1"># -- dashboard ---------------------------------------------------------</span>
+    <span class="c1"># -- report ------------------------------------------------------------</span>
 
-<div class="viewcode-block" id="ColorCheckerProfile.dashboard">
-<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCheckerProfile.html#phenotypic.correction.ColorCheckerProfile.dashboard">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<div class="viewcode-block" id="ColorCheckerProfile.report">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCheckerProfile.html#phenotypic.correction.ColorCheckerProfile.report">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the Plotly color-correction diagnostic report.</span>
 
 <span class="sd">        Constructs a :class:`ColorCorrectionReport` from this fitted profile and</span>
-<span class="sd">        returns its :meth:`~phenotypic.abc_.FigureProvider.dash` rendering. The</span>
-<span class="sd">        report declares no interactive controls, so ``dash()`` composes the</span>
+<span class="sd">        returns its :meth:`~phenotypic.abc_.plotting.PhtPlot.report` rendering.</span>
+<span class="sd">        The report declares no interactive controls, so ``report()`` composes the</span>
 <span class="sd">        per-section figures into a single ``plotly.graph_objects.Figure``.</span>
 
-<span class="sd">        Uses the image and ROIs stored during :meth:`fit`. When fitted via</span>
-<span class="sd">        :meth:`_fit_from_patch_colors` (no source image), the pipeline-step and</span>
-<span class="sd">        segmentation figures are omitted.</span>
+<span class="sd">        Uses the weak image reference and ROIs recorded during :meth:`fit`.</span>
+<span class="sd">        Callers must keep the source image alive while rendering. When the</span>
+<span class="sd">        image has been released, or the profile was fitted from patch colors,</span>
+<span class="sd">        the pipeline-step and segmentation figures are omitted.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            show: When ``True`` and running inside a Jupyter notebook, display</span>
@@ -1559,14 +1566,13 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_fitted</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                    <span class="s2">&quot;Cannot create dashboard for an unfitted profile.&quot;</span>
+                    <span class="s2">&quot;Cannot create report for an unfitted profile.&quot;</span>
             <span class="p">)</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">._color_correction_report</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorCorrectionReport</span>
 
-        <span class="n">report</span> <span class="o">=</span> <span class="n">ColorCorrectionReport</span><span class="p">(</span>
-                <span class="n">profile</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">,</span> <span class="n">rois</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">figure</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">dash</span><span class="p">()</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image_ref</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image_ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">report</span> <span class="o">=</span> <span class="n">ColorCorrectionReport</span><span class="p">(</span><span class="n">profile</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">rois</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">)</span>
+        <span class="n">figure</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">report</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="n">show</span> <span class="ow">and</span> <span class="n">_in_jupyter_notebook</span><span class="p">():</span>
             <span class="n">figure</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>

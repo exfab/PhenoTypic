@@ -1,6 +1,0 @@
-phenotypic.sdk\_.analysis\_csv\_path
-====================================
-
-.. currentmodule:: phenotypic.sdk_
-
-.. autofunction:: analysis_csv_path

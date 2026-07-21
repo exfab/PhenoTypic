@@ -20,9 +20,11 @@ phenotypic.analysis.LinearLagModel
       ~LinearLagModel.analyze
       ~LinearLagModel.construct
       ~LinearLagModel.copy
-      ~LinearLagModel.dash
       ~LinearLagModel.dict
+      ~LinearLagModel.figures
       ~LinearLagModel.from_orm
+      ~LinearLagModel.inspect
+      ~LinearLagModel.iter_figures
       ~LinearLagModel.json
       ~LinearLagModel.model_construct
       ~LinearLagModel.model_copy
@@ -39,6 +41,7 @@ phenotypic.analysis.LinearLagModel
       ~LinearLagModel.parse_file
       ~LinearLagModel.parse_obj
       ~LinearLagModel.parse_raw
+      ~LinearLagModel.report
       ~LinearLagModel.results
       ~LinearLagModel.schema
       ~LinearLagModel.schema_json

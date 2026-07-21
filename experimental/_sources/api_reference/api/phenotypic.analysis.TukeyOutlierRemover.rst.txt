@@ -20,7 +20,6 @@ phenotypic.analysis.TukeyOutlierRemover
       ~TukeyOutlierRemover.analyze
       ~TukeyOutlierRemover.construct
       ~TukeyOutlierRemover.copy
-      ~TukeyOutlierRemover.dash
       ~TukeyOutlierRemover.dict
       ~TukeyOutlierRemover.from_orm
       ~TukeyOutlierRemover.json

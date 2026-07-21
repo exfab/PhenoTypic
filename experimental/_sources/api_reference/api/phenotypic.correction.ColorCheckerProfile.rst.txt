@@ -19,7 +19,6 @@ phenotypic.correction.ColorCheckerProfile
       ~ColorCheckerProfile.__init__
       ~ColorCheckerProfile.construct
       ~ColorCheckerProfile.copy
-      ~ColorCheckerProfile.dashboard
       ~ColorCheckerProfile.dict
       ~ColorCheckerProfile.fit
       ~ColorCheckerProfile.from_json
@@ -39,6 +38,7 @@ phenotypic.correction.ColorCheckerProfile
       ~ColorCheckerProfile.parse_file
       ~ColorCheckerProfile.parse_obj
       ~ColorCheckerProfile.parse_raw
+      ~ColorCheckerProfile.report
       ~ColorCheckerProfile.schema
       ~ColorCheckerProfile.schema_json
       ~ColorCheckerProfile.to_json

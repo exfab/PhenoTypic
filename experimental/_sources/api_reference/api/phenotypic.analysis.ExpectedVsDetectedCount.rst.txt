@@ -20,12 +20,14 @@ phenotypic.analysis.ExpectedVsDetectedCount
       ~ExpectedVsDetectedCount.analyze
       ~ExpectedVsDetectedCount.construct
       ~ExpectedVsDetectedCount.copy
-      ~ExpectedVsDetectedCount.dash
       ~ExpectedVsDetectedCount.dict
+      ~ExpectedVsDetectedCount.figures
       ~ExpectedVsDetectedCount.flag_col
       ~ExpectedVsDetectedCount.flagged_keys
       ~ExpectedVsDetectedCount.from_orm
       ~ExpectedVsDetectedCount.group_members
+      ~ExpectedVsDetectedCount.inspect
+      ~ExpectedVsDetectedCount.iter_figures
       ~ExpectedVsDetectedCount.json
       ~ExpectedVsDetectedCount.metric_col
       ~ExpectedVsDetectedCount.model_construct
@@ -42,6 +44,7 @@ phenotypic.analysis.ExpectedVsDetectedCount
       ~ExpectedVsDetectedCount.parse_file
       ~ExpectedVsDetectedCount.parse_obj
       ~ExpectedVsDetectedCount.parse_raw
+      ~ExpectedVsDetectedCount.report
       ~ExpectedVsDetectedCount.results
       ~ExpectedVsDetectedCount.schema
       ~ExpectedVsDetectedCount.schema_json

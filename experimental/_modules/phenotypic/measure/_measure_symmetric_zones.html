@@ -606,7 +606,9 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">weakref</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">fields</span><span class="p">,</span> <span class="n">replace</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">TypeAlias</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -616,7 +618,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrivateAttr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">approximate_polygon</span><span class="p">,</span> <span class="n">find_contours</span><span class="p">,</span> <span class="n">regionprops</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">Control</span><span class="p">,</span> <span class="n">FigureProvider</span><span class="p">,</span> <span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">figure</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">Control</span><span class="p">,</span> <span class="n">PlotImage</span><span class="p">,</span> <span class="n">figure</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure._zone_segmentation</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">ZoneSegmentation</span><span class="p">,</span>
     <span class="n">ZoneSegmentationParams</span><span class="p">,</span>
@@ -627,7 +630,24 @@
 
 <span class="c1"># Back-compat alias so the rest of this module (inspect/_operate/overlay</span>
 <span class="c1"># helpers) keeps referring to the relocated dataclass by its old name.</span>
-<span class="n">_SymmetryIntermediates</span> <span class="o">=</span> <span class="n">ZoneSegmentation</span>
+<span class="n">_SymmetryIntermediates</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">ZoneSegmentation</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_own_intermediate_arrays</span><span class="p">(</span>
+    <span class="n">intermediates</span><span class="p">:</span> <span class="n">_SymmetryIntermediates</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_SymmetryIntermediates</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return compact intermediates whose arrays own their memory.</span>
+
+<span class="sd">    A cropped NumPy view can retain the complete plate-sized backing array.</span>
+<span class="sd">    Plot caches therefore copy every derived array before retaining the</span>
+<span class="sd">    per-object record. Scalar measurement results are unchanged.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">owned</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">item</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">value</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">(</span><span class="n">intermediates</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">((</span><span class="n">value</span> <span class="o">:=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">intermediates</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">name</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">replace</span><span class="p">(</span><span class="n">intermediates</span><span class="p">,</span> <span class="o">**</span><span class="n">owned</span><span class="p">)</span>
 
 <span class="n">_NEIGHBOR_KERNEL</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
 
@@ -661,7 +681,7 @@
 
 <div class="viewcode-block" id="MeasureSymmetricZones">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureSymmetricZones.html#phenotypic.measure.MeasureSymmetricZones">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">MeasureSymmetricZones</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">FigureProvider</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasureSymmetricZones</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">PlotImage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure colony radial expansion and angular symmetry from the object mask alone.</span>
 
 <span class="sd">    Quantifies each colony by four scalars derived directly from its binary</span>
@@ -806,10 +826,12 @@
     <span class="c1"># Diagnostic cache populated by ``measure()`` so ``inspect()`` /</span>
     <span class="c1"># ``napari()`` can reuse the per-object intermediates. Pure runtime</span>
     <span class="c1"># state — never a constructor parameter — so modeled as private attrs.</span>
-    <span class="n">__cache_image</span><span class="p">:</span> <span class="s2">&quot;Image | None&quot;</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-    <span class="n">__cache_props</span><span class="p">:</span> <span class="s2">&quot;list | None&quot;</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">__cache_image_ref</span><span class="p">:</span> <span class="s2">&quot;weakref.ReferenceType[Image] | None&quot;</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">)</span>
     <span class="n">__cache_intermediates</span><span class="p">:</span> <span class="s2">&quot;dict[int, _SymmetryIntermediates]&quot;</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span>
             <span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">__cache_signature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
     <span class="c1"># ── shared pipeline for one object ───────────────────────────────</span>
 
@@ -879,8 +901,7 @@
         <span class="p">)</span>
 
         <span class="c1"># Refresh cache so inspect() can reuse these results</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__cache_image</span> <span class="o">=</span> <span class="n">image</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__cache_props</span> <span class="o">=</span> <span class="n">props</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cache_image_ref</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__cache_intermediates</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="c1"># Zone columns get 0.0 for tiny objects (no zones to resolve);</span>
@@ -911,7 +932,7 @@
                 <span class="p">)</span>
                 <span class="k">continue</span>  <span class="c1"># leave NaN</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">__cache_intermediates</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">inter</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__cache_intermediates</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">_own_intermediate_arrays</span><span class="p">(</span><span class="n">inter</span><span class="p">)</span>
 
             <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SYMMETRIC_ZONES</span><span class="o">.</span><span class="n">CORE_RADIUS</span><span class="p">)][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">inter</span><span class="o">.</span><span class="n">core_radius</span>
             <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SYMMETRIC_ZONES</span><span class="o">.</span><span class="n">SYMMETRIC_RADIUS</span><span class="p">)][</span>
@@ -931,18 +952,29 @@
 
         <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
         <span class="n">df</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">labels2series</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cache_signature</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">df</span>
 
     <span class="c1"># ── cache helpers ────────────────────────────────────────────────</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_require_cache_image</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the cached image or raise if :meth:`measure` has not run.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache_image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cached_image</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                    <span class="s2">&quot;MeasureSymmetricZones: diagnostic cache is empty. &quot;</span>
-                    <span class="s2">&quot;Call .measure(image) before .inspect().&quot;</span>
+                    <span class="s2">&quot;MeasureSymmetricZones: no live image subject is available. &quot;</span>
+                    <span class="s2">&quot;Pass an image to .inspect(), or keep the measured image &quot;</span>
+                    <span class="s2">&quot;alive for no-argument rendering.&quot;</span>
             <span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache_image</span>
+        <span class="k">return</span> <span class="n">image</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__cached_image</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the weakly held image without extending its lifetime.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__cache_image_ref</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache_image_ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_get_local_obj_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Local (bbox-cropped) boolean mask for the object with ``label``.&quot;&quot;&quot;</span>
@@ -1033,7 +1065,9 @@
 <span class="sd">            ``ceil(360 / stride) + 1`` (closed).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span> <span class="o">=</span> <span class="n">centroid_xy</span>
-        <span class="n">angles_deg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">_N_ANGULAR_SECTORS</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="n">angles_deg</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+            <span class="mi">0</span><span class="p">,</span> <span class="n">_N_ANGULAR_SECTORS</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span>
+        <span class="p">)</span>
         <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="n">angles_deg</span><span class="p">)</span>
         <span class="n">radii</span> <span class="o">=</span> <span class="n">r_per_angle</span><span class="p">[</span><span class="n">angles_deg</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
         <span class="n">xs</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">radii</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
@@ -1068,7 +1102,9 @@
         <span class="k">if</span> <span class="n">stride</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;stride must be positive, got </span><span class="si">{</span><span class="n">stride</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span> <span class="o">=</span> <span class="n">centroid_xy</span>
-        <span class="n">angles_deg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">_N_ANGULAR_SECTORS</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="n">angles_deg</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+            <span class="mi">0</span><span class="p">,</span> <span class="n">_N_ANGULAR_SECTORS</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span>
+        <span class="p">)</span>
         <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="n">angles_deg</span><span class="p">)</span>
         <span class="n">r_out</span> <span class="o">=</span> <span class="n">r_outer_per_angle</span><span class="p">[</span><span class="n">angles_deg</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
         <span class="n">r_in</span> <span class="o">=</span> <span class="n">r_inner_per_angle</span><span class="p">[</span><span class="n">angles_deg</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
@@ -1111,7 +1147,7 @@
 <span class="sd">            for_save: When *True*, every overlay trace is force-shown</span>
 <span class="sd">                (no ``visible=&quot;legendonly&quot;``) so the figure renders</span>
 <span class="sd">                meaningfully as a static raster. The CLI&#39;s</span>
-<span class="sd">                ``--save-inspect`` flag passes this. Defaults to *False*</span>
+<span class="sd">                PlotImage publication passes this. Defaults to *False*</span>
 <span class="sd">                (interactive Jupyter use, with overlay layers toggleable</span>
 <span class="sd">                from the legend).</span>
 
@@ -1142,22 +1178,26 @@
                 <span class="n">intensity_image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
         <span class="p">)</span>
         <span class="n">intermediates_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">_SymmetryIntermediates</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">cache_is_current</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__cached_image</span><span class="p">()</span> <span class="ow">is</span> <span class="n">image</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache_signature</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>
+        <span class="p">)</span>
         <span class="k">for</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">props</span><span class="p">:</span>
             <span class="k">if</span> <span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">__cache_image</span> <span class="ow">is</span> <span class="n">image</span>
+                    <span class="n">cache_is_current</span>
                     <span class="ow">and</span> <span class="n">prop</span><span class="o">.</span><span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache_intermediates</span>
             <span class="p">):</span>
                 <span class="n">intermediates_cache</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache_intermediates</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">]</span>
                 <span class="k">continue</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">inter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_intermediates</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">prop</span><span class="o">=</span><span class="n">prop</span><span class="p">)</span>
-                <span class="n">intermediates_cache</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">inter</span>
+                <span class="n">intermediates_cache</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">_own_intermediate_arrays</span><span class="p">(</span><span class="n">inter</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                 <span class="k">continue</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">__cache_image</span> <span class="o">=</span> <span class="n">image</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__cache_props</span> <span class="o">=</span> <span class="n">props</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cache_image_ref</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__cache_intermediates</span> <span class="o">=</span> <span class="n">intermediates_cache</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cache_signature</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">intermediates_cache</span><span class="p">:</span>
             <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
@@ -1352,13 +1392,13 @@
 
             <span class="c1"># Zone radii are scalars; broadcast to per-angle arrays so the</span>
             <span class="c1"># existing polar-polygon helpers draw concentric circles.</span>
-            <span class="n">r_core_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
+            <span class="n">r_core_arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
                     <span class="n">_N_ANGULAR_SECTORS</span><span class="p">,</span> <span class="n">inter</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="n">r_dense_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
+            <span class="n">r_dense_arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
                     <span class="n">_N_ANGULAR_SECTORS</span><span class="p">,</span> <span class="n">inter</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="n">r_outer_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
+            <span class="n">r_outer_arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
                     <span class="n">_N_ANGULAR_SECTORS</span><span class="p">,</span> <span class="n">inter</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
             <span class="p">)</span>
 

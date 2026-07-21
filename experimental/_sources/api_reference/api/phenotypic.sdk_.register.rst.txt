@@ -17,11 +17,8 @@ phenotypic.sdk\_.register
       :nosignatures:
    
       available_analysis_plugins
-      available_plotters
       get_analysis_plugin
-      get_plotter
       register_analysis
-      register_plotter
    
    
 
@@ -36,7 +33,6 @@ phenotypic.sdk\_.register
    
       AnalysisPluginRegistry
       BaseRegistry
-      PlotterRegistry
    
    
 

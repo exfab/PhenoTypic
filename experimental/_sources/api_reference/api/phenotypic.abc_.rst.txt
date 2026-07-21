@@ -17,7 +17,6 @@
       :nosignatures:
    
       register_detection_mode
-      figure
    
    
 
@@ -57,10 +56,6 @@
       FootprintMixin
       PostMeasurement
       DetectionMode
-      Control
-      FigureSpec
-      FigureProvider
-      BoundFigures
    
    
 

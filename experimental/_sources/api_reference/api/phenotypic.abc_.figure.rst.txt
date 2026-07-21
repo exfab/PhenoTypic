@@ -1,6 +1,0 @@
-phenotypic.abc\_.figure
-=======================
-
-.. currentmodule:: phenotypic.abc_
-
-.. autofunction:: figure

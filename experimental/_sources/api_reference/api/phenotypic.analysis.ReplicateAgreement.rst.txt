@@ -20,12 +20,14 @@ phenotypic.analysis.ReplicateAgreement
       ~ReplicateAgreement.analyze
       ~ReplicateAgreement.construct
       ~ReplicateAgreement.copy
-      ~ReplicateAgreement.dash
       ~ReplicateAgreement.dict
+      ~ReplicateAgreement.figures
       ~ReplicateAgreement.flag_col
       ~ReplicateAgreement.flagged_keys
       ~ReplicateAgreement.from_orm
       ~ReplicateAgreement.group_members
+      ~ReplicateAgreement.inspect
+      ~ReplicateAgreement.iter_figures
       ~ReplicateAgreement.json
       ~ReplicateAgreement.metric_col
       ~ReplicateAgreement.model_construct
@@ -42,6 +44,7 @@ phenotypic.analysis.ReplicateAgreement
       ~ReplicateAgreement.parse_file
       ~ReplicateAgreement.parse_obj
       ~ReplicateAgreement.parse_raw
+      ~ReplicateAgreement.report
       ~ReplicateAgreement.results
       ~ReplicateAgreement.schema
       ~ReplicateAgreement.schema_json

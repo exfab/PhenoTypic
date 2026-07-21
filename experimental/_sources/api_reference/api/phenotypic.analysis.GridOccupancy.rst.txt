@@ -20,12 +20,14 @@ phenotypic.analysis.GridOccupancy
       ~GridOccupancy.analyze
       ~GridOccupancy.construct
       ~GridOccupancy.copy
-      ~GridOccupancy.dash
       ~GridOccupancy.dict
+      ~GridOccupancy.figures
       ~GridOccupancy.flag_col
       ~GridOccupancy.flagged_keys
       ~GridOccupancy.from_orm
       ~GridOccupancy.group_members
+      ~GridOccupancy.inspect
+      ~GridOccupancy.iter_figures
       ~GridOccupancy.json
       ~GridOccupancy.metric_col
       ~GridOccupancy.model_construct
@@ -42,6 +44,7 @@ phenotypic.analysis.GridOccupancy
       ~GridOccupancy.parse_file
       ~GridOccupancy.parse_obj
       ~GridOccupancy.parse_raw
+      ~GridOccupancy.report
       ~GridOccupancy.results
       ~GridOccupancy.schema
       ~GridOccupancy.schema_json

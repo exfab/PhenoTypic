@@ -20,7 +20,6 @@ phenotypic.analysis.MADOutlierRemover
       ~MADOutlierRemover.analyze
       ~MADOutlierRemover.construct
       ~MADOutlierRemover.copy
-      ~MADOutlierRemover.dash
       ~MADOutlierRemover.dict
       ~MADOutlierRemover.from_orm
       ~MADOutlierRemover.json

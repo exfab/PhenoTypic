@@ -32,6 +32,7 @@ phenotypic.prefab.HeavyRoundPeaksPipeline
       ~HeavyRoundPeaksPipeline.get_meas
       ~HeavyRoundPeaksPipeline.get_model
       ~HeavyRoundPeaksPipeline.get_ops
+      ~HeavyRoundPeaksPipeline.get_plots
       ~HeavyRoundPeaksPipeline.get_post
       ~HeavyRoundPeaksPipeline.get_qc
       ~HeavyRoundPeaksPipeline.json
@@ -56,6 +57,7 @@ phenotypic.prefab.HeavyRoundPeaksPipeline
       ~HeavyRoundPeaksPipeline.set_meas
       ~HeavyRoundPeaksPipeline.set_model
       ~HeavyRoundPeaksPipeline.set_ops
+      ~HeavyRoundPeaksPipeline.set_plots
       ~HeavyRoundPeaksPipeline.set_post
       ~HeavyRoundPeaksPipeline.set_qc
       ~HeavyRoundPeaksPipeline.to_json
@@ -90,5 +92,6 @@ phenotypic.prefab.HeavyRoundPeaksPipeline
       ~HeavyRoundPeaksPipeline.filters
       ~HeavyRoundPeaksPipeline.model
       ~HeavyRoundPeaksPipeline.qc
+      ~HeavyRoundPeaksPipeline.plots
    
    

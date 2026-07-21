@@ -708,8 +708,10 @@ Edits save to <code class="docutils literal notranslate"><span class="pre">&lt;o
 <li><p><strong>Run analysis</strong>: click <code class="docutils literal notranslate"><span class="pre">Run</span> <span class="pre">analysis</span></code>. The sub-app reads
 <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/measurements.parquet</span></code> (the curated mirror), runs
 the chain via <code class="docutils literal notranslate"><span class="pre">pipeline.analyze(...)</span></code>, and writes
-<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/analysis.csv</span></code> and
-<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/analysis.parquet</span></code> next to the master.</p></li>
+<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/&lt;AnalysisClass&gt;.csv</span></code> and
+<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/&lt;AnalysisClass&gt;.parquet</span></code>, with
+<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/analysis_manifest.json</span></code> recording the available
+analysis tables for downstream consumers.</p></li>
 </ul>
 </section>
 <section id="loaded-state">

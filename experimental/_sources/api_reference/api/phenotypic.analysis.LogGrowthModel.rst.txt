@@ -20,9 +20,11 @@ phenotypic.analysis.LogGrowthModel
       ~LogGrowthModel.analyze
       ~LogGrowthModel.construct
       ~LogGrowthModel.copy
-      ~LogGrowthModel.dash
       ~LogGrowthModel.dict
+      ~LogGrowthModel.figures
       ~LogGrowthModel.from_orm
+      ~LogGrowthModel.inspect
+      ~LogGrowthModel.iter_figures
       ~LogGrowthModel.json
       ~LogGrowthModel.model_construct
       ~LogGrowthModel.model_copy
@@ -39,6 +41,7 @@ phenotypic.analysis.LogGrowthModel
       ~LogGrowthModel.parse_file
       ~LogGrowthModel.parse_obj
       ~LogGrowthModel.parse_raw
+      ~LogGrowthModel.report
       ~LogGrowthModel.results
       ~LogGrowthModel.schema
       ~LogGrowthModel.schema_json

@@ -669,6 +669,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -781,28 +782,123 @@
 <span class="c1">#: Best-effort co-located copy of the run&#39;s ``--metadata`` source CSV,</span>
 <span class="c1">#: written into :data:`DIR_DELIVERABLES` by</span>
 <span class="c1">#: :func:`phenotypic._cli._cli_output_manager.finalize_post_master_outputs`.</span>
-<span class="c1">#: The post-applied mirror (:data:`MEASUREMENTS_CSV`) carries the metadata</span>
-<span class="c1">#: columns but the join is *inner* — rows with no matching key are dropped —</span>
-<span class="c1">#: so this preserves the full, portable original mapping next to the other</span>
-<span class="c1">#: deliverables (spec §8 / D6). The copy is best-effort and never blocks the</span>
-<span class="c1">#: run; a missing/unreadable source is logged and skipped.</span>
+<span class="c1">#: The post-applied mirror carries the metadata columns, while this file</span>
+<span class="c1">#: preserves the full portable original mapping.</span>
 <span class="n">DELIVERABLES_METADATA_CSV</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;metadata.csv&quot;</span>
+
+<span class="c1">#: Authoritative index for class-named analysis table artifacts.</span>
+<span class="n">ANALYSIS_MANIFEST_FILENAME</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis_manifest.json&quot;</span>
+<span class="n">ANALYSIS_MANIFEST_SCHEMA_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="n">_ANALYSIS_ID_PATTERN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+    <span class="sa">r</span><span class="s2">&quot;[A-Za-z][A-Za-z0-9_.-]{0,127}\Z&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">ASCII</span>
+<span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_reserved_analysis_artifact_stems</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return CSV/Parquet stems that share the deliverables root.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">frozenset</span><span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span><span class="o">.</span><span class="n">casefold</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="n">MASTER_MEASUREMENTS_CSV</span><span class="p">,</span>
+            <span class="n">MASTER_MEASUREMENTS_PARQUET</span><span class="p">,</span>
+            <span class="n">MEASUREMENTS_CSV</span><span class="p">,</span>
+            <span class="n">MEASUREMENTS_PARQUET</span><span class="p">,</span>
+            <span class="n">DELIVERABLES_METADATA_CSV</span><span class="p">,</span>
+            <span class="n">ERROR_ANALYSIS_CSV</span><span class="p">,</span>
+            <span class="n">ERROR_ANALYSIS_PARQUET</span><span class="p">,</span>
+            <span class="n">VERIFIED_PARQUET</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="validate_analysis_id">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.validate_analysis_id.html#phenotypic.sdk_.validate_analysis_id">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_analysis_id</span><span class="p">(</span><span class="n">analysis_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate an analysis ID used as a deliverables artifact stem.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        analysis_id: Candidate stable analysis identity.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The unchanged validated ID.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If ``analysis_id`` is not a string.</span>
+<span class="sd">        ValueError: If the ID is unsafe or collides with a canonical table.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">analysis_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;analysis_id must be a string&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_ANALYSIS_ID_PATTERN</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">analysis_id</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;analysis_id must be 1-128 ASCII characters, start with a letter, &quot;</span>
+            <span class="s2">&quot;and contain only letters, digits, &#39;_&#39;, &#39;-&#39;, or &#39;.&#39;&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">analysis_id</span><span class="o">.</span><span class="n">casefold</span><span class="p">()</span> <span class="ow">in</span> <span class="n">_reserved_analysis_artifact_stems</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;analysis_id </span><span class="si">{</span><span class="n">analysis_id</span><span class="si">!r}</span><span class="s2"> collides with a canonical &quot;</span>
+            <span class="s2">&quot;deliverables table&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">analysis_id</span></div>
+
+
+
+<div class="viewcode-block" id="AnalysisArtifactPaths">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.AnalysisArtifactPaths.html#phenotypic.sdk_.AnalysisArtifactPaths">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AnalysisArtifactPaths</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Concrete paths for one named analysis generation.&quot;&quot;&quot;</span>
+
+    <span class="n">csv</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">parquet</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">manifest</span><span class="p">:</span> <span class="n">Path</span></div>
+
+
+
+<div class="viewcode-block" id="analysis_manifest_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.analysis_manifest_path.html#phenotypic.sdk_.analysis_manifest_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">analysis_manifest_path</span><span class="p">(</span><span class="n">deliverables_base</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the analysis manifest inside a deliverables directory.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">deliverables_base</span><span class="p">)</span> <span class="o">/</span> <span class="n">ANALYSIS_MANIFEST_FILENAME</span></div>
+
+
+
+<div class="viewcode-block" id="named_analysis_csv_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.named_analysis_csv_path.html#phenotypic.sdk_.named_analysis_csv_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">named_analysis_csv_path</span><span class="p">(</span>
+    <span class="n">deliverables_base</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">analysis_id</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the named CSV artifact path for ``analysis_id``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">deliverables_base</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">validate_analysis_id</span><span class="p">(</span><span class="n">analysis_id</span><span class="p">)</span><span class="si">}</span><span class="s2">.csv&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="named_analysis_parquet_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.named_analysis_parquet_path.html#phenotypic.sdk_.named_analysis_parquet_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">named_analysis_parquet_path</span><span class="p">(</span>
+    <span class="n">deliverables_base</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">analysis_id</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the named Parquet artifact path for ``analysis_id``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">deliverables_base</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">validate_analysis_id</span><span class="p">(</span><span class="n">analysis_id</span><span class="p">)</span><span class="si">}</span><span class="s2">.parquet&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="named_analysis_paths">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.named_analysis_paths.html#phenotypic.sdk_.named_analysis_paths">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">named_analysis_paths</span><span class="p">(</span>
+    <span class="n">deliverables_base</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">analysis_id</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnalysisArtifactPaths</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return all persisted paths associated with one analysis ID.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">AnalysisArtifactPaths</span><span class="p">(</span>
+        <span class="n">csv</span><span class="o">=</span><span class="n">named_analysis_csv_path</span><span class="p">(</span><span class="n">deliverables_base</span><span class="p">,</span> <span class="n">analysis_id</span><span class="p">),</span>
+        <span class="n">parquet</span><span class="o">=</span><span class="n">named_analysis_parquet_path</span><span class="p">(</span><span class="n">deliverables_base</span><span class="p">,</span> <span class="n">analysis_id</span><span class="p">),</span>
+        <span class="n">manifest</span><span class="o">=</span><span class="n">analysis_manifest_path</span><span class="p">(</span><span class="n">deliverables_base</span><span class="p">),</span>
+    <span class="p">)</span></div>
+
 
 <span class="c1">#: REMBI run manifest filename, flat under deliverables/ beside metadata.csv.</span>
 <span class="c1">#: Written best-effort by</span>
 <span class="c1">#: :func:`phenotypic.sdk_._rembi_manifest.write_rembi_manifest` in finalize;</span>
 <span class="c1">#: folds the post-applied measurements mirror up to each REMBI module&#39;s scope.</span>
 <span class="n">REMBI_MANIFEST_YAML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;rembi.yaml&quot;</span>
-
-<span class="c1">#: Output filename of the model-fit summary written by the CLI when the</span>
-<span class="c1">#: pipeline has a ``model`` configured (and re-emitted by the analysis</span>
-<span class="c1">#: GUI&#39;s &quot;Run analysis&quot; button). Human-readable mirror of</span>
-<span class="c1">#: :data:`ANALYSIS_PARQUET`.</span>
-<span class="n">ANALYSIS_CSV</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis.csv&quot;</span>
-
-<span class="c1">#: Parquet companion of :data:`ANALYSIS_CSV` — primary downstream</span>
-<span class="c1">#: artifact since it preserves dtypes the CSV cannot.</span>
-<span class="n">ANALYSIS_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis.parquet&quot;</span>
 
 <span class="c1">#: Canonical pipeline-spec filename written into the output root by the</span>
 <span class="c1">#: CLI (and rewritten by the analysis GUI on every recipe edit). Captures</span>
@@ -1008,11 +1104,8 @@
 <span class="c1">#: Overlay PNG subdirectory: ``&lt;output&gt;/deliverables/overlays/&lt;ds&gt;/``.</span>
 <span class="n">DIR_OVERLAYS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;overlays&quot;</span>
 
-<span class="c1">#: Inspect-figure PNG subdirectory:</span>
-<span class="c1">#: ``&lt;output&gt;/results/&lt;ds&gt;/inspect/&lt;measurer-step&gt;/``. Provisioned only</span>
-<span class="c1">#: when the CLI&#39;s ``--save-inspect`` flag is set; per-measurer</span>
-<span class="c1">#: subdirectories are created lazily by ``OutputManager.save_inspect``.</span>
-<span class="n">DIR_INSPECT</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;inspect&quot;</span>
+<span class="c1">#: Configured plot outputs: ``&lt;output&gt;/deliverables/plots/``.</span>
+<span class="n">DIR_PLOTS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plots&quot;</span>
 
 <span class="c1">#: Mid-run chunk parquet subdirectory: ``&lt;progress&gt;/chunks/``.</span>
 <span class="n">DIR_CHUNKS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunks&quot;</span>
@@ -1280,6 +1373,14 @@
 <span class="sd">    is a one-line change.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_DELIVERABLES</span></div>
+
+
+
+<div class="viewcode-block" id="plots_dir">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.plots_dir.html#phenotypic.sdk_.plots_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">plots_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/plots/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_PLOTS</span></div>
 
 
 
@@ -1895,22 +1996,6 @@
 <span class="sd">    reproducibility copy. Distinct from :func:`pipeline_json_path`, which roots</span>
 <span class="sd">    under ``deliverables/`` (process-only writes no deliverables).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PIPELINE_JSON</span></div>
-
-
-
-<div class="viewcode-block" id="analysis_csv_path">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.analysis_csv_path.html#phenotypic.sdk_.analysis_csv_path">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">analysis_csv_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/analysis.csv``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">ANALYSIS_CSV</span></div>
-
-
-
-<div class="viewcode-block" id="analysis_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.analysis_parquet_path.html#phenotypic.sdk_.analysis_parquet_path">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">analysis_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/analysis.parquet``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">ANALYSIS_PARQUET</span></div>
 
 
 
@@ -2727,6 +2812,11 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">MEASUREMENTS_CSV</span>
 
     <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plots_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the resolved ``plots/`` directory inside the bundle.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">DIR_PLOTS</span>
+
+    <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">pipeline_config_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``pipeline.json`` in the deliverables base.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">PIPELINE_JSON</span>
@@ -2812,16 +2902,6 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">verified_parquet</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``verified.parquet`` (GUI-written verified-good archive).&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">VERIFIED_PARQUET</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">analysis_parquet</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``analysis.parquet`` in the deliverables base.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">ANALYSIS_PARQUET</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">analysis_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``analysis.csv`` in the deliverables base.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">ANALYSIS_CSV</span>
 
 <div class="viewcode-block" id="BundleLayout.error_category_parquet">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.BundleLayout.html#phenotypic.sdk_.BundleLayout.error_category_parquet">[docs]</a>

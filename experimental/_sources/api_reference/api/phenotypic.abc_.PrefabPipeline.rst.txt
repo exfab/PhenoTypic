@@ -32,6 +32,7 @@ phenotypic.abc\_.PrefabPipeline
       ~PrefabPipeline.get_meas
       ~PrefabPipeline.get_model
       ~PrefabPipeline.get_ops
+      ~PrefabPipeline.get_plots
       ~PrefabPipeline.get_post
       ~PrefabPipeline.get_qc
       ~PrefabPipeline.json
@@ -56,6 +57,7 @@ phenotypic.abc\_.PrefabPipeline
       ~PrefabPipeline.set_meas
       ~PrefabPipeline.set_model
       ~PrefabPipeline.set_ops
+      ~PrefabPipeline.set_plots
       ~PrefabPipeline.set_post
       ~PrefabPipeline.set_qc
       ~PrefabPipeline.to_json
@@ -90,5 +92,6 @@ phenotypic.abc\_.PrefabPipeline
       ~PrefabPipeline.filters
       ~PrefabPipeline.model
       ~PrefabPipeline.qc
+      ~PrefabPipeline.plots
    
    

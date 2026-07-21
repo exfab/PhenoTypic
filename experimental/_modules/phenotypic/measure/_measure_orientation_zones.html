@@ -600,15 +600,15 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">weakref</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrivateAttr</span><span class="p">,</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
 
-<span class="c1"># Control/FigureProvider/figure are re-exported from phenotypic.abc_ (this is</span>
-<span class="c1"># exactly what _measure_symmetric_zones.py imports).</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">Control</span><span class="p">,</span> <span class="n">FigureProvider</span><span class="p">,</span> <span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">figure</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">Control</span><span class="p">,</span> <span class="n">PlotImage</span><span class="p">,</span> <span class="n">figure</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">OBJECT</span><span class="p">,</span>
     <span class="n">ORIENTATION_ZONE_DIAGNOSTIC</span><span class="p">,</span>
@@ -1488,7 +1488,7 @@
 
 <div class="viewcode-block" id="MeasureOrientationZones">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureOrientationZones.html#phenotypic.measure.MeasureOrientationZones">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">MeasureOrientationZones</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">FigureProvider</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasureOrientationZones</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">PlotImage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure absolute and radial-relative hyphal orientation by growth zone.</span>
 
 <span class="sd">    Computes the structure-tensor orientation field over a mask-free tile (grid</span>
@@ -1523,7 +1523,6 @@
 <span class="sd">        include_diagnostics: Emit validation comparators, quality support, raw</span>
 <span class="sd">            peak, rate-gradient, and legacy orientation-zone columns. Defaults</span>
 <span class="sd">            to ``False`` so only primary outward-rotation metrics are returned.</span>
-<span class="sd">        quiver_block: inspect() quiver downsample block size in pixels.</span>
 <span class="sd">        n_annuli: Number of equal-area annuli in the shared zone segmentation.</span>
 <span class="sd">        pelt_penalty: PELT penalty controlling core-changepoint sensitivity.</span>
 <span class="sd">        symmetry_threshold: Minimum angular coverage for symmetric growth.</span>
@@ -1535,6 +1534,8 @@
 <span class="sd">        tau_core: Colony-ness threshold for the core/dense boundary.</span>
 <span class="sd">        tau_dense: Colony-ness threshold for the dense/sparse boundary.</span>
 <span class="sd">        tau_sparse: Colony-ness threshold for the sparse/outside boundary.</span>
+<span class="sd">        quiver_block: inspect() quiver downsample block size in pixels. Plotting</span>
+<span class="sd">            parameters follow the measurement parameters in the public schema.</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_filamentous_plate</span>
@@ -1558,7 +1559,6 @@
     <span class="n">outward_peak_window_rings</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>
     <span class="n">outward_min_run_rings</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>
     <span class="n">include_diagnostics</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">quiver_block</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span>
     <span class="c1"># --- zone passthrough (defaults identical to MeasureSymmetricZones) ---</span>
     <span class="n">n_annuli</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>
     <span class="n">pelt_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span>
@@ -1571,10 +1571,15 @@
     <span class="n">tau_core</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span>
     <span class="n">tau_dense</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
     <span class="n">tau_sparse</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="c1"># Plot-only fields stay after every measurement field so constructor,</span>
+    <span class="c1"># schema, and GUI form order follow the operation&#39;s functional parameters.</span>
+    <span class="n">quiver_block</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span>
     <span class="c1"># Per-object figure intermediates, populated by _operate. PrivateAttr keeps</span>
     <span class="c1"># it out of model_dump()/JSON (mirrors MeasureSymmetricZones&#39; cache pattern).</span>
     <span class="n">_cache</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
-    <span class="n">_cache_image</span><span class="p">:</span> <span class="s2">&quot;object | None&quot;</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">_cache_image_ref</span><span class="p">:</span> <span class="s2">&quot;weakref.ReferenceType[object] | None&quot;</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">)</span>
     <span class="n">_cache_signature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;sigma_d&quot;</span><span class="p">,</span> <span class="s2">&quot;sigma_i&quot;</span><span class="p">)</span>
@@ -1758,7 +1763,7 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield (prop, seg, obj_mask, phi, coh, grad, dist_map, centre) per object.</span>
 
 <span class="sd">        SINGLE source of truth for the heavy orientation compute — reused by</span>
-<span class="sd">        _operate() (which keeps only compact summaries) and by dashboard()&#39;s</span>
+<span class="sd">        _operate() (which keeps only compact summaries) and by report()&#39;s</span>
 <span class="sd">        coherence panel (which recomputes on demand). The full-resolution arrays</span>
 <span class="sd">        yielded here are consumed and discarded by each caller; nothing full-res</span>
 <span class="sd">        is retained on the instance. Tiny objects (area&lt;10) are skipped.</span>
@@ -1793,9 +1798,8 @@
             <span class="n">r</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">h</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">})</span>
             <span class="n">base</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>  <span class="c1"># compact per-object figure records only</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">image</span>  <span class="c1"># single reference (not a copy) for no-arg figures</span>
-        <span class="p">)</span>
+        <span class="c1"># Preserve no-argument notebook figures without retaining a full Image.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image_ref</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
         <span class="k">for</span> <span class="p">(</span>
             <span class="n">prop</span><span class="p">,</span>
             <span class="n">seg</span><span class="p">,</span>
@@ -1806,17 +1810,21 @@
             <span class="n">dist_map</span><span class="p">,</span>
             <span class="n">centre</span><span class="p">,</span>
         <span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_object_fields</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
-            <span class="n">per_zone</span><span class="p">,</span> <span class="n">radial_relative</span><span class="p">,</span> <span class="n">long_range</span><span class="p">,</span> <span class="n">ring_profile</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_fill_metrics</span><span class="p">(</span>
-                    <span class="n">base</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">],</span>
-                    <span class="n">seg</span><span class="p">,</span>
-                    <span class="n">obj_mask</span><span class="p">,</span>
-                    <span class="n">phi</span><span class="p">,</span>
-                    <span class="n">coh</span><span class="p">,</span>
-                    <span class="n">grad</span><span class="p">,</span>
-                    <span class="n">dist_map</span><span class="p">,</span>
-                    <span class="n">centre</span><span class="p">,</span>
-                <span class="p">)</span>
+            <span class="p">(</span>
+                <span class="n">outward_rotation</span><span class="p">,</span>
+                <span class="n">per_zone</span><span class="p">,</span>
+                <span class="n">radial_relative</span><span class="p">,</span>
+                <span class="n">long_range</span><span class="p">,</span>
+                <span class="n">ring_profile</span><span class="p">,</span>
+            <span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fill_metrics</span><span class="p">(</span>
+                <span class="n">base</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">],</span>
+                <span class="n">seg</span><span class="p">,</span>
+                <span class="n">obj_mask</span><span class="p">,</span>
+                <span class="n">phi</span><span class="p">,</span>
+                <span class="n">coh</span><span class="p">,</span>
+                <span class="n">grad</span><span class="p">,</span>
+                <span class="n">dist_map</span><span class="p">,</span>
+                <span class="n">centre</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="c1"># LEAN CACHE: store compact summaries only — NO full-res tile/phi/coh/</span>
             <span class="c1"># grad/dist_map and NO seg dataclass. Bounds memory to O(objects*blocks).</span>
@@ -1831,6 +1839,7 @@
                     <span class="s2">&quot;sparse_end&quot;</span><span class="p">:</span> <span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">,</span>
                 <span class="p">},</span>
                 <span class="s2">&quot;zones_computed&quot;</span><span class="p">:</span> <span class="n">seg</span><span class="o">.</span><span class="n">zones_computed</span><span class="p">,</span>
+                <span class="s2">&quot;outward_rotation&quot;</span><span class="p">:</span> <span class="n">outward_rotation</span><span class="p">,</span>
                 <span class="s2">&quot;quiver&quot;</span><span class="p">:</span> <span class="n">_downsample_quiver</span><span class="p">(</span>
                     <span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">quiver_block</span>
                 <span class="p">),</span>  <span class="c1"># block-res</span>
@@ -1858,7 +1867,7 @@
         <span class="n">coherence</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
         <span class="n">dist_map</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
         <span class="n">centre</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Write full-length literal-crossing primary and diagnostic metrics.</span>
 
 <span class="sd">        The complete detected object is skeletonized before the inoculum</span>
@@ -1866,7 +1875,12 @@
 <span class="sd">        extent and are never trimmed to the symmetric radius.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="k">def</span><span class="w"> </span><span class="nf">_write_missing</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">primary_by_zone</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">zone</span><span class="p">:</span> <span class="p">{</span><span class="n">metric</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">_PRIMARY_OUTWARD_METRICS</span><span class="p">}</span>
+            <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">_ZONES</span>
+        <span class="p">}</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_write_missing</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
             <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">_ZONES</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">_PRIMARY_OUTWARD_METRICS</span><span class="p">:</span>
                     <span class="n">row</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;OrientZones_</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">-Mask-</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
@@ -1876,17 +1890,16 @@
                         <span class="sa">f</span><span class="s2">&quot;OrientZones_</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">-Mask-</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
                         <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
                     <span class="p">)</span>
+            <span class="k">return</span> <span class="n">primary_by_zone</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">seg</span><span class="o">.</span><span class="n">zones_computed</span><span class="p">:</span>
-            <span class="n">_write_missing</span><span class="p">()</span>
-            <span class="k">return</span>
+            <span class="k">return</span> <span class="n">_write_missing</span><span class="p">()</span>
         <span class="n">inner_radius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">)</span>
         <span class="n">outside_core</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">obj_mask</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">dist_map</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&gt;=</span> <span class="n">inner_radius</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">outside_core</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-            <span class="n">_write_missing</span><span class="p">()</span>
-            <span class="k">return</span>
+            <span class="k">return</span> <span class="n">_write_missing</span><span class="p">()</span>
 
         <span class="n">object_extent_radius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">dist_map</span><span class="p">[</span><span class="n">outside_core</span><span class="p">]))</span>
         <span class="n">radial_span</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nextafter</span><span class="p">(</span><span class="n">object_extent_radius</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span> <span class="o">-</span> <span class="n">inner_radius</span>
@@ -1955,6 +1968,7 @@
             <span class="p">}</span>
             <span class="k">for</span> <span class="n">metric</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">primary_values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="n">row</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;OrientZones_</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">-Mask-</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="n">primary_by_zone</span><span class="p">[</span><span class="n">zone</span><span class="p">]</span> <span class="o">=</span> <span class="n">primary_values</span>
 
             <span class="n">diagnostic_values</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="s2">&quot;OutwardRotationRawPeak&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">raw_peak</span><span class="p">)),</span>
@@ -1982,6 +1996,7 @@
                     <span class="sa">f</span><span class="s2">&quot;OrientZones_</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">-Mask-</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
                     <span class="n">value</span><span class="p">,</span>
                 <span class="p">)</span>
+        <span class="k">return</span> <span class="n">primary_by_zone</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_fill_metrics</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -2002,7 +2017,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">per_zone</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">radial_relative</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_fill_literal_crossing_metrics</span><span class="p">(</span>
+        <span class="n">outward_rotation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fill_literal_crossing_metrics</span><span class="p">(</span>
             <span class="n">row</span><span class="p">,</span>
             <span class="n">seg</span><span class="p">,</span>
             <span class="n">obj_mask</span><span class="p">,</span>
@@ -2103,7 +2118,13 @@
             <span class="n">coh</span><span class="p">,</span>
             <span class="n">dist_map</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">per_zone</span><span class="p">,</span> <span class="n">radial_relative</span><span class="p">,</span> <span class="n">long_range</span><span class="p">,</span> <span class="n">ring_profile</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">outward_rotation</span><span class="p">,</span>
+            <span class="n">per_zone</span><span class="p">,</span>
+            <span class="n">radial_relative</span><span class="p">,</span>
+            <span class="n">long_range</span><span class="p">,</span>
+            <span class="n">ring_profile</span><span class="p">,</span>
+        <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_fill_long_range_metrics</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -2285,7 +2306,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_coherence_canvas</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">downsample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Recompute per-object coherence and composite onto a plate canvas.</span>
 
-<span class="sd">        Used only by dashboard()&#39;s heatmap. Full-res fields are recomputed via</span>
+<span class="sd">        Used only by report()&#39;s heatmap. Full-res fields are recomputed via</span>
 <span class="sd">        _iter_object_fields and discarded here — the heatmap costs compute, not</span>
 <span class="sd">        persistent memory. Returned canvas is downsampled for a light figure.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -2314,12 +2335,31 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_require_cache_image</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the cached image or raise if :meth:`measure` has not run.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_image</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                <span class="s2">&quot;MeasureOrientationZones: diagnostic cache is empty. &quot;</span>
-                <span class="s2">&quot;Call .measure(image) before .inspect()/.dashboard().&quot;</span>
+                <span class="s2">&quot;MeasureOrientationZones: no live image subject is available. &quot;</span>
+                <span class="s2">&quot;Pass an image to .inspect()/.report(), or keep the measured &quot;</span>
+                <span class="s2">&quot;image alive for no-argument rendering.&quot;</span>
             <span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image</span>
+        <span class="k">return</span> <span class="n">image</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_cached_image</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the weakly held image subject without extending its lifetime.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image_ref</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image_ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_diagnostic_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Measure ``image`` when its compact diagnostic cache is stale.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_image</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">image</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_signature</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
 
 <div class="viewcode-block" id="MeasureOrientationZones.inspect">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureOrientationZones.html#phenotypic.measure.MeasureOrientationZones.inspect">[docs]</a>
@@ -2352,7 +2392,7 @@
 <span class="sd">                (``&quot;rgb&quot;``, ``&quot;gray&quot;`` or ``&quot;detect_mat&quot;``).</span>
 <span class="sd">            for_save: When *True*, every legend-only overlay trace is force-shown</span>
 <span class="sd">                so the figure renders meaningfully as a static raster (the CLI&#39;s</span>
-<span class="sd">                ``--save-inspect`` flag passes this). Defaults to *False*.</span>
+<span class="sd">                PlotImage publication passes this). Defaults to *False*.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            A ``plotly.graph_objects.Figure`` with toggleable overlay layers.</span>
@@ -2382,12 +2422,7 @@
 
         <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_cache_image</span><span class="p">()</span>
-        <span class="k">if</span> <span class="p">(</span>
-            <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span>
-            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">image</span>
-            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_signature</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>
-        <span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_diagnostic_cache</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
 
         <span class="n">base</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">base_layer</span><span class="p">)[:]</span>
         <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
@@ -2508,12 +2543,7 @@
             <span class="p">)</span>
         <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_cache_image</span><span class="p">()</span>
-        <span class="k">if</span> <span class="p">(</span>
-            <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span>
-            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">image</span>
-            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_signature</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>
-        <span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_diagnostic_cache</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
 
         <span class="n">base</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">base_layer</span><span class="p">)[:]</span>
         <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
@@ -2645,12 +2675,7 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;allow_restarts must be a boolean&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_cache_image</span><span class="p">()</span>
-        <span class="k">if</span> <span class="p">(</span>
-            <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span>
-            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">image</span>
-            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_signature</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>
-        <span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_diagnostic_cache</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
 
         <span class="n">base</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">base_layer</span><span class="p">)[:]</span>
         <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
@@ -2774,12 +2799,7 @@
             <span class="p">)</span>
         <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_cache_image</span><span class="p">()</span>
-        <span class="k">if</span> <span class="p">(</span>
-            <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span>
-            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">image</span>
-            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_signature</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>
-        <span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_diagnostic_cache</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
 
         <span class="n">base</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">base_layer</span><span class="p">)[:])</span>
         <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
@@ -3971,42 +3991,61 @@
         <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
             <span class="n">cy</span><span class="p">,</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;centroid_global&quot;</span><span class="p">]</span>
             <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="s2">&quot;&lt;b&gt;Zone metrics&lt;/b&gt;&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;R = parallel concentration; T = turning (deg/px); C = coherence&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;RTilt = absolute tilt from radial (deg); &quot;</span>
-                <span class="s2">&quot;OutT = outward radial turning (deg/px); &quot;</span>
-                <span class="s2">&quot;Support = reliable sector fraction (QC)&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;&lt;b&gt;Primary outward-rotation metrics&lt;/b&gt;&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Peak and net are degrees; rate is deg/px; consistency is &quot;</span>
+                <span class="s2">&quot;dimensionless&quot;</span><span class="p">,</span>
             <span class="p">]</span>
-            <span class="k">for</span> <span class="n">variant</span> <span class="ow">in</span> <span class="n">_VARIANTS</span><span class="p">:</span>
-                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&lt;b&gt;</span><span class="si">{</span><span class="n">variant</span><span class="si">}</span><span class="s2"> selector&lt;/b&gt;&quot;</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">_ZONES</span><span class="p">:</span>
-                    <span class="n">R</span><span class="p">,</span> <span class="n">turning</span><span class="p">,</span> <span class="n">coherence</span><span class="p">,</span> <span class="n">_direction</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;per_zone&quot;</span><span class="p">][</span>
-                        <span class="p">(</span><span class="n">variant</span><span class="p">,</span> <span class="n">zone</span><span class="p">)</span>
-                    <span class="p">]</span>
-                    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">: R=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">R</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;T=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">turning</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">)</span><span class="si">}</span><span class="s2">, C=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">coherence</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
-                    <span class="p">)</span>
-            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&lt;b&gt;Detected structure · radial-relative&lt;/b&gt;&quot;</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">_ZONES</span><span class="p">:</span>
-                <span class="n">radial_tilt</span><span class="p">,</span> <span class="n">radial_turning</span><span class="p">,</span> <span class="n">radial_support</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span>
-                    <span class="s2">&quot;radial_relative&quot;</span>
-                <span class="p">][</span><span class="n">zone</span><span class="p">]</span>
+                <span class="n">values</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;outward_rotation&quot;</span><span class="p">][</span><span class="n">zone</span><span class="p">]</span>
                 <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">: RTilt=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">radial_tilt</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;OutT=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">radial_turning</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;Support=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">radial_support</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">: Sustained peak=&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s1">&#39;OutwardRotationSustainedPeak&#39;</span><span class="p">],</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2">°, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Net=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s1">&#39;OutwardRotationNet&#39;</span><span class="p">],</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2">°, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Rate=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s1">&#39;OutwardRotationRate&#39;</span><span class="p">],</span><span class="w"> </span><span class="mi">4</span><span class="p">)</span><span class="si">}</span><span class="s2"> deg/px, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Consistency=&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s1">&#39;OutwardRotationConsistency&#39;</span><span class="p">],</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
-            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;&lt;b&gt;Long range · </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">long_range_lag</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> px ring lag&lt;/b&gt;&quot;</span>
-            <span class="p">)</span>
-            <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="p">(</span><span class="o">*</span><span class="n">_ZONES</span><span class="p">,</span> <span class="s2">&quot;DenseToSparse&quot;</span><span class="p">):</span>
-                <span class="n">magnitude</span><span class="p">,</span> <span class="n">signed</span><span class="p">,</span> <span class="n">support</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;long_range&quot;</span><span class="p">][</span><span class="n">region</span><span class="p">]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_diagnostics</span><span class="p">:</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="s2">&quot;&lt;b&gt;Diagnostic orientation metrics&lt;/b&gt;&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;R = parallel concentration; T = turning (deg/px); &quot;</span>
+                        <span class="s2">&quot;C = coherence&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;RTilt = absolute tilt from radial (deg); &quot;</span>
+                        <span class="s2">&quot;OutT = outward radial turning (deg/px); &quot;</span>
+                        <span class="s2">&quot;Support = reliable sector fraction (QC)&quot;</span><span class="p">,</span>
+                    <span class="p">]</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">variant</span> <span class="ow">in</span> <span class="n">_VARIANTS</span><span class="p">:</span>
+                    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&lt;b&gt;</span><span class="si">{</span><span class="n">variant</span><span class="si">}</span><span class="s2"> selector&lt;/b&gt;&quot;</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">_ZONES</span><span class="p">:</span>
+                        <span class="n">R</span><span class="p">,</span> <span class="n">turning</span><span class="p">,</span> <span class="n">coherence</span><span class="p">,</span> <span class="n">_direction</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;per_zone&quot;</span><span class="p">][</span>
+                            <span class="p">(</span><span class="n">variant</span><span class="p">,</span> <span class="n">zone</span><span class="p">)</span>
+                        <span class="p">]</span>
+                        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">: R=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">R</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;T=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">turning</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">)</span><span class="si">}</span><span class="s2">, C=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">coherence</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&lt;b&gt;Detected structure · radial-relative&lt;/b&gt;&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">_ZONES</span><span class="p">:</span>
+                    <span class="n">radial_tilt</span><span class="p">,</span> <span class="n">radial_turning</span><span class="p">,</span> <span class="n">radial_support</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span>
+                        <span class="s2">&quot;radial_relative&quot;</span>
+                    <span class="p">][</span><span class="n">zone</span><span class="p">]</span>
+                    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">: RTilt=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">radial_tilt</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;OutT=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">radial_turning</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;Support=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">radial_support</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
                 <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">region</span><span class="si">}</span><span class="s2">: |Δ|=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">magnitude</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2">°, &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;signed Δ=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">signed</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2">°, &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;Support=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">support</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;b&gt;Long range · </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">long_range_lag</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> px ring lag&lt;/b&gt;&quot;</span>
                 <span class="p">)</span>
+                <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="p">(</span><span class="o">*</span><span class="n">_ZONES</span><span class="p">,</span> <span class="s2">&quot;DenseToSparse&quot;</span><span class="p">):</span>
+                    <span class="n">magnitude</span><span class="p">,</span> <span class="n">signed</span><span class="p">,</span> <span class="n">support</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;long_range&quot;</span><span class="p">][</span><span class="n">region</span><span class="p">]</span>
+                    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">region</span><span class="si">}</span><span class="s2">: |Δ|=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">magnitude</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2">°, &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;signed Δ=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">signed</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2">°, &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;Support=</span><span class="si">{</span><span class="n">_value</span><span class="p">(</span><span class="n">support</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
             <span class="n">xs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">cx</span><span class="p">))</span>
             <span class="n">ys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">cy</span><span class="p">))</span>
             <span class="n">hover_text</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&lt;br&gt;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">))</span>
@@ -4025,21 +4064,22 @@
             <span class="p">)</span>
         <span class="p">)</span>
 
-<div class="viewcode-block" id="MeasureOrientationZones.dashboard">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureOrientationZones.html#phenotypic.measure.MeasureOrientationZones.dashboard">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<div class="viewcode-block" id="MeasureOrientationZones.report">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureOrientationZones.html#phenotypic.measure.MeasureOrientationZones.report">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">overrides</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Composed notebook diagnostic (returns a single ``go.Figure``).</span>
 
 <span class="sd">        Stacks three vertically-arranged panels: the :meth:`inspect` overview,</span>
-<span class="sd">        a recomputed coherence heatmap, and a per-zone concentration/turning</span>
+<span class="sd">        a recomputed coherence heatmap, and a per-zone primary outward-rotation</span>
 <span class="sd">        summary table. Calls :meth:`measure` first when the compact cache is</span>
 <span class="sd">        empty or was built for a different image.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            image: Detected Image to render. If *None*, the image cached by the</span>
+<span class="sd">            subject: Detected Image to render. If *None*, the image cached by the</span>
 <span class="sd">                most recent :meth:`measure` call is reused.</span>
 <span class="sd">            show: When *True*, call ``fig.show()`` before returning (best-effort;</span>
 <span class="sd">                swallowed outside a display context). Defaults to *True*.</span>
+<span class="sd">            **overrides: Report-specific overrides are unsupported.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            A single composed ``plotly.graph_objects.Figure`` stacking the three</span>
@@ -4049,20 +4089,18 @@
 <span class="sd">            &gt;&gt;&gt; from phenotypic.data import load_synth_filamentous_plate</span>
 <span class="sd">            &gt;&gt;&gt; from phenotypic.measure import MeasureOrientationZones</span>
 <span class="sd">            &gt;&gt;&gt; op = MeasureOrientationZones()</span>
-<span class="sd">            &gt;&gt;&gt; fig = op.dashboard(load_synth_filamentous_plate(), show=False)</span>
+<span class="sd">            &gt;&gt;&gt; fig = op.report(load_synth_filamentous_plate(), show=False)</span>
 <span class="sd">            &gt;&gt;&gt; any(getattr(tr, &quot;type&quot;, None) == &quot;table&quot; for tr in fig.data)</span>
 <span class="sd">            True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_cache_image</span><span class="p">()</span>
-        <span class="k">if</span> <span class="p">(</span>
-            <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span>
-            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">image</span>
-            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_signature</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>
-        <span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
-        <span class="n">report</span> <span class="o">=</span> <span class="n">_OrientationZonesReport</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">)</span>
-        <span class="n">fig</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">dash</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">overrides</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;report(): unsupported override(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">overrides</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">subject</span> <span class="k">if</span> <span class="n">subject</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_cache_image</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_diagnostic_cache</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="n">report</span> <span class="o">=</span> <span class="n">_OrientationZonesReport</span><span class="p">()</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">report</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">producer</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">show</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
@@ -4073,30 +4111,21 @@
 
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">_OrientationZonesReport</span><span class="p">(</span><span class="n">FigureProvider</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transient control-free FigureProvider composing the orientation diagnostic.</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">_OrientationZonesReport</span><span class="p">(</span><span class="n">PlotImage</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stateless image consumer composing the orientation diagnostic.</span>
 
-<span class="sd">    Holds a reference to the owning :class:`MeasureOrientationZones`, the subject</span>
-<span class="sd">    image, and the operator&#39;s compact cache. Overrides :meth:`dash` (the</span>
-<span class="sd">    ``GridFitReport`` pattern) because the base composer builds a uniform ``xy``</span>
-<span class="sd">    subplot grid that cannot host the ``go.Table`` summary panel. Discard after</span>
-<span class="sd">    rendering.</span>
+<span class="sd">    The image and producing operation are call-time inputs only. The report</span>
+<span class="sd">    instance retains neither, avoiding a second object graph that keeps image</span>
+<span class="sd">    data or measurement caches alive after composition.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">op</span><span class="p">:</span> <span class="s2">&quot;MeasureOrientationZones&quot;</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">cache</span><span class="p">:</span> <span class="nb">dict</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_op</span> <span class="o">=</span> <span class="n">op</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="n">image</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="n">cache</span>
-
-    <span class="nd">@figure</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Orientation-field overlay&quot;</span><span class="p">)</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_panel_overview</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_panel_overview</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">producer</span><span class="p">:</span> <span class="s2">&quot;MeasureOrientationZones&quot;</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Panel A: the saveable inspect() overview (legend layers flattened).&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op</span><span class="o">.</span><span class="n">inspect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">,</span> <span class="n">for_save</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">producer</span><span class="o">.</span><span class="n">inspect</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">for_save</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-    <span class="nd">@figure</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Coherence map&quot;</span><span class="p">)</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_panel_coherence</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_panel_coherence</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">producer</span><span class="p">:</span> <span class="s2">&quot;MeasureOrientationZones&quot;</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Panel B: the coherence heatmap.</span>
 
 <span class="sd">        Recomputed on demand via ``_coherence_canvas`` (the lean cache holds no</span>
@@ -4104,7 +4133,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
 
-        <span class="n">canvas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op</span><span class="o">.</span><span class="n">_coherence_canvas</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">)</span>
+        <span class="n">canvas</span> <span class="o">=</span> <span class="n">producer</span><span class="o">.</span><span class="n">_coherence_canvas</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
         <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span>
             <span class="n">go</span><span class="o">.</span><span class="n">Heatmap</span><span class="p">(</span>
                 <span class="n">z</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span>
@@ -4117,80 +4146,46 @@
         <span class="n">fig</span><span class="o">.</span><span class="n">update_yaxes</span><span class="p">(</span><span class="n">autorange</span><span class="o">=</span><span class="s2">&quot;reversed&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">fig</span>
 
-    <span class="nd">@figure</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Per-zone absolute &amp; radial-relative orientation&quot;</span><span class="p">)</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_panel_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Panel C: table of absolute and radial-relative zone measurements.</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_panel_summary</span><span class="p">(</span><span class="n">producer</span><span class="p">:</span> <span class="s2">&quot;MeasureOrientationZones&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Panel C: table of primary outward-rotation measurements.</span>
 
-<span class="sd">        One row per ``(Variant, Zone)``, aggregated across objects as</span>
-<span class="sd">        ``np.nanmean`` over the cached per-zone scalars. Requires the custom</span>
-<span class="sd">        :meth:`dash` override (the base composer cannot host a ``go.Table``).</span>
+<span class="sd">        One row per radial zone, aggregated across objects as ``np.nanmean``</span>
+<span class="sd">        over the compact primary-metric cache. Requires the custom</span>
+<span class="sd">        :meth:`report` override because the base composer cannot host a table.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
 
-        <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">variant</span> <span class="ow">in</span> <span class="n">_VARIANTS</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">_ZONES</span><span class="p">:</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
-                    <span class="n">conc_vals</span> <span class="o">=</span> <span class="p">[</span>
-                        <span class="n">rec</span><span class="p">[</span><span class="s2">&quot;per_zone&quot;</span><span class="p">][(</span><span class="n">variant</span><span class="p">,</span> <span class="n">zone</span><span class="p">)][</span><span class="mi">0</span><span class="p">]</span>
-                        <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-                    <span class="p">]</span>
-                    <span class="n">turn_vals</span> <span class="o">=</span> <span class="p">[</span>
-                        <span class="n">rec</span><span class="p">[</span><span class="s2">&quot;per_zone&quot;</span><span class="p">][(</span><span class="n">variant</span><span class="p">,</span> <span class="n">zone</span><span class="p">)][</span><span class="mi">1</span><span class="p">]</span>
-                        <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-                    <span class="p">]</span>
-                    <span class="n">conc</span> <span class="o">=</span> <span class="n">_safe_nanmean</span><span class="p">(</span><span class="n">conc_vals</span><span class="p">)</span>
-                    <span class="n">turn</span> <span class="o">=</span> <span class="n">_safe_nanmean</span><span class="p">(</span><span class="n">turn_vals</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="n">variant</span> <span class="o">==</span> <span class="s2">&quot;Mask&quot;</span><span class="p">:</span>
-                        <span class="n">radial_tilt</span> <span class="o">=</span> <span class="n">_safe_nanmean</span><span class="p">(</span>
-                            <span class="p">[</span>
-                                <span class="n">rec</span><span class="p">[</span><span class="s2">&quot;radial_relative&quot;</span><span class="p">][</span><span class="n">zone</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-                                <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-                            <span class="p">]</span>
-                        <span class="p">)</span>
-                        <span class="n">radial_turn</span> <span class="o">=</span> <span class="n">_safe_nanmean</span><span class="p">(</span>
-                            <span class="p">[</span>
-                                <span class="n">rec</span><span class="p">[</span><span class="s2">&quot;radial_relative&quot;</span><span class="p">][</span><span class="n">zone</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
-                                <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-                            <span class="p">]</span>
-                        <span class="p">)</span>
-                        <span class="n">radial_support</span> <span class="o">=</span> <span class="n">_safe_nanmean</span><span class="p">(</span>
-                            <span class="p">[</span>
-                                <span class="n">rec</span><span class="p">[</span><span class="s2">&quot;radial_relative&quot;</span><span class="p">][</span><span class="n">zone</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
-                                <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-                            <span class="p">]</span>
-                        <span class="p">)</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="n">radial_tilt</span> <span class="o">=</span> <span class="n">radial_turn</span> <span class="o">=</span> <span class="n">radial_support</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">conc</span> <span class="o">=</span> <span class="n">turn</span> <span class="o">=</span> <span class="n">radial_tilt</span> <span class="o">=</span> <span class="n">radial_turn</span> <span class="o">=</span> <span class="p">(</span>
-                        <span class="n">radial_support</span>
-                    <span class="p">)</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">variant</span><span class="si">}</span><span class="s2"> · </span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">conc</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">turn</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">radial_tilt</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">radial_tilt</span><span class="p">)</span>
-                        <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">radial_turn</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">radial_turn</span><span class="p">)</span>
-                        <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">radial_support</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">radial_support</span><span class="p">)</span>
-                        <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
-                    <span class="p">)</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_mean</span><span class="p">(</span><span class="n">zone</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">metric</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_safe_nanmean</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">record</span><span class="p">[</span><span class="s2">&quot;outward_rotation&quot;</span><span class="p">][</span><span class="n">zone</span><span class="p">][</span><span class="n">metric</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">producer</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+                <span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_format</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">digits</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">value</span><span class="si">:</span><span class="s2">.</span><span class="si">{</span><span class="n">digits</span><span class="si">}</span><span class="s2">f</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">_ZONES</span><span class="p">:</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">(</span>
+                    <span class="n">zone</span><span class="p">,</span>
+                    <span class="n">_format</span><span class="p">(</span><span class="n">_mean</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s2">&quot;OutwardRotationSustainedPeak&quot;</span><span class="p">),</span> <span class="mi">2</span><span class="p">),</span>
+                    <span class="n">_format</span><span class="p">(</span><span class="n">_mean</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s2">&quot;OutwardRotationNet&quot;</span><span class="p">),</span> <span class="mi">2</span><span class="p">),</span>
+                    <span class="n">_format</span><span class="p">(</span><span class="n">_mean</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s2">&quot;OutwardRotationRate&quot;</span><span class="p">),</span> <span class="mi">4</span><span class="p">),</span>
+                    <span class="n">_format</span><span class="p">(</span><span class="n">_mean</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s2">&quot;OutwardRotationConsistency&quot;</span><span class="p">),</span> <span class="mi">3</span><span class="p">),</span>
                 <span class="p">)</span>
+            <span class="p">)</span>
         <span class="n">header</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="s2">&quot;Variant · Zone&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;Concentration (R)&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;Turning (deg/px)&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;Radial tilt (deg)&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;Outward turning (deg/px)&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;Reliable-sector support (QC)&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Zone&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Sustained peak (deg)&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Net rotation (deg)&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Rotation rate (deg/px)&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Consistency&quot;</span><span class="p">,</span>
         <span class="p">]</span>
-        <span class="n">cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">rows</span><span class="p">))</span> <span class="k">if</span> <span class="n">rows</span> <span class="k">else</span> <span class="p">[(),</span> <span class="p">(),</span> <span class="p">(),</span> <span class="p">(),</span> <span class="p">(),</span> <span class="p">()]</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">rows</span><span class="p">))</span> <span class="k">if</span> <span class="n">rows</span> <span class="k">else</span> <span class="p">[(),</span> <span class="p">(),</span> <span class="p">(),</span> <span class="p">(),</span> <span class="p">()]</span>
         <span class="k">return</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span>
             <span class="n">go</span><span class="o">.</span><span class="n">Table</span><span class="p">(</span>
                 <span class="n">header</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">values</span><span class="o">=</span><span class="n">header</span><span class="p">),</span>
@@ -4198,28 +4193,54 @@
             <span class="p">)</span>
         <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">dash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">producer</span><span class="p">:</span> <span class="s2">&quot;MeasureOrientationZones | None&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">overrides</span><span class="p">,</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compose the three panels into one stacked ``go.Figure``.</span>
 
-<span class="sd">        Mirrors :meth:`GridFitReport.dash`: render each ``@figure`` spec, detect</span>
-<span class="sd">        table vs xy panels, build ``make_subplots`` with matching per-row</span>
-<span class="sd">        ``specs``, transfer traces, carry the overview panel&#39;s shapes/annotations</span>
-<span class="sd">        (zone rings and R/turning badges are shapes/annotations the generic</span>
-<span class="sd">        trace-copy would drop), and apply the house theme.</span>
+<span class="sd">        Renders the three panels from call-time inputs, detects table versus xy</span>
+<span class="sd">        panels, builds matching subplots, transfers traces, carries the overview</span>
+<span class="sd">        shapes and annotations, and applies the house theme.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            subject: Unused (this helper holds its own state); accepted only to</span>
-<span class="sd">                match the :meth:`FigureProvider.dash` signature.</span>
+<span class="sd">            subject: Image consumed by this ``PlotImage`` report.</span>
+<span class="sd">            producer: The :class:`MeasureOrientationZones` operation whose</span>
+<span class="sd">                settings and compact cache supply the summaries. It is not</span>
+<span class="sd">                stored on this object.</span>
+<span class="sd">            **overrides: Plot-specific overrides are unsupported.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            A single themed ``plotly.graph_objects.Figure``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">producer</span><span class="p">,</span> <span class="n">MeasureOrientationZones</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;report(): a MeasureOrientationZones producer is required&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">overrides</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;report(): unsupported override(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">overrides</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">subject</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;report(): an image subject is required&quot;</span><span class="p">)</span>
+
         <span class="kn">from</span><span class="w"> </span><span class="nn">plotly.subplots</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_subplots</span>
 
         <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.viz.figures._theme</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_theme</span>
 
-        <span class="n">specs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_figures</span><span class="p">()</span>
-        <span class="n">rendered</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_render_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">specs</span><span class="p">]</span>
+        <span class="n">titles</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;Orientation-field overlay&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Coherence map&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Primary outward-rotation metrics&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">rendered</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_panel_overview</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">producer</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_panel_coherence</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">producer</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_panel_summary</span><span class="p">(</span><span class="n">producer</span><span class="p">),</span>
+        <span class="p">]</span>
         <span class="n">is_table</span> <span class="o">=</span> <span class="p">[</span>
             <span class="nb">bool</span><span class="p">(</span><span class="n">fig</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="ow">and</span> <span class="n">fig</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;table&quot;</span> <span class="k">for</span> <span class="n">fig</span> <span class="ow">in</span> <span class="n">rendered</span>
         <span class="p">]</span>
@@ -4228,14 +4249,14 @@
             <span class="k">for</span> <span class="n">tbl</span> <span class="ow">in</span> <span class="n">is_table</span>
         <span class="p">]</span>
         <span class="n">composed</span> <span class="o">=</span> <span class="n">make_subplots</span><span class="p">(</span>
-            <span class="n">rows</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">specs</span><span class="p">),</span>
+            <span class="n">rows</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">rendered</span><span class="p">),</span>
             <span class="n">cols</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-            <span class="n">subplot_titles</span><span class="o">=</span><span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">title</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">specs</span><span class="p">],</span>
+            <span class="n">subplot_titles</span><span class="o">=</span><span class="n">titles</span><span class="p">,</span>
             <span class="n">specs</span><span class="o">=</span><span class="n">row_specs</span><span class="p">,</span>
             <span class="n">vertical_spacing</span><span class="o">=</span><span class="mf">0.06</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="c1"># ``xy_row`` counts cartesian panels: a table cell creates no x/y axis,</span>
-        <span class="c1"># so the Nth xy panel owns axis number N (mirrors GridFitReport.dash).</span>
+        <span class="c1"># so the Nth xy panel owns axis number N (mirrors GridFitReport.report).</span>
         <span class="n">xy_row</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">for</span> <span class="n">row</span><span class="p">,</span> <span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">tbl</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">rendered</span><span class="p">,</span> <span class="n">is_table</span><span class="p">),</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">trace</span> <span class="ow">in</span> <span class="n">sub</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
@@ -4259,7 +4280,7 @@
                         <span class="n">payload</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">axis</span><span class="si">}{</span><span class="n">axis_suffix</span><span class="si">}{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="n">composed</span><span class="o">.</span><span class="n">add_annotation</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
         <span class="n">composed</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
-            <span class="n">height</span><span class="o">=</span><span class="mi">420</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">specs</span><span class="p">),</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">420</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">rendered</span><span class="p">),</span>
             <span class="n">title_text</span><span class="o">=</span><span class="s2">&quot;Orientation-Field Diagnostics&quot;</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">apply_theme</span><span class="p">(</span><span class="n">composed</span><span class="p">)</span>

@@ -19,7 +19,6 @@ phenotypic.grid.AutoGridFinder
       ~AutoGridFinder.__init__
       ~AutoGridFinder.construct
       ~AutoGridFinder.copy
-      ~AutoGridFinder.dashboard
       ~AutoGridFinder.dict
       ~AutoGridFinder.from_json
       ~AutoGridFinder.from_orm
@@ -41,6 +40,7 @@ phenotypic.grid.AutoGridFinder
       ~AutoGridFinder.parse_file
       ~AutoGridFinder.parse_obj
       ~AutoGridFinder.parse_raw
+      ~AutoGridFinder.report
       ~AutoGridFinder.schema
       ~AutoGridFinder.schema_json
       ~AutoGridFinder.to_json

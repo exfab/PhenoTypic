@@ -1,0 +1,33 @@
+phenotypic.sdk\_.AnalysisArtifactPaths
+======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: AnalysisArtifactPaths
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~AnalysisArtifactPaths.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~AnalysisArtifactPaths.csv
+      ~AnalysisArtifactPaths.parquet
+      ~AnalysisArtifactPaths.manifest
+   
+   

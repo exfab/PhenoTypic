@@ -20,7 +20,6 @@ phenotypic.analysis.ICC
       ~ICC.analyze
       ~ICC.construct
       ~ICC.copy
-      ~ICC.dash
       ~ICC.dict
       ~ICC.flag_col
       ~ICC.flagged_keys

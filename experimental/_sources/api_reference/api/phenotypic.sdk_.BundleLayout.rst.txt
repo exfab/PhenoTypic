@@ -31,8 +31,6 @@ phenotypic.sdk\_.BundleLayout
 
    .. autosummary::
    
-      ~BundleLayout.analysis_csv
-      ~BundleLayout.analysis_parquet
       ~BundleLayout.curation_labels_parquet
       ~BundleLayout.custom_categories_json
       ~BundleLayout.error_analysis_csv
@@ -45,6 +43,7 @@ phenotypic.sdk\_.BundleLayout
       ~BundleLayout.mirror_csv
       ~BundleLayout.mirror_parquet
       ~BundleLayout.pipeline_config_path
+      ~BundleLayout.plots_dir
       ~BundleLayout.qc_dir
       ~BundleLayout.qc_duckdb
       ~BundleLayout.qc_review_state_path

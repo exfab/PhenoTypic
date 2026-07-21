@@ -20,8 +20,6 @@ phenotypic.measure.MeasureOrientationZones
       ~MeasureOrientationZones.construct
       ~MeasureOrientationZones.copy
       ~MeasureOrientationZones.cumulative_rotation_overlay
-      ~MeasureOrientationZones.dash
-      ~MeasureOrientationZones.dashboard
       ~MeasureOrientationZones.dict
       ~MeasureOrientationZones.fiber_bend_overlay
       ~MeasureOrientationZones.figures
@@ -46,6 +44,7 @@ phenotypic.measure.MeasureOrientationZones
       ~MeasureOrientationZones.parse_file
       ~MeasureOrientationZones.parse_obj
       ~MeasureOrientationZones.parse_raw
+      ~MeasureOrientationZones.report
       ~MeasureOrientationZones.schema
       ~MeasureOrientationZones.schema_json
       ~MeasureOrientationZones.to_json
@@ -73,7 +72,6 @@ phenotypic.measure.MeasureOrientationZones
       ~MeasureOrientationZones.outward_peak_window_rings
       ~MeasureOrientationZones.outward_min_run_rings
       ~MeasureOrientationZones.include_diagnostics
-      ~MeasureOrientationZones.quiver_block
       ~MeasureOrientationZones.n_annuli
       ~MeasureOrientationZones.pelt_penalty
       ~MeasureOrientationZones.symmetry_threshold
@@ -85,5 +83,6 @@ phenotypic.measure.MeasureOrientationZones
       ~MeasureOrientationZones.tau_core
       ~MeasureOrientationZones.tau_dense
       ~MeasureOrientationZones.tau_sparse
+      ~MeasureOrientationZones.quiver_block
    
    

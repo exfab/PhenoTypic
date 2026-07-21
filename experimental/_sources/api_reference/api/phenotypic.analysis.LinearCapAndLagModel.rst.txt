@@ -20,9 +20,11 @@ phenotypic.analysis.LinearCapAndLagModel
       ~LinearCapAndLagModel.analyze
       ~LinearCapAndLagModel.construct
       ~LinearCapAndLagModel.copy
-      ~LinearCapAndLagModel.dash
       ~LinearCapAndLagModel.dict
+      ~LinearCapAndLagModel.figures
       ~LinearCapAndLagModel.from_orm
+      ~LinearCapAndLagModel.inspect
+      ~LinearCapAndLagModel.iter_figures
       ~LinearCapAndLagModel.json
       ~LinearCapAndLagModel.model_construct
       ~LinearCapAndLagModel.model_copy
@@ -39,6 +41,7 @@ phenotypic.analysis.LinearCapAndLagModel
       ~LinearCapAndLagModel.parse_file
       ~LinearCapAndLagModel.parse_obj
       ~LinearCapAndLagModel.parse_raw
+      ~LinearCapAndLagModel.report
       ~LinearCapAndLagModel.results
       ~LinearCapAndLagModel.schema
       ~LinearCapAndLagModel.schema_json

@@ -20,7 +20,6 @@ phenotypic.analysis.MaxModifiedZScore
       ~MaxModifiedZScore.analyze
       ~MaxModifiedZScore.construct
       ~MaxModifiedZScore.copy
-      ~MaxModifiedZScore.dash
       ~MaxModifiedZScore.dict
       ~MaxModifiedZScore.flag_col
       ~MaxModifiedZScore.flagged_keys
