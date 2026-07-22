@@ -215,7 +215,11 @@ self-consistent but high-residual fit (~450× higher in the challenger's
 experiment), so the correct registration wins cleanly. This multi-start is what
 defeats the one-cell-shift trap: there is no reliable in-place "escape" once ICP
 locks onto a shifted lattice, so we instead *start* from every plausible placement
-and let the residual choose.
+and let the residual choose. Before residual selection, discard any refined
+placement whose clipped row or column edges are non-finite or not strictly
+increasing. This feasibility check removes whole-pitch registrations that would
+collapse an outer cell at the frame boundary. Among residual ties within the
+sub-pixel tolerance, explicitly prefer the fitted center nearest the image center.
 
 Each refinement iterates (`max_iter`, default ~5):
 
@@ -251,8 +255,13 @@ exceeds `residual_fraction · p`, escalate to the fallback ladder §6 (warn).
 
 Cell centers → edges as the **midlines between adjacent centers**, with outer
 edges extrapolated by `± p/2`, producing `R+1` row edges and `C+1` col edges,
-clipped to image bounds. `_operate` then calls `_get_grid_info(...)` for faithful,
-many-to-one assignment (no collision handling).
+clipped to image bounds. One outer edge may clip while leaving a valid partial
+edge cell. Two or more edges clipping to the same boundary is invalid because it
+creates a zero-width cell. The finder enforces finite, bounded, strictly increasing
+edges before `_operate` calls `_get_grid_info(...)` for faithful, many-to-one
+assignment (no collision handling). Column feasibility uses the assignment layer's
+effective upper bound `W - 1`, so its final clipping step cannot collapse a
+sub-pixel partial cell that looked valid against `W`.
 
 ---
 
@@ -269,6 +278,7 @@ Evaluated top-down; first matching rule applies. Every fallback emits a
 | `p_min ≥ p_max` | Contradiction (object span exceeds what the frame can hold at the expected count → likely a detection outlier or wrong `R/C`). Clamp: drop to image-fit pitch `p = p_max`, center at image center, warn loudly. |
 | degenerate comb-response (`R_peak < absolute_floor`) | No periodicity detectable; fall back to uniform centered grid at the span-derived `p_min` (object floor), warn. |
 | ICP failed (best multi-start residual `> residual_fraction·p`, **or** every candidate tripped the singularity guard) | Use the comb-response `p` (if it cleared the floor) with center = image center as a uniform grid; else uniform centered grid at `p_min`. Warn. |
+| Every refined registration has invalid edge geometry | Reject the registrations and use the bounded comb-response `p` with center = image center. Warn with the `invalid-geometry` reason. |
 
 The floor is **2 colonies** for any *inferred* pitch; `N ∈ {0,1}` only guarantees a
 non-crashing centered default.
@@ -370,6 +380,9 @@ recovered `p, cx, cy` within tolerance across:
 - clustered-corner occupancy (octave stress);
 - **off-center plate** (true center offset > one pitch from image center):
   multi-start recovers the correct registration (regression for challenger #5);
+- **boundary-collapse registration**: a lower-residual whole-pitch placement that
+  clips two edges to one boundary is rejected in favor of the feasible placement;
+- **single clipped outer edge**: remains valid and does not trigger recentering;
 - **one-cell-shifted seed**: assert multi-start selects the correct placement, not
   the shifted local minimum (regression for challenger #2);
 - 2-colony floor (assert bounded, non-crashing, within `[p_min,p_max]`);

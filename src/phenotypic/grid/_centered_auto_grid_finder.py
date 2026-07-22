@@ -51,7 +51,9 @@ class CenteredAutoGridFinder(GridFinder):
         nrows/ncols must match the physical plate; a mismatch produces a wrong
         grid silently (no internal guard). For multiple colonies per well use a
         downstream refiner (KeepNearestCenter / KeepSectionLargest /
-        MergeWithinSection); this finder assigns faithfully, many-to-one.
+        MergeWithinSection); this finder assigns faithfully, many-to-one. A fitted
+        grid may have one outer edge clipped to the image boundary, but placements
+        that would collapse an entire cell are rejected before assignment.
 
     Examples:
         Default 96-well fit on the bundled synthetic plate:
@@ -154,12 +156,49 @@ class CenteredAutoGridFinder(GridFinder):
                 cands.append(float(c))
         return sorted(cands, key=lambda c: abs(c - img_c))
 
-    def _icp_refine(self, x: np.ndarray, y: np.ndarray,
-                    cx: float, cy: float, p: float):
+    @staticmethod
+    def _bounded_solution(
+            solution: np.ndarray,
+            x: np.ndarray,
+            y: np.ndarray,
+            a: np.ndarray,
+            b: np.ndarray,
+            p_min: float,
+            p_max: float,
+    ) -> tuple[float, float, float] | None:
+        """Apply pitch bounds to a lattice solve and re-optimize its center."""
+        cx, cy, p = (float(value) for value in solution)
+        if not np.all(np.isfinite([cx, cy, p])):
+            return None
+
+        bounded_p = float(np.clip(p, p_min, p_max))
+        if bounded_p != p:
+            cx = float(np.mean(x - a * bounded_p))
+            cy = float(np.mean(y - b * bounded_p))
+        return cx, cy, bounded_p
+
+    def _icp_refine(
+            self,
+            x: np.ndarray,
+            y: np.ndarray,
+            cx: float,
+            cy: float,
+            p: float,
+            p_min: float,
+            p_max: float,
+    ) -> tuple[float, float, float, float] | None:
         """Closed-form assign->solve ICP from one seed. Returns (cx,cy,p,mean_residual)
-        or None if the design matrix is singular (cannot constrain pitch)."""
+        or None if the design matrix is singular (cannot constrain pitch).
+
+        The fitted pitch is constrained to ``[p_min, p_max]`` after every solve.
+        When a bound is active, the grid center is re-optimized for that fixed pitch.
+        """
+        if not (np.isfinite(p_min) and np.isfinite(p_max) and 0 < p_min <= p_max):
+            return None
+
         R, C, N = self.nrows, self.ncols, len(x)
         a = b = None
+        p = float(np.clip(p, p_min, p_max))
         for _ in range(self.max_iter):
             jx = np.clip(np.round((x - cx) / p + (C - 1) / 2.0), 0, C - 1)
             iy = np.clip(np.round((y - cy) / p + (R - 1) / 2.0), 0, R - 1)
@@ -171,7 +210,12 @@ class CenteredAutoGridFinder(GridFinder):
             if abs(np.linalg.det(A)) < self.DET_EPS:
                 return None
             rhs = np.array([x.sum(), y.sum(), (a * x + b * y).sum()])
-            cx, cy, p = np.linalg.solve(A, rhs)
+            bounded = self._bounded_solution(
+                np.linalg.solve(A, rhs), x, y, a, b, p_min, p_max
+            )
+            if bounded is None:
+                return None
+            cx, cy, p = bounded
             # one-pass robust trim then re-solve on inliers
             res = np.hypot(x - (cx + a * p), y - (cy + b * p))
             inl = res <= self.residual_fraction * p
@@ -181,41 +225,114 @@ class CenteredAutoGridFinder(GridFinder):
                                [0.0, ni, bi.sum()],
                                [ai.sum(), bi.sum(), (ai * ai + bi * bi).sum()]])
                 if abs(np.linalg.det(A2)) >= self.DET_EPS:
-                    cx, cy, p = np.linalg.solve(A2, np.array([xi.sum(), yi.sum(),
-                                                              (ai * xi + bi * yi).sum()]))
+                    bounded = self._bounded_solution(
+                        np.linalg.solve(
+                            A2,
+                            np.array([
+                                xi.sum(),
+                                yi.sum(),
+                                (ai * xi + bi * yi).sum(),
+                            ]),
+                        ),
+                        xi,
+                        yi,
+                        ai,
+                        bi,
+                        p_min,
+                        p_max,
+                    )
+                    if bounded is None:
+                        return None
+                    cx, cy, p = bounded
         if a is None or b is None:
             # max_iter <= 0: the loop never ran, so nothing was fitted.
             return None
         res = np.hypot(x - (cx + a * p), y - (cy + b * p))
         return float(cx), float(cy), float(p), float(res.mean())
 
-    def _multi_start_refine(self, x: np.ndarray, y: np.ndarray, p0: float,
-                            cx_cands: list[float], cy_cands: list[float]):
-        """Run ICP from every (cx,cy) candidate; keep the lowest-residual result.
+    def _multi_start_refine(
+            self,
+            x: np.ndarray,
+            y: np.ndarray,
+            p0: float,
+            p_min: float,
+            p_max: float,
+            cx_cands: list[float],
+            cy_cands: list[float],
+            H: int,
+            W: int,
+    ) -> tuple[tuple[float, float, float, float] | None, bool]:
+        """Run ICP from every candidate and keep the best feasible registration.
 
-        Candidates are supplied nearest-image-center first (the ordering prior). A
-        later candidate replaces the current best only if it is *meaningfully* lower
-        (by ``_RESIDUAL_TIE_TOL`` px), so a row/column-translation-invariant sparse
-        layout — where several integer placements all fit with ~0 residual and differ
-        only by floating-point noise — resolves to the placement nearest the image
-        center rather than to whichever tie computed a marginally smaller float.
+        Residual is the primary score. Fits tied within ``_RESIDUAL_TIE_TOL``
+        explicitly prefer the grid center nearest the image center. Candidates whose
+        clipped edges collapse a cell are discarded before scoring. The returned
+        boolean records whether ICP produced any result, including infeasible ones.
         """
-        best = None
+        best: tuple[float, float, float, float] | None = None
+        best_center_distance = np.inf
+        saw_refined_candidate = False
         for cx0 in cx_cands:
             for cy0 in cy_cands:
-                out = self._icp_refine(x, y, cx0, cy0, p0)
+                out = self._icp_refine(x, y, cx0, cy0, p0, p_min, p_max)
                 if out is None:
                     continue
-                if best is None or out[3] < best[3] - self._RESIDUAL_TIE_TOL:
+                saw_refined_candidate = True
+                cx, cy, p, residual = out
+                if not np.all(np.isfinite(out)) or not (p_min <= p <= p_max):
+                    continue
+                row_edges = self._axis_edges(cy, p, self.nrows, H)
+                col_edges = self._axis_edges(cx, p, self.ncols, W - 1)
+                if not (
+                    self._axis_edges_are_valid(row_edges, self.nrows, H)
+                    and self._axis_edges_are_valid(col_edges, self.ncols, W - 1)
+                ):
+                    continue
+
+                center_distance = float(
+                    np.hypot(cx - (W - 1) / 2.0, cy - H / 2.0)
+                )
+                residual_tied = (
+                    best is not None
+                    and abs(residual - best[3]) <= self._RESIDUAL_TIE_TOL
+                )
+                if (
+                    best is None
+                    or residual < best[3] - self._RESIDUAL_TIE_TOL
+                    or (residual_tied and center_distance < best_center_distance)
+                ):
                     best = out
-        return best
+                    best_center_distance = center_distance
+        return best, saw_refined_candidate
 
     # ---- centers -> edges ----
     def _axis_edges(self, center: float, p: float, n_cells: int, image_dim: int) -> np.ndarray:
-        """n+1 edges = cell-center midlines with outer edges at +/- p/2, clipped to [0, image_dim]."""
+        """Return clipped cell midlines without silently repairing collapsed cells.
+
+        A single outer edge may clip to the frame while the partition remains valid.
+        Callers use :meth:`_axis_edges_are_valid` to reject placements where two or
+        more clipped edges coincide.
+        """
         first_center = center - (n_cells - 1) / 2.0 * p
         edges = first_center - p / 2.0 + np.arange(n_cells + 1) * p
         return np.clip(edges, 0, image_dim)
+
+    @staticmethod
+    def _axis_edges_are_valid(
+            edges: np.ndarray,
+            n_cells: int,
+            image_dim: int,
+    ) -> bool:
+        """Return whether edges form a finite, bounded, strict cell partition."""
+        edges = np.asarray(edges)
+        return bool(
+            edges.ndim == 1
+            and len(edges) == n_cells + 1
+            and np.all(np.isfinite(edges))
+            and np.all(edges >= 0)
+            and np.all(edges <= image_dim)
+            and np.all(np.diff(edges) > 0)
+        )
 
     @staticmethod
     def _extract_centers(image: "Image"):
@@ -230,10 +347,64 @@ class CenteredAutoGridFinder(GridFinder):
                           CenteredAutoGridFinderFallbackWarning, stacklevel=2)
 
     def _centered_uniform(self, p: float, H: int, W: int):
-        """Centered uniform grid at pitch p (image-centered)."""
-        re = self._axis_edges(H / 2.0, p, self.nrows, H)
-        ce = self._axis_edges(W / 2.0, p, self.ncols, W)
-        return re, ce
+        """Return a strict image-centered grid, safely bounding degenerate pitches."""
+        centers_fit_max = min(
+            H / max(self.nrows - 1, 1),
+            (W - 1) / max(self.ncols - 1, 1),
+        )
+        full_cells_pitch = min(
+            H / max(self.nrows, 1),
+            (W - 1) / max(self.ncols, 1),
+        )
+        if np.isfinite(p) and p > 0:
+            safe_p = min(float(p), centers_fit_max)
+        else:
+            safe_p = full_cells_pitch
+
+        row_edges = self._axis_edges(H / 2.0, safe_p, self.nrows, H)
+        col_edges = self._axis_edges((W - 1) / 2.0, safe_p, self.ncols, W - 1)
+        if (
+            self._axis_edges_are_valid(row_edges, self.nrows, H)
+            and self._axis_edges_are_valid(col_edges, self.ncols, W - 1)
+        ):
+            return row_edges, col_edges
+
+        row_edges = self._axis_edges(H / 2.0, full_cells_pitch, self.nrows, H)
+        col_edges = self._axis_edges(
+            (W - 1) / 2.0, full_cells_pitch, self.ncols, W - 1
+        )
+        if (
+            self._axis_edges_are_valid(row_edges, self.nrows, H)
+            and self._axis_edges_are_valid(col_edges, self.ncols, W - 1)
+        ):
+            return row_edges, col_edges
+
+        # Pathological dimensions or floating-point resolution: preserve the edge
+        # contract independently on each axis rather than returning collapsed bins.
+        return (
+            self._uniform_edges(self.nrows, H),
+            self._uniform_edges(self.ncols, W - 1),
+        )
+
+    def _finalize_grid_edges(
+            self,
+            row_edges: np.ndarray,
+            col_edges: np.ndarray,
+            fallback_pitch: float,
+            H: int,
+            W: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Enforce the strict-edge postcondition before delegating to ``pd.cut``."""
+        if (
+            self._axis_edges_are_valid(row_edges, self.nrows, H)
+            and self._axis_edges_are_valid(col_edges, self.ncols, W - 1)
+        ):
+            return row_edges, col_edges
+        self._warn(
+            "[invalid-geometry] fitted edges do not form a strict partition; "
+            "centered uniform fallback."
+        )
+        return self._centered_uniform(fallback_pitch, H, W)
 
     def _fit_grid_from_centers(self, x: np.ndarray, y: np.ndarray, H: int, W: int):
         """Full pipeline on raw center arrays -> (row_edges, col_edges), with the
@@ -258,15 +429,35 @@ class CenteredAutoGridFinder(GridFinder):
         if N <= self.min_fit_objects:
             self._warn(f"[few-objects] N={N}: bounded-ambiguous fit (best-effort, not confident).")
 
-        cx_c = self._center_candidates(x, p0, self.ncols, W)
+        cx_c = self._center_candidates(x, p0, self.ncols, W - 1)
         cy_c = self._center_candidates(y, p0, self.nrows, H)
-        best = self._multi_start_refine(x, y, p0, cx_c, cy_c)
-        if best is None or best[3] > self.residual_fraction * best[2]:
+        best, saw_refined_candidate = self._multi_start_refine(
+            x, y, p0, p_min, p_max, cx_c, cy_c, H, W
+        )
+        if best is None:
+            if saw_refined_candidate:
+                self._warn(
+                    "[invalid-geometry] ICP registrations collapse one or more "
+                    "grid cells; centered uniform at comb pitch."
+                )
+            else:
+                self._warn(
+                    "[icp-failed] no registration could be refined; "
+                    "centered uniform at comb pitch."
+                )
+            return self._centered_uniform(p0, H, W)
+        if best[3] > self.residual_fraction * best[2]:
             self._warn("[icp-failed] no acceptable registration; centered uniform at comb pitch.")
             return self._centered_uniform(p0, H, W)
 
         cx, cy, p, _res = best
-        return self._axis_edges(cy, p, self.nrows, H), self._axis_edges(cx, p, self.ncols, W)
+        return self._finalize_grid_edges(
+            self._axis_edges(cy, p, self.nrows, H),
+            self._axis_edges(cx, p, self.ncols, W - 1),
+            p0,
+            H,
+            W,
+        )
 
     # ---- GridFinder overrides ----
     def get_row_edges(self, image: "Image") -> np.ndarray:

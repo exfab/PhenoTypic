@@ -1,9 +1,10 @@
 import numpy as np
+import pandas as pd
 import pytest
 
 from phenotypic.abc_ import GridFinder
 from phenotypic.grid import CenteredAutoGridFinder, CenteredAutoGridFinderFallbackWarning
-from phenotypic.schema import GRID
+from phenotypic.schema import BBOX, GRID
 
 
 def test_is_gridfinder_and_constructs_keyword_only():
@@ -101,7 +102,9 @@ def test_icp_recovers_params_from_good_seed():
     p_true, cx, cy = 404.0, 2545.0, 1575.0
     occ = [(1, 0), (1, 4), (2, 3), (3, 5), (5, 8), (6, 11), (3, 1), (5, 4), (2, 7), (6, 0)]
     x, y = _lattice_points(p_true, cx, cy, 8, 12, occ)
-    out = f._icp_refine(x, y, cx + 30, cy - 25, p_true + 6)  # seed within ~0.1 cell
+    out = f._icp_refine(
+        x, y, cx + 30, cy - 25, p_true + 6, p_min=300.0, p_max=450.0
+    )  # seed within ~0.1 cell
     assert out is not None
     rcx, rcy, rp, res = out
     assert rp == pytest.approx(p_true, abs=1.0)
@@ -117,7 +120,9 @@ def test_multistart_rejects_one_cell_shift():
     x, y = _lattice_points(p_true, cx, cy, 8, 12, occ)
     # A one-cell-shifted seed alone gets TRAPPED on a high-residual lattice: edge
     # colonies (col 0, col 11) clip when their index shifts, so the fit can't match.
-    shifted = f._icp_refine(x, y, cx + p_true, cy, p_true)
+    shifted = f._icp_refine(
+        x, y, cx + p_true, cy, p_true, p_min=300.0, p_max=450.0
+    )
     assert shifted is not None
     assert shifted[3] > 0.15 * p_true                      # the trap: large residual
     # Multi-start over all candidates escapes the trap by selecting the lowest-
@@ -125,8 +130,19 @@ def test_multistart_rejects_one_cell_shift():
     # decisive gap (res << shifted) disappears.
     cx_c = f._center_candidates(x, p_true, f.ncols, W)
     cy_c = f._center_candidates(y, p_true, f.nrows, H)
-    best = f._multi_start_refine(x, y, p_true, cx_c, cy_c)
+    best, saw_refined = f._multi_start_refine(
+        x,
+        y,
+        p_true,
+        300.0,
+        450.0,
+        cx_c,
+        cy_c,
+        H,
+        W,
+    )
     assert best is not None
+    assert saw_refined
     bcx, bcy, bp, res = best
     assert res < 0.05 * p_true                             # decisively beats the trap
     assert res < shifted[3] / 3
@@ -138,7 +154,9 @@ def test_icp_singular_returns_none_all_one_cell():
     # all points in a tiny cluster -> every assignment rounds to one cell -> det ~ 0
     x = np.array([2500.0, 2503.0, 2498.0])
     y = np.array([1570.0, 1572.0, 1569.0])
-    out = f._icp_refine(x, y, 2533.0, 1576.0, 404.0)
+    out = f._icp_refine(
+        x, y, 2533.0, 1576.0, 404.0, p_min=300.0, p_max=450.0
+    )
     assert out is None
 
 
@@ -148,6 +166,166 @@ def test_axis_edges_length_sorted_clipped():
     assert len(edges) == 9                  # n+1
     assert np.all(np.diff(edges) > 0)       # sorted ascending
     assert edges[0] >= 0 and edges[-1] <= 3152
+
+
+def test_axis_edge_validation_rejects_reported_and_mirrored_collapse():
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+
+    reported_rows = f._axis_edges(
+        center=1983.0, p=403.2, n_cells=8, image_dim=3002
+    )
+    assert reported_rows[-2] == reported_rows[-1] == 3002.0
+    assert not f._axis_edges_are_valid(reported_rows, 8, 3002)
+
+    mirrored_cols = f._axis_edges(
+        center=2800.0, p=350.0, n_cells=12, image_dim=4500
+    )
+    assert mirrored_cols[-2] == mirrored_cols[-1] == 4500.0
+    assert not f._axis_edges_are_valid(mirrored_cols, 12, 4500)
+
+    one_pitch_up = f._axis_edges(
+        center=1579.8, p=403.2, n_cells=8, image_dim=3002
+    )
+    assert f._axis_edges_are_valid(one_pitch_up, 8, 3002)
+
+
+def test_multistart_uses_downstream_effective_column_bound(monkeypatch):
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    H, W, p = 3002, 1099, 99.0
+    feasible_cx = (W - 1) / 2.0
+    subpixel_last_cell_cx = 603.5
+
+    pre_assignment_edges = f._axis_edges(
+        subpixel_last_cell_cx, p, f.ncols, W
+    )
+    assert f._axis_edges_are_valid(pre_assignment_edges, f.ncols, W)
+    downstream_edges = np.clip(pre_assignment_edges, 0, W - 1)
+    assert not f._axis_edges_are_valid(downstream_edges, f.ncols, W - 1)
+
+    def fake_icp_refine(self, x, y, cx, cy, p0, p_min, p_max):
+        del self, x, y, p0, p_min, p_max
+        residual = 0.2 if cx == feasible_cx else 0.1
+        return float(cx), float(cy), p, residual
+
+    monkeypatch.setattr(
+        CenteredAutoGridFinder, "_icp_refine", fake_icp_refine
+    )
+    best, saw_refined = f._multi_start_refine(
+        np.array([feasible_cx]),
+        np.array([H / 2.0]),
+        p,
+        90.0,
+        110.0,
+        [feasible_cx, subpixel_last_cell_cx],
+        [H / 2.0],
+        H,
+        W,
+    )
+
+    assert saw_refined
+    assert best is not None
+    assert best[0] == feasible_cx
+    col_edges = f._axis_edges(best[0], best[2], f.ncols, W - 1)
+    table = pd.DataFrame({str(BBOX.CENTER_CC): [54.0, 153.0]})
+    assigned = f._add_col_number_info(table, col_edges, (H, W))
+    assert assigned[str(GRID.COL_NUM)].notna().all()
+
+
+def test_multistart_rejects_collapsed_fit_and_maps_rows_b_through_g(monkeypatch):
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    H, W, p = 3002, 5066, 403.2
+    feasible_cy = 1579.8
+    collapsed_cy = 1983.0
+
+    def fake_icp_refine(
+        self, x, y, cx, cy, p0, p_min, p_max
+    ):  # pragma: no cover - signature documents the private seam
+        del self, x, y, p0, p_min, p_max
+        residual = 0.2 if cy == feasible_cy else 0.1
+        return float(cx), float(cy), p, residual
+
+    monkeypatch.setattr(
+        CenteredAutoGridFinder, "_icp_refine", fake_icp_refine
+    )
+    best, saw_refined = f._multi_start_refine(
+        np.array([W / 2.0]),
+        np.array([571.8]),
+        p,
+        350.0,
+        430.0,
+        [W / 2.0],
+        [feasible_cy, collapsed_cy],
+        H,
+        W,
+    )
+
+    assert saw_refined
+    assert best is not None
+    assert best[1] == feasible_cy
+    row_edges = f._axis_edges(best[1], best[2], f.nrows, H)
+    assert f._axis_edges_are_valid(row_edges, f.nrows, H)
+
+    row_centers = 571.8 + p * np.arange(6)
+    table = pd.DataFrame({str(BBOX.CENTER_RR): row_centers})
+    assigned = f._add_row_number_info(table, row_edges, (H, W))
+    assert assigned[str(GRID.ROW_NUM)].astype(int).tolist() == list(range(1, 7))
+
+
+def test_reported_sparse_rows_fit_end_to_end_without_duplicate_bins():
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    H, W, p = 3002, 5066, 403.2
+    cx, cy = W / 2.0, 1579.8
+    occupied = [(i, j) for i in range(1, 7) for j in range(12)]
+    x, y = _lattice_points(p, cx, cy, 8, 12, occupied)
+
+    row_edges, col_edges = f._fit_grid_from_centers(x, y, H, W)
+
+    assert _edges_ok(row_edges, col_edges, 8, 12, H, W)
+    row_centers = np.unique(y)
+    table = pd.DataFrame({str(BBOX.CENTER_RR): row_centers})
+    assigned = f._add_row_number_info(table, row_edges, (H, W))
+    assert assigned[str(GRID.ROW_NUM)].astype(int).tolist() == list(range(1, 7))
+
+
+def test_multistart_tied_residual_prefers_nearest_image_center(monkeypatch):
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    H, W, p = 3002, 5066, 300.0
+
+    def fake_icp_refine(self, x, y, cx, cy, p0, p_min, p_max):
+        del self, x, y, p0, p_min, p_max
+        return float(cx), float(cy), p, 1.0
+
+    monkeypatch.setattr(
+        CenteredAutoGridFinder, "_icp_refine", fake_icp_refine
+    )
+    best, _ = f._multi_start_refine(
+        np.array([W / 2.0]),
+        np.array([H / 2.0]),
+        p,
+        250.0,
+        350.0,
+        [W / 2.0],
+        [1400.0, 1600.0],
+        H,
+        W,
+    )
+
+    assert best is not None
+    assert best[1] == 1600.0
+
+
+def test_bounded_solution_reoptimizes_center_for_clamped_pitch():
+    solution = np.array([400.0, 300.0, 500.0])
+    x = np.array([0.0, 1000.0])
+    y = np.array([100.0, 700.0])
+    a = np.array([-1.0, 1.0])
+    b = np.array([-1.0, 1.0])
+
+    bounded = CenteredAutoGridFinder._bounded_solution(
+        solution, x, y, a, b, p_min=200.0, p_max=400.0
+    )
+
+    assert bounded == pytest.approx((500.0, 400.0, 400.0))
 
 
 def test_fit_grid_returns_edges_and_lands_on_lattice():
@@ -178,6 +356,43 @@ def test_zero_and_one_colony_uniform_no_crash():
     for x, y in [(np.array([]), np.array([])), (np.array([2500.0]), np.array([1570.0]))]:
         re, ce = f._fit_grid_from_centers(x, y, H, W)
         assert _edges_ok(re, ce, 8, 12, H, W)
+
+
+def test_zero_span_degenerate_response_uses_strict_centered_fallback():
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    H, W = 3002, 5066
+    x = np.full(8, W / 2.0)
+    y = np.full(8, H / 2.0)
+
+    row_edges, col_edges = f._fit_grid_from_centers(x, y, H, W)
+
+    assert _edges_ok(row_edges, col_edges, 8, 12, H, W)
+
+
+def test_all_refined_candidates_infeasible_warns_and_falls_back(
+    monkeypatch,
+):
+    f = CenteredAutoGridFinder(nrows=8, ncols=12, warn=True)
+    H, W, p = 3002, 5066, 403.2
+    occ = [(i, j) for i in range(1, 7) for j in range(1, 11)]
+    x, y = _lattice_points(p, W / 2.0, H / 2.0, 8, 12, occ)
+
+    def fake_icp_refine(self, x, y, cx, cy, p0, p_min, p_max):
+        del self, x, y, cx, cy, p0, p_min, p_max
+        return W / 2.0, 1983.0, p, 0.1
+
+    monkeypatch.setattr(
+        CenteredAutoGridFinder, "_icp_refine", fake_icp_refine
+    )
+    with pytest.warns(
+        CenteredAutoGridFinderFallbackWarning,
+        match="invalid-geometry",
+    ):
+        row_edges, col_edges = f._fit_grid_from_centers(x, y, H, W)
+
+    assert _edges_ok(row_edges, col_edges, 8, 12, H, W)
+    assert row_edges[1:-1] + row_edges[-2:0:-1] == pytest.approx(H)
+    assert np.mean(np.diff(row_edges[1:-1])) == pytest.approx(p, abs=1.0)
 
 
 def test_degenerate_response_falls_back_without_exception():
@@ -219,3 +434,19 @@ def test_dense_plate_pitch_above_naive_ceiling_is_found():
     re, ce = f._fit_grid_from_centers(x, y, H, W)
     # recovered column pitch ~ 404 (not capped at 394)
     assert np.mean(np.diff(ce[1:-1])) == pytest.approx(p_true, abs=2.0)
+
+
+def test_valid_off_center_fit_beyond_one_pitch_is_preserved():
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    H, W = 3002, 4200
+    p_true = 300.0
+    cx, cy = W / 2.0, H / 2.0 + p_true + 1.0
+    occ = [(i, j) for i in range(8) for j in range(12)]
+    x, y = _lattice_points(p_true, cx, cy, 8, 12, occ)
+
+    row_edges, col_edges = f._fit_grid_from_centers(x, y, H, W)
+
+    assert _edges_ok(row_edges, col_edges, 8, 12, H, W)
+    assert row_edges[0] == pytest.approx(602.0, abs=2.0)
+    assert row_edges[-1] == pytest.approx(H, abs=2.0)
+    assert np.mean(np.diff(col_edges)) == pytest.approx(p_true, abs=2.0)
