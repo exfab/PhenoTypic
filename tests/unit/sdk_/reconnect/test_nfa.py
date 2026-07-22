@@ -315,7 +315,7 @@ def test_empty_broadcast_result_is_permitted_but_test_count_remains_conservative
     actual = binomial_nfa(
         np.empty((0, 1), dtype=np.int64),
         np.empty((0, 1), dtype=np.int64),
-        np.empty((1, 3), dtype=np.float64),
+        np.full((1, 3), 0.5, dtype=np.float64),
         n_tests=1.0,
     )
     assert actual.n.shape == (0, 3)
