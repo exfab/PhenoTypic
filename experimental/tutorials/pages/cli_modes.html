@@ -784,8 +784,9 @@ pipelines on two different images.</p>
 </section>
 <section id="surviving-interruptions">
 <h3>Surviving interruptions<a class="headerlink" href="#surviving-interruptions" title="Link to this heading">#</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">--resume</span></code> skips images that already have output, so an interrupted run picks up
-where it stopped. If everything is already done, the CLI says so and exits:</p>
+<p><code class="docutils literal notranslate"><span class="pre">--resume</span></code> skips completed work. Staged GPU pipelines infer the earliest required
+stage from their HDF, sidecar, and Stage-3 marker, including images with recorded
+intermediate-stage failures. If everything is already done, the CLI says so and exits:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipe.json<span class="w"> </span>--input<span class="w"> </span>./plates<span class="w"> </span>--output<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--image-type<span class="w"> </span>Image<span class="w"> </span>--resume
 <span class="c1"># ✓ All images already processed!</span>
@@ -794,12 +795,12 @@ where it stopped. If everything is already done, the CLI says so and exits:</p>
 <p>Four flags control what happens to prior state, and the CLI enforces the
 combinations:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--resume</span></code> — skip completed images. Failed images stay failed.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--retry-failures</span></code> — also re-process the failures. <strong>Requires <code class="docutils literal notranslate"><span class="pre">--resume</span></code>.</strong></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--resume</span></code> — skip completed images. Staged GPU failures resume automatically.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--retry-failures</span></code> — also re-process recorded CPU/legacy failures. <strong>Requires <code class="docutils literal notranslate"><span class="pre">--resume</span></code>.</strong></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--restart</span></code> — clear the state file and start over. <strong>Mutually exclusive with <code class="docutils literal notranslate"><span class="pre">--resume</span></code>.</strong></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--overwrite</span></code> — delete the output directory contents first. <strong>Mutually exclusive with <code class="docutils literal notranslate"><span class="pre">--resume</span></code>.</strong></p></li>
 </ul>
-<p>Use <code class="docutils literal notranslate"><span class="pre">--resume</span> <span class="pre">--retry-failures</span></code> after fixing whatever broke — a corrupt input
+<p>For CPU pipelines, use <code class="docutils literal notranslate"><span class="pre">--resume</span> <span class="pre">--retry-failures</span></code> after fixing whatever broke — a corrupt input
 file, an out-of-memory detector — to reprocess only the images that failed.</p>
 </section>
 </section>
@@ -956,7 +957,12 @@ is often faster than swapping.</p>
 <p>Use the <code class="docutils literal notranslate"><span class="pre">slurm_</span></code> prefix for standard SBATCH directives, or the convenience keys
 <code class="docutils literal notranslate"><span class="pre">mem_gb</span></code> and <code class="docutils literal notranslate"><span class="pre">time</span></code>. <strong><code class="docutils literal notranslate"><span class="pre">time</span></code> is in minutes, as an integer</strong> — <code class="docutils literal notranslate"><span class="pre">time=120</span></code>, not
 <code class="docutils literal notranslate"><span class="pre">time=02:00:00</span></code>. The CLI returns as soon as the jobs are submitted; add <code class="docutils literal notranslate"><span class="pre">--wait</span></code>
-to block and monitor them. <code class="docutils literal notranslate"><span class="pre">--force-local</span></code> overrides SLURM detection, which is
+to block and monitor them. A staged GPU run without <code class="docutils literal notranslate"><span class="pre">--wait</span></code> prints
+<code class="docutils literal notranslate"><span class="pre">PROCESSING</span> <span class="pre">SUBMITTED</span></code> and leaves aggregation, reports, and README publication
+to its dependent finalizer. It does not print a premature completion summary.
+With <code class="docutils literal notranslate"><span class="pre">--wait</span></code>, the CLI follows the active orchestration epoch through the
+finalizer completion marker. Ctrl+C detaches monitoring while the jobs continue.
+<code class="docutils literal notranslate"><span class="pre">--force-local</span></code> overrides SLURM detection, which is
 what you want when testing on a login node.</p>
 <p><code class="docutils literal notranslate"><span class="pre">--checkpoint-interval</span> <span class="pre">N</span></code> inserts checkpoint tasks every N images in a SLURM
 array so a walltime kill loses at most N images of progress.</p>
@@ -972,8 +978,8 @@ deltas over <code class="docutils literal notranslate"><span class="pre">--slurm
 the CPU profile in <code class="docutils literal notranslate"><span class="pre">--slurm</span></code>. <code class="docutils literal notranslate"><span class="pre">slurm_gpus_per_node=1</span></code> is added automatically.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--gpu-shards</span> <span class="pre">N</span></code> — parallel whole-GPU tasks (SLURM only; ignored locally).
 Set it to your concurrent-GPU count.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--gpu-workers-per-gpu</span> <span class="pre">W</span></code> — model replicas packed onto one physical GPU, to
-fill a large card with a small model.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--gpu-workers-per-gpu</span> <span class="pre">W</span></code> — reserved for future per-GPU replica packing. The
+current staged worker runs one resident model per GPU shard.</p></li>
 </ul>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>gpu_pipe.json<span class="w"> </span>--input<span class="w"> </span>./plates<span class="w"> </span>--output<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--slurm<span class="w"> </span><span class="nv">slurm_partition</span><span class="o">=</span>cpu<span class="w"> </span>--slurm<span class="w"> </span><span class="nv">mem_gb</span><span class="o">=</span><span class="m">32</span><span class="w"> </span><span class="se">\</span>
@@ -981,10 +987,15 @@ fill a large card with a small model.</p></li>
 <span class="w">    </span>--gpu-shards<span class="w"> </span><span class="m">4</span>
 </pre></div>
 </div>
-<p>GPU fill is therefore two levels: <code class="docutils literal notranslate"><span class="pre">--gpu-shards</span></code> distributes whole GPUs across
-nodes, and <code class="docutils literal notranslate"><span class="pre">--gpu-workers-per-gpu</span></code> packs replicas onto each one. There is no
+<p>GPU distribution uses <code class="docutils literal notranslate"><span class="pre">--gpu-shards</span></code> to spread work across whole GPUs and
+nodes. <code class="docutils literal notranslate"><span class="pre">--gpu-workers-per-gpu</span></code> is currently reserved and does not add replicas. There is no
 per-forward batching knob — the segmentation models PhenoTypic targets do not
 broadly support batched inference.</p>
+<p>Stage 2 survives walltime through dependent continuation rounds. After a GPU
+array terminates, a controller checks which atomic sidecars remain absent and
+submits another array only when work remains. Workers do not catch walltime
+signals and do not call <code class="docutils literal notranslate"><span class="pre">scontrol</span> <span class="pre">requeue</span></code>. Cancellation fences the run epoch
+before cancelling every active job in its ledger.</p>
 </section>
 <section id="shaping-the-output">
 <h3>Shaping the output<a class="headerlink" href="#shaping-the-output" title="Link to this heading">#</a></h3>

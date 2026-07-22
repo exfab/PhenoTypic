@@ -790,9 +790,9 @@
 <span class="n">ANALYSIS_MANIFEST_FILENAME</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis_manifest.json&quot;</span>
 <span class="n">ANALYSIS_MANIFEST_SCHEMA_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
 
-<span class="n">_ANALYSIS_ID_PATTERN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
-    <span class="sa">r</span><span class="s2">&quot;[A-Za-z][A-Za-z0-9_.-]{0,127}\Z&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">ASCII</span>
-<span class="p">)</span>
+<span class="n">_ANALYSIS_ID_PATTERN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[A-Za-z][A-Za-z0-9_.-]{0,127}\Z&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">ASCII</span><span class="p">)</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_reserved_analysis_artifact_stems</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return CSV/Parquet stems that share the deliverables root.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="nb">frozenset</span><span class="p">(</span>
@@ -863,9 +863,7 @@
 
 <div class="viewcode-block" id="named_analysis_csv_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.named_analysis_csv_path.html#phenotypic.sdk_.named_analysis_csv_path">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">named_analysis_csv_path</span><span class="p">(</span>
-    <span class="n">deliverables_base</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">analysis_id</span><span class="p">:</span> <span class="nb">str</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">named_analysis_csv_path</span><span class="p">(</span><span class="n">deliverables_base</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">analysis_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the named CSV artifact path for ``analysis_id``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">deliverables_base</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">validate_analysis_id</span><span class="p">(</span><span class="n">analysis_id</span><span class="p">)</span><span class="si">}</span><span class="s2">.csv&quot;</span></div>
 
@@ -877,7 +875,10 @@
     <span class="n">deliverables_base</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">analysis_id</span><span class="p">:</span> <span class="nb">str</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the named Parquet artifact path for ``analysis_id``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">deliverables_base</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">validate_analysis_id</span><span class="p">(</span><span class="n">analysis_id</span><span class="p">)</span><span class="si">}</span><span class="s2">.parquet&quot;</span></div>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">deliverables_base</span><span class="p">)</span>
+        <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">validate_analysis_id</span><span class="p">(</span><span class="n">analysis_id</span><span class="p">)</span><span class="si">}</span><span class="s2">.parquet&quot;</span>
+    <span class="p">)</span></div>
 
 
 
@@ -892,6 +893,7 @@
         <span class="n">parquet</span><span class="o">=</span><span class="n">named_analysis_parquet_path</span><span class="p">(</span><span class="n">deliverables_base</span><span class="p">,</span> <span class="n">analysis_id</span><span class="p">),</span>
         <span class="n">manifest</span><span class="o">=</span><span class="n">analysis_manifest_path</span><span class="p">(</span><span class="n">deliverables_base</span><span class="p">),</span>
     <span class="p">)</span></div>
+
 
 
 <span class="c1">#: REMBI run manifest filename, flat under deliverables/ beside metadata.csv.</span>
@@ -2470,7 +2472,12 @@
     <span class="n">CHUNK_SCRIPTS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunk_scripts&quot;</span>
     <span class="n">DATASETS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;datasets&quot;</span>
     <span class="n">INCLUDE_DATASET_COLUMN</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;include_dataset_column&quot;</span>
-    <span class="n">IMAGE_TASK_MAPPING</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;image_task_mapping&quot;</span></div>
+    <span class="n">IMAGE_TASK_MAPPING</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;image_task_mapping&quot;</span>
+    <span class="n">ORCHESTRATION_EPOCH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;orchestration_epoch&quot;</span>
+    <span class="n">PIPELINE_PATH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pipeline_path&quot;</span>
+    <span class="n">IMAGE_TYPE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;image_type&quot;</span>
+    <span class="n">NROWS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;nrows&quot;</span>
+    <span class="n">NCOLS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ncols&quot;</span></div>
 
 
 

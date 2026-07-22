@@ -1260,9 +1260,13 @@ other modes. <code class="docutils literal notranslate"><span class="pre">rgb</s
 <section id="resume-and-recovery">
 <h2>Resume and Recovery<a class="headerlink" href="#resume-and-recovery" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">--resume</span></code></dt><dd><p>Continue from a previous run. Skips already-processed images.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">--resume</span></code></dt><dd><p>Continue from a previous run. Staged GPU runs select Stage 1, 2, or 3 from
+valid HDF, sidecar, and terminal-marker artifacts and automatically include
+intermediate-stage failures.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">--retry-failures</span></code></dt><dd><p>Re-process only images that failed. Requires <code class="docutils literal notranslate"><span class="pre">--resume</span></code>.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">--retry-failures</span></code></dt><dd><p>Include recorded CPU or legacy single-pass failures in addition to unfinished
+images. Staged GPU failures are already included by <code class="docutils literal notranslate"><span class="pre">--resume</span></code>. Requires
+<code class="docutils literal notranslate"><span class="pre">--resume</span></code>.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">--restart</span></code></dt><dd><p>Clear all state and start fresh. Mutually exclusive with <code class="docutils literal notranslate"><span class="pre">--resume</span></code>.</p>
 </dd>
@@ -1282,8 +1286,11 @@ Use the <code class="docutils literal notranslate"><span class="pre">slurm_</spa
 keys <code class="docutils literal notranslate"><span class="pre">mem_gb</span></code> and <code class="docutils literal notranslate"><span class="pre">time</span></code>. <code class="docutils literal notranslate"><span class="pre">time</span></code> is an <strong>integer number of minutes</strong>.
 The deprecated <code class="docutils literal notranslate"><span class="pre">time_min</span></code> key is auto-migrated to <code class="docutils literal notranslate"><span class="pre">time</span></code>.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">--wait</span></code></dt><dd><p>Wait for SLURM jobs to complete before returning. Without it, the CLI returns
-as soon as the jobs are submitted.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">--wait</span></code></dt><dd><p>Wait for SLURM jobs and their dependent finalizer to complete. For staged GPU
+runs, success requires the finalizer completion marker. Without this flag,
+the CLI prints <code class="docutils literal notranslate"><span class="pre">PROCESSING</span> <span class="pre">SUBMITTED</span></code> and returns without running local
+aggregation or claiming completion. Ctrl+C detaches monitoring without
+cancelling the active epoch.</p>
 </dd>
 </dl>
 </section>
@@ -1291,6 +1298,10 @@ as soon as the jobs are submitted.</p>
 <h2>GPU Staging Options<a class="headerlink" href="#gpu-staging-options" title="Link to this heading">#</a></h2>
 <p>A pipeline containing a <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code> runs as three stages (CPU preprocess →
 resident-model GPU detect → CPU measure). These flags tune Stage 2.</p>
+<p>On SLURM, an epoch-fenced dependent controller submits additional Stage-2
+arrays while sidecar-less retryable images remain. It replaces worker
+signal/self-requeue behavior. Dynamic controller, array, Stage-3, and finalizer
+job IDs are recorded in the run ledger for monitoring and cancellation.</p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">--gpu-slurm</span> <span class="pre">KEY=VALUE</span></code></dt><dd><p>Stage-2 SBATCH resources. Inherits and deltas over <code class="docutils literal notranslate"><span class="pre">--slurm</span></code> (the CPU
 profile for Stages 1 and 3); auto-adds <code class="docutils literal notranslate"><span class="pre">slurm_gpus_per_node=1</span></code>.</p>
@@ -1298,8 +1309,8 @@ profile for Stages 1 and 3); auto-adds <code class="docutils literal notranslate
 <dt><code class="docutils literal notranslate"><span class="pre">--gpu-shards</span> <span class="pre">N</span></code></dt><dd><p>Parallel Stage-2 GPU tasks, one whole GPU each. SLURM-only; ignored locally.
 Default: 1.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">--gpu-workers-per-gpu</span> <span class="pre">W</span></code></dt><dd><p>Model replicas packed per physical GPU, to fill a GPU with a small model.
-Default: 1.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">--gpu-workers-per-gpu</span> <span class="pre">W</span></code></dt><dd><p>Reserved for future per-GPU replica packing. The current staged worker runs
+one resident model per GPU shard. Default: 1.</p>
 </dd>
 </dl>
 </section>
