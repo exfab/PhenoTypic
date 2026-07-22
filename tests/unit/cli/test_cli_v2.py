@@ -1865,6 +1865,28 @@ class TestAggregateMeasurements:
     ):
         """Scratch staging retains the original stem used by metadata joins."""
         import pandas as pd
+        import polars as pl
+
+        from phenotypic._cli import _cli_output_manager
+        from phenotypic._cli._cli_parquet_agg import SOURCE_PATH_COLUMN
+
+        aggregate_parquet_files = _cli_output_manager.aggregate_parquet_files
+
+        def _aggregate_with_windows_source_paths(*args, **kwargs):
+            frame = aggregate_parquet_files(*args, **kwargs)
+            if frame is None:
+                return None
+            return frame.with_columns(
+                pl.col(SOURCE_PATH_COLUMN).str.replace_all(
+                    "/", "\\", literal=True
+                )
+            )
+
+        monkeypatch.setattr(
+            _cli_output_manager,
+            "aggregate_parquet_files",
+            _aggregate_with_windows_source_paths,
+        )
 
         image_stem = "d000374_280_121_2026-04-11_16-55-18"
         self._create_measurement_csvs(temp_output_dir, {

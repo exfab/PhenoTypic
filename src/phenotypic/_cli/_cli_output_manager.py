@@ -1205,11 +1205,14 @@ def aggregate_measurements(
 
     if scratch_dir is not None and master_df is not None:
         staged_to_original = {
-            str(scratch_dir / _scratch_dest_name(original)): str(original)
+            str(scratch_dir / _scratch_dest_name(original)).replace(
+                "\\", "/"
+            ): str(original)
             for original in path_to_dataset
         }
         master_df = master_df.with_columns(
             pl.col(SOURCE_PATH_COLUMN)
+            .str.replace_all(r"\\", "/")
             .replace_strict(
                 staged_to_original,
                 default=pl.col(SOURCE_PATH_COLUMN),
