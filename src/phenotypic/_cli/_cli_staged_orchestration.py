@@ -498,7 +498,7 @@ def _job_from_scheduler_comment(comment: str) -> str | None:
 def _mirror_job_to_metadata(
     output_dir: Path, *, token: str, role: str, job_id: str
 ) -> None:
-    """Expose dynamically submitted jobs through existing metadata consumers."""
+    """Expose dynamic jobs without polluting the numeric chunk registry."""
     path = job_metadata_path(output_dir)
     if not path.is_file():
         return
@@ -511,7 +511,7 @@ def _mirror_job_to_metadata(
         all_jobs = payload.setdefault(JobMetadataKey.SLURM_JOB_IDS, {})
         if isinstance(all_jobs, dict):
             all_jobs[token] = job_id
-        if role in {"stage1", "stage2", "stage3"}:
+        if role in {"stage1", "stage2", "stage3"} and token.isdecimal():
             chunks = payload.setdefault(JobMetadataKey.CHUNK_JOB_IDS, {})
             if isinstance(chunks, dict):
                 chunks[token] = job_id

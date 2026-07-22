@@ -421,6 +421,31 @@ class TestManifestBuilder:
         assert manifest["slurm_info"]["chunk_scripts"] == ["chunk0.sh"]
         assert manifest["slurm_info"]["chunk_job_ids"] == {"0": "12345"}
 
+    def test_slurm_manifest_ignores_named_staged_round_jobs(self, tmp_dir):
+        progress_dir = tmp_dir / "progress"
+        progress_dir.mkdir()
+        event_log = tmp_dir / "processing_events.log"
+        append_event(event_log, "plate1", "img001.tif", "started")
+        append_completion_event(
+            event_log, "plate1", "img001.tif", "completed"
+        )
+
+        build_manifest(
+            output_dir=tmp_dir,
+            progress_dir=progress_dir,
+            datasets={"plate1": 1},
+            execution_mode="slurm",
+            start_time=datetime.now().isoformat(timespec="milliseconds"),
+            slurm_job_ids={"0": "12345", "stage2-round-1": "23456"},
+            chunk_scripts=["chunk0.sh"],
+        )
+
+        manifest = json.loads((progress_dir / "manifest.json").read_text())
+        slurm_info = manifest["slurm_info"]
+        assert slurm_info["total_chunks"] == 1
+        assert slurm_info["chunk_job_ids"] == {"0": "12345"}
+        assert slurm_info["completed_chunks"] == [0]
+
 
 # ──────────────────────────────────────────────────────────────────────
 # sacct parsing
@@ -490,6 +515,25 @@ class TestSacctParsing:
         finally:
             mb._terminal_job_cache.clear()
             mb._terminal_job_cache.update(saved)
+
+    def test_sacct_chunk_states_ignores_named_staged_round_jobs(
+        self, monkeypatch
+    ):
+        import phenotypic._cli._dashboard._manifest_builder as mb
+
+        monkeypatch.setattr(mb, "_terminal_job_cache", {})
+        with patch(
+            "phenotypic._cli._dashboard._manifest_builder.query_sacct_batch",
+            return_value={"12345": {"12345_0": "COMPLETED"}},
+        ) as query_batch:
+            active, completed, pending = query_sacct_chunk_states(
+                {"0": "12345", "stage2-round-1": "23456"}
+            )
+
+        query_batch.assert_called_once_with(["12345"])
+        assert active == []
+        assert completed == [0]
+        assert pending == []
 
 
 # ──────────────────────────────────────────────────────────────────────

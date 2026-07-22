@@ -228,12 +228,15 @@ def query_sacct_chunk_states(
     active: List[int] = []
     completed: List[int] = []
     pending: List[int] = []
+    numeric_chunk_job_ids = {
+        key: job_id for key, job_id in chunk_job_ids.items() if key.isdecimal()
+    }
 
     # Separate cached (terminal) jobs from those needing a fresh query.
     uncached_job_ids: Dict[str, str] = {}
     cached_results: Dict[str, Dict[str, str]] = {}
 
-    for chunk_idx_str, job_id in chunk_job_ids.items():
+    for chunk_idx_str, job_id in numeric_chunk_job_ids.items():
         if job_id in _terminal_job_cache:
             cached_results[job_id] = _terminal_job_cache[job_id]
         else:
@@ -262,7 +265,7 @@ def query_sacct_chunk_states(
         **cached_results,
     }
 
-    for chunk_idx_str, job_id in chunk_job_ids.items():
+    for chunk_idx_str, job_id in numeric_chunk_job_ids.items():
         chunk_idx = int(chunk_idx_str)
         task_states = all_results.get(job_id)
 
@@ -492,11 +495,16 @@ def build_manifest(
 
     # 3-4. SLURM-specific queries.
     is_slurm = execution_mode == "slurm"
+    numeric_slurm_job_ids = {
+        key: job_id
+        for key, job_id in (slurm_job_ids or {}).items()
+        if key.isdecimal()
+    }
     active_chunks: List[int] = []
     completed_chunks: List[int] = []
     pending_chunks: List[int] = []
 
-    if is_slurm and slurm_job_ids:
+    if is_slurm and numeric_slurm_job_ids:
         # Early exit: skip sacct entirely when event log already shows all
         # images have reached a terminal state (completed or failed).
         total_images_for_check = sum(datasets.values())
@@ -505,10 +513,10 @@ def build_manifest(
         )
         event_failed = sum(len(ds.failed) for ds in dataset_states.values())
         if (event_completed + event_failed) >= total_images_for_check:
-            completed_chunks = sorted(int(k) for k in slurm_job_ids)
+            completed_chunks = sorted(int(k) for k in numeric_slurm_job_ids)
         else:
             active_chunks, completed_chunks, pending_chunks = (
-                query_sacct_chunk_states(slurm_job_ids)
+                query_sacct_chunk_states(numeric_slurm_job_ids)
             )
 
         # Detect OOM / silent failures (needs image_task_mapping -- build
@@ -589,10 +597,10 @@ def build_manifest(
     if is_slurm:
         manifest[DashboardManifestKey.SLURM_INFO] = {
             DashboardManifestSlurmInfoKey.CHUNK_SCRIPTS: chunk_scripts or [],
-            DashboardManifestSlurmInfoKey.TOTAL_CHUNKS: len(slurm_job_ids)
-            if slurm_job_ids
+            DashboardManifestSlurmInfoKey.TOTAL_CHUNKS: len(numeric_slurm_job_ids)
+            if numeric_slurm_job_ids
             else 0,
-            DashboardManifestSlurmInfoKey.CHUNK_JOB_IDS: slurm_job_ids or {},
+            DashboardManifestSlurmInfoKey.CHUNK_JOB_IDS: numeric_slurm_job_ids,
             DashboardManifestSlurmInfoKey.ACTIVE_CHUNKS: active_chunks,
             DashboardManifestSlurmInfoKey.COMPLETED_CHUNKS: completed_chunks,
             DashboardManifestSlurmInfoKey.PENDING_CHUNKS: pending_chunks,
