@@ -644,9 +644,9 @@ class TestSentinelScript:
         # Uses the same Python path as array job scripts, not bare "python"
         assert "-m phenotypic._cli._cli_sentinel" in content
         log_path = logs_dir(tmp_dir) / "slurm" / "sentinel_%j.log"
-        assert f"#SBATCH --output={log_path}" in content
-        assert f"#SBATCH --error={log_path}" in content
-        assert str(progress_dir / "sentinel_%j.log") not in content
+        assert f"#SBATCH --output={log_path.as_posix()}" in content
+        assert f"#SBATCH --error={log_path.as_posix()}" in content
+        assert (progress_dir / "sentinel_%j.log").as_posix() not in content
 
     def test_time_derived_from_max_runtime(self, tmp_dir):
         script = generate_sentinel_script(
