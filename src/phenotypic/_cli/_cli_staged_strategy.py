@@ -28,6 +28,7 @@ from ._cli_staged_resume import (
 from ._cli_staged_workers import (
     _image_class,
     emit_missing_prereq,
+    ensure_staged_overlay,
     stage1_preprocess_core,
     stage2_detect_core,
     stage3_merge_measure_core,
@@ -68,13 +69,23 @@ class StagedGpuStrategy(ExecutionStrategy):
                 return process_only_output_path(
                     output_dir, img, cfg.input_path, "objmap"
                 ).is_file()
-            if stage3_completion_exists(output_dir, ds_name, img.stem):
-                return True
-            return bool(
+            terminal = stage3_completion_exists(
+                output_dir, ds_name, img.stem
+            ) or bool(
                 cfg.resume
                 and not cfg.staged_stage3_markers
                 and _parquet_path(ds_name, img.stem).is_file()
             )
+            if terminal:
+                ensure_staged_overlay(
+                    output_dir,
+                    ds_name,
+                    img.stem,
+                    self.output_manager,
+                    cfg.image_type,
+                )
+                return True
+            return False
 
         # ---- Stage 1: CPU preprocess -> staged HDF (parallel, resumable) ----
         def _stage1(ds: Dataset, img: Path) -> None:

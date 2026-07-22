@@ -92,6 +92,7 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
         gpu_slurm_args={"slurm_partition": "gpu"},
         n_shards=2,
         epoch="epoch-1",
+        overlay_alpha=0.65,
     )
     assert set(scripts) == {
         "stage1",
@@ -115,6 +116,8 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
     # Stage 1/3 = array over images (0-2); Stage 2 = array over shards (0-1)
     assert "--array=0-2" in s1 and "--array=0-2" in s3
     assert "--array=0-1" in s2
+    assert "--overlay-alpha 0.65" in s3
+    assert "--overlay-alpha" not in s1 and "--overlay-alpha" not in s2
     # Stage 2 invokes the shard worker
     assert "_cli_staged_slurm_worker" in s2
     assert "_cli_checkpoint_handler" in finalizer
@@ -304,6 +307,7 @@ def test_strategy_reserves_two_max_submit_slots_for_controllers(
             "gpu_slurm_args": {},
             "gpu_shards": 1,
             "ext": None,
+            "overlay_alpha": 0.3,
             "include_dataset_column": False,
             "metadata_csv": None,
             "no_qc": False,

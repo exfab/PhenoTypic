@@ -23,6 +23,11 @@ from phenotypic._cli._cli_staged_resume import (
     build_staged_resume_plan,
     reconcile_stage3_publications,
     stage3_completion_exists,
+    stage3_completion_marker_path,
+)
+from phenotypic._cli._cli_state_management import (
+    load_processing_state,
+    save_processing_state,
 )
 from phenotypic._cli._cli_staged_workers import (
     stage1_preprocess_core,
@@ -34,7 +39,7 @@ from phenotypic._cli._cli_update_state import (
     aggregate_stage_state_from_events,
     parse_event_line,
 )
-from phenotypic.sdk_ import dataset_hdf_dir, event_log_path
+from phenotypic.sdk_ import dataset_hdf_dir, dataset_overlays_dir, event_log_path
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
 from phenotypic.phenotypicCLI import phenotypic_cli
 
@@ -126,7 +131,7 @@ def test_staged_strategy_runs_all_stages(tmp_path):
     )
     pipe_path = out / "pipeline.json"
     pipe_path.write_text(pipe.to_json(), encoding="utf-8")
-    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    om = OutputManager.from_config(out, ".tiff", save_overlays=True)
     om.create_structure([Dataset("ds", [image_path], tmp_path, out)])
 
     strat = StagedGpuStrategy(_config(out, pipe_path), om)
@@ -134,7 +139,38 @@ def test_staged_strategy_runs_all_stages(tmp_path):
 
     assert results.total_completed == 1
     assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
+    assert (dataset_overlays_dir(out, "ds") / "img.png").is_file()
     assert not sidecar_exists(out, "ds", "img")
+
+
+def test_staged_strategy_resume_backfills_missing_overlay_without_gpu(tmp_path, monkeypatch):
+    image_path = _write_image(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    pipe = ImagePipeline(
+        ops=[FakeGpuDetector(output_kind="instance", threshold=0.3)],
+        meas=[MeasureSize()],
+    )
+    pipe_path = out / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    om = OutputManager.from_config(out, ".tiff", save_overlays=True)
+    datasets = [Dataset("ds", [image_path], tmp_path, out)]
+    om.create_structure(datasets)
+    StagedGpuStrategy(_config(out, pipe_path), om).execute(datasets, out)
+    overlay = dataset_overlays_dir(out, "ds") / "img.png"
+    overlay.unlink()
+    monkeypatch.setattr(
+        FakeGpuDetector,
+        "_ensure_model_loaded",
+        lambda self: (_ for _ in ()).throw(AssertionError("model loaded")),
+    )
+
+    result = StagedGpuStrategy(
+        _config(out, pipe_path, resume=True), om
+    ).execute(datasets, out)
+
+    assert result.total_completed == 1
+    assert overlay.is_file()
 
 
 def test_staged_strategy_resumes_skipping_done_stages(tmp_path):
@@ -425,6 +461,70 @@ def test_cli_plain_resume_includes_recorded_stage2_failure(
     assert sorted(aggregated_images) == ["img.tiff", "img2.tiff"]
 
 
+@pytest.mark.parametrize("legacy_markerless", [False, True])
+def test_cli_resume_backfills_completed_overlay_before_early_exit(
+    tmp_path, monkeypatch, legacy_markerless
+):
+    images = tmp_path / "images"
+    images.mkdir()
+    image_path = _write_image(images)
+    out = tmp_path / "out"
+    pipe = ImagePipeline(
+        ops=[FakeGpuDetector(threshold=0.3)], meas=[MeasureSize()]
+    )
+    pipe_path = tmp_path / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    args = [
+        "--pipeline",
+        str(pipe_path),
+        "--input",
+        str(images),
+        "--output",
+        str(out),
+        "--image-type",
+        "Image",
+        "--force-local",
+        "--skip-validation",
+        "--njobs",
+        "1",
+        "--overlay-alpha",
+        "0.65",
+    ]
+    first = CliRunner().invoke(phenotypic_cli, args)
+    assert first.exit_code == 0, first.output
+    overlay = dataset_overlays_dir(out, images.name) / "img.png"
+    overlay.unlink()
+    if legacy_markerless:
+        stage3_completion_marker_path(
+            out, images.name, image_path.stem
+        ).unlink()
+        state = load_processing_state(out)
+        assert state is not None
+        state.config["staged_stage3_markers"] = False
+        save_processing_state(state, out)
+    monkeypatch.setattr(
+        FakeGpuDetector,
+        "_ensure_model_loaded",
+        lambda self: (_ for _ in ()).throw(AssertionError("model loaded")),
+    )
+    observed_alpha = []
+    original_save_overlay = OutputManager.save_overlay
+
+    def _save_overlay_with_alpha(manager, *args, **kwargs):
+        observed_alpha.append(manager.overlay_alpha)
+        return original_save_overlay(manager, *args, **kwargs)
+
+    monkeypatch.setattr(OutputManager, "save_overlay", _save_overlay_with_alpha)
+
+    resumed = CliRunner().invoke(phenotypic_cli, [*args, "--resume"])
+
+    assert resumed.exit_code == 0, resumed.output
+    assert "All images already processed" in resumed.output
+    assert overlay.is_file()
+    assert observed_alpha == [0.65]
+    assert stage3_completion_exists(out, images.name, image_path.stem)
+
+
 def test_cli_resumes_finalizer_only_when_image_stages_are_complete(
     tmp_path, monkeypatch
 ):
@@ -689,6 +789,63 @@ def _stage1_only(tmp_path):
         image_type="Image",
     )
     return out, pipe_path
+
+
+def test_slurm_stage3_worker_writes_and_backfills_overlay(tmp_path, monkeypatch):
+    import phenotypic._cli._cli_staged_slurm_worker as worker
+
+    out, pipe_path = _stage1_only(tmp_path)
+    dataset_overlays_dir(out, "ds").mkdir(parents=True)
+    manifest = [("ds", "img")]
+    observed_alpha = []
+    original_save_overlay = OutputManager.save_overlay
+
+    def _save_overlay_with_alpha(manager, *args, **kwargs):
+        observed_alpha.append(manager.overlay_alpha)
+        return original_save_overlay(manager, *args, **kwargs)
+
+    monkeypatch.setattr(OutputManager, "save_overlay", _save_overlay_with_alpha)
+    worker.run_stage2_shard(
+        pipeline_path=pipe_path,
+        output_dir=out,
+        image_type="Image",
+        manifest=manifest,
+        shard_index=0,
+        n_shards=1,
+    )
+
+    worker.run_stage3_step(
+        pipeline_path=pipe_path,
+        output_dir=out,
+        image_type="Image",
+        manifest=manifest,
+        index=0,
+        overlay_alpha=0.65,
+    )
+
+    overlay = dataset_overlays_dir(out, "ds") / "img.png"
+    assert overlay.is_file()
+    overlay.unlink()
+    monkeypatch.setattr(
+        worker,
+        "split_pipeline_at_gpu",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("pipeline reloaded")
+        ),
+    )
+
+    worker.run_stage3_step(
+        pipeline_path=pipe_path,
+        output_dir=out,
+        image_type="Image",
+        manifest=manifest,
+        index=0,
+        resume=True,
+        overlay_alpha=0.65,
+    )
+
+    assert overlay.is_file()
+    assert observed_alpha == [0.65, 0.65]
 
 
 def test_completed_shard_exits_before_loading_model(tmp_path, monkeypatch):
