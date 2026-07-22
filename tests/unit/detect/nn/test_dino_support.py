@@ -5,8 +5,13 @@ register-token grid-reshape fix and the prototype-pool + cosine-match core that
 ``Insid3Detector`` and ``FssDinoDetector`` build on.
 """
 
+import importlib.util
+
 import numpy as np
 import pytest
+
+
+_TORCH_AVAILABLE = importlib.util.find_spec("torch") is not None
 
 
 # ---------------------------------------------------------------------------
@@ -223,6 +228,7 @@ class TestPatchGeometry:
         }
 
 
+@pytest.mark.skipif(not _TORCH_AVAILABLE, reason="Requires torch")
 class TestProcessorPolicy:
     """The extract_* fns must never let the checkpoint's classification preset
     (224 center-crop) decide the input size."""

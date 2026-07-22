@@ -34,7 +34,7 @@ def test_array_script_threads_process_only_and_omits_aggregation(
     dataset = datasets[0]
     assert all(path.is_relative_to(slurm_scripts_dir(out)) for path in script_paths)
     expected_log = logs_dir(out) / "slurm" / dataset.name / f"{dataset.name}_%A_%a.log"
-    assert str(expected_log) in blob
+    assert expected_log.as_posix() in blob
 
     # The per-image command is line-broken with ``\`` continuations, so the
     # flag and its value land on separate lines — assert each token is threaded

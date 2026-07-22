@@ -767,7 +767,9 @@ class TestOrientationIsFoldedIntoTheHalfOpenHalfPlane:
 
 
 class TestFeatureTypeUsesTheReferenceRadicand:
-    def test_it_is_sqrt_of_the_sum_of_squares_not_np_hypot(self):
+    def test_it_is_sqrt_of_the_sum_of_squares_not_np_hypot(
+            self, monkeypatch: pytest.MonkeyPatch
+    ):
         """All three references write ``sqrt(h1**2 + h2**2)``. ``hypot`` appears in none.
 
         ``grep -rn hypot`` over Kovesi's Julia, Kovesi's MATLAB and ``phasepack`` returns
@@ -781,19 +783,22 @@ class TestFeatureTypeUsesTheReferenceRadicand:
         agreement of ``6.7e-13``, which is 6.7 orders of slack.
 
         Pinned here by reconstructing ``feature_type`` from the primitives and requiring
-        bit-equality with the ``sqrt`` form and inequality with the ``hypot`` form.
+        bit-equality with the ``sqrt`` form. ``np.hypot`` is patched to raise, so the exact
+        source mutant fails even on platforms where the two forms round identically.
         """
         rng = np.random.default_rng(11)
         img = rng.normal(size=(64, 64))
-        result = monogenic_phase_congruency(img)
 
         sum_even, sum_h1, sum_h2 = _sum_monogenic_channels(img)
         faithful = np.arctan2(sum_even, np.sqrt(sum_h1 ** 2 + sum_h2 ** 2))
-        hypot_form = np.arctan2(sum_even, np.hypot(sum_h1, sum_h2))
+
+        def reject_hypot(*args, **kwargs):
+            raise AssertionError("np.hypot must not replace the reference radicand")
+
+        monkeypatch.setattr(np, "hypot", reject_hypot)
+        result = monogenic_phase_congruency(img)
 
         assert np.array_equal(result.feature_type, faithful)
-        # And the two really are distinguishable, so the assertion above is not vacuous.
-        assert not np.array_equal(faithful, hypot_form)
 
 
 class TestAcosClampIsInert:
