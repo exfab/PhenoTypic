@@ -2,9 +2,8 @@
 
 Runs Stage 1 (preprocess -> HDF) and Stage 3 (merge -> measure) with joblib;
 Stage 2 keeps the detector model resident and streams the staged HDFs to
-sidecars. Content-defined resume: an image's work is done when its measurement
-parquet exists; Stage 2 is skipped when the sidecar OR the parquet already
-exists (Stage 3 deletes the sidecar, so "parquet exists" is the durable marker).
+sidecars. Content-defined resume uses a valid HDF, an atomic sidecar, and an
+atomic Stage 3 publication marker. Legacy parquet-only runs remain compatible.
 """
 
 from __future__ import annotations
@@ -21,6 +20,11 @@ from phenotypic.sdk_ import dataset_hdf_dir, event_log_path
 from ._cli_execution_strategies import ExecutionStrategy
 from ._cli_pipeline_split import split_pipeline_at_gpu
 from ._cli_sidecar import sidecar_exists
+from ._cli_staged_resume import (
+    clear_downstream_artifacts_for_stage1,
+    stage3_completion_exists,
+    valid_staged_hdf,
+)
 from ._cli_staged_workers import (
     _image_class,
     emit_missing_prereq,
@@ -57,24 +61,30 @@ class StagedGpuStrategy(ExecutionStrategy):
             )
 
         def _terminal_output_exists(ds_name: str, img: Path) -> bool:
-            """Durable "fully done" marker for Stage 2 resume: the run's terminal
-            artifact survives a completed run even though Stage 3 deletes the
-            sidecar. Full mode -> measurement parquet; objmap process-mode ->
-            the exported objmap layer file (objmap mode writes no parquet).
-            """
+            """Return whether the image has its durable terminal artifact."""
             if cfg.process_only_layer == "objmap":
                 from ._cli_process_only import process_only_output_path
 
                 return process_only_output_path(
                     output_dir, img, cfg.input_path, "objmap"
                 ).is_file()
-            return _parquet_path(ds_name, img.stem).is_file()
+            if stage3_completion_exists(output_dir, ds_name, img.stem):
+                return True
+            return bool(
+                cfg.resume
+                and not cfg.staged_stage3_markers
+                and _parquet_path(ds_name, img.stem).is_file()
+            )
 
         # ---- Stage 1: CPU preprocess -> staged HDF (parallel, resumable) ----
         def _stage1(ds: Dataset, img: Path) -> None:
             hdf = dataset_hdf_dir(output_dir, ds.name) / f"{img.stem}.h5"
-            if cfg.resume and hdf.is_file():
+            if cfg.resume and valid_staged_hdf(hdf):
                 return
+            if cfg.resume:
+                clear_downstream_artifacts_for_stage1(
+                    output_dir, ds.name, img.stem
+                )
             try:  # isolate one bad image from the batch (failed event logged)
                 with stage_event(event_log, ds.name, img.name, STAGE_PREPROCESS):
                     stage1_preprocess_core(
@@ -89,15 +99,17 @@ class StagedGpuStrategy(ExecutionStrategy):
         )
 
         # ---- Stage 2: resident-model GPU detect -> sidecar (serial) --------
-        plan.gpu_detector._ensure_model_loaded()  # load ONCE
-        for ds, img in tasks:
+        stage2_pending = [
+            (ds, img)
+            for ds, img in tasks
+            if not sidecar_exists(output_dir, ds.name, img.stem)
+            and not _terminal_output_exists(ds.name, img)
+        ]
+        if stage2_pending:
+            plan.gpu_detector._ensure_model_loaded()  # load ONCE
+        for ds, img in stage2_pending:
             hdf = dataset_hdf_dir(output_dir, ds.name) / f"{img.stem}.h5"
-            if cfg.resume and (
-                sidecar_exists(output_dir, ds.name, img.stem)
-                or _terminal_output_exists(ds.name, img)
-            ):
-                continue
-            if not hdf.is_file():
+            if not valid_staged_hdf(hdf):
                 # Stage 1 failed/absent for this image (S6): skip + record. A
                 # cascade (stage1 failed -> stage2/stage3 prereq missing)
                 # deliberately records a failed event per stage so the per-stage
@@ -123,8 +135,7 @@ class StagedGpuStrategy(ExecutionStrategy):
         }
 
         def _stage3(ds: Dataset, img: Path) -> tuple[str, bool]:
-            parquet = _parquet_path(ds.name, img.stem)
-            if cfg.resume and parquet.is_file():
+            if cfg.resume and _terminal_output_exists(ds.name, img):
                 return ds.name, True
             if not sidecar_exists(output_dir, ds.name, img.stem):
                 # Stage 2 failed/absent for this image (S6): skip + record.
@@ -137,6 +148,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                     stage3_merge_measure_core(
                         plan, output_dir, ds.name, img.stem, self.output_manager,
                         cfg.image_type,
+                        image_name=img.name,
                     )
                 return ds.name, True
             except Exception:

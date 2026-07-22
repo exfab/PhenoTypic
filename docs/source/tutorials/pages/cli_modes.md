@@ -110,8 +110,9 @@ pipelines on two different images.
 
 ### Surviving interruptions
 
-`--resume` skips images that already have output, so an interrupted run picks up
-where it stopped. If everything is already done, the CLI says so and exits:
+`--resume` skips completed work. Staged GPU pipelines infer the earliest required
+stage from their HDF, sidecar, and Stage-3 marker, including images with recorded
+intermediate-stage failures. If everything is already done, the CLI says so and exits:
 
 ```bash
 python -m phenotypic --pipeline pipe.json --input ./plates --output ./out \
@@ -122,12 +123,12 @@ python -m phenotypic --pipeline pipe.json --input ./plates --output ./out \
 Four flags control what happens to prior state, and the CLI enforces the
 combinations:
 
-- `--resume` — skip completed images. Failed images stay failed.
-- `--retry-failures` — also re-process the failures. **Requires `--resume`.**
+- `--resume` — skip completed images. Staged GPU failures resume automatically.
+- `--retry-failures` — also re-process recorded CPU/legacy failures. **Requires `--resume`.**
 - `--restart` — clear the state file and start over. **Mutually exclusive with `--resume`.**
 - `--overwrite` — delete the output directory contents first. **Mutually exclusive with `--resume`.**
 
-Use `--resume --retry-failures` after fixing whatever broke — a corrupt input
+For CPU pipelines, use `--resume --retry-failures` after fixing whatever broke — a corrupt input
 file, an out-of-memory detector — to reprocess only the images that failed.
 
 ## `measure` — new numbers, same segmentation
@@ -284,7 +285,12 @@ python -m phenotypic --pipeline pipe.json --input ./plates --output ./out \
 Use the `slurm_` prefix for standard SBATCH directives, or the convenience keys
 `mem_gb` and `time`. **`time` is in minutes, as an integer** — `time=120`, not
 `time=02:00:00`. The CLI returns as soon as the jobs are submitted; add `--wait`
-to block and monitor them. `--force-local` overrides SLURM detection, which is
+to block and monitor them. A staged GPU run without `--wait` prints
+`PROCESSING SUBMITTED` and leaves aggregation, reports, and README publication
+to its dependent finalizer. It does not print a premature completion summary.
+With `--wait`, the CLI follows the active orchestration epoch through the
+finalizer completion marker. Ctrl+C detaches monitoring while the jobs continue.
+`--force-local` overrides SLURM detection, which is
 what you want when testing on a login node.
 
 `--checkpoint-interval N` inserts checkpoint tasks every N images in a SLURM
@@ -301,8 +307,8 @@ HDF. You do not opt in; you only tune it:
   the CPU profile in `--slurm`. `slurm_gpus_per_node=1` is added automatically.
 - `--gpu-shards N` — parallel whole-GPU tasks (SLURM only; ignored locally).
   Set it to your concurrent-GPU count.
-- `--gpu-workers-per-gpu W` — model replicas packed onto one physical GPU, to
-  fill a large card with a small model.
+- `--gpu-workers-per-gpu W` — reserved for future per-GPU replica packing. The
+  current staged worker runs one resident model per GPU shard.
 
 ```bash
 python -m phenotypic --pipeline gpu_pipe.json --input ./plates --output ./out \
@@ -311,10 +317,16 @@ python -m phenotypic --pipeline gpu_pipe.json --input ./plates --output ./out \
     --gpu-shards 4
 ```
 
-GPU fill is therefore two levels: `--gpu-shards` distributes whole GPUs across
-nodes, and `--gpu-workers-per-gpu` packs replicas onto each one. There is no
+GPU distribution uses `--gpu-shards` to spread work across whole GPUs and
+nodes. `--gpu-workers-per-gpu` is currently reserved and does not add replicas. There is no
 per-forward batching knob — the segmentation models PhenoTypic targets do not
 broadly support batched inference.
+
+Stage 2 survives walltime through dependent continuation rounds. After a GPU
+array terminates, a controller checks which atomic sidecars remain absent and
+submits another array only when work remains. Workers do not catch walltime
+signals and do not call `scontrol requeue`. Cancellation fences the run epoch
+before cancelling every active job in its ledger.
 
 ### Shaping the output
 

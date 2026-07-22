@@ -934,6 +934,20 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         )
 
 
+def uses_staged_gpu_strategy(config: ExecutionConfig) -> bool:
+    """Return whether *config* routes through the staged GPU engine."""
+    if config.measure_only:
+        return False
+
+    from ._cli_validation import pipeline_requires_gpu
+
+    if not pipeline_requires_gpu(config.pipeline_json):
+        return False
+    if config.is_slurm_mode():
+        return config.process_only_layer is None
+    return config.process_only_layer in (None, "objmap")
+
+
 def create_execution_strategy(
     config: ExecutionConfig, output_manager: OutputManager
 ) -> ExecutionStrategy:
@@ -952,13 +966,7 @@ def create_execution_strategy(
         # (CPU preprocess -> resident-model GPU detect shards -> CPU measure).
         # measure-only and process-layer exports keep the per-image
         # AutonomousSLURMStrategy (the staged SLURM path is forward-only).
-        from ._cli_validation import pipeline_requires_gpu
-
-        if (
-            not config.measure_only
-            and config.process_only_layer is None
-            and pipeline_requires_gpu(config.pipeline_json)
-        ):
+        if uses_staged_gpu_strategy(config):
             from ._cli_staged_slurm import StagedSlurmStrategy
 
             return StagedSlurmStrategy(config, output_manager)
@@ -970,13 +978,7 @@ def create_execution_strategy(
     # which come from the pre-detector ops) keep the per-image
     # LocalParallelStrategy. Imports are local to avoid a circular import
     # (_cli_staged_strategy imports ExecutionStrategy from this module).
-    from ._cli_validation import pipeline_requires_gpu
-
-    if (
-        not config.measure_only
-        and config.process_only_layer in (None, "objmap")
-        and pipeline_requires_gpu(config.pipeline_json)
-    ):
+    if uses_staged_gpu_strategy(config):
         from ._cli_staged_strategy import StagedGpuStrategy
 
         return StagedGpuStrategy(config, output_manager)

@@ -5,22 +5,28 @@ from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from phenotypic._cli._cli_staged_slurm import (
-    STAGE_DEPENDENCY,
     StagedSlurmStrategy,
     _write_staged_job_metadata,
-    flatten_staged_scripts,
     generate_staged_scripts,
     partition_shards,
     resolve_stage_slurm_args,
-    submit_staged_chain,
+)
+from phenotypic._cli._cli_staged_orchestration import (
+    StagedManifestEntry,
+    load_orchestration_state,
 )
 from phenotypic._cli._cli_types import Dataset
 from phenotypic.sdk_ import JOB_METADATA_JSON, progress_dir
 
 
 def _manifest(n):
-    return [("ds", f"img{i}") for i in range(n)]
+    return [
+        StagedManifestEntry("ds", f"img{i}.tif", f"img{i}", f"/in/img{i}.tif")
+        for i in range(n)
+    ]
 
 
 def test_partition_shards_even():
@@ -79,14 +85,23 @@ def test_gpu_stage_inherits_shared_keys_and_overrides_partition():
 def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
     scripts = generate_staged_scripts(
         pipeline_path=tmp_path / "p.json",
-        datasets_manifest=[("ds", "a"), ("ds", "b"), ("ds", "c")],
+        datasets_manifest=_manifest(3),
         output_dir=tmp_path,
         image_type="Image",
         cpu_slurm_args={"slurm_partition": "batch", "slurm_cpus_per_task": 4},
         gpu_slurm_args={"slurm_partition": "gpu"},
         n_shards=2,
+        epoch="epoch-1",
     )
-    assert set(scripts) == {"stage1", "stage2", "stage3", "finalizer"}
+    assert set(scripts) == {
+        "stage1",
+        "stage2",
+        "stage3",
+        "finalizer",
+        "controller",
+        "controller_config",
+        "manifest",
+    }
     # Image-arrayed stages return a list of chunk scripts (one chunk here);
     # the GPU stage is a single shard-arrayed script.
     s1 = scripts["stage1"][0].read_text(encoding="utf-8")
@@ -104,31 +119,27 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
     assert "_cli_staged_slurm_worker" in s2
     assert "_cli_checkpoint_handler" in finalizer
     assert "--checkpoint-type finalize" in finalizer
+    assert "--epoch epoch-1" in finalizer
     assert "--partition=batch" in finalizer
+    assert "_cli_staged_controller" in scripts["controller"].read_text()
 
 
-def test_chain_uses_afterany_dependencies():
-    assert STAGE_DEPENDENCY == "afterany"
-
-
-def test_stage2_script_carries_signal_directive(tmp_path):
+def test_stage2_script_uses_controller_not_signal_requeue(tmp_path):
     scripts = generate_staged_scripts(
         pipeline_path=tmp_path / "p.json",
-        datasets_manifest=[("ds", "a"), ("ds", "b")],
+        datasets_manifest=_manifest(2),
         output_dir=tmp_path,
         image_type="Image",
         cpu_slurm_args={"slurm_partition": "batch"},
         gpu_slurm_args={"slurm_partition": "gpu"},
         n_shards=1,
-        signal_grace=120,
+        epoch="epoch-1",
     )
     s2 = scripts["stage2"].read_text(encoding="utf-8")
-    assert "--signal=B:TERM@120" in s2
-    # --requeue lets the worker requeue its own array task on the SIGTERM, so
-    # Stage 3's afterany dependency waits for the continuation.
-    assert "--requeue" in s2
-    # only Stage 2 carries the walltime-survival directives
-    assert "--requeue" not in scripts["stage1"][0].read_text(encoding="utf-8")
+    assert "--signal=" not in s2
+    assert "--requeue" not in s2
+    assert "--stage3-markers-required" in s2
+    assert "--epoch epoch-1" in s2
 
 
 def test_image_stages_chunked_when_exceeding_array_limit(tmp_path):
@@ -143,6 +154,7 @@ def test_image_stages_chunked_when_exceeding_array_limit(tmp_path):
         gpu_slurm_args={"slurm_partition": "gpu"},
         n_shards=1,
         array_limit=2,
+        epoch="epoch-1",
     )
     assert len(scripts["stage1"]) == 3
     assert len(scripts["stage3"]) == 3
@@ -165,6 +177,7 @@ def test_chunk_windows_map_to_absolute_manifest_indices(tmp_path):
         gpu_slurm_args={"slurm_partition": "gpu"},
         n_shards=1,
         array_limit=2,
+        epoch="epoch-1",
     )
     c0, c1, c2 = (s.read_text(encoding="utf-8") for s in scripts["stage1"])
     # The worker resolves the ABSOLUTE manifest index via CURRENT_TASK_INDEX,
@@ -185,9 +198,27 @@ def test_single_chunk_keeps_plain_script_names(tmp_path):
         gpu_slurm_args={"slurm_partition": "gpu"},
         n_shards=1,
         array_limit=1000,
+        epoch="epoch-1",
     )
     assert [p.name for p in scripts["stage1"]] == ["stage1.sh"]
     assert [p.name for p in scripts["stage3"]] == ["stage3.sh"]
+
+
+def test_empty_manifest_generates_no_image_stage_arrays(tmp_path):
+    scripts = generate_staged_scripts(
+        pipeline_path=tmp_path / "p.json",
+        datasets_manifest=[],
+        output_dir=tmp_path,
+        image_type="Image",
+        cpu_slurm_args={"slurm_partition": "batch"},
+        gpu_slurm_args={"slurm_partition": "gpu"},
+        n_shards=1,
+        array_limit=1000,
+        epoch="epoch-1",
+    )
+
+    assert scripts["stage1"] == []
+    assert scripts["stage3"] == []
 
 
 def test_multi_chunk_scripts_get_indexed_names(tmp_path):
@@ -200,6 +231,7 @@ def test_multi_chunk_scripts_get_indexed_names(tmp_path):
         gpu_slurm_args={"slurm_partition": "gpu"},
         n_shards=1,
         array_limit=2,
+        epoch="epoch-1",
     )
     assert [p.name for p in scripts["stage1"]] == [
         "stage1_chunk0.sh",
@@ -208,72 +240,23 @@ def test_multi_chunk_scripts_get_indexed_names(tmp_path):
     ]
 
 
-def test_flatten_staged_scripts_orders_chunks_then_stages():
-    scripts = {
-        "stage1": [Path("s1c0.sh"), Path("s1c1.sh")],
-        "stage2": Path("s2.sh"),
-        "stage3": [Path("s3c0.sh"), Path("s3c1.sh")],
-        "finalizer": Path("finalizer.sh"),
-    }
-    # Order encodes the stage dependencies for the drip-feed dispatcher:
-    # every Stage-1 chunk, Stage 2, every Stage-3 chunk, then finalization.
-    assert [p.name for p in flatten_staged_scripts(scripts)] == [
-        "s1c0.sh",
-        "s1c1.sh",
-        "s2.sh",
-        "s3c0.sh",
-        "s3c1.sh",
-        "finalizer.sh",
-    ]
-
-
-def test_submit_staged_chain_uses_drip_feed_dispatcher(monkeypatch):
-    captured = {}
-
-    class _FakeSubmission:
-        job_ids = ["chunk0", "dispatch1"]
-
-    def _fake_chain(*, flat_chunk_scripts, output_dir, slurm_args, console):
-        captured["flat"] = [Path(p).name for p in flat_chunk_scripts]
-        captured["slurm_args"] = slurm_args
-        return _FakeSubmission()
-
-    # Patch the shared drip-feed funnel at its definition site (submit_staged_chain
-    # imports it locally, so the lookup resolves to this patched attribute).
-    import phenotypic._cli._cli_slurm_submission as sub_mod
-
-    monkeypatch.setattr(sub_mod, "submit_slurm_script_chain", _fake_chain)
-
-    scripts = {
-        "stage1": [Path("s1c0.sh"), Path("s1c1.sh")],
-        "stage2": Path("s2.sh"),
-        "stage3": [Path("s3c0.sh")],
-        "finalizer": Path("finalizer.sh"),
-    }
-    job_ids = submit_staged_chain(
-        scripts,
-        output_dir=Path("/out"),
-        slurm_args={"slurm_partition": "short"},
-    )
-
-    # Only the drip-feed's initial jobs come back (chunk 0 + dispatcher 1), NOT
-    # one job per chunk — the rest are auto-submitted by each chunk's dispatcher.
-    assert job_ids == ["chunk0", "dispatch1"]
-    assert captured["flat"] == [
-        "s1c0.sh",
-        "s1c1.sh",
-        "s2.sh",
-        "s3c0.sh",
-        "finalizer.sh",
-    ]
-    # The tiny dispatcher runs on the CPU (short) profile.
-    assert captured["slurm_args"] == {"slurm_partition": "short"}
-
-
-def test_strategy_reserves_max_submit_slot_for_dispatcher(
-    monkeypatch, tmp_path
+@pytest.mark.parametrize(
+    ("resume_phase", "finalizer_only", "expected_phase", "stage3_index"),
+    [
+        (None, False, "stage1", 0),
+        ("stage2", False, "stage2", 0),
+        ("stage3", True, "stage3", 1),
+    ],
+)
+def test_strategy_reserves_two_max_submit_slots_for_controllers(
+    monkeypatch,
+    tmp_path,
+    resume_phase,
+    finalizer_only,
+    expected_phase,
+    stage3_index,
 ):
-    """The active array plus dispatcher must fit MaxSubmitJobs."""
+    """The array plus running and successor controllers fit MaxSubmitJobs."""
     captured = {}
 
     monkeypatch.setattr(
@@ -292,15 +275,23 @@ def test_strategy_reserves_max_submit_slot_for_dispatcher(
             "stage2": tmp_path / "s2.sh",
             "stage3": [tmp_path / "s3.sh"],
             "finalizer": tmp_path / "finalizer.sh",
+            "controller": tmp_path / "controller.sh",
+            "controller_config": tmp_path / "controller.json",
         }
 
     monkeypatch.setattr(
         "phenotypic._cli._cli_staged_slurm.generate_staged_scripts",
         _fake_generate,
     )
+    submitted_roles = []
+
+    def fake_submit(*args, **kwargs):
+        submitted_roles.append(kwargs["role"])
+        return "100"
+
     monkeypatch.setattr(
-        "phenotypic._cli._cli_staged_slurm.submit_staged_chain",
-        lambda *args, **kwargs: ["chunk0", "dispatch1"],
+        "phenotypic._cli._cli_staged_slurm.submit_with_intent",
+        fake_submit,
     )
 
     config = type(
@@ -317,13 +308,43 @@ def test_strategy_reserves_max_submit_slot_for_dispatcher(
             "metadata_csv": None,
             "no_qc": False,
             "input_path": tmp_path / "inputs",
+            "resume": False,
+            "restart": False,
+            "staged_resume_phase": resume_phase,
+            "staged_finalizer_only": finalizer_only,
+            "staged_stage3_markers": True,
+            "wait": False,
+            "full_dataset_inventory": {},
+            "nrows": None,
+            "ncols": None,
         },
     )()
     strategy = object.__new__(StagedSlurmStrategy)
     strategy.config = config
     strategy.execute([], tmp_path)
 
-    assert captured["array_limit"] == 4
+    assert captured["array_limit"] == 3
+    assert submitted_roles == ["controller"]
+    state = load_orchestration_state(tmp_path)
+    assert state is not None
+    assert state["phase"] == expected_phase
+    assert state["stage1_index"] == 0
+    assert state["stage3_index"] == stage3_index
+    assert state["active_job_id"] is None
+
+
+def test_strategy_rejects_max_submit_limit_below_three(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_slurm.get_slurm_array_limit", lambda: 1000
+    )
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_slurm.get_slurm_max_submit_jobs", lambda: 2
+    )
+    config = SimpleNamespace(gpu_shards=1)
+    strategy = object.__new__(StagedSlurmStrategy)
+    strategy.config = config
+    with pytest.raises(ValueError, match="at least 3"):
+        strategy.execute([], tmp_path)
 
 
 def test_staged_job_metadata_supports_canonical_finalizer(tmp_path):
@@ -341,12 +362,18 @@ def test_staged_job_metadata_supports_canonical_finalizer(tmp_path):
         "stage2": Path("s2.sh"),
         "stage3": [Path("s3c0.sh"), Path("s3c1.sh")],
         "finalizer": Path("finalizer.sh"),
+        "controller": Path("controller.sh"),
     }
     config = SimpleNamespace(
         include_dataset_column=True,
         metadata_csv=tmp_path / "metadata.csv",
         input_path=tmp_path / "inputs",
         no_qc=True,
+        pipeline_json=tmp_path / "pipeline.json",
+        image_type="Image",
+        nrows=None,
+        ncols=None,
+        full_dataset_inventory={"plate": [image.name for image in images]},
     )
 
     metadata_path = _write_staged_job_metadata(
@@ -356,6 +383,7 @@ def test_staged_job_metadata_supports_canonical_finalizer(tmp_path):
         scripts=scripts,
         job_ids=["s1a"],
         start_time=datetime(2026, 7, 16),
+        epoch="epoch-1",
     )
 
     assert metadata_path == progress_dir(tmp_path) / JOB_METADATA_JSON

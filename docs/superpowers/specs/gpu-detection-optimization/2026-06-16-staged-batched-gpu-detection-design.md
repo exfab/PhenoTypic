@@ -323,24 +323,35 @@ Stage boundaries are **content-defined**:
   exists. Cheap to check (a file stat — no need to open the HDF) and **immune to any
   pre-stage detector's objmap** in the `.h5`, which is why the D12 objmap-clear is
   unnecessary under the sidecar design.
-- Stage 3 done for an id ⇔ its per-image measurement parquet exists under
-  `results/<ds>/measurements/` (Stage 3 also deletes the now-merged sidecar).
+- Stage 3 done for an id ⇔ its atomic per-image Stage-3 completion marker exists.
+  The marker is published after the parquet, HDF, and plot; Stage 3 then deletes
+  the now-merged sidecar.
 
-The **sidecar-presence check is the sole, robust Stage-2 resume predicate** (review C2):
+The **sidecar-presence check is the primary Stage-2 completion predicate** (review C2):
 `np.save` to `*.tmp` + `os.rename` makes the sidecar appear atomically, so a worker that
 dies mid-batch leaves each id either done (sidecar present → skip) or not (absent →
-reprocess), with no double-counting — a walltime-bounded Stage-2 worker is `--requeue`-safe
-without extra bookkeeping. A separate completed-id manifest is therefore **optional**, not
-required for correctness. (`processing_state.json` / per-image parquets track **Stage 3**,
-not Stage 2.)
+reprocess), with no double-counting. A dependent, epoch-fenced controller waits for the
+array master to terminate and then classifies every image as done, terminal, or retryable.
+It submits another Stage-2 round only while retryable images remain; workers never
+self-requeue. Legacy parquet-only runs are migrated to Stage-3 markers when no
+sidecar remains. Current
+epoch terminal failures and missing Stage-1 HDFs count as terminal.
+
+The controller stores an atomic state record and append-only job ledger. Every scheduler
+transition has a deterministic token and SLURM comment, allowing a successor controller to
+discover a submitted job if its predecessor died before recording the job ID. One unchanged
+retryable-set round is retried; a second unchanged round terminalizes the remainder and
+advances to Stage 3. Every worker verifies its orchestration epoch immediately before
+publishing an artifact, so restart and cancellation fence stale jobs.
 
 **Stage tracking — the progress mechanism (decision D10).** Two layers, both reusing
 existing infrastructure:
 
 1. **Truth = content-defined artifacts** (above). The source of truth for resume *and*
    for each stage worker's work-list. Robust to lost/partial logs: any worker re-derives
-   an image's furthest stage by checking HDF presence → **objmap sidecar presence** →
-   per-image parquet presence. This is what makes `afterany` chaining safe — a stage
+   an image's furthest stage by checking valid HDF → **objmap sidecar presence** →
+   atomic Stage-3 completion marker. Legacy parquet-only completions are migrated
+   before the marker contract is enabled. This is what makes `afterany` chaining safe — a stage
    processes exactly the artifacts the prior stage actually produced.
 2. **Live progress = the existing append-only event log** (`event_log_path`,
    `append_event` / `append_completion_event`), extended with **stage-tagged statuses**:
@@ -372,10 +383,10 @@ No new *mode* flag (batched is simply *how* a `GpuDetector` runs). New options:
   `--gpu-slurm`. Stages 1 & 3 use `--slurm` (the CPU profile).
 - **`--gpu-shards N`** (default **1**) — number of parallel **Stage-2 GPU tasks** (each
   shard = one whole-GPU array task; ≈ the GPUs to spread images across). **SLURM-only —
-  ignored locally** (locally `--gpu-workers-per-gpu` is the parallelism lever). Set to your
+  ignored locally**. Set to your
   concurrent-GPU count for real runs.
-- **`--gpu-workers-per-gpu W`** (default 1) — model replicas packed onto **one** GPU
-  (MPS/time-slice) to fill it for small/under-utilizing models. VRAM-bounded.
+- **`--gpu-workers-per-gpu W`** (default 1) — reserved for future replica packing.
+  The current staged implementation launches one resident model per GPU shard.
 - **`--gpu-batch-size N|auto`** (default 1) — images per forward pass within one replica
   (**effective only for batchable detectors** — SAM2/micro-sam are one-image-at-a-time).
   `auto` runs a one-time **VRAM-probe warmup** (try 1,2,4,… on a representative tile, pick
@@ -383,8 +394,8 @@ No new *mode* flag (batched is simply *how* a `GpuDetector` runs). New options:
   The probe is **implemented in Spec 2** (where batchable detectors arrive); in Spec 1 it
   is parsed but inert.
 
-The three fill knobs nest outer→inner: **`--gpu-shards`** (across GPUs) →
-**`--gpu-workers-per-gpu`** (within a GPU) → **`--gpu-batch-size`** (within a replica).
+The active fill knob in this implementation is **`--gpu-shards`** (across GPUs).
+Per-GPU replicas and detector batching remain reserved for later work.
 
 `--mode process --layer objmap` requires no new flags; it routes through Stages 1–2
 automatically when a `GpuDetector` is present.

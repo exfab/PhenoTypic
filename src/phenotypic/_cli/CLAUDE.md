@@ -39,10 +39,11 @@ and runs three content-defined stages. The per-image stage cores live in
    apply post-ops + `measure(apply_post=False)`, atomically re-save the HDF,
    **delete the sidecar** (mandatory).
 
-**Resume is content-defined.** Stage 1 skips when the HDF exists; Stage 2 skips
-when the sidecar **or** the terminal artifact (parquet, or the objmap layer in
-process mode) exists — Stage 3 deletes the sidecar, so the terminal artifact is
-the durable "done" marker; Stage 3 skips when the parquet exists. The output is
+**Resume is content-defined.** Plain `--resume` includes failed staged GPU images.
+A missing or invalid HDF selects Stage 1; a valid HDF without a sidecar selects
+Stage 2; and a valid HDF with a sidecar selects Stage 3. Stage 3 writes an atomic
+terminal marker after publishing the parquet, HDF, and plot, then deletes the
+sidecar. The output is
 byte-identical to a single-pass run.
 
 **Progress events.** Stages emit stage-tagged events via the `stage` field on
@@ -56,9 +57,9 @@ trio.
 
 ## SLURM chaining (`_cli_staged_slurm.py` + `_cli_staged_slurm_worker.py`)
 
-> **Queue all SLURM work through the drip-feed dispatcher — never submit array
-> chunks eagerly.** Every SLURM submission path in this package (the CPU
-> autonomous strategy, the staged GPU strategy, `--recompile`) funnels its
+> **Queue ordinary SLURM work through the drip-feed dispatcher, and staged GPU
+> work through its recoverable controller.** The CPU autonomous strategy and
+> `--recompile` funnel their
 > ordered chunk scripts through `submit_slurm_script_chain`
 > (`_cli_slurm_submission.py`) → `generate_dispatcher_chain` +
 > `submit_drip_feed_start` (`sdk_/slurm/_dispatcher.py`). The dispatcher submits
@@ -69,50 +70,58 @@ trio.
 > submission site MUST reuse this helper, not loop `submit_script` over all
 > chunks — eager submission is what caused the `AssocMaxSubmitJobLimit` failures.
 
-`StagedSlurmStrategy` writes its **own** per-stage SBATCH scripts via
-`format_sbatch_directives` (the array generator's fixed path + per-image
-`_cli_process_single` body cannot be reused per stage), flattens them into one
-ordered list `[*stage1_chunks, stage2, *stage3_chunks]`
-(`flatten_staged_scripts`), and hands that to the shared drip-feed dispatcher via
-`submit_staged_chain` → `submit_slurm_script_chain`. The linear order encodes the
-stage dependencies (a chunk is submitted only after the prior one ends), so
-Stage 2 starts after the last Stage-1 chunk and Stage 3 after Stage 2:
+`StagedSlurmStrategy` writes per-stage SBATCH scripts plus a controller script.
+The dispatcher paragraph above applies only to ordinary CPU/recompile chains;
+the staged GPU path no longer flattens its whole lifecycle into that dispatcher.
+It creates an orchestration UUID, versioned image manifest, atomic controller
+state, and append-only job ledger before submitting Controller 0. That controller
+pre-arms its recovery controller before submitting Stage-1 chunk 0. Each controller
+thereafter pre-submits its recovery
+controller, then either launches the next Stage-1/Stage-3 chunk, launches a
+Stage-2 round, or launches the finalizer. Deterministic SLURM comments let a
+successor discover a job when its predecessor died after `sbatch` but before
+persisting the returned ID.
 
 - Stage 1 / Stage 3 = arrays over **images**; Stage 2 = an array over
   **shards** (`--gpu-shards`, `partition_shards`), each a resident-model
-  `run_stage2_shard`. The tiny dispatcher jobs run on `config.slurm_args` (CPU).
-- **Array chunking (`min(MaxArraySize, MaxSubmitJobs - 1)`):** the image count is
-  split into `ceil(n_images / chunk_limit)` chunk scripts
+  `run_stage2_shard`. Controller jobs run on `config.slurm_args` (CPU).
+- **Array chunking (`min(MaxArraySize, MaxSubmitJobs - 2)`):** the image count is
+  split into `ceil(n_images / chunk_limit)` chunk scripts. The two reserved slots
+  are for the running controller and its dependent recovery controller.
   (`calculate_optimal_array_chunks` → `_write_image_stage_chunks`), where
   `get_slurm_max_submit_jobs()` conservatively uses the smallest configured QoS
   or user-association limit, and `chunk_limit` reserves one submission slot for
   the dependent dispatcher queued alongside the active array. A single chunk
   must fit **both** the array-index cap and the remaining per-user submit
-  capacity.
+  capacity. Known limits below three are rejected.
   Each chunk is a 0-based `--array=0-(k-1)` whose `TASK_INDICES` window holds the
   **absolute** manifest indices and whose worker reads
   `--index $CURRENT_TASK_INDEX`, so no array index ever reaches the limit. A
   single chunk keeps the plain `stage1.sh`/`stage3.sh` name; multiple become
   `stageN_chunk{i}.sh`. Stage 2 is **never chunked** (a shard worker streams its
   whole shard on one GPU); `--gpu-shards > chunk_limit` raises. `generate_staged_scripts`
-  returns `{"stage1": [Path…], "stage2": Path, "stage3": [Path…],
-  "finalizer": Path}` — image stages are always lists. The finalizer is a
+  returns stage arrays plus controller, finalizer, config, and manifest paths.
+  Image stages are always lists. The finalizer is a
   one-task CPU job that reloads the canonical pipeline and runs the same
   aggregate/finalize path as ordinary SLURM, including named analysis and plot
-  publication. The shared dispatcher drip-feeds the ordered scripts, including
-  the finalizer, so only one chunk array and one tiny dispatcher are queued at a
-  time while each chunk's array still fans out.
+  publication. The controller records every dynamically submitted ID and keeps
+  only one work array plus its recovery controller active at a time.
 - Per-stage resources: Stages 1 & 3 use `config.slurm_args` (CPU); Stage 2 uses
   `resolve_stage_slurm_args(gpu_slurm_args, slurm_args)` — inherit/delta over the
   CPU profile, auto-add `slurm_gpus_per_node=1` (explicit `=0` **omits** the
   directive so a CPU partition can run the GPU stage, e.g. tests).
-- **Walltime survival:** the Stage-2 script carries `#SBATCH --signal=B:TERM@<g>`
-  + `#SBATCH --requeue`; the worker catches the SIGTERM and **`scontrol
-  requeue`s its own array task** (NOT a new job). Because the requeued task keeps
-  its job id and `afterany` waits for terminal state, the dispatcher that submits
-  the first Stage-3 chunk (it depends `afterany` on the Stage-2 job) naturally
-  waits for the continuation. An `attempted` set stops a deterministic failure
-  from requeuing forever.
+- **Walltime survival:** Stage 2 does not install a signal handler or self-requeue.
+  After each array reaches a terminal scheduler state, its dependent controller
+  reclassifies the manifest from valid HDFs, atomic sidecars, Stage-3 markers,
+  and terminal failures. Remaining images launch another array round. One unchanged
+  retryable-set round is retried; a second unchanged round terminalizes the
+  remainder and advances to Stage 3.
+- Every worker checks the active epoch immediately before publishing HDF,
+  sidecar, parquet, plot, or deletion changes. Restart and cancellation fence
+  stale workers before clearing or cancelling ledgered jobs.
+- Without `--wait`, staged submission returns `PROCESSING SUBMITTED` and remote
+  finalization owns aggregation, reports, README, and the completion marker.
+  With `--wait`, the CLI monitors that marker and never duplicates publication.
 - Per-image isolation: a missing prereq (S6) is recorded and skipped, never an
   unhandled raise that aborts a shard.
 

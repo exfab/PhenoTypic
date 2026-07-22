@@ -1,6 +1,7 @@
 """CPU-only GpuDetector for tests (no torch). Shared by unit + integration."""
 
 import numpy as np
+import time
 from pydantic import PrivateAttr
 from skimage.measure import label as _sk_label
 
@@ -13,6 +14,7 @@ class FakeGpuDetector(GpuDetector):
     are overrideable per test."""
 
     threshold: float = 0.5
+    delay_seconds: float = 0.0
     # The synthetic threshold mask can legitimately touch the frame and does
     # not encode a model-produced background instance. Production detectors
     # retain the GpuDetector default of dropping that background label.
@@ -23,6 +25,8 @@ class FakeGpuDetector(GpuDetector):
         self._loaded = True
 
     def _infer_one(self, sample):
+        if self.delay_seconds:
+            time.sleep(self.delay_seconds)
         gray = sample.mean(axis=-1) if sample.ndim == 3 else sample
         peak = gray.max()
         mask = gray > (self.threshold * peak) if peak > 0 else gray > 0

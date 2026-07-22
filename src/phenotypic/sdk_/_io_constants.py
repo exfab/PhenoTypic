@@ -183,9 +183,9 @@ DELIVERABLES_METADATA_CSV: Final[str] = "metadata.csv"
 ANALYSIS_MANIFEST_FILENAME: Final[str] = "analysis_manifest.json"
 ANALYSIS_MANIFEST_SCHEMA_VERSION: Final[int] = 1
 
-_ANALYSIS_ID_PATTERN = re.compile(
-    r"[A-Za-z][A-Za-z0-9_.-]{0,127}\Z", re.ASCII
-)
+_ANALYSIS_ID_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,127}\Z", re.ASCII)
+
+
 def _reserved_analysis_artifact_stems() -> frozenset[str]:
     """Return CSV/Parquet stems that share the deliverables root."""
     return frozenset(
@@ -245,9 +245,7 @@ def analysis_manifest_path(deliverables_base: Path) -> Path:
     return Path(deliverables_base) / ANALYSIS_MANIFEST_FILENAME
 
 
-def named_analysis_csv_path(
-    deliverables_base: Path, analysis_id: str
-) -> Path:
+def named_analysis_csv_path(deliverables_base: Path, analysis_id: str) -> Path:
     """Return the named CSV artifact path for ``analysis_id``."""
     return Path(deliverables_base) / f"{validate_analysis_id(analysis_id)}.csv"
 
@@ -256,7 +254,10 @@ def named_analysis_parquet_path(
     deliverables_base: Path, analysis_id: str
 ) -> Path:
     """Return the named Parquet artifact path for ``analysis_id``."""
-    return Path(deliverables_base) / f"{validate_analysis_id(analysis_id)}.parquet"
+    return (
+        Path(deliverables_base)
+        / f"{validate_analysis_id(analysis_id)}.parquet"
+    )
 
 
 def named_analysis_paths(
@@ -268,6 +269,7 @@ def named_analysis_paths(
         parquet=named_analysis_parquet_path(deliverables_base, analysis_id),
         manifest=analysis_manifest_path(deliverables_base),
     )
+
 
 #: REMBI run manifest filename, flat under deliverables/ beside metadata.csv.
 #: Written best-effort by
@@ -1574,6 +1576,11 @@ class JobMetadataKey:
     DATASETS: Final[str] = "datasets"
     INCLUDE_DATASET_COLUMN: Final[str] = "include_dataset_column"
     IMAGE_TASK_MAPPING: Final[str] = "image_task_mapping"
+    ORCHESTRATION_EPOCH: Final[str] = "orchestration_epoch"
+    PIPELINE_PATH: Final[str] = "pipeline_path"
+    IMAGE_TYPE: Final[str] = "image_type"
+    NROWS: Final[str] = "nrows"
+    NCOLS: Final[str] = "ncols"
 
 
 class DashboardManifestKey:

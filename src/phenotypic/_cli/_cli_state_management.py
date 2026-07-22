@@ -8,6 +8,7 @@ for resume capability. Uses append-only event log with periodic aggregation.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Optional, List
 from datetime import datetime
@@ -21,6 +22,10 @@ from phenotypic.sdk_ import (
     resolve_event_log_path,
     resolve_processing_state_path,
 )
+
+from ._cli_staged_resume import pipeline_content_digest
+
+logger = logging.getLogger(__name__)
 
 
 def save_processing_state(
@@ -176,10 +181,20 @@ def create_initial_state(
             "nrows": config.nrows,
             "ncols": config.ncols,
             "bit_depth": config.bit_depth,
+            "detect_mode": config.detect_mode,
             "n_jobs": config.n_jobs,
             "slurm_args": config.slurm_args,
             "ext": config.ext,
             "process_only_layer": config.process_only_layer,
+            "include_dataset_column": config.include_dataset_column,
+            "overlay_alpha": config.overlay_alpha,
+            "save_overlays": config.save_overlays,
+            "pipeline_sha256": (
+                pipeline_content_digest(config.pipeline_json)
+                if config.pipeline_json.is_file()
+                else None
+            ),
+            "staged_stage3_markers": config.staged_stage3_markers,
         }
     )
     
@@ -205,6 +220,9 @@ def update_state_from_events(state: ProcessingState, output_dir: Path) -> Proces
         
         # Update dataset states
         for dataset_name, new_state in latest_states.items():
+            prior = state.datasets.get(dataset_name)
+            if prior is not None:
+                new_state.initial_images = set(prior.initial_images)
             state.datasets[dataset_name] = new_state
     
     # Update last_updated timestamp
@@ -228,9 +246,21 @@ def validate_resume_compatibility(
         Tuple of (is_compatible, error_message)
         If compatible, error_message is None
     """
-    # Check pipeline path
-    if state.pipeline_path != config.pipeline_json:
-        return False, f"Pipeline mismatch: saved={state.pipeline_path}, current={config.pipeline_json}"
+    saved_digest = state.config.get("pipeline_sha256")
+    if saved_digest is not None:
+        current_digest = pipeline_content_digest(config.pipeline_json)
+        if saved_digest != current_digest:
+            return False, "Pipeline contents changed since the original run"
+    else:
+        if state.pipeline_path != config.pipeline_json:
+            return False, (
+                f"Pipeline mismatch: saved={state.pipeline_path}, "
+                f"current={config.pipeline_json}"
+            )
+        logger.warning(
+            "Resume state predates pipeline content fingerprints; "
+            "falling back to path-based pipeline compatibility"
+        )
     
     # Check input path
     if state.input_path != config.input_path:
@@ -239,6 +269,23 @@ def validate_resume_compatibility(
     # Check image type
     if state.config.get("image_type") != config.image_type:
         return False, f"Image type mismatch: saved={state.config.get('image_type')}, current={config.image_type}"
+
+    for key in (
+        "bit_depth",
+        "detect_mode",
+        "include_dataset_column",
+        "overlay_alpha",
+        "save_overlays",
+    ):
+        if key not in state.config:
+            continue
+        current_value = getattr(config, key)
+        if state.config.get(key) != current_value:
+            return (
+                False,
+                f"{key} mismatch: saved={state.config.get(key)}, "
+                f"current={current_value}",
+            )
     
     # Check grid dimensions for GridImage
     if config.image_type == "GridImage":

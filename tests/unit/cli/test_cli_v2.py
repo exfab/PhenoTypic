@@ -1099,6 +1099,77 @@ class TestResumeMode:
         assert result.exit_code != 0
         assert "--output" in result.output
 
+    def test_resume_rejects_active_staged_jobs(
+        self, runner, tmp_path, temp_pipeline, monkeypatch
+    ):
+        input_dir = tmp_path / "images"
+        input_dir.mkdir()
+        (input_dir / "image.tif").write_bytes(b"image")
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        monkeypatch.setattr(
+            "phenotypic._cli._cli_staged_orchestration.active_ledger_job_ids",
+            lambda output: ["123", "456"],
+        )
+
+        result = runner.invoke(
+            phenotypic_cli,
+            [
+                "--pipeline",
+                str(temp_pipeline),
+                "--input",
+                str(input_dir),
+                "--output",
+                str(output_dir),
+                "--resume",
+                "--skip-validation",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "123, 456" in result.output
+
+    def test_resume_rejects_indeterminate_ledgered_job(
+        self, runner, tmp_path, temp_pipeline, monkeypatch
+    ):
+        from phenotypic._cli._cli_staged_orchestration import append_job_ledger
+
+        input_dir = tmp_path / "images"
+        input_dir.mkdir()
+        (input_dir / "image.tif").write_bytes(b"image")
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        append_job_ledger(
+            output_dir,
+            epoch="epoch-1",
+            token="controller",
+            role="controller",
+            round_index=0,
+            status="submitted",
+            job_id="789",
+        )
+        monkeypatch.setattr(
+            "phenotypic._cli._cli_staged_orchestration.scheduler_job_is_active",
+            lambda job_id: None,
+        )
+
+        result = runner.invoke(
+            phenotypic_cli,
+            [
+                "--pipeline",
+                str(temp_pipeline),
+                "--input",
+                str(input_dir),
+                "--output",
+                str(output_dir),
+                "--resume",
+                "--skip-validation",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "jobs are active: 789" in result.output
+
 
 class TestDryRunMode:
     """Tests for dry-run mode functionality."""

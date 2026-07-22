@@ -57,24 +57,26 @@
   resident-model GPU detect → CPU measure — reusing the per-image HDF. Stage 2 writes a
   per-image `.npy` objmap **sidecar** (HDF opened read-only); Stage 3 merges it into the
   final HDF, measures, and deletes the sidecar. The output folder is identical to a
-  single-pass run; resume is content-defined (HDF → sidecar → parquet) and progress is
+  single-pass run; resume is content-defined (valid HDF → sidecar → atomic Stage-3
+  completion marker) and progress is
   stage-tagged. `--mode process --layer objmap` exports objmaps after Stages 1–2.
-  On SLURM, the stages submit through the **shared drip-feed dispatcher** (the same one
-  the CPU path uses): Stages 1 & 3 on the CPU `--slurm` profile, Stage 2 as a GPU array
+  On SLURM, the stages submit through an **epoch-fenced recoverable controller**:
+  Stages 1 & 3 use the CPU `--slurm` profile, and Stage 2 is a GPU array
   of resident-model shard-workers. Stages 1 & 3 auto-split into
-  `ceil(n_images / min(MaxArraySize, MaxSubmitJobs))` chunks (Stage 2 is never chunked —
-  one shard streams on one GPU); only chunk 0 + a tiny dispatcher are queued up front, and
-  each chunk's dispatcher submits the next after it ends. Peak queue occupancy stays at
-  ~1 chunk, so a large run dispatches without hitting "Invalid job array specification" or
-  the per-user `MaxSubmitJobs` cap. Stage 2 survives walltime — each sidecar write is
-  atomic and the worker SIGTERM-resubmits its shard, so a `TIMEOUT` never loses work.
+  `ceil(n_images / min(MaxArraySize, MaxSubmitJobs - 2))` chunks (Stage 2 is never
+  chunked). Only Controller 0 is submitted initially; it pre-arms a dependent recovery
+  controller before launching Stage-1 chunk 0. Each controller records the next job in
+  an append-only ledger. After a Stage-2 timeout, the controller derives remaining work
+  from atomic sidecars and submits another round. No worker signal handler or self-requeue
+  is used. Without `--wait`, the CLI reports submission only; the dependent finalizer is
+  the sole publisher of aggregated outputs and the completion marker.
   Staged GPU flags (Spec 1 §10):
     - `--gpu-slurm key=value` — Stage-2 GPU SBATCH profile; **inherits/deltas over
       `--slurm`** (put a separate GPU partition/account here); auto-adds
       `slurm_gpus_per_node=1` (explicit `=0` runs the GPU stage on a CPU partition).
     - `--gpu-shards N` (default 1) — parallel whole-GPU Stage-2 tasks (SLURM-only).
-    - `--gpu-workers-per-gpu W` (default 1) — replicas packed per GPU (small-model
-      fill).
+    - `--gpu-workers-per-gpu W` (default 1) — reserved for future replica packing;
+      the current staged worker runs one resident model per GPU shard.
 - `uv run python -m phenotypic.tune run spec.json -i <images> -o <out>` —
   hyperparameter tuning (grid/random + Optuna), distributed via `--slurm`/
   `--storage-url`

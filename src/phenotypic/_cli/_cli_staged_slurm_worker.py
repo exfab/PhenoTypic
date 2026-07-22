@@ -1,35 +1,43 @@
-"""Per-stage SLURM array-task entrypoints for the staged GPU engine.
+"""Per-stage SLURM workers for the staged GPU engine.
 
-One module invoked per SLURM array task as ``python -m
-phenotypic._cli._cli_staged_slurm_worker --stage {1|2|3} ...``:
-
-- Stage 1 / Stage 3 are arrays over **images**: ``$SLURM_ARRAY_TASK_ID`` indexes
-  the manifest and runs the matching CPU stage core (one image per task).
-- Stage 2 is an array over **shards**: ``$SLURM_ARRAY_TASK_ID`` is the shard
-  index; the resident model streams that shard of HDFs to objmap sidecars.
-
-All stages are content-defined and emit stage-tagged events: a requeued/duplicate
-task is idempotent, and the per-stage dashboard view is populated for SLURM runs.
+Workers are content-defined and epoch fenced. Stage 2 builds its pending shard
+before loading the GPU model; walltime continuation is owned by the dependent
+controller rather than by signal handling inside this process.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
-import signal as _signal
-import subprocess
 from pathlib import Path
-from typing import List, Sequence, Tuple
+from typing import Sequence
 
 from phenotypic import ImagePipeline
-from phenotypic.sdk_ import dataset_hdf_dir, event_log_path
+from phenotypic.sdk_ import (
+    dataset_hdf_dir,
+    dataset_measurements_dir,
+    event_log_path,
+)
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import split_pipeline_at_gpu
 from ._cli_sidecar import sidecar_exists
+from ._cli_staged_orchestration import (
+    StagedManifestEntry,
+    append_stage2_terminal_failure,
+    assert_active_epoch,
+    epoch_is_active,
+    load_orchestration_state,
+    load_staged_manifest,
+    terminal_stage2_identities,
+)
 from ._cli_staged_slurm import partition_shards
+from ._cli_staged_resume import (
+    clear_downstream_artifacts_for_stage1,
+    stage3_completion_exists,
+    valid_staged_hdf,
+)
 from ._cli_staged_workers import (
     emit_missing_prereq,
     stage1_preprocess_core,
@@ -39,55 +47,32 @@ from ._cli_staged_workers import (
 )
 from ._stages import STAGE_GPU_DETECT, STAGE_MEASURE, STAGE_PREPROCESS
 
-# A manifest entry is [dataset, image_stem, image_path]; Stage 1 needs the path,
-# Stages 2/3 only the (dataset, stem).
-Manifest = Sequence[Sequence[str]]
-
-# --- Stage-2 walltime survival ------------------------------------------------
-# SLURM does NOT auto-requeue a TIMEOUT job. The durable half is already in place
-# (each sidecar write is atomic and the worker skips done images), so no work is
-# lost on a kill. This adds the TRIGGER: the Stage-2 script carries
-# ``--signal=B:TERM@<grace>`` so SLURM sends SIGTERM shortly before walltime; the
-# worker catches it and REQUEUES its own array task (not a new job), so Stage 3's
-# ``afterany`` dependency on the Stage-2 array automatically waits for the
-# requeued run — no race where Stage 3 merges before the shard is complete.
-_STOP = False
+Manifest = Sequence[StagedManifestEntry]
 
 
-def _install_sigterm_handler() -> None:
-    def _handler(signum, frame):  # noqa: ANN001 - signal handler signature
-        global _STOP
-        _STOP = True
+def _active_check(output_dir: Path, epoch: str | None):
+    """Return a publication fence callback for a staged worker."""
+    if epoch is None:
+        return None
 
-    _signal.signal(_signal.SIGTERM, _handler)
+    def _check() -> None:
+        assert_active_epoch(output_dir, epoch)
+
+    return _check
 
 
-def _should_stop() -> bool:
-    return _STOP
-
-
-def resubmit_stage2_continuation(
-    *,
-    pipeline_path: Path,
-    output_dir: Path,
-    image_type: ImageTypeName,
-    manifest: Manifest,
-    shard_index: int,
-    n_shards: int,
-) -> None:
-    """Requeue THIS Stage-2 array task to finish its shard after a SIGTERM.
-
-    Requeuing (rather than submitting a NEW continuation job) keeps the Stage-2
-    array job alive, so Stage 3's ``afterany`` dependency on that array job
-    automatically waits for the requeued run to finish before merging — there is
-    no race where Stage 3 starts on a shard whose continuation is still detecting.
-    Content-defined skip means the requeued run reprocesses only the remaining
-    sidecar-less images. (Args beyond the job id are kept for the call contract /
-    test seam.)
-    """
-    job = os.environ.get("SLURM_JOB_ID", "")
-    if job:
-        subprocess.run(["scontrol", "requeue", job], check=False)
+def _entry(entry: StagedManifestEntry | Sequence[str]) -> StagedManifestEntry:
+    """Coerce legacy direct-test tuples while disk manifests stay versioned."""
+    if isinstance(entry, StagedManifestEntry):
+        return entry
+    dataset, stem = entry[:2]
+    input_path = entry[2] if len(entry) > 2 else str(stem)
+    return StagedManifestEntry(
+        dataset=str(dataset),
+        image_name=Path(str(input_path)).name or str(stem),
+        stem=str(stem),
+        input_path=str(input_path),
+    )
 
 
 def run_stage1_step(
@@ -97,19 +82,37 @@ def run_stage1_step(
     manifest: Manifest,
     index: int,
     ext: str = ".tiff",
+    *,
+    epoch: str | None = None,
+    resume: bool = False,
 ) -> None:
-    """Stage-1 array task: preprocess one manifest image -> staged HDF."""
+    """Preprocess one manifest image into its staged HDF."""
+    item = _entry(manifest[index])
+    hdf = dataset_hdf_dir(output_dir, item.dataset) / f"{item.stem}.h5"
+    if resume and valid_staged_hdf(hdf):
+        return
+    check = _active_check(output_dir, epoch)
+    if check is not None:
+        check()
+    if resume:
+        clear_downstream_artifacts_for_stage1(
+            output_dir, item.dataset, item.stem
+        )
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
-    om = OutputManager.from_config(output_dir, ext, save_overlays=False)
-    dataset, stem, image_path = (
-        manifest[index][0], manifest[index][1], manifest[index][2]
+    output_manager = OutputManager.from_config(
+        output_dir, ext, save_overlays=False
     )
     log = event_log_path(output_dir)
-    # stage_event re-raises on failure: the task fails (visible in sacct) and
-    # afterany lets the chain proceed.
-    with stage_event(log, dataset, stem, STAGE_PREPROCESS):
+    with stage_event(log, item.dataset, item.image_name, STAGE_PREPROCESS):
         stage1_preprocess_core(
-            plan, Path(image_path), dataset, stem, output_dir, om, image_type
+            plan,
+            Path(item.input_path),
+            item.dataset,
+            item.stem,
+            output_dir,
+            output_manager,
+            image_type,
+            active_check=check,
         )
 
 
@@ -120,56 +123,99 @@ def run_stage2_shard(
     manifest: Manifest,
     shard_index: int,
     n_shards: int,
+    *,
+    epoch: str | None = None,
+    resume: bool = False,
+    markers_required: bool = True,
 ) -> None:
-    """Stage-2 array task: model loaded once, stream this shard of HDFs -> sidecars.
+    """Stream one pending shard through one resident GPU model."""
+    check = _active_check(output_dir, epoch)
+    if check is not None:
+        check()
+    shard = [
+        _entry(item)
+        for item in partition_shards(list(manifest), n_shards)[shard_index]
+    ]
+    terminal = (
+        terminal_stage2_identities(output_dir, epoch) if epoch is not None else set()
+    )
+    candidates = [
+        item
+        for item in shard
+        if item.identity not in terminal
+        if not sidecar_exists(output_dir, item.dataset, item.stem)
+        and not (
+            stage3_completion_exists(output_dir, item.dataset, item.stem)
+            or (
+                resume
+                and not markers_required
+                and (
+                dataset_measurements_dir(output_dir, item.dataset)
+                / f"{item.stem}.parquet"
+                ).is_file()
+            )
+        )
+    ]
+    if not candidates:
+        return
 
-    Per-image isolation (S6): a missing staged HDF or an inference error skips
-    that image (recorded) instead of aborting the shard. Catches the pre-walltime
-    SIGTERM and requeues the shard for the remainder.
-    """
-    _install_sigterm_handler()
-    plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
-    plan.gpu_detector._ensure_model_loaded()  # ONCE per worker
-    my_shard = partition_shards(list(manifest), n_shards)[shard_index]
     log = event_log_path(output_dir)
-    attempted: set[tuple[str, str]] = set()
-
-    for entry in my_shard:
-        if _should_stop():
-            break
-        dataset, stem = entry[0], entry[1]
-        if sidecar_exists(output_dir, dataset, stem):
-            continue  # content-defined resume
-        attempted.add((dataset, stem))
-        hdf = dataset_hdf_dir(output_dir, dataset) / f"{stem}.h5"
-        if not hdf.is_file():
-            emit_missing_prereq(
-                log, dataset, stem, STAGE_GPU_DETECT, "staged HDF"
-            )
+    state = load_orchestration_state(output_dir)
+    round_index = 0 if state is None else int(state.get("round", 0))
+    pending: list[StagedManifestEntry] = []
+    for item in candidates:
+        hdf = dataset_hdf_dir(output_dir, item.dataset) / f"{item.stem}.h5"
+        if valid_staged_hdf(hdf):
+            pending.append(item)
             continue
-        try:
-            with stage_event(log, dataset, stem, STAGE_GPU_DETECT):
-                stage2_detect_core(
-                    plan.gpu_detector, output_dir, dataset, stem, image_type
-                )
-        except Exception:  # isolate one bad image from the rest of the shard
-            pass
-
-    if _should_stop():
-        # Walltime SIGTERM: requeue only if images were NOT yet attempted (we ran
-        # out of time before reaching them). Images we attempted-and-failed are
-        # excluded, so a deterministic failure never requeues forever (S10).
-        remaining = [
-            e for e in my_shard
-            if (e[0], e[1]) not in attempted
-            and not sidecar_exists(output_dir, e[0], e[1])
-        ]
-        if remaining:
-            resubmit_stage2_continuation(
-                pipeline_path=pipeline_path, output_dir=output_dir,
-                image_type=image_type, manifest=manifest,
-                shard_index=shard_index, n_shards=n_shards,
+        emit_missing_prereq(
+            log,
+            item.dataset,
+            item.image_name,
+            STAGE_GPU_DETECT,
+            "staged HDF",
+        )
+        if epoch is not None and epoch_is_active(output_dir, epoch):
+            append_stage2_terminal_failure(
+                output_dir,
+                epoch=epoch,
+                round_index=round_index,
+                entry=item,
+                error_type="MissingPrerequisite",
+                error_message="Stage 1 HDF is absent",
             )
+    if not pending:
+        return
+
+    if check is not None:
+        check()
+    plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
+    plan.gpu_detector._ensure_model_loaded()
+    for item in pending:
+        if check is not None:
+            check()
+        try:
+            with stage_event(
+                log, item.dataset, item.image_name, STAGE_GPU_DETECT
+            ):
+                stage2_detect_core(
+                    plan.gpu_detector,
+                    output_dir,
+                    item.dataset,
+                    item.stem,
+                    image_type,
+                    active_check=check,
+                )
+        except Exception as exc:
+            if epoch is not None and epoch_is_active(output_dir, epoch):
+                append_stage2_terminal_failure(
+                    output_dir,
+                    epoch=epoch,
+                    round_index=round_index,
+                    entry=item,
+                    error_type=type(exc).__name__,
+                    error_message=str(exc),
+                )
 
 
 def run_stage3_step(
@@ -179,78 +225,114 @@ def run_stage3_step(
     manifest: Manifest,
     index: int,
     ext: str = ".tiff",
+    *,
+    epoch: str | None = None,
+    resume: bool = False,
+    markers_required: bool = True,
 ) -> None:
-    """Stage-3 array task: merge one manifest image's sidecar -> measure -> parquet."""
-    plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
-    om = OutputManager.from_config(output_dir, ext, save_overlays=False)
-    dataset, stem = manifest[index][0], manifest[index][1]
+    """Merge one sidecar, measure it, and publish final per-image outputs."""
+    item = _entry(manifest[index])
+    parquet = (
+        dataset_measurements_dir(output_dir, item.dataset)
+        / f"{item.stem}.parquet"
+    )
+    if stage3_completion_exists(output_dir, item.dataset, item.stem) or (
+        resume and not markers_required and parquet.is_file()
+    ):
+        return
+    check = _active_check(output_dir, epoch)
+    if check is not None:
+        check()
     log = event_log_path(output_dir)
-    if not sidecar_exists(output_dir, dataset, stem):
-        # S6: Stage 2 failed/absent for this image — record + fail the task
-        # (rather than letting load_sidecar raise an opaque FileNotFoundError).
+    if not sidecar_exists(output_dir, item.dataset, item.stem):
         emit_missing_prereq(
-            log, dataset, stem, STAGE_MEASURE, "objmap sidecar"
+            log,
+            item.dataset,
+            item.image_name,
+            STAGE_MEASURE,
+            "objmap sidecar",
         )
         raise SystemExit(1)
-    with stage_event(log, dataset, stem, STAGE_MEASURE):
+    plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
+    output_manager = OutputManager.from_config(
+        output_dir, ext, save_overlays=False
+    )
+    with stage_event(log, item.dataset, item.image_name, STAGE_MEASURE):
         stage3_merge_measure_core(
-            plan, output_dir, dataset, stem, om, image_type
+            plan,
+            output_dir,
+            item.dataset,
+            item.stem,
+            output_manager,
+            image_type,
+            active_check=check,
+            image_name=item.image_name,
         )
-
-
-def _load_manifest(manifest_path: Path) -> List[Tuple[str, ...]]:
-    data = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
-    return [tuple(entry) for entry in data]
 
 
 def _preload_custom_op_modules() -> None:
-    """Import modules named in ``PHENOTYPIC_PRELOAD_MODULES`` (comma-separated).
-
-    A SLURM worker is a fresh process; ``ImagePipeline.from_json`` resolves op
-    classes from the ``phenotypic`` namespace, so operations defined OUTSIDE the
-    package (a user's custom detector module — or, in tests, the fake detector)
-    must register themselves before deserialization. Listing such a module here
-    imports it (and runs its registration side effect) on worker startup.
-    """
+    """Import modules named in ``PHENOTYPIC_PRELOAD_MODULES``."""
     import importlib
 
-    for mod in os.environ.get("PHENOTYPIC_PRELOAD_MODULES", "").split(","):
-        mod = mod.strip()
-        if mod:
-            importlib.import_module(mod)
+    for module in os.environ.get("PHENOTYPIC_PRELOAD_MODULES", "").split(","):
+        module = module.strip()
+        if module:
+            importlib.import_module(module)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Dispatch one SLURM array task to its staged worker."""
     parser = argparse.ArgumentParser(prog="phenotypic-staged-slurm-worker")
     parser.add_argument("--stage", type=int, required=True, choices=(1, 2, 3))
     parser.add_argument("--pipeline", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--image-type", default="Image")
     parser.add_argument("--manifest", type=Path, required=True)
-    parser.add_argument("--index", type=int, required=True)  # array task id
+    parser.add_argument("--index", type=int, required=True)
     parser.add_argument("--n-shards", type=int, default=1)
     parser.add_argument("--ext", default=".tiff")
+    parser.add_argument("--epoch", required=True)
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--stage3-markers-required", action="store_true")
     args = parser.parse_args(argv)
 
     _preload_custom_op_modules()
-    manifest = _load_manifest(args.manifest)
+    manifest = load_staged_manifest(args.manifest)
     image_type: ImageTypeName = (
         "GridImage" if args.image_type == "GridImage" else "Image"
     )
+    common = {"epoch": args.epoch, "resume": args.resume}
     if args.stage == 1:
         run_stage1_step(
-            args.pipeline, args.output_dir, image_type, manifest, args.index,
+            args.pipeline,
+            args.output_dir,
+            image_type,
+            manifest,
+            args.index,
             args.ext,
+            **common,
         )
     elif args.stage == 2:
         run_stage2_shard(
-            args.pipeline, args.output_dir, image_type, manifest, args.index,
+            args.pipeline,
+            args.output_dir,
+            image_type,
+            manifest,
+            args.index,
             args.n_shards,
+            markers_required=args.stage3_markers_required,
+            **common,
         )
     else:
         run_stage3_step(
-            args.pipeline, args.output_dir, image_type, manifest, args.index,
+            args.pipeline,
+            args.output_dir,
+            image_type,
+            manifest,
+            args.index,
             args.ext,
+            markers_required=args.stage3_markers_required,
+            **common,
         )
     return 0
 

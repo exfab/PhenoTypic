@@ -106,10 +106,14 @@ Resume and Recovery
 -------------------
 
 ``--resume``
-   Continue from a previous run. Skips already-processed images.
+   Continue from a previous run. Staged GPU runs select Stage 1, 2, or 3 from
+   valid HDF, sidecar, and terminal-marker artifacts and automatically include
+   intermediate-stage failures.
 
 ``--retry-failures``
-   Re-process only images that failed. Requires ``--resume``.
+   Include recorded CPU or legacy single-pass failures in addition to unfinished
+   images. Staged GPU failures are already included by ``--resume``. Requires
+   ``--resume``.
 
 ``--restart``
    Clear all state and start fresh. Mutually exclusive with ``--resume``.
@@ -132,14 +136,22 @@ SLURM Options
    The deprecated ``time_min`` key is auto-migrated to ``time``.
 
 ``--wait``
-   Wait for SLURM jobs to complete before returning. Without it, the CLI returns
-   as soon as the jobs are submitted.
+   Wait for SLURM jobs and their dependent finalizer to complete. For staged GPU
+   runs, success requires the finalizer completion marker. Without this flag,
+   the CLI prints ``PROCESSING SUBMITTED`` and returns without running local
+   aggregation or claiming completion. Ctrl+C detaches monitoring without
+   cancelling the active epoch.
 
 GPU Staging Options
 -------------------
 
 A pipeline containing a ``GpuDetector`` runs as three stages (CPU preprocess →
 resident-model GPU detect → CPU measure). These flags tune Stage 2.
+
+On SLURM, an epoch-fenced dependent controller submits additional Stage-2
+arrays while sidecar-less retryable images remain. It replaces worker
+signal/self-requeue behavior. Dynamic controller, array, Stage-3, and finalizer
+job IDs are recorded in the run ledger for monitoring and cancellation.
 
 ``--gpu-slurm KEY=VALUE``
    Stage-2 SBATCH resources. Inherits and deltas over ``--slurm`` (the CPU
@@ -150,8 +162,8 @@ resident-model GPU detect → CPU measure). These flags tune Stage 2.
    Default: 1.
 
 ``--gpu-workers-per-gpu W``
-   Model replicas packed per physical GPU, to fill a GPU with a small model.
-   Default: 1.
+   Reserved for future per-GPU replica packing. The current staged worker runs
+   one resident model per GPU shard. Default: 1.
 
 Output Options
 --------------
