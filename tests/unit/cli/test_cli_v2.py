@@ -1860,6 +1860,72 @@ class TestAggregateMeasurements:
         assert set(master[DATASET_HEADER]) == {"plate_A", "plate_B"}
         assert master.loc[master[DATASET_HEADER] == "plate_A", "area"].iloc[0] == 10
 
+    def test_aggregate_repairs_staged_uuid_when_using_scratch(
+        self, temp_output_dir, tmp_path, monkeypatch
+    ):
+        """Scratch staging retains the original stem used by metadata joins."""
+        import pandas as pd
+        import polars as pl
+
+        from phenotypic._cli import _cli_output_manager
+        from phenotypic._cli._cli_parquet_agg import SOURCE_PATH_COLUMN
+
+        aggregate_parquet_files = _cli_output_manager.aggregate_parquet_files
+
+        def _aggregate_with_windows_source_paths(*args, **kwargs):
+            frame = aggregate_parquet_files(*args, **kwargs)
+            if frame is None:
+                return None
+            return frame.with_columns(
+                pl.col(SOURCE_PATH_COLUMN).str.replace_all(
+                    "/", "\\", literal=True
+                )
+            )
+
+        monkeypatch.setattr(
+            _cli_output_manager,
+            "aggregate_parquet_files",
+            _aggregate_with_windows_source_paths,
+        )
+
+        image_stem = "d000374_280_121_2026-04-11_16-55-18"
+        self._create_measurement_csvs(temp_output_dir, {
+            "plate": [
+                (
+                    image_stem,
+                    pd.DataFrame({
+                        IMAGE_NAME_HEADER: [
+                            "4815d217-4afc-40dd-ab6c-bbf1521f4109"
+                        ],
+                        "area": [10],
+                    }),
+                )
+            ],
+        })
+        metadata_path = temp_output_dir / "metadata.csv"
+        pd.DataFrame({
+            IMAGE_NAME_HEADER: [image_stem],
+            TREATMENT_LABEL: ["control"],
+        }).to_csv(metadata_path, index=False)
+        scratch = tmp_path / "scratch"
+        scratch.mkdir()
+        monkeypatch.setenv("SCRATCH", str(scratch))
+
+        result = aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["plate"],
+            include_dataset_column=True,
+            metadata_csv=metadata_path,
+        )
+
+        assert result is not None
+        master = pd.read_csv(result)
+        assert master[IMAGE_NAME_HEADER].tolist() == [image_stem]
+        mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
+        assert mirror[IMAGE_NAME_HEADER].tolist() == [image_stem]
+        assert mirror["area"].tolist() == [10]
+        assert mirror[TREATMENT_HEADER].tolist() == ["control"]
+
     def test_aggregate_measurements_no_dataset_column(self, temp_output_dir):
         """include_dataset_column=False: no Metadata_Dataset column added."""
         import pandas as pd

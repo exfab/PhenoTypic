@@ -1453,6 +1453,30 @@ def phenotypic_cli(
                 )
                 if not marker_contract:
                     migrate_legacy_stage3_markers(output_dir, resume_plan)
+                if (
+                    config.process_only_layer is None
+                    and config.save_overlays
+                ):
+                    from phenotypic._cli._cli_staged_workers import (
+                        ensure_staged_overlay,
+                    )
+
+                    resume_output_manager = OutputManager.from_config(
+                        base_dir=output_dir,
+                        ext=config.ext,
+                        include_dataset_column=config.include_dataset_column,
+                        overlay_alpha=config.overlay_alpha,
+                        save_overlays=True,
+                    )
+                    for resume_item in resume_plan.items:
+                        if resume_item.stage == "complete":
+                            ensure_staged_overlay(
+                                output_dir,
+                                resume_item.dataset,
+                                resume_item.image.stem,
+                                resume_output_manager,
+                                config.image_type,
+                            )
                 reconcile_stage3_publications(
                     output_dir,
                     config.full_dataset_inventory,

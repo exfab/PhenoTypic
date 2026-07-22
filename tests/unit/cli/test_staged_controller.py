@@ -12,6 +12,7 @@ import pytest
 from phenotypic._cli._cli_staged_controller import run_staged_controller
 from phenotypic._cli._cli_staged_orchestration import (
     StagedManifestEntry,
+    _mirror_job_to_metadata,
     append_job_ledger,
     append_stage2_terminal_failure,
     cancel_staged_jobs,
@@ -30,7 +31,13 @@ from phenotypic._cli._cli_staged_orchestration import (
     terminal_stage2_identities,
     write_staged_manifest,
 )
-from phenotypic.sdk_ import atomic_write_json, dataset_hdf_dir, dataset_measurements_dir
+from phenotypic.sdk_ import (
+    JobMetadataKey,
+    atomic_write_json,
+    dataset_hdf_dir,
+    dataset_measurements_dir,
+    job_metadata_path,
+)
 
 
 def _controller_fixture(tmp_path: Path, epoch: str = "epoch-1") -> Path:
@@ -289,6 +296,29 @@ def test_submission_intent_discovers_job_after_recording_crash(
     )
     assert job_id == "777"
     assert read_job_ledger(tmp_path)[-1]["status"] == "submitted"
+
+
+def test_named_stage_job_is_not_mirrored_as_numeric_chunk(tmp_path: Path) -> None:
+    metadata_path = job_metadata_path(tmp_path)
+    metadata_path.parent.mkdir(parents=True)
+    atomic_write_json(
+        metadata_path,
+        {
+            JobMetadataKey.SLURM_JOB_IDS: {},
+            JobMetadataKey.CHUNK_JOB_IDS: {"0": "100"},
+        },
+    )
+
+    _mirror_job_to_metadata(
+        tmp_path,
+        token="stage2-round-1",
+        role="stage2",
+        job_id="23456",
+    )
+
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    assert metadata[JobMetadataKey.SLURM_JOB_IDS]["stage2-round-1"] == "23456"
+    assert metadata[JobMetadataKey.CHUNK_JOB_IDS] == {"0": "100"}
 
 
 def test_duplicate_transition_uses_ledger_without_sbatch(

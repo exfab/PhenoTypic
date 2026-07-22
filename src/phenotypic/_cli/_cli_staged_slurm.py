@@ -109,6 +109,7 @@ def _stage_worker_body(
     markers_required: bool = True,
     n_shards: int | None = None,
     index_var: str = "$SLURM_ARRAY_TASK_ID",
+    overlay_alpha: float = 0.3,
 ) -> str:
     """The per-array-task command line that invokes the staged SLURM worker.
 
@@ -136,6 +137,8 @@ def _stage_worker_body(
         parts.append("--stage3-markers-required")
     if stage == 2:
         parts.append(f"--n-shards {n_shards}")
+    if stage == 3:
+        parts.append(f"--overlay-alpha {overlay_alpha}")
     return " \\\n    ".join(parts)
 
 
@@ -241,6 +244,7 @@ def generate_staged_scripts(
     epoch: str,
     resume: bool = False,
     markers_required: bool = True,
+    overlay_alpha: float = 0.3,
 ) -> Dict[str, Any]:
     """Write the per-stage SBATCH array scripts (no submission).
 
@@ -288,6 +292,7 @@ def generate_staged_scripts(
             resume,
             markers_required,
             index_var="$CURRENT_TASK_INDEX",
+            overlay_alpha=overlay_alpha,
         )
 
     stage1 = _write_image_stage_chunks(
@@ -500,6 +505,7 @@ class StagedSlurmStrategy(ExecutionStrategy):
             epoch=epoch,
             resume=getattr(cfg, "resume", False),
             markers_required=getattr(cfg, "staged_stage3_markers", True),
+            overlay_alpha=cfg.overlay_alpha,
         )
         _write_staged_job_metadata(
             datasets=datasets,

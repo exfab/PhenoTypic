@@ -40,6 +40,7 @@ from ._cli_staged_resume import (
 )
 from ._cli_staged_workers import (
     emit_missing_prereq,
+    ensure_staged_overlay,
     stage1_preprocess_core,
     stage2_detect_core,
     stage3_merge_measure_core,
@@ -229,6 +230,7 @@ def run_stage3_step(
     epoch: str | None = None,
     resume: bool = False,
     markers_required: bool = True,
+    overlay_alpha: float = 0.3,
 ) -> None:
     """Merge one sidecar, measure it, and publish final per-image outputs."""
     item = _entry(manifest[index])
@@ -236,9 +238,24 @@ def run_stage3_step(
         dataset_measurements_dir(output_dir, item.dataset)
         / f"{item.stem}.parquet"
     )
-    if stage3_completion_exists(output_dir, item.dataset, item.stem) or (
+    output_manager = OutputManager.from_config(
+        output_dir,
+        ext,
+        overlay_alpha=overlay_alpha,
+        save_overlays=True,
+    )
+    terminal = stage3_completion_exists(output_dir, item.dataset, item.stem) or (
         resume and not markers_required and parquet.is_file()
-    ):
+    )
+    if terminal:
+        ensure_staged_overlay(
+            output_dir,
+            item.dataset,
+            item.stem,
+            output_manager,
+            image_type,
+            active_check=_active_check(output_dir, epoch),
+        )
         return
     check = _active_check(output_dir, epoch)
     if check is not None:
@@ -254,9 +271,6 @@ def run_stage3_step(
         )
         raise SystemExit(1)
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
-    output_manager = OutputManager.from_config(
-        output_dir, ext, save_overlays=False
-    )
     with stage_event(log, item.dataset, item.image_name, STAGE_MEASURE):
         stage3_merge_measure_core(
             plan,
@@ -294,6 +308,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--epoch", required=True)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--stage3-markers-required", action="store_true")
+    parser.add_argument("--overlay-alpha", type=float, default=0.3)
     args = parser.parse_args(argv)
 
     _preload_custom_op_modules()
@@ -332,6 +347,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.index,
             args.ext,
             markers_required=args.stage3_markers_required,
+            overlay_alpha=args.overlay_alpha,
             **common,
         )
     return 0

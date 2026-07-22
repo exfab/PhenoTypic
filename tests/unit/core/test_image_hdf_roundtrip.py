@@ -59,6 +59,17 @@ def test_image_roundtrip_bit_depth_16(tmp_path):
     assert loaded.rgb[:].dtype == np.uint16
 
 
+def test_image_roundtrip_restores_name_from_constructor_placeholder(tmp_path):
+    """A v2 HDF reload replaces the constructor's empty image-name placeholder."""
+    img = Image(arr=_make_small_rgb(), name="plate_001")
+    path = tmp_path / "named.h5"
+
+    img.save2hdf5(path)
+    loaded = Image.load_hdf5(path)
+
+    assert loaded.name == "plate_001"
+
+
 def test_image_roundtrip_illuminant_gamma(tmp_path):
     """D50 + LINEAR round-trip preserves illuminant and gamma identity."""
     img = Image(

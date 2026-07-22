@@ -143,6 +143,31 @@ def stage2_detect_core(
     write_sidecar(output_dir, dataset_name, image_stem, result)
 
 
+def ensure_staged_overlay(
+    output_dir: Path,
+    dataset_name: str,
+    image_stem: str,
+    output_manager: OutputManager,
+    image_type: ImageTypeName,
+    active_check: ActiveCheck | None = None,
+) -> Path | None:
+    """Publish a missing staged-run overlay from the completed image HDF."""
+    if not output_manager.save_overlays:
+        return None
+    overlay_path = output_manager.get_output_path(
+        dataset_name, "overlays", image_stem
+    )
+    if overlay_path.is_file():
+        return overlay_path
+
+    _check_active(active_check)
+    hdf = dataset_hdf_dir(output_dir, dataset_name) / f"{image_stem}.h5"
+    image = _image_class(image_type).load_hdf5(hdf)
+    overlay_path.parent.mkdir(parents=True, exist_ok=True)
+    _check_active(active_check)
+    return output_manager.save_overlay(image, dataset_name, image_stem)
+
+
 def stage3_merge_measure_core(
     plan: StagePlan,
     output_dir: Path,
@@ -157,6 +182,7 @@ def stage3_merge_measure_core(
     image_cls = _image_class(image_type)
     hdf = dataset_hdf_dir(output_dir, dataset_name) / f"{image_stem}.h5"
     image = image_cls.load_hdf5(hdf)
+    image.name = image_stem
 
     result = load_sidecar(output_dir, dataset_name, image_stem)
     plan.gpu_detector._write_object_output(image, result)
@@ -177,6 +203,9 @@ def stage3_merge_measure_core(
         raise RuntimeError(
             f"Stage 3 HDF publication failed for {dataset_name}/{image_stem}"
         )
+    if output_manager.save_overlays:
+        _check_active(active_check)
+        output_manager.save_overlay(image, dataset_name, image_stem)
     from phenotypic.plotting import PlotCoordinator
 
     _check_active(active_check)
