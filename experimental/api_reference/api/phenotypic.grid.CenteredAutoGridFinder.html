@@ -1206,7 +1206,9 @@ bounded-ambiguous (default 6).</p></li>
 <p>nrows/ncols must match the physical plate; a mismatch produces a wrong
 grid silently (no internal guard). For multiple colonies per well use a
 downstream refiner (KeepNearestCenter / KeepSectionLargest /
-MergeWithinSection); this finder assigns faithfully, many-to-one.</p>
+MergeWithinSection); this finder assigns faithfully, many-to-one. A fitted
+grid may have one outer edge clipped to the image boundary, but placements
+that would collapse an entire cell are rejected before assignment.</p>
 </div>
 <div class="admonition-examples admonition">
 <p class="admonition-title">Examples</p>

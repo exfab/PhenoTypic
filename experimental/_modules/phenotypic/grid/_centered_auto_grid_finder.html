@@ -654,7 +654,9 @@
 <span class="sd">        nrows/ncols must match the physical plate; a mismatch produces a wrong</span>
 <span class="sd">        grid silently (no internal guard). For multiple colonies per well use a</span>
 <span class="sd">        downstream refiner (KeepNearestCenter / KeepSectionLargest /</span>
-<span class="sd">        MergeWithinSection); this finder assigns faithfully, many-to-one.</span>
+<span class="sd">        MergeWithinSection); this finder assigns faithfully, many-to-one. A fitted</span>
+<span class="sd">        grid may have one outer edge clipped to the image boundary, but placements</span>
+<span class="sd">        that would collapse an entire cell are rejected before assignment.</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        Default 96-well fit on the bundled synthetic plate:</span>
@@ -757,12 +759,49 @@
                 <span class="n">cands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">c</span><span class="p">))</span>
         <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">cands</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="nb">abs</span><span class="p">(</span><span class="n">c</span> <span class="o">-</span> <span class="n">img_c</span><span class="p">))</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_icp_refine</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-                    <span class="n">cx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">cy</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_bounded_solution</span><span class="p">(</span>
+            <span class="n">solution</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">a</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">p_min</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">p_max</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply pitch bounds to a lattice solve and re-optimize its center.&quot;&quot;&quot;</span>
+        <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">solution</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">([</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">p</span><span class="p">])):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">bounded_p</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">p_min</span><span class="p">,</span> <span class="n">p_max</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">bounded_p</span> <span class="o">!=</span> <span class="n">p</span><span class="p">:</span>
+            <span class="n">cx</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">a</span> <span class="o">*</span> <span class="n">bounded_p</span><span class="p">))</span>
+            <span class="n">cy</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">b</span> <span class="o">*</span> <span class="n">bounded_p</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">bounded_p</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_icp_refine</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">cx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">cy</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">p</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">p_min</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">p_max</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Closed-form assign-&gt;solve ICP from one seed. Returns (cx,cy,p,mean_residual)</span>
-<span class="sd">        or None if the design matrix is singular (cannot constrain pitch).&quot;&quot;&quot;</span>
+<span class="sd">        or None if the design matrix is singular (cannot constrain pitch).</span>
+
+<span class="sd">        The fitted pitch is constrained to ``[p_min, p_max]`` after every solve.</span>
+<span class="sd">        When a bound is active, the grid center is re-optimized for that fixed pitch.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p_min</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p_max</span><span class="p">)</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">p_min</span> <span class="o">&lt;=</span> <span class="n">p_max</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
         <span class="n">R</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="n">a</span> <span class="o">=</span> <span class="n">b</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">p_min</span><span class="p">,</span> <span class="n">p_max</span><span class="p">))</span>
         <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span><span class="p">):</span>
             <span class="n">jx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">cx</span><span class="p">)</span> <span class="o">/</span> <span class="n">p</span> <span class="o">+</span> <span class="p">(</span><span class="n">C</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">C</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
             <span class="n">iy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">((</span><span class="n">y</span> <span class="o">-</span> <span class="n">cy</span><span class="p">)</span> <span class="o">/</span> <span class="n">p</span> <span class="o">+</span> <span class="p">(</span><span class="n">R</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">R</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
@@ -774,7 +813,12 @@
             <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">A</span><span class="p">))</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">DET_EPS</span><span class="p">:</span>
                 <span class="k">return</span> <span class="kc">None</span>
             <span class="n">rhs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">x</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="n">y</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">x</span> <span class="o">+</span> <span class="n">b</span> <span class="o">*</span> <span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()])</span>
-            <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">rhs</span><span class="p">)</span>
+            <span class="n">bounded</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bounded_solution</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">rhs</span><span class="p">),</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">p_min</span><span class="p">,</span> <span class="n">p_max</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">bounded</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">bounded</span>
             <span class="c1"># one-pass robust trim then re-solve on inliers</span>
             <span class="n">res</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="p">(</span><span class="n">cx</span> <span class="o">+</span> <span class="n">a</span> <span class="o">*</span> <span class="n">p</span><span class="p">),</span> <span class="n">y</span> <span class="o">-</span> <span class="p">(</span><span class="n">cy</span> <span class="o">+</span> <span class="n">b</span> <span class="o">*</span> <span class="n">p</span><span class="p">))</span>
             <span class="n">inl</span> <span class="o">=</span> <span class="n">res</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">residual_fraction</span> <span class="o">*</span> <span class="n">p</span>
@@ -784,41 +828,114 @@
                                <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">ni</span><span class="p">,</span> <span class="n">bi</span><span class="o">.</span><span class="n">sum</span><span class="p">()],</span>
                                <span class="p">[</span><span class="n">ai</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="n">bi</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="p">(</span><span class="n">ai</span> <span class="o">*</span> <span class="n">ai</span> <span class="o">+</span> <span class="n">bi</span> <span class="o">*</span> <span class="n">bi</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()]])</span>
                 <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">A2</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DET_EPS</span><span class="p">:</span>
-                    <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">A2</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">xi</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="n">yi</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span>
-                                                              <span class="p">(</span><span class="n">ai</span> <span class="o">*</span> <span class="n">xi</span> <span class="o">+</span> <span class="n">bi</span> <span class="o">*</span> <span class="n">yi</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()]))</span>
+                    <span class="n">bounded</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bounded_solution</span><span class="p">(</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span>
+                            <span class="n">A2</span><span class="p">,</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+                                <span class="n">xi</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span>
+                                <span class="n">yi</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span>
+                                <span class="p">(</span><span class="n">ai</span> <span class="o">*</span> <span class="n">xi</span> <span class="o">+</span> <span class="n">bi</span> <span class="o">*</span> <span class="n">yi</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span>
+                            <span class="p">]),</span>
+                        <span class="p">),</span>
+                        <span class="n">xi</span><span class="p">,</span>
+                        <span class="n">yi</span><span class="p">,</span>
+                        <span class="n">ai</span><span class="p">,</span>
+                        <span class="n">bi</span><span class="p">,</span>
+                        <span class="n">p_min</span><span class="p">,</span>
+                        <span class="n">p_max</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="k">if</span> <span class="n">bounded</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="kc">None</span>
+                    <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">bounded</span>
         <span class="k">if</span> <span class="n">a</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">b</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># max_iter &lt;= 0: the loop never ran, so nothing was fitted.</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="n">res</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="p">(</span><span class="n">cx</span> <span class="o">+</span> <span class="n">a</span> <span class="o">*</span> <span class="n">p</span><span class="p">),</span> <span class="n">y</span> <span class="o">-</span> <span class="p">(</span><span class="n">cy</span> <span class="o">+</span> <span class="n">b</span> <span class="o">*</span> <span class="n">p</span><span class="p">))</span>
         <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">cx</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">cy</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_multi_start_refine</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">p0</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-                            <span class="n">cx_cands</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">cy_cands</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run ICP from every (cx,cy) candidate; keep the lowest-residual result.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_multi_start_refine</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">p0</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">p_min</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">p_max</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">cx_cands</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+            <span class="n">cy_cands</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+            <span class="n">H</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">W</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run ICP from every candidate and keep the best feasible registration.</span>
 
-<span class="sd">        Candidates are supplied nearest-image-center first (the ordering prior). A</span>
-<span class="sd">        later candidate replaces the current best only if it is *meaningfully* lower</span>
-<span class="sd">        (by ``_RESIDUAL_TIE_TOL`` px), so a row/column-translation-invariant sparse</span>
-<span class="sd">        layout — where several integer placements all fit with ~0 residual and differ</span>
-<span class="sd">        only by floating-point noise — resolves to the placement nearest the image</span>
-<span class="sd">        center rather than to whichever tie computed a marginally smaller float.</span>
+<span class="sd">        Residual is the primary score. Fits tied within ``_RESIDUAL_TIE_TOL``</span>
+<span class="sd">        explicitly prefer the grid center nearest the image center. Candidates whose</span>
+<span class="sd">        clipped edges collapse a cell are discarded before scoring. The returned</span>
+<span class="sd">        boolean records whether ICP produced any result, including infeasible ones.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">best</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">best</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">best_center_distance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="n">saw_refined_candidate</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">for</span> <span class="n">cx0</span> <span class="ow">in</span> <span class="n">cx_cands</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">cy0</span> <span class="ow">in</span> <span class="n">cy_cands</span><span class="p">:</span>
-                <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_icp_refine</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">cx0</span><span class="p">,</span> <span class="n">cy0</span><span class="p">,</span> <span class="n">p0</span><span class="p">)</span>
+                <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_icp_refine</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">cx0</span><span class="p">,</span> <span class="n">cy0</span><span class="p">,</span> <span class="n">p0</span><span class="p">,</span> <span class="n">p_min</span><span class="p">,</span> <span class="n">p_max</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">continue</span>
-                <span class="k">if</span> <span class="n">best</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">out</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">best</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_RESIDUAL_TIE_TOL</span><span class="p">:</span>
+                <span class="n">saw_refined_candidate</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">residual</span> <span class="o">=</span> <span class="n">out</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">out</span><span class="p">))</span> <span class="ow">or</span> <span class="ow">not</span> <span class="p">(</span><span class="n">p_min</span> <span class="o">&lt;=</span> <span class="n">p</span> <span class="o">&lt;=</span> <span class="n">p_max</span><span class="p">):</span>
+                    <span class="k">continue</span>
+                <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges</span><span class="p">(</span><span class="n">cy</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
+                <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges_are_valid</span><span class="p">(</span><span class="n">row_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
+                    <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges_are_valid</span><span class="p">(</span><span class="n">col_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="p">):</span>
+                    <span class="k">continue</span>
+
+                <span class="n">center_distance</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">cx</span> <span class="o">-</span> <span class="p">(</span><span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">cy</span> <span class="o">-</span> <span class="n">H</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">residual_tied</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                    <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">residual</span> <span class="o">-</span> <span class="n">best</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_RESIDUAL_TIE_TOL</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">best</span> <span class="ow">is</span> <span class="kc">None</span>
+                    <span class="ow">or</span> <span class="n">residual</span> <span class="o">&lt;</span> <span class="n">best</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_RESIDUAL_TIE_TOL</span>
+                    <span class="ow">or</span> <span class="p">(</span><span class="n">residual_tied</span> <span class="ow">and</span> <span class="n">center_distance</span> <span class="o">&lt;</span> <span class="n">best_center_distance</span><span class="p">)</span>
+                <span class="p">):</span>
                     <span class="n">best</span> <span class="o">=</span> <span class="n">out</span>
-        <span class="k">return</span> <span class="n">best</span>
+                    <span class="n">best_center_distance</span> <span class="o">=</span> <span class="n">center_distance</span>
+        <span class="k">return</span> <span class="n">best</span><span class="p">,</span> <span class="n">saw_refined_candidate</span>
 
     <span class="c1"># ---- centers -&gt; edges ----</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_axis_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">center</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">n_cells</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;n+1 edges = cell-center midlines with outer edges at +/- p/2, clipped to [0, image_dim].&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return clipped cell midlines without silently repairing collapsed cells.</span>
+
+<span class="sd">        A single outer edge may clip to the frame while the partition remains valid.</span>
+<span class="sd">        Callers use :meth:`_axis_edges_are_valid` to reject placements where two or</span>
+<span class="sd">        more clipped edges coincide.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">first_center</span> <span class="o">=</span> <span class="n">center</span> <span class="o">-</span> <span class="p">(</span><span class="n">n_cells</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">p</span>
         <span class="n">edges</span> <span class="o">=</span> <span class="n">first_center</span> <span class="o">-</span> <span class="n">p</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_cells</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">p</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_axis_edges_are_valid</span><span class="p">(</span>
+            <span class="n">edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">n_cells</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">image_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return whether edges form a finite, bounded, strict cell partition.&quot;&quot;&quot;</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span>
+            <span class="n">edges</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span>
+            <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">==</span> <span class="n">n_cells</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">edges</span><span class="p">))</span>
+            <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">edges</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">edges</span> <span class="o">&lt;=</span> <span class="n">image_dim</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_extract_centers</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="s2">&quot;Image&quot;</span><span class="p">):</span>
@@ -833,10 +950,64 @@
                           <span class="n">CenteredAutoGridFinderFallbackWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_centered_uniform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">H</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">W</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Centered uniform grid at pitch p (image-centered).&quot;&quot;&quot;</span>
-        <span class="n">re</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges</span><span class="p">(</span><span class="n">H</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
-        <span class="n">ce</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges</span><span class="p">(</span><span class="n">W</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">W</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">re</span><span class="p">,</span> <span class="n">ce</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a strict image-centered grid, safely bounding degenerate pitches.&quot;&quot;&quot;</span>
+        <span class="n">centers_fit_max</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
+            <span class="n">H</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">full_cells_pitch</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
+            <span class="n">H</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="ow">and</span> <span class="n">p</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">safe_p</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="n">centers_fit_max</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">safe_p</span> <span class="o">=</span> <span class="n">full_cells_pitch</span>
+
+        <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges</span><span class="p">(</span><span class="n">H</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">safe_p</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
+        <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges</span><span class="p">((</span><span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">safe_p</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges_are_valid</span><span class="p">(</span><span class="n">row_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges_are_valid</span><span class="p">(</span><span class="n">col_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span>
+
+        <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges</span><span class="p">(</span><span class="n">H</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">full_cells_pitch</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
+        <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">full_cells_pitch</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">W</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges_are_valid</span><span class="p">(</span><span class="n">row_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges_are_valid</span><span class="p">(</span><span class="n">col_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span>
+
+        <span class="c1"># Pathological dimensions or floating-point resolution: preserve the edge</span>
+        <span class="c1"># contract independently on each axis rather than returning collapsed bins.</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_uniform_edges</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">H</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_uniform_edges</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_finalize_grid_edges</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">row_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">col_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">fallback_pitch</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">H</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">W</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Enforce the strict-edge postcondition before delegating to ``pd.cut``.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges_are_valid</span><span class="p">(</span><span class="n">row_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges_are_valid</span><span class="p">(</span><span class="n">col_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warn</span><span class="p">(</span>
+            <span class="s2">&quot;[invalid-geometry] fitted edges do not form a strict partition; &quot;</span>
+            <span class="s2">&quot;centered uniform fallback.&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_centered_uniform</span><span class="p">(</span><span class="n">fallback_pitch</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">W</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_fit_grid_from_centers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">H</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">W</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Full pipeline on raw center arrays -&gt; (row_edges, col_edges), with the</span>
@@ -861,15 +1032,35 @@
         <span class="k">if</span> <span class="n">N</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_fit_objects</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[few-objects] N=</span><span class="si">{</span><span class="n">N</span><span class="si">}</span><span class="s2">: bounded-ambiguous fit (best-effort, not confident).&quot;</span><span class="p">)</span>
 
-        <span class="n">cx_c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_center_candidates</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">p0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">W</span><span class="p">)</span>
+        <span class="n">cx_c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_center_candidates</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">p0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
         <span class="n">cy_c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_center_candidates</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">p0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
-        <span class="n">best</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multi_start_refine</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">p0</span><span class="p">,</span> <span class="n">cx_c</span><span class="p">,</span> <span class="n">cy_c</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">best</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">best</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">residual_fraction</span> <span class="o">*</span> <span class="n">best</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
+        <span class="n">best</span><span class="p">,</span> <span class="n">saw_refined_candidate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multi_start_refine</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">p0</span><span class="p">,</span> <span class="n">p_min</span><span class="p">,</span> <span class="n">p_max</span><span class="p">,</span> <span class="n">cx_c</span><span class="p">,</span> <span class="n">cy_c</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">W</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">best</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">saw_refined_candidate</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_warn</span><span class="p">(</span>
+                    <span class="s2">&quot;[invalid-geometry] ICP registrations collapse one or more &quot;</span>
+                    <span class="s2">&quot;grid cells; centered uniform at comb pitch.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_warn</span><span class="p">(</span>
+                    <span class="s2">&quot;[icp-failed] no registration could be refined; &quot;</span>
+                    <span class="s2">&quot;centered uniform at comb pitch.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_centered_uniform</span><span class="p">(</span><span class="n">p0</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">W</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">best</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">residual_fraction</span> <span class="o">*</span> <span class="n">best</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_warn</span><span class="p">(</span><span class="s2">&quot;[icp-failed] no acceptable registration; centered uniform at comb pitch.&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_centered_uniform</span><span class="p">(</span><span class="n">p0</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">W</span><span class="p">)</span>
 
         <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">_res</span> <span class="o">=</span> <span class="n">best</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges</span><span class="p">(</span><span class="n">cy</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">H</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">W</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_finalize_grid_edges</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges</span><span class="p">(</span><span class="n">cy</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">H</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_axis_edges</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">W</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">p0</span><span class="p">,</span>
+            <span class="n">H</span><span class="p">,</span>
+            <span class="n">W</span><span class="p">,</span>
+        <span class="p">)</span>
 
     <span class="c1"># ---- GridFinder overrides ----</span>
 <div class="viewcode-block" id="CenteredAutoGridFinder.get_row_edges">
