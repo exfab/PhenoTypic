@@ -40,6 +40,28 @@ def test_discover_measurement_sources_prefers_dataset_aggregated_file(
     assert [(src.path, src.dataset) for src in sources] == [(agg, "plate_a")]
 
 
+def test_discover_measurement_sources_uses_individuals_for_uuid_aggregate(
+    tmp_path: Path,
+) -> None:
+    """UUID identities in an aggregate fall back to recoverable source names."""
+    meas_dir = tmp_path / "results" / "plate_a" / "measurements"
+    agg = meas_dir / DATASET_AGGREGATED_PARQUET
+    raw = meas_dir / "img.parquet"
+    meas_dir.mkdir(parents=True)
+    pl.DataFrame(
+        {
+            str(METADATA.IMAGE_NAME): [
+                "4815d217-4afc-40dd-ab6c-bbf1521f4109"
+            ]
+        }
+    ).write_parquet(agg)
+    _touch(raw)
+
+    sources = discover_measurement_sources(tmp_path, ["plate_a"])
+
+    assert [(src.path, src.dataset) for src in sources] == [(raw, "plate_a")]
+
+
 def test_discover_measurement_sources_skips_internal_files_and_sorts(
     tmp_path: Path,
 ) -> None:
@@ -109,3 +131,38 @@ def test_add_metadata_image_name_from_filename_preserves_existing_column() -> No
 
     assert "filename" not in out.columns
     assert out[str(METADATA.IMAGE_NAME)].to_list() == ["kept"]
+
+
+def test_add_metadata_image_name_from_filename_repairs_staged_uuid() -> None:
+    """Pre-fix staged UUID identities are replaced by the parquet stem."""
+    frame = pl.DataFrame(
+        {
+            "filename": [
+                "/tmp/plate/d000374_280_121_2026-04-11_16-55-18.parquet"
+            ],
+            str(METADATA.IMAGE_NAME): [
+                "4815d217-4afc-40dd-ab6c-bbf1521f4109"
+            ],
+        }
+    )
+
+    out = add_metadata_image_name_from_filename(frame)
+
+    assert out[str(METADATA.IMAGE_NAME)].to_list() == [
+        "d000374_280_121_2026-04-11_16-55-18"
+    ]
+
+
+def test_add_metadata_image_name_does_not_infer_from_aggregate_filename() -> None:
+    """An aggregate basename cannot identify any of its constituent images."""
+    uuid_name = "4815d217-4afc-40dd-ab6c-bbf1521f4109"
+    frame = pl.DataFrame(
+        {
+            "filename": [f"/tmp/plate/{DATASET_AGGREGATED_PARQUET}"],
+            str(METADATA.IMAGE_NAME): [uuid_name],
+        }
+    )
+
+    out = add_metadata_image_name_from_filename(frame)
+
+    assert out[str(METADATA.IMAGE_NAME)].to_list() == [uuid_name]

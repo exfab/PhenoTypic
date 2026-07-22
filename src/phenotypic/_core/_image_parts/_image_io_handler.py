@@ -927,7 +927,9 @@ class ImageIOHandler(ImageColorSpace):
                 attrs = meta[name].attrs
                 # setdefault-style merge: caller kwargs (e.g. bit_depth) have
                 # already populated matching protected-metadata keys via the
-                # Image constructor, so we must not clobber them here.
+                # Image constructor, so we must not clobber non-None values here.
+                # Constructor placeholders such as ImageName=None must be restored
+                # from the file or Image.name falls back to a fresh UUID.
                 # public/imported are effectively fresh dicts at construction,
                 # so the same logic is a no-op for them but keeps behaviour
                 # uniform across sections.
@@ -937,7 +939,7 @@ class ImageIOHandler(ImageColorSpace):
                     # constructor-populated "MetadataImage_ImageName" and is skipped
                     # rather than added as a stale duplicate.
                     mapped = _remap_legacy_metadata_key(key)
-                    if mapped in target:
+                    if mapped in target and target[mapped] is not None:
                         continue
                     target[mapped] = _decode_meta(attrs[key])
 

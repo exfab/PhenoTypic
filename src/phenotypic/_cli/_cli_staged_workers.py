@@ -182,6 +182,7 @@ def stage3_merge_measure_core(
     image_cls = _image_class(image_type)
     hdf = dataset_hdf_dir(output_dir, dataset_name) / f"{image_stem}.h5"
     image = image_cls.load_hdf5(hdf)
+    image.name = image_stem
 
     result = load_sidecar(output_dir, dataset_name, image_stem)
     plan.gpu_detector._write_object_output(image, result)

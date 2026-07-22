@@ -40,7 +40,7 @@ from ._measurement_sources import (
     discover_measurement_sources,
     measurement_sources_by_path,
 )
-from ._cli_parquet_agg import aggregate_parquet_files
+from ._cli_parquet_agg import SOURCE_PATH_COLUMN, aggregate_parquet_files
 from phenotypic.schema import EXPERIMENT_METADATA, METADATA, METADATA_MATCH
 from phenotypic.util import split_measurements
 from phenotypic.sdk_ import (
@@ -1202,6 +1202,20 @@ def aggregate_measurements(
         include_dataset_column=include_dataset_column,
         keep_filename=True,
     )
+
+    if scratch_dir is not None and master_df is not None:
+        staged_to_original = {
+            str(scratch_dir / _scratch_dest_name(original)): str(original)
+            for original in path_to_dataset
+        }
+        master_df = master_df.with_columns(
+            pl.col(SOURCE_PATH_COLUMN)
+            .replace_strict(
+                staged_to_original,
+                default=pl.col(SOURCE_PATH_COLUMN),
+            )
+            .alias(SOURCE_PATH_COLUMN)
+        )
 
     if scratch_dir is not None:
         _cleanup_scratch(scratch_dir)

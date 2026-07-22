@@ -2,6 +2,7 @@
 
 import phenotypic
 import numpy as np
+import polars as pl
 import pytest
 from click.testing import CliRunner
 from datetime import datetime
@@ -9,6 +10,7 @@ from datetime import datetime
 from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureSize
+from phenotypic.schema import METADATA
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
 from phenotypic._cli._cli_process_only import process_only_output_path
@@ -108,7 +110,12 @@ def test_three_stage_cores_end_to_end(tmp_path):
     stage1_preprocess_core(
         plan, image_path, "ds", "img", out, om, image_type="Image"
     )
-    assert (dataset_hdf_dir(out, "ds") / "img.h5").is_file()
+    staged_hdf = dataset_hdf_dir(out, "ds") / "img.h5"
+    assert staged_hdf.is_file()
+    pre_fix_image = phenotypic.Image.load_hdf5(staged_hdf)
+    pre_fix_image.name = str(pre_fix_image.uuid)
+    pre_fix_image.save2hdf5(staged_hdf)
+    assert phenotypic.Image.load_hdf5(staged_hdf).name != "img"
 
     # Stage 2: resident detector -> sidecar
     plan.gpu_detector._ensure_model_loaded()
@@ -117,7 +124,11 @@ def test_three_stage_cores_end_to_end(tmp_path):
 
     # Stage 3: merge + measure -> parquet, re-save HDF, delete sidecar
     stage3_merge_measure_core(plan, out, "ds", "img", om, image_type="Image")
-    assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
+    measurements_path = out / "results" / "ds" / "measurements" / "img.parquet"
+    assert measurements_path.is_file()
+    measurements = pl.read_parquet(measurements_path)
+    assert measurements[str(METADATA.IMAGE_NAME)].unique().to_list() == ["img"]
+    assert phenotypic.Image.load_hdf5(staged_hdf).name == "img"
     assert not sidecar_exists(out, "ds", "img")  # mandatory cleanup
 
 
