@@ -127,8 +127,19 @@ class OperationFailedError(ImageOperationError):
     """Exception raised when an operation fails."""
 
     def __init__(self, operation, image_name, err_type, message):
+        self.operation = operation
+        self.image_name = image_name
+        self.err_type = err_type
+        self.message = message
         super().__init__(
                 f"The operation: {operation} failed on _root_image: {image_name}. {err_type}: {message}."
+        )
+
+    def __reduce__(self):
+        """Return the constructor state needed to reconstruct this exception."""
+        return (
+            type(self),
+            (self.operation, self.image_name, self.err_type, self.message),
         )
 
 
