@@ -766,9 +766,23 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when an operation fails.&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">operation</span><span class="p">,</span> <span class="n">image_name</span><span class="p">,</span> <span class="n">err_type</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">operation</span> <span class="o">=</span> <span class="n">operation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">image_name</span> <span class="o">=</span> <span class="n">image_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">err_type</span> <span class="o">=</span> <span class="n">err_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;The operation: </span><span class="si">{</span><span class="n">operation</span><span class="si">}</span><span class="s2"> failed on _root_image: </span><span class="si">{</span><span class="n">image_name</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">err_type</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="OperationFailedError.__reduce__">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.OperationFailedError.html#phenotypic.sdk_.exceptions_.OperationFailedError.__reduce__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__reduce__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the constructor state needed to reconstruct this exception.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">operation</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">err_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">),</span>
         <span class="p">)</span></div>
+</div>
 
 
 
