@@ -91,7 +91,7 @@ SLURM Execution (Autonomous HPC Cluster Processing):
         slurm_partition    Partition/queue name (e.g., compute, gpu, highmem)
         slurm_account      Account for billing/fairshare (required on most clusters)
         slurm_qos          Quality of Service tier (e.g., normal, high)
-        time               Wall time in minutes (auto-converts to HH:MM:SS)
+        time               Positive minutes or SLURM duration
         mem_gb             Memory per node in GB (convenience param, adds "G" suffix)
         slurm_cpus_per_task CPUs per task (useful for joblib parallelism)
         slurm_constraint   Node features/constraints (e.g., gpu_type, cpu_generation)
@@ -105,9 +105,8 @@ SLURM Execution (Autonomous HPC Cluster Processing):
         slurm_gpus_per_node GPUs per node for GPU-accelerated operations
 
     Time Parameter Notes:
-        - Use 'time' or 'slurm_time' with integer minutes
-        - Automatically converts to HH:MM:SS format (e.g., time=120 → 02:00:00)
-        - Valid range: 1-10080 minutes (1 minute to 7 days)
+        - Use positive integer minutes, HH:MM:SS, or D-HH:MM:SS
+        - Integer minutes are canonicalized (e.g., time=120 → 02:00:00)
 
     Example: Submit with account, partition, memory, and time limits
         uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images \\
@@ -135,7 +134,7 @@ from pathlib import Path
 from typing import Any, List, Optional, Sequence, cast
 
 import click
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from phenotypic import ImagePipeline
 from phenotypic._core._image_parts.detection_modes import available_modes
@@ -185,13 +184,11 @@ from phenotypic._cli._cli_validation import (
     validate_execution_config,
     validate_pipeline,
 )
-from phenotypic._cli._cli_constants import (
-    MIN_SLURM_TIME_MINUTES,
-    MAX_SLURM_TIME_MINUTES,
-)
+from phenotypic._cli._cli_constants import MAX_SLURM_TIME_MINUTES
 from phenotypic.schema import EXPERIMENT_METADATA
 from phenotypic.sdk_ import (
     DIR_RESULTS,
+    GUI_LOG_FILENAMES,
     dataset_overlays_dir,
     JOB_METADATA_JSON,
     RECOMPILE_TASK_MANIFEST_JSON,
@@ -203,9 +200,11 @@ from phenotypic.sdk_ import (
     measurements_parquet_path,
     processing_report_html_path,
     progress_dir,
+    RUN_LOG_DIRNAME,
     recompile_dir,
     resolve_processing_state_path,
 )
+from phenotypic.sdk_.slurm import parse_slurm_time
 from phenotypic.sdk_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
 
 # Set up logger
@@ -319,14 +318,13 @@ def _validate_resume_input_images(
 
 
 def _format_slurm_time(minutes: int) -> str:
-    """
-    Convert integer minutes to HH:MM:SS SLURM time format.
+    """Convert positive integer minutes to canonical SLURM duration.
 
     Args:
         minutes: Time in minutes
 
     Returns:
-        Formatted time string in HH:MM:SS format (or "X days" for multi-day times)
+        Formatted time string in ``HH:MM:SS`` format.
 
     Examples:
         >>> _format_slurm_time(90)
@@ -334,21 +332,39 @@ def _format_slurm_time(minutes: int) -> str:
         >>> _format_slurm_time(120)
         '02:00:00'
         >>> _format_slurm_time(1440)
-        '1 day'
+        '24:00:00'
     """
-    if minutes >= 1440:  # 24 hours or more
-        days = minutes // 1440
-        remaining_minutes = minutes % 1440
-        if remaining_minutes == 0:
-            return f"{days} day{'s' if days > 1 else ''}"
-        else:
-            hours = remaining_minutes // 60
-            mins = remaining_minutes % 60
-            return f"{days}d {hours:02d}:{mins:02d}:00"
-    else:
-        hours = minutes // 60
-        mins = minutes % 60
-        return f"{hours:02d}:{mins:02d}:00"
+    parsed = parse_slurm_time(minutes)
+    assert parsed is not None
+    return parsed
+
+
+def is_safe_gui_log_entry(entry: Path) -> bool:
+    """Return whether ``entry`` is the exact reserved GUI-log directory.
+
+    The directory and all direct children must be real, non-symlink
+    filesystem entries. Only canonical GUI log filenames are accepted.
+
+    Args:
+        entry: Direct child of a prospective output directory.
+
+    Returns:
+        ``True`` only for a safe ``.gui_log`` directory containing no
+        unrecognized or nested entries.
+    """
+    if entry.name != RUN_LOG_DIRNAME or entry.is_symlink():
+        return False
+    try:
+        if not entry.is_dir():
+            return False
+        return all(
+            child.name in GUI_LOG_FILENAMES
+            and not child.is_symlink()
+            and child.is_file()
+            for child in entry.iterdir()
+        )
+    except OSError:
+        return False
 
 
 def _format_slurm_key(key: str) -> str:
@@ -972,26 +988,28 @@ def phenotypic_cli(
                 else:
                     slurm_args_dict.pop("time_min")
 
-            # Validate time parameter type and range
+            # Validate and canonicalize time using the shared SDK parser.
             for time_key in ("time", "slurm_time"):
                 if time_key in slurm_args_dict:
                     time_val = slurm_args_dict[time_key]
-                    if not isinstance(time_val, int):
+                    try:
+                        canonical_time = parse_slurm_time(time_val)
+                    except ValueError as exc:
                         click.echo(
-                            f"Error: '{time_key}' must be an integer (minutes), "
-                            f"got {type(time_val).__name__}",
+                            f"Error: invalid '{time_key}': {exc}",
                             err=True,
                         )
                         sys.exit(1)
+                    assert canonical_time is not None
+                    slurm_args_dict[time_key] = canonical_time
 
-                    # Validate reasonable time range
-                    if time_val < MIN_SLURM_TIME_MINUTES:
-                        click.echo(
-                            f"Error: '{time_key}' must be >= {MIN_SLURM_TIME_MINUTES} minute, got {time_val}",
-                            err=True,
-                        )
-                        sys.exit(1)
-                    elif time_val > MAX_SLURM_TIME_MINUTES:
+                    # Retain the existing advisory for unusually large
+                    # integer-minute requests without rejecting valid SLURM
+                    # duration strings.
+                    if (
+                        isinstance(time_val, int)
+                        and time_val > MAX_SLURM_TIME_MINUTES
+                    ):
                         days = MAX_SLURM_TIME_MINUTES / 1440
                         click.echo(
                             f"Warning: '{time_key}' is {time_val} minutes "
@@ -1272,7 +1290,10 @@ def phenotypic_cli(
 
         # Check for existing output directory contents (skip for resume/restart/measure)
         if not config.resume and not restart and not measure_only:
-            if output_dir.exists() and any(output_dir.iterdir()):
+            if output_dir.exists() and any(
+                not is_safe_gui_log_entry(entry)
+                for entry in output_dir.iterdir()
+            ):
                 if overwrite:
                     import shutil
 

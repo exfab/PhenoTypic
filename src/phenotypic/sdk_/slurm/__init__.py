@@ -11,7 +11,12 @@ from ._config import (
     get_slurm_max_submit_jobs,
     validate_array_chunk,
 )
-from ._sbatch import format_sbatch_directives, parse_job_id, submit_script
+from ._sbatch import (
+    format_sbatch_directives,
+    parse_job_id,
+    parse_slurm_time,
+    submit_script,
+)
 from ._dispatcher import (
     generate_dispatcher_chain,
     generate_dispatcher_script,
@@ -29,6 +34,7 @@ __all__ = [
     "get_slurm_array_limit",
     "get_slurm_max_submit_jobs",
     "parse_job_id",
+    "parse_slurm_time",
     "submit_drip_feed_start",
     "submit_script",
     "validate_array_chunk",

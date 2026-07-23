@@ -16,6 +16,85 @@ logger = logging.getLogger(__name__)
 
 # SBATCH directive names managed by script generators; user overrides are ignored.
 _RESERVED_SBATCH_KEYS = frozenset({"array", "output", "error", "job-name"})
+_SLURM_DURATION_RE = re.compile(
+    r"^(?:(?P<days>\d+)-(?P<day_hours>\d{2})|(?P<hours>\d{2,})):"
+    r"(?P<minutes>[0-5]\d):(?P<seconds>[0-5]\d)$"
+)
+
+
+def parse_slurm_time(value: object) -> str | None:
+    """Validate and canonicalize a SLURM time limit.
+
+    Args:
+        value: Empty input, positive integer minutes, or a SLURM duration in
+            ``HH:MM:SS`` or ``D-HH:MM:SS`` form.
+
+    Returns:
+        Canonical SLURM duration, or ``None`` when ``value`` is empty.
+
+    Raises:
+        ValueError: If ``value`` is not one of the supported forms, contains
+            an invalid clock field, or represents a nonpositive duration.
+
+    Examples:
+        >>> parse_slurm_time(90)
+        '01:30:00'
+        >>> parse_slurm_time("00:10:00")
+        '00:10:00'
+        >>> parse_slurm_time("1-04:00:00")
+        '1-04:00:00'
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ValueError("SLURM time must be positive minutes or a duration")
+
+    if isinstance(value, int):
+        minutes = value
+    elif isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        if text.isdecimal():
+            minutes = int(text)
+        else:
+            match = _SLURM_DURATION_RE.fullmatch(text)
+            if match is None:
+                raise ValueError(
+                    "SLURM time must be positive integer minutes, HH:MM:SS, "
+                    "or D-HH:MM:SS"
+                )
+            days_text = match.group("days")
+            hours = int(
+                match.group("day_hours")
+                if days_text is not None
+                else match.group("hours")
+            )
+            minutes_field = int(match.group("minutes"))
+            seconds = int(match.group("seconds"))
+            if days_text is not None and hours > 23:
+                raise ValueError(
+                    "SLURM D-HH:MM:SS time requires an HH field from 00 to 23"
+                )
+            days = int(days_text) if days_text is not None else 0
+            total_seconds = (
+                ((days * 24 + hours) * 60 + minutes_field) * 60 + seconds
+            )
+            if total_seconds <= 0:
+                raise ValueError("SLURM time must be greater than zero")
+            if days_text is None:
+                return f"{hours:02d}:{minutes_field:02d}:{seconds:02d}"
+            return f"{days}-{hours:02d}:{minutes_field:02d}:{seconds:02d}"
+    else:
+        raise ValueError(
+            "SLURM time must be positive integer minutes, HH:MM:SS, "
+            "or D-HH:MM:SS"
+        )
+
+    if minutes <= 0:
+        raise ValueError("SLURM time in minutes must be greater than zero")
+    hours, minute_field = divmod(minutes, 60)
+    return f"{hours:02d}:{minute_field:02d}:00"
 
 
 def format_sbatch_directives(
@@ -63,10 +142,9 @@ def format_sbatch_directives(
             continue
 
         if key in ("time", "slurm_time"):
-            if isinstance(value, int):
-                hours = value // 60
-                minutes = value % 60
-                value = f"{hours:02d}:{minutes:02d}:00"
+            value = parse_slurm_time(value)
+            if value is None:
+                continue
             directive_name = "time"
         elif key == "mem_gb":
             value = f"{value}G"

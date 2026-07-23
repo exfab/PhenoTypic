@@ -54,6 +54,31 @@ def test_slurm_array_script_renders_directives_task_list_and_body(
     assert rendered.rstrip().endswith("exit $EXIT_CODE")
 
 
+@pytest.mark.parametrize(
+    ("time_value", "expected"),
+    [
+        ("00:10:00", "#SBATCH --time=00:10:00"),
+        ("1-04:00:00", "#SBATCH --time=1-04:00:00"),
+    ],
+)
+def test_slurm_array_script_accepts_canonical_duration_strings(
+    tmp_path: Path,
+    time_value: str,
+    expected: str,
+) -> None:
+    from phenotypic.sdk_.slurm import SlurmArrayScriptSpec
+
+    spec = SlurmArrayScriptSpec(
+        job_name="pht-time",
+        slurm_args={"time": time_value},
+        log_path=tmp_path / "time_%A_%a.log",
+        task_indices=[0],
+        body="echo ok",
+    )
+
+    assert expected in spec.render()
+
+
 def test_slurm_array_script_supports_custom_entry_variables(
     tmp_path: Path,
 ) -> None:

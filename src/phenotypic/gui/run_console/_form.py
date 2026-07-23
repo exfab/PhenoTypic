@@ -28,6 +28,7 @@ from typing import List
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 
+from phenotypic.gui._config import IMAGE_EXTS
 from phenotypic.gui._design import FONT_FAMILY_MONO
 from phenotypic.gui.builder._directory_browser import (
     PIPELINE_EXTS,
@@ -77,14 +78,14 @@ def render_input_tree(
 ) -> html.Div:
     """Render the input-directory tree (no file selection).
 
-    Folders only — file extensions are ignored because the user is
-    picking a *directory* of images. The CLI later globs for
-    ``--image-type`` matches inside the chosen directory.
+    Folders only. ``IMAGE_EXTS`` is still passed as the shared discovery
+    contract even though ``directory_tree`` ignores it while
+    ``select_files=False``.
     """
     return directory_tree(
         sandbox.root,
         current=current,
-        extensions=None,
+        extensions=IMAGE_EXTS,
         select_files=False,
         id_type=ids.RC_DIR_ENTRY_TYPE_INPUT_DIR,
     )
@@ -366,11 +367,17 @@ def _build_advanced_section() -> html.Div:
                                 html_for=ids.RC_INPUT_IMAGE_TYPE,
                                 className="run-console-form-label",
                             ),
-                            dbc.Input(
+                            dcc.Dropdown(
                                 id=ids.RC_INPUT_IMAGE_TYPE,
-                                type="text",
-                                placeholder=".tif / .nef / ...",
-                                debounce=True,
+                                options=[
+                                    {
+                                        "label": "GridImage",
+                                        "value": "GridImage",
+                                    },
+                                    {"label": "Image", "value": "Image"},
+                                ],
+                                placeholder="GridImage (default)",
+                                clearable=True,
                             ),
                         ],
                         md=4,
@@ -383,7 +390,7 @@ def _build_advanced_section() -> html.Div:
 
 
 def _build_slurm_section() -> html.Div:
-    """Build the SLURM-config collapse body."""
+    """Build the common CPU profile and staged-GPU controls."""
     return html.Div(
         [
             dbc.Row(
@@ -407,7 +414,7 @@ def _build_slurm_section() -> html.Div:
                     dbc.Col(
                         [
                             dbc.Label(
-                                "Time (HH:MM:SS)",
+                                "Time limit",
                                 html_for=ids.RC_INPUT_SLURM_TIME,
                                 className="run-console-form-label",
                             ),
@@ -416,6 +423,10 @@ def _build_slurm_section() -> html.Div:
                                 type="text",
                                 placeholder="04:00:00",
                                 debounce=True,
+                            ),
+                            dbc.FormText(
+                                "Minutes or SLURM duration "
+                                "(HH:MM:SS, D-HH:MM:SS)"
                             ),
                         ],
                         md=6,
@@ -494,6 +505,65 @@ def _build_slurm_section() -> html.Div:
                         style={"fontFamily": FONT_FAMILY_MONO},
                     ),
                 ]
+            ),
+            html.Div(
+                [
+                    html.Hr(),
+                    html.Div(
+                        "Staged GPU detection",
+                        className="run-console-picker-label",
+                    ),
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    dbc.Label(
+                                        "GPU-stage delta profile",
+                                        html_for=ids.RC_INPUT_GPU_SLURM,
+                                        className="run-console-form-label",
+                                    ),
+                                    dbc.Textarea(
+                                        id=ids.RC_INPUT_GPU_SLURM,
+                                        placeholder=(
+                                            "slurm_partition=gpu\n"
+                                            "slurm_account=lab"
+                                        ),
+                                        rows=4,
+                                        style={
+                                            "fontFamily": FONT_FAMILY_MONO
+                                        },
+                                    ),
+                                ],
+                                md=8,
+                            ),
+                            dbc.Col(
+                                [
+                                    dbc.Label(
+                                        "GPU shards",
+                                        html_for=ids.RC_INPUT_GPU_SHARDS,
+                                        className="run-console-form-label",
+                                    ),
+                                    dbc.Input(
+                                        id=ids.RC_INPUT_GPU_SHARDS,
+                                        type="number",
+                                        min=1,
+                                        step=1,
+                                        value=1,
+                                        debounce=True,
+                                    ),
+                                    html.Small(
+                                        "One resident model per whole-GPU shard.",
+                                        className="text-muted",
+                                    ),
+                                ],
+                                md=4,
+                            ),
+                        ],
+                        className="g-2",
+                    ),
+                ],
+                id=ids.RC_STAGED_GPU_SECTION,
+                style={"display": "none"},
             ),
         ]
     )

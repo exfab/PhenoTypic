@@ -395,6 +395,12 @@ PROCESSING_EVENTS_LOG: Final[str] = "processing_events.log"
 #: documented in :class:`JobMetadataKey`.
 JOB_METADATA_JSON: Final[str] = "job_metadata.json"
 
+#: GUI launch-generation ownership record written before execution starts.
+GUI_LAUNCH_OWNER_JSON: Final[str] = "gui_launch_owner.json"
+
+#: Generation- and mode-bearing terminal publication marker.
+RUN_COMPLETION_JSON: Final[str] = "run_completion.json"
+
 #: Append-only JSONL of per-image failures. Each row carries a
 #: :data:`phenotypic.sdk_.typing_.FailureSource` tag.
 FAILURES_JSONL: Final[str] = "failures.jsonl"
@@ -427,6 +433,13 @@ DASHBOARD_HTML: Final[str] = "dashboard.html"
 
 #: Per-run stdout capture written by the run console's local runner.
 STDOUT_LOG: Final[str] = "stdout.log"
+
+#: Reserved directory created inside an output root by the GUI runner.
+RUN_LOG_DIRNAME: Final[str] = ".gui_log"
+
+#: Complete allowlist of files permitted inside :data:`RUN_LOG_DIRNAME` when
+#: the CLI decides whether an output is otherwise fresh.
+GUI_LOG_FILENAMES: Final[frozenset[str]] = frozenset({STDOUT_LOG})
 
 #: Generated standalone analysis HTML emitted alongside the dashboard.
 ANALYSIS_HTML: Final[str] = "analysis.html"
@@ -1310,8 +1323,18 @@ def checkpoint_lock_path(
 
 
 def job_metadata_path(output_dir: Path) -> Path:
-    """Return ``<output>/progress/job_metadata.json``."""
+    """Return ``<output>/.phenotypic/progress/job_metadata.json``."""
     return progress_dir(output_dir) / JOB_METADATA_JSON
+
+
+def gui_launch_owner_path(output_dir: Path) -> Path:
+    """Return the canonical GUI launch-generation owner record path."""
+    return progress_dir(output_dir) / GUI_LAUNCH_OWNER_JSON
+
+
+def run_completion_marker_path(output_dir: Path) -> Path:
+    """Return the canonical generation-bearing completion marker path."""
+    return progress_dir(output_dir) / RUN_COMPLETION_JSON
 
 
 def failures_jsonl_path(output_dir: Path) -> Path:

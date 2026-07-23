@@ -114,6 +114,12 @@ RC_INPUT_SLURM_GPUS = "rc-input-slurm-gpus"
 #: Free-form ``k=v`` SLURM textarea (one entry per line).
 RC_INPUT_SLURM_EXTRA = "rc-input-slurm-extra"
 
+#: Staged-GPU controls. The section is mounted but hidden until callbacks
+#: determine that the selected pipeline contains a ``GpuDetector``.
+RC_STAGED_GPU_SECTION = "rc-staged-gpu-section"
+RC_INPUT_GPU_SLURM = "rc-input-gpu-slurm"
+RC_INPUT_GPU_SHARDS = "rc-input-gpu-shards"
+
 
 # ---------------------------------------------------------------------------
 # Picker buttons and modal IDs
@@ -261,6 +267,9 @@ __all__ = [
     "RC_INPUT_SLURM_CPUS",
     "RC_INPUT_SLURM_GPUS",
     "RC_INPUT_SLURM_EXTRA",
+    "RC_STAGED_GPU_SECTION",
+    "RC_INPUT_GPU_SLURM",
+    "RC_INPUT_GPU_SHARDS",
     "RC_BTN_PICK_PIPELINE",
     "RC_BTN_PICK_INPUT",
     "RC_BTN_PICK_OUTPUT",

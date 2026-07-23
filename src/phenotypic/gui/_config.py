@@ -66,6 +66,7 @@ from phenotypic.sdk_ import (
     MEASUREMENTS_PARQUET,
     PIPELINE_JSON,
     QC_REVIEW_STATE_JSON,
+    RUN_LOG_DIRNAME,
     STDOUT_LOG,
 )
 
@@ -332,10 +333,6 @@ def tune_presets_dir(sandbox_root: Path) -> Path:
         / SANDBOX_PRESETS_SUBDIR
         / SANDBOX_TUNE_PRESETS_SUBDIR
     )
-
-#: Hidden directory inside a run's *output* directory (NOT the sandbox)
-#: holding ``stdout.log`` and other on-disk run artifacts.
-RUN_LOG_DIRNAME: str = ".gui_log"
 
 #: Hidden directory inside the results viewer's *output* directory
 #: holding cached DZI tiles.
