@@ -104,7 +104,12 @@ from phenotypic.gui.builder._modal_browser import (
     render_load_picker_body,
 )
 from phenotypic.gui.builder._param_form import parse_widget_value
-from phenotypic.gui.builder._session import PreviewKey, PreviewRenderError, get_cache
+from phenotypic.gui.builder._session import (
+    PreviewGenerationWriter,
+    PreviewKey,
+    PreviewRenderError,
+    get_cache,
+)
 from phenotypic.gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
@@ -5505,6 +5510,12 @@ def register_callbacks(app: dash.Dash) -> None:
             from phenotypic.abc_ import GridOperation
 
             t0 = time.time()
+            pipeline_revision = _pipeline_revision(state_data)
+            cache = get_cache()
+            staging = cache.begin_preview_generation(
+                session_id,
+                pipeline_revision,
+            )
             state = state_from_json(state_data)
             if not hasattr(state, "selected_block_id"):
                 return no_update, no_update, *_toast(
@@ -5520,11 +5531,9 @@ def register_callbacks(app: dash.Dash) -> None:
             uses_grid = _pipeline_uses_grid(pipeline, GridOperation)
 
             image = _load_preview_image(image_path, uses_grid, nrows, ncols)
-            cache = get_cache()
             cache.set_image(session_id, image, str(image_path) if image_path else None)
 
             result = pipeline.apply_with_intermediates(image)
-            pipeline_revision = _pipeline_revision(state_data)
             generation = _bake_preview_cache(
                 prefix_state,
                 pipeline,
@@ -5532,7 +5541,10 @@ def register_callbacks(app: dash.Dash) -> None:
                 session_id,
                 cache,
                 pipeline_revision=pipeline_revision,
+                staging=staging,
             )
+            if generation is None:
+                return (no_update,) * 6
 
             duration = time.time() - t0
             keys = cache.known_intermediate_keys(session_id)
@@ -5603,6 +5615,12 @@ def register_callbacks(app: dash.Dash) -> None:
             from phenotypic.abc_ import GridOperation
 
             t0 = time.time()
+            pipeline_revision = _pipeline_revision(state_data)
+            cache = get_cache()
+            staging = cache.begin_preview_generation(
+                session_id,
+                pipeline_revision,
+            )
             state = state_from_json(state_data)
             # Duck-type the schema: DAG state needs the DAG converter
             # (which walks ``state.root.blocks`` + ``edges`` topologically);
@@ -5616,11 +5634,9 @@ def register_callbacks(app: dash.Dash) -> None:
 
             image = _load_preview_image(image_path, uses_grid, nrows, ncols)
 
-            cache = get_cache()
             cache.set_image(session_id, image, str(image_path) if image_path else None)
 
             result = pipeline.apply_with_intermediates(image)
-            pipeline_revision = _pipeline_revision(state_data)
             generation = _bake_preview_cache(
                 state,
                 pipeline,
@@ -5628,7 +5644,10 @@ def register_callbacks(app: dash.Dash) -> None:
                 session_id,
                 cache,
                 pipeline_revision=pipeline_revision,
+                staging=staging,
             )
+            if generation is None:
+                return (no_update,) * 6
 
             duration = time.time() - t0
             keys = cache.known_intermediate_keys(session_id)
@@ -7023,7 +7042,8 @@ def _bake_preview_cache(
     cache: Any,
     *,
     pipeline_revision: Optional[str] = None,
-) -> int:
+    staging: Optional[PreviewGenerationWriter] = None,
+) -> Optional[int]:
     """Render every intermediate to PNG bytes (or DataFrame) into *cache*.
 
     Pulled out of ``run_preview`` so the cache contract — bytes for ops,
@@ -7053,13 +7073,21 @@ def _bake_preview_cache(
         cache: The :class:`IntermediatesCache` to populate.
         pipeline_revision: Semantic state revision associated with the bake.
             Derived from ``state`` when omitted by direct test callers.
+        staging: Request-sequenced detached writer reserved before expensive
+            preview work. Direct callers may omit it to reserve immediately.
 
     Returns:
-        Atomically published preview generation.
+        Atomically published preview generation, or ``None`` when superseded.
     """
 
     revision = pipeline_revision or _pipeline_revision(state_to_json(state))
-    staging = cache.begin_preview_generation(session_id, revision)
+    if staging is None:
+        staging = cache.begin_preview_generation(session_id, revision)
+    elif (
+        staging.session_id != session_id
+        or staging.pipeline_revision != revision
+    ):
+        raise ValueError("preview staging writer does not match bake request")
     if hasattr(state, "selected_block_id"):
         _bake_preview_cache_dag(state, pipeline, result, session_id, staging)
     else:

@@ -81,12 +81,14 @@ class PreviewGenerationWriter:
     Attributes:
         session_id: Per-tab session owning the generation.
         pipeline_revision: Canonical semantic revision baked by the caller.
+        request_sequence: Monotonic reservation assigned before preview work.
         max_intermediates: Per-session cache bound applied while staging.
         intermediates: Ordered staged payloads, never directly exposed live.
     """
 
     session_id: str
     pipeline_revision: str
+    request_sequence: int
     max_intermediates: int
     intermediates: "OrderedDict[str, CachedPreview]" = field(
         default_factory=OrderedDict
@@ -132,6 +134,10 @@ class SessionData:
             strings on the DAG path; the cache does not enforce a
             scheme, so a process restart (or feature-flag flip) silently
             invalidates the cache by rotating the keys.
+        pipeline_revision: Semantic revision of the published generation.
+        preview_generation: Monotonic count of successful publications.
+        preview_request_sequence: Monotonic count of preview requests started;
+            only a writer carrying the current value may publish.
     """
 
     image: Optional["Image"] = None
@@ -141,6 +147,7 @@ class SessionData:
     )
     pipeline_revision: Optional[str] = None
     preview_generation: int = 0
+    preview_request_sequence: int = 0
 
 
 class IntermediatesCache:
@@ -271,16 +278,20 @@ class IntermediatesCache:
     def begin_preview_generation(
         self, session_id: str, pipeline_revision: str
     ) -> PreviewGenerationWriter:
-        """Create a detached staging writer for a future generation."""
-        return PreviewGenerationWriter(
-            session_id=session_id,
-            pipeline_revision=pipeline_revision,
-            max_intermediates=self._max_per_session,
-        )
+        """Reserve the next request sequence and return a detached writer."""
+        with self._lock:
+            data = self._ensure_session(session_id)
+            data.preview_request_sequence += 1
+            return PreviewGenerationWriter(
+                session_id=session_id,
+                pipeline_revision=pipeline_revision,
+                request_sequence=data.preview_request_sequence,
+                max_intermediates=self._max_per_session,
+            )
 
     def publish_preview_generation(
         self, writer: PreviewGenerationWriter
-    ) -> int:
+    ) -> Optional[int]:
         """Atomically replace a session's live previews with a complete bake.
 
         Args:
@@ -288,10 +299,16 @@ class IntermediatesCache:
                 :meth:`begin_preview_generation`.
 
         Returns:
-            Monotonically increasing generation number for the session.
+            Monotonically increasing generation number for the session, or
+            ``None`` when a newer request superseded this writer.
         """
         with self._lock:
-            data = self._ensure_session(writer.session_id)
+            data = self._sessions.get(writer.session_id)
+            if (
+                data is None
+                or writer.request_sequence != data.preview_request_sequence
+            ):
+                return None
             data.intermediates = OrderedDict(writer.intermediates)
             data.pipeline_revision = writer.pipeline_revision
             data.preview_generation += 1

@@ -238,3 +238,33 @@ def test_abandoned_preview_writer_cannot_mix_with_live_generation() -> None:
     assert (
         cache.get_preview(("s1", "node-b", "revision-1", generation)) == b"b1"
     )
+
+
+def test_superseded_prefix_publish_preserves_complete_downstream_snapshot() -> None:
+    """An older prefix request cannot replace a newer full request."""
+    cache = IntermediatesCache()
+    initial = cache.begin_preview_generation("s1", "revision-1")
+    initial.set_intermediate("s1", "upstream", b"upstream-1")
+    initial.set_intermediate("s1", "downstream", b"downstream-1")
+    initial_generation = cache.publish_preview_generation(initial)
+    assert initial_generation is not None
+
+    slow_prefix = cache.begin_preview_generation("s1", "revision-1")
+    slow_prefix.set_intermediate("s1", "upstream", b"stale-prefix")
+    newest_full = cache.begin_preview_generation("s1", "revision-1")
+    newest_full.set_intermediate("s1", "upstream", b"upstream-2")
+    newest_full.set_intermediate("s1", "downstream", b"downstream-2")
+
+    # The newer full request completes first. A late prefix publication must
+    # then be rejected without deleting the full request's downstream slots.
+    full_generation = cache.publish_preview_generation(newest_full)
+    assert full_generation == initial_generation + 1
+    assert cache.preview_descriptor("s1") == (
+        "revision-1",
+        full_generation,
+    )
+    assert cache.publish_preview_generation(slow_prefix) is None
+    assert cache.known_intermediate_keys("s1") == ["upstream", "downstream"]
+    assert cache.get_preview(
+        ("s1", "downstream", "revision-1", full_generation)
+    ) == b"downstream-2"
