@@ -127,11 +127,13 @@ SLURM Execution (Autonomous HPC Cluster Processing):
             --dry-run
 """
 
+import json
 import logging
 import shutil
 import sys
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, cast
+from uuid import UUID
 
 import click
 import yaml  # type: ignore[import-untyped]
@@ -187,7 +189,9 @@ from phenotypic._cli._cli_validation import (
 from phenotypic._cli._cli_constants import MAX_SLURM_TIME_MINUTES
 from phenotypic.schema import EXPERIMENT_METADATA
 from phenotypic.sdk_ import (
+    DIR_PHENOTYPIC,
     DIR_RESULTS,
+    GUI_LAUNCH_OWNER_JSON,
     GUI_LOG_FILENAMES,
     dataset_overlays_dir,
     JOB_METADATA_JSON,
@@ -364,6 +368,65 @@ def is_safe_gui_log_entry(entry: Path) -> bool:
             for child in entry.iterdir()
         )
     except OSError:
+        return False
+
+
+def is_safe_gui_launch_state_entry(entry: Path) -> bool:
+    """Return whether ``entry`` contains only the pre-launch GUI owner state.
+
+    The GUI must persist its launch generation before starting the CLI. That
+    owner record and its interprocess lock are the only machine-state entries
+    permitted by the fresh-output guard. Existing processing state, scheduler
+    metadata, completion markers, symlinks, and unrecognized files remain
+    non-fresh.
+    """
+    if entry.name != DIR_PHENOTYPIC or entry.is_symlink():
+        return False
+    try:
+        if not entry.is_dir():
+            return False
+        children = list(entry.iterdir())
+        if len(children) != 1:
+            return False
+        progress = children[0]
+        if (
+            progress.name != "progress"
+            or progress.is_symlink()
+            or not progress.is_dir()
+        ):
+            return False
+        owner = progress / GUI_LAUNCH_OWNER_JSON
+        lock = owner.with_suffix(".lock")
+        allowed = {owner.name, lock.name}
+        progress_children = list(progress.iterdir())
+        if (
+            not owner.is_file()
+            or owner.is_symlink()
+            or any(
+                child.name not in allowed
+                or child.is_symlink()
+                or not child.is_file()
+                for child in progress_children
+            )
+        ):
+            return False
+        payload = json.loads(owner.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict) or payload.get("version") != 1:
+            return False
+        UUID(str(payload.get("generation")))
+        output_dir = Path(str(payload.get("output_dir", ""))).resolve(
+            strict=False
+        )
+        if output_dir != entry.parent.resolve(strict=False):
+            return False
+        return (
+            payload.get("mode") in {"local", "slurm", "validate"}
+            and payload.get("status")
+            in {"queued", "submitting", "running", "reconciling"}
+            and isinstance(payload.get("command_digest"), str)
+            and bool(payload["command_digest"])
+        )
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError):
         return False
 
 
@@ -1291,7 +1354,10 @@ def phenotypic_cli(
         # Check for existing output directory contents (skip for resume/restart/measure)
         if not config.resume and not restart and not measure_only:
             if output_dir.exists() and any(
-                not is_safe_gui_log_entry(entry)
+                not (
+                    is_safe_gui_log_entry(entry)
+                    or is_safe_gui_launch_state_entry(entry)
+                )
                 for entry in output_dir.iterdir()
             ):
                 if overwrite:
