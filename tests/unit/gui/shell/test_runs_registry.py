@@ -15,8 +15,12 @@ from __future__ import annotations
 
 import json
 import threading
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
+from uuid import uuid4
+
+import pytest
 
 from phenotypic.gui._config import DELIVERABLES_DIRNAME
 from phenotypic.gui.shell._runs_registry import (
@@ -83,6 +87,254 @@ def test_update_pid_and_slurm_job_id(tmp_path: Path) -> None:
     assert reg.get("r").pid == 4242  # type: ignore[union-attr]
     assert reg.update_slurm_job_id("r", "8675309") is True
     assert reg.get("r").slurm_job_id == "8675309"  # type: ignore[union-attr]
+
+
+def test_allocate_persists_durable_generation_owner(tmp_path: Path) -> None:
+    reg = RunRegistry()
+    output = tmp_path / "run"
+    record = reg.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="sha256:abc",
+        status="running",
+    )
+
+    owner_path = (
+        output / ".phenotypic" / "progress" / "gui_launch_owner.json"
+    )
+    payload = json.loads(owner_path.read_text(encoding="utf-8"))
+    assert payload["generation"] == str(record.generation)
+    assert payload["run_id"] == "run"
+    assert payload["rel_path"] == "run"
+    assert payload["command_digest"] == "sha256:abc"
+    assert payload["lifecycle_epoch"] == str(record.generation)
+    assert payload["status"] == "running"
+    assert reg.revision == 1
+
+
+def test_allocate_rejects_second_nonterminal_generation(
+    tmp_path: Path,
+) -> None:
+    reg = RunRegistry()
+    output = tmp_path / "run"
+    first = reg.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="one",
+        status="running",
+    )
+
+    try:
+        with pytest.raises(RuntimeError, match="nonterminal"):
+            reg.allocate(
+                mode="slurm",
+                output_dir=output,
+                rel_path="run",
+                command_digest="two",
+            )
+    finally:
+        reg.compare_and_set(
+            "run",
+            first.generation,  # type: ignore[arg-type]
+            status="cancelled",
+        )
+
+
+def test_allocate_rejects_durable_owner_from_another_registry(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    first_registry = RunRegistry()
+    first_registry.allocate(
+        mode="slurm",
+        output_dir=output,
+        rel_path="run",
+        command_digest="one",
+        status="queued",
+    )
+
+    second_registry = RunRegistry()
+    with pytest.raises(RuntimeError, match="durable nonterminal"):
+        second_registry.allocate(
+            mode="local",
+            output_dir=output,
+            rel_path="run",
+            command_digest="two",
+        )
+    assert second_registry.list() == []
+
+
+def test_allocate_refuses_invalid_existing_owner(tmp_path: Path) -> None:
+    output = tmp_path / "run"
+    owner_path = (
+        output / ".phenotypic" / "progress" / "gui_launch_owner.json"
+    )
+    owner_path.parent.mkdir(parents=True)
+    owner_path.write_text("{broken", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="invalid generation owner"):
+        RunRegistry().allocate(
+            mode="local",
+            output_dir=output,
+            rel_path="run",
+            command_digest="digest",
+        )
+
+
+def test_allocate_replaces_terminal_generation(tmp_path: Path) -> None:
+    reg = RunRegistry()
+    output = tmp_path / "run"
+    first = reg.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="one",
+        status="complete",
+    )
+    second = reg.allocate(
+        mode="slurm",
+        output_dir=output,
+        rel_path="run",
+        command_digest="two",
+    )
+    assert second.generation != first.generation
+    assert reg.get("run") is second
+
+
+def test_compare_and_set_rejects_stale_generation_without_revision_bump(
+    tmp_path: Path,
+) -> None:
+    reg = RunRegistry()
+    record = reg.allocate(
+        mode="local",
+        output_dir=tmp_path / "run",
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    revision = reg.revision
+    assert (
+        reg.compare_and_set(
+            "run",
+            uuid4(),
+            status="failed",
+            returncode=9,
+        )
+        is False
+    )
+    assert reg.revision == revision
+    assert record.status == "running"
+    assert record.returncode is None
+
+
+def test_compare_and_set_updates_generalized_fields_and_aliases(
+    tmp_path: Path,
+) -> None:
+    reg = RunRegistry()
+    record = reg.allocate(
+        mode="slurm",
+        output_dir=tmp_path / "run",
+        rel_path="run",
+        command_digest="digest",
+    )
+    submitted = datetime.now(timezone.utc)
+    log_paths = (tmp_path / "submit.log", tmp_path / "slurm.log")
+    assert record.generation is not None
+    assert reg.compare_and_set(
+        "run",
+        record.generation,
+        expected_statuses={"submitting"},
+        expected_record_revision=0,
+        status="queued",
+        scheduler_ids=("22", "11", "22"),
+        primary_scheduler_id="11",
+        log_paths=log_paths,
+        submitted_at=submitted,
+        status_detail="waiting for resources",
+    )
+    assert record.status == "queued"
+    assert record.scheduler_ids == ("22", "11")
+    assert record.primary_scheduler_id == "11"
+    assert record.slurm_job_id == "11"
+    assert record.log_paths == log_paths
+    assert record.log_path == log_paths[0]
+    assert record.submitted_at == submitted
+    assert record.record_revision == 1
+    assert reg.revision == 2
+
+    payload = json.loads(
+        (
+            record.output_dir
+            / ".phenotypic"
+            / "progress"
+            / "gui_launch_owner.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert payload["scheduler_ids"] == ["22", "11"]
+    assert payload["primary_scheduler_id"] == "11"
+    assert payload["record_revision"] == 1
+
+
+def test_compare_and_set_honors_expected_record_revision(
+    tmp_path: Path,
+) -> None:
+    reg = RunRegistry()
+    record = reg.allocate(
+        mode="local",
+        output_dir=tmp_path / "run",
+        rel_path="run",
+        command_digest="digest",
+    )
+    assert record.generation is not None
+    assert (
+        reg.compare_and_set(
+            "run",
+            record.generation,
+            expected_record_revision=7,
+            status="running",
+        )
+        is False
+    )
+    assert record.status == "submitting"
+    assert record.record_revision == 0
+
+
+def test_observe_local_exit_maps_returncode_and_rejects_stale_generation(
+    tmp_path: Path,
+) -> None:
+    reg = RunRegistry()
+    record = reg.allocate(
+        mode="local",
+        output_dir=tmp_path / "run",
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+    assert reg.observe_local_exit("run", uuid4(), 0) is False
+    assert record.status == "running"
+    assert reg.observe_local_exit("run", record.generation, 3) is True
+    assert record.status == "failed"
+    assert record.returncode == 3
+    assert record.terminal_at is not None
+    assert record.status_detail == "local process exited with status 3"
+
+
+def test_observe_local_exit_preserves_cancelled_status(tmp_path: Path) -> None:
+    reg = RunRegistry()
+    record = reg.allocate(
+        mode="local",
+        output_dir=tmp_path / "run",
+        rel_path="run",
+        command_digest="digest",
+        status="cancelled",
+    )
+    assert record.generation is not None
+    assert reg.observe_local_exit("run", record.generation, -15)
+    assert record.status == "cancelled"
+    assert record.returncode == -15
 
 
 # ---------------------------------------------------------------------------
@@ -284,3 +536,106 @@ def test_rehydrate_ignores_corrupt_manifest(tmp_path: Path) -> None:
     rec = reg.get("broken")
     assert rec is not None
     assert rec.status == "unknown"
+
+
+def test_rehydrate_restores_persisted_generation_and_terminal_evidence(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "owned"
+    source = RunRegistry()
+    original = source.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="owned",
+        command_digest="digest",
+        status="running",
+    )
+    assert original.generation is not None
+    assert source.compare_and_set(
+        "owned",
+        original.generation,
+        status="complete",
+        returncode=0,
+        log_paths=(output / ".gui_log" / "stdout.log",),
+    )
+
+    restored = RunRegistry()
+    count = restored.rehydrate_from_sandbox(
+        SandboxRoot.from_path(tmp_path)
+    )
+    assert count == 1
+    record = restored.get("owned")
+    assert record is not None
+    assert record.generation == original.generation
+    assert record.status == "complete"
+    assert record.returncode == 0
+    assert record.log_path == output / ".gui_log" / "stdout.log"
+    assert record.record_revision == 1
+
+
+def test_rehydrate_downgrades_unobserved_local_liveness(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "owned"
+    source = RunRegistry()
+    original = source.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="owned",
+        command_digest="digest",
+        status="running",
+    )
+    assert original.generation is not None
+    assert source.compare_and_set(
+        "owned",
+        original.generation,
+        pid=12345,
+    )
+
+    restored = RunRegistry()
+    restored.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+    record = restored.get("owned")
+    assert record is not None
+    assert record.generation == original.generation
+    assert record.status == "unknown"
+    assert record.pid is None
+    assert "restarted" in (record.status_detail or "")
+
+
+def test_rehydrate_legacy_manifest_does_not_invent_generation(
+    tmp_path: Path,
+) -> None:
+    _make_cli_output(tmp_path, "legacy")
+    restored = RunRegistry()
+    restored.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+    record = restored.get("legacy")
+    assert record is not None
+    assert record.generation is None
+    assert record.status == "complete"
+
+
+def test_rehydrate_invalid_owner_does_not_invent_generation(
+    tmp_path: Path,
+) -> None:
+    output = _make_cli_output(tmp_path, "invalid-owner")
+    owner_path = (
+        output / ".phenotypic" / "progress" / "gui_launch_owner.json"
+    )
+    owner_path.parent.mkdir(parents=True)
+    owner_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "run_id": "invalid-owner",
+                "rel_path": "invalid-owner",
+                "generation": "not-a-uuid",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    restored = RunRegistry()
+    restored.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+    record = restored.get("invalid-owner")
+    assert record is not None
+    assert record.generation is None

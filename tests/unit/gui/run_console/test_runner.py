@@ -13,6 +13,7 @@ import threading
 import time
 from collections import deque
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -102,8 +103,147 @@ def test_is_running_tracks_subprocess_state(
     assert _wait_until(lambda: not runner.is_running("r"), timeout=2.0)
 
 
+def test_exit_callback_observes_immediate_success_and_retains_handle(
+    runner: LocalRunner,
+    tmp_path: Path,
+) -> None:
+    generation = uuid4()
+    observed: list[tuple[LocalRunHandle, int]] = []
+    callback_done = threading.Event()
+
+    def _on_exit(handle: LocalRunHandle, returncode: int) -> None:
+        observed.append((handle, returncode))
+        callback_done.set()
+
+    handle = runner.start(
+        run_id="instant",
+        argv=[sys.executable, "-c", "pass"],
+        output_dir=tmp_path,
+        generation=generation,
+        on_exit=_on_exit,
+    )
+    assert callback_done.wait(timeout=5.0)
+    assert observed == [(handle, 0)]
+    assert handle.generation == generation
+    assert handle.finished_at is not None
+    assert runner.get("instant") is handle
+    assert runner.snapshot_log("instant") == []
+
+
+def test_exit_callback_observes_nonzero_returncode(
+    runner: LocalRunner,
+    tmp_path: Path,
+) -> None:
+    observed: list[int] = []
+    callback_done = threading.Event()
+
+    def _on_exit(_handle: LocalRunHandle, returncode: int) -> None:
+        observed.append(returncode)
+        callback_done.set()
+
+    runner.start(
+        run_id="failure",
+        argv=[sys.executable, "-c", "raise SystemExit(7)"],
+        output_dir=tmp_path,
+        on_exit=_on_exit,
+    )
+    assert callback_done.wait(timeout=5.0)
+    assert observed == [7]
+    assert runner.get("failure") is not None
+
+
 def test_stop_returns_false_if_run_id_unknown(runner: LocalRunner) -> None:
     assert runner.stop("missing") is False
+
+
+def test_log_directory_failure_releases_reservation(
+    runner: LocalRunner,
+    tmp_path: Path,
+) -> None:
+    output_file = tmp_path / "not-a-directory"
+    output_file.write_text("occupied", encoding="utf-8")
+    with pytest.raises(OSError):
+        runner.start(
+            run_id="log-failure",
+            argv=[sys.executable, "-c", "pass"],
+            output_dir=output_file,
+        )
+    assert "log-failure" not in runner.list_run_ids()
+
+
+def test_popen_failure_releases_reservation(
+    runner: LocalRunner,
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(FileNotFoundError):
+        runner.start(
+            run_id="popen-failure",
+            argv=[str(tmp_path / "missing-executable")],
+            output_dir=tmp_path,
+        )
+    assert "popen-failure" not in runner.list_run_ids()
+
+
+def test_exit_observer_start_failure_terminates_reaps_and_releases(
+    tmp_path: Path,
+) -> None:
+    captured: list[LocalRunHandle] = []
+    call_count = 0
+
+    class _FailingStartThread(threading.Thread):
+        def start(self) -> None:
+            raise RuntimeError("observer unavailable")
+
+    def _thread_factory(**kwargs) -> threading.Thread:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 2:
+            captured.append(kwargs["args"][0])
+            return _FailingStartThread(**kwargs)
+        return threading.Thread(**kwargs)
+
+    runner = LocalRunner(thread_factory=_thread_factory)
+    with pytest.raises(RuntimeError, match="observer unavailable"):
+        runner.start(
+            run_id="observer-failure",
+            argv=[
+                sys.executable,
+                "-c",
+                "import time; time.sleep(30)",
+            ],
+            output_dir=tmp_path,
+        )
+    assert len(captured) == 1
+    assert captured[0].process.poll() is not None
+    assert "observer-failure" not in runner.list_run_ids()
+
+
+def test_tee_start_failure_terminates_reaps_and_releases(
+    tmp_path: Path,
+) -> None:
+    captured: list[LocalRunHandle] = []
+
+    class _FailingStartThread(threading.Thread):
+        def start(self) -> None:
+            raise RuntimeError("tee unavailable")
+
+    def _thread_factory(**kwargs) -> threading.Thread:
+        captured.append(kwargs["args"][0])
+        return _FailingStartThread(**kwargs)
+
+    runner = LocalRunner(thread_factory=_thread_factory)
+    with pytest.raises(RuntimeError, match="tee unavailable"):
+        runner.start(
+            run_id="tee-failure",
+            argv=[
+                sys.executable,
+                "-c",
+                "import time; time.sleep(30)",
+            ],
+            output_dir=tmp_path,
+        )
+    assert captured[0].process.poll() is not None
+    assert "tee-failure" not in runner.list_run_ids()
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +408,49 @@ def test_reap_returns_exit_code_then_drops_handle(
     assert rc == 7
     assert runner.get("z") is None
     assert runner.reap("z") is None  # idempotent
+
+
+def test_new_generation_replaces_finished_same_output_handle(
+    runner: LocalRunner,
+    tmp_path: Path,
+) -> None:
+    first = runner.start(
+        run_id="same-output",
+        argv=[sys.executable, "-c", "pass"],
+        output_dir=tmp_path,
+        generation=uuid4(),
+    )
+    first.process.wait(timeout=5.0)
+    assert _wait_until(lambda: first.finished_at is not None)
+
+    second = runner.start(
+        run_id="same-output",
+        argv=[sys.executable, "-c", "pass"],
+        output_dir=tmp_path,
+        generation=uuid4(),
+    )
+    second.process.wait(timeout=5.0)
+    assert runner.get("same-output") is second
+    assert second.generation != first.generation
+
+
+def test_finished_handle_retention_is_bounded(tmp_path: Path) -> None:
+    runner = LocalRunner(retention_limit=1)
+    first = runner.start(
+        run_id="first",
+        argv=[sys.executable, "-c", "pass"],
+        output_dir=tmp_path / "first",
+    )
+    assert _wait_until(lambda: first.finished_at is not None)
+
+    second = runner.start(
+        run_id="second",
+        argv=[sys.executable, "-c", "pass"],
+        output_dir=tmp_path / "second",
+    )
+    assert _wait_until(lambda: second.finished_at is not None)
+    assert runner.list_run_ids() == ["second"]
+    assert runner.get("second") is second
 
 
 def test_atexit_hook_only_registered_once() -> None:
