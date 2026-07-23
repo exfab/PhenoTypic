@@ -500,7 +500,7 @@ def register_chrome_callbacks(
     )
     def _source_from_sidebar_selection(
         selection: dict[str, Any] | None,
-        current_payload: object,
+        _current_payload: object,
     ) -> Any:
         """Promote image-directory sidebar selections to the shared source."""
         if not selection or not isinstance(selection, dict):
@@ -514,11 +514,10 @@ def register_chrome_callbacks(
         payload = source_payload_from_path(sandbox, path, source="sidebar")
         if payload is None:
             return no_update
-        if (
-            isinstance(current_payload, dict)
-            and current_payload.get("abs_path") == payload["abs_path"]
-        ):
-            return no_update
+        # A click is an explicit selection, even when the resolved path text
+        # matches the stored value. Always publish the freshly validated V2
+        # payload so the action can repair a fingerprint mismatch or upgrade
+        # a readable V1 payload.
         return payload
 
     # ----------------------------------------------------------------------

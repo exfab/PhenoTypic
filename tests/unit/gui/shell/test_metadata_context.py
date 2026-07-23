@@ -224,6 +224,48 @@ def test_v1_metadata_payload_reads_without_rewrite(tmp_path: Path) -> None:
     assert "sandbox_fingerprint" not in payload
 
 
+def test_v1_metadata_rejects_malformed_and_inconsistent_paths(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.shell._metadata_context import resolve_metadata_csv_state
+
+    selected_csv = _write_csv(tmp_path / "layout.csv", "A,B\n1,2\n")
+    other_csv = _write_csv(tmp_path / "other.csv", "A,B\n3,4\n")
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payloads = [
+        {
+            "version": 1,
+            "abs_path": "\x00",
+            "rel_path": "layout.csv",
+            "validated": True,
+        },
+        {
+            "version": 1,
+            "abs_path": str(selected_csv.resolve()),
+            "rel_path": "lay\x00out.csv",
+            "validated": True,
+        },
+        {
+            "version": 1,
+            "abs_path": str(other_csv.resolve()),
+            "rel_path": "layout.csv",
+            "validated": True,
+        },
+    ]
+
+    resolutions = [
+        resolve_metadata_csv_state(sandbox, payload)
+        for payload in payloads
+    ]
+
+    assert [resolution.state for resolution in resolutions] == [
+        "fingerprint_mismatch",
+        "fingerprint_mismatch",
+        "fingerprint_mismatch",
+    ]
+    assert all(resolution.path is None for resolution in resolutions)
+
+
 def test_read_metadata_row_matches_image_stem(tmp_path: Path) -> None:
     from phenotypic.gui.shell._metadata_context import (
         metadata_payload_from_path,

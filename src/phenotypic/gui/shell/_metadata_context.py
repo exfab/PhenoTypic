@@ -390,14 +390,10 @@ def _v1_selection_matches_sandbox(
 ) -> bool:
     try:
         absolute = Path(raw_path).expanduser().resolve(strict=False)
-    except (OSError, RuntimeError):
+        relative = sandbox.resolve(relative_path)
+    except (OSError, RuntimeError, ValueError):
         return False
-    inferred_root = absolute
-    relative = Path(relative_path)
-    for part in relative.parts:
-        if part not in {"", "."}:
-            inferred_root = inferred_root.parent
-    return inferred_root == sandbox.root
+    return absolute == relative
 
 
 def _legacy_metadata_csv_label(payload: object) -> str:

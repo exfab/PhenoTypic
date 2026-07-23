@@ -328,17 +328,13 @@ def _v1_selection_matches_sandbox(
     raw_path: str,
     relative_path: str,
 ) -> bool:
-    """Infer the V1 selection root and reject rebinding to another sandbox."""
+    """Require V1 absolute and relative fields to name the exact same path."""
     try:
         absolute = Path(raw_path).expanduser().resolve(strict=False)
-    except (OSError, RuntimeError):
+        relative = sandbox.resolve(relative_path)
+    except (OSError, RuntimeError, ValueError):
         return False
-    inferred_root = absolute
-    relative = Path(relative_path)
-    for part in relative.parts:
-        if part not in {"", "."}:
-            inferred_root = inferred_root.parent
-    return inferred_root == sandbox.root
+    return absolute == relative
 
 
 def _legacy_source_label(payload: object) -> str:

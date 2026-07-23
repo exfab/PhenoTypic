@@ -164,9 +164,18 @@ def test_status_bar_source_picker_sets_shared_source_and_page_inputs(
 def test_previous_sandbox_source_is_unavailable_until_reselected(
     page: Page,
     hub_url: str,
+    fake_sandbox: Path,
     payload: dict[str, object],
 ) -> None:
     """V1 and V2 stores never rebind the same relative name across roots."""
+    payload = dict(payload)
+    if payload["version"] == 2:
+        # Keep the compatibility absolute path identical to the current
+        # selection. The explicit click must still replace this payload based
+        # on its mismatched fingerprint.
+        current_path = str((fake_sandbox / "plate1").resolve())
+        payload["absolute_path_at_selection"] = current_path
+        payload["abs_path"] = current_path
     page.goto(hub_url + "/")
     page.wait_for_selector("#shell-settings-button", timeout=10_000)
     page.evaluate(
@@ -183,3 +192,7 @@ def test_previous_sandbox_source_is_unavailable_until_reselected(
         page,
         "Previous source unavailable in this sandbox",
     )
+    page.click(
+        'button[id*="\\"path\\":\\"plate1\\""][id*="shell-sidebar-entry"]'
+    )
+    _expect_settings_source_label(page, "source: plate1")

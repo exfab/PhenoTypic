@@ -266,6 +266,52 @@ def test_v1_source_payload_reads_without_rewrite(tmp_path: Path) -> None:
     assert "sandbox_fingerprint" not in payload
 
 
+def test_v1_source_rejects_malformed_and_inconsistent_paths(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.shell._source_context import (
+        resolve_source_image_root_state,
+    )
+
+    source_dir = tmp_path / "plates"
+    other_dir = tmp_path / "other"
+    source_dir.mkdir()
+    other_dir.mkdir()
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payloads = [
+        {
+            "version": 1,
+            "abs_path": "\x00",
+            "rel_path": "plates",
+            "validated": True,
+        },
+        {
+            "version": 1,
+            "abs_path": str(source_dir.resolve()),
+            "rel_path": "pla\x00tes",
+            "validated": True,
+        },
+        {
+            "version": 1,
+            "abs_path": str(other_dir.resolve()),
+            "rel_path": "plates",
+            "validated": True,
+        },
+    ]
+
+    resolutions = [
+        resolve_source_image_root_state(sandbox, payload)
+        for payload in payloads
+    ]
+
+    assert [resolution.state for resolution in resolutions] == [
+        "fingerprint_mismatch",
+        "fingerprint_mismatch",
+        "fingerprint_mismatch",
+    ]
+    assert all(resolution.path is None for resolution in resolutions)
+
+
 def test_source_label_formats_unset_invalid_and_valid_payloads(
     tmp_path: Path,
 ) -> None:
