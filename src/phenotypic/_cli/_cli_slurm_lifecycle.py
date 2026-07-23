@@ -71,15 +71,25 @@ def initialize_slurm_lifecycle(
     mode: str,
 ) -> dict[str, Any]:
     """Publish an active launch fence before any scheduler call."""
-    state = {
-        "schema_version": SCHEMA_VERSION,
-        "generation": generation,
-        "mode": mode,
-        "active": True,
-        "created_at": _timestamp(),
-        "updated_at": _timestamp(),
-    }
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
+        existing = load_slurm_lifecycle(output_dir)
+        if existing is not None and existing.get("active") is True:
+            existing_generation = str(existing["generation"])
+            if existing_generation != generation:
+                raise RuntimeError(
+                    "Output already has an active SLURM generation "
+                    f"{existing_generation!r}; refusing conflicting generation "
+                    f"{generation!r}"
+                )
+            return existing
+        state = {
+            "schema_version": SCHEMA_VERSION,
+            "generation": generation,
+            "mode": mode,
+            "active": True,
+            "created_at": _timestamp(),
+            "updated_at": _timestamp(),
+        }
         atomic_write_json(lifecycle_state_path(output_dir), state)
     return state
 
@@ -676,6 +686,11 @@ def _single_job_for_comment(
         exact=comment, run_command=run_command
     )
     ids = sorted(matches.get(comment, ()))
+    if len(ids) > 1:
+        raise RuntimeError(
+            f"Ambiguous scheduler comment {comment!r} matched jobs "
+            f"{', '.join(ids)}"
+        )
     return ids[0] if ids else None
 
 

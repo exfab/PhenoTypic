@@ -202,7 +202,10 @@ def submit_drip_feed_start(
     Raises:
         RuntimeError: If the first chunk submission fails.
     """
-    from phenotypic._cli._cli_slurm_lifecycle import submit_with_lifecycle
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        cancel_generation,
+        submit_with_lifecycle,
+    )
 
     job_ids: List[str] = []
     warning: Optional[str] = None
@@ -235,14 +238,17 @@ def submit_drip_feed_start(
                 dispatch0_job,
                 chunk0_job,
             )
-        except RuntimeError as e:
-            warning = (
-                f"Dispatcher submission failed: {e}\n"
-                "Only chunk 0 was submitted. Rerun the original PhenoTypic "
-                "submission command to reconcile the durable intent and "
-                "resume without duplicating chunk 0."
+        except RuntimeError as exc:
+            cancellation = cancel_generation(output_dir, generation)
+            detail = (
+                "the launch was fenced and all discovered jobs were cancelled"
+                if cancellation.quiescent
+                else "the launch was fenced but scheduler reconciliation remains "
+                "incomplete"
             )
-            logger.warning(warning)
+            raise RuntimeError(
+                f"Initial dispatcher submission failed; {detail}: {exc}"
+            ) from exc
 
     return job_ids, warning
 

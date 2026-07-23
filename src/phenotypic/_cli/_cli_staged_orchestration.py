@@ -138,10 +138,10 @@ def initialize_orchestration(
         "created_at": datetime.now().isoformat(timespec="milliseconds"),
         "updated_at": datetime.now().isoformat(timespec="milliseconds"),
     }
-    atomic_write_json(orchestration_state_path(output_dir), state)
     initialize_slurm_lifecycle(
         output_dir, generation=epoch, mode=f"staged-{mode}"
     )
+    atomic_write_json(orchestration_state_path(output_dir), state)
     staged_completion_path(output_dir).unlink(missing_ok=True)
     return state
 
@@ -453,6 +453,7 @@ def _job_from_scheduler_comment(comment: str) -> str | None:
         ],
     ]
     successful_queries = 0
+    matched_ids: set[str] = set()
     for command in commands:
         try:
             result = subprocess.run(
@@ -478,13 +479,19 @@ def _job_from_scheduler_comment(comment: str) -> str | None:
                 if len(parts) != 2:
                     continue
                 job_id, found_comment = parts
-            if found_comment == comment and job_id.split("_")[0].isdigit():
-                return job_id.split("_")[0]
+            base_job_id = job_id.split("_", 1)[0]
+            if found_comment == comment and base_job_id.isdigit():
+                matched_ids.add(base_job_id)
     if successful_queries == 0:
         raise SchedulerQueryUnavailable(
             "Could not query squeue or sacct for an incomplete submission intent"
         )
-    return None
+    if len(matched_ids) > 1:
+        raise RuntimeError(
+            f"Ambiguous scheduler comment {comment!r} matched jobs "
+            f"{', '.join(sorted(matched_ids))}"
+        )
+    return next(iter(matched_ids), None)
 
 
 def _mirror_job_to_metadata(
@@ -634,7 +641,9 @@ def cancel_staged_jobs(output_dir: Path) -> list[str]:
         epoch,
         run_command=subprocess.run,
     )
-    deactivate_orchestration(output_dir, "cancelled")
+    deactivate_orchestration(
+        output_dir, "cancelled" if result.quiescent else "cancelling"
+    )
     previously_active = set(active_ledger_job_ids(output_dir))
     all_ids = previously_active | set(result.job_ids)
     extra_ids = sorted(all_ids - set(result.job_ids))

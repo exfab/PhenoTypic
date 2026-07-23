@@ -34,6 +34,7 @@ from ._cli_types import (
 from ._cli_output_manager import OutputManager
 from ._cli_process_single import process_single_image_core
 from phenotypic.sdk_.slurm import get_slurm_array_limit
+from phenotypic.sdk_._file_locking import exclusive_path_lock
 from ._cli_slurm_array_scripts import generate_all_array_job_scripts
 from ._cli_slurm_submission import submit_slurm_script_chain
 from ._cli_slurm_lifecycle import (
@@ -57,6 +58,23 @@ from phenotypic.sdk_ import (
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 logger = logging.getLogger(__name__)
+
+
+def _write_slurm_image_task_mapping(
+    metadata_path: Path,
+    image_task_mapping: Dict[str, List[str]],
+) -> None:
+    """Merge the initial array mapping without losing concurrent job records.
+
+    Args:
+        metadata_path: Canonical scheduler metadata path.
+        image_task_mapping: Array-task keys mapped to dataset and image names.
+    """
+    metadata_lock = metadata_path.with_name(f".{metadata_path.name}.lock")
+    with exclusive_path_lock(metadata_lock, timeout=60.0):
+        job_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        job_metadata[JobMetadataKey.IMAGE_TASK_MAPPING] = image_task_mapping
+        atomic_write_json(metadata_path, job_metadata)
 
 
 def _truncate_error_message(error_msg: str, max_lines: int = MAX_TRACEBACK_LINES) -> str:
@@ -805,9 +823,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             array_offset += len(dataset.images)
 
         # Preserve the lifecycle's role-bearing job records.
-        job_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        job_metadata[JobMetadataKey.IMAGE_TASK_MAPPING] = image_task_mapping
-        atomic_write_json(metadata_path, job_metadata)
+        _write_slurm_image_task_mapping(metadata_path, image_task_mapping)
         console.print(f"[green]✓[/green] Job metadata: [dim]{metadata_path}[/dim]")
 
         if self.config.process_only_layer:

@@ -13,6 +13,7 @@ from phenotypic._cli._cli_slurm_lifecycle import (
     append_lifecycle_entry,
     cancel_generation,
     initialize_slurm_lifecycle,
+    load_slurm_lifecycle,
     mirror_job_to_metadata,
     read_lifecycle_ledger,
     submit_with_lifecycle,
@@ -100,6 +101,30 @@ def test_intent_precedes_sbatch_and_job_record(monkeypatch, tmp_path) -> None:
         "intent",
         "submitted",
     ]
+
+
+def test_initialize_rejects_conflicting_active_generation(tmp_path) -> None:
+    first = initialize_slurm_lifecycle(
+        tmp_path, generation="generation-1", mode="ordinary"
+    )
+
+    with pytest.raises(RuntimeError, match="active SLURM generation"):
+        initialize_slurm_lifecycle(
+            tmp_path, generation="generation-2", mode="ordinary"
+        )
+
+    assert load_slurm_lifecycle(tmp_path) == first
+
+
+def test_initialize_is_idempotent_for_same_active_generation(tmp_path) -> None:
+    first = initialize_slurm_lifecycle(
+        tmp_path, generation="generation-1", mode="ordinary"
+    )
+    second = initialize_slurm_lifecycle(
+        tmp_path, generation="generation-1", mode="ordinary"
+    )
+
+    assert second == first
 
 
 def test_timeout_after_accept_recovers_by_generation_comment(tmp_path) -> None:
@@ -209,6 +234,45 @@ def test_timeout_without_visible_job_does_not_duplicate_submit(
 
     assert sbatch_calls == 1
     assert read_lifecycle_ledger(tmp_path)[-1]["status"] == "blocked"
+
+
+def test_recovery_rejects_multiple_jobs_for_one_comment(tmp_path) -> None:
+    generation = "generation-ambiguous"
+    initialize_slurm_lifecycle(
+        tmp_path, generation=generation, mode="ordinary"
+    )
+    append_lifecycle_entry(
+        tmp_path,
+        generation=generation,
+        token="chunk-0",
+        role="chunk",
+        status="intent",
+    )
+
+    def duplicate_scheduler(command, **kwargs):
+        if command[0] == "squeue":
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "\n".join(
+                    [
+                        "701|phenotypic:generation-ambiguous:chunk-0",
+                        "702|phenotypic:generation-ambiguous:chunk-0",
+                    ]
+                ),
+                "",
+            )
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    with pytest.raises(RuntimeError, match="matched jobs 701, 702"):
+        submit_with_lifecycle(
+            tmp_path,
+            generation=generation,
+            token="chunk-0",
+            role="chunk",
+            script_path=tmp_path / "chunk.sh",
+            run_command=duplicate_scheduler,
+        )
 
 
 def test_cancel_fences_before_scancel_and_rejects_continuation(

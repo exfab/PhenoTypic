@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import h5py
@@ -13,6 +14,7 @@ from phenotypic._cli._cli_staged_controller import run_staged_controller
 from phenotypic._cli._cli_slurm_lifecycle import generation_is_active
 from phenotypic._cli._cli_staged_orchestration import (
     StagedManifestEntry,
+    _job_from_scheduler_comment,
     _mirror_job_to_metadata,
     append_job_ledger,
     append_stage2_terminal_failure,
@@ -266,6 +268,27 @@ def test_terminal_failures_are_namespaced_by_epoch(tmp_path: Path) -> None:
     assert terminal_stage2_identities(tmp_path, "old") == {"plate\0image.tif"}
 
 
+def test_conflicting_orchestration_generation_preserves_active_state(
+    tmp_path: Path,
+) -> None:
+    first = initialize_orchestration(
+        tmp_path,
+        epoch="epoch-1",
+        mode="fresh",
+        controller_config_path=tmp_path / "controller-1.json",
+    )
+
+    with pytest.raises(RuntimeError, match="active SLURM generation"):
+        initialize_orchestration(
+            tmp_path,
+            epoch="epoch-2",
+            mode="fresh",
+            controller_config_path=tmp_path / "controller-2.json",
+        )
+
+    assert load_orchestration_state(tmp_path) == first
+
+
 def test_submission_intent_discovers_job_after_recording_crash(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -297,6 +320,28 @@ def test_submission_intent_discovers_job_after_recording_crash(
     )
     assert job_id == "777"
     assert read_job_ledger(tmp_path)[-1]["status"] == "submitted"
+
+
+def test_staged_scheduler_discovery_rejects_multiple_matches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    comment = "phenotypic:epoch-1:stage2-round-1"
+
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            f"701|{comment}\n702|{comment}\n",
+            "",
+        )
+
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_orchestration.subprocess.run",
+        fake_run,
+    )
+
+    with pytest.raises(RuntimeError, match="matched jobs 701, 702"):
+        _job_from_scheduler_comment(comment)
 
 
 def test_named_stage_job_is_not_mirrored_as_numeric_chunk(tmp_path: Path) -> None:
@@ -620,6 +665,41 @@ def test_cancellation_fences_epoch_before_scancel(
     assert cancel_staged_jobs(tmp_path) == ["501"]
     assert observed_fence
     assert set(observed_fence) == {False}
+    state = load_orchestration_state(tmp_path)
+    assert state is not None
+    assert state["phase"] == "cancelling"
+
+
+def test_cancellation_becomes_terminal_only_after_quiescence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _controller_fixture(tmp_path)
+    append_job_ledger(
+        tmp_path,
+        epoch="epoch-1",
+        token="stage2-round-1",
+        role="stage2",
+        round_index=1,
+        status="submitted",
+        job_id="501",
+    )
+
+    def empty_scheduler(command, **kwargs):
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_orchestration.subprocess.run",
+        empty_scheduler,
+    )
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_orchestration.scheduler_job_is_active",
+        lambda job_id: False,
+    )
+
+    assert cancel_staged_jobs(tmp_path) == ["501"]
+    state = load_orchestration_state(tmp_path)
+    assert state is not None
+    assert state["phase"] == "cancelled"
 
 
 def test_cancellation_after_failure_includes_reused_tokens_across_epochs(

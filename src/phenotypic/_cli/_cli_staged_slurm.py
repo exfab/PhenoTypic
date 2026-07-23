@@ -514,15 +514,6 @@ class StagedSlurmStrategy(ExecutionStrategy):
             markers_required=getattr(cfg, "staged_stage3_markers", True),
             overlay_alpha=cfg.overlay_alpha,
         )
-        _write_staged_job_metadata(
-            datasets=datasets,
-            output_dir=output_dir,
-            config=cfg,
-            scripts=scripts,
-            job_ids=[],
-            start_time=start,
-            epoch=epoch,
-        )
         state = initialize_orchestration(
             output_dir,
             epoch=epoch,
@@ -534,6 +525,15 @@ class StagedSlurmStrategy(ExecutionStrategy):
                 else "fresh"
             ),
             controller_config_path=scripts["controller_config"],
+        )
+        _write_staged_job_metadata(
+            datasets=datasets,
+            output_dir=output_dir,
+            config=cfg,
+            scripts=scripts,
+            job_ids=[],
+            start_time=start,
+            epoch=epoch,
         )
         if getattr(cfg, "restart", False):
             state["restart_parquet_fingerprints"] = snapshot_inventory_parquets(

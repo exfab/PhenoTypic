@@ -7,6 +7,7 @@ and sbatch submission parsing.
 
 import subprocess
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
@@ -23,6 +24,7 @@ from phenotypic._cli._cli_slurm_array_scripts import (
     generate_all_array_job_scripts,
 )
 from phenotypic._cli._cli_types import Dataset, ExecutionConfig
+from phenotypic.sdk_ import JobMetadataKey, atomic_write_json
 
 pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SLURM not available on Windows")
 
@@ -538,3 +540,45 @@ class TestSLURMScriptChainSubmission:
         console.print.assert_any_call(
             "  Remaining 1 chunk(s) will be auto-submitted as each completes"
         )
+
+
+def test_image_task_mapping_uses_canonical_metadata_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+
+    import phenotypic._cli._cli_execution_strategies as strategies
+
+    metadata_path = tmp_path / "job_metadata.json"
+    atomic_write_json(
+        metadata_path,
+        {
+            JobMetadataKey.SLURM_JOB_IDS: {
+                "chunk-1": {
+                    "job_id": "702",
+                    "role": "chunk",
+                    "generation": "generation-1",
+                }
+            }
+        },
+    )
+    observed_locks: list[Path] = []
+
+    @contextmanager
+    def record_lock(path: Path, *, timeout: float):
+        observed_locks.append(path)
+        yield
+
+    monkeypatch.setattr(strategies, "exclusive_path_lock", record_lock)
+    strategies._write_slurm_image_task_mapping(
+        metadata_path, {"701_0": ["plate", "image.tif"]}
+    )
+
+    assert observed_locks == [
+        metadata_path.with_name(f".{metadata_path.name}.lock")
+    ]
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    assert metadata[JobMetadataKey.SLURM_JOB_IDS]["chunk-1"]["job_id"] == "702"
+    assert metadata[JobMetadataKey.IMAGE_TASK_MAPPING] == {
+        "701_0": ["plate", "image.tif"]
+    }

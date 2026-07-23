@@ -1,12 +1,16 @@
 """Tests for SLURM drip-feed dispatcher script generation."""
 
 import sys
+from pathlib import Path
 
 import pytest
 
+import phenotypic._cli._cli_slurm_lifecycle as lifecycle
+from phenotypic._cli._cli_slurm_lifecycle import CancellationResult
 from phenotypic.sdk_.slurm._dispatcher import (
     generate_dispatcher_chain,
     generate_dispatcher_script,
+    submit_drip_feed_start,
 )
 from phenotypic.sdk_ import slurm_scripts_dir
 
@@ -276,6 +280,40 @@ class TestGenerateDispatcherChain:
             log_dir=tmp_path / "logs" / "slurm",
         )
         assert dispatchers == []
+
+
+def test_initial_dispatcher_failure_fences_and_fails_launch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    scripts_dir = slurm_scripts_dir(tmp_path)
+    scripts_dir.mkdir(parents=True)
+    chunk = scripts_dir / "chunk0.sh"
+    dispatcher = scripts_dir / "dispatch_1.sh"
+    chunk.touch()
+    dispatcher.touch()
+    submissions = 0
+    cancelled: list[tuple[Path, str]] = []
+
+    def fake_submit(*args, **kwargs):
+        nonlocal submissions
+        submissions += 1
+        if submissions == 1:
+            return "701"
+        raise RuntimeError("dispatcher unavailable")
+
+    def fake_cancel(output_dir, generation, **kwargs):
+        cancelled.append((output_dir, generation))
+        return CancellationResult(("701",), (), True)
+
+    monkeypatch.setattr(lifecycle, "submit_with_lifecycle", fake_submit)
+    monkeypatch.setattr(lifecycle, "cancel_generation", fake_cancel)
+
+    with pytest.raises(RuntimeError, match="Initial dispatcher submission failed"):
+        submit_drip_feed_start([chunk], [dispatcher])
+
+    assert cancelled == [
+        (tmp_path, lifecycle.load_slurm_lifecycle(tmp_path)["generation"])
+    ]
 
 
 class TestSbatchHelpers:
