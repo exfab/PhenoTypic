@@ -22,6 +22,7 @@ from uuid import uuid4
 
 import pytest
 
+import phenotypic.gui.shell._runs_registry as runs_registry_module
 from phenotypic.gui._config import DELIVERABLES_DIRNAME
 from phenotypic.gui.shell._runs_registry import (
     RunRecord,
@@ -183,6 +184,165 @@ def test_allocate_refuses_invalid_existing_owner(tmp_path: Path) -> None:
         )
 
 
+def test_two_registries_atomically_compete_for_one_output(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    registries = (RunRegistry(), RunRegistry())
+    barrier = threading.Barrier(2)
+    successes: list[RunRecord] = []
+    failures: list[BaseException] = []
+    result_lock = threading.Lock()
+
+    def _allocate(registry: RunRegistry, digest: str) -> None:
+        barrier.wait()
+        try:
+            record = registry.allocate(
+                mode="local",
+                output_dir=output,
+                rel_path="run",
+                command_digest=digest,
+                status="running",
+            )
+            with result_lock:
+                successes.append(record)
+        except BaseException as exc:
+            with result_lock:
+                failures.append(exc)
+
+    threads = [
+        threading.Thread(target=_allocate, args=(registry, f"digest-{index}"))
+        for index, registry in enumerate(registries)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert len(successes) == 1
+    assert len(failures) == 1
+    assert isinstance(failures[0], RuntimeError)
+    payload = json.loads(
+        (
+            output
+            / ".phenotypic"
+            / "progress"
+            / "gui_launch_owner.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert payload["generation"] == str(successes[0].generation)
+
+
+def test_allocate_rejects_nonterminal_non_gui_processing_state(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    state_path = output / ".phenotypic" / "processing_state.json"
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "execution_mode": "local",
+                "datasets": {
+                    "plate": {
+                        "initial_images": ["a.tif", "b.tif"],
+                        "completed": ["a.tif"],
+                        "failed": [],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="non-GUI processing state"):
+        RunRegistry().allocate(
+            mode="local",
+            output_dir=output,
+            rel_path="run",
+            command_digest="digest",
+        )
+
+
+def test_allocate_accepts_terminal_non_gui_processing_state(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    state_path = output / ".phenotypic" / "processing_state.json"
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "execution_mode": "local",
+                "datasets": {
+                    "plate": {
+                        "initial_images": ["a.tif", "b.tif"],
+                        "completed": ["a.tif"],
+                        "failed": ["b.tif"],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    record = RunRegistry().allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="digest",
+    )
+    assert record.generation is not None
+
+
+def test_allocate_rejects_nonterminal_non_gui_orchestration_state(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    state_path = (
+        output
+        / ".phenotypic"
+        / "progress"
+        / "staged_orchestration.json"
+    )
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps({"epoch": "other", "phase": "stage2"}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="staged orchestration"):
+        RunRegistry().allocate(
+            mode="slurm",
+            output_dir=output,
+            rel_path="run",
+            command_digest="digest",
+        )
+
+
+def test_allocate_accepts_terminal_non_gui_orchestration_state(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    state_path = (
+        output
+        / ".phenotypic"
+        / "progress"
+        / "staged_orchestration.json"
+    )
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps({"epoch": "old", "phase": "complete"}),
+        encoding="utf-8",
+    )
+    record = RunRegistry().allocate(
+        mode="slurm",
+        output_dir=output,
+        rel_path="run",
+        command_digest="digest",
+    )
+    assert record.generation is not None
+
+
 def test_allocate_replaces_terminal_generation(tmp_path: Path) -> None:
     reg = RunRegistry()
     output = tmp_path / "run"
@@ -254,19 +414,24 @@ def test_compare_and_set_updates_generalized_fields_and_aliases(
         submitted_at=submitted,
         status_detail="waiting for resources",
     )
-    assert record.status == "queued"
-    assert record.scheduler_ids == ("22", "11")
-    assert record.primary_scheduler_id == "11"
-    assert record.slurm_job_id == "11"
-    assert record.log_paths == log_paths
-    assert record.log_path == log_paths[0]
-    assert record.submitted_at == submitted
-    assert record.record_revision == 1
+    updated = reg.get("run")
+    assert updated is not None
+    assert updated is not record
+    assert record.status == "submitting"
+    assert record.record_revision == 0
+    assert updated.status == "queued"
+    assert updated.scheduler_ids == ("22", "11")
+    assert updated.primary_scheduler_id == "11"
+    assert updated.slurm_job_id == "11"
+    assert updated.log_paths == log_paths
+    assert updated.log_path == log_paths[0]
+    assert updated.submitted_at == submitted
+    assert updated.record_revision == 1
     assert reg.revision == 2
 
     payload = json.loads(
         (
-            record.output_dir
+            updated.output_dir
             / ".phenotypic"
             / "progress"
             / "gui_launch_owner.json"
@@ -274,6 +439,101 @@ def test_compare_and_set_updates_generalized_fields_and_aliases(
     )
     assert payload["scheduler_ids"] == ["22", "11"]
     assert payload["primary_scheduler_id"] == "11"
+    assert payload["record_revision"] == 1
+
+
+def test_compare_and_set_write_failure_publishes_nothing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = RunRegistry()
+    record = reg.allocate(
+        mode="local",
+        output_dir=tmp_path / "run",
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+    owner_path = (
+        record.output_dir
+        / ".phenotypic"
+        / "progress"
+        / "gui_launch_owner.json"
+    )
+    owner_before = owner_path.read_bytes()
+    registry_revision = reg.revision
+
+    def _fail_write(*_args, **_kwargs) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(
+        runs_registry_module,
+        "atomic_write_json",
+        _fail_write,
+    )
+    with pytest.raises(OSError, match="disk full"):
+        reg.compare_and_set(
+            "run",
+            record.generation,
+            status="failed",
+            returncode=7,
+        )
+
+    assert reg.get("run") is record
+    assert record.status == "running"
+    assert record.returncode is None
+    assert record.record_revision == 0
+    assert reg.revision == registry_revision
+    assert owner_path.read_bytes() == owner_before
+
+
+def test_compare_and_set_rejects_durable_revision_changed_by_other_registry(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    first_registry = RunRegistry()
+    first = first_registry.allocate(
+        mode="slurm",
+        output_dir=output,
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    assert first.generation is not None
+
+    stale_registry = RunRegistry()
+    stale_registry.rehydrate_from_sandbox(
+        SandboxRoot.from_path(tmp_path)
+    )
+    stale = stale_registry.get("run")
+    assert stale is not None
+    assert stale.record_revision == 0
+
+    assert first_registry.compare_and_set(
+        "run",
+        first.generation,
+        status="complete",
+    )
+    assert (
+        stale_registry.compare_and_set(
+            "run",
+            first.generation,
+            status="failed",
+        )
+        is False
+    )
+    assert stale_registry.get("run") is stale
+    assert stale.status == "running"
+    payload = json.loads(
+        (
+            output
+            / ".phenotypic"
+            / "progress"
+            / "gui_launch_owner.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert payload["status"] == "complete"
     assert payload["record_revision"] == 1
 
 
@@ -316,10 +576,12 @@ def test_observe_local_exit_maps_returncode_and_rejects_stale_generation(
     assert reg.observe_local_exit("run", uuid4(), 0) is False
     assert record.status == "running"
     assert reg.observe_local_exit("run", record.generation, 3) is True
-    assert record.status == "failed"
-    assert record.returncode == 3
-    assert record.terminal_at is not None
-    assert record.status_detail == "local process exited with status 3"
+    updated = reg.get("run")
+    assert updated is not None
+    assert updated.status == "failed"
+    assert updated.returncode == 3
+    assert updated.terminal_at is not None
+    assert updated.status_detail == "local process exited with status 3"
 
 
 def test_observe_local_exit_preserves_cancelled_status(tmp_path: Path) -> None:
@@ -333,8 +595,29 @@ def test_observe_local_exit_preserves_cancelled_status(tmp_path: Path) -> None:
     )
     assert record.generation is not None
     assert reg.observe_local_exit("run", record.generation, -15)
-    assert record.status == "cancelled"
-    assert record.returncode == -15
+    updated = reg.get("run")
+    assert updated is not None
+    assert updated.status == "cancelled"
+    assert updated.returncode == -15
+
+
+def test_observe_local_exit_finishes_cancelling_as_cancelled(
+    tmp_path: Path,
+) -> None:
+    reg = RunRegistry()
+    record = reg.allocate(
+        mode="local",
+        output_dir=tmp_path / "run",
+        rel_path="run",
+        command_digest="digest",
+        status="cancelling",
+    )
+    assert record.generation is not None
+    assert reg.observe_local_exit("run", record.generation, -15)
+    updated = reg.get("run")
+    assert updated is not None
+    assert updated.status == "cancelled"
+    assert updated.status_detail is None
 
 
 # ---------------------------------------------------------------------------

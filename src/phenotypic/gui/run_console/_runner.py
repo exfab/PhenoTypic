@@ -61,6 +61,10 @@ _TERM_GRACE_SECONDS = 10.0
 _TEE_THREAD_NAME_PREFIX = "phenotypic-runner-tee-"
 _EXIT_THREAD_NAME_PREFIX = "phenotypic-runner-exit-"
 _DEFAULT_RETENTION_LIMIT = 64
+#: A descendant may inherit the child's stdout descriptor and keep the pipe
+#: open after the observed process exits. Terminal state must not wait for
+#: that unrelated descendant, so log-drain joining is deliberately bounded.
+_TEE_DRAIN_GRACE_SECONDS = 0.25
 
 
 @dataclass
@@ -429,7 +433,7 @@ class LocalRunner:
         """Wait for terminal process evidence and notify the owner once."""
         returncode = handle.process.wait()
         if handle.tee_thread is not None:
-            handle.tee_thread.join()
+            handle.tee_thread.join(timeout=_TEE_DRAIN_GRACE_SECONDS)
         handle.finished_at = time.monotonic()
         if on_exit is not None:
             try:

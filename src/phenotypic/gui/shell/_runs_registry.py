@@ -33,7 +33,7 @@ import json
 import logging
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Iterator, Literal, Sequence, cast
@@ -46,7 +46,9 @@ from phenotypic.sdk_ import (
     atomic_write_json,
     progress_dir,
     resolve_manifest_json_path,
+    resolve_processing_state_path,
 )
+from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 from phenotypic.gui.shell._classifier import classify
 from phenotypic.gui.shell._sandbox import SandboxRoot
@@ -107,6 +109,11 @@ def _owner_record_path(output_dir: Path) -> Path:
     construction behind this private seam makes replacing it a one-line merge.
     """
     return progress_dir(output_dir) / _OWNER_RECORD_FILENAME
+
+
+def _owner_lock_path(output_dir: Path) -> Path:
+    """Return the interprocess acquisition lock beside the owner record."""
+    return _owner_record_path(output_dir).with_suffix(".lock")
 
 
 @dataclass
@@ -276,19 +283,15 @@ class RunRegistry:
                         "output already has a nonterminal launch generation: "
                         f"{existing.run_id}"
                     )
-            owner_path = _owner_record_path(output_dir)
-            if owner_path.exists():
-                persisted = self._read_owner_record(output_dir, rel_path)
-                if persisted is None:
-                    raise RuntimeError(
-                        f"output has an invalid generation owner: {owner_path}"
-                    )
-                if persisted.status not in _TERMINAL_STATUSES:
-                    raise RuntimeError(
-                        "output already has a durable nonterminal launch "
-                        f"generation: {persisted.generation}"
-                    )
-            self._persist_record_locked(record)
+            # The file lock serializes independent GUI processes. All durable
+            # state checks are deliberately repeated while it is held so two
+            # registries cannot both pass preflight and overwrite ownership.
+            with exclusive_path_lock(_owner_lock_path(output_dir)):
+                self._assert_output_claimable_locked(
+                    output_dir=output_dir,
+                    rel_path=rel_path,
+                )
+                self._persist_record_locked(record)
             self._records[record.run_id] = record
             self._bump_revision_locked(record)
         return record
@@ -410,9 +413,10 @@ class RunRegistry:
                 if record.status not in allowed:
                     return False
 
+            candidate = replace(record)
             changed = False
-            changed |= self._set_if_changed(record, "status", status)
-            changed |= self._set_if_changed(record, "pid", pid)
+            changed |= self._set_if_changed(candidate, "status", status)
+            changed |= self._set_if_changed(candidate, "pid", pid)
             if scheduler_ids is not _UNSET:
                 supplied_scheduler_ids = cast(Sequence[str], scheduler_ids)
                 normalized_ids = tuple(
@@ -421,10 +425,10 @@ class RunRegistry:
                     )
                 )
                 changed |= self._set_if_changed(
-                    record, "scheduler_ids", normalized_ids
+                    candidate, "scheduler_ids", normalized_ids
                 )
             changed |= self._set_if_changed(
-                record, "primary_scheduler_id", primary_scheduler_id
+                candidate, "primary_scheduler_id", primary_scheduler_id
             )
             if log_paths is not _UNSET:
                 supplied_log_paths = cast(Sequence[Path], log_paths)
@@ -432,26 +436,39 @@ class RunRegistry:
                     Path(path) for path in supplied_log_paths
                 )
                 changed |= self._set_if_changed(
-                    record, "log_paths", normalized_logs
+                    candidate, "log_paths", normalized_logs
                 )
             changed |= self._set_if_changed(
-                record, "submitted_at", submitted_at
+                candidate, "submitted_at", submitted_at
             )
-            changed |= self._set_if_changed(record, "terminal_at", terminal_at)
-            changed |= self._set_if_changed(record, "returncode", returncode)
             changed |= self._set_if_changed(
-                record, "status_detail", status_detail
+                candidate, "terminal_at", terminal_at
+            )
+            changed |= self._set_if_changed(
+                candidate, "returncode", returncode
+            )
+            changed |= self._set_if_changed(
+                candidate, "status_detail", status_detail
             )
 
             if not changed:
                 return True
-            self._synchronize_compatibility_fields(record)
+            self._synchronize_compatibility_fields(candidate)
             if (
-                record.status in _TERMINAL_STATUSES
-                and record.terminal_at is None
+                candidate.status in _TERMINAL_STATUSES
+                and candidate.terminal_at is None
             ):
-                record.terminal_at = datetime.now(timezone.utc)
-            self._commit_mutation_locked(record)
+                candidate.terminal_at = datetime.now(timezone.utc)
+            candidate.record_revision += 1
+            # Persist first. A failed write leaves the published record,
+            # per-record revision, and registry revision untouched.
+            if not self._persist_candidate_if_current_locked(
+                current=record,
+                candidate=candidate,
+            ):
+                return False
+            self._records[run_id] = candidate
+            self._revision += 1
             return True
 
     def observe_local_exit(
@@ -465,20 +482,28 @@ class RunRegistry:
             record = self._records.get(run_id)
             if record is None or record.generation != generation:
                 return False
+            candidate = replace(record)
             status: RunStatus
-            if record.status == "cancelled":
+            if record.status in {"cancelling", "cancelled"}:
                 status = "cancelled"
             else:
                 status = "complete" if returncode == 0 else "failed"
-            record.status = status
-            record.returncode = returncode
-            record.terminal_at = datetime.now(timezone.utc)
-            record.status_detail = (
+            candidate.status = status
+            candidate.returncode = returncode
+            candidate.terminal_at = datetime.now(timezone.utc)
+            candidate.status_detail = (
                 None
-                if returncode == 0
+                if returncode == 0 or status == "cancelled"
                 else f"local process exited with status {returncode}"
             )
-            self._commit_mutation_locked(record)
+            candidate.record_revision += 1
+            if not self._persist_candidate_if_current_locked(
+                current=record,
+                candidate=candidate,
+            ):
+                return False
+            self._records[run_id] = candidate
+            self._revision += 1
             return True
 
     def remove(self, run_id: str) -> bool:
@@ -789,6 +814,103 @@ class RunRegistry:
             logger.warning("Ignoring invalid GUI owner record: %s", path)
             return None
 
+    def _assert_output_claimable_locked(
+        self,
+        *,
+        output_dir: Path,
+        rel_path: str,
+    ) -> None:
+        """Reject conflicting durable state while ownership lock is held."""
+        owner_path = _owner_record_path(output_dir)
+        if owner_path.exists():
+            persisted = self._read_owner_record(output_dir, rel_path)
+            if persisted is None:
+                raise RuntimeError(
+                    f"output has an invalid generation owner: {owner_path}"
+                )
+            if persisted.status not in _TERMINAL_STATUSES:
+                raise RuntimeError(
+                    "output already has a durable nonterminal launch "
+                    f"generation: {persisted.generation}"
+                )
+
+        processing_conflict = self._processing_state_conflict(output_dir)
+        if processing_conflict is not None:
+            raise RuntimeError(processing_conflict)
+
+        orchestration_conflict = self._orchestration_state_conflict(output_dir)
+        if orchestration_conflict is not None:
+            raise RuntimeError(orchestration_conflict)
+
+    @staticmethod
+    def _processing_state_conflict(output_dir: Path) -> str | None:
+        """Return a blocker for incomplete or unreadable CLI state."""
+        path = resolve_processing_state_path(output_dir)
+        if not path.exists():
+            return None
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                raise TypeError("processing state is not an object")
+            datasets = payload.get("datasets")
+            if not isinstance(datasets, dict):
+                raise TypeError("processing state has no dataset mapping")
+            for dataset_name, raw_state in datasets.items():
+                if not isinstance(raw_state, dict):
+                    raise TypeError(
+                        f"dataset {dataset_name!r} state is not an object"
+                    )
+                initial = RunRegistry._string_set(
+                    raw_state.get("initial_images")
+                )
+                completed = RunRegistry._string_set(
+                    raw_state.get("completed")
+                )
+                failed = RunRegistry._string_set(raw_state.get("failed"))
+                remaining = initial - completed - failed
+                if remaining:
+                    return (
+                        "output has incompatible non-GUI processing state "
+                        f"with {len(remaining)} unfinished image(s) in "
+                        f"dataset {dataset_name!r}"
+                    )
+        except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            return f"output has unreadable processing state at {path}: {exc}"
+        return None
+
+    @staticmethod
+    def _orchestration_state_conflict(output_dir: Path) -> str | None:
+        """Return a blocker for active or unreadable staged orchestration."""
+        from phenotypic._cli._cli_staged_orchestration import (
+            load_orchestration_state,
+            orchestration_state_path,
+        )
+
+        path = orchestration_state_path(output_dir)
+        if not path.exists():
+            return None
+        payload = load_orchestration_state(output_dir)
+        if payload is None:
+            return f"output has unreadable orchestration state at {path}"
+        phase = payload.get("phase")
+        if not isinstance(phase, str) or not phase:
+            return f"output has unreadable orchestration state at {path}"
+        if phase not in _TERMINAL_STATUSES:
+            return (
+                "output has incompatible non-GUI staged orchestration "
+                f"in phase {phase!r}"
+            )
+        return None
+
+    @staticmethod
+    def _string_set(value: object) -> set[str]:
+        """Validate one processing-state image-name collection."""
+        if not isinstance(value, list):
+            raise TypeError("image state must be a list")
+        if not all(isinstance(item, str) for item in value):
+            raise TypeError("image state entries must be strings")
+        return set(value)
+
     def _persist_record_locked(self, record: RunRecord) -> None:
         """Atomically persist one generation owner while holding the lock."""
         if record.generation is None:
@@ -820,6 +942,27 @@ class RunRegistry:
                 ).isoformat(),
             },
         )
+
+    def _persist_candidate_if_current_locked(
+        self,
+        *,
+        current: RunRecord,
+        candidate: RunRecord,
+    ) -> bool:
+        """Persist a CAS candidate only if durable generation is unchanged."""
+        with exclusive_path_lock(_owner_lock_path(current.output_dir)):
+            persisted = self._read_owner_record(
+                current.output_dir,
+                current.rel_path,
+            )
+            if (
+                persisted is None
+                or persisted.generation != current.generation
+                or persisted.record_revision != current.record_revision
+            ):
+                return False
+            self._persist_record_locked(candidate)
+        return True
 
     def _commit_mutation_locked(self, record: RunRecord) -> None:
         """Persist and publish one effective record mutation."""

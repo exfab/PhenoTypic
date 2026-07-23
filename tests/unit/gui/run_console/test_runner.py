@@ -152,6 +152,39 @@ def test_exit_callback_observes_nonzero_returncode(
     assert runner.get("failure") is not None
 
 
+def test_exit_callback_does_not_wait_for_descendant_inherited_stdout(
+    runner: LocalRunner,
+    tmp_path: Path,
+) -> None:
+    callback_done = threading.Event()
+    started = time.monotonic()
+    handle = runner.start(
+        run_id="inherited-stdout",
+        argv=[
+            sys.executable,
+            "-c",
+            (
+                "import subprocess, sys\n"
+                "subprocess.Popen([sys.executable, '-c', "
+                "'import time; time.sleep(2)'])\n"
+                "print('parent exited', flush=True)\n"
+            ),
+        ],
+        output_dir=tmp_path,
+        on_exit=lambda _handle, _returncode: callback_done.set(),
+    )
+
+    assert callback_done.wait(timeout=1.25)
+    assert time.monotonic() - started < 1.25
+    assert handle.process.returncode == 0
+    assert handle.tee_thread is not None
+    # The descendant still owns the pipe, proving terminal observation did
+    # not depend on tee EOF.
+    assert handle.tee_thread.is_alive()
+    handle.tee_thread.join(timeout=3.0)
+    assert not handle.tee_thread.is_alive()
+
+
 def test_stop_returns_false_if_run_id_unknown(runner: LocalRunner) -> None:
     assert runner.stop("missing") is False
 
