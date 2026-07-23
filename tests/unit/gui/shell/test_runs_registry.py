@@ -391,6 +391,57 @@ def test_allocate_rejects_completed_events_without_publication_evidence(
         )
 
 
+def test_allocate_rejects_completed_then_restarted_image_as_active(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    _write_processing_inventory(output, images=["a.tif"])
+    append_event(event_log_path(output), "plate", "a.tif", "completed")
+    append_event(event_log_path(output), "plate", "a.tif", "started")
+    _write_publication_manifest(
+        output,
+        completed=1,
+        failed=0,
+        total=1,
+        is_complete=True,
+    )
+
+    with pytest.raises(RuntimeError, match="unfinished image"):
+        RunRegistry().allocate(
+            mode="local",
+            output_dir=output,
+            rel_path="run",
+            command_digest="digest",
+        )
+
+
+def test_allocate_rejects_stale_self_consistent_manifest_inventory(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    _write_processing_inventory(
+        output,
+        images=["a.tif", "b.tif"],
+    )
+    append_event(event_log_path(output), "plate", "a.tif", "completed")
+    append_event(event_log_path(output), "plate", "b.tif", "completed")
+    _write_publication_manifest(
+        output,
+        completed=1,
+        failed=0,
+        total=1,
+        is_complete=True,
+    )
+
+    with pytest.raises(RuntimeError, match="inventory does not match"):
+        RunRegistry().allocate(
+            mode="local",
+            output_dir=output,
+            rel_path="run",
+            command_digest="digest",
+        )
+
+
 def test_allocate_rejects_nonterminal_non_gui_orchestration_state(
     tmp_path: Path,
 ) -> None:
@@ -416,8 +467,10 @@ def test_allocate_rejects_nonterminal_non_gui_orchestration_state(
         )
 
 
-def test_allocate_accepts_terminal_non_gui_orchestration_state(
+@pytest.mark.parametrize("phase", ["failed", "cancelled"])
+def test_allocate_rejects_unsuccessful_terminal_orchestration(
     tmp_path: Path,
+    phase: str,
 ) -> None:
     output = tmp_path / "run"
     state_path = (
@@ -428,7 +481,55 @@ def test_allocate_accepts_terminal_non_gui_orchestration_state(
     )
     state_path.parent.mkdir(parents=True)
     state_path.write_text(
+        json.dumps({"epoch": "old", "phase": phase}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="unsuccessful"):
+        RunRegistry().allocate(
+            mode="slurm",
+            output_dir=output,
+            rel_path="run",
+            command_digest="digest",
+        )
+
+
+def test_allocate_rejects_complete_orchestration_with_mismatched_marker(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    progress = output / ".phenotypic" / "progress"
+    progress.mkdir(parents=True)
+    (progress / "staged_orchestration.json").write_text(
+        json.dumps({"epoch": "current", "phase": "complete"}),
+        encoding="utf-8",
+    )
+    (progress / "staged_finalization_complete.json").write_text(
+        json.dumps({"epoch": "other"}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="no matching successful"):
+        RunRegistry().allocate(
+            mode="slurm",
+            output_dir=output,
+            rel_path="run",
+            command_digest="digest",
+        )
+
+
+def test_allocate_accepts_successful_matching_orchestration(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    progress = output / ".phenotypic" / "progress"
+    progress.mkdir(parents=True)
+    (progress / "staged_orchestration.json").write_text(
         json.dumps({"epoch": "old", "phase": "complete"}),
+        encoding="utf-8",
+    )
+    (progress / "staged_finalization_complete.json").write_text(
+        json.dumps({"epoch": "old"}),
         encoding="utf-8",
     )
     record = RunRegistry().allocate(

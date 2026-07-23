@@ -846,10 +846,6 @@ class RunRegistry:
     @staticmethod
     def _processing_state_conflict(output_dir: Path) -> str | None:
         """Return a blocker unless reconciled CLI state published successfully."""
-        from phenotypic._cli._cli_update_state import (
-            aggregate_state_from_events,
-        )
-
         path = resolve_processing_state_path(output_dir)
         if not path.exists():
             return None
@@ -862,7 +858,7 @@ class RunRegistry:
                 raise TypeError("processing state has no dataset mapping")
             event_log = resolve_event_log_path(output_dir)
             event_states = (
-                aggregate_state_from_events(event_log)
+                RunRegistry._latest_event_states(event_log)
                 if event_log.exists()
                 else {}
             )
@@ -872,6 +868,8 @@ class RunRegistry:
                     "event log contains datasets absent from processing "
                     f"inventory: {sorted(unexpected_datasets)!r}"
                 )
+            inventory_total = 0
+            reconciled_completed = 0
             for dataset_name, raw_state in datasets.items():
                 if not isinstance(raw_state, dict):
                     raise TypeError(
@@ -880,6 +878,7 @@ class RunRegistry:
                 initial = RunRegistry._string_set(
                     raw_state.get("initial_images")
                 )
+                inventory_total += len(initial)
                 event_state = event_states.get(str(dataset_name))
                 if event_state is None:
                     completed = RunRegistry._string_set(
@@ -889,8 +888,23 @@ class RunRegistry:
                         raw_state.get("failed")
                     )
                 else:
-                    completed = set(event_state.completed)
-                    failed = set(event_state.failed)
+                    unexpected_images = set(event_state) - initial
+                    if unexpected_images:
+                        raise ValueError(
+                            f"event log dataset {dataset_name!r} contains "
+                            "images absent from processing inventory: "
+                            f"{sorted(unexpected_images)!r}"
+                        )
+                    completed = {
+                        image
+                        for image, status in event_state.items()
+                        if status == "completed"
+                    }
+                    failed = {
+                        image
+                        for image, status in event_state.items()
+                        if status == "failed"
+                    }
                 failed_images = initial & failed
                 if failed_images:
                     return (
@@ -905,12 +919,52 @@ class RunRegistry:
                         f"with {len(remaining)} unfinished image(s) in "
                         f"dataset {dataset_name!r}"
                     )
+                reconciled_completed += len(initial & completed)
         except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
             return f"output has unreadable processing state at {path}: {exc}"
-        return RunRegistry._publication_evidence_conflict(output_dir)
+        return RunRegistry._publication_evidence_conflict(
+            output_dir,
+            expected_total=inventory_total,
+            expected_completed=reconciled_completed,
+        )
 
     @staticmethod
-    def _publication_evidence_conflict(output_dir: Path) -> str | None:
+    def _latest_event_states(
+        event_log: Path,
+    ) -> dict[str, dict[str, str]]:
+        """Replay the log so each image's last event is authoritative."""
+        from phenotypic._cli._cli_file_locking import atomic_read
+        from phenotypic._cli._cli_update_state import parse_event_line
+        from phenotypic._cli._stages import STAGED_TERMINAL_STAGE
+
+        def _replay(content: str) -> dict[str, dict[str, str]]:
+            states: dict[str, dict[str, str]] = {}
+            for line in content.splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    event = parse_event_line(line)
+                except ValueError:
+                    continue
+                status = event.status
+                if (
+                    status == "completed"
+                    and event.stage is not None
+                    and event.stage != STAGED_TERMINAL_STAGE
+                ):
+                    status = "started"
+                states.setdefault(event.dataset, {})[event.image] = status
+            return states
+
+        return atomic_read(event_log, _replay, timeout=60.0)
+
+    @staticmethod
+    def _publication_evidence_conflict(
+        output_dir: Path,
+        *,
+        expected_total: int,
+        expected_completed: int,
+    ) -> str | None:
         """Require a successful atomic manifest before reclaiming CLI state."""
         path = resolve_manifest_json_path(output_dir)
         if not path.is_file():
@@ -944,6 +998,19 @@ class RunRegistry:
                     "output terminal publication reports "
                     f"{failed} failed image(s)"
                 )
+            if total != expected_total:
+                return (
+                    "output terminal publication inventory does not match "
+                    f"processing state: manifest={total}, "
+                    f"reconciled={expected_total}"
+                )
+            if completed != expected_completed:
+                return (
+                    "output terminal publication completion count does not "
+                    "match processing state: "
+                    f"manifest={completed}, "
+                    f"reconciled={expected_completed}"
+                )
             if completed != total:
                 return (
                     "output terminal publication inventory is incomplete: "
@@ -955,10 +1022,11 @@ class RunRegistry:
 
     @staticmethod
     def _orchestration_state_conflict(output_dir: Path) -> str | None:
-        """Return a blocker for active or unreadable staged orchestration."""
+        """Require matching successful staged completion before reclaim."""
         from phenotypic._cli._cli_staged_orchestration import (
             load_orchestration_state,
             orchestration_state_path,
+            staged_completion_matches,
         )
 
         path = orchestration_state_path(output_dir)
@@ -970,10 +1038,19 @@ class RunRegistry:
         phase = payload.get("phase")
         if not isinstance(phase, str) or not phase:
             return f"output has unreadable orchestration state at {path}"
-        if phase not in _TERMINAL_STATUSES:
+        if phase != "complete":
             return (
-                "output has incompatible non-GUI staged orchestration "
+                "output has unsuccessful or active non-GUI staged "
+                "orchestration "
                 f"in phase {phase!r}"
+            )
+        epoch = payload.get("epoch")
+        if not isinstance(epoch, str) or not epoch:
+            return f"output has unreadable orchestration state at {path}"
+        if not staged_completion_matches(output_dir, epoch):
+            return (
+                "output staged orchestration has no matching successful "
+                f"completion evidence for epoch {epoch!r}"
             )
         return None
 
