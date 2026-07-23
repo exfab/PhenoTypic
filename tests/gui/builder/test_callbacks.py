@@ -7,11 +7,16 @@ mutation surface in milliseconds.
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 from dash import html
 
 from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._callbacks import _dispatch_state_update
+from phenotypic.gui.builder._callbacks import (
+    _dispatch_state_update,
+    _pipeline_revision,
+)
 from phenotypic.gui.builder._app import create_app
 from phenotypic.gui.builder._state import (
     _DagBuilderState,
@@ -47,6 +52,22 @@ def _walk_components(component):
     if children is None:
         return
     yield from _walk_components(children)
+
+
+def test_pipeline_revision_excludes_selection_only_state() -> None:
+    state = _seed_state()
+    selected = deepcopy(state)
+    selected["selected_node_id"] = "bbb"
+
+    assert _pipeline_revision(selected) == _pipeline_revision(state)
+
+
+def test_pipeline_revision_changes_for_parameter_edit() -> None:
+    state = _seed_state()
+    edited = deepcopy(state)
+    edited["root"]["nodes"][0]["params"]["sigma"] = 2.0
+
+    assert _pipeline_revision(edited) != _pipeline_revision(state)
 
 
 def test_render_views_returns_breadcrumb_children_not_nested_nav() -> None:
@@ -118,6 +139,18 @@ def test_render_views_returns_side_loader_children_not_nested_container() -> Non
         getattr(child, "id", None) == ids.INSPECTOR_CONTAINER
         for child in _walk_components(inspector_children)
     )
+
+
+def test_no_callback_replaces_stable_inspector_shell_children() -> None:
+    registry = OperationRegistry()
+    registry.discover()
+    app = create_app(registry=registry)
+
+    output_keys = tuple(app.callback_map)
+    assert not any(
+        f"{ids.INSPECTOR_CONTAINER}.children" in key for key in output_keys
+    )
+    assert any(f"{ids.INSPECTOR_CONTENT}.children" in key for key in output_keys)
 
 
 def test_add_node_appends_and_selects() -> None:

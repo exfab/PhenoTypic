@@ -190,3 +190,51 @@ def test_known_intermediate_keys_returns_insertion_order():
 def test_known_intermediate_keys_unknown_session():
     cache = IntermediatesCache()
     assert cache.known_intermediate_keys("nope") == []
+
+
+# ---------------------------------------------------------------------------
+# Atomic preview generations
+# ---------------------------------------------------------------------------
+
+
+def test_preview_generation_is_invisible_until_atomic_publish() -> None:
+    cache = IntermediatesCache()
+    first = cache.begin_preview_generation("s1", "revision-1")
+    first.set_intermediate("s1", "node-a", b"complete-1")
+    generation_1 = cache.publish_preview_generation(first)
+    key_1 = ("s1", "node-a", "revision-1", generation_1)
+
+    second = cache.begin_preview_generation("s1", "revision-2")
+    second.set_intermediate("s1", "node-a", b"partial-2")
+
+    assert cache.preview_descriptor("s1") == ("revision-1", generation_1)
+    assert cache.get_preview(key_1) == b"complete-1"
+    assert cache.get_preview(("s1", "node-a", "revision-2", generation_1 + 1)) is None
+
+    generation_2 = cache.publish_preview_generation(second)
+    assert generation_2 == generation_1 + 1
+    assert cache.get_preview(key_1) is None
+    assert (
+        cache.get_preview(("s1", "node-a", "revision-2", generation_2))
+        == b"partial-2"
+    )
+
+
+def test_abandoned_preview_writer_cannot_mix_with_live_generation() -> None:
+    cache = IntermediatesCache()
+    published = cache.begin_preview_generation("s1", "revision-1")
+    published.set_intermediate("s1", "node-a", b"a1")
+    published.set_intermediate("s1", "node-b", b"b1")
+    generation = cache.publish_preview_generation(published)
+
+    failed = cache.begin_preview_generation("s1", "revision-2")
+    failed.set_intermediate("s1", "node-a", b"a2")
+    # Simulate a bake failure before node-b is staged: no publish occurs.
+
+    assert cache.preview_descriptor("s1") == ("revision-1", generation)
+    assert (
+        cache.get_preview(("s1", "node-a", "revision-1", generation)) == b"a1"
+    )
+    assert (
+        cache.get_preview(("s1", "node-b", "revision-1", generation)) == b"b1"
+    )

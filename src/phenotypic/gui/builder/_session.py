@@ -38,7 +38,7 @@ from __future__ import annotations
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional, TypeAlias, Union
 
 if TYPE_CHECKING:  # pragma: no cover - type-only imports
     import pandas as pd  # type: ignore[import-untyped]
@@ -64,6 +64,51 @@ class PreviewRenderError:
 
 CachedPreview = Union[bytes, "pd.DataFrame", PreviewRenderError]
 """Anything :meth:`IntermediatesCache.set_intermediate` may store."""
+
+PreviewKey: TypeAlias = tuple[str, str, str, int]
+"""Stable identity of one published preview in the single-process cache."""
+
+
+@dataclass
+class PreviewGenerationWriter:
+    """Private staging area for one all-or-nothing preview publication.
+
+    A writer is deliberately detached from :class:`SessionData`. Rendering
+    callbacks populate it while the currently published generation remains
+    readable. Only :meth:`IntermediatesCache.publish_preview_generation`
+    swaps the complete staged map into the live session.
+
+    Attributes:
+        session_id: Per-tab session owning the generation.
+        pipeline_revision: Canonical semantic revision baked by the caller.
+        max_intermediates: Per-session cache bound applied while staging.
+        intermediates: Ordered staged payloads, never directly exposed live.
+    """
+
+    session_id: str
+    pipeline_revision: str
+    max_intermediates: int
+    intermediates: "OrderedDict[str, CachedPreview]" = field(
+        default_factory=OrderedDict
+    )
+
+    def set_intermediate(
+        self, session_id: str, node_id: str, value: CachedPreview
+    ) -> None:
+        """Stage one preview payload using the cache-compatible write API."""
+        if session_id != self.session_id:
+            raise ValueError("preview writer used with a different session")
+        if node_id in self.intermediates:
+            self.intermediates.pop(node_id)
+        self.intermediates[node_id] = value
+        while len(self.intermediates) > self.max_intermediates:
+            self.intermediates.popitem(last=False)
+
+    def known_intermediate_keys(self, session_id: str) -> list[str]:
+        """Return staged node ids for cache-compatible callers."""
+        if session_id != self.session_id:
+            return []
+        return list(self.intermediates)
 
 
 @dataclass
@@ -94,6 +139,8 @@ class SessionData:
     intermediates: "OrderedDict[str, CachedPreview]" = field(
         default_factory=OrderedDict
     )
+    pipeline_revision: Optional[str] = None
+    preview_generation: int = 0
 
 
 class IntermediatesCache:
@@ -197,6 +244,7 @@ class IntermediatesCache:
             data.image_path = path
             if image is None:
                 data.intermediates.clear()
+                data.pipeline_revision = None
 
     def set_intermediate(
         self, session_id: str, node_id: str, value: CachedPreview
@@ -219,6 +267,61 @@ class IntermediatesCache:
                 data.intermediates.pop(node_id)
             data.intermediates[node_id] = value
             self._evict_oldest_intermediates(data)
+
+    def begin_preview_generation(
+        self, session_id: str, pipeline_revision: str
+    ) -> PreviewGenerationWriter:
+        """Create a detached staging writer for a future generation."""
+        return PreviewGenerationWriter(
+            session_id=session_id,
+            pipeline_revision=pipeline_revision,
+            max_intermediates=self._max_per_session,
+        )
+
+    def publish_preview_generation(
+        self, writer: PreviewGenerationWriter
+    ) -> int:
+        """Atomically replace a session's live previews with a complete bake.
+
+        Args:
+            writer: Fully populated staging writer returned by
+                :meth:`begin_preview_generation`.
+
+        Returns:
+            Monotonically increasing generation number for the session.
+        """
+        with self._lock:
+            data = self._ensure_session(writer.session_id)
+            data.intermediates = OrderedDict(writer.intermediates)
+            data.pipeline_revision = writer.pipeline_revision
+            data.preview_generation += 1
+            return data.preview_generation
+
+    def get_preview(self, key: PreviewKey) -> Optional[CachedPreview]:
+        """Return a preview only when its full published key is current."""
+        session_id, node_id, pipeline_revision, generation = key
+        with self._lock:
+            data = self._sessions.get(session_id)
+            if (
+                data is None
+                or data.pipeline_revision != pipeline_revision
+                or data.preview_generation != generation
+                or node_id not in data.intermediates
+            ):
+                return None
+            value = data.intermediates.pop(node_id)
+            data.intermediates[node_id] = value
+            return value
+
+    def preview_descriptor(
+        self, session_id: str
+    ) -> Optional[tuple[str, int]]:
+        """Return ``(pipeline_revision, generation)`` for the live snapshot."""
+        with self._lock:
+            data = self._sessions.get(session_id)
+            if data is None or data.pipeline_revision is None:
+                return None
+            return (data.pipeline_revision, data.preview_generation)
 
     def get_intermediate(
         self, session_id: str, node_id: str
@@ -302,6 +405,8 @@ def get_cache() -> IntermediatesCache:
 __all__ = [
     "SessionData",
     "IntermediatesCache",
+    "PreviewGenerationWriter",
+    "PreviewKey",
     "PreviewRenderError",
     "CachedPreview",
     "get_cache",

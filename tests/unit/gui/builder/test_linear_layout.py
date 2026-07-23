@@ -401,8 +401,20 @@ def test_app_layout_docks_inspector_as_slideover():
     slideover = _find_by_id(tree, ids.INSPECTOR_SLIDEOVER)
     assert len(slideover) == 1
     assert _find_by_id(tree, ids.BTN_INSPECTOR_SLIDEOVER_TOGGLE)
-    # The stable INSPECTOR_CONTAINER (re-render target) lives inside it.
-    assert _find_by_id(slideover[0], ids.INSPECTOR_CONTAINER)
+    # The shell and preview mount are unique siblings. State callbacks replace
+    # only INSPECTOR_CONTENT, so a same-node update cannot erase the preview.
+    assert len(_find_by_id(slideover[0], ids.INSPECTOR_CONTAINER)) == 1
+    assert len(_find_by_id(slideover[0], ids.INSPECTOR_CONTENT)) == 1
+    assert len(_find_by_id(slideover[0], ids.INSPECTOR_PREVIEW)) == 1
+
+
+def test_dynamic_side_loader_never_contains_preview_mount() -> None:
+    from phenotypic.gui.builder._linear_layout import build_linear_side_loader
+
+    tree = build_linear_side_loader(_state_with_consumer(), _registry())
+
+    assert not _find_by_id(tree, ids.INSPECTOR_CONTAINER)
+    assert not _find_by_id(tree, ids.INSPECTOR_PREVIEW)
 
 
 def test_app_layout_palette_is_collapsible_and_resizable():

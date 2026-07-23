@@ -17,6 +17,7 @@ import weakref
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from phenotypic.data._synthetic_data import load_synth_yeast_plate
 from phenotypic.gui.builder._callbacks import _bake_preview_cache
@@ -136,6 +137,84 @@ def test_bake_preview_cache_renders_independently_of_run_preview_callback():
         assert not isinstance(
             cache.get_intermediate("sess-2", key), PreviewRenderError
         )
+
+
+def test_failed_bake_cannot_publish_partial_generation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A staging failure leaves the prior complete generation untouched."""
+    from phenotypic.gui.builder import _callbacks
+
+    state = _seed_pipeline_state()
+    pipeline = to_pipeline(state.root)
+    result = pipeline.apply_with_intermediates(load_synth_yeast_plate())
+    cache = IntermediatesCache()
+    generation = _bake_preview_cache(
+        state,
+        pipeline,
+        result,
+        "sess-atomic",
+        cache,
+        pipeline_revision="revision-1",
+    )
+    old_keys = cache.known_intermediate_keys("sess-atomic")
+
+    def _stage_then_fail(
+        _state: object,
+        _pipeline: object,
+        _result: object,
+        session_id: str,
+        staging: object,
+    ) -> None:
+        staging.set_intermediate(session_id, "aaa", b"partial")  # type: ignore[attr-defined]
+        raise RuntimeError("bake interrupted")
+
+    monkeypatch.setattr(
+        _callbacks,
+        "_bake_preview_cache_legacy",
+        _stage_then_fail,
+    )
+
+    with pytest.raises(RuntimeError, match="bake interrupted"):
+        _bake_preview_cache(
+            state,
+            pipeline,
+            result,
+            "sess-atomic",
+            cache,
+            pipeline_revision="revision-2",
+        )
+
+    assert cache.preview_descriptor("sess-atomic") == ("revision-1", generation)
+    assert cache.known_intermediate_keys("sess-atomic") == old_keys
+    assert cache.get_preview(
+        ("sess-atomic", "aaa", "revision-1", generation)
+    ) != b"partial"
+
+
+def test_measurement_failure_publishes_complete_error_slot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Recoverable render failures still produce a complete node-key snapshot."""
+    state = _seed_pipeline_state()
+    pipeline = to_pipeline(state.root)
+    result = pipeline.apply_with_intermediates(load_synth_yeast_plate())
+    cache = IntermediatesCache()
+
+    def _measure_failure(_self: object, _image: object) -> object:
+        raise RuntimeError("measurement preview failed")
+
+    monkeypatch.setattr(type(pipeline), "measure", _measure_failure)
+    _bake_preview_cache(state, pipeline, result, "sess-measure-error", cache)
+
+    assert set(cache.known_intermediate_keys("sess-measure-error")) == {
+        "aaa",
+        "bbb",
+        "ccc",
+    }
+    cached = cache.get_intermediate("sess-measure-error", "ccc")
+    assert isinstance(cached, PreviewRenderError)
+    assert "measurement preview failed" in cached.message
 
 
 # ---------------------------------------------------------------------------

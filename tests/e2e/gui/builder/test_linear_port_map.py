@@ -55,6 +55,56 @@ def test_preview_here_selects_the_previewed_output_block(
     expect(page.locator(".linear-side-title")).to_have_text("BayesShrinkCorrector")
 
 
+def test_preview_mount_survives_reselection_and_marks_param_edit_stale(
+    page: Page, hub_url: str
+) -> None:
+    """Inspector updates preserve the mount and invalidate semantic edits."""
+
+    _open_builder(page, hub_url)
+    _click_palette_button(page, "GaussianBlur")
+    page.locator("#btn-run-preview").click()
+    expect(page.locator("#inspector-preview img")).to_have_count(
+        1,
+        timeout=20_000,
+    )
+    page.evaluate(
+        "() => { window.__previewMount = document.querySelector('#inspector-preview'); }"
+    )
+
+    page.locator(
+        "button.linear-node-title-button", has_text="GaussianBlur"
+    ).click()
+    expect(page.locator("#inspector-preview img")).to_have_count(1)
+    assert page.evaluate(
+        "() => window.__previewMount === document.querySelector('#inspector-preview')"
+    )
+
+    page.evaluate(
+        """() => {
+            const sigma = document.querySelector(
+                "#inspector-param-form input[type='number']"
+            );
+            if (!sigma) throw new Error("sigma input not mounted");
+            window.dash_clientside.set_props(
+                JSON.parse(sigma.id),
+                { value: 3, n_blur: 1 }
+            );
+        }"""
+    )
+    expect(page.locator("#inspector-preview")).to_have_text(
+        "Preview stale - run again"
+    )
+    assert page.evaluate(
+        "() => window.__previewMount === document.querySelector('#inspector-preview')"
+    )
+
+    page.locator("#btn-run-preview").click()
+    expect(page.locator("#inspector-preview img")).to_have_count(
+        1,
+        timeout=20_000,
+    )
+
+
 def test_linear_map_source_and_connectors_align(page: Page, hub_url: str) -> None:
     """The source node body and connector lines stay on the port grid."""
 

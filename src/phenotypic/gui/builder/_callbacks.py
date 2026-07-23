@@ -43,6 +43,7 @@ its body in ``try / except`` so a callback can never crash the running app
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
 import time
 import uuid
@@ -103,7 +104,7 @@ from phenotypic.gui.builder._modal_browser import (
     render_load_picker_body,
 )
 from phenotypic.gui.builder._param_form import parse_widget_value
-from phenotypic.gui.builder._session import PreviewRenderError, get_cache
+from phenotypic.gui.builder._session import PreviewKey, PreviewRenderError, get_cache
 from phenotypic.gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
@@ -124,7 +125,8 @@ from phenotypic.gui.builder._conversion_dag import from_pipeline_dag, to_pipelin
 from phenotypic.gui.builder._validation import validate
 from phenotypic.gui.builder._validation import Issue
 from phenotypic.gui.shell._ids import SHELL_SOURCE_IMAGE_ROOT_STORE
-from phenotypic.gui.shell._source_context import SOURCE_PAYLOAD_VERSION
+from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.gui.shell._source_context import resolve_source_image_root
 from phenotypic.sdk_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
 
 logger = logging.getLogger(__name__)
@@ -3421,31 +3423,31 @@ def _browse_seed_from_source(
     if image_root is None:
         return None
     try:
-        root = Path(image_root).resolve()
-    except (OSError, RuntimeError):
+        sandbox = SandboxRoot.from_path(image_root)
+    except (FileNotFoundError, NotADirectoryError, OSError, RuntimeError):
         return None
-    if (
-        isinstance(source_payload, dict)
-        and source_payload.get("version") == SOURCE_PAYLOAD_VERSION
-        and source_payload.get("validated") is True
-    ):
-        raw_path = source_payload.get("abs_path")
-        if isinstance(raw_path, str) and raw_path:
-            try:
-                candidate = Path(raw_path).expanduser().resolve()
-            except (OSError, RuntimeError):
-                candidate = root
-            try:
-                candidate.relative_to(root)
-            except ValueError:
-                candidate = root
-            try:
-                is_directory = candidate.is_dir()
-            except (OSError, RuntimeError):
-                is_directory = False
-            if is_directory:
-                return str(candidate)
-    return str(root)
+    root = sandbox.root
+    candidate = resolve_source_image_root(sandbox, source_payload)
+    if candidate is None:
+        return str(root)
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return str(root)
+    return str(candidate)
+
+
+def _pipeline_revision(state_data: Dict[str, Any]) -> str:
+    """Return a stable digest of pipeline semantics, excluding UI selection."""
+
+    root = state_data.get("root")
+    canonical = json.dumps(
+        root,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _render_tree_body(
@@ -3501,9 +3503,9 @@ def _render_views(state: BuilderState) -> Tuple[Any, Any, Any]:
         rather than a full section wrapper. The breadcrumb callback
         target is the existing nav's ``children`` property, so returning
         a full nav here would nest the breadcrumb inside itself on every
-        update. The inspector callback follows the same mounted-region
-        contract and returns side-loader children, not another
-        :data:`ids.INSPECTOR_CONTAINER` wrapper.
+        update. The inspector callback targets
+        :data:`ids.INSPECTOR_CONTENT` and returns side-loader children,
+        leaving the stable preview sibling untouched.
     """
 
     registry = _registry()
@@ -3633,7 +3635,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data"),
         Output(ids.BREADCRUMB_CONTAINER, "children"),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children"),
+        Output(ids.INSPECTOR_CONTENT, "children"),
         # Toast outputs surface mutation errors to the user; success path leaves
         # them as ``no_update`` so they don't clobber other callbacks' toasts.
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
@@ -4164,7 +4166,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Input(
             {
                 "type": ids.LINEAR_NODE_ACTION,
@@ -4685,7 +4687,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -4809,7 +4811,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5123,7 +5125,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Input(ids.BTN_CONFIRM_DELETE, "n_clicks"),
         State(ids.STORE_BUILDER_STATE, "data"),
         prevent_initial_call=True,
@@ -5218,7 +5220,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5297,7 +5299,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5362,7 +5364,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5429,7 +5431,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5453,6 +5455,7 @@ def register_callbacks(app: dash.Dash) -> None:
 
     @app.callback(
         Output(ids.STORE_INTERMEDIATE_KEYS, "data", allow_duplicate=True),
+        Output(ids.STORE_PREVIEW_SNAPSHOT, "data", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5481,20 +5484,20 @@ def register_callbacks(app: dash.Dash) -> None:
         image_path: Optional[str],
         nrows: Optional[Any],
         ncols: Optional[Any],
-    ) -> Tuple[Any, bool, str, str, str]:
+    ) -> Tuple[Any, ...]:
         """Run ``Preview here`` for a linear map prefix only."""
 
         if not isinstance(ctx.triggered_id, dict):
-            return no_update, no_update, no_update, no_update, no_update
+            return (no_update,) * 6
         triggered = ctx.triggered_id
         if triggered.get("type") != ids.LINEAR_NODE_ACTION:
-            return no_update, no_update, no_update, no_update, no_update
+            return (no_update,) * 6
         if triggered.get("action") != "preview_here":
-            return no_update, no_update, no_update, no_update, no_update
+            return (no_update,) * 6
         if not ctx.triggered or not ctx.triggered[0].get("value"):
-            return no_update, no_update, no_update, no_update, no_update
+            return (no_update,) * 6
         if state_data is None:
-            return no_update, *_toast("No state to preview", ok=False)
+            return no_update, no_update, *_toast("No state to preview", ok=False)
         if not session_id:
             session_id = uuid.uuid4().hex
 
@@ -5504,7 +5507,7 @@ def register_callbacks(app: dash.Dash) -> None:
             t0 = time.time()
             state = state_from_json(state_data)
             if not hasattr(state, "selected_block_id"):
-                return no_update, *_toast(
+                return no_update, no_update, *_toast(
                     "Preview here is only available in the linear builder.",
                     ok=False,
                 )
@@ -5521,23 +5524,37 @@ def register_callbacks(app: dash.Dash) -> None:
             cache.set_image(session_id, image, str(image_path) if image_path else None)
 
             result = pipeline.apply_with_intermediates(image)
-            _bake_preview_cache(prefix_state, pipeline, result, session_id, cache)
+            pipeline_revision = _pipeline_revision(state_data)
+            generation = _bake_preview_cache(
+                prefix_state,
+                pipeline,
+                result,
+                session_id,
+                cache,
+                pipeline_revision=pipeline_revision,
+            )
 
             duration = time.time() - t0
             keys = cache.known_intermediate_keys(session_id)
             return (
                 keys,
+                {
+                    "pipeline_revision": pipeline_revision,
+                    "preview_generation": generation,
+                },
                 *_toast(f"Prefix preview ran in {duration:.2f}s", ok=True),
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Prefix preview failed")
             return (
                 no_update,
+                no_update,
                 *_toast(_format_exception(exc), ok=False),
             )
 
     @app.callback(
         Output(ids.STORE_INTERMEDIATE_KEYS, "data"),
+        Output(ids.STORE_PREVIEW_SNAPSHOT, "data"),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5557,7 +5574,7 @@ def register_callbacks(app: dash.Dash) -> None:
         image_path: Optional[str],
         nrows: Optional[Any],
         ncols: Optional[Any],
-    ) -> Tuple[Any, bool, str, str, str]:
+    ) -> Tuple[Any, ...]:
         """Build the pipeline, run preview, cache intermediates.
 
         Spec §5.6 gate: before doing any work, filter validation
@@ -5568,12 +5585,16 @@ def register_callbacks(app: dash.Dash) -> None:
         """
 
         if not n_clicks or state_data is None:
-            return no_update, *_toast("No state to preview", ok=False)
+            return no_update, no_update, *_toast("No state to preview", ok=False)
 
         # Run preview gating — spec §5.6.
         errors = _filter_blocking_issues(state_data)
         if errors:
-            return no_update, *_gate_toast_for_issue("run preview", errors[0])
+            return (
+                no_update,
+                no_update,
+                *_gate_toast_for_issue("run preview", errors[0]),
+            )
 
         if not session_id:
             session_id = uuid.uuid4().hex
@@ -5599,18 +5620,31 @@ def register_callbacks(app: dash.Dash) -> None:
             cache.set_image(session_id, image, str(image_path) if image_path else None)
 
             result = pipeline.apply_with_intermediates(image)
-            _bake_preview_cache(state, pipeline, result, session_id, cache)
+            pipeline_revision = _pipeline_revision(state_data)
+            generation = _bake_preview_cache(
+                state,
+                pipeline,
+                result,
+                session_id,
+                cache,
+                pipeline_revision=pipeline_revision,
+            )
 
             duration = time.time() - t0
             keys = cache.known_intermediate_keys(session_id)
             return (
                 keys,
+                {
+                    "pipeline_revision": pipeline_revision,
+                    "preview_generation": generation,
+                },
                 *_toast(f"Preview ran in {duration:.2f}s", ok=True),
             )
 
         except Exception as exc:  # noqa: BLE001
             logger.exception("Run preview failed")
             return (
+                no_update,
                 no_update,
                 *_toast(_format_exception(exc), ok=False),
             )
@@ -5619,24 +5653,21 @@ def register_callbacks(app: dash.Dash) -> None:
     # 4. Inspector preview rendering
     # ----------------------------------------------------------------------
 
-    # Tracks the last (session_id, node_id, intermediate-id) tuple this
-    # callback rendered for. State changes that don't shift selection or
-    # intermediate identity short-circuit to ``no_update`` so the inspector
-    # doesn't re-encode the image / rebuild the DataTable on every keystroke
-    # or drag. Plain dict (single-process Dash dev server); under multi-
-    # worker deployment this would just degrade to "always render", same as
-    # before.
-    _preview_render_keys: Dict[str, Tuple[Optional[str], int]] = {}
+    # Plain process-local memoization is safe because the Builder remains a
+    # deliberate single-process deployment. Object identity is not part of
+    # the contract: a preview is identified only by its semantic revision
+    # and atomically published generation.
+    _preview_render_keys: Dict[str, PreviewKey] = {}
 
     @app.callback(
         Output(ids.INSPECTOR_PREVIEW, "children"),
         Input(ids.STORE_BUILDER_STATE, "data"),
-        Input(ids.STORE_INTERMEDIATE_KEYS, "data"),
+        Input(ids.STORE_PREVIEW_SNAPSHOT, "data"),
         State(ids.STORE_SESSION_ID, "data"),
     )
     def render_inspector_preview(
         state_data: Optional[Dict[str, Any]],
-        _keys: Optional[List[str]],
+        preview_snapshot: Optional[Dict[str, Any]],
         session_id: Optional[str],
     ) -> Any:
         """Show the cached intermediate (image / DataTable) for the selection."""
@@ -5653,6 +5684,22 @@ def register_callbacks(app: dash.Dash) -> None:
         except Exception:  # noqa: BLE001
             return no_update
 
+        pipeline_revision = _pipeline_revision(state_data)
+        published_revision: Optional[str] = None
+        preview_generation: Optional[int] = None
+        if isinstance(preview_snapshot, dict):
+            raw_revision = preview_snapshot.get("pipeline_revision")
+            raw_generation = preview_snapshot.get("preview_generation")
+            if isinstance(raw_revision, str) and type(raw_generation) is int:
+                published_revision = raw_revision
+                preview_generation = raw_generation
+        if (
+            published_revision is not None
+            and published_revision != pipeline_revision
+        ):
+            _preview_render_keys.pop(session_id, None)
+            return html.Div("Preview stale - run again", className="text-muted")
+
         # Duck-type the selection id: DAG state exposes
         # ``selected_block_id``, legacy state exposes
         # ``selected_node_id``. Both shapes share the preview cache by
@@ -5665,10 +5712,7 @@ def register_callbacks(app: dash.Dash) -> None:
         )
 
         if selected_id is None:
-            last = _preview_render_keys.get(session_id)
-            if last is not None and last[0] is None:
-                return no_update
-            _preview_render_keys[session_id] = (None, 0)
+            _preview_render_keys.pop(session_id, None)
             return html.Div(
                 "Select a node to view its preview.",
                 className="text-muted",
@@ -5695,12 +5739,24 @@ def register_callbacks(app: dash.Dash) -> None:
             if node is None:
                 return no_update
 
-        cached = get_cache().get_intermediate(session_id, selected_id)
-        cache_token = id(cached) if cached is not None else 0
+        if published_revision is None or preview_generation is None:
+            _preview_render_keys.pop(session_id, None)
+            return html.Div(
+                "No preview yet — click Run preview.",
+                className="text-muted",
+            )
+
+        preview_key: PreviewKey = (
+            session_id,
+            selected_id,
+            pipeline_revision,
+            preview_generation,
+        )
         last = _preview_render_keys.get(session_id)
-        if last == (selected_id, cache_token):
+        if last == preview_key:
             return no_update
-        _preview_render_keys[session_id] = (selected_id, cache_token)
+        _preview_render_keys[session_id] = preview_key
+        cached = get_cache().get_preview(preview_key)
         if cached is None:
             return html.Div(
                 "No preview yet — click Run preview.",
@@ -6083,7 +6139,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -6154,7 +6210,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -6965,7 +7021,9 @@ def _bake_preview_cache(
     result: Any,
     session_id: str,
     cache: Any,
-) -> None:
+    *,
+    pipeline_revision: Optional[str] = None,
+) -> int:
     """Render every intermediate to PNG bytes (or DataFrame) into *cache*.
 
     Pulled out of ``run_preview`` so the cache contract — bytes for ops,
@@ -6993,12 +7051,20 @@ def _bake_preview_cache(
             :meth:`ImagePipeline.apply_with_intermediates`.
         session_id: Per-tab uuid keying the cache.
         cache: The :class:`IntermediatesCache` to populate.
+        pipeline_revision: Semantic state revision associated with the bake.
+            Derived from ``state`` when omitted by direct test callers.
+
+    Returns:
+        Atomically published preview generation.
     """
 
+    revision = pipeline_revision or _pipeline_revision(state_to_json(state))
+    staging = cache.begin_preview_generation(session_id, revision)
     if hasattr(state, "selected_block_id"):
-        _bake_preview_cache_dag(state, pipeline, result, session_id, cache)
+        _bake_preview_cache_dag(state, pipeline, result, session_id, staging)
     else:
-        _bake_preview_cache_legacy(state, pipeline, result, session_id, cache)
+        _bake_preview_cache_legacy(state, pipeline, result, session_id, staging)
+    return cache.publish_preview_generation(staging)
 
 
 def _bake_preview_cache_legacy(
@@ -7049,17 +7115,20 @@ def _bake_preview_cache_legacy(
     # *processed* image (objmap populated by the detector chain), not the
     # raw input.
     if pipeline.get_meas() or pipeline.get_post():
+        meas_nodes = [
+            n
+            for n in state.root.nodes
+            if stage_of(n.class_name) in {"meas", "post"}
+        ]
         try:
             df = pipeline.measure(result.image)
-            meas_nodes = [
-                n
-                for n in state.root.nodes
-                if stage_of(n.class_name) in {"meas", "post"}
-            ]
             for node in meas_nodes:
                 cache.set_intermediate(session_id, node.node_id, df)
         except Exception as meas_exc:  # noqa: BLE001
             logger.warning("measure() failed: %s", meas_exc)
+            error = PreviewRenderError(_format_exception(meas_exc))
+            for node in meas_nodes:
+                cache.set_intermediate(session_id, node.node_id, error)
 
 
 def _bake_preview_cache_dag(
@@ -7125,17 +7194,20 @@ def _bake_preview_cache_dag(
         cache.set_intermediate(session_id, block.block_id, png)
 
     if pipeline.get_meas() or pipeline.get_post():
+        meas_blocks = [
+            b
+            for b in non_input_blocks
+            if stage_of(b.class_name) in {"meas", "post"}
+        ]
         try:
             df = pipeline.measure(result.image)
-            meas_blocks = [
-                b
-                for b in non_input_blocks
-                if stage_of(b.class_name) in {"meas", "post"}
-            ]
             for block in meas_blocks:
                 cache.set_intermediate(session_id, block.block_id, df)
         except Exception as meas_exc:  # noqa: BLE001
             logger.warning("measure() failed: %s", meas_exc)
+            error = PreviewRenderError(_format_exception(meas_exc))
+            for block in meas_blocks:
+                cache.set_intermediate(session_id, block.block_id, error)
 
 
 def _load_preview_image(

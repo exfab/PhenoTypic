@@ -2682,7 +2682,6 @@ def _empty_inspector_div() -> html.Div:
 
     return html.Div(
         [_empty_inspector_card(), *_hidden_inspector_widgets()],
-        id=ids.INSPECTOR_CONTAINER,
     )
 
 
@@ -3464,7 +3463,6 @@ def _build_input_image_card(
             id=ids.INSPECTOR_INPUT_IMAGE_CARD,
             className="h-100",
         ),
-        id=ids.INSPECTOR_CONTAINER,
     )
 
 
@@ -3661,7 +3659,6 @@ def _build_container_inspector_card(
         dbc.Button(id=ids.BTN_DRILL_IN, n_clicks=0, style=_HIDDEN_STYLE),
         html.Hr(),
         html.Div(id=ids.INSPECTOR_PARAM_FORM),
-        html.Div(id=ids.INSPECTOR_PREVIEW, className="mt-3"),
         # Documentation section: containers have no docstring; emit
         # the hidden placeholders so the doc-toggle callback resolves.
         *_doc_section_widgets(None),
@@ -3672,7 +3669,6 @@ def _build_container_inspector_card(
             dbc.CardBody(body_children),
             className="h-100 inspector-container-card",
         ),
-        id=ids.INSPECTOR_CONTAINER,
     )
 
 
@@ -3717,7 +3713,6 @@ def _build_dag_inspector(
     except KeyError:
         return html.Div(
             [_empty_state_card_for_dag(), *_hidden_inspector_widgets()],
-            id=ids.INSPECTOR_CONTAINER,
         )
 
     # ── Wire selection takes precedence; ``selected_edge_id`` and
@@ -3733,7 +3728,6 @@ def _build_dag_inspector(
     if edge is not None:
         return html.Div(
             [_build_wire_card(scope, edge), *_hidden_inspector_widgets()],
-            id=ids.INSPECTOR_CONTAINER,
         )
 
     block = (
@@ -3744,7 +3738,6 @@ def _build_dag_inspector(
     if block is None:
         return html.Div(
             [_empty_state_card_for_dag(), *_hidden_inspector_widgets()],
-            id=ids.INSPECTOR_CONTAINER,
         )
 
     # ── Block selection: label + (optional) param form + aux section.
@@ -3815,17 +3808,11 @@ def _build_dag_inspector(
     body_children.extend(
         [
             html.Hr(),
-            html.Div(
-                "(Run preview to populate)",
-                id=ids.INSPECTOR_PREVIEW,
-                className="text-muted small fst-italic",
-            ),
             dbc.Button(id=ids.BTN_DRILL_IN, n_clicks=0, style=_HIDDEN_STYLE),
         ]
     )
     return html.Div(
         dbc.Card(dbc.CardBody(body_children), className="h-100"),
-        id=ids.INSPECTOR_CONTAINER,
     )
 
 
@@ -3853,8 +3840,9 @@ def build_inspector(
         registry: Operation registry consulted for parameter metadata.
 
     Returns:
-        A :class:`dash.html.Div` wrapping the inspector card. Always carries
-        the :data:`INSPECTOR_CONTAINER` id so callbacks can swap children.
+        A dynamic :class:`dash.html.Div` wrapping the inspector card. The
+        stable shell in :func:`build_app_layout` mounts it under
+        :data:`INSPECTOR_CONTENT`.
     """
 
     # Duck-typed dispatch — same pattern as ``state_to_json`` in _state.py
@@ -3923,17 +3911,12 @@ def build_inspector(
             ),
             html.Hr(),
             html.Div(id=ids.INSPECTOR_PARAM_FORM),
-            html.Div(
-                id=ids.INSPECTOR_PREVIEW,
-                className="mt-3",
-            ),
             # Hidden placeholders so the Documentation toggle callback's
             # Input/State ids resolve even on the pipeline-sentinel branch.
             *_doc_section_widgets(None),
         ]
         return html.Div(
             dbc.Card(dbc.CardBody(body_children), className="h-100"),
-            id=ids.INSPECTOR_CONTAINER,
         )
 
     op_info = registry.get(render_node.class_name)
@@ -3961,11 +3944,6 @@ def build_inspector(
         *_doc_section_widgets(op_info.docstring if op_info else None),
         form,
         html.Hr(),
-        html.Div(
-            "(Run preview to populate)",
-            id=ids.INSPECTOR_PREVIEW,
-            className="text-muted small fst-italic",
-        ),
         # Non-pipeline nodes don't render a visible Drill-in button, but the
         # fan-in callback still references BTN_DRILL_IN as an Input — keep the
         # id resolvable with a hidden placeholder.
@@ -3974,7 +3952,6 @@ def build_inspector(
 
     return html.Div(
         dbc.Card(dbc.CardBody(body_children), className="h-100"),
-        id=ids.INSPECTOR_CONTAINER,
     )
 
 
@@ -4305,8 +4282,22 @@ def build_app_layout(
     # The accepted linear builder surface is a three-column app: palette,
     # fixed map, side loader. The side loader stays beside the map on desktop
     # so parameter ports visually line up with the map's side-port model.
+    inspector_shell = html.Div(
+        [
+            html.Div(
+                build_linear_side_loader(state, registry),
+                id=ids.INSPECTOR_CONTENT,
+            ),
+            html.Div(
+                "(Run preview to populate)",
+                id=ids.INSPECTOR_PREVIEW,
+                className="text-muted small fst-italic mt-3",
+            ),
+        ],
+        id=ids.INSPECTOR_CONTAINER,
+    )
     inspector_inner = html.Div(
-        build_linear_side_loader(state, registry),
+        inspector_shell,
         className="pheno-scroll pe-2",
         style=_SCROLL_FILL_STYLE,
     )
@@ -4388,8 +4379,8 @@ def build_app_layout(
     # Inspector slide-over: an absolutely-positioned overlay on the canvas's
     # right edge. A rounded tab handle tucked half-under its upper-left edge
     # toggles it open/closed via a clientside class flip on the stable
-    # wrapper (``assets/builder.js``); the toggle survives the
-    # ``INSPECTOR_CONTAINER`` re-renders that happen inside it.
+    # wrapper (``assets/builder.js``); the toggle and preview survive
+    # ``INSPECTOR_CONTENT`` re-renders inside it.
     inspector_slideover = html.Div(
         [
             html.Button(
@@ -4448,6 +4439,10 @@ def build_app_layout(
             dcc.Store(
                 id=ids.STORE_INTERMEDIATE_KEYS,
                 data=[],
+            ),
+            dcc.Store(
+                id=ids.STORE_PREVIEW_SNAPSHOT,
+                data=None,
             ),
             # Sink for clientside canvas-control callbacks (zoom in/out, fit).
             dcc.Store(

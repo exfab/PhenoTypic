@@ -37,6 +37,10 @@ STORE_SESSION_ID = "store-session-id"
 #: List of ``node_id`` values that have a cached intermediate this session.
 STORE_INTERMEDIATE_KEYS = "store-intermediate-keys"
 
+#: Published preview snapshot metadata:
+#: ``{"pipeline_revision": str, "preview_generation": int}``.
+STORE_PREVIEW_SNAPSHOT = "store-preview-snapshot"
+
 # ---------------------------------------------------------------------------
 # DAG-redesign ids (spec §6)
 # ---------------------------------------------------------------------------
@@ -276,7 +280,7 @@ LINEAR_MAP_CONTAINER = "linear-map-container"
 #: overlay on the canvas's right edge (it no longer shrinks the canvas); the
 #: tab handle on its upper-left edge toggles the ``is-closed`` class via a
 #: clientside listener (``builder.js``). The wrapper is stable across
-#: re-renders so the toggle state survives ``INSPECTOR_CONTAINER`` swaps.
+#: dynamic inspector-content re-renders.
 INSPECTOR_SLIDEOVER = "inspector-slideover"
 BTN_INSPECTOR_SLIDEOVER_TOGGLE = "btn-inspector-slideover-toggle"
 
@@ -625,11 +629,14 @@ PALETTE_CONTAINER = "palette"
 #: and write nodes/edges/elements as state changes.
 CANVAS_CYTOSCAPE = "canvas-cytoscape"
 
-#: Right-column inspector wrapper — Phase 3 swaps its children when the
-#: selected node changes.
+#: Stable right-column inspector wrapper. No callback replaces its children.
 INSPECTOR_CONTAINER = "inspector"
 
-#: Mount point for ``param_form`` output. Lives inside ``INSPECTOR_CONTAINER``.
+#: Dynamic inspector controls mount. Selection/state callbacks replace only
+#: this region, never the sibling :data:`INSPECTOR_PREVIEW`.
+INSPECTOR_CONTENT = "inspector-content"
+
+#: Mount point for ``param_form`` output. Lives inside ``INSPECTOR_CONTENT``.
 INSPECTOR_PARAM_FORM = "inspector-param-form"
 
 #: Mount point for the per-step preview (image thumbnail or DataTable).
@@ -1036,10 +1043,12 @@ __all__ = [
     "STORE_BUILDER_STATE",
     "STORE_SESSION_ID",
     "STORE_INTERMEDIATE_KEYS",
+    "STORE_PREVIEW_SNAPSHOT",
     "BREADCRUMB_CONTAINER",
     "PALETTE_CONTAINER",
     "CANVAS_CYTOSCAPE",
     "INSPECTOR_CONTAINER",
+    "INSPECTOR_CONTENT",
     "INSPECTOR_PARAM_FORM",
     "INSPECTOR_PREVIEW",
     "INSPECTOR_DOC_TOGGLE",
