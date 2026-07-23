@@ -45,6 +45,7 @@ from phenotypic.sdk_ import (
     DashboardManifestSlurmInfoKey,
     atomic_write_json,
     progress_dir,
+    resolve_event_log_path,
     resolve_manifest_json_path,
     resolve_processing_state_path,
 )
@@ -844,7 +845,11 @@ class RunRegistry:
 
     @staticmethod
     def _processing_state_conflict(output_dir: Path) -> str | None:
-        """Return a blocker for incomplete or unreadable CLI state."""
+        """Return a blocker unless reconciled CLI state published successfully."""
+        from phenotypic._cli._cli_update_state import (
+            aggregate_state_from_events,
+        )
+
         path = resolve_processing_state_path(output_dir)
         if not path.exists():
             return None
@@ -855,6 +860,18 @@ class RunRegistry:
             datasets = payload.get("datasets")
             if not isinstance(datasets, dict):
                 raise TypeError("processing state has no dataset mapping")
+            event_log = resolve_event_log_path(output_dir)
+            event_states = (
+                aggregate_state_from_events(event_log)
+                if event_log.exists()
+                else {}
+            )
+            unexpected_datasets = set(event_states) - set(datasets)
+            if unexpected_datasets:
+                raise ValueError(
+                    "event log contains datasets absent from processing "
+                    f"inventory: {sorted(unexpected_datasets)!r}"
+                )
             for dataset_name, raw_state in datasets.items():
                 if not isinstance(raw_state, dict):
                     raise TypeError(
@@ -863,10 +880,24 @@ class RunRegistry:
                 initial = RunRegistry._string_set(
                     raw_state.get("initial_images")
                 )
-                completed = RunRegistry._string_set(
-                    raw_state.get("completed")
-                )
-                failed = RunRegistry._string_set(raw_state.get("failed"))
+                event_state = event_states.get(str(dataset_name))
+                if event_state is None:
+                    completed = RunRegistry._string_set(
+                        raw_state.get("completed")
+                    )
+                    failed = RunRegistry._string_set(
+                        raw_state.get("failed")
+                    )
+                else:
+                    completed = set(event_state.completed)
+                    failed = set(event_state.failed)
+                failed_images = initial & failed
+                if failed_images:
+                    return (
+                        "output has failed non-GUI processing state with "
+                        f"{len(failed_images)} failed image(s) in dataset "
+                        f"{dataset_name!r}"
+                    )
                 remaining = initial - completed - failed
                 if remaining:
                     return (
@@ -876,6 +907,50 @@ class RunRegistry:
                     )
         except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
             return f"output has unreadable processing state at {path}: {exc}"
+        return RunRegistry._publication_evidence_conflict(output_dir)
+
+    @staticmethod
+    def _publication_evidence_conflict(output_dir: Path) -> str | None:
+        """Require a successful atomic manifest before reclaiming CLI state."""
+        path = resolve_manifest_json_path(output_dir)
+        if not path.is_file():
+            return (
+                "output processing state has no terminal publication "
+                f"evidence at {path}"
+            )
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                raise TypeError("manifest is not an object")
+            is_complete = payload.get(DashboardManifestKey.IS_COMPLETE)
+            failed = payload.get(DashboardManifestKey.FAILED)
+            completed = payload.get(DashboardManifestKey.COMPLETED)
+            total = payload.get(DashboardManifestKey.TOTAL_IMAGES)
+            if (
+                is_complete is not True
+                or not isinstance(failed, int)
+                or isinstance(failed, bool)
+                or not isinstance(completed, int)
+                or isinstance(completed, bool)
+                or not isinstance(total, int)
+                or isinstance(total, bool)
+            ):
+                return (
+                    "output processing state lacks successful terminal "
+                    "publication evidence"
+                )
+            if failed != 0:
+                return (
+                    "output terminal publication reports "
+                    f"{failed} failed image(s)"
+                )
+            if completed != total:
+                return (
+                    "output terminal publication inventory is incomplete: "
+                    f"{completed}/{total} completed"
+                )
+        except (OSError, json.JSONDecodeError, TypeError) as exc:
+            return f"output has unreadable publication manifest at {path}: {exc}"
         return None
 
     @staticmethod

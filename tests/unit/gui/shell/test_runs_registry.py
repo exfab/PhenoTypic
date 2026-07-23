@@ -23,12 +23,18 @@ from uuid import uuid4
 import pytest
 
 import phenotypic.gui.shell._runs_registry as runs_registry_module
+from phenotypic._cli._cli_update_state import append_event
 from phenotypic.gui._config import DELIVERABLES_DIRNAME
 from phenotypic.gui.shell._runs_registry import (
     RunRecord,
     RunRegistry,
 )
 from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.sdk_ import (
+    event_log_path,
+    manifest_json_path,
+    processing_state_path,
+)
 
 
 def _write_master_marker(out: Path) -> None:
@@ -233,11 +239,12 @@ def test_two_registries_atomically_compete_for_one_output(
     assert payload["generation"] == str(successes[0].generation)
 
 
-def test_allocate_rejects_nonterminal_non_gui_processing_state(
-    tmp_path: Path,
+def _write_processing_inventory(
+    output: Path,
+    *,
+    images: list[str],
 ) -> None:
-    output = tmp_path / "run"
-    state_path = output / ".phenotypic" / "processing_state.json"
+    state_path = processing_state_path(output)
     state_path.parent.mkdir(parents=True)
     state_path.write_text(
         json.dumps(
@@ -245,14 +252,57 @@ def test_allocate_rejects_nonterminal_non_gui_processing_state(
                 "execution_mode": "local",
                 "datasets": {
                     "plate": {
-                        "initial_images": ["a.tif", "b.tif"],
-                        "completed": ["a.tif"],
+                        "initial_images": images,
+                        "completed": [],
                         "failed": [],
                     }
                 },
             }
         ),
         encoding="utf-8",
+    )
+
+
+def _write_publication_manifest(
+    output: Path,
+    *,
+    completed: int,
+    failed: int,
+    total: int,
+    is_complete: bool,
+) -> None:
+    path = manifest_json_path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "is_complete": is_complete,
+                "completed": completed,
+                "failed": failed,
+                "total_images": total,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_allocate_rejects_nonterminal_non_gui_processing_state(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    _write_processing_inventory(
+        output,
+        images=["a.tif", "b.tif"],
+    )
+    append_event(event_log_path(output), "plate", "a.tif", "started")
+    append_event(event_log_path(output), "plate", "a.tif", "completed")
+    append_event(event_log_path(output), "plate", "b.tif", "started")
+    _write_publication_manifest(
+        output,
+        completed=1,
+        failed=0,
+        total=2,
+        is_complete=False,
     )
 
     with pytest.raises(RuntimeError, match="non-GUI processing state"):
@@ -264,27 +314,25 @@ def test_allocate_rejects_nonterminal_non_gui_processing_state(
         )
 
 
-def test_allocate_accepts_terminal_non_gui_processing_state(
+def test_allocate_accepts_completed_event_log_with_terminal_publication(
     tmp_path: Path,
 ) -> None:
     output = tmp_path / "run"
-    state_path = output / ".phenotypic" / "processing_state.json"
-    state_path.parent.mkdir(parents=True)
-    state_path.write_text(
-        json.dumps(
-            {
-                "execution_mode": "local",
-                "datasets": {
-                    "plate": {
-                        "initial_images": ["a.tif", "b.tif"],
-                        "completed": ["a.tif"],
-                        "failed": ["b.tif"],
-                    }
-                },
-            }
-        ),
-        encoding="utf-8",
+    _write_processing_inventory(
+        output,
+        images=["a.tif", "b.tif"],
     )
+    for image in ("a.tif", "b.tif"):
+        append_event(event_log_path(output), "plate", image, "started")
+        append_event(event_log_path(output), "plate", image, "completed")
+    _write_publication_manifest(
+        output,
+        completed=2,
+        failed=0,
+        total=2,
+        is_complete=True,
+    )
+
     record = RunRegistry().allocate(
         mode="local",
         output_dir=output,
@@ -292,6 +340,55 @@ def test_allocate_accepts_terminal_non_gui_processing_state(
         command_digest="digest",
     )
     assert record.generation is not None
+
+
+def test_allocate_rejects_failed_event_log_even_when_manifest_is_terminal(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    _write_processing_inventory(
+        output,
+        images=["a.tif", "b.tif"],
+    )
+    append_event(event_log_path(output), "plate", "a.tif", "completed")
+    append_event(
+        event_log_path(output),
+        "plate",
+        "b.tif",
+        "failed",
+        error_msg="segmentation failed",
+    )
+    _write_publication_manifest(
+        output,
+        completed=1,
+        failed=1,
+        total=2,
+        is_complete=True,
+    )
+
+    with pytest.raises(RuntimeError, match="failed non-GUI processing state"):
+        RunRegistry().allocate(
+            mode="local",
+            output_dir=output,
+            rel_path="run",
+            command_digest="digest",
+        )
+
+
+def test_allocate_rejects_completed_events_without_publication_evidence(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run"
+    _write_processing_inventory(output, images=["a.tif"])
+    append_event(event_log_path(output), "plate", "a.tif", "completed")
+
+    with pytest.raises(RuntimeError, match="terminal publication evidence"):
+        RunRegistry().allocate(
+            mode="local",
+            output_dir=output,
+            rel_path="run",
+            command_digest="digest",
+        )
 
 
 def test_allocate_rejects_nonterminal_non_gui_orchestration_state(
