@@ -36,16 +36,22 @@ from ._cli_process_single import process_single_image_core
 from phenotypic.sdk_.slurm import get_slurm_array_limit
 from ._cli_slurm_array_scripts import generate_all_array_job_scripts
 from ._cli_slurm_submission import submit_slurm_script_chain
+from ._cli_slurm_lifecycle import (
+    initialize_slurm_lifecycle,
+    mirror_job_to_metadata,
+    new_slurm_generation,
+)
 from ._cli_update_state import append_event, append_completion_event, aggregate_state_from_events
 from ._cli_failure_tracker import append_failure, read_failures
 from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
 from ._cli_constants import MAX_TRACEBACK_LINES
 from phenotypic.sdk_ import (
-    JOB_METADATA_JSON,
     JobMetadataKey,
     HdfAttr,
     event_log_path,
+    atomic_write_json,
+    job_metadata_path,
     progress_dir,
 )
 from phenotypic.sdk_.typing_ import ImageTypeName
@@ -714,36 +720,26 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         for dataset in datasets:
             flat_scripts.extend(all_scripts.get(dataset.name, []))
 
-        submission = submit_slurm_script_chain(
-            flat_chunk_scripts=flat_scripts,
-            output_dir=output_dir,
-            slurm_args=self.config.slurm_args,
-            console=console,
-        )
-        job_ids = submission.job_ids
-        flat_scripts = submission.flat_scripts
+        if not flat_scripts:
+            raise RuntimeError(
+                "No array job scripts were generated. "
+                "Check that datasets contain images."
+            )
 
-        # ── Progress dashboard setup ──────────────────────────────────
+        # Publish the generation fence and metadata skeleton before the first
+        # scheduler call. The lifecycle recorder fills both job registries
+        # while the submit/cancel lock is still held.
+        generation = new_slurm_generation()
+        initialize_slurm_lifecycle(
+            output_dir, generation=generation, mode="ordinary"
+        )
         prog_dir = progress_dir(output_dir)
         prog_dir.mkdir(parents=True, exist_ok=True)
-
-        # Build image-task mapping: {job_id}_{array_idx} -> [dataset, image]
-        # NOTE: Only chunk 0's job ID is known at submission time. Subsequent
-        # chunk IDs are assigned by the drip-feed dispatcher after each chunk
-        # completes, so OOM detection via sacct is limited to chunk 0 images
-        # until the sentinel discovers later job IDs.
-        image_task_mapping: Dict[str, List[str]] = {}
-        chunk_job_ids: Dict[str, str] = {"0": str(job_ids[0])}
-        array_offset = 0
-        for dataset in datasets:
-            for i, img_path in enumerate(dataset.images):
-                task_key = f"{job_ids[0]}_{array_offset + i}"
-                image_task_mapping[task_key] = [dataset.name, img_path.name]
-            array_offset += len(dataset.images)
-
-        # Write job_metadata.json
+        metadata_path = job_metadata_path(output_dir)
         job_metadata: Dict[str, Any] = {
-            JobMetadataKey.START_TIME: start_time.isoformat(timespec="milliseconds"),
+            JobMetadataKey.START_TIME: start_time.isoformat(
+                timespec="milliseconds"
+            ),
             JobMetadataKey.EXECUTION_MODE: "slurm",
             JobMetadataKey.DATASETS: {
                 ds.name: {
@@ -753,17 +749,65 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
                 for ds in datasets
             },
             JobMetadataKey.CHUNK_SCRIPTS: [str(s) for s in flat_scripts],
-            JobMetadataKey.CHUNK_JOB_IDS: chunk_job_ids,
-            JobMetadataKey.IMAGE_TASK_MAPPING: image_task_mapping,
-            JobMetadataKey.INCLUDE_DATASET_COLUMN: self.config.include_dataset_column,
-            JobMetadataKey.METADATA_CSV: str(self.config.metadata_csv) if self.config.metadata_csv else None,
+            JobMetadataKey.CHUNK_JOB_IDS: {},
+            JobMetadataKey.SLURM_JOB_IDS: {},
+            JobMetadataKey.IMAGE_TASK_MAPPING: {},
+            JobMetadataKey.INCLUDE_DATASET_COLUMN: (
+                self.config.include_dataset_column
+            ),
+            JobMetadataKey.METADATA_CSV: (
+                str(self.config.metadata_csv)
+                if self.config.metadata_csv
+                else None
+            ),
             JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
+            "slurm_metadata_version": 2,
+            "slurm_generation": generation,
         }
-        metadata_path = prog_dir / JOB_METADATA_JSON
-        metadata_path.write_text(
-            json.dumps(job_metadata, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
+        atomic_write_json(metadata_path, job_metadata)
+
+        submission = submit_slurm_script_chain(
+            flat_chunk_scripts=flat_scripts,
+            output_dir=output_dir,
+            slurm_args=self.config.slurm_args,
+            console=console,
         )
+        job_ids = submission.job_ids
+        flat_scripts = submission.flat_scripts
+        mirror_job_to_metadata(
+            output_dir,
+            generation=generation,
+            token="chunk-0",
+            role="chunk",
+            job_id=str(job_ids[0]),
+        )
+        if len(job_ids) > 1:
+            mirror_job_to_metadata(
+                output_dir,
+                generation=generation,
+                token="dispatcher-1",
+                role="dispatcher",
+                job_id=str(job_ids[1]),
+            )
+
+        # ── Progress dashboard setup ──────────────────────────────────
+        # Build image-task mapping: {job_id}_{array_idx} -> [dataset, image]
+        # NOTE: Only chunk 0's job ID is known at submission time. Subsequent
+        # chunk IDs are assigned by the drip-feed dispatcher after each chunk
+        # completes, so OOM detection via sacct is limited to chunk 0 images
+        # until the sentinel discovers later job IDs.
+        image_task_mapping: Dict[str, List[str]] = {}
+        array_offset = 0
+        for dataset in datasets:
+            for i, img_path in enumerate(dataset.images):
+                task_key = f"{job_ids[0]}_{array_offset + i}"
+                image_task_mapping[task_key] = [dataset.name, img_path.name]
+            array_offset += len(dataset.images)
+
+        # Preserve the lifecycle's role-bearing job records.
+        job_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        job_metadata[JobMetadataKey.IMAGE_TASK_MAPPING] = image_task_mapping
+        atomic_write_json(metadata_path, job_metadata)
         console.print(f"[green]✓[/green] Job metadata: [dim]{metadata_path}[/dim]")
 
         if self.config.process_only_layer:

@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from phenotypic._cli._cli_staged_controller import run_staged_controller
+from phenotypic._cli._cli_slurm_lifecycle import generation_is_active
 from phenotypic._cli._cli_staged_orchestration import (
     StagedManifestEntry,
     _mirror_job_to_metadata,
@@ -317,7 +318,11 @@ def test_named_stage_job_is_not_mirrored_as_numeric_chunk(tmp_path: Path) -> Non
     )
 
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    assert metadata[JobMetadataKey.SLURM_JOB_IDS]["stage2-round-1"] == "23456"
+    assert metadata[JobMetadataKey.SLURM_JOB_IDS]["stage2-round-1"] == {
+        "job_id": "23456",
+        "role": "stage2",
+        "generation": "unknown",
+    }
     assert metadata[JobMetadataKey.CHUNK_JOB_IDS] == {"0": "100"}
 
 
@@ -600,12 +605,12 @@ def test_cancellation_fences_epoch_before_scancel(
         "phenotypic._cli._cli_staged_orchestration.scheduler_job_is_active",
         lambda job_id: True,
     )
-    observed_phase: list[str] = []
+    observed_fence: list[bool] = []
 
     def fake_run(command, **kwargs):
         state = load_orchestration_state(tmp_path)
         assert state is not None
-        observed_phase.append(state["phase"])
+        observed_fence.append(generation_is_active(tmp_path, "epoch-1"))
         return None
 
     monkeypatch.setattr(
@@ -613,7 +618,8 @@ def test_cancellation_fences_epoch_before_scancel(
     )
     assert config_path.is_file()
     assert cancel_staged_jobs(tmp_path) == ["501"]
-    assert observed_phase == ["cancelled"]
+    assert observed_fence
+    assert set(observed_fence) == {False}
 
 
 def test_cancellation_after_failure_includes_reused_tokens_across_epochs(
@@ -644,7 +650,13 @@ def test_cancellation_after_failure_includes_reused_tokens_across_epochs(
     )
 
     assert cancel_staged_jobs(tmp_path) == ["601", "602"]
-    assert commands == [["scancel", "601", "602"]]
+    cancelled = {
+        job_id
+        for command in commands
+        if command and command[0] == "scancel"
+        for job_id in command[1:]
+    }
+    assert cancelled == {"601", "602"}
 
 
 def test_restart_cleanup_removes_only_transient_sidecars(tmp_path: Path) -> None:

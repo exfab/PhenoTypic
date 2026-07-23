@@ -437,6 +437,8 @@ def _write_staged_job_metadata(
         JobMetadataKey.NO_QC: config.no_qc,
         JobMetadataKey.INPUT_PATH: config.input_path.stem,
         JobMetadataKey.ORCHESTRATION_EPOCH: epoch,
+        "slurm_metadata_version": 2,
+        "slurm_generation": epoch,
         JobMetadataKey.PIPELINE_PATH: str(
             Path(getattr(config, "pipeline_json", "pipeline.json")).absolute()
         ),
@@ -444,7 +446,12 @@ def _write_staged_job_metadata(
         JobMetadataKey.NROWS: getattr(config, "nrows", None),
         JobMetadataKey.NCOLS: getattr(config, "ncols", None),
         JobMetadataKey.SLURM_JOB_IDS: {
-            str(index): str(job_id) for index, job_id in enumerate(job_ids)
+            str(index): {
+                "job_id": str(job_id),
+                "role": "unknown",
+                "generation": epoch,
+            }
+            for index, job_id in enumerate(job_ids)
         },
     }
     metadata_path = job_metadata_path(output_dir)
@@ -552,7 +559,7 @@ class StagedSlurmStrategy(ExecutionStrategy):
                 output_dir,
                 epoch=epoch,
                 token="controller-initial",
-                role="controller",
+                role="controller-initial",
                 round_index=0,
                 script_path=scripts["controller"],
             )

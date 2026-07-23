@@ -12,7 +12,6 @@ import hashlib
 import json
 import os
 import subprocess
-import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -20,31 +19,37 @@ from typing import Any, Iterable, Iterator, Mapping, Sequence
 from uuid import uuid4
 
 from phenotypic.sdk_ import (
-    JobMetadataKey,
     atomic_write_json,
     dataset_measurements_dir,
-    job_metadata_path,
     progress_dir,
     results_dir,
 )
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 from ._cli_file_locking import atomic_append, atomic_read
+from ._cli_slurm_lifecycle import (
+    SchedulerQueryUnavailable,
+    append_lifecycle_entry,
+    cancel_generation,
+    deactivate_generation,
+    generation_is_active,
+    initialize_slurm_lifecycle,
+    ledger_job_for_token as lifecycle_job_for_token,
+    lifecycle_ledger_path,
+    lifecycle_lock_path,
+    load_slurm_lifecycle,
+    mirror_job_to_metadata,
+    read_lifecycle_ledger,
+    submit_with_lifecycle,
+)
 from ._cli_staged_resume import stage3_completion_exists
 
 _MANIFEST_VERSION = 2
 _STATE_FILENAME = "staged_orchestration.json"
-_LEDGER_FILENAME = "staged_jobs.jsonl"
 _FAILURES_FILENAME = "stage2_terminal_failures.jsonl"
 _DEACTIVATIONS_FILENAME = "staged_epoch_deactivations.jsonl"
 _COMPLETION_FILENAME = "staged_finalization_complete.json"
 _LOCK_FILENAME = ".staged_orchestration.lock"
-_SUBMIT_ATTEMPTS = 3
-_SUBMIT_BACKOFF_SECONDS = (1.0, 2.0, 4.0)
-
-
-class SchedulerQueryUnavailable(RuntimeError):
-    """Raised when SLURM cannot establish whether a token already exists."""
 
 
 @dataclass(frozen=True)
@@ -74,7 +79,7 @@ def orchestration_lock_path(output_dir: Path) -> Path:
 
 def staged_job_ledger_path(output_dir: Path) -> Path:
     """Return the append-only staged job ledger path."""
-    return progress_dir(output_dir) / _LEDGER_FILENAME
+    return lifecycle_ledger_path(output_dir)
 
 
 def stage2_failure_journal_path(output_dir: Path) -> Path:
@@ -134,6 +139,9 @@ def initialize_orchestration(
         "updated_at": datetime.now().isoformat(timespec="milliseconds"),
     }
     atomic_write_json(orchestration_state_path(output_dir), state)
+    initialize_slurm_lifecycle(
+        output_dir, generation=epoch, mode=f"staged-{mode}"
+    )
     staged_completion_path(output_dir).unlink(missing_ok=True)
     return state
 
@@ -196,6 +204,9 @@ def assert_active_epoch(output_dir: Path, epoch: str) -> None:
         raise RuntimeError(
             f"Staged orchestration {epoch} is already {state.get('phase')}"
         )
+    lifecycle = load_slurm_lifecycle(output_dir)
+    if lifecycle is not None and not generation_is_active(output_dir, epoch):
+        raise RuntimeError(f"Staged orchestration {epoch} is fenced inactive")
 
 
 def epoch_is_active(output_dir: Path, epoch: str) -> bool:
@@ -381,19 +392,15 @@ def append_job_ledger(
     dependencies: Sequence[str] = (),
 ) -> None:
     """Append one scheduler-transition record to the staged job ledger."""
-    record = {
-        "epoch": epoch,
-        "token": token,
-        "role": role,
-        "round": round_index,
-        "status": status,
-        "job_id": job_id,
-        "dependencies": list(dependencies),
-        "timestamp": datetime.now().isoformat(timespec="milliseconds"),
-    }
-    atomic_append(
-        staged_job_ledger_path(output_dir),
-        json.dumps(record, sort_keys=True, ensure_ascii=False) + "\n",
+    append_lifecycle_entry(
+        output_dir,
+        generation=epoch,
+        token=token,
+        role=role,
+        round_index=round_index,
+        status=status,
+        job_id=job_id,
+        dependencies=dependencies,
     )
 
 
@@ -401,32 +408,14 @@ def read_job_ledger(
     output_dir: Path, *, epoch: str | None = None
 ) -> list[dict[str, Any]]:
     """Read valid ledger records, optionally restricted to one epoch."""
-
-    def _parse(content: str) -> list[dict[str, Any]]:
-        rows: list[dict[str, Any]] = []
-        for line in content.splitlines():
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(row, dict) and (
-                epoch is None or row.get("epoch") == epoch
-            ):
-                rows.append(row)
-        return rows
-
-    return atomic_read(staged_job_ledger_path(output_dir), _parse)
+    return read_lifecycle_ledger(output_dir, generation=epoch)
 
 
 def ledger_job_for_token(
     output_dir: Path, epoch: str, token: str
 ) -> str | None:
     """Return the most recently submitted job ID for a transition token."""
-    for row in reversed(read_job_ledger(output_dir, epoch=epoch)):
-        if row.get("token") == token and row.get("status") == "submitted":
-            job_id = row.get("job_id")
-            return str(job_id) if job_id else None
-    return None
+    return lifecycle_job_for_token(output_dir, epoch, token)
 
 
 def mark_job_observed_terminal(
@@ -434,7 +423,10 @@ def mark_job_observed_terminal(
 ) -> None:
     """Append a terminal observation for a previously submitted ledger job."""
     for row in reversed(read_job_ledger(output_dir, epoch=epoch)):
-        if row.get("status") == "submitted" and str(row.get("job_id")) == job_id:
+        if row.get("status") in {
+            "submitted",
+            "recovered",
+        } and str(row.get("job_id")) == job_id:
             append_job_ledger(
                 output_dir,
                 epoch=epoch,
@@ -499,23 +491,14 @@ def _mirror_job_to_metadata(
     output_dir: Path, *, token: str, role: str, job_id: str
 ) -> None:
     """Expose dynamic jobs without polluting the numeric chunk registry."""
-    path = job_metadata_path(output_dir)
-    if not path.is_file():
-        return
-    lock = path.with_name(f".{path.name}.lock")
-    with exclusive_path_lock(lock, timeout=60.0):
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return
-        all_jobs = payload.setdefault(JobMetadataKey.SLURM_JOB_IDS, {})
-        if isinstance(all_jobs, dict):
-            all_jobs[token] = job_id
-        if role in {"stage1", "stage2", "stage3"} and token.isdecimal():
-            chunks = payload.setdefault(JobMetadataKey.CHUNK_JOB_IDS, {})
-            if isinstance(chunks, dict):
-                chunks[token] = job_id
-        atomic_write_json(path, payload)
+    state = load_orchestration_state(output_dir) or {}
+    mirror_job_to_metadata(
+        output_dir,
+        generation=str(state.get("epoch", "unknown")),
+        token=token,
+        role=role,
+        job_id=job_id,
+    )
 
 
 def submit_with_intent(
@@ -529,114 +512,17 @@ def submit_with_intent(
     dependencies: Sequence[str] = (),
 ) -> str:
     """Idempotently submit an SBATCH script with bounded retry and ledgering."""
-    assert_active_epoch(output_dir, epoch)
-    existing = ledger_job_for_token(output_dir, epoch, token)
-    if existing:
-        return existing
-    comment = f"phenotypic:{epoch}:{token}"
-    prior_intent = any(
-        row.get("token") == token and row.get("status") in {"intent", "blocked"}
-        for row in read_job_ledger(output_dir, epoch=epoch)
-    )
-    if prior_intent:
-        discovered = _job_from_scheduler_comment(comment)
-        if discovered:
-            append_job_ledger(
-                output_dir,
-                epoch=epoch,
-                token=token,
-                role=role,
-                round_index=round_index,
-                status="submitted",
-                job_id=discovered,
-                dependencies=dependencies,
-            )
-            _mirror_job_to_metadata(
-                output_dir, token=token, role=role, job_id=discovered
-            )
-            return discovered
-
-    append_job_ledger(
+    return submit_with_lifecycle(
         output_dir,
-        epoch=epoch,
+        generation=epoch,
         token=token,
         role=role,
-        round_index=round_index,
-        status="intent",
+        script_path=script_path,
         dependencies=dependencies,
-    )
-    command = ["sbatch", "--parsable", "--comment", comment]
-    if dependencies:
-        command.extend(["--dependency", f"afterany:{':'.join(dependencies)}"])
-    command.append(str(script_path))
-    last_error = "unknown submission failure"
-    for attempt in range(_SUBMIT_ATTEMPTS):
-        assert_active_epoch(output_dir, epoch)
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=30,
-            )
-            job_id = result.stdout.strip().split(";", 1)[0]
-            if not job_id.isdigit():
-                raise RuntimeError(f"Invalid sbatch job id: {result.stdout!r}")
-            append_job_ledger(
-                output_dir,
-                epoch=epoch,
-                token=token,
-                role=role,
-                round_index=round_index,
-                status="submitted",
-                job_id=job_id,
-                dependencies=dependencies,
-            )
-            _mirror_job_to_metadata(
-                output_dir, token=token, role=role, job_id=job_id
-            )
-            return job_id
-        except (
-            FileNotFoundError,
-            subprocess.CalledProcessError,
-            subprocess.TimeoutExpired,
-            RuntimeError,
-        ) as exc:
-            last_error = str(exc)
-            if isinstance(exc, (subprocess.TimeoutExpired, RuntimeError)):
-                discovered = _job_from_scheduler_comment(comment)
-                if discovered:
-                    append_job_ledger(
-                        output_dir,
-                        epoch=epoch,
-                        token=token,
-                        role=role,
-                        round_index=round_index,
-                        status="submitted",
-                        job_id=discovered,
-                        dependencies=dependencies,
-                    )
-                    _mirror_job_to_metadata(
-                        output_dir,
-                        token=token,
-                        role=role,
-                        job_id=discovered,
-                    )
-                    return discovered
-            if attempt + 1 < _SUBMIT_ATTEMPTS:
-                time.sleep(_SUBMIT_BACKOFF_SECONDS[attempt])
-    append_job_ledger(
-        output_dir,
-        epoch=epoch,
-        token=token,
-        role=role,
         round_index=round_index,
-        status="blocked",
-        dependencies=dependencies,
-    )
-    raise RuntimeError(
-        f"Could not submit {role} after {_SUBMIT_ATTEMPTS} attempts: {last_error}"
+        active_check=lambda: epoch_is_active(output_dir, epoch),
+        run_command=subprocess.run,
+        discover=_job_from_scheduler_comment,
     )
 
 
@@ -684,7 +570,9 @@ def active_ledger_job_ids(output_dir: Path) -> list[str]:
     latest: dict[tuple[str, str], str] = {}
     for row in read_job_ledger(output_dir):
         key = (str(row.get("epoch")), str(row.get("token")))
-        if row.get("status") == "submitted" and row.get("job_id"):
+        if row.get("status") in {"submitted", "recovered"} and row.get(
+            "job_id"
+        ):
             latest[key] = str(row.get("job_id"))
         elif row.get("status") == "terminal":
             latest.pop(key, None)
@@ -714,6 +602,8 @@ def deactivate_orchestration(
     }:
         return False
     epoch = str(state.get("epoch", ""))
+    with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
+        deactivate_generation(output_dir, epoch)
     atomic_append(
         epoch_deactivation_journal_path(output_dir),
         json.dumps(
@@ -735,14 +625,25 @@ def deactivate_orchestration(
 
 def cancel_staged_jobs(output_dir: Path) -> list[str]:
     """Fence and cancel every active job recorded for a staged run."""
+    state = load_orchestration_state(output_dir)
+    if state is None:
+        return []
+    epoch = str(state.get("epoch", ""))
+    result = cancel_generation(
+        output_dir,
+        epoch,
+        run_command=subprocess.run,
+    )
     deactivate_orchestration(output_dir, "cancelled")
-    job_ids = active_ledger_job_ids(output_dir)
-    if job_ids:
+    previously_active = set(active_ledger_job_ids(output_dir))
+    all_ids = previously_active | set(result.job_ids)
+    extra_ids = sorted(all_ids - set(result.job_ids))
+    if extra_ids:
         try:
-            subprocess.run(["scancel", *job_ids], check=False)
+            subprocess.run(["scancel", *extra_ids], check=False)
         except FileNotFoundError:
             pass
-    return job_ids
+    return sorted(all_ids)
 
 
 def clear_stage2_sidecars(output_dir: Path) -> int:
@@ -769,6 +670,8 @@ def mark_staged_complete(output_dir: Path, epoch: str) -> None:
         "completed_at": datetime.now().isoformat(timespec="milliseconds"),
     }
     atomic_write_json(staged_completion_path(output_dir), marker)
+    with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
+        deactivate_generation(output_dir, epoch)
     state = load_orchestration_state(output_dir)
     if state is not None and state.get("epoch") == epoch:
         state["phase"] = "complete"

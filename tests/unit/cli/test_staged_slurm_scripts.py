@@ -328,7 +328,7 @@ def test_strategy_reserves_two_max_submit_slots_for_controllers(
     strategy.execute([], tmp_path)
 
     assert captured["array_limit"] == 3
-    assert submitted_roles == ["controller"]
+    assert submitted_roles == ["controller-initial"]
     state = load_orchestration_state(tmp_path)
     assert state is not None
     assert state["phase"] == expected_phase

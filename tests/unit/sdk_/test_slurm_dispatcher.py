@@ -34,7 +34,7 @@ def chunk_scripts(tmp_path):
 class TestGenerateDispatcherScript:
 
     def test_script_submits_next_chunk(self, tmp_path, slurm_args):
-        """Dispatcher script should contain sbatch --parsable for the next chunk."""
+        """Dispatcher delegates the next chunk to the lifecycle entry point."""
         chunk_script = tmp_path / "chunk1.sh"
         chunk_script.touch()
         dispatcher_script = tmp_path / "next_dispatch.sh"
@@ -51,10 +51,12 @@ class TestGenerateDispatcherScript:
         )
 
         content = output.read_text()
-        assert f"sbatch --parsable {chunk_script}" in content
+        assert "phenotypic._cli._cli_slurm_lifecycle" in content
+        assert f"--chunk-script {chunk_script}" in content
+        assert "sbatch --parsable" not in content
 
     def test_script_submits_next_dispatcher(self, tmp_path, slurm_args):
-        """Dispatcher should submit next dispatcher with dependency on chunk."""
+        """Dispatcher passes its successor to the lifecycle entry point."""
         chunk_script = tmp_path / "chunk1.sh"
         chunk_script.touch()
         next_dispatch = tmp_path / "dispatch_2.sh"
@@ -71,7 +73,7 @@ class TestGenerateDispatcherScript:
         )
 
         content = output.read_text()
-        assert "--dependency=afterany:$CHUNK_JOB" in content
+        assert "--dispatcher-script" in content
         assert str(next_dispatch) in content
 
     def test_last_dispatcher_has_no_next(self, tmp_path, slurm_args):
@@ -90,9 +92,9 @@ class TestGenerateDispatcherScript:
         )
 
         content = output.read_text()
-        assert f"sbatch --parsable {chunk_script}" in content
+        assert f"--chunk-script {chunk_script}" in content
         assert "no further dispatcher needed" in content
-        assert "--dependency=afterany:$CHUNK_JOB" not in content
+        assert "--dispatcher-script" not in content
 
     def test_dispatcher_minimal_resources(self, tmp_path, slurm_args):
         """Dispatcher should request minimal resources."""
