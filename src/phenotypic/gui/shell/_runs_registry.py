@@ -44,7 +44,7 @@ from phenotypic.sdk_ import (
     DashboardManifestKey,
     DashboardManifestSlurmInfoKey,
     atomic_write_json,
-    progress_dir,
+    gui_launch_owner_path,
     resolve_event_log_path,
     resolve_manifest_json_path,
     resolve_processing_state_path,
@@ -99,17 +99,12 @@ _TERMINAL_STATUSES: frozenset[str] = frozenset(
     {"complete", "failed", "cancelled"}
 )
 _OWNER_RECORD_VERSION = 1
-_OWNER_RECORD_FILENAME = "gui_launch_owner.json"
 _UNSET = object()
 
 
 def _owner_record_path(output_dir: Path) -> Path:
-    """Return the temporary Wave-1 owner-record path.
-
-    E1 adds the public SDK ``gui_launch_owner_path`` helper. Keeping the
-    construction behind this private seam makes replacing it a one-line merge.
-    """
-    return progress_dir(output_dir) / _OWNER_RECORD_FILENAME
+    """Return the canonical SDK-owned launch owner-record path."""
+    return gui_launch_owner_path(output_dir)
 
 
 def _owner_lock_path(output_dir: Path) -> Path:
