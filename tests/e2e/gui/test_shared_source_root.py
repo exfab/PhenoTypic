@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from playwright.sync_api import Page, expect
 
 
@@ -132,3 +133,53 @@ def test_status_bar_source_picker_sets_shared_source_and_page_inputs(
 
     page.goto(hub_url + "/tune/")
     _expect_settings_source_label(page, "source: plate1")
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "version": 1,
+            "abs_path": "/previous/sandbox/plate1",
+            "rel_path": "plate1",
+            "label": "plate1",
+            "validated": True,
+        },
+        {
+            "version": 2,
+            "kind": "image_source",
+            "relative_path": "plate1",
+            "absolute_path_at_selection": "/previous/sandbox/plate1",
+            "sandbox_fingerprint": "different-sandbox",
+            "validation": {"exists": True, "is_directory": True},
+            "selected_at": "2026-07-23T00:00:00+00:00",
+            "abs_path": "/previous/sandbox/plate1",
+            "rel_path": "plate1",
+            "label": "plate1",
+            "validated": True,
+        },
+    ],
+    ids=["v1", "v2"],
+)
+def test_previous_sandbox_source_is_unavailable_until_reselected(
+    page: Page,
+    hub_url: str,
+    payload: dict[str, object],
+) -> None:
+    """V1 and V2 stores never rebind the same relative name across roots."""
+    page.goto(hub_url + "/")
+    page.wait_for_selector("#shell-settings-button", timeout=10_000)
+    page.evaluate(
+        """
+        payload => window.dash_clientside.set_props(
+            'shell-source-image-root-store',
+            {data: payload}
+        )
+        """,
+        payload,
+    )
+
+    _expect_settings_source_label(
+        page,
+        "Previous source unavailable in this sandbox",
+    )

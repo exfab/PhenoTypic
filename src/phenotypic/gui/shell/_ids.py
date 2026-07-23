@@ -149,9 +149,13 @@ SHELL_SIDEBAR_SELECTION_STORE = "shell-sidebar-selection-store"
 #: by the entry-click callback; consumed by the tree-render callback.
 SHELL_SIDEBAR_EXPANDED_STORE = "shell-sidebar-expanded-store"
 
-#: Memory store: classifier cache version key. Bumped by Refresh; chrome
-#: callbacks watch it to know when to re-render.
+#: Memory store: shared filesystem refresh revision. Bumped by Refresh; the
+#: classifier, sidebar, open pickers, and source/metadata labels consume it.
 SHELL_CLASSIFIER_CACHE_STORE = "shell-classifier-cache-store"
+
+#: Semantic name for the shared refresh revision. The existing component ID is
+#: retained so older callback clients and browser tests remain compatible.
+SHELL_REFRESH_REVISION_STORE = SHELL_CLASSIFIER_CACHE_STORE
 
 
 def sidebar_entry_id(rel_path: str) -> dict[str, str]:
@@ -253,6 +257,7 @@ __all__ = [
     "SHELL_SIDEBAR_SELECTION_STORE",
     "SHELL_SIDEBAR_EXPANDED_STORE",
     "SHELL_CLASSIFIER_CACHE_STORE",
+    "SHELL_REFRESH_REVISION_STORE",
     "SHELL_MAIN_PANE",
     "BUILDER_IMAGE_ROOT_STORE",
     "VIEWER_OUTPUT_ROOT_STORE",

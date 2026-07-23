@@ -9,8 +9,8 @@ mutation.
 Callbacks registered here
     * RSS readout — ``dcc.Interval`` tick refreshes the top-right RSS label.
     * Help-modal toggle — open/close on the ``?`` button + close button.
-    * Sidebar refresh — bumps the ``SHELL_CLASSIFIER_CACHE_STORE`` key, which
-      is the signal the tree-render callback watches to re-paint.
+    * Shared refresh — bumps the ``SHELL_CLASSIFIER_CACHE_STORE`` revision,
+      invalidating the classifier, sidebar, open pickers, and source labels.
     * Sidebar entry click — toggles a directory's rel-path in
       ``SHELL_SIDEBAR_EXPANDED_STORE`` AND stamps the click target into
       ``SHELL_SIDEBAR_SELECTION_STORE`` (consumed by per-tool ``[↩ from
@@ -135,9 +135,16 @@ def register_chrome_callbacks(
         Output(SHELL_SOURCE_IMAGE_ROOT_LABEL, "children"),
         Output(SHELL_SOURCE_IMAGE_ROOT_LABEL, "title"),
         Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
     )
-    def _update_source_label(payload: object) -> tuple[str, str]:
-        return source_label(payload), source_title(payload)
+    def _update_source_label(
+        payload: object,
+        _refresh_revision: int | None,
+    ) -> tuple[str, str]:
+        return (
+            source_label(payload, sandbox=sandbox),
+            source_title(payload, sandbox=sandbox),
+        )
 
     @app.callback(
         Output(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_duplicate=True),
@@ -202,9 +209,13 @@ def register_chrome_callbacks(
     @app.callback(
         Output(SHELL_SOURCE_IMAGE_ROOT_MODAL_BODY, "children"),
         Input(SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE, "data"),
+        Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
         prevent_initial_call=True,
     )
-    def _render_source_picker_body(dir_value: str | None) -> Any:
+    def _render_source_picker_body(
+        dir_value: str | None,
+        _refresh_revision: int | None,
+    ) -> Any:
         current = Path(dir_value) if dir_value else None
         return render_source_picker_tree(sandbox, current)
 
@@ -230,9 +241,16 @@ def register_chrome_callbacks(
         Output(SHELL_SETTINGS_METADATA_CSV_LABEL, "children"),
         Output(SHELL_SETTINGS_METADATA_CSV_LABEL, "title"),
         Input(SHELL_METADATA_CSV_STORE, "data"),
+        Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
     )
-    def _update_metadata_csv_label(payload: object) -> tuple[str, str]:
-        return metadata_csv_label(payload), metadata_csv_title(payload)
+    def _update_metadata_csv_label(
+        payload: object,
+        _refresh_revision: int | None,
+    ) -> tuple[str, str]:
+        return (
+            metadata_csv_label(payload, sandbox=sandbox),
+            metadata_csv_title(payload, sandbox=sandbox),
+        )
 
     @app.callback(
         Output(SHELL_METADATA_CSV_STORE, "data", allow_duplicate=True),
@@ -302,9 +320,13 @@ def register_chrome_callbacks(
     @app.callback(
         Output(SHELL_METADATA_CSV_MODAL_BODY, "children"),
         Input(SHELL_METADATA_CSV_BROWSE_STORE, "data"),
+        Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
         prevent_initial_call=True,
     )
-    def _render_metadata_picker_body(path_value: str | None) -> Any:
+    def _render_metadata_picker_body(
+        path_value: str | None,
+        _refresh_revision: int | None,
+    ) -> Any:
         current = Path(path_value) if path_value else None
         return render_metadata_csv_picker_tree(sandbox, current)
 
@@ -365,7 +387,7 @@ def register_chrome_callbacks(
         invalidate_cache()
         bumped = (version or 0) + 1
         logger.debug(
-            "sidebar refresh: classifier cache flushed; version=%d", bumped
+            "shell refresh: path snapshots invalidated; revision=%d", bumped
         )
         return bumped
 
@@ -500,8 +522,8 @@ def register_chrome_callbacks(
         return payload
 
     # ----------------------------------------------------------------------
-    # Sidebar tree re-render — fires when expansion / toggles / cache
-    # version change.
+    # Sidebar tree re-render — fires when expansion / toggles / shared
+    # refresh revision change.
     # ----------------------------------------------------------------------
 
     @app.callback(

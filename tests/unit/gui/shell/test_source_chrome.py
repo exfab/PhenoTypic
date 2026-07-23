@@ -233,3 +233,43 @@ def test_metadata_picker_registers_store_writer(tmp_path: Path) -> None:
         SHELL_METADATA_CSV_CONFIRM in json.dumps(meta["inputs"])
         for meta in metadata_store_callbacks
     )
+
+
+def test_shared_refresh_revision_invalidates_labels_and_open_pickers(
+    tmp_path: Path,
+) -> None:
+    import dash
+
+    from phenotypic.gui.shell._ids import (
+        SHELL_CLASSIFIER_CACHE_STORE,
+        SHELL_METADATA_CSV_MODAL_BODY,
+        SHELL_SETTINGS_METADATA_CSV_LABEL,
+        SHELL_SOURCE_IMAGE_ROOT_LABEL,
+        SHELL_SOURCE_IMAGE_ROOT_MODAL_BODY,
+        SHELL_TAB_HOME,
+    )
+
+    sandbox = SandboxRoot.from_path(tmp_path)
+    app = dash.Dash(__name__)
+    app.layout = dcc.Markdown("body")
+
+    wrap_in_chrome(app, active_tab=SHELL_TAB_HOME, sandbox=sandbox)
+
+    expected_outputs = {
+        SHELL_SOURCE_IMAGE_ROOT_LABEL,
+        SHELL_SETTINGS_METADATA_CSV_LABEL,
+        SHELL_SOURCE_IMAGE_ROOT_MODAL_BODY,
+        SHELL_METADATA_CSV_MODAL_BODY,
+    }
+    refresh_consumers: set[str] = set()
+    for callback_id, meta in app.callback_map.items():
+        input_ids = {item["id"] for item in meta["inputs"]}
+        if SHELL_CLASSIFIER_CACHE_STORE not in input_ids:
+            continue
+        refresh_consumers.update(
+            output_id
+            for output_id in expected_outputs
+            if output_id in callback_id
+        )
+
+    assert refresh_consumers == expected_outputs
