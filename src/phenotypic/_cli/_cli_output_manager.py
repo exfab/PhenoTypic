@@ -60,6 +60,7 @@ from phenotypic.sdk_ import (
     metadata_csv_deliverable_path,
     logs_dir,
     pipeline_json_path,
+    pipeline_publication_lock,
     qc_duckdb_path,
     resolve_pipeline_config_path,
     resolve_processing_state_path,
@@ -447,7 +448,8 @@ def _persist_pipeline_to_output_dir(
         Path(p).write_text(pipeline.to_json() or "")
 
     try:
-        atomic_write_with_writer(target, _write)
+        with pipeline_publication_lock(target):
+            atomic_write_with_writer(target, _write)
         return target
     except Exception:
         logger.warning(

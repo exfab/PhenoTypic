@@ -37,6 +37,7 @@ from phenotypic.sdk_ import (
     DIR_DELIVERABLES,
     atomic_write_text,
     pipeline_json_path,
+    pipeline_publication_lock,
     resolve_pipeline_config_path,
 )
 
@@ -246,29 +247,32 @@ class RecipeState:
             logged at WARNING.
         """
         with self._lock:
-            if self.is_stale():
-                logger.warning(
-                    "Refusing to overwrite %s — mtime changed since "
-                    "load (likely a CLI recompile-mode run). Reload "
-                    "before saving again.",
-                    self.path,
-                )
-                return False
+            with pipeline_publication_lock(self.path):
+                if self.is_stale():
+                    logger.warning(
+                        "Refusing to overwrite %s — mtime changed since "
+                        "load (likely a CLI recompile-mode run). Reload "
+                        "before saving again.",
+                        self.path,
+                    )
+                    return False
 
-            payload = self.pipeline.to_json() or ""
+                payload = self.pipeline.to_json() or ""
 
-            try:
-                atomic_write_text(self.path, payload)
-            except Exception:
-                logger.warning(
-                    "Atomic write failed for %s", self.path, exc_info=True
-                )
-                return False
+                try:
+                    atomic_write_text(self.path, payload)
+                except Exception:
+                    logger.warning(
+                        "Atomic write failed for %s",
+                        self.path,
+                        exc_info=True,
+                    )
+                    return False
 
-            self.seed_mtime_ns = self.path.stat().st_mtime_ns
-            self.source_path = None
-            self.last_json = payload
-            return True
+                self.seed_mtime_ns = self.path.stat().st_mtime_ns
+                self.source_path = None
+                self.last_json = payload
+                return True
 
     def reload(self) -> None:
         """Re-read the on-disk pipeline, replacing :attr:`pipeline`.

@@ -194,6 +194,7 @@ from ._io_constants import (
     phenotypic_cache_dir,
     phenotypic_cache_pipeline_json_path,
     pipeline_json_path,
+    pipeline_publication_lock_path,
     paths_fingerprint,
     processing_report_html_path,
     processing_state_path,
@@ -238,6 +239,7 @@ from ._io_constants import (
     verified_parquet_path,
     validate_analysis_id,
 )
+from ._pipeline_publication import pipeline_publication_lock
 from .funcs_ import is_binary_mask, timed_execution
 from .hdf_ import HDF
 from ._metadata_helpers import (
@@ -462,6 +464,8 @@ __all__ = [
     "phenotypic_cache_dir",
     "phenotypic_cache_pipeline_json_path",
     "pipeline_json_path",
+    "pipeline_publication_lock",
+    "pipeline_publication_lock_path",
     "paths_fingerprint",
     "processing_report_html_path",
     "processing_state_path",

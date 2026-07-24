@@ -25,10 +25,9 @@ from phenotypic.sdk_ import (
     bytes_fingerprint,
     file_fingerprint,
     migration_backup_path,
-    migration_lock_path,
     migration_receipt_path,
+    pipeline_publication_lock,
 )
-from phenotypic.sdk_._file_locking import exclusive_path_lock
 from phenotypic.sdk_._qc_recipe import (
     QcRecipeEntry,
     QcRecipeLoadWarning,
@@ -169,7 +168,7 @@ def migrate_output_recipe(
         OSError: If backup, publication, or receipt persistence fails.
     """
     pipeline_path = _pipeline_path_for(source)
-    with exclusive_path_lock(migration_lock_path(pipeline_path)):
+    with pipeline_publication_lock(pipeline_path):
         return _migrate_output_recipe_locked(
             pipeline_path,
             expected_source_fingerprint=expected_source_fingerprint,

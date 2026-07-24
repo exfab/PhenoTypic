@@ -237,10 +237,28 @@ def migration_backup_dir(config_path: Path) -> Path:
     return Path(config_path).parent / ".migration_backups"
 
 
-def migration_lock_path(config_path: Path) -> Path:
-    """Return the canonical interprocess lock path for config migration."""
+def pipeline_publication_lock_path(config_path: Path) -> Path:
+    """Return the shared interprocess lock path for pipeline publication.
+
+    Every production writer of a canonical output pipeline must acquire this
+    lock before checking a source generation or replacing the file. The lock
+    is intentionally about publication, not one particular migration, so CLI,
+    QC, Analysis, and compatibility writers serialize against each other.
+
+    The historical ``.migration.lock`` basename is retained so a migration
+    from an older process still coordinates with a newer ordinary writer.
+    """
     config = Path(config_path)
     return config.with_name(f".{config.name}.migration.lock")
+
+
+def migration_lock_path(config_path: Path) -> Path:
+    """Return the shared pipeline publication lock used by migrations.
+
+    This compatibility alias preserves the original SDK name while ensuring
+    migrations coordinate with every ordinary canonical pipeline writer.
+    """
+    return pipeline_publication_lock_path(config_path)
 
 
 def migration_backup_path(

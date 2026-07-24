@@ -512,50 +512,58 @@ class QcRecipe:
             :meth:`reload` first) or the atomic write failed. Failures
             other than staleness are logged at WARNING.
         """
-        from phenotypic.sdk_ import atomic_write_json
+        from phenotypic.sdk_ import (
+            atomic_write_json,
+            pipeline_publication_lock,
+        )
 
         with self._lock:
-            if self.is_stale():
-                logger.warning(
-                    "Refusing to write qc array to %s — mtime changed since "
-                    "load (likely a CLI recompile-mode run). Reload before "
-                    "saving again.",
-                    self.path,
-                )
-                return False
-
-            document: dict[str, Any] = {}
-            read_path = self._document_read_path()
-            if read_path.exists():
-                try:
-                    loaded = json.loads(read_path.read_text(encoding="utf-8"))
-                    if isinstance(loaded, dict):
-                        document = loaded
-                except (json.JSONDecodeError, OSError):
+            with pipeline_publication_lock(self.path):
+                if self.is_stale():
                     logger.warning(
-                        "Could not re-read %s before scoped qc write; "
-                        "writing a minimal qc-only document instead.",
-                        read_path,
+                        "Refusing to write qc array to %s — mtime changed "
+                        "since load (likely a CLI recompile-mode run). Reload "
+                        "before saving again.",
+                        self.path,
+                    )
+                    return False
+
+                document: dict[str, Any] = {}
+                read_path = self._document_read_path()
+                if read_path.exists():
+                    try:
+                        loaded = json.loads(
+                            read_path.read_text(encoding="utf-8")
+                        )
+                        if isinstance(loaded, dict):
+                            document = loaded
+                    except (json.JSONDecodeError, OSError):
+                        logger.warning(
+                            "Could not re-read %s before scoped qc write; "
+                            "writing a minimal qc-only document instead.",
+                            read_path,
+                            exc_info=True,
+                        )
+
+                try:
+                    document[_QC_KEY] = [
+                        entry.to_dict() for entry in self.entries
+                    ]
+                    atomic_write_json(self.path, document, sort_keys=False)
+                except Exception:
+                    logger.warning(
+                        "Atomic write of qc array failed for %s",
+                        self.path,
                         exc_info=True,
                     )
+                    return False
 
-            try:
-                document[_QC_KEY] = [entry.to_dict() for entry in self.entries]
-                atomic_write_json(self.path, document, sort_keys=False)
-            except Exception:
-                logger.warning(
-                    "Atomic write of qc array failed for %s",
-                    self.path,
-                    exc_info=True,
-                )
-                return False
-
-            try:
-                self.seed_mtime_ns = self.path.stat().st_mtime_ns
-            except OSError:
-                self.seed_mtime_ns = None
-            self.source_path = None
-            return True
+                try:
+                    self.seed_mtime_ns = self.path.stat().st_mtime_ns
+                except OSError:
+                    self.seed_mtime_ns = None
+                self.source_path = None
+                return True
 
     # ------------------------------------------------------------------ #
     # Mutators (each performs a scoped atomic write)

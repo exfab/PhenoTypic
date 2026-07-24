@@ -1397,6 +1397,7 @@ def test_fingerprint_and_migration_paths_are_deterministic(
         migration_lock_path,
         migration_receipt_path,
         paths_fingerprint,
+        pipeline_publication_lock_path,
         source_cache_key,
     )
 
@@ -1426,6 +1427,7 @@ def test_fingerprint_and_migration_paths_are_deterministic(
     assert migration_lock_path(config) == (
         tmp_path / ".pipeline.json.pht-pipe.migration.lock"
     )
+    assert pipeline_publication_lock_path(config) == migration_lock_path(config)
     assert generation_staging_path(config, "generation-1").parent == tmp_path
 
 

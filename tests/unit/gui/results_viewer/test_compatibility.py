@@ -3,19 +3,26 @@
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Event
 
 import pandas as pd
 import pytest
 
+from phenotypic._cli import _cli_output_manager
+from phenotypic._core._image_pipeline import ImagePipeline
 from phenotypic.gui.results_viewer import _compatibility
 from phenotypic.gui.results_viewer._compatibility import (
     CompatibilityMigrationError,
     migrate_output_recipe,
     preflight_output_compatibility,
 )
-from phenotypic.sdk_ import file_fingerprint
+from phenotypic.sdk_ import (
+    file_fingerprint,
+    pipeline_json_path,
+)
 from phenotypic.sdk_._qc_recipe import QcRecipe
 from phenotypic.schema import METADATA
 
@@ -38,6 +45,15 @@ def _historical_pipeline(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     return pipeline
+
+
+def _historical_output_pipeline(tmp_path: Path) -> Path:
+    """Write the historical fixture at the canonical CLI output location."""
+    source = _historical_pipeline(tmp_path)
+    target = pipeline_json_path(tmp_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    source.replace(target)
+    return target
 
 
 def test_preflight_maps_exact_historical_grid_shape_without_writes(
@@ -276,3 +292,127 @@ def test_concurrent_migrations_use_one_locked_cas_publication(
     backups = list((tmp_path / ".migration_backups").glob("*.bak"))
     assert len(receipts) == 1
     assert len(backups) == 1
+
+
+def test_cli_writer_generation_cannot_be_overwritten_by_migration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A migration waiting behind a CLI publish must fail its old CAS."""
+    pipeline = _historical_output_pipeline(tmp_path)
+    report = preflight_output_compatibility(pipeline)
+    writer_holds_lock = Event()
+    release_writer = Event()
+    migration_attempted_lock = Event()
+    real_atomic_write = _cli_output_manager.atomic_write_with_writer
+    real_migration_lock = _compatibility.pipeline_publication_lock
+
+    def _blocked_cli_write(path, writer):
+        writer_holds_lock.set()
+        assert release_writer.wait(timeout=5)
+        return real_atomic_write(path, writer)
+
+    @contextmanager
+    def _observed_migration_lock(path):
+        migration_attempted_lock.set()
+        with real_migration_lock(path):
+            yield
+
+    monkeypatch.setattr(
+        _cli_output_manager,
+        "atomic_write_with_writer",
+        _blocked_cli_write,
+    )
+    monkeypatch.setattr(
+        _compatibility,
+        "pipeline_publication_lock",
+        _observed_migration_lock,
+    )
+    ordinary = ImagePipeline(name="ordinary-writer")
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        writer_future = executor.submit(
+            _cli_output_manager._persist_pipeline_to_output_dir,
+            tmp_path,
+            ordinary,
+        )
+        assert writer_holds_lock.wait(timeout=5)
+        migration_future = executor.submit(
+            migrate_output_recipe,
+            pipeline,
+            expected_source_fingerprint=report.source_fingerprint,
+        )
+        assert migration_attempted_lock.wait(timeout=5)
+        assert not migration_future.done()
+        release_writer.set()
+
+        assert writer_future.result(timeout=5) == pipeline
+        with pytest.raises(CompatibilityMigrationError, match="changed"):
+            migration_future.result(timeout=5)
+
+    assert pipeline.read_text(encoding="utf-8") == ordinary.to_json()
+    assert not (pipeline.parent / ".migration_backups").exists()
+
+
+def test_receipt_rollback_cannot_overwrite_waiting_cli_writer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rollback completes under the lock before a waiting CLI generation."""
+    pipeline = _historical_output_pipeline(tmp_path)
+    report = preflight_output_compatibility(pipeline)
+    final_receipt_started = Event()
+    release_receipt_failure = Event()
+    cli_attempted_lock = Event()
+    real_atomic_write_json = _compatibility.atomic_write_json
+    real_cli_lock = _cli_output_manager.pipeline_publication_lock
+    receipt_writes = 0
+
+    def _fail_final_receipt(path, payload, **kwargs):
+        nonlocal receipt_writes
+        receipt_writes += 1
+        if receipt_writes == 2:
+            final_receipt_started.set()
+            assert release_receipt_failure.wait(timeout=5)
+            raise OSError("simulated receipt failure")
+        return real_atomic_write_json(path, payload, **kwargs)
+
+    @contextmanager
+    def _observed_cli_lock(path):
+        cli_attempted_lock.set()
+        with real_cli_lock(path):
+            yield
+
+    monkeypatch.setattr(
+        _compatibility,
+        "atomic_write_json",
+        _fail_final_receipt,
+    )
+    monkeypatch.setattr(
+        _cli_output_manager,
+        "pipeline_publication_lock",
+        _observed_cli_lock,
+    )
+    ordinary = ImagePipeline(name="post-rollback-writer")
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        migration_future = executor.submit(
+            migrate_output_recipe,
+            pipeline,
+            expected_source_fingerprint=report.source_fingerprint,
+        )
+        assert final_receipt_started.wait(timeout=5)
+        writer_future = executor.submit(
+            _cli_output_manager._persist_pipeline_to_output_dir,
+            tmp_path,
+            ordinary,
+        )
+        assert cli_attempted_lock.wait(timeout=5)
+        assert not writer_future.done()
+        release_receipt_failure.set()
+
+        with pytest.raises(CompatibilityMigrationError, match="rolled back"):
+            migration_future.result(timeout=5)
+        assert writer_future.result(timeout=5) == pipeline
+
+    assert pipeline.read_text(encoding="utf-8") == ordinary.to_json()
