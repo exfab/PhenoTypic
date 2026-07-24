@@ -25,8 +25,10 @@ from phenotypic.sdk_ import (
     bytes_fingerprint,
     file_fingerprint,
     migration_backup_path,
+    migration_lock_path,
     migration_receipt_path,
 )
+from phenotypic.sdk_._file_locking import exclusive_path_lock
 from phenotypic.sdk_._qc_recipe import (
     QcRecipeEntry,
     QcRecipeLoadWarning,
@@ -167,6 +169,21 @@ def migrate_output_recipe(
         OSError: If backup, publication, or receipt persistence fails.
     """
     pipeline_path = _pipeline_path_for(source)
+    with exclusive_path_lock(migration_lock_path(pipeline_path)):
+        return _migrate_output_recipe_locked(
+            pipeline_path,
+            expected_source_fingerprint=expected_source_fingerprint,
+            now=now,
+        )
+
+
+def _migrate_output_recipe_locked(
+    pipeline_path: Path,
+    *,
+    expected_source_fingerprint: str,
+    now: datetime | None,
+) -> RecipeMigrationResult:
+    """Run the migration CAS while holding its canonical interprocess lock."""
     report = preflight_output_compatibility(pipeline_path)
     if report.source_fingerprint != expected_source_fingerprint:
         raise CompatibilityMigrationError(
@@ -230,18 +247,11 @@ def migrate_output_recipe(
         pipeline_path,
         resulting_fingerprint=new_fingerprint,
     )
-
-    atomic_write_bytes(backup_path, original_bytes)
-    if file_fingerprint(pipeline_path) != original_fingerprint:
-        raise CompatibilityMigrationError(
-            "Pipeline changed before atomic publication; backup was retained."
-        )
-    atomic_write_bytes(pipeline_path, migrated_bytes)
-
     old_payload = json.loads(original_bytes)
     receipt = {
         "schema_version": _MIGRATION_RECEIPT_VERSION,
         "migration": "qc_recipe",
+        "state": "prepared",
         "created_at": timestamp.isoformat(),
         "pipeline_path": str(pipeline_path.resolve(strict=False)),
         "backup_path": str(backup_path.resolve(strict=False)),
@@ -252,7 +262,33 @@ def migrate_output_recipe(
         "old_fingerprint": original_fingerprint,
         "new_fingerprint": new_fingerprint,
     }
+
+    atomic_write_bytes(backup_path, original_bytes)
+    # Persist complete rollback evidence before publishing the source change.
+    # If publication fails, the receipt remains explicitly "prepared".
     atomic_write_json(receipt_path, receipt, sort_keys=False)
+    if file_fingerprint(pipeline_path) != original_fingerprint:
+        raise CompatibilityMigrationError(
+            "Pipeline changed before atomic publication; backup was retained."
+        )
+    atomic_write_bytes(pipeline_path, migrated_bytes)
+    if file_fingerprint(pipeline_path) != new_fingerprint:
+        raise CompatibilityMigrationError(
+            "Pipeline changed during atomic publication; the prepared receipt "
+            "and exact backup were retained."
+        )
+
+    applied_receipt = {**receipt, "state": "applied"}
+    try:
+        atomic_write_json(receipt_path, applied_receipt, sort_keys=False)
+    except Exception as receipt_exc:
+        _rollback_failed_receipt(
+            pipeline_path,
+            original_bytes=original_bytes,
+            original_fingerprint=original_fingerprint,
+            migrated_fingerprint=new_fingerprint,
+            receipt_exc=receipt_exc,
+        )
 
     return RecipeMigrationResult(
         applied=True,
@@ -263,6 +299,42 @@ def migrate_output_recipe(
         old_fingerprint=original_fingerprint,
         new_fingerprint=new_fingerprint,
     )
+
+
+def _rollback_failed_receipt(
+    pipeline_path: Path,
+    *,
+    original_bytes: bytes,
+    original_fingerprint: str,
+    migrated_fingerprint: str,
+    receipt_exc: Exception,
+) -> None:
+    """CAS-rollback a migration whose final applied receipt could not persist."""
+    current_fingerprint = file_fingerprint(pipeline_path)
+    if current_fingerprint == migrated_fingerprint:
+        try:
+            atomic_write_bytes(pipeline_path, original_bytes)
+        except Exception as rollback_exc:
+            raise CompatibilityMigrationError(
+                "Migration receipt finalization and source rollback both failed. "
+                "The prepared receipt and exact backup identify the transaction."
+            ) from rollback_exc
+        if file_fingerprint(pipeline_path) != original_fingerprint:
+            raise CompatibilityMigrationError(
+                "Migration receipt finalization failed and rollback verification "
+                "did not recover the original source fingerprint."
+            ) from receipt_exc
+        raise CompatibilityMigrationError(
+            "Migration receipt finalization failed; the pipeline was rolled back."
+        ) from receipt_exc
+    if current_fingerprint == original_fingerprint:
+        raise CompatibilityMigrationError(
+            "Migration receipt finalization failed; the pipeline remained original."
+        ) from receipt_exc
+    raise CompatibilityMigrationError(
+        "Migration receipt finalization failed and the pipeline changed "
+        "concurrently; the prepared receipt and exact backup were retained."
+    ) from receipt_exc
 
 
 def _pipeline_path_for(source: Path | BundleLayout) -> Path:

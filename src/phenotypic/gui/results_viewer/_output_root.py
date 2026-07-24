@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 #: viewer's display frame because it reflects whatever ``PostMeasurement``
 #: ops the user configured.
 _EXTERNAL_VIEWER_CACHE_SUBDIR = "viewer_cache"
+_SNAPSHOT_READ_ATTEMPTS = 2
 # Legacy master column shim. Post category-flip the canonical image-stem column
 # is ``str(METADATA.IMAGE_NAME) == "MetadataImage_ImageName"`` (== KEY_IMAGE_FILE).
 # Masters written before the flip used the pre-namespace ``Metadata_ImageName``;
@@ -47,6 +48,10 @@ _EXTERNAL_VIEWER_CACHE_SUBDIR = "viewer_cache"
 # the canonical column). Keep the literal — it is a legacy recognizer, not a live
 # column name.
 _IMAGENAME_COL = "Metadata_ImageName"
+
+
+class OutputSnapshotChangedError(RuntimeError):
+    """Raised when source files cannot be read as one stable revision."""
 
 
 @dataclass(frozen=True)
@@ -144,8 +149,53 @@ class OutputRoot:
             ValueError: If the master DataFrame lacks ``Metadata_ImageName``
                 (or the ``Metadata_ImageName`` fallback), or lacks
                 ``Metadata_Dataset`` with no ``results/`` to recover it from.
+            OutputSnapshotChangedError: If two complete discovery attempts
+                both observe source files changing between pre/post checks.
         """
         layout = BundleLayout.detect(Path(root))
+        last_change: OutputSnapshotChangedError | None = None
+        for attempt in range(_SNAPSHOT_READ_ATTEMPTS):
+            try:
+                return cls._discover_snapshot(
+                    layout,
+                    sandbox_root=sandbox_root,
+                )
+            except OutputSnapshotChangedError as exc:
+                last_change = exc
+            except OSError:
+                last_change = OutputSnapshotChangedError(
+                    "Output changed while discovery was reading source files."
+                )
+            if last_change is not None:
+                if attempt + 1 == _SNAPSHOT_READ_ATTEMPTS:
+                    raise last_change
+                logger.info(
+                    "Output changed during discovery; retrying one complete read."
+                )
+        raise AssertionError("snapshot retry loop did not return or raise")
+
+    @classmethod
+    def _discover_snapshot(
+        cls,
+        layout: BundleLayout,
+        *,
+        sandbox_root: Path | None,
+    ) -> OutputRoot:
+        """Read and verify one complete source snapshot."""
+        source_root = (
+            layout.deliverables_base
+            if layout.output_root is None
+            else layout.output_root
+        )
+        try:
+            source_fingerprint = paths_fingerprint(
+                _source_snapshot_paths(layout),
+                root=source_root,
+            )
+        except OSError as exc:
+            raise OutputSnapshotChangedError(
+                "Output changed while the pre-read fingerprint was captured."
+            ) from exc
 
         master_path = layout.master_parquet
         if not master_path.is_file():
@@ -213,23 +263,26 @@ class OutputRoot:
 
         column_value_sets = _build_column_value_sets(master_df)
 
-        source_root = (
-            layout.deliverables_base
-            if layout.output_root is None
-            else layout.output_root
-        )
-        source_fingerprint = paths_fingerprint(
-            _source_snapshot_paths(layout),
-            root=source_root,
-        )
-        cache_dir = _external_cache_dir(
-            source_root,
-            source_fingerprint=source_fingerprint,
-            sandbox_root=sandbox_root,
-        )
-
         pipeline_summary = _read_pipeline_summary(layout.pipeline_config_path)
         overlay_index = _scan_overlay_index(layout, datasets_with_overlays)
+        try:
+            verified_fingerprint = paths_fingerprint(
+                _source_snapshot_paths(layout),
+                root=source_root,
+            )
+        except OSError as exc:
+            raise OutputSnapshotChangedError(
+                "Output changed while the post-read fingerprint was captured."
+            ) from exc
+        if verified_fingerprint != source_fingerprint:
+            raise OutputSnapshotChangedError(
+                "Output changed during discovery; refresh after the writer settles."
+            )
+        cache_dir = _external_cache_dir(
+            source_root,
+            source_fingerprint=verified_fingerprint,
+            sandbox_root=sandbox_root,
+        )
 
         return cls(
             root=source_root,
@@ -238,7 +291,7 @@ class OutputRoot:
             clean_master_df=clean_master_df,
             column_value_sets=column_value_sets,
             cache_dir=cache_dir,
-            source_fingerprint=source_fingerprint,
+            source_fingerprint=verified_fingerprint,
             pipeline_summary=pipeline_summary,
             overlay_index=overlay_index,
         )
@@ -264,6 +317,17 @@ class OutputRoot:
     def viewer_cache_dir(self) -> Path:
         """External cache root containing DZI and thumbnail subdirectories."""
         return self.cache_dir.parent
+
+    def snapshot_is_current(self) -> bool:
+        """Return whether all viewer source files still match this revision."""
+        try:
+            current = paths_fingerprint(
+                _source_snapshot_paths(self.layout),
+                root=self.root,
+            )
+        except OSError:
+            return False
+        return current == self.source_fingerprint
 
     def overlay_path(self, dataset: str, stem: str) -> Path:
         """Return the absolute path of an overlay PNG.
@@ -388,15 +452,29 @@ def _source_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
     ]
     overlays_root = layout.deliverables_base / DIR_OVERLAYS
     if overlays_root.is_dir():
+        paths.append(overlays_root)
         paths.extend(
             path
             for path in overlays_root.rglob("*")
-            if path.is_file()
+            if path.is_file() or path.is_dir()
         )
     if layout.results_dir is not None:
+        paths.append(layout.results_dir)
+        paths.extend(
+            path
+            for path in layout.results_dir.iterdir()
+            if path.is_dir()
+        )
         paths.extend(
             path
             for path in layout.results_dir.rglob("*.h5")
+            if path.is_file()
+        )
+        paths.extend(
+            path
+            for path in layout.results_dir.glob(
+                f"*/{DIR_MEASUREMENTS}/*.parquet"
+            )
             if path.is_file()
         )
     return tuple(paths)

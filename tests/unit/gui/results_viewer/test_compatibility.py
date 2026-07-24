@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
+from phenotypic.gui.results_viewer import _compatibility
 from phenotypic.gui.results_viewer._compatibility import (
     CompatibilityMigrationError,
     migrate_output_recipe,
@@ -176,6 +178,7 @@ def test_explicit_migration_is_backed_up_atomic_receipted_and_idempotent(
     assert result.backup_path.read_bytes() == original
     assert result.receipt_path is not None
     receipt = json.loads(result.receipt_path.read_text(encoding="utf-8"))
+    assert receipt["state"] == "applied"
     assert receipt["old_fingerprint"] == report.source_fingerprint
     assert receipt["new_fingerprint"] == file_fingerprint(pipeline)
     assert receipt["backup_path"] == str(result.backup_path.resolve())
@@ -208,3 +211,68 @@ def test_migration_refuses_changed_source_without_writing_backup(
         )
 
     assert not (pipeline.parent / ".migration_backups").exists()
+
+
+def test_migration_receipt_failure_rolls_back_pipeline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failed applied receipt cannot leave a migrated source behind."""
+    pipeline = _historical_pipeline(tmp_path)
+    original = pipeline.read_bytes()
+    report = preflight_output_compatibility(pipeline)
+    real_atomic_write_json = _compatibility.atomic_write_json
+    receipt_writes = 0
+
+    def _fail_final_receipt(path, payload, **kwargs):
+        nonlocal receipt_writes
+        receipt_writes += 1
+        if receipt_writes == 2:
+            raise OSError("simulated receipt failure")
+        return real_atomic_write_json(path, payload, **kwargs)
+
+    monkeypatch.setattr(
+        _compatibility,
+        "atomic_write_json",
+        _fail_final_receipt,
+    )
+
+    with pytest.raises(CompatibilityMigrationError, match="rolled back"):
+        migrate_output_recipe(
+            pipeline,
+            expected_source_fingerprint=report.source_fingerprint,
+        )
+
+    assert pipeline.read_bytes() == original
+    assert preflight_output_compatibility(pipeline).status == "migratable"
+    receipts = list((tmp_path / ".migration_backups").glob("*.migration.json"))
+    assert len(receipts) == 1
+    assert json.loads(receipts[0].read_text())["state"] == "prepared"
+
+
+def test_concurrent_migrations_use_one_locked_cas_publication(
+    tmp_path: Path,
+) -> None:
+    """Two writers with one source fingerprint can publish only once."""
+    pipeline = _historical_pipeline(tmp_path)
+    report = preflight_output_compatibility(pipeline)
+
+    def _migrate() -> str:
+        try:
+            result = migrate_output_recipe(
+                pipeline,
+                expected_source_fingerprint=report.source_fingerprint,
+            )
+        except CompatibilityMigrationError:
+            return "refused"
+        return "applied" if result.applied else "unchanged"
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = list(executor.map(lambda _: _migrate(), range(2)))
+
+    assert sorted(outcomes) == ["applied", "refused"]
+    assert preflight_output_compatibility(pipeline).status == "compatible"
+    receipts = list((tmp_path / ".migration_backups").glob("*.migration.json"))
+    backups = list((tmp_path / ".migration_backups").glob("*.bak"))
+    assert len(receipts) == 1
+    assert len(backups) == 1

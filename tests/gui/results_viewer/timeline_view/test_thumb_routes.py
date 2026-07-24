@@ -98,3 +98,18 @@ def test_thumb_cache_persists_under_viewer_cache(tmp_path: Path) -> None:
         if path.is_file()
     }
     assert source_after == source_before
+
+
+def test_thumb_refuses_mutated_bound_source_without_old_key_write(
+    tmp_path: Path,
+) -> None:
+    """A changed overlay cannot create a thumbnail under the old revision key."""
+    client, root = _client(tmp_path)
+    root.overlay_path("ds", "a").write_bytes(b"changed-after-bind")
+    ident = _thumb_routes.encode_cell_ref("ds", "a")
+
+    response = client.get(f"/timeline-thumb/{ident}?size=128")
+
+    assert response.status_code == 404
+    cache_dir = root.viewer_cache_dir / "timeline_thumbs"
+    assert not cache_dir.exists()

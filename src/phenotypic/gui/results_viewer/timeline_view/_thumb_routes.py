@@ -25,6 +25,7 @@ from phenotypic.gui._config import VIEWER_THUMB_URL_SEGMENT
 from phenotypic.gui._shared.tiles import is_safe_path_component
 from phenotypic.gui._shared.timeline import register_thumbnail_route
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.sdk_ import atomic_write_bytes, bytes_fingerprint
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ __all__ = ["register", "encode_cell_ref", "decode_cell_ref"]
 
 #: Subdir of the external viewer cache for downscaled overlay thumbnails.
 _THUMB_CACHE_SUBDIR = "timeline_thumbs"
+_SOURCE_SNAPSHOT_SUBDIR = "overlay_source_snapshots"
 
 
 def encode_cell_ref(dataset: str, stem: str) -> str:
@@ -63,7 +65,12 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         overlay = output_root.overlay_path(dataset, stem)
         if not overlay.is_file():
             raise FileNotFoundError(identity)
-        return overlay
+        return _stable_overlay_snapshot(
+            output_root,
+            dataset=dataset,
+            stem=stem,
+            overlay=overlay,
+        )
 
     register_thumbnail_route(
         app,
@@ -76,3 +83,33 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         VIEWER_THUMB_URL_SEGMENT,
         output_root.root,
     )
+
+
+def _stable_overlay_snapshot(
+    output_root: OutputRoot,
+    *,
+    dataset: str,
+    stem: str,
+    overlay: Path,
+) -> Path:
+    """Copy one verified overlay revision into the external content cache."""
+    if not output_root.snapshot_is_current():
+        raise FileNotFoundError("bound output snapshot changed")
+    try:
+        source_bytes = overlay.read_bytes()
+    except OSError as exc:
+        raise FileNotFoundError(overlay) from exc
+    if not output_root.snapshot_is_current():
+        raise FileNotFoundError("bound output snapshot changed")
+
+    digest = bytes_fingerprint(source_bytes).removeprefix("sha256:")
+    snapshot = (
+        output_root.viewer_cache_dir
+        / _SOURCE_SNAPSHOT_SUBDIR
+        / dataset
+        / stem
+        / f"{digest}.png"
+    )
+    if not snapshot.is_file():
+        atomic_write_bytes(snapshot, source_bytes)
+    return snapshot

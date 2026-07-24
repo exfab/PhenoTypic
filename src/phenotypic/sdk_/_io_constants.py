@@ -180,9 +180,10 @@ def file_fingerprint(path: Path) -> str:
 
 
 def paths_fingerprint(paths: Iterable[Path], *, root: Path | None = None) -> str:
-    """Fingerprint an ordered set of named files without mutating them.
+    """Fingerprint an ordered set of named filesystem entries without writes.
 
-    Missing files are represented explicitly. Sorting by normalized path
+    Files include their exact contents, directories include their normalized
+    names, and missing entries are represented explicitly. Sorting by name
     makes the result independent of caller enumeration order.
 
     Args:
@@ -211,6 +212,9 @@ def paths_fingerprint(paths: Iterable[Path], *, root: Path | None = None) -> str
         encoded_name = name.encode("utf-8")
         digest.update(len(encoded_name).to_bytes(8, "big"))
         digest.update(encoded_name)
+        if path.is_dir():
+            digest.update(b"\x02")
+            continue
         if not path.is_file():
             digest.update(b"\x00")
             continue
@@ -231,6 +235,12 @@ def source_cache_key(source: Path, fingerprint: str) -> str:
 def migration_backup_dir(config_path: Path) -> Path:
     """Return the dedicated sibling backup directory for a configuration."""
     return Path(config_path).parent / ".migration_backups"
+
+
+def migration_lock_path(config_path: Path) -> Path:
+    """Return the canonical interprocess lock path for config migration."""
+    config = Path(config_path)
+    return config.with_name(f".{config.name}.migration.lock")
 
 
 def migration_backup_path(

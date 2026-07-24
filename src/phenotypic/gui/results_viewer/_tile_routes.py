@@ -15,6 +15,8 @@ from __future__ import annotations
 import logging
 import os
 import re
+import shutil
+import tempfile
 from pathlib import Path
 from typing import cast, get_args
 
@@ -30,6 +32,8 @@ from phenotypic.gui._shared.tiles import (
 )
 from phenotypic.gui.results_viewer import _dzi_tiler
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.sdk_ import file_fingerprint
+from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +53,14 @@ _OVERLAY_LAYER = "overlay"
 #: Every ``?layer=`` value the DZI route accepts: the displayable HDF layers
 #: (:data:`phenotypic.gui._shared.tiles.LayerName`) plus the overlay sentinel.
 _VALID_DZI_LAYERS: tuple[str, ...] = (*get_args(LayerName), _OVERLAY_LAYER)
+
+
+class _SourceSnapshotChanged(RuntimeError):
+    """Raised when a request no longer matches its bound output revision."""
+
+
+class _DziLayerUnavailable(KeyError):
+    """Raised when neither the requested HDF layer nor an overlay exists."""
 
 
 def _dzi_cache_dir_for(
@@ -178,44 +190,35 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
             return _json_error(
                 f"no image source for {dataset!r}/{stem!r}", 404
             )
+        if not output_root.snapshot_is_current():
+            return _json_error(
+                "source snapshot changed; refresh Results before viewing",
+                409,
+            )
 
         cache_dir = _dzi_cache_dir_for(
             output_root.cache_dir, dataset, stem, layer
         )
-        cache_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            if layer == _OVERLAY_LAYER:
-                if not output_root.has_overlay(dataset, stem):
-                    return _json_error(
-                        f"no overlay for {dataset!r}/{stem!r}", 404
-                    )
-                _tile_overlay_source(output_root, dataset, stem, cache_dir)
-            else:
-                # ``_resolve_dzi_layer`` collapses every layer to the overlay
-                # sentinel when no HDF is available, so ``h5`` is non-None here.
-                assert h5 is not None
-                source_png = cache_dir / f"{stem}.png"
-                try:
-                    _ensure_hdf_layer_source_png(
-                        h5, cast(LayerName, layer), source_png
-                    )
-                    _dzi_tiler.tile(source_png, cache_dir)
-                except KeyError:
-                    if not output_root.has_overlay(dataset, stem):
-                        return _json_error(
-                            f"HDF layer {layer!r} not found for {dataset!r}/{stem!r}",
-                            404,
-                        )
-                    logger.warning(
-                        "HDF layer %s missing for %s/%s; tiling overlay fallback",
-                        layer,
-                        dataset,
-                        stem,
-                    )
-                    _tile_overlay_source(
-                        output_root, dataset, stem, cache_dir, force=True
-                    )
+            _publish_dzi_cache(
+                output_root,
+                dataset=dataset,
+                stem=stem,
+                layer=layer,
+                h5=h5,
+                cache_dir=cache_dir,
+            )
+        except _SourceSnapshotChanged:
+            return _json_error(
+                "source snapshot changed; refresh Results before viewing",
+                409,
+            )
+        except _DziLayerUnavailable:
+            return _json_error(
+                f"HDF layer {layer!r} not found for {dataset!r}/{stem!r}",
+                404,
+            )
         except Exception:
             logger.exception(
                 "DZI tile generation failed: dataset=%s stem=%s layer=%s",
@@ -225,6 +228,11 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
             )
             return _json_error("tile generation failed", 500)
 
+        if not output_root.snapshot_is_current():
+            return _json_error(
+                "source snapshot changed; refresh Results before viewing",
+                409,
+            )
         return send_from_directory(
             cache_dir,
             f"{stem}.dzi",
@@ -266,6 +274,11 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         )
         if layer is None:
             return _json_error("invalid layer", 404)
+        if not output_root.snapshot_is_current():
+            return _json_error(
+                "source snapshot changed; refresh Results before viewing",
+                409,
+            )
 
         cache_dir = _dzi_cache_dir_for(
             output_root.cache_dir, dataset, stem, layer
@@ -288,6 +301,90 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
     )
 
 
+def _publish_dzi_cache(
+    output_root: OutputRoot,
+    *,
+    dataset: str,
+    stem: str,
+    layer: str,
+    h5: Path | None,
+    cache_dir: Path,
+) -> None:
+    """Publish one complete DZI generation only for the bound source revision."""
+    cache_dir.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = cache_dir.with_name(f".{cache_dir.name}.publish.lock")
+    with exclusive_path_lock(lock_path):
+        manifest_path = cache_dir / f"{stem}.dzi"
+        if manifest_path.is_file():
+            if not output_root.snapshot_is_current():
+                raise _SourceSnapshotChanged
+            return
+        if not output_root.snapshot_is_current():
+            raise _SourceSnapshotChanged
+
+        staging_dir = Path(
+            tempfile.mkdtemp(
+                dir=cache_dir.parent,
+                prefix=f".{cache_dir.name}.",
+                suffix=".generation",
+            )
+        )
+        try:
+            _generate_dzi_stage(
+                output_root,
+                dataset=dataset,
+                stem=stem,
+                layer=layer,
+                h5=h5,
+                staging_dir=staging_dir,
+            )
+            if not output_root.snapshot_is_current():
+                raise _SourceSnapshotChanged
+            if cache_dir.exists():
+                shutil.rmtree(cache_dir)
+            os.replace(staging_dir, cache_dir)
+        finally:
+            if staging_dir.exists():
+                shutil.rmtree(staging_dir)
+
+
+def _generate_dzi_stage(
+    output_root: OutputRoot,
+    *,
+    dataset: str,
+    stem: str,
+    layer: str,
+    h5: Path | None,
+    staging_dir: Path,
+) -> None:
+    """Generate one unpublished DZI directory from its selected source."""
+    if layer == _OVERLAY_LAYER:
+        if not output_root.has_overlay(dataset, stem):
+            raise _DziLayerUnavailable
+        _tile_overlay_source(output_root, dataset, stem, staging_dir)
+        return
+
+    assert h5 is not None
+    source_png = staging_dir / f"{stem}.png"
+    try:
+        _ensure_hdf_layer_source_png(
+            h5,
+            cast(LayerName, layer),
+            source_png,
+        )
+        _dzi_tiler.tile(source_png, staging_dir)
+    except KeyError:
+        if not output_root.has_overlay(dataset, stem):
+            raise _DziLayerUnavailable from None
+        logger.warning(
+            "HDF layer %s missing for %s/%s; tiling overlay fallback",
+            layer,
+            dataset,
+            stem,
+        )
+        _tile_overlay_source(output_root, dataset, stem, staging_dir)
+
+
 def _ensure_hdf_layer_source_png(
     h5: Path, layer: LayerName, source_png: Path
 ) -> None:
@@ -298,7 +395,11 @@ def _ensure_hdf_layer_source_png(
         and source_png.stat().st_mtime_ns >= h5_stat.st_mtime_ns
     ):
         return
-    _load_hdf_layer_rgb(str(h5), h5_stat.st_mtime_ns, layer).save(source_png)
+    content_token = int(
+        file_fingerprint(h5).removeprefix("sha256:")[:16],
+        16,
+    )
+    _load_hdf_layer_rgb(str(h5), content_token, layer).save(source_png)
     os.utime(source_png, ns=(h5_stat.st_mtime_ns, h5_stat.st_mtime_ns))
 
 
@@ -307,15 +408,8 @@ def _tile_overlay_source(
     dataset: str,
     stem: str,
     cache_dir: Path,
-    *,
-    force: bool = False,
 ) -> None:
     """Tile the baked overlay PNG into ``cache_dir``."""
-    if force:
-        try:
-            (cache_dir / f"{stem}.dzi").unlink()
-        except FileNotFoundError:
-            pass
     _dzi_tiler.tile(output_root.overlay_path(dataset, stem), cache_dir)
 
 

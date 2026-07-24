@@ -14,8 +14,10 @@ from pathlib import Path
 import polars as pl
 import pytest
 
+from phenotypic.gui.results_viewer import _output_root
 from phenotypic.gui.results_viewer._output_root import (
     OutputRoot,
+    OutputSnapshotChangedError,
     _all_parse_as_float,
 )
 from phenotypic.sdk_ import (
@@ -288,6 +290,84 @@ def test_discover_backfills_dataset_from_filesystem(tmp_path: Path) -> None:
     assert "MetadataExperiment_Dataset" in out.master_df.columns
     pairs = out.image_pairs(out.master_df)
     assert pairs == [("d1", "a"), ("d2", "b")]
+
+
+def test_legacy_backfill_parquets_are_part_of_snapshot_revision(
+    tmp_path: Path,
+) -> None:
+    """Every per-image parquet consulted for backfill invalidates the snapshot."""
+    measurements = tmp_path / "results" / "d1" / "measurements"
+    measurements.mkdir(parents=True)
+    legacy_parquet = measurements / "a.parquet"
+    legacy_parquet.write_bytes(b"first")
+    _write_master_parquet(
+        tmp_path,
+        pl.DataFrame({str(METADATA.IMAGE_NAME): ["a"], "Size_Area": [100.0]}),
+    )
+
+    output = OutputRoot.discover(tmp_path)
+    legacy_parquet.write_bytes(b"second")
+
+    assert output.snapshot_is_current() is False
+    refreshed = OutputRoot.discover(tmp_path)
+    assert refreshed.source_fingerprint != output.source_fingerprint
+
+
+def test_discover_retries_complete_read_after_snapshot_change(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A pre/post mismatch retries from the first source read."""
+    _make_minimal_output(tmp_path)
+    overlay = tmp_path / "deliverables" / "overlays" / "d1" / "a.png"
+    real_fingerprint = _output_root.paths_fingerprint
+    calls = 0
+
+    def _mutate_after_first_fingerprint(paths, *, root=None):
+        nonlocal calls
+        result = real_fingerprint(paths, root=root)
+        calls += 1
+        if calls == 1:
+            overlay.write_bytes(b"new-revision")
+        return result
+
+    monkeypatch.setattr(
+        _output_root,
+        "paths_fingerprint",
+        _mutate_after_first_fingerprint,
+    )
+
+    output = OutputRoot.discover(tmp_path)
+
+    assert calls == 4
+    assert output.snapshot_is_current() is True
+
+
+def test_discover_refuses_continuously_changing_snapshot(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two unstable pre/post reads fail instead of binding mixed generations."""
+    _make_minimal_output(tmp_path)
+    overlay = tmp_path / "deliverables" / "overlays" / "d1" / "a.png"
+    real_fingerprint = _output_root.paths_fingerprint
+    revision = 0
+
+    def _mutate_after_every_fingerprint(paths, *, root=None):
+        nonlocal revision
+        result = real_fingerprint(paths, root=root)
+        revision += 1
+        overlay.write_bytes(f"revision-{revision}".encode())
+        return result
+
+    monkeypatch.setattr(
+        _output_root,
+        "paths_fingerprint",
+        _mutate_after_every_fingerprint,
+    )
+
+    with pytest.raises(OutputSnapshotChangedError):
+        OutputRoot.discover(tmp_path)
 
 
 def test_column_value_sets_are_sorted_unique_str(tmp_path: Path) -> None:

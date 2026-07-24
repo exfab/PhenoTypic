@@ -20,6 +20,9 @@ registering only the tile blueprint on a bare Dash app (the
 from __future__ import annotations
 
 import os
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import dash
@@ -263,7 +266,7 @@ def test_manifest_explicit_overlay_tiles_overlay_png(client_and_root) -> None:
     assert not (overlay_dir / f"{stem}.png").is_file()
 
 
-def test_manifest_existing_cache_still_delegates_to_tiler(
+def test_manifest_existing_content_cache_never_retiles(
     client_and_root, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     client, output_root, dataset, stem = client_and_root
@@ -285,7 +288,7 @@ def test_manifest_existing_cache_still_delegates_to_tiler(
     resp = client.get(f"/tiles/{dataset}/{stem}.dzi?layer=overlay")
 
     assert resp.status_code == 200
-    assert calls == [output_root.overlay_path(dataset, stem)]
+    assert calls == []
     assert (overlay_dir / f"{stem}.dzi").is_file()
 
 
@@ -319,7 +322,110 @@ def test_manifest_hdf_source_png_not_regenerated_when_fresh(
 
     assert resp.status_code == 200
     assert load_calls == []
-    assert tile_calls == [source_png]
+    assert tile_calls == []
+
+
+def test_hdf_render_cache_keys_exact_content_when_mtime_is_preserved(
+    tmp_path: Path,
+) -> None:
+    """Same-mtime HDF replacement cannot reuse decoded pixels from old content."""
+    import h5py
+    from PIL import Image as PILImage
+
+    h5 = tmp_path / "plate.h5"
+    first_png = tmp_path / "first" / "plate.png"
+    second_png = tmp_path / "second" / "plate.png"
+    first_png.parent.mkdir()
+    second_png.parent.mkdir()
+    with h5py.File(h5, "w") as handle:
+        handle.create_group("layers").create_dataset(
+            "rgb",
+            data=np.zeros((8, 8, 3), dtype=np.uint8),
+        )
+    original_mtime = h5.stat().st_mtime_ns
+    _tile_routes._ensure_hdf_layer_source_png(h5, "rgb", first_png)
+
+    with h5py.File(h5, "w") as handle:
+        handle.create_group("layers").create_dataset(
+            "rgb",
+            data=np.full((8, 8, 3), 255, dtype=np.uint8),
+        )
+    os.utime(h5, ns=(original_mtime, original_mtime))
+    _tile_routes._ensure_hdf_layer_source_png(h5, "rgb", second_png)
+
+    with PILImage.open(first_png) as first, PILImage.open(second_png) as second:
+        assert first.getpixel((0, 0)) == (0, 0, 0)
+        assert second.getpixel((0, 0)) == (255, 255, 255)
+
+
+def test_manifest_refuses_source_mutation_during_generation(
+    client_and_root,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A changed overlay never publishes into the bound revision cache."""
+    from PIL import Image as PILImage
+
+    client, output_root, dataset, stem = client_and_root
+    original_tile = _tile_routes._dzi_tiler.tile
+
+    def _tile_then_mutate(source: Path, cache_dir: Path) -> Path:
+        result = original_tile(source, cache_dir)
+        PILImage.new("RGB", (64, 64), (240, 10, 10)).save(
+            output_root.overlay_path(dataset, stem),
+            format="PNG",
+        )
+        return result
+
+    monkeypatch.setattr(
+        _tile_routes._dzi_tiler,
+        "tile",
+        _tile_then_mutate,
+    )
+
+    response = client.get(f"/tiles/{dataset}/{stem}.dzi?layer=overlay")
+
+    cache_dir = _dzi_cache_dir_for(
+        output_root.cache_dir,
+        dataset,
+        stem,
+        _OVERLAY_LAYER,
+    )
+    assert response.status_code == 409
+    assert not cache_dir.exists()
+
+
+def test_concurrent_manifest_requests_publish_one_generation(
+    client_and_root,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The interprocess publication lock prevents duplicate cache generation."""
+    client, _, dataset, stem = client_and_root
+    original_tile = _tile_routes._dzi_tiler.tile
+    calls = 0
+    calls_lock = threading.Lock()
+    barrier = threading.Barrier(2)
+
+    def _counted_tile(source: Path, cache_dir: Path) -> Path:
+        nonlocal calls
+        with calls_lock:
+            calls += 1
+        time.sleep(0.05)
+        return original_tile(source, cache_dir)
+
+    def _request_manifest() -> int:
+        barrier.wait()
+        with client.application.test_client() as request_client:
+            return request_client.get(
+                f"/tiles/{dataset}/{stem}.dzi?layer=overlay"
+            ).status_code
+
+    monkeypatch.setattr(_tile_routes._dzi_tiler, "tile", _counted_tile)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        statuses = list(executor.map(lambda _: _request_manifest(), range(2)))
+
+    assert statuses == [200, 200]
+    assert calls == 1
 
 
 def test_manifest_missing_hdf_layer_falls_back_to_overlay(
