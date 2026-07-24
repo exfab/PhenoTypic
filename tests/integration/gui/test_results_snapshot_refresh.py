@@ -795,6 +795,100 @@ def test_standalone_apps_block_processing_stale_mutation_callbacks(
         analysis_ids.ANALYSIS_REFRESH_ERROR not in key
         for key in analysis_app.callback_map
     )
+    owner = gui_launch_owner_path(output)
+    owner.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(
+        owner,
+        {
+            "version": 1,
+            "run_id": "standalone-active",
+            "generation": "standalone-generation",
+            "status": "running",
+        },
+    )
+    for app, status_id, interval_id in (
+        (
+            viewer_app,
+            results_ids.HEADER_SNAPSHOT_STATUS_ID,
+            results_ids.SNAPSHOT_STATUS_INTERVAL_ID,
+        ),
+        (
+            analysis_app,
+            analysis_ids.ANALYSIS_SNAPSHOT_STATUS,
+            analysis_ids.ANALYSIS_SNAPSHOT_INTERVAL,
+        ),
+    ):
+        status_key = _find_output_key(app, status_id)
+        response = app.server.test_client().post(
+            "/_dash-update-component",
+            json={
+                "output": status_key,
+                "outputs": _outputs_from_key(status_key),
+                "inputs": [
+                    {
+                        "id": interval_id,
+                        "property": "n_intervals",
+                        "value": 1,
+                    }
+                ],
+                "state": [],
+                "changedPropIds": [f"{interval_id}.n_intervals"],
+            },
+        )
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert "restart app after it finishes" in body
+        assert '"disabled":true' in body
+    active_root = OutputRoot.discover(
+        output,
+        cache_root=tmp_path / "active-viewer-cache",
+    )
+    assert active_root.snapshot.active_run is True
+    active_viewer_app = results_viewer.create_app(active_root)
+    active_analysis_app = analysis.create_app(output_root=active_root)
+    atomic_write_json(
+        owner,
+        {
+            "version": 1,
+            "run_id": "standalone-active",
+            "generation": "standalone-generation",
+            "status": "complete",
+        },
+    )
+    for app, status_id, interval_id in (
+        (
+            active_viewer_app,
+            results_ids.HEADER_SNAPSHOT_STATUS_ID,
+            results_ids.SNAPSHOT_STATUS_INTERVAL_ID,
+        ),
+        (
+            active_analysis_app,
+            analysis_ids.ANALYSIS_SNAPSHOT_STATUS,
+            analysis_ids.ANALYSIS_SNAPSHOT_INTERVAL,
+        ),
+    ):
+        status_key = _find_output_key(app, status_id)
+        response = app.server.test_client().post(
+            "/_dash-update-component",
+            json={
+                "output": status_key,
+                "outputs": _outputs_from_key(status_key),
+                "inputs": [
+                    {
+                        "id": interval_id,
+                        "property": "n_intervals",
+                        "value": 2,
+                    }
+                ],
+                "state": [],
+                "changedPropIds": [f"{interval_id}.n_intervals"],
+            },
+        )
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert "Run finished" in body
+        assert "restart standalone app" in body
+        assert '"disabled":true' in body
     overlay = output / "deliverables" / "overlays" / "dataset" / "plate.png"
     overlay.write_bytes(b"externally-rewritten-overlay")
 
