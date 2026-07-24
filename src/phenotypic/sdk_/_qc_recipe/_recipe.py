@@ -23,8 +23,8 @@ This module provides three things:
   array (operations/post/filters/model are preserved byte-for-byte) with
   an mtime-staleness guard mirroring
   :class:`phenotypic.gui.analysis._recipe_state.RecipeState`. It also
-  migrates a legacy ``<output>/.viewer_cache/qc_recipe.json`` sidecar into
-  the ``qc`` array exactly once.
+  exposes an explicitly authorized legacy-sidecar migration. Merely loading
+  or binding a viewer never performs that migration.
 
 Import hygiene: at module load this module imports only
 :class:`~phenotypic.analysis.abc_.QualityCheck` from the analysis layer
@@ -714,17 +714,22 @@ class QcRecipe:
     # ------------------------------------------------------------------ #
 
     @classmethod
-    def migrate_from_sidecar(cls, output_root_path: Path) -> bool:
-        """Fold a legacy ``.viewer_cache/qc_recipe.json`` into ``pipeline.json``.
+    def migrate_from_sidecar(
+        cls,
+        output_root_path: Path,
+        *,
+        allow_write: bool = False,
+    ) -> bool:
+        """Explicitly fold a legacy QC sidecar into ``pipeline.json``.
 
         Smart QC's predecessor stored the QC recipe in a standalone
-        ``<output>/.viewer_cache/qc_recipe.json`` sidecar. This one-time,
-        idempotent migration moves those entries into ``pipeline.json``'s
-        ``qc`` array and renames the sidecar to ``*.migrated`` so it is not
-        folded again.
+        ``<output>/.viewer_cache/qc_recipe.json`` sidecar. Binding and
+        discovery historically called this method, so writes are now gated by
+        the explicit ``allow_write`` argument. The default is a pure no-op.
 
         The migration is a no-op (returns ``False``) when:
 
+        * ``allow_write`` is false,
         * the sidecar does not exist, or
         * ``pipeline.json`` already has a non-empty ``qc`` array (the
           pipeline is already the source of truth — never overwrite it).
@@ -735,11 +740,15 @@ class QcRecipe:
 
         Args:
             output_root_path: Path to the output root holding both files.
+            allow_write: Explicit authorization for the migration write.
 
         Returns:
-            ``True`` when entries were migrated and persisted; ``False``
-            when there was nothing to do or the scoped write was refused.
+            ``True`` when entries were migrated and persisted; ``False`` when
+            not explicitly authorized, there was nothing to do, or the scoped
+            write was refused.
         """
+        if not allow_write:
+            return False
         output_root = Path(output_root_path)
         sidecar = output_root / VIEWER_CACHE_DIRNAME / QC_RECIPE_FILENAME
         if not sidecar.exists():

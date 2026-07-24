@@ -7,7 +7,7 @@ a QC entry) and verify the spec §D contracts that span modules:
 - ``create_app`` boots with the Review sub-view mounted and the QC crop
   route registered under its own segment;
 - the Configure recipe is now pipeline-backed (reads ``pipeline.json``'s
-  ``qc`` array, not the legacy sidecar) and a legacy sidecar is migrated;
+  ``qc`` array, not the legacy sidecar) without mutating legacy source state;
 - the in-session per-group recompute (``run_qc`` on the post-applied frame
   anti-joined with removals) **matches** the CLI artifact for identical
   removals — and never wipes ``review_state.json``.
@@ -222,8 +222,10 @@ def test_recompute_does_not_touch_review_state(
     assert reloaded.is_reviewed(_INSTANCE_ID, ("img-1",))
 
 
-def test_legacy_sidecar_is_migrated_into_pipeline(tmp_path: Path) -> None:
-    """A legacy .viewer_cache/qc_recipe.json folds into pipeline.json at boot."""
+def test_legacy_sidecar_is_not_migrated_during_viewer_binding(
+    tmp_path: Path,
+) -> None:
+    """Viewer binding leaves the complete legacy source tree byte-identical."""
     # Minimal output dir WITHOUT a qc entry in pipeline.json, but WITH a
     # legacy sidecar carrying one.
     master = pl.DataFrame(
@@ -253,7 +255,8 @@ def test_legacy_sidecar_is_migrated_into_pipeline(tmp_path: Path) -> None:
     write_pipeline_json(tmp_path, ImagePipeline(name="no-qc"))
     sidecar_dir = tmp_path / ".viewer_cache"
     sidecar_dir.mkdir()
-    (sidecar_dir / "qc_recipe.json").write_text(
+    sidecar = sidecar_dir / "qc_recipe.json"
+    sidecar.write_text(
         json.dumps(
             {
                 "version": 1,
@@ -273,16 +276,23 @@ def test_legacy_sidecar_is_migrated_into_pipeline(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
+    source_before = {
+        path.relative_to(tmp_path): path.read_bytes()
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    }
     root = OutputRoot.discover(tmp_path)
     app = create_app(root)
     recipe = app.server.config.get(CFG_QC_RECIPE)
-    # The migrated entry now lives in the pipeline-backed recipe.
-    assert any(e.instance_id == _INSTANCE_ID for e in recipe.entries)
-    # And it landed in pipeline.json's qc array.
-    payload = json.loads(
-        pipeline_json_path(tmp_path).read_text(encoding="utf-8")
-    )
-    assert any(e["instance_id"] == _INSTANCE_ID for e in payload.get("qc", []))
+    # Binding is read-only. Compatibility UI may offer an explicit migration,
+    # but app construction cannot fold or retire this source sidecar.
+    assert not any(e.instance_id == _INSTANCE_ID for e in recipe.entries)
+    source_after = {
+        path.relative_to(tmp_path): path.read_bytes()
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    }
+    assert source_after == source_before
 
 
 def test_recompute_delta_carries_after_status(

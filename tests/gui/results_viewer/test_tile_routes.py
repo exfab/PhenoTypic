@@ -202,6 +202,30 @@ def test_manifest_hdf_layer_tiles_into_per_layer_cache_dir(
     assert tile.mimetype == "image/png"
 
 
+def test_manifest_generation_keeps_bound_source_tree_byte_identical(
+    client_and_root,
+) -> None:
+    """The first tile request writes only to the external GUI cache."""
+    client, output_root, dataset, stem = client_and_root
+    source_files_before = {
+        path.relative_to(output_root.root).as_posix(): path.read_bytes()
+        for path in output_root.root.rglob("*")
+        if path.is_file()
+    }
+
+    response = client.get(f"/tiles/{dataset}/{stem}.dzi?layer=overlay")
+
+    assert response.status_code == 200
+    source_files_after = {
+        path.relative_to(output_root.root).as_posix(): path.read_bytes()
+        for path in output_root.root.rglob("*")
+        if path.is_file()
+    }
+    assert source_files_after == source_files_before
+    assert output_root.cache_dir.is_dir()
+    assert not (output_root.root / ".viewer_cache").exists()
+
+
 def test_manifest_default_and_objmap_use_distinct_cache_dirs(
     client_and_root,
 ) -> None:

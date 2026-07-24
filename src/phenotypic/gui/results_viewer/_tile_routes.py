@@ -58,8 +58,9 @@ def _dzi_cache_dir_for(
 
     The DZI cache gained a *layer* dimension in Task 9 so the same image can
     cache an ``rgb`` pyramid alongside an ``objmap`` one without collision:
-    ``<cache_root>/<dataset>/<stem>/<layer>/``. ``cache_root`` is
-    :attr:`OutputRoot.cache_dir` (``<root>/.viewer_cache/dzi``).
+    ``<cache_root>/<dataset>/<stem>/<layer>/``. ``cache_root`` is the
+    fingerprinted external :attr:`OutputRoot.cache_dir`; it is never beneath
+    the selected output tree.
 
     Args:
         cache_root: The DZI cache root (``OutputRoot.cache_dir``).

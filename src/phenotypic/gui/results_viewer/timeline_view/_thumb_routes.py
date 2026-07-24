@@ -5,9 +5,9 @@ resolver decodes a ``(dataset, stem)`` identity, guards both halves with the
 DZI route's path-component check, and resolves the overlay PNG via
 ``OutputRoot.overlay_path``. The factory downscales it to the requested
 size bucket and serves a self-invalidating, atomically-written disk cache
-under the output root's ``.viewer_cache/timeline_thumbs`` (persists with the
-run). Per spec §15.6 the warm sweep decodes the file and relies on the disk
-cache — it does NOT lean on the small ``_load_overlay_rgb`` LRU.
+under the fingerprinted external GUI cache. The selected output tree remains
+byte-identical. Per spec §15.6 the warm sweep decodes the file and relies on
+the disk cache; it does not lean on the small ``_load_overlay_rgb`` LRU.
 
 Overlay PNGs are plain 8-bit RGB and always decode, so the resolver only
 ever raises ``FileNotFoundError`` (→ 404) for an unknown/missing/unsafe
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["register", "encode_cell_ref", "decode_cell_ref"]
 
-#: Subdir of the output root's viewer cache for downscaled overlay thumbnails.
+#: Subdir of the external viewer cache for downscaled overlay thumbnails.
 _THUMB_CACHE_SUBDIR = "timeline_thumbs"
 
 

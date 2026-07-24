@@ -81,8 +81,20 @@ def test_thumb_unsafe_identity_is_404(tmp_path: Path) -> None:
 
 def test_thumb_cache_persists_under_viewer_cache(tmp_path: Path) -> None:
     client, root = _client(tmp_path)
+    source_before = {
+        path.relative_to(root.root).as_posix(): path.read_bytes()
+        for path in root.root.rglob("*")
+        if path.is_file()
+    }
     ident = _thumb_routes.encode_cell_ref("ds", "a")
     assert client.get(f"/timeline-thumb/{ident}?size=128").status_code == 200
-    cache_dir = root.root / ".viewer_cache" / "timeline_thumbs"
+    cache_dir = root.viewer_cache_dir / "timeline_thumbs"
     assert cache_dir.is_dir()
     assert list(cache_dir.glob("*.png"))  # a cached thumbnail was written
+    assert not (root.root / ".viewer_cache").exists()
+    source_after = {
+        path.relative_to(root.root).as_posix(): path.read_bytes()
+        for path in root.root.rglob("*")
+        if path.is_file()
+    }
+    assert source_after == source_before

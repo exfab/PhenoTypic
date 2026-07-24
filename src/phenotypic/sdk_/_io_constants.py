@@ -69,6 +69,7 @@ See also
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -148,6 +149,130 @@ def ensure_typed_json_suffix(path: str | Path, suffix: str) -> Path:
         typed_tail = suffix.removeprefix(LEGACY_JSON_SUFFIX)
         return Path(f"{text}{typed_tail}")
     return Path(f"{text}{suffix}")
+
+
+def bytes_fingerprint(data: bytes) -> str:
+    """Return a versioned SHA-256 fingerprint for exact bytes.
+
+    Args:
+        data: Bytes to fingerprint.
+
+    Returns:
+        A ``"sha256:<hex>"`` content fingerprint.
+    """
+    return f"sha256:{hashlib.sha256(data).hexdigest()}"
+
+
+def file_fingerprint(path: Path) -> str:
+    """Return a versioned SHA-256 fingerprint for one file's contents.
+
+    Args:
+        path: Existing regular file to fingerprint.
+
+    Returns:
+        A ``"sha256:<hex>"`` content fingerprint.
+    """
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return f"sha256:{digest.hexdigest()}"
+
+
+def paths_fingerprint(paths: Iterable[Path], *, root: Path | None = None) -> str:
+    """Fingerprint an ordered set of named files without mutating them.
+
+    Missing files are represented explicitly. Sorting by normalized path
+    makes the result independent of caller enumeration order.
+
+    Args:
+        paths: Files to include.
+        root: Optional anchor used to normalize names.
+
+    Returns:
+        A deterministic ``"sha256:<hex>"`` fingerprint.
+    """
+    anchor = Path(root).resolve() if root is not None else None
+    named_paths: list[tuple[str, Path]] = []
+    for raw_path in paths:
+        path = Path(raw_path)
+        resolved = path.resolve(strict=False)
+        if anchor is not None:
+            try:
+                name = resolved.relative_to(anchor).as_posix()
+            except ValueError:
+                name = resolved.as_posix()
+        else:
+            name = resolved.as_posix()
+        named_paths.append((name, path))
+
+    digest = hashlib.sha256()
+    for name, path in sorted(named_paths, key=lambda item: item[0]):
+        encoded_name = name.encode("utf-8")
+        digest.update(len(encoded_name).to_bytes(8, "big"))
+        digest.update(encoded_name)
+        if not path.is_file():
+            digest.update(b"\x00")
+            continue
+        digest.update(b"\x01")
+        digest.update(path.stat().st_size.to_bytes(8, "big"))
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    return f"sha256:{digest.hexdigest()}"
+
+
+def source_cache_key(source: Path, fingerprint: str) -> str:
+    """Return an opaque cache key bound to canonical source and content."""
+    identity = f"{Path(source).resolve(strict=False)}\0{fingerprint}".encode()
+    return hashlib.sha256(identity).hexdigest()[:32]
+
+
+def migration_backup_dir(config_path: Path) -> Path:
+    """Return the dedicated sibling backup directory for a configuration."""
+    return Path(config_path).parent / ".migration_backups"
+
+
+def migration_backup_path(
+    config_path: Path,
+    *,
+    timestamp: str,
+    source_fingerprint: str,
+) -> Path:
+    """Return a timestamped, fingerprinted backup path."""
+    digest = source_fingerprint.removeprefix("sha256:")[:12]
+    return migration_backup_dir(config_path) / (
+        f"{Path(config_path).name}.{timestamp}.{digest}.bak"
+    )
+
+
+def migration_receipt_path(
+    config_path: Path,
+    *,
+    resulting_fingerprint: str,
+) -> Path:
+    """Return the durable receipt path for one migrated generation."""
+    digest = resulting_fingerprint.removeprefix("sha256:")[:12]
+    return migration_backup_dir(config_path) / (
+        f"{Path(config_path).name}.{digest}.migration.json"
+    )
+
+
+def generation_staging_path(target: Path, generation: str) -> Path:
+    """Return a sibling staging path for an explicit publication generation.
+
+    Raises:
+        ValueError: If ``generation`` is not a safe path component.
+    """
+    if (
+        not generation
+        or generation in {".", ".."}
+        or "/" in generation
+        or "\\" in generation
+    ):
+        raise ValueError("generation must be a nonempty path component")
+    target = Path(target)
+    return target.with_name(f".{target.name}.{generation}.generation")
 
 
 #: Master archive of all aggregated measurements (clean, pre-post). Written by

@@ -1386,6 +1386,54 @@ def test_migrate_legacy_qc_noop_when_canonical_exists(tmp_path: Path) -> None:
     assert (tmp_path / "qc" / "a.parquet").is_file()
 
 
+def test_fingerprint_and_migration_paths_are_deterministic(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.sdk_ import (
+        bytes_fingerprint,
+        file_fingerprint,
+        generation_staging_path,
+        migration_backup_path,
+        migration_receipt_path,
+        paths_fingerprint,
+        source_cache_key,
+    )
+
+    config = tmp_path / "pipeline.json.pht-pipe"
+    config.write_bytes(b'{"version":"1"}')
+    fingerprint = file_fingerprint(config)
+
+    assert fingerprint == bytes_fingerprint(config.read_bytes())
+    snapshot = paths_fingerprint([config], root=tmp_path)
+    config.write_bytes(b'{"version":"2"}')
+    assert paths_fingerprint([config], root=tmp_path) != snapshot
+    config.write_bytes(b'{"version":"1"}')
+    assert source_cache_key(config, fingerprint) == source_cache_key(
+        config, fingerprint
+    )
+    backup = migration_backup_path(
+        config,
+        timestamp="20260723T120000.000000Z",
+        source_fingerprint=fingerprint,
+    )
+    receipt = migration_receipt_path(
+        config,
+        resulting_fingerprint=fingerprint,
+    )
+    assert backup.parent == receipt.parent == tmp_path / ".migration_backups"
+    assert "20260723T120000.000000Z" in backup.name
+    assert generation_staging_path(config, "generation-1").parent == tmp_path
+
+
+def test_generation_staging_path_rejects_path_traversal(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.sdk_ import generation_staging_path
+
+    with pytest.raises(ValueError):
+        generation_staging_path(tmp_path / "target.json", "../escape")
+
+
 def test_gui_log_constants_are_canonical_and_reexported() -> None:
     import phenotypic.sdk_ as sdk
     from phenotypic.sdk_ import _io_constants as io

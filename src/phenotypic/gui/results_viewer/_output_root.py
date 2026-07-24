@@ -1,8 +1,7 @@
 """Output-root discovery and read-only access for the results viewer.
 
 The results viewer consumes a CLI output directory produced by
-``python -m phenotypic`` and never mutates it (other than its own tile
-cache under ``.viewer_cache/``). This module locates the master
+``python -m phenotypic`` and never mutates it. This module locates the master
 measurements parquet, validates the expected layout, and exposes a
 small set of helpers used by the rest of the viewer package.
 """
@@ -11,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,7 +19,7 @@ import polars as pl
 
 from phenotypic.gui._config import (
     DIR_MEASUREMENTS,
-    VIEWER_CACHE_DIRNAME,
+    SANDBOX_GUI_DIRNAME,
 )
 from phenotypic.gui.results_viewer._filtered_state import (
     KEY_DATASET,
@@ -29,7 +29,8 @@ from phenotypic.sdk_ import (
     DIR_OVERLAYS,
     BundleLayout,
     is_metadata_header,
-    migrate_legacy_qc,
+    paths_fingerprint,
+    source_cache_key,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ logger = logging.getLogger(__name__)
 #: over the master archive (``master_measurements.parquet``) for the
 #: viewer's display frame because it reflects whatever ``PostMeasurement``
 #: ops the user configured.
-_CACHE_RELATIVE = Path(VIEWER_CACHE_DIRNAME) / "dzi"
+_EXTERNAL_VIEWER_CACHE_SUBDIR = "viewer_cache"
 # Legacy master column shim. Post category-flip the canonical image-stem column
 # is ``str(METADATA.IMAGE_NAME) == "MetadataImage_ImageName"`` (== KEY_IMAGE_FILE).
 # Masters written before the flip used the pre-namespace ``Metadata_ImageName``;
@@ -79,8 +80,12 @@ class OutputRoot:
         column_value_sets: Mapping from column name to the sorted
             list of unique string values found in that column. Used
             to populate filter dropdowns; nulls are dropped.
-        cache_dir: Path to ``<root>/.viewer_cache/dzi``. Created on
-            discovery if missing.
+        cache_dir: External DZI cache path under the configured sandbox's
+            ``.phenotypic-gui/viewer_cache/<source-key>/``. Discovery only
+            computes this path; tile routes create it on an explicit request.
+        source_fingerprint: Content fingerprint for the discovered source
+            snapshot. Combined with the canonical source path in the external
+            cache key.
         pipeline_summary: One-line label parsed from
             ``<root>/deliverables/pipeline.json`` (typically the
             pipeline ``name``) or ``None`` if the file is absent or
@@ -93,6 +98,7 @@ class OutputRoot:
     clean_master_df: pl.DataFrame
     column_value_sets: Mapping[str, list[str]]
     cache_dir: Path
+    source_fingerprint: str
     pipeline_summary: str | None
     #: Snapshot of ``(dataset, stem)`` pairs that have an overlay PNG on
     #: disk at discovery time. Used as an O(1) replacement for the
@@ -101,7 +107,12 @@ class OutputRoot:
     overlay_index: frozenset[tuple[str, str]]
 
     @classmethod
-    def discover(cls, root: Path) -> OutputRoot:
+    def discover(
+        cls,
+        root: Path,
+        *,
+        sandbox_root: Path | None = None,
+    ) -> OutputRoot:
         """Classify the on-disk topology and assemble an ``OutputRoot``.
 
         Accepts either a full ``python -m phenotypic`` output directory
@@ -118,6 +129,10 @@ class OutputRoot:
 
         Args:
             root: Path to a CLI output directory or a deliverables bundle.
+            sandbox_root: Frozen GUI sandbox that owns external viewer cache
+                state. When omitted (standalone/unit use), a process-external
+                temporary cache owner is used. In neither case is cache state
+                placed under ``root``.
 
         Returns:
             A populated, frozen ``OutputRoot``.
@@ -131,8 +146,6 @@ class OutputRoot:
                 ``Metadata_Dataset`` with no ``results/`` to recover it from.
         """
         layout = BundleLayout.detect(Path(root))
-        if layout.output_root is not None:
-            migrate_legacy_qc(layout.output_root)
 
         master_path = layout.master_parquet
         if not master_path.is_file():
@@ -200,31 +213,32 @@ class OutputRoot:
 
         column_value_sets = _build_column_value_sets(master_df)
 
-        # Cache root: the output root for full runs, else inside the bundle.
-        # Read-only-mount fallback (spec Section 2 / review C5): if the chosen
-        # location is not writable, fall back to a per-session temp dir keyed
-        # by the bundle path so the viewer still boots off a read-only mount.
-        cache_root = (
-            layout.output_root
-            if layout.output_root is not None
-            else layout.deliverables_base
+        source_root = (
+            layout.deliverables_base
+            if layout.output_root is None
+            else layout.output_root
         )
-        cache_dir = _resolve_cache_dir(cache_root, layout.deliverables_base)
+        source_fingerprint = paths_fingerprint(
+            _source_snapshot_paths(layout),
+            root=source_root,
+        )
+        cache_dir = _external_cache_dir(
+            source_root,
+            source_fingerprint=source_fingerprint,
+            sandbox_root=sandbox_root,
+        )
 
         pipeline_summary = _read_pipeline_summary(layout.pipeline_config_path)
         overlay_index = _scan_overlay_index(layout, datasets_with_overlays)
 
         return cls(
-            root=(
-                layout.deliverables_base
-                if layout.output_root is None
-                else layout.output_root
-            ),
+            root=source_root,
             layout=layout,
             master_df=master_df,
             clean_master_df=clean_master_df,
             column_value_sets=column_value_sets,
             cache_dir=cache_dir,
+            source_fingerprint=source_fingerprint,
             pipeline_summary=pipeline_summary,
             overlay_index=overlay_index,
         )
@@ -248,12 +262,7 @@ class OutputRoot:
 
     @property
     def viewer_cache_dir(self) -> Path:
-        """The cache *root* (parent of the ``dzi/`` subdir held by :attr:`cache_dir`).
-
-        Thumb routes and any non-DZI cache write under here so the standalone
-        path stays inside the bundle (review Q2 — distinct from
-        ``cache_dir = .../dzi``).
-        """
+        """External cache root containing DZI and thumbnail subdirectories."""
         return self.cache_dir.parent
 
     def overlay_path(self, dataset: str, stem: str) -> Path:
@@ -344,38 +353,53 @@ class OutputRoot:
         return _all_parse_as_float(self.column_value_sets.get(column, []))
 
 
-def _resolve_cache_dir(cache_root: Path, deliverables_base: Path) -> Path:
-    """Return a writable DZI cache dir, falling back to session temp if needed."""
-    cache_dir = cache_root / _CACHE_RELATIVE
-    try:
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        if _cache_dir_is_writable(cache_dir):
-            return cache_dir
-    except OSError:
-        pass
+def _external_cache_dir(
+    source_root: Path,
+    *,
+    source_fingerprint: str,
+    sandbox_root: Path | None,
+) -> Path:
+    """Return a pure external DZI cache path for a source snapshot.
 
-    import hashlib
-    import tempfile
-
-    key = hashlib.sha1(str(deliverables_base).encode()).hexdigest()[:12]
-    fallback = (
-        Path(tempfile.gettempdir())
-        / f"phenotypic-viewer-{key}"
-        / _CACHE_RELATIVE
+    The returned path is not created. This is what keeps
+    :meth:`OutputRoot.discover` source-preserving.
+    """
+    owner = (
+        Path(sandbox_root).resolve()
+        if sandbox_root is not None
+        else Path(tempfile.gettempdir()) / "phenotypic-gui-cache"
     )
-    fallback.mkdir(parents=True, exist_ok=True)
-    return fallback
+    key = source_cache_key(source_root, source_fingerprint)
+    return (
+        owner
+        / SANDBOX_GUI_DIRNAME
+        / _EXTERNAL_VIEWER_CACHE_SUBDIR
+        / key
+        / "dzi"
+    )
 
 
-def _cache_dir_is_writable(cache_dir: Path) -> bool:
-    """Probe writability with a create/delete operation, not permission bits."""
-    probe = cache_dir / ".write-test"
-    try:
-        probe.write_bytes(b"")
-        probe.unlink()
-    except OSError:
-        return False
-    return True
+def _source_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
+    """Return viewer-readable files that define one source snapshot."""
+    paths: list[Path] = [
+        layout.master_parquet,
+        layout.mirror_parquet,
+        layout.resolved_pipeline_config_path,
+    ]
+    overlays_root = layout.deliverables_base / DIR_OVERLAYS
+    if overlays_root.is_dir():
+        paths.extend(
+            path
+            for path in overlays_root.rglob("*")
+            if path.is_file()
+        )
+    if layout.results_dir is not None:
+        paths.extend(
+            path
+            for path in layout.results_dir.rglob("*.h5")
+            if path.is_file()
+        )
+    return tuple(paths)
 
 
 def _discover_datasets(

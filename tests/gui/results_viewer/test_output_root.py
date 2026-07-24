@@ -14,7 +14,6 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from phenotypic.gui.results_viewer import _output_root
 from phenotypic.gui.results_viewer._output_root import (
     OutputRoot,
     _all_parse_as_float,
@@ -33,6 +32,23 @@ def _write_master_parquet(root: Path, df: pl.DataFrame) -> None:
     target = master_measurements_parquet_path(root)
     target.parent.mkdir(parents=True, exist_ok=True)
     df.write_parquet(target)
+
+
+def _tree_bytes(root: Path) -> tuple[tuple[str, ...], dict[str, bytes]]:
+    """Capture relative directories and exact file bytes."""
+    directories = tuple(
+        sorted(
+            path.relative_to(root).as_posix()
+            for path in root.rglob("*")
+            if path.is_dir()
+        )
+    )
+    files = {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+    return directories, files
 
 
 def _make_minimal_output(
@@ -91,29 +107,28 @@ def test_discover_succeeds_on_well_formed_root(tmp_path: Path) -> None:
     assert out.root == tmp_path.resolve()
     assert out.master_df.height == df.height
     assert "MetadataGenetic_Strain" in out.column_value_sets
-    assert out.cache_dir == tmp_path.resolve() / ".viewer_cache" / "dzi"
+    assert not out.cache_dir.is_relative_to(tmp_path.resolve())
+    assert out.cache_dir.name == "dzi"
+    assert out.source_fingerprint.startswith("sha256:")
 
 
-def test_resolve_cache_dir_falls_back_when_existing_cache_unwritable(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_external_cache_path_is_pure_and_owned_by_sandbox(
+    tmp_path: Path,
 ) -> None:
-    cache_root = tmp_path / "readonly-run"
-    primary = cache_root / ".viewer_cache" / "dzi"
-    primary.mkdir(parents=True)
+    source = tmp_path / "source"
+    sandbox = tmp_path / "sandbox"
+    _make_minimal_output(source)
 
-    monkeypatch.setattr(
-        _output_root,
-        "_cache_dir_is_writable",
-        lambda path: path != primary,
+    out = OutputRoot.discover(
+        source,
+        sandbox_root=sandbox,
     )
 
-    resolved = _output_root._resolve_cache_dir(
-        cache_root, tmp_path / "deliverables"
+    assert out.cache_dir.is_relative_to(
+        sandbox / ".phenotypic-gui" / "viewer_cache"
     )
-
-    assert resolved != primary
-    assert resolved.is_dir()
-    assert ".viewer_cache" in str(resolved)
+    assert not out.cache_dir.exists()
+    assert not (source / ".viewer_cache").exists()
 
 
 def test_discover_prefers_post_applied_mirror_over_master(
@@ -374,12 +389,31 @@ def test_pipeline_summary_is_none_when_missing_or_malformed(
     assert OutputRoot.discover(tmp_path).pipeline_summary is None
 
 
-def test_cache_dir_is_created_on_discover(tmp_path: Path) -> None:
-    """``cache_dir`` exists as a real directory after ``discover``."""
+def test_cache_dir_is_not_created_on_discover(tmp_path: Path) -> None:
+    """Discovery computes the external path without writing it."""
 
     _make_minimal_output(tmp_path)
     out = OutputRoot.discover(tmp_path)
-    assert out.cache_dir.is_dir()
+    assert not out.cache_dir.exists()
+
+
+def test_discover_leaves_legacy_qc_and_viewer_sidecar_byte_identical(
+    tmp_path: Path,
+) -> None:
+    """Discovery never moves legacy topology or folds a viewer sidecar."""
+    source = tmp_path / "run"
+    _make_minimal_output(source)
+    legacy_qc = source / "qc"
+    legacy_qc.mkdir()
+    (legacy_qc / "legacy.parquet").write_bytes(b"legacy-qc")
+    sidecar = source / ".viewer_cache" / "qc_recipe.json"
+    sidecar.parent.mkdir()
+    sidecar.write_text('{"version": 1, "checks": []}', encoding="utf-8")
+    before = _tree_bytes(source)
+
+    OutputRoot.discover(source, sandbox_root=tmp_path)
+
+    assert _tree_bytes(source) == before
 
 
 def test_all_parse_as_float_true_for_numeric_strings() -> None:
