@@ -31,6 +31,7 @@ from phenotypic.gui.analysis._layout import _build_load_warnings_banner
 from phenotypic.gui.analysis._recipe_state import (
     RecipeState,
     _merge_opaque_pipeline_payload,
+    _pipeline_validation_payload,
 )
 from phenotypic.measure import MeasureShape
 from phenotypic.plotting._bindings import AnalysisInput, MeasurementInput
@@ -279,6 +280,41 @@ def test_name_only_edit_preserves_known_envelope_extensions_without_warnings(
     }
 
 
+def test_legacy_implicit_measurements_input_round_trips_unrelated_edit(
+    tmp_path: Path,
+) -> None:
+    """Omitted legacy input remains stable with plot extensions intact."""
+    payload = _known_pipeline_with_extensions_payload()
+    del payload["plots"][0]["input"]
+    path = pipeline_json_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    state = RecipeState.load(tmp_path)
+    assert isinstance(
+        state.pipeline.get_plots()[0].input,
+        MeasurementInput,
+    )
+
+    state.pipeline.name = "after"
+    assert state.save() is True
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert "input" not in saved["plots"][0]
+    assert saved["plots"][0]["ref"]["future_ref_field"] == {
+        "revision": 4
+    }
+    assert saved["plots"][0]["future_plot_envelope"] == {
+        "revision": 5
+    }
+    reloaded = RecipeState.load(tmp_path)
+    assert isinstance(
+        reloaded.pipeline.get_plots()[0].input,
+        MeasurementInput,
+    )
+    strict = ImagePipeline.from_json(_pipeline_validation_payload(saved))
+    assert isinstance(strict.get_plots()[0].input, MeasurementInput)
+
+
 def test_explicit_known_replacement_drops_nested_extensions_after_load(
     tmp_path: Path,
 ) -> None:
@@ -341,17 +377,24 @@ def test_explicit_known_replacement_drops_nested_extensions_after_load(
             },
             AnalysisInput(analysis_id="new-analysis"),
         ),
+        (
+            None,
+            AnalysisInput(analysis_id="new-analysis"),
+        ),
     ],
 )
 def test_plot_input_replacement_does_not_resurrect_prior_variant(
     tmp_path: Path,
-    source_input: dict,
+    source_input: dict | None,
     replacement: AnalysisInput | MeasurementInput,
 ) -> None:
     """Variant or stable-ID changes replace the prior input envelope."""
     payload = _known_pipeline_with_extensions_payload()
     del payload["filters"]["edge"]["params"]["future_filter_param"]
-    payload["plots"][0]["input"] = source_input
+    if source_input is None:
+        del payload["plots"][0]["input"]
+    else:
+        payload["plots"][0]["input"] = source_input
     path = pipeline_json_path(tmp_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")

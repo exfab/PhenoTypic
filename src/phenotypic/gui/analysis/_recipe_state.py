@@ -386,6 +386,46 @@ def _plot_input_identity(node: object) -> tuple[object, ...] | None:
     return None
 
 
+def _plot_target_defaults_to_measurements(
+    node: object,
+    pipeline_payload: dict[str, Any],
+) -> bool:
+    """Return whether the plot loader supplies an implicit measurements input."""
+    if not isinstance(node, dict):
+        return False
+
+    from phenotypic.abc_.plotting import PlotAnalysis, PlotQc
+    from phenotypic.plotting._bindings import _load_qualified_class
+
+    resolved: object = None
+    ref = node.get("ref")
+    if isinstance(ref, dict):
+        if ref.get("slot") == "qc":
+            return True
+        class_name = _referenced_class(pipeline_payload, ref)
+        if isinstance(class_name, str):
+            resolved = SerializablePipeline._find_class_in_phenotypic(
+                class_name
+            )
+    else:
+        inline = node.get("inline")
+        if isinstance(inline, dict):
+            module = inline.get("module")
+            qualname = inline.get("qualname")
+            if isinstance(module, str) and isinstance(qualname, str):
+                try:
+                    resolved = _load_qualified_class(
+                        module_name=module,
+                        qualname=qualname,
+                    )
+                except (AttributeError, ImportError):
+                    return False
+    return (
+        isinstance(resolved, type)
+        and issubclass(resolved, (PlotAnalysis, PlotQc))
+    )
+
+
 def _merge_known_node_extensions(
     current: dict[str, Any],
     original: dict[str, Any],
@@ -471,8 +511,20 @@ def _merge_known_node_extensions(
                 if isinstance(original_node, dict)
                 else None
             )
+            original_input_is_implicit = (
+                isinstance(original_node, dict)
+                and "input" not in original_node
+                and _plot_target_defaults_to_measurements(
+                    original_node,
+                    original,
+                )
+            )
             current_input_identity = _plot_input_identity(current_input)
-            original_input_identity = _plot_input_identity(original_input)
+            original_input_identity = (
+                ("measurements",)
+                if original_input_is_implicit
+                else _plot_input_identity(original_input)
+            )
             same_input_identity = (
                 current_input is None
                 and original_input is None
@@ -497,7 +549,9 @@ def _merge_known_node_extensions(
                 and isinstance(merged_node, dict)
                 and isinstance(original_node, dict)
             ):
-                if (
+                if original_input_is_implicit:
+                    merged_node.pop("input", None)
+                elif (
                     current_input_identity is not None
                     and current_input_identity == original_input_identity
                 ):
