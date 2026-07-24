@@ -14,6 +14,7 @@ import json
 import os
 import time
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -113,6 +114,24 @@ def test_scan_rehydrates_supplied_registry(tmp_path: Path) -> None:
     rows = scan_recent_runs(sandbox, registry=reg)
     assert isinstance(rows[0], RecentRunRow)
     assert reg.get("x") is not None
+
+
+def test_registry_revision_redraw_does_not_rescan_sandbox(
+    tmp_path: Path,
+) -> None:
+    _make_run(tmp_path, "x")
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+
+    with mock.patch.object(
+        registry,
+        "rehydrate_from_sandbox",
+        wraps=registry.rehydrate_from_sandbox,
+    ) as rehydrate:
+        scan_recent_runs(sandbox, registry=registry)
+        scan_recent_runs(sandbox, registry=registry)
+
+    rehydrate.assert_called_once()
 
 
 def test_scan_with_no_registry_does_not_persist(tmp_path: Path) -> None:
