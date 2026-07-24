@@ -52,15 +52,22 @@ from phenotypic.gui.shell._source_context import (
 )
 from phenotypic.gui.tune import _ids as ids
 from phenotypic.gui.tune import _nav
-from phenotypic.gui.tune._command import StorageMode, build_tune_command
+from phenotypic.gui.tune._command import (
+    DEFAULT_STORAGE_ENV,
+    StorageMode,
+    build_tune_command,
+    storage_url_preflight_issue,
+)
 from phenotypic.gui.tune._deploy import deploy_tune_run
 from phenotypic.gui.tune._export import export_best_from_run
 from phenotypic.gui.tune._monitor import cancel_prompt, run_switcher_items
 from phenotypic.gui.tune._run_image_source import resolve_run_images
 from phenotypic.gui.tune._setup_authoring import (
     SetupPathResolution,
+    authored_content_fingerprint,
     build_authored_setup_spec,
     load_pipeline_or_spec,
+    path_content_fingerprint,
     resolve_setup_path,
     setup_path_payload,
     write_authored_setup_spec,
@@ -220,6 +227,8 @@ def setup_pipeline_path_from_sources(
     typed_path: str | None,
     shell_handoff: object,
     picker_path: str | None = None,
+    *,
+    sandbox: "SandboxRoot | None" = None,
 ) -> str | None:
     """Resolve pipeline text using typed, picker, then handoff precedence."""
     candidates: list[str] = []
@@ -227,14 +236,16 @@ def setup_pipeline_path_from_sources(
         candidates.append(typed_path)
     if picker_path:
         candidates.append(picker_path)
-    if isinstance(shell_handoff, str):
-        candidates.append(shell_handoff)
-    elif isinstance(shell_handoff, dict):
-        for key in ("relative_path", "path", "abs_path"):
-            value = shell_handoff.get(key)
-            if isinstance(value, str):
-                candidates.append(value)
-                break
+    if sandbox is not None:
+        shared = resolve_setup_path(
+            sandbox=sandbox,
+            kind="pipeline",
+            typed_path=None,
+            picker_payload=None,
+            shared_payload=shell_handoff,
+        )
+        if shared.path is not None:
+            candidates.append(str(shared.path))
 
     valid_suffixes = PIPELINE_CONFIG_SUFFIXES | frozenset({CONFIG_SUFFIX_TUNING})
     for candidate in candidates:
@@ -251,14 +262,22 @@ def authored_spec_descriptor(
     metadata_path: str | None,
     replace_scorer: bool = False,
     setup_signature: str | None = None,
+    launch_defaults: dict[str, object] | None = None,
 ) -> dict[str, object]:
     """Return the Setup-authored spec descriptor stored in Dash state."""
+    source_path = Path(pipeline_path)
+    selected_metadata = Path(metadata_path) if metadata_path else None
+    authored_path = Path(path)
     return {
         "path": path,
         "pipeline_path": pipeline_path,
         "metadata_path": metadata_path or "",
         "replace_scorer": replace_scorer,
         "setup_signature": setup_signature or "",
+        "source_fingerprint": path_content_fingerprint(source_path),
+        "metadata_fingerprint": path_content_fingerprint(selected_metadata),
+        "authored_fingerprint": authored_content_fingerprint(authored_path),
+        "launch_defaults": dict(launch_defaults or {}),
     }
 
 
@@ -278,6 +297,11 @@ def active_authored_spec_path(
     metadata = descriptor.get("metadata_path")
     replace = descriptor.get("replace_scorer", False)
     stored_signature = descriptor.get("setup_signature", "")
+    stored_source_fingerprint = descriptor.get("source_fingerprint", "")
+    stored_metadata_fingerprint = descriptor.get("metadata_fingerprint", "")
+    stored_authored_fingerprint = descriptor.get("authored_fingerprint", "")
+    source_path = Path(pipeline_path) if pipeline_path else None
+    selected_metadata = Path(metadata_path) if metadata_path else None
     if (
         isinstance(path, str)
         and path
@@ -286,6 +310,13 @@ def active_authored_spec_path(
         and source == (pipeline_path or "")
         and metadata == (metadata_path or "")
         and replace is replace_scorer
+        and source_path is not None
+        and stored_source_fingerprint
+        == path_content_fingerprint(source_path)
+        and stored_metadata_fingerprint
+        == path_content_fingerprint(selected_metadata)
+        and stored_authored_fingerprint
+        == authored_content_fingerprint(Path(path))
         and (
             setup_signature is None
             or stored_signature == setup_signature
@@ -304,8 +335,22 @@ def setup_authoring_signature(
 ) -> str:
     """Return a stable digest for every input that affects the authored spec."""
     payload = {
-        "pipeline_path": pipeline_path or "",
-        "metadata_path": metadata_path or "",
+        "pipeline_path": (
+            str(Path(pipeline_path).expanduser().resolve(strict=False))
+            if pipeline_path
+            else ""
+        ),
+        "pipeline_fingerprint": path_content_fingerprint(
+            Path(pipeline_path) if pipeline_path else None
+        ),
+        "metadata_path": (
+            str(Path(metadata_path).expanduser().resolve(strict=False))
+            if metadata_path
+            else ""
+        ),
+        "metadata_fingerprint": path_content_fingerprint(
+            Path(metadata_path) if metadata_path else None
+        ),
         "replace_scorer": replace_scorer,
         "edits": edits,
     }
@@ -316,6 +361,37 @@ def setup_authoring_signature(
         default=str,
     ).encode()
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _strategy_name(strategy: object) -> str:
+    """Return the CLI strategy name represented by one strategy config."""
+    kind = getattr(strategy, "kind", None)
+    if kind == "optuna":
+        sampler = getattr(strategy, "sampler", None)
+        return str(sampler or "tpe")
+    return str(kind or "")
+
+
+def authored_spec_launch_defaults(path: Path) -> dict[str, object]:
+    """Return non-secret Run control defaults from an authored spec."""
+    from phenotypic.tune import TuningSpec
+
+    spec = TuningSpec.model_validate_json(path.read_text(encoding="utf-8"))
+    strategy = spec.strategy
+    return {
+        "strategy": _strategy_name(strategy),
+        "n_trials": getattr(strategy, "n_trials", None),
+        "seed": getattr(strategy, "seed", None),
+        "has_spec_storage": bool(getattr(strategy, "storage_url", None)),
+    }
+
+
+def _descriptor_launch_defaults(descriptor: object) -> dict[str, object]:
+    """Return validated launch-default metadata from an authored descriptor."""
+    if not isinstance(descriptor, dict):
+        return {}
+    defaults = descriptor.get("launch_defaults")
+    return dict(defaults) if isinstance(defaults, dict) else {}
 
 
 def _path_from_resolution_store(value: object) -> str | None:
@@ -406,13 +482,19 @@ def _build_command_from_controls(
         setup_signature=setup_signature,
     )
     issues: list[str] = []
+    defaults = _descriptor_launch_defaults(authored_descriptor)
+    default_strategy = str(defaults.get("strategy") or "")
+    default_trials = defaults.get("n_trials")
+    selected_strategy = (strategy or "").strip()
     spec_issue = spec_path_issue(spec_path)
     if spec_issue is not None:
         issues.append(spec_issue.message)
     elif spec_path is not None:
         try:
             issues.extend(
-                _load_spec_preflight_issues(spec_path, strategy or "tpe")
+                _load_spec_preflight_issues(
+                    spec_path, selected_strategy or default_strategy
+                )
             )
         except Exception:  # noqa: BLE001
             logger.warning("Tune command preflight failed", exc_info=True)
@@ -439,8 +521,20 @@ def _build_command_from_controls(
         normalized_fraction = None
         issues.append("Held-out fraction must be numeric.")
 
+    preserve_strategy = (
+        bool(default_strategy) and selected_strategy == default_strategy
+    )
+    strategy_override = None if preserve_strategy else selected_strategy or None
+    trials_override = (
+        None
+        if preserve_strategy and normalized_trials == default_trials
+        else normalized_trials
+    )
+
     if storage_mode == "environment":
         normalized_storage_mode: StorageMode = "environment"
+    elif storage_mode == "spec":
+        normalized_storage_mode = "spec"
     else:
         normalized_storage_mode = "local"
         if storage_mode not in {None, "local"}:
@@ -450,8 +544,9 @@ def _build_command_from_controls(
         spec_path=spec_path,
         images_dir=images_dir,
         output_dir=output_dir,
-        strategy=strategy or "tpe",
-        n_trials=normalized_trials,
+        strategy=strategy_override,
+        effective_strategy=selected_strategy or default_strategy,
+        n_trials=trials_override,
         storage_mode=normalized_storage_mode,
         storage_local_path=storage_local_path,
         storage_environment_name=storage_environment_name,
@@ -547,11 +642,17 @@ def _load_spec_preflight_issues(spec_path: str, strategy: str) -> list[str]:
     from phenotypic.tune import TuningSpec
 
     spec = TuningSpec.model_validate_json(Path(spec_path).read_text(encoding="utf-8"))
-    return [
+    issues = [
         issue.message
         for issue in preflight_issues(spec.search_space, strategy=strategy)
         if issue.blocks in {"deploy", "both"}
     ]
+    storage_issue = storage_url_preflight_issue(
+        getattr(spec.strategy, "storage_url", None)
+    )
+    if storage_issue is not None:
+        issues.append(storage_issue)
+    return issues
 
 
 def export_monitor_best_pipeline(*, registry: object, run_id: str | None) -> Path:
@@ -1268,6 +1369,11 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
             Output(_nav.destination_button_id(name), "className", allow_duplicate=True)
             for name in _nav.DESTINATIONS
         ],
+        Output(ids.TUNE_RUN_STRATEGY, "value"),
+        Output(ids.TUNE_RUN_N_TRIALS, "value"),
+        Output(ids.TUNE_RUN_STORAGE_MODE, "value"),
+        Output(ids.TUNE_RUN_STORAGE_URL, "value"),
+        Output(ids.TUNE_RUN_STORAGE_ENV, "value"),
         Input(ids.TUNE_SETUP_CONTINUE, "n_clicks"),
         State(ids.TUNE_SETUP_PIPELINE_INPUT, "value"),
         State(ids.TUNE_SETUP_PIPELINE_PICKER_STORE, "data"),
@@ -1309,9 +1415,13 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         tunables: list[object],
     ) -> tuple[object, ...]:
         if not n_clicks:
-            return (no_update,) * 9
+            return (no_update,) * 14
         if sandbox is None:
-            return ("", "Setup authoring requires a sandbox-bound GUI launch.", *([no_update] * 7))
+            return (
+                "",
+                "Setup authoring requires a sandbox-bound GUI launch.",
+                *([no_update] * 12),
+            )
         pipeline = resolve_setup_path(
             sandbox=sandbox,
             kind="pipeline",
@@ -1330,7 +1440,11 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         if pipeline.path is None:
             issues.append("Choose a pipeline or existing tuning spec.")
         if issues:
-            return ("", "\n".join(dict.fromkeys(issues)), *([no_update] * 7))
+            return (
+                "",
+                "\n".join(dict.fromkeys(issues)),
+                *([no_update] * 12),
+            )
         keys = [
             entry.get("key") if isinstance(entry, dict) else None
             for entry in (tunable_ids or [])
@@ -1365,7 +1479,12 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Tune setup authoring failed")
-            return ("", f"Could not author tuning spec: {exc}", *([no_update] * 7))
+            return (
+                "",
+                f"Could not author tuning spec: {exc}",
+                *([no_update] * 12),
+            )
+        launch_defaults = authored_spec_launch_defaults(authored)
         active: _nav.Destination = "run"
         view_classes = [
             _nav.destination_view_class(name, active) for name in _nav.DESTINATIONS
@@ -1380,11 +1499,17 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
                 metadata_path=str(metadata.path) if metadata.path else None,
                 replace_scorer=replace,
                 setup_signature=setup_signature,
+                launch_defaults=launch_defaults,
             ),
             f"Authored tuning spec: {authored}",
             active,
             *view_classes,
             *button_classes,
+            launch_defaults["strategy"],
+            launch_defaults["n_trials"],
+            "spec",
+            "",
+            DEFAULT_STORAGE_ENV,
         )
 
     @app.callback(

@@ -1,6 +1,8 @@
 """Pure path resolution and atomic Setup authoring for Tune."""
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -80,6 +82,45 @@ def _safe_stem(path: Path) -> str:
     """Return a filesystem-safe stem for a GUI-authored spec."""
     stem = _SAFE_STEM.sub("-", path.stem).strip(".-")
     return stem or "tuning-spec"
+
+
+def path_content_fingerprint(path: Path | None) -> str:
+    """Return a canonical path-and-content identity without exposing content.
+
+    Args:
+        path: File to identify, or ``None`` for an unset optional input.
+
+    Returns:
+        A SHA-256 digest over the canonical path and current file bytes. Missing
+        and unreadable paths receive stable sentinel identities.
+    """
+    if path is None:
+        return hashlib.sha256(b"unset").hexdigest()
+    try:
+        canonical = path.expanduser().resolve(strict=False)
+    except OSError:
+        canonical = path.expanduser().absolute()
+    try:
+        content = canonical.read_bytes()
+        state = b"file"
+    except OSError:
+        content = b""
+        state = b"unavailable"
+    digest = hashlib.sha256()
+    digest.update(state)
+    digest.update(b"\0")
+    digest.update(str(canonical).encode("utf-8", errors="surrogateescape"))
+    digest.update(b"\0")
+    digest.update(content)
+    return digest.hexdigest()
+
+
+def authored_content_fingerprint(path: Path) -> str:
+    """Return the SHA-256 digest of one authored spec's current bytes."""
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return ""
 
 
 def load_pipeline_or_spec(path: Path) -> ImagePipeline | TuningSpec:
@@ -191,30 +232,38 @@ def resolve_setup_path(
         if shared is not None:
             return SetupPathResolution(shared, "shared")
     else:
-        candidates: list[str] = []
-        if isinstance(shared_payload, str):
-            candidates.append(shared_payload)
-        elif isinstance(shared_payload, dict):
-            for key in ("relative_path", "path", "abs_path"):
-                value = shared_payload.get(key)
-                if isinstance(value, str) and value:
-                    candidates.append(value)
-                    break
-        for candidate in candidates:
-            resolution = _candidate_path(
-                sandbox, candidate, kind=kind, source="shared"
-            )
-            if not resolution.issues:
-                return resolution
+        shared = resolve_picker_payload(sandbox, shared_payload, kind="pipeline")
+        if shared is not None:
+            return SetupPathResolution(shared, "shared")
 
     return SetupPathResolution(None, "unset")
 
 
-def authored_setup_spec_path(*, sandbox_root: Path, source_path: Path) -> Path:
-    """Return the GUI preset path for a spec authored from ``source_path``."""
+def authored_setup_spec_path(
+    *,
+    sandbox_root: Path,
+    source_path: Path,
+    metadata_path: Path | None = None,
+    authored_content: str = "",
+) -> Path:
+    """Return a collision-safe GUI preset path for one authored spec.
+
+    The readable source stem is only a label. The digest also binds the
+    canonical source and metadata identities plus the exact authored content,
+    so equal stems in different directories and changed inputs cannot alias.
+    """
+    identity = {
+        "source": path_content_fingerprint(source_path),
+        "metadata": path_content_fingerprint(metadata_path),
+        "authored": hashlib.sha256(authored_content.encode("utf-8")).hexdigest(),
+    }
+    encoded = json.dumps(identity, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
+    suffix = hashlib.sha256(encoded).hexdigest()[:20]
     return (
         tune_presets_dir(sandbox_root)
-        / f"{_safe_stem(source_path)}.setup.json.pht-tune"
+        / f"{_safe_stem(source_path)}-{suffix}.setup.json.pht-tune"
     )
 
 
@@ -324,11 +373,14 @@ def write_authored_setup_spec(
     )
     if not result.is_valid or result.spec is None:
         raise ValueError("\n".join(result.issues))
+    authored_content = result.spec.model_dump_json(indent=2)
     target = authored_setup_spec_path(
         sandbox_root=sandbox_root,
         source_path=pipeline_or_spec_path,
+        metadata_path=metadata_path,
+        authored_content=authored_content,
     )
-    atomic_write_text(target, result.spec.model_dump_json(indent=2))
+    atomic_write_text(target, authored_content)
     return target
 
 
@@ -336,9 +388,11 @@ __all__ = [
     "SetupAuthoringResult",
     "SetupPathPayload",
     "SetupPathResolution",
+    "authored_content_fingerprint",
     "authored_setup_spec_path",
     "build_authored_setup_spec",
     "load_pipeline_or_spec",
+    "path_content_fingerprint",
     "resolve_picker_payload",
     "resolve_setup_path",
     "setup_path_payload",

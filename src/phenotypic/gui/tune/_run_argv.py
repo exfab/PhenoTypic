@@ -10,7 +10,7 @@ def tune_run_tail(
     spec_path: str,
     images_dir: str,
     output_dir: str,
-    strategy: str,
+    strategy: str | None,
     n_trials: int | None,
     storage_url: str | None,
     n_workers: int | None,
@@ -28,7 +28,8 @@ def tune_run_tail(
         spec_path: Tuning spec path passed as the ``run`` positional argument.
         images_dir: Image directory passed to ``-i``.
         output_dir: Output directory passed to ``-o``.
-        strategy: CLI ``--strategy`` override.
+        strategy: Optional CLI ``--strategy`` override. ``None`` preserves the
+            strategy, seed, and storage configured in the tuning spec.
         n_trials: Trial budget, omitted for exhaustive grid search.
         storage_url: Optional Optuna storage URL.
         n_workers: Optional SLURM worker count.
@@ -44,7 +45,7 @@ def tune_run_tail(
         Tokens beginning with the ``run`` subcommand.
 
     Raises:
-        ValueError: If a required path or strategy is empty.
+        ValueError: If a required path is empty.
     """
     missing = [
         name
@@ -52,7 +53,6 @@ def tune_run_tail(
             ("spec_path", spec_path),
             ("images_dir", images_dir),
             ("output_dir", output_dir),
-            ("strategy", strategy),
         )
         if not value
     ]
@@ -68,9 +68,9 @@ def tune_run_tail(
         images_dir,
         "-o",
         output_dir,
-        "--strategy",
-        strategy,
     ]
+    if strategy:
+        tail += ["--strategy", strategy]
     if n_trials is not None and strategy != "grid":
         tail += ["--n-trials", str(n_trials)]
     if storage_url:
@@ -108,7 +108,7 @@ def tune_run_argv(
     spec_path: str,
     images_dir: str,
     output_dir: str,
-    strategy: str,
+    strategy: str | None,
     n_trials: int | None,
     storage_url: str | None,
     n_workers: int | None,

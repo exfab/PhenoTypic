@@ -246,7 +246,7 @@ def test_validated_command_owns_actual_display_and_portable_tokens(
     from phenotypic.gui.tune._command import build_tune_command
 
     sandbox, spec, images, output = _command_paths(tmp_path)
-    secret = "postgresql+psycopg://user:password@db/tune"
+    storage = "postgresql+psycopg://user@db/tune"
     command = build_tune_command(
         sandbox=sandbox,
         spec_path=str(spec),
@@ -256,7 +256,7 @@ def test_validated_command_owns_actual_display_and_portable_tokens(
         n_trials=9,
         storage_mode="environment",
         storage_environment_name="PHENOTYPIC_STORAGE_URL",
-        environ={"PHENOTYPIC_STORAGE_URL": secret},
+        environ={"PHENOTYPIC_STORAGE_URL": storage},
     )
 
     assert command.deploy_eligible is True
@@ -271,12 +271,51 @@ def test_validated_command_owns_actual_display_and_portable_tokens(
         "phenotypic.tune",
     )
     assert command.portable_tokens[5:] == command.display_tokens[3:]
-    assert secret in command.argv
-    assert secret not in command.display_command()
-    assert secret not in command.portable_command()
-    assert secret not in repr(command)
+    assert storage in command.argv
+    assert storage not in command.display_command()
+    assert storage not in command.portable_command()
+    assert storage not in repr(command)
     assert "$PHENOTYPIC_STORAGE_URL" in command.display_command()
     assert "$PHENOTYPIC_STORAGE_URL" in command.portable_command()
+    assert command.display_tokens[3:] == tuple(
+        "$PHENOTYPIC_STORAGE_URL" if token == storage else token
+        for token in command.semantic_tail
+    )
+
+
+def test_inline_password_environment_storage_is_rejected_without_disclosure(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.tune._command import build_tune_command
+
+    sandbox, spec, images, output = _command_paths(tmp_path)
+    password = "do-not-disclose"
+    storage = f"postgresql+psycopg://user:{password}@db/tune"
+    command = build_tune_command(
+        sandbox=sandbox,
+        spec_path=str(spec),
+        images_dir=str(images),
+        output_dir=str(output),
+        strategy="tpe",
+        n_trials=9,
+        storage_mode="environment",
+        storage_environment_name="PHENOTYPIC_STORAGE_URL",
+        environ={"PHENOTYPIC_STORAGE_URL": storage},
+    )
+
+    combined = " ".join(
+        [
+            *command.issues,
+            command.display_command(),
+            command.portable_command(),
+            repr(command),
+            *command.argv,
+        ]
+    )
+    assert command.deploy_eligible is False
+    assert command.argv == ()
+    assert "inline password" in combined
+    assert password not in combined
 
 
 def test_validated_command_disables_copy_for_missing_images_and_env(

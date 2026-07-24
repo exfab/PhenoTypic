@@ -383,13 +383,17 @@ def build_run_view_placeholder() -> html.Div:
                     dcc.RadioItems(
                         id=ids.TUNE_RUN_STORAGE_MODE,
                         options=[
+                            {
+                                "label": "Use authored spec/default",
+                                "value": "spec",
+                            },
                             {"label": "Local SQLite", "value": "local"},
                             {
                                 "label": "Server environment variable",
                                 "value": "environment",
                             },
                         ],
-                        value="local",
+                        value="spec",
                         inline=True,
                     ),
                     dcc.Input(

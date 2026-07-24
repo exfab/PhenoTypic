@@ -7,6 +7,7 @@ import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Mapping, Sequence
+from urllib.parse import urlsplit
 
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.tune._run_argv import (
@@ -17,11 +18,15 @@ from phenotypic.gui.tune._run_argv import (
 from phenotypic.tune.strategy._config import STRATEGY_CHOICES
 
 ExecutionTarget = Literal["local", "slurm"]
-StorageMode = Literal["local", "environment"]
+StorageMode = Literal["spec", "local", "environment"]
 
 DEFAULT_STORAGE_ENV = "PHENOTYPIC_STORAGE_URL"
 _ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _PORTABLE_PREFIX = ("uv", "run", "python", "-m", "phenotypic.tune")
+_INLINE_PASSWORD_ISSUE = (
+    "The configured storage URL embeds an inline password. "
+    "Use ~/.pgpass or PGPASSWORD instead."
+)
 
 
 @dataclass(frozen=True)
@@ -55,6 +60,17 @@ class ValidatedTuneCommand:
     def portable_command(self) -> str:
         """Return the redacted portable project command."""
         return render_tokens(self.portable_tokens, preserve_env_refs=True)
+
+
+def storage_url_preflight_issue(value: str | None) -> str | None:
+    """Return a credential-safe issue for an inline-password URL."""
+    if not value:
+        return None
+    try:
+        has_password = urlsplit(value).password is not None
+    except ValueError:
+        return None
+    return _INLINE_PASSWORD_ISSUE if has_password else None
 
 
 def _resolve_existing(
@@ -103,6 +119,8 @@ def _storage_tokens(
     environ: Mapping[str, str],
 ) -> tuple[str | None, str | None, list[str]]:
     """Return actual/redacted storage values without exposing credentials."""
+    if mode == "spec":
+        return None, None, []
     if mode == "local":
         if not local_path or not local_path.strip():
             return None, None, []
@@ -123,6 +141,9 @@ def _storage_tokens(
         return None, f"${name}", [
             f"Server environment variable {name} is not configured."
         ]
+    credential_issue = storage_url_preflight_issue(value)
+    if credential_issue is not None:
+        return None, f"${name}", [credential_issue]
     return value, f"${name}", []
 
 
@@ -134,6 +155,7 @@ def build_tune_command(
     output_dir: str | None,
     strategy: str | None,
     n_trials: int | None,
+    effective_strategy: str | None = None,
     storage_mode: StorageMode = "local",
     storage_local_path: str | None = None,
     storage_environment_name: str | None = DEFAULT_STORAGE_ENV,
@@ -155,9 +177,12 @@ def build_tune_command(
         spec_path: Authored tuning spec.
         images_dir: Calibration image directory.
         output_dir: Tune output directory, which may not exist yet.
-        strategy: Search strategy passed to the CLI.
+        strategy: Optional search-strategy CLI override.
+        effective_strategy: Strategy selected by the authored spec when no
+            override is needed. Used only for validation.
         n_trials: Optional non-grid trial budget.
-        storage_mode: Local SQLite path or server environment variable.
+        storage_mode: Authored-spec storage, a local SQLite path, or a server
+            environment variable.
         storage_local_path: SQLite database path in local mode.
         storage_environment_name: Name only, never a credential value.
         n_workers: Optional worker count.
@@ -186,11 +211,18 @@ def build_tune_command(
     resolved_output, path_issues = _resolve_output(sandbox, output_dir)
     issues.extend(path_issues)
 
-    normalized_strategy = (strategy or "").strip()
-    if not normalized_strategy:
+    normalized_strategy = (strategy or "").strip() or None
+    normalized_effective_strategy = (
+        (effective_strategy or "").strip() or normalized_strategy
+    )
+    if not normalized_effective_strategy:
         issues.append("Choose a tuning strategy.")
-    elif normalized_strategy not in STRATEGY_CHOICES:
-        issues.append(f"Unknown tuning strategy: {normalized_strategy}")
+    elif normalized_effective_strategy not in STRATEGY_CHOICES:
+        issues.append(
+            f"Unknown tuning strategy: {normalized_effective_strategy}"
+        )
+    if normalized_strategy and normalized_strategy not in STRATEGY_CHOICES:
+        issues.append(f"Unknown tuning strategy override: {normalized_strategy}")
     if n_trials is not None and n_trials <= 0:
         issues.append("Trial budget must be positive.")
     if n_workers is not None and n_workers <= 0:
@@ -198,7 +230,7 @@ def build_tune_command(
     if held_out_fraction is not None and not 0 <= held_out_fraction <= 1:
         issues.append("Held-out fraction must be between 0 and 1.")
 
-    if storage_mode not in {"local", "environment"}:
+    if storage_mode not in {"spec", "local", "environment"}:
         actual_storage = None
         redacted_storage = None
         issues.append("Choose a valid storage mode.")
@@ -218,7 +250,7 @@ def build_tune_command(
         resolved_spec is not None
         and resolved_images is not None
         and resolved_output is not None
-        and normalized_strategy
+        and normalized_effective_strategy
     ):
         semantic_tail = tune_run_tail(
             spec_path=str(resolved_spec),
@@ -343,4 +375,5 @@ __all__ = [
     "build_tune_command",
     "render_launch_command",
     "render_tokens",
+    "storage_url_preflight_issue",
 ]

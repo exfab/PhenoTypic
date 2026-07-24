@@ -8,8 +8,11 @@ from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.tune import _ids as ids
 from phenotypic.gui.tune import create_app
 from phenotypic.gui.tune._callbacks import (
+    _build_command_from_controls,
     active_authored_spec_path,
+    authored_spec_launch_defaults,
     authored_spec_descriptor,
+    setup_authoring_signature,
     setup_gate_state,
     setup_pipeline_path_from_sources,
 )
@@ -17,6 +20,13 @@ from phenotypic.gui.tune._nav import destination_view_id
 from phenotypic.gui.tune._run_root import TuneRunRoot
 from phenotypic.sdk_ import trials_parquet_path
 from phenotypic.tune._study_store import JournalStudyStore, Trial
+from phenotypic import ImagePipeline
+from phenotypic.analysis import ExpectedVsDetectedCount
+from phenotypic.detect import OtsuDetector
+from phenotypic.enhance import GaussianBlur
+from phenotypic.tune import Budget, Evaluator, TuningSpec, infer_search_space
+from phenotypic.tune.score import QCScorer
+from phenotypic.tune.strategy import RandomConfig
 
 
 def _walk(component):
@@ -184,6 +194,179 @@ def test_authored_spec_descriptor_invalidates_when_setup_inputs_change():
         pipeline_path="/root/a.json.pht-pipe",
         metadata_path="/root/layout.csv",
         setup_signature="edited",
+    ) is None
+
+
+def test_existing_spec_controls_preserve_seed_budget_and_storage(
+    tmp_path: Path,
+) -> None:
+    metadata = tmp_path / "layout.csv"
+    metadata.write_text(
+        "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
+        encoding="utf-8",
+    )
+    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    original = TuningSpec(
+        pipeline=pipeline,
+        search_space=infer_search_space(pipeline).to_search_space(),
+        scorer=QCScorer(
+            check=ExpectedVsDetectedCount(
+                metadata=str(metadata),
+                groupby=["MetadataImage_ImageName"],
+            )
+        ),
+        evaluator=Evaluator(),
+        strategy=RandomConfig(seed=71, n_trials=13),
+        budget=Budget(n_trials=11, max_failures=2),
+    )
+    authored = tmp_path / "existing.json.pht-tune"
+    authored.write_text(original.model_dump_json(), encoding="utf-8")
+    signature = setup_authoring_signature(
+        pipeline_path=str(authored),
+        metadata_path=None,
+        replace_scorer=False,
+        edits={},
+    )
+    defaults = authored_spec_launch_defaults(authored)
+    descriptor = authored_spec_descriptor(
+        path=str(authored),
+        pipeline_path=str(authored),
+        metadata_path=None,
+        setup_signature=signature,
+        launch_defaults=defaults,
+    )
+    images = tmp_path / "plate images"
+    images.mkdir()
+    output = tmp_path / "tune output"
+    command = _build_command_from_controls(
+        sandbox=SandboxRoot.from_path(tmp_path),
+        authored_descriptor=descriptor,
+        pipeline_store={"path": str(authored), "issues": []},
+        metadata_store={"path": None, "issues": []},
+        replace_values=[],
+        setup_signature=signature,
+        shared_source=None,
+        images_override=str(images),
+        output_dir=str(output),
+        strategy="random",
+        n_trials=13,
+        storage_mode="spec",
+        storage_local_path=None,
+        storage_environment_name=None,
+        n_workers=None,
+        slurm_partition=None,
+        slurm_mem=None,
+        slurm_time=None,
+        held_out_fraction=None,
+        cv_group=None,
+        mode="local",
+        screen_values=[],
+    )
+
+    assert command.issues == ()
+    assert "--strategy" not in command.semantic_tail
+    assert "--n-trials" not in command.semantic_tail
+    assert "--storage-url" not in command.semantic_tail
+    reloaded = TuningSpec.model_validate_json(authored.read_text(encoding="utf-8"))
+    assert reloaded.strategy == original.strategy
+    assert reloaded.budget == original.budget
+
+
+def test_existing_spec_trial_override_preserves_authored_strategy(
+    tmp_path: Path,
+) -> None:
+    metadata = tmp_path / "layout.csv"
+    metadata.write_text(
+        "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
+        encoding="utf-8",
+    )
+    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    original = TuningSpec(
+        pipeline=pipeline,
+        search_space=infer_search_space(pipeline).to_search_space(),
+        scorer=QCScorer(
+            check=ExpectedVsDetectedCount(
+                metadata=str(metadata),
+                groupby=["MetadataImage_ImageName"],
+            )
+        ),
+        evaluator=Evaluator(),
+        strategy=RandomConfig(seed=71, n_trials=13),
+        budget=Budget(n_trials=13),
+    )
+    authored = tmp_path / "existing.json.pht-tune"
+    authored.write_text(original.model_dump_json(), encoding="utf-8")
+    signature = setup_authoring_signature(
+        pipeline_path=str(authored),
+        metadata_path=None,
+        replace_scorer=False,
+        edits={},
+    )
+    descriptor = authored_spec_descriptor(
+        path=str(authored),
+        pipeline_path=str(authored),
+        metadata_path=None,
+        setup_signature=signature,
+        launch_defaults=authored_spec_launch_defaults(authored),
+    )
+    images = tmp_path / "images"
+    images.mkdir()
+    command = _build_command_from_controls(
+        sandbox=SandboxRoot.from_path(tmp_path),
+        authored_descriptor=descriptor,
+        pipeline_store={"path": str(authored), "issues": []},
+        metadata_store={"path": None, "issues": []},
+        replace_values=[],
+        setup_signature=signature,
+        shared_source=None,
+        images_override=str(images),
+        output_dir=str(tmp_path / "output"),
+        strategy="random",
+        n_trials=21,
+        storage_mode="spec",
+        storage_local_path=None,
+        storage_environment_name=None,
+        n_workers=None,
+        slurm_partition=None,
+        slurm_mem=None,
+        slurm_time=None,
+        held_out_fraction=None,
+        cv_group=None,
+        mode="local",
+        screen_values=[],
+    )
+
+    assert command.issues == ()
+    assert "--strategy" not in command.semantic_tail
+    assert command.semantic_tail[-2:] == ("--n-trials", "21")
+    reloaded = TuningSpec.model_validate_json(authored.read_text(encoding="utf-8"))
+    assert reloaded.strategy.seed == 71
+
+
+def test_descriptor_invalidates_when_authored_content_changes(tmp_path: Path):
+    source = tmp_path / "pipeline.json.pht-pipe"
+    source.write_text(ImagePipeline(ops=[]).to_json(), encoding="utf-8")
+    authored = tmp_path / "authored.json.pht-tune"
+    authored.write_text("first", encoding="utf-8")
+    signature = setup_authoring_signature(
+        pipeline_path=str(source),
+        metadata_path=None,
+        replace_scorer=False,
+        edits={},
+    )
+    descriptor = authored_spec_descriptor(
+        path=str(authored),
+        pipeline_path=str(source),
+        metadata_path=None,
+        setup_signature=signature,
+    )
+    authored.write_text("second", encoding="utf-8")
+
+    assert active_authored_spec_path(
+        descriptor,
+        pipeline_path=str(source),
+        metadata_path=None,
+        setup_signature=signature,
     ) is None
 
 

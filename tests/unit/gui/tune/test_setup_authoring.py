@@ -8,6 +8,7 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.tune._setup_authoring import (
+    authored_content_fingerprint,
     build_authored_setup_spec,
     resolve_setup_path,
     setup_path_payload,
@@ -195,12 +196,14 @@ def test_setup_path_precedence_and_same_path_reselection(tmp_path: Path):
     assert second_payload is not None
     assert first_payload["selected_at"] != second_payload["selected_at"]
 
+    stale_shared = dict(setup_path_payload(sandbox, shared, kind="pipeline") or {})
+    stale_shared["sandbox_fingerprint"] = "stale-sandbox"
     typed_resolution = resolve_setup_path(
         sandbox=sandbox,
         kind="pipeline",
         typed_path=str(typed),
         picker_payload=first_payload,
-        shared_payload=str(shared),
+        shared_payload=stale_shared,
     )
     assert typed_resolution.path == typed
     assert typed_resolution.source == "typed"
@@ -214,3 +217,54 @@ def test_setup_path_precedence_and_same_path_reselection(tmp_path: Path):
     )
     assert picker_resolution.path == picked
     assert picker_resolution.source == "picker"
+
+    shared_payload = setup_path_payload(sandbox, shared, kind="pipeline")
+    shared_resolution = resolve_setup_path(
+        sandbox=sandbox,
+        kind="pipeline",
+        typed_path="",
+        picker_payload=None,
+        shared_payload=shared_payload,
+    )
+    assert shared_resolution.path == shared
+    assert shared_resolution.source == "shared"
+
+    stale_resolution = resolve_setup_path(
+        sandbox=sandbox,
+        kind="pipeline",
+        typed_path="",
+        picker_payload=None,
+        shared_payload=stale_shared,
+    )
+    assert stale_resolution.path is None
+    assert stale_resolution.source == "unset"
+
+
+def test_authored_targets_and_descriptors_bind_content_not_only_stem(
+    tmp_path: Path,
+) -> None:
+    first_dir = tmp_path / "first"
+    second_dir = tmp_path / "second"
+    first_dir.mkdir()
+    second_dir.mkdir()
+    metadata = _metadata(tmp_path / "layout.csv")
+    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    first = first_dir / "pipeline.json.pht-pipe"
+    second = second_dir / "pipeline.json.pht-pipe"
+    first.write_text(pipeline.to_json(), encoding="utf-8")
+    second.write_text(pipeline.to_json(), encoding="utf-8")
+
+    first_authored = write_authored_setup_spec(
+        sandbox_root=tmp_path,
+        pipeline_or_spec_path=first,
+        metadata_path=metadata,
+    )
+    second_authored = write_authored_setup_spec(
+        sandbox_root=tmp_path,
+        pipeline_or_spec_path=second,
+        metadata_path=metadata,
+    )
+
+    assert first_authored != second_authored
+    assert first_authored.name.startswith("pipeline.json-")
+    assert authored_content_fingerprint(first_authored)
