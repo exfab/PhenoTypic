@@ -56,6 +56,16 @@ def _historical_output_pipeline(tmp_path: Path) -> Path:
     return target
 
 
+def _historical_legacy_output_pipeline(tmp_path: Path) -> Path:
+    """Write the historical fixture at the V1 output pipeline location."""
+    source = _historical_pipeline(tmp_path)
+    target = tmp_path / "deliverables" / "pipeline.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    (target.parent / "master_measurements.parquet").write_bytes(b"fixture")
+    source.replace(target)
+    return target
+
+
 def test_preflight_maps_exact_historical_grid_shape_without_writes(
     tmp_path: Path,
 ) -> None:
@@ -352,6 +362,68 @@ def test_cli_writer_generation_cannot_be_overwritten_by_migration(
 
     assert pipeline.read_text(encoding="utf-8") == ordinary.to_json()
     assert not (pipeline.parent / ".migration_backups").exists()
+
+
+def test_legacy_migration_serializes_with_typed_cli_writer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A V1 migration re-resolves after a waiting V2 writer publishes."""
+    legacy_pipeline = _historical_legacy_output_pipeline(tmp_path)
+    report = preflight_output_compatibility(legacy_pipeline)
+    typed_pipeline = pipeline_json_path(tmp_path)
+    writer_holds_lock = Event()
+    release_writer = Event()
+    migration_attempted_lock = Event()
+    real_atomic_write = _cli_output_manager.atomic_write_with_writer
+    real_migration_lock = _compatibility.pipeline_publication_lock
+
+    def _blocked_cli_write(path, writer):
+        writer_holds_lock.set()
+        assert release_writer.wait(timeout=5)
+        return real_atomic_write(path, writer)
+
+    @contextmanager
+    def _observed_migration_lock(path):
+        migration_attempted_lock.set()
+        with real_migration_lock(path):
+            yield
+
+    monkeypatch.setattr(
+        _cli_output_manager,
+        "atomic_write_with_writer",
+        _blocked_cli_write,
+    )
+    monkeypatch.setattr(
+        _compatibility,
+        "pipeline_publication_lock",
+        _observed_migration_lock,
+    )
+    ordinary = ImagePipeline(name="typed-writer")
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        writer_future = executor.submit(
+            _cli_output_manager._persist_pipeline_to_output_dir,
+            tmp_path,
+            ordinary,
+        )
+        assert writer_holds_lock.wait(timeout=5)
+        migration_future = executor.submit(
+            migrate_output_recipe,
+            tmp_path,
+            expected_source_fingerprint=report.source_fingerprint,
+        )
+        assert migration_attempted_lock.wait(timeout=5)
+        assert not migration_future.done()
+        release_writer.set()
+
+        assert writer_future.result(timeout=5) == typed_pipeline
+        with pytest.raises(CompatibilityMigrationError, match="changed"):
+            migration_future.result(timeout=5)
+
+    assert typed_pipeline.read_text(encoding="utf-8") == ordinary.to_json()
+    assert preflight_output_compatibility(legacy_pipeline).status == "migratable"
+    assert not (legacy_pipeline.parent / ".migration_backups").exists()
 
 
 def test_receipt_rollback_cannot_overwrite_waiting_cli_writer(

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -509,6 +511,29 @@ def sandbox_viewer_cache_root(sandbox_root: Path) -> Path:
         / SANDBOX_GUI_DIRNAME
         / _EXTERNAL_VIEWER_CACHE_SUBDIR
     )
+
+
+def user_viewer_cache_root() -> Path:
+    """Return the deterministic per-user cache owner for standalone apps.
+
+    The path is pure and is not created here. Linux honors
+    ``XDG_CACHE_HOME``; Windows honors ``LOCALAPPDATA``; macOS follows its
+    standard ``~/Library/Caches`` location. The fallback remains in the
+    user's cache area and never depends on the selected output directory.
+    """
+    home = Path.home()
+    if sys.platform == "win32":
+        base = Path(
+            os.environ.get(
+                "LOCALAPPDATA",
+                str(home / "AppData" / "Local"),
+            )
+        )
+    elif sys.platform == "darwin":
+        base = home / "Library" / "Caches"
+    else:
+        base = Path(os.environ.get("XDG_CACHE_HOME", str(home / ".cache")))
+    return base / "phenotypic" / "gui" / _EXTERNAL_VIEWER_CACHE_SUBDIR
 
 
 def _snapshot_fingerprints(

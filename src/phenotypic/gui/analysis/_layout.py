@@ -316,13 +316,12 @@ def _build_stale_banner() -> html.Div:
 
 
 def _build_load_warnings_banner(recipe: "RecipeState") -> html.Div:
-    """Banner listing analyzer entries dropped during pipeline load.
+    """Banner listing opaque analyzer entries retained during tolerant load.
 
     Renders only when ``recipe.load_warnings`` is non-empty. Each entry
     names the missing class plus its slot (filter vs model) so the user
-    can manually re-add a replacement. The on-disk ``pipeline.json`` is
-    left untouched — any subsequent user-driven save will persist the
-    pruned pipeline.
+    can select a replacement. The exact raw nodes remain on disk and are
+    merged through unrelated saves.
     """
     if not recipe.load_warnings:
         return html.Div(
@@ -344,16 +343,16 @@ def _build_load_warnings_banner(recipe: "RecipeState") -> html.Div:
     ]
     return html.Div(
         [
-            html.Strong("Skipped unknown analyzer entries"),
+            html.Strong("Unavailable analyzer entries"),
             html.Div(
                 [
                     "These classes were referenced in ",
                     html.Code(str(recipe.path)),
                     " but are no longer available in this version of "
-                    "phenotypic. They were dropped from the loaded "
-                    "pipeline; the file on disk is unchanged. Re-add a "
-                    "replacement, or remove the stale entries by saving "
-                    "any edit.",
+                    "phenotypic. They are unavailable in the live editor, "
+                    "but their exact JSON remains on disk and is preserved "
+                    "through unrelated edits. Selecting a live node for the "
+                    "same slot explicitly replaces that opaque entry.",
                 ],
                 style={"marginTop": "0.25rem", "fontSize": "0.9em"},
             ),

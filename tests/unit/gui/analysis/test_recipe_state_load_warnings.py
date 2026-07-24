@@ -9,8 +9,8 @@ contract under test:
    :class:`PipelineLoadWarning` per skipped entry.
 2. ``RecipeState.load`` exposes the warnings via
    :attr:`RecipeState.load_warnings`.
-3. The on-disk JSON is **not** modified by load; only a subsequent
-   explicit save would prune the entries.
+3. The on-disk JSON is **not** modified by load, and an unrelated explicit
+   save preserves every opaque entry.
 4. The banner builder emits a visible div when warnings exist and a
    hidden placeholder otherwise.
 """
@@ -92,7 +92,7 @@ def test_from_json_skip_mode_collects_unknown_analyzers(tmp_path: Path) -> None:
     slots = {w.slot for w in warnings}
     assert slots == {"filter", "model"}
 
-    # On-disk file is untouched -- the user must explicitly save to prune.
+    # On-disk file is untouched.
     assert seed_path.read_bytes() == seed_bytes_before
 
 
@@ -118,6 +118,79 @@ def test_recipe_state_load_records_unknown_analyzer(tmp_path: Path) -> None:
     }
     # Disk artifact must be byte-identical: opening the page is read-only.
     assert seed_path.read_bytes() == seed_bytes_before
+
+
+def test_unrelated_save_preserves_unknown_nodes_in_original_slots(
+    tmp_path: Path,
+) -> None:
+    """A name edit cannot serialize only the successfully loaded subset."""
+    seed_path = _write_pipeline_with_unknown_classes(tmp_path)
+    original = json.loads(seed_path.read_text(encoding="utf-8"))
+    original["extension_state"] = {
+        "future_schema": ["kept", {"exact": True}]
+    }
+    seed_path.write_text(json.dumps(original, indent=2), encoding="utf-8")
+    state = RecipeState.load(tmp_path)
+
+    state.pipeline.name = "edited-name"
+    assert state.save() is True
+
+    saved = json.loads(seed_path.read_text(encoding="utf-8"))
+    assert saved["name"] == "edited-name"
+    assert list(saved["filters"]) == ["edge", "stale_filter"]
+    assert saved["filters"]["stale_filter"] == (
+        original["filters"]["stale_filter"]
+    )
+    assert saved["model"] == original["model"]
+    assert saved["extension_state"] == original["extension_state"]
+    assert json.loads(state.last_json) == saved
+
+
+def test_known_filter_edit_keeps_opaque_sibling_exactly(
+    tmp_path: Path,
+) -> None:
+    """Editing a live filter merges around its unknown sibling."""
+    from phenotypic.analysis import EdgeCorrector
+
+    seed_path = _write_pipeline_with_unknown_classes(tmp_path)
+    original = json.loads(seed_path.read_text(encoding="utf-8"))
+    state = RecipeState.load(tmp_path)
+    state.pipeline.set_filters({
+        "edge": EdgeCorrector(
+            on="Shape_Area",
+            groupby=["Metadata_Strain"],
+            top_n=7,
+        )
+    })
+
+    assert state.save() is True
+
+    saved = json.loads(seed_path.read_text(encoding="utf-8"))
+    assert saved["filters"]["edge"]["params"]["top_n"] == 7
+    assert saved["filters"]["stale_filter"] == (
+        original["filters"]["stale_filter"]
+    )
+    assert saved["model"] == original["model"]
+
+
+def test_explicit_live_model_replaces_opaque_model_node(tmp_path: Path) -> None:
+    """A known model selection is an explicit replacement, not preservation."""
+    from phenotypic.analysis import LinearLagModel
+
+    seed_path = _write_pipeline_with_unknown_classes(tmp_path)
+    state = RecipeState.load(tmp_path)
+    state.pipeline.set_model(
+        LinearLagModel(
+            on="Shape_Area",
+            groupby=["Metadata_Strain"],
+        )
+    )
+
+    assert state.save() is True
+
+    saved = json.loads(seed_path.read_text(encoding="utf-8"))
+    assert saved["model"]["class"] == "LinearLagModel"
+    assert [warning.slot for warning in state.load_warnings] == ["filter"]
 
 
 def test_recipe_state_load_no_warnings_when_all_classes_resolve(

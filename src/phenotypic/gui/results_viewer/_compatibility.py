@@ -169,6 +169,11 @@ def migrate_output_recipe(
     """
     pipeline_path = _pipeline_path_for(source)
     with pipeline_publication_lock(pipeline_path):
+        # A canonical typed writer may have published while this migration
+        # waited behind a legacy-only output. Re-resolve directory/layout
+        # sources under the shared output-level lock before checking the
+        # caller's generation.
+        pipeline_path = _pipeline_path_for(source)
         return _migrate_output_recipe_locked(
             pipeline_path,
             expected_source_fingerprint=expected_source_fingerprint,

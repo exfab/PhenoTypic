@@ -1425,9 +1425,12 @@ def test_fingerprint_and_migration_paths_are_deterministic(
     assert backup.parent == receipt.parent == tmp_path / ".migration_backups"
     assert "20260723T120000.000000Z" in backup.name
     assert migration_lock_path(config) == (
-        tmp_path / ".pipeline.json.pht-pipe.migration.lock"
+        tmp_path / ".pipeline-config.migration.lock"
     )
     assert pipeline_publication_lock_path(config) == migration_lock_path(config)
+    assert pipeline_publication_lock_path(tmp_path / "pipeline.json") == (
+        migration_lock_path(config)
+    )
     assert generation_staging_path(config, "generation-1").parent == tmp_path
 
 

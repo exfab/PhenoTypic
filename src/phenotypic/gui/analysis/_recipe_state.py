@@ -24,11 +24,13 @@ This module provides:
 
 from __future__ import annotations
 
+import copy
+import json
 import logging
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
 from phenotypic._core._pipeline_parts._serializable_pipeline import (
     PipelineLoadWarning,
@@ -46,6 +48,190 @@ if TYPE_CHECKING:
     from phenotypic.sdk_ import BundleLayout
 
 logger = logging.getLogger(__name__)
+
+_SERIALIZED_PIPELINE_KEYS = frozenset({
+    "version",
+    "name",
+    "desc",
+    "reset",
+    "pipe_cfgs",
+    "meas",
+    "post",
+    "filters",
+    "model",
+    "qc",
+    "plots",
+    "nrows",
+    "ncols",
+})
+
+
+def _merge_named_opaque_nodes(
+    current: object,
+    original: object,
+    opaque_names: set[str],
+    *,
+    identity_key: str | None = None,
+) -> object:
+    """Merge opaque nodes into their original positions.
+
+    Args:
+        current: Newly serialized dict or list.
+        original: Raw dict or list retained from tolerant load.
+        opaque_names: Original keys or identities that must survive.
+        identity_key: List-entry key used as identity, or ``None`` for dicts.
+
+    Returns:
+        A deep-copied collection with current editable nodes and original
+        opaque nodes in their original relative positions.
+    """
+    if identity_key is None:
+        if not isinstance(current, dict) or not isinstance(original, dict):
+            return current
+        merged: dict[str, Any] = {}
+        for name, raw_node in original.items():
+            if name in current:
+                merged[name] = copy.deepcopy(current[name])
+            elif name in opaque_names:
+                merged[name] = copy.deepcopy(raw_node)
+        for name, node in current.items():
+            if name not in merged:
+                merged[name] = copy.deepcopy(node)
+        return merged
+
+    if not isinstance(current, list) or not isinstance(original, list):
+        return current
+    current_by_name = {
+        str(node.get(identity_key)): node
+        for node in current
+        if isinstance(node, dict) and identity_key in node
+    }
+    merged_list: list[Any] = []
+    emitted: set[str] = set()
+    for raw_node in original:
+        if not isinstance(raw_node, dict) or identity_key not in raw_node:
+            continue
+        name = str(raw_node[identity_key])
+        if name in current_by_name:
+            merged_list.append(copy.deepcopy(current_by_name[name]))
+            emitted.add(name)
+        elif name in opaque_names:
+            merged_list.append(copy.deepcopy(raw_node))
+            emitted.add(name)
+    for node in current:
+        if not isinstance(node, dict) or identity_key not in node:
+            merged_list.append(copy.deepcopy(node))
+            continue
+        name = str(node[identity_key])
+        if name not in emitted:
+            merged_list.append(copy.deepcopy(node))
+            emitted.add(name)
+    return merged_list
+
+
+def _merge_opaque_pipeline_payload(
+    current: dict[str, Any],
+    original: dict[str, Any] | None,
+    warnings: List[PipelineLoadWarning],
+) -> dict[str, Any]:
+    """Preserve every tolerantly skipped node during an unrelated save."""
+    if original is None or not warnings:
+        return current
+
+    merged = copy.deepcopy(current)
+    opaque_filters = {w.name for w in warnings if w.slot == "filter"}
+    if opaque_filters:
+        merged["filters"] = _merge_named_opaque_nodes(
+            merged.get("filters", {}),
+            original.get("filters", {}),
+            opaque_filters,
+        )
+
+    if any(w.slot == "model" for w in warnings) and merged.get("model") is None:
+        merged["model"] = copy.deepcopy(original.get("model"))
+
+    opaque_qc = {w.name for w in warnings if w.slot == "qc"}
+    if opaque_qc:
+        merged["qc"] = _merge_named_opaque_nodes(
+            merged.get("qc", []),
+            original.get("qc", []),
+            opaque_qc,
+            identity_key="instance_id",
+        )
+
+    opaque_plot_ids = {w.name for w in warnings if w.slot == "plot"}
+    opaque_refs: set[tuple[str, str | None]] = {
+        ("filters", name) for name in opaque_filters
+    }
+    if any(w.slot == "model" for w in warnings):
+        opaque_refs.add(("model", None))
+    opaque_refs.update(("qc", name) for name in opaque_qc)
+    original_plots = original.get("plots", [])
+    if isinstance(original_plots, list):
+        for node in original_plots:
+            if not isinstance(node, dict):
+                continue
+            ref = node.get("ref")
+            if not isinstance(ref, dict):
+                continue
+            if (ref.get("slot"), ref.get("key")) in opaque_refs:
+                opaque_plot_ids.add(str(node.get("id")))
+    if opaque_plot_ids:
+        merged["plots"] = _merge_named_opaque_nodes(
+            merged.get("plots", []),
+            original_plots,
+            opaque_plot_ids,
+            identity_key="id",
+        )
+
+    # Preserve extension metadata that this version does not own. Known
+    # pipeline sections keep current serialization semantics, including
+    # intentional removal of known nodes.
+    ordered: dict[str, Any] = {}
+    for key, raw_value in original.items():
+        if key in merged:
+            ordered[key] = merged[key]
+        elif key not in _SERIALIZED_PIPELINE_KEYS:
+            ordered[key] = copy.deepcopy(raw_value)
+    for key, value in merged.items():
+        if key not in ordered:
+            ordered[key] = value
+    return ordered
+
+
+def _remaining_opaque_warnings(
+    current: dict[str, Any],
+    warnings: List[PipelineLoadWarning],
+) -> List[PipelineLoadWarning]:
+    """Drop warnings whose slot was explicitly replaced by a live node."""
+    current_filters = current.get("filters", {})
+    filter_names = (
+        set(current_filters) if isinstance(current_filters, dict) else set()
+    )
+    current_qc = current.get("qc", [])
+    qc_names = {
+        str(node.get("instance_id"))
+        for node in current_qc
+        if isinstance(node, dict) and "instance_id" in node
+    } if isinstance(current_qc, list) else set()
+    current_plots = current.get("plots", [])
+    plot_names = {
+        str(node.get("id"))
+        for node in current_plots
+        if isinstance(node, dict) and "id" in node
+    } if isinstance(current_plots, list) else set()
+
+    remaining: List[PipelineLoadWarning] = []
+    for warning in warnings:
+        replaced = (
+            (warning.slot == "filter" and warning.name in filter_names)
+            or (warning.slot == "model" and current.get("model") is not None)
+            or (warning.slot == "qc" and warning.name in qc_names)
+            or (warning.slot == "plot" and warning.name in plot_names)
+        )
+        if not replaced:
+            remaining.append(warning)
+    return remaining
 
 
 @dataclass
@@ -75,9 +261,13 @@ class RecipeState:
     #: class could not be resolved in the live ``phenotypic`` namespace
     #: (typical cause: an analyzer was renamed or removed since the
     #: pipeline was saved). The analysis page renders a banner listing
-    #: these so the user can manually re-add a replacement; the file on
-    #: disk is left untouched until the next user-driven save.
+    #: these so the user can manually select a replacement. Their exact raw
+    #: nodes are retained in :attr:`source_payload` and merged through
+    #: unrelated saves until a live node explicitly replaces the same slot.
     load_warnings: List[PipelineLoadWarning] = field(default_factory=list)
+    #: Exact parsed payload retained across tolerant loading so a scoped
+    #: Analysis edit cannot silently discard unknown analyzer nodes.
+    source_payload: dict[str, Any] | None = field(default=None, repr=False)
     #: Resolved bundle topology this recipe was built from, when constructed
     #: via :meth:`from_layout`. ``None`` for the legacy ``output_dir``-rooted
     #: :meth:`load` path. When set, :meth:`reload` re-resolves through it so a
@@ -169,10 +359,17 @@ class RecipeState:
         from phenotypic._core._image_pipeline import ImagePipeline
 
         load_warnings: List[PipelineLoadWarning] = []
+        source_payload: dict[str, Any] | None = None
+        source_text = ""
 
         if read_path.exists():
+            source_text = read_path.read_text(encoding="utf-8")
+            parsed_payload = json.loads(source_text)
+            if not isinstance(parsed_payload, dict):
+                raise TypeError("pipeline configuration must be a JSON object")
+            source_payload = parsed_payload
             pipeline = ImagePipeline.from_json(
-                read_path,
+                parsed_payload,
                 skip_unknown_analyzers=True,
                 load_warnings=load_warnings,
             )
@@ -197,7 +394,9 @@ class RecipeState:
             pipeline=pipeline,
             seed_mtime_ns=mtime,
             source_path=read_path if read_path != pipeline_path else None,
+            last_json=source_text,
             load_warnings=load_warnings,
+            source_payload=source_payload,
             layout=layout,
         )
 
@@ -257,7 +456,23 @@ class RecipeState:
                     )
                     return False
 
-                payload = self.pipeline.to_json() or ""
+                serialized = json.loads(self.pipeline.to_json() or "{}")
+                if not isinstance(serialized, dict):
+                    logger.warning(
+                        "Refusing to save non-object pipeline payload to %s",
+                        self.path,
+                    )
+                    return False
+                remaining_warnings = _remaining_opaque_warnings(
+                    serialized,
+                    self.load_warnings,
+                )
+                merged = _merge_opaque_pipeline_payload(
+                    serialized,
+                    self.source_payload,
+                    remaining_warnings,
+                )
+                payload = json.dumps(merged, indent=2)
 
                 try:
                     atomic_write_text(self.path, payload)
@@ -272,6 +487,8 @@ class RecipeState:
                 self.seed_mtime_ns = self.path.stat().st_mtime_ns
                 self.source_path = None
                 self.last_json = payload
+                self.source_payload = merged
+                self.load_warnings = remaining_warnings
                 return True
 
     def reload(self) -> None:
@@ -291,3 +508,5 @@ class RecipeState:
             self.seed_mtime_ns = fresh.seed_mtime_ns
             self.source_path = fresh.source_path
             self.load_warnings = fresh.load_warnings
+            self.last_json = fresh.last_json
+            self.source_payload = fresh.source_payload

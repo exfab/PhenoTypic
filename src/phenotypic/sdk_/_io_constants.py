@@ -245,10 +245,14 @@ def pipeline_publication_lock_path(config_path: Path) -> Path:
     is intentionally about publication, not one particular migration, so CLI,
     QC, Analysis, and compatibility writers serialize against each other.
 
-    The historical ``.migration.lock`` basename is retained so a migration
-    from an older process still coordinates with a newer ordinary writer.
+    Legacy ``pipeline.json`` and canonical ``pipeline.json.pht-pipe`` paths
+    intentionally map to the same output-level identity. This prevents a V1
+    reader/writer and a V2 writer from bypassing one another merely because
+    they selected different compatibility filenames.
     """
     config = Path(config_path)
+    if config.name in {PIPELINE_JSON, _LEGACY_PIPELINE_JSON}:
+        return config.parent / ".pipeline-config.migration.lock"
     return config.with_name(f".{config.name}.migration.lock")
 
 

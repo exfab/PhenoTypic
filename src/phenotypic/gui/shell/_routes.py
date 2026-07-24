@@ -276,10 +276,16 @@ def build_sandbox_api(
                 400,
             )
 
-        from phenotypic.gui.results_viewer._output_root import OutputRoot
+        from phenotypic.gui.results_viewer._output_root import (
+            OutputRoot,
+            sandbox_viewer_cache_root,
+        )
 
         try:
-            output_root = OutputRoot.discover(target)
+            output_root = OutputRoot.discover(
+                target,
+                cache_root=sandbox_viewer_cache_root(sandbox.root),
+            )
         except (FileNotFoundError, ValueError) as exc:
             logger.info(
                 "rejected viewer hand-off for %s: %s", target, exc
