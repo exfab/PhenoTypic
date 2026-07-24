@@ -84,7 +84,10 @@ def _write_output_root(tmp_path: Path) -> OutputRoot:
             overlays / f"{stem}.png"
         )
 
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -534,7 +534,10 @@ def output_root(tmp_path: Path) -> OutputRoot:
     PILImage.new("RGB", (100, 100), (255, 0, 0)).save(
         overlay_dir / "img-1.png", format="PNG"
     )
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def test_register_crop_route_serves_centered_png_under_custom_segment(
@@ -694,7 +697,10 @@ def output_root_no_bbox(tmp_path: Path) -> OutputRoot:
     PILImage.new("RGB", (100, 100), (255, 0, 0)).save(
         overlay_dir / "img-1.png", format="PNG"
     )
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def test_register_crop_route_degrades_when_bbox_columns_absent(

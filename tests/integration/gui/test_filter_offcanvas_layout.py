@@ -49,7 +49,10 @@ def _seed_output(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def output_root(tmp_path: Path) -> OutputRoot:
-    return OutputRoot.discover(_seed_output(tmp_path))
+    return OutputRoot.discover(
+        _seed_output(tmp_path),
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def _walk(component: Any) -> Iterator[Any]:

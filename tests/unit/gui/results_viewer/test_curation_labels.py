@@ -494,7 +494,10 @@ def test_curation_writes_into_deliverables_qc_for_standalone(tmp_path: Path):
     df.write_parquet(base / "master_measurements.parquet")
     df.write_parquet(base / "measurements.parquet")
 
-    root = OutputRoot.discover(base)
+    root = OutputRoot.discover(
+        base,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
     labels = CurationLabels.load(root.layout, root.master_df)  # NEW: takes BundleLayout
     labels.mark("img001", 1, "debris")
 

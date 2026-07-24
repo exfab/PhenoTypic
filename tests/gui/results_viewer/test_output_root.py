@@ -19,6 +19,7 @@ from phenotypic.gui.results_viewer._output_root import (
     OutputRoot,
     OutputSnapshotChangedError,
     _all_parse_as_float,
+    sandbox_viewer_cache_root,
 )
 from phenotypic.sdk_ import (
     master_measurements_parquet_path,
@@ -27,6 +28,15 @@ from phenotypic.sdk_ import (
 
 from tests._output_layout import write_pipeline_json
 from phenotypic.schema import METADATA
+
+
+def _discover(root: Path) -> OutputRoot:
+    """Discover with a test-owned cache outside the selected output."""
+    source = Path(root).resolve()
+    return OutputRoot.discover(
+        source,
+        cache_root=source.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def _write_master_parquet(root: Path, df: pl.DataFrame) -> None:
@@ -104,7 +114,7 @@ def test_discover_succeeds_on_well_formed_root(tmp_path: Path) -> None:
     """A complete output dir yields a populated ``OutputRoot``."""
 
     df = _make_minimal_output(tmp_path)
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
 
     assert out.root == tmp_path.resolve()
     assert out.master_df.height == df.height
@@ -121,14 +131,13 @@ def test_external_cache_path_is_pure_and_owned_by_sandbox(
     sandbox = tmp_path / "sandbox"
     _make_minimal_output(source)
 
+    cache_root = sandbox_viewer_cache_root(sandbox)
     out = OutputRoot.discover(
         source,
-        sandbox_root=sandbox,
+        cache_root=cache_root,
     )
 
-    assert out.cache_dir.is_relative_to(
-        sandbox / ".phenotypic-gui" / "viewer_cache"
-    )
+    assert out.cache_dir.is_relative_to(cache_root)
     assert not out.cache_dir.exists()
     assert not (source / ".viewer_cache").exists()
 
@@ -154,7 +163,7 @@ def test_discover_prefers_post_applied_mirror_over_master(
     mirror_path.parent.mkdir(parents=True, exist_ok=True)
     mirror_df.write_parquet(mirror_path)
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert "post_tag" in out.master_df.columns
     assert out.master_df["post_tag"].to_list() == ["tagged", "tagged"]
 
@@ -167,7 +176,7 @@ def test_discover_falls_back_to_master_when_mirror_absent(
     # No measurements.parquet — only master.
     assert not measurements_parquet_path(tmp_path).exists()
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     # Display frame falls back to the clean master.
     assert out.master_df.height == df.height
     assert "post_tag" not in out.master_df.columns
@@ -178,7 +187,7 @@ def test_discover_missing_master_raises(tmp_path: Path) -> None:
 
     _make_minimal_output(tmp_path, write_master=False)
     with pytest.raises(FileNotFoundError) as excinfo:
-        OutputRoot.discover(tmp_path)
+        _discover(tmp_path)
     msg = str(excinfo.value)
     assert "master_measurements.parquet" in msg
     assert "python -m phenotypic" in msg
@@ -198,7 +207,7 @@ def test_discover_without_results_dir_boots_standalone(tmp_path: Path) -> None:
     )
     _write_master_parquet(tmp_path, df)
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.has_results is False
     assert out.hdf_path("d1", "a") is None
     assert "d1" in out.master_df["MetadataExperiment_Dataset"].to_list()
@@ -215,7 +224,7 @@ def test_discover_dataset_from_master_with_empty_results(
     )
     _write_master_parquet(tmp_path, df)
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.image_pairs(out.master_df) == [("d1", "a")]
 
 
@@ -231,7 +240,7 @@ def test_discover_results_with_no_overlays_succeeds(
     _write_master_parquet(tmp_path, df)
 
     with caplog.at_level("WARNING"):
-        out = OutputRoot.discover(tmp_path)
+        out = _discover(tmp_path)
     assert out.master_df.height == 1
     assert any("overlays" in rec.message.lower() for rec in caplog.records)
     assert out.has_overlay("d1", "a") is False
@@ -245,7 +254,7 @@ def test_discover_missing_imagefile_column_raises(tmp_path: Path) -> None:
         tmp_path, pl.DataFrame({"MetadataExperiment_Dataset": ["d1"], "Other": ["x"]})
     )
     with pytest.raises(ValueError) as excinfo:
-        OutputRoot.discover(tmp_path)
+        _discover(tmp_path)
     assert str(METADATA.IMAGE_NAME) in str(excinfo.value)
 
 
@@ -267,7 +276,7 @@ def test_discover_aliases_imagename_when_imagefile_absent(
         ),
     )
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert str(METADATA.IMAGE_NAME) in out.master_df.columns
     assert out.master_df[str(METADATA.IMAGE_NAME)].to_list() == ["a"]
 
@@ -286,7 +295,7 @@ def test_discover_backfills_dataset_from_filesystem(tmp_path: Path) -> None:
         ),
     )
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert "MetadataExperiment_Dataset" in out.master_df.columns
     pairs = out.image_pairs(out.master_df)
     assert pairs == [("d1", "a"), ("d2", "b")]
@@ -305,11 +314,11 @@ def test_legacy_backfill_parquets_are_part_of_snapshot_revision(
         pl.DataFrame({str(METADATA.IMAGE_NAME): ["a"], "Size_Area": [100.0]}),
     )
 
-    output = OutputRoot.discover(tmp_path)
+    output = _discover(tmp_path)
     legacy_parquet.write_bytes(b"second")
 
     assert output.snapshot_is_current() is False
-    refreshed = OutputRoot.discover(tmp_path)
+    refreshed = _discover(tmp_path)
     assert refreshed.source_fingerprint != output.source_fingerprint
 
 
@@ -337,10 +346,86 @@ def test_discover_retries_complete_read_after_snapshot_change(
         _mutate_after_first_fingerprint,
     )
 
-    output = OutputRoot.discover(tmp_path)
+    output = _discover(tmp_path)
 
-    assert calls == 4
+    assert calls == 8
     assert output.snapshot_is_current() is True
+
+
+def test_mutable_viewer_state_does_not_stale_processing_snapshot(
+    tmp_path: Path,
+) -> None:
+    """GUI-owned state is refresh-visible without invalidating image reads."""
+    frame = _make_minimal_output(tmp_path)
+    mirror = measurements_parquet_path(tmp_path)
+    frame.write_parquet(mirror)
+    write_pipeline_json(tmp_path, json.dumps({"name": "first"}))
+
+    output = _discover(tmp_path)
+    first_source = output.source_fingerprint
+    first_consumed = output.consumed_state_fingerprint
+
+    frame.with_columns(pl.lit("changed").alias("Mutable_State")).write_parquet(
+        mirror
+    )
+    output.layout.curation_labels_parquet.parent.mkdir(parents=True, exist_ok=True)
+    output.layout.curation_labels_parquet.write_bytes(b"labels-revision")
+    output.layout.custom_categories_json.write_text(
+        '{"categories": ["debris"]}',
+        encoding="utf-8",
+    )
+    output.layout.qc_duckdb.write_bytes(b"qc-revision")
+    output.layout.qc_review_state_path.write_text(
+        '{"reviewed": ["group-1"]}',
+        encoding="utf-8",
+    )
+    write_pipeline_json(tmp_path, json.dumps({"name": "second"}))
+
+    assert output.snapshot_is_current() is True
+    assert output.refresh_state_is_current() is False
+
+    refreshed = _discover(tmp_path)
+    assert refreshed.source_fingerprint == first_source
+    assert refreshed.consumed_state_fingerprint != first_consumed
+    assert refreshed.cache_dir == output.cache_dir
+    assert refreshed.refresh_state_is_current() is True
+    assert "Mutable_State" in refreshed.master_df.columns
+    assert refreshed.pipeline_summary == "second"
+
+
+def test_discover_retries_when_consumed_state_changes_during_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Refresh never binds Results data to a torn viewer-state revision."""
+    _make_minimal_output(tmp_path)
+    review_state = (
+        tmp_path / "deliverables" / "qc" / "review_state.json"
+    )
+    review_state.parent.mkdir(parents=True)
+    review_state.write_text('{"revision": 1}', encoding="utf-8")
+    real_fingerprint = _output_root.paths_fingerprint
+    calls = 0
+
+    def _mutate_after_first_consumed_fingerprint(paths, *, root=None):
+        nonlocal calls
+        result = real_fingerprint(paths, root=root)
+        calls += 1
+        if calls == 2:
+            review_state.write_text('{"revision": 2}', encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(
+        _output_root,
+        "paths_fingerprint",
+        _mutate_after_first_consumed_fingerprint,
+    )
+
+    output = _discover(tmp_path)
+
+    assert calls == 8
+    assert output.snapshot_is_current() is True
+    assert output.refresh_state_is_current() is True
 
 
 def test_discover_refuses_continuously_changing_snapshot(
@@ -367,14 +452,14 @@ def test_discover_refuses_continuously_changing_snapshot(
     )
 
     with pytest.raises(OutputSnapshotChangedError):
-        OutputRoot.discover(tmp_path)
+        _discover(tmp_path)
 
 
 def test_column_value_sets_are_sorted_unique_str(tmp_path: Path) -> None:
     """``column_value_sets`` casts to str, dedupes, sorts, drops nulls."""
 
     _make_minimal_output(tmp_path)
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
 
     cvs = out.column_value_sets
     assert cvs["MetadataGenetic_Strain"] == ["s1", "s2"]
@@ -389,7 +474,7 @@ def test_column_value_sets_outer_mapping_is_immutable(tmp_path: Path) -> None:
     """The mapping itself rejects ``__setitem__`` (``MappingProxyType``)."""
 
     _make_minimal_output(tmp_path)
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     with pytest.raises(TypeError):
         out.column_value_sets["new_column"] = ["x"]  # type: ignore[index]
 
@@ -398,7 +483,7 @@ def test_overlay_path_returns_expected_absolute_path(tmp_path: Path) -> None:
     """``overlay_path`` resolves to ``<root>/deliverables/overlays/<ds>/<stem>.png``."""
 
     _make_minimal_output(tmp_path)
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     expected = (
         tmp_path.resolve() / "deliverables" / "overlays" / "d1" / "a.png"
     )
@@ -413,7 +498,7 @@ def test_has_overlay_distinguishes_present_and_absent(tmp_path: Path) -> None:
     overlays = tmp_path / "deliverables" / "overlays" / "d1"
     overlays.mkdir(parents=True, exist_ok=True)
     (overlays / "a.png").touch()
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
 
     assert out.has_overlay("d1", "a") is True
     assert out.has_overlay("d1", "b") is False
@@ -423,7 +508,7 @@ def test_image_pairs_returns_sorted_unique_tuples(tmp_path: Path) -> None:
     """``image_pairs`` deduplicates and sorts the (dataset, stem) tuples."""
 
     _make_minimal_output(tmp_path)
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
 
     # Feed a frame with shuffled order and a duplicate row.
     df = pl.DataFrame(
@@ -443,7 +528,7 @@ def test_pipeline_summary_reads_name_from_pipeline_json(
 
     _make_minimal_output(tmp_path)
     write_pipeline_json(tmp_path, json.dumps({"name": "test_pipeline"}))
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.pipeline_summary == "test_pipeline"
 
 
@@ -454,11 +539,11 @@ def test_pipeline_summary_is_none_when_missing_or_malformed(
 
     # Case 1: missing → None.
     _make_minimal_output(tmp_path)
-    assert OutputRoot.discover(tmp_path).pipeline_summary is None
+    assert _discover(tmp_path).pipeline_summary is None
 
     # Case 2: malformed JSON → None (does not raise).
     write_pipeline_json(tmp_path, "{not valid json")
-    assert OutputRoot.discover(tmp_path).pipeline_summary is None
+    assert _discover(tmp_path).pipeline_summary is None
 
     # Case 3: parsed JSON dict with no ``name`` or ``class_name`` field → None.
     # Regression: previously returned the literal string ``"pipeline.json"``
@@ -466,15 +551,28 @@ def test_pipeline_summary_is_none_when_missing_or_malformed(
     # refactor (the agent substituted the constant where the original code
     # likely had ``return None``). Caught by opus review of PR #78.
     write_pipeline_json(tmp_path, json.dumps({"version": "1.0"}))
-    assert OutputRoot.discover(tmp_path).pipeline_summary is None
+    assert _discover(tmp_path).pipeline_summary is None
 
 
 def test_cache_dir_is_not_created_on_discover(tmp_path: Path) -> None:
     """Discovery computes the external path without writing it."""
 
     _make_minimal_output(tmp_path)
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert not out.cache_dir.exists()
+
+
+def test_discover_rejects_cache_root_inside_selected_output(
+    tmp_path: Path,
+) -> None:
+    """A cache-owning caller cannot accidentally mutate the source tree."""
+    _make_minimal_output(tmp_path)
+
+    with pytest.raises(ValueError, match="must be external"):
+        OutputRoot.discover(
+            tmp_path,
+            cache_root=tmp_path / ".phenotypic-gui" / "viewer_cache",
+        )
 
 
 def test_discover_leaves_legacy_qc_and_viewer_sidecar_byte_identical(
@@ -491,7 +589,7 @@ def test_discover_leaves_legacy_qc_and_viewer_sidecar_byte_identical(
     sidecar.write_text('{"version": 1, "checks": []}', encoding="utf-8")
     before = _tree_bytes(source)
 
-    OutputRoot.discover(source, sandbox_root=tmp_path)
+    _discover(source)
 
     assert _tree_bytes(source) == before
 
@@ -521,13 +619,13 @@ def test_column_value_sets_sorts_numeric_columns_numerically(tmp_path) -> None:
     for stem in ("a", "b", "c"):
         (overlays / f"{stem}.png").touch()
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.column_value_sets["MetadataCulture_Time"] == ["1", "2", "10"]
 
 
 def test_column_value_sets_keeps_lexical_for_text_columns(tmp_path) -> None:
     df = _make_minimal_output(tmp_path)  # has Metadata_Strain = s1, s2
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.column_value_sets["MetadataGenetic_Strain"] == sorted(
         df.get_column("MetadataGenetic_Strain").to_list()
     )
@@ -535,7 +633,7 @@ def test_column_value_sets_keeps_lexical_for_text_columns(tmp_path) -> None:
 
 def test_is_numeric_column_true_for_float_measurement(tmp_path) -> None:
     _make_minimal_output(tmp_path)  # Size_Area is Float64
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.is_numeric_column("Size_Area") is True
 
 
@@ -553,12 +651,12 @@ def test_is_numeric_column_true_for_numeric_string_metadata(tmp_path) -> None:
     _write_master_parquet(tmp_path, df)
     for stem in ("a", "b"):
         (overlays / f"{stem}.png").touch()
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.is_numeric_column("MetadataCulture_Time") is True
 
 
 def test_is_numeric_column_false_for_text_and_missing(tmp_path) -> None:
     _make_minimal_output(tmp_path)  # Metadata_Strain = s1, s2
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.is_numeric_column("MetadataGenetic_Strain") is False
     assert out.is_numeric_column("NoSuchColumn") is False

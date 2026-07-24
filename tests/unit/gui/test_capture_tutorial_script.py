@@ -23,7 +23,10 @@ def test_results_timeline_seed_loads_as_current_output(tmp_path, monkeypatch):
     monkeypatch.setattr(capture, "RESULTS_TIMELINE_OUTPUT_DIR", output_dir)
 
     capture._seed_results_timeline_output()
-    root = OutputRoot.discover(output_dir)
+    root = OutputRoot.discover(
+        output_dir,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
 
     assert str(METADATA.IMAGE_NAME) in root.master_df.columns
     assert str(EXPERIMENT_METADATA.DATASET) in root.master_df.columns
@@ -48,7 +51,10 @@ def test_results_timeline_seed_replaces_obsolete_schema(tmp_path, monkeypatch):
     ).write_parquet(master_measurements_parquet_path(output_dir))
 
     capture._seed_results_timeline_output()
-    root = OutputRoot.discover(output_dir)
+    root = OutputRoot.discover(
+        output_dir,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
 
     assert str(METADATA.IMAGE_NAME) in root.master_df.columns
     assert "Metadata_ImageFile" not in root.master_df.columns

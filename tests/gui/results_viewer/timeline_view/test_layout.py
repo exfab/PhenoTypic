@@ -64,7 +64,10 @@ def _root(tmp_path: Path, *, with_time: bool) -> OutputRoot:
     overlays.mkdir(parents=True, exist_ok=True)
     for stem in ("a", "b"):
         PILImage.new("RGB", (40, 30), (1, 2, 3)).save(overlays / f"{stem}.png")
-    return OutputRoot.discover(cli_out)
+    return OutputRoot.discover(
+        cli_out,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
 
 
 def test_layout_mounts_all_focus_navigate_chrome(tmp_path: Path) -> None:

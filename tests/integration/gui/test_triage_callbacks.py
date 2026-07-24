@@ -72,7 +72,10 @@ def output_root(tmp_path: Path) -> OutputRoot:
     for stem in ("img-A", "img-B"):
         PILImage.new("RGB", (64, 64), (128, 128, 128)).save(overlays / f"{stem}.png")
 
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 # ---------------------------------------------------------------------------

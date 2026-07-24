@@ -55,7 +55,10 @@ def app_client(tmp_path: Path):
     )
 
     # 3. Build the app and hand back the Flask test client.
-    output_root = OutputRoot.discover(tmp_path)
+    output_root = OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
     app = create_app(output_root)
     return app.server.test_client()
 

@@ -55,7 +55,10 @@ def output_root(tmp_path: Path) -> OutputRoot:
     write_measurements_mirror(tmp_path, df)
     (tmp_path / "results" / "d").mkdir(parents=True)
     write_pipeline_json(tmp_path, ImagePipeline(name="t"))
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 @pytest.fixture()
@@ -90,7 +93,10 @@ def output_root_with_filter(tmp_path: Path) -> OutputRoot:
         )
     )
     write_pipeline_json(tmp_path, pipeline)
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 class TestSchemaWiredIntoApp:

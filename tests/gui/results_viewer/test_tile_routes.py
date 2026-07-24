@@ -31,6 +31,10 @@ import polars as pl
 import pytest
 
 from phenotypic.gui.results_viewer import _tile_routes
+from phenotypic.gui.results_viewer._curation_labels import (
+    OTHER_CATEGORY,
+    CurationLabels,
+)
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._tile_routes import (
     _OVERLAY_LAYER,
@@ -147,6 +151,8 @@ def client_and_root(tmp_path: Path):
             "MetadataExperiment_Dataset": [dataset],
             str(METADATA.IMAGE_NAME): [stem],
             "Object_Label": [1],
+            "Bbox_CenterRR": [16.0],
+            "Bbox_CenterCC": [16.0],
         }
     )
     write_master(tmp_path, master)
@@ -171,7 +177,10 @@ def client_and_root(tmp_path: Path):
         overlay_dir / f"{stem}.png", format="PNG"
     )
 
-    output_root = OutputRoot.discover(tmp_path)
+    output_root = OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
     app = dash.Dash(__name__)
     # Dash 4.x validates the layout in a before_request hook; a trivial layout
     # keeps that from 500-ing before the request reaches the blueprint.
@@ -227,6 +236,24 @@ def test_manifest_generation_keeps_bound_source_tree_byte_identical(
     assert source_files_after == source_files_before
     assert output_root.cache_dir.is_dir()
     assert not (output_root.root / ".viewer_cache").exists()
+
+
+def test_curation_mark_does_not_stale_bound_tile_requests(
+    client_and_root,
+) -> None:
+    """A GUI mark changes refresh state but keeps image tiles readable."""
+    client, output_root, dataset, stem = client_and_root
+    labels = CurationLabels.load(
+        output_root.layout,
+        output_root.master_df,
+    )
+
+    labels.mark(stem, 1, OTHER_CATEGORY)
+
+    assert output_root.snapshot_is_current() is True
+    assert output_root.refresh_state_is_current() is False
+    response = client.get(f"/tiles/{dataset}/{stem}.dzi?layer=overlay")
+    assert response.status_code == 200
 
 
 def test_manifest_default_and_objmap_use_distinct_cache_dirs(
@@ -457,7 +484,10 @@ def test_manifest_missing_hdf_layer_falls_back_to_overlay(
         overlay_dir / f"{stem}.png"
     )
 
-    output_root = OutputRoot.discover(tmp_path)
+    output_root = OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
     app = dash.Dash(__name__)
     app.layout = dash.html.Div()
     _tile_routes.register(app, output_root)

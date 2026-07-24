@@ -176,7 +176,10 @@ def _make_output(tmp_path: Path) -> OutputRoot:
     target.parent.mkdir(parents=True, exist_ok=True)
     df.write_parquet(target)
     (overlay_dir / "a.png").touch()
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def test_header_no_longer_contains_filters_toggle(tmp_path) -> None:

@@ -42,7 +42,10 @@ def _output_root(tmp_path: Path) -> OutputRoot:
     overlays.mkdir(parents=True, exist_ok=True)
     PILImage.new("RGB", (200, 100), (0, 64, 128)).save(overlays / "a.png")
     PILImage.new("RGB", (200, 100), (0, 64, 128)).save(overlays / "b.png")
-    return OutputRoot.discover(cli_out)
+    return OutputRoot.discover(
+        cli_out,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
 
 
 def _client(tmp_path: Path):

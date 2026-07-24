@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import json
 import logging
-import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import polars as pl
@@ -55,6 +55,32 @@ class OutputSnapshotChangedError(RuntimeError):
 
 
 @dataclass(frozen=True)
+class OutputSnapshotDescriptor:
+    """Fingerprints that define one coherent Results binding.
+
+    ``processing_fingerprint`` covers immutable processing products used to
+    render image content. It is the cache identity and the only fingerprint
+    that can invalidate an already-bound tile request.
+
+    ``consumed_state_fingerprint`` covers mutable state read while constructing
+    the Results and Analysis sessions: the measurements mirror, pipeline
+    recipe, curation labels, custom categories, QC database, and QC review
+    state. Changes there are incorporated by an explicit Refresh. They do not
+    invalidate image tiles in the current session, including when the current
+    GUI session itself wrote the state.
+
+    Attributes:
+        processing_fingerprint: Content identity of stable processing outputs.
+        consumed_state_fingerprint: Content identity of refresh-owned state.
+        captured_at: UTC time at which both fingerprints were verified.
+    """
+
+    processing_fingerprint: str
+    consumed_state_fingerprint: str
+    captured_at: datetime
+
+
+@dataclass(frozen=True)
 class OutputRoot:
     """Validated, read-only handle on a PhenoTypic CLI output directory.
 
@@ -85,12 +111,11 @@ class OutputRoot:
         column_value_sets: Mapping from column name to the sorted
             list of unique string values found in that column. Used
             to populate filter dropdowns; nulls are dropped.
-        cache_dir: External DZI cache path under the configured sandbox's
-            ``.phenotypic-gui/viewer_cache/<source-key>/``. Discovery only
-            computes this path; tile routes create it on an explicit request.
-        source_fingerprint: Content fingerprint for the discovered source
-            snapshot. Combined with the canonical source path in the external
-            cache key.
+        cache_dir: External DZI cache path under the explicitly supplied cache
+            root. Discovery only computes this path; tile routes create it on
+            an explicit request.
+        snapshot: Stable-processing and refresh-consumed fingerprints captured
+            around the complete discovery read.
         pipeline_summary: One-line label parsed from
             ``<root>/deliverables/pipeline.json`` (typically the
             pipeline ``name``) or ``None`` if the file is absent or
@@ -103,7 +128,7 @@ class OutputRoot:
     clean_master_df: pl.DataFrame
     column_value_sets: Mapping[str, list[str]]
     cache_dir: Path
-    source_fingerprint: str
+    snapshot: OutputSnapshotDescriptor
     pipeline_summary: str | None
     #: Snapshot of ``(dataset, stem)`` pairs that have an overlay PNG on
     #: disk at discovery time. Used as an O(1) replacement for the
@@ -116,7 +141,7 @@ class OutputRoot:
         cls,
         root: Path,
         *,
-        sandbox_root: Path | None = None,
+        cache_root: Path,
     ) -> OutputRoot:
         """Classify the on-disk topology and assemble an ``OutputRoot``.
 
@@ -134,10 +159,10 @@ class OutputRoot:
 
         Args:
             root: Path to a CLI output directory or a deliverables bundle.
-            sandbox_root: Frozen GUI sandbox that owns external viewer cache
-                state. When omitted (standalone/unit use), a process-external
-                temporary cache owner is used. In neither case is cache state
-                placed under ``root``.
+            cache_root: Explicit external directory that owns viewer caches,
+                normally ``sandbox_viewer_cache_root(sandbox.root)``. The
+                directory is not created during discovery and must not be
+                inside the selected output.
 
         Returns:
             A populated, frozen ``OutputRoot``.
@@ -158,7 +183,7 @@ class OutputRoot:
             try:
                 return cls._discover_snapshot(
                     layout,
-                    sandbox_root=sandbox_root,
+                    cache_root=cache_root,
                 )
             except OutputSnapshotChangedError as exc:
                 last_change = exc
@@ -179,7 +204,7 @@ class OutputRoot:
         cls,
         layout: BundleLayout,
         *,
-        sandbox_root: Path | None,
+        cache_root: Path,
     ) -> OutputRoot:
         """Read and verify one complete source snapshot."""
         source_root = (
@@ -188,9 +213,8 @@ class OutputRoot:
             else layout.output_root
         )
         try:
-            source_fingerprint = paths_fingerprint(
-                _source_snapshot_paths(layout),
-                root=source_root,
+            source_fingerprint, consumed_state_fingerprint = (
+                _snapshot_fingerprints(layout, source_root=source_root)
             )
         except OSError as exc:
             raise OutputSnapshotChangedError(
@@ -266,9 +290,8 @@ class OutputRoot:
         pipeline_summary = _read_pipeline_summary(layout.pipeline_config_path)
         overlay_index = _scan_overlay_index(layout, datasets_with_overlays)
         try:
-            verified_fingerprint = paths_fingerprint(
-                _source_snapshot_paths(layout),
-                root=source_root,
+            verified_fingerprint, verified_consumed_state = (
+                _snapshot_fingerprints(layout, source_root=source_root)
             )
         except OSError as exc:
             raise OutputSnapshotChangedError(
@@ -278,10 +301,19 @@ class OutputRoot:
             raise OutputSnapshotChangedError(
                 "Output changed during discovery; refresh after the writer settles."
             )
+        if verified_consumed_state != consumed_state_fingerprint:
+            raise OutputSnapshotChangedError(
+                "Viewer state changed during discovery; refresh after the writer settles."
+            )
         cache_dir = _external_cache_dir(
             source_root,
             source_fingerprint=verified_fingerprint,
-            sandbox_root=sandbox_root,
+            cache_root=cache_root,
+        )
+        snapshot = OutputSnapshotDescriptor(
+            processing_fingerprint=verified_fingerprint,
+            consumed_state_fingerprint=verified_consumed_state,
+            captured_at=datetime.now(timezone.utc),
         )
 
         return cls(
@@ -291,7 +323,7 @@ class OutputRoot:
             clean_master_df=clean_master_df,
             column_value_sets=column_value_sets,
             cache_dir=cache_dir,
-            source_fingerprint=verified_fingerprint,
+            snapshot=snapshot,
             pipeline_summary=pipeline_summary,
             overlay_index=overlay_index,
         )
@@ -318,16 +350,42 @@ class OutputRoot:
         """External cache root containing DZI and thumbnail subdirectories."""
         return self.cache_dir.parent
 
+    @property
+    def source_fingerprint(self) -> str:
+        """Backward-compatible stable processing fingerprint."""
+        return self.snapshot.processing_fingerprint
+
+    @property
+    def consumed_state_fingerprint(self) -> str:
+        """Fingerprint of state incorporated by an explicit Refresh."""
+        return self.snapshot.consumed_state_fingerprint
+
     def snapshot_is_current(self) -> bool:
-        """Return whether all viewer source files still match this revision."""
+        """Return whether stable image-processing sources match this binding.
+
+        Mutable GUI-owned state is intentionally excluded. Curation, QC review,
+        and Analysis actions must not turn valid tile requests into HTTP 409
+        responses within the same session.
+        """
         try:
             current = paths_fingerprint(
-                _source_snapshot_paths(self.layout),
+                _processing_snapshot_paths(self.layout),
                 root=self.root,
             )
         except OSError:
             return False
         return current == self.source_fingerprint
+
+    def refresh_state_is_current(self) -> bool:
+        """Return whether an explicit Refresh would consume the same state."""
+        try:
+            current = paths_fingerprint(
+                _consumed_state_snapshot_paths(self.layout),
+                root=self.root,
+            )
+        except OSError:
+            return False
+        return current == self.consumed_state_fingerprint
 
     def overlay_path(self, dataset: str, stem: str) -> Path:
         """Return the absolute path of an overlay PNG.
@@ -421,34 +479,60 @@ def _external_cache_dir(
     source_root: Path,
     *,
     source_fingerprint: str,
-    sandbox_root: Path | None,
+    cache_root: Path,
 ) -> Path:
     """Return a pure external DZI cache path for a source snapshot.
 
     The returned path is not created. This is what keeps
     :meth:`OutputRoot.discover` source-preserving.
     """
-    owner = (
-        Path(sandbox_root).resolve()
-        if sandbox_root is not None
-        else Path(tempfile.gettempdir()) / "phenotypic-gui-cache"
-    )
+    owner = Path(cache_root).resolve()
+    source = Path(source_root).resolve()
+    if owner == source or owner.is_relative_to(source):
+        raise ValueError(
+            "Viewer cache root must be external to the selected output: "
+            f"cache_root={owner!s}, output={source!s}"
+        )
     key = source_cache_key(source_root, source_fingerprint)
+    return owner / key / "dzi"
+
+
+def sandbox_viewer_cache_root(sandbox_root: Path) -> Path:
+    """Return the pure viewer-cache owner for a configured GUI sandbox.
+
+    The path is not created. Shell and standalone launchers must pass this
+    result (or another explicit external cache owner) to
+    :meth:`OutputRoot.discover`.
+    """
     return (
-        owner
+        Path(sandbox_root).resolve()
         / SANDBOX_GUI_DIRNAME
         / _EXTERNAL_VIEWER_CACHE_SUBDIR
-        / key
-        / "dzi"
     )
 
 
-def _source_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
-    """Return viewer-readable files that define one source snapshot."""
+def _snapshot_fingerprints(
+    layout: BundleLayout,
+    *,
+    source_root: Path,
+) -> tuple[str, str]:
+    """Capture stable-processing and refresh-consumed fingerprints."""
+    return (
+        paths_fingerprint(
+            _processing_snapshot_paths(layout),
+            root=source_root,
+        ),
+        paths_fingerprint(
+            _consumed_state_snapshot_paths(layout),
+            root=source_root,
+        ),
+    )
+
+
+def _processing_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
+    """Return stable processing products that define image read binding."""
     paths: list[Path] = [
         layout.master_parquet,
-        layout.mirror_parquet,
-        layout.resolved_pipeline_config_path,
     ]
     overlays_root = layout.deliverables_base / DIR_OVERLAYS
     if overlays_root.is_dir():
@@ -478,6 +562,18 @@ def _source_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
             if path.is_file()
         )
     return tuple(paths)
+
+
+def _consumed_state_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
+    """Return mutable state atomically incorporated by explicit Refresh."""
+    return (
+        layout.mirror_parquet,
+        layout.resolved_pipeline_config_path,
+        layout.curation_labels_parquet,
+        layout.custom_categories_json,
+        layout.qc_duckdb,
+        layout.qc_review_state_path,
+    )
 
 
 def _discover_datasets(

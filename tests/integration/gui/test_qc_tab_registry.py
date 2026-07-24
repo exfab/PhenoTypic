@@ -48,7 +48,10 @@ def output_root(tmp_path: Path) -> OutputRoot:
     overlays.mkdir(parents=True)
     PILImage.new("RGB", (120, 120), (200, 0, 0)).save(overlays / "img-1.png")
 
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def test_create_app_stashes_operation_registry(output_root) -> None:

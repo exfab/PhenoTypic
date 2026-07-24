@@ -122,7 +122,10 @@ def output_root(tmp_path: Path) -> OutputRoot:
     # Seed the qc/ artifact exactly as the CLI would.
     run_qc(master.to_pandas(), pipeline, tmp_path)
 
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def test_create_app_boots_with_review_and_qc_crop_route(output_root) -> None:
@@ -281,7 +284,10 @@ def test_legacy_sidecar_is_not_migrated_during_viewer_binding(
         for path in tmp_path.rglob("*")
         if path.is_file()
     }
-    root = OutputRoot.discover(tmp_path)
+    root = OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
     app = create_app(root)
     recipe = app.server.config.get(CFG_QC_RECIPE)
     # Binding is read-only. Compatibility UI may offer an explicit migration,

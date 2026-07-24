@@ -126,7 +126,10 @@ def test_create_app_standalone_bundle_loads_recipe_and_schema(
     from inside the bundle without double-joining ``deliverables/``."""
     base = tmp_path / "my_export"
     _seed_standalone_bundle(base, pipeline_filename=PIPELINE_JSON)
-    root = OutputRoot.discover(base)
+    root = OutputRoot.discover(
+        base,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
     assert root.layout.output_root is None  # standalone
 
     app = create_app(output_root=root)
