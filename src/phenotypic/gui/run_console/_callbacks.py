@@ -74,7 +74,10 @@ from phenotypic.gui.shell._ids import (
     SHELL_METADATA_CSV_STORE,
     SHELL_SOURCE_IMAGE_ROOT_STORE,
 )
-from phenotypic.gui.shell._metadata_context import resolve_metadata_csv
+from phenotypic.gui.shell._metadata_context import (
+    metadata_payload_from_path,
+    resolve_metadata_csv,
+)
 from phenotypic.gui.shell._runs_registry import RunMode, RunRecord, RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._source_context import (
@@ -259,6 +262,32 @@ def _action_control_states() -> tuple[State, ...]:
     )
 
 
+def _action_control_outputs() -> tuple[Output, ...]:
+    """Return action controls in the same order used by raw callback state."""
+    return (
+        Output(ids.RC_STORE_PIPELINE_PATH, "data", allow_duplicate=True),
+        Output(ids.RC_STORE_INPUT_DIR, "data", allow_duplicate=True),
+        Output(ids.RC_STORE_OUTPUT_DIR, "data", allow_duplicate=True),
+        Output(ids.RC_RADIO_MODE, "value", allow_duplicate=True),
+        Output(ids.RC_CHECKS_FLAGS, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_SAMPLE, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_NROWS, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_NCOLS, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_IMAGE_TYPE, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_WORKERS, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_LOG_LEVEL, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_SLURM_PARTITION, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_SLURM_TIME, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_SLURM_MEM, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_SLURM_CPUS, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_SLURM_GPUS, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_SLURM_EXTRA, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_GPU_SLURM, "value", allow_duplicate=True),
+        Output(ids.RC_INPUT_GPU_SHARDS, "value", allow_duplicate=True),
+        Output(SHELL_METADATA_CSV_STORE, "data", allow_duplicate=True),
+    )
+
+
 def _state_from_action_controls(
     values: tuple[Any, ...],
     *,
@@ -291,6 +320,57 @@ def _state_from_action_controls(
         gpu_shards=values[18],
         metadata_payload=values[19],
         sandbox=sandbox,
+    )
+
+
+def _controls_from_run_state(
+    state: RunConsoleState,
+    *,
+    sandbox: SandboxRoot,
+) -> tuple[Any, ...]:
+    """Restore a serialized state into the authoritative visible controls."""
+    flags: list[str] = []
+    if state.dry_run:
+        flags.append("dry_run")
+    if state.resume:
+        flags.append("resume")
+
+    advanced = state.advanced_args or {}
+    slurm = state.slurm_args or {}
+    raw_extra = slurm.get("extra")
+    extra_lines = (
+        "\n".join(f"{key}={value}" for key, value in raw_extra.items())
+        if isinstance(raw_extra, dict)
+        else ""
+    )
+    gpu_lines = "\n".join(state.gpu_slurm_args)
+    metadata_payload = (
+        metadata_payload_from_path(sandbox, state.metadata_csv)
+        if state.metadata_csv is not None
+        else None
+    )
+
+    return (
+        state.pipeline_path,
+        state.input_dir,
+        state.output_dir,
+        state.mode,
+        flags,
+        advanced.get("sample"),
+        advanced.get("nrows"),
+        advanced.get("ncols"),
+        advanced.get("image_type"),
+        advanced.get("workers"),
+        advanced.get("log_level"),
+        slurm.get("partition"),
+        slurm.get("time"),
+        slurm.get("mem"),
+        slurm.get("cpus_per_task"),
+        slurm.get("gpus"),
+        extra_lines or None,
+        gpu_lines or None,
+        state.gpu_shards,
+        metadata_payload,
     )
 
 
@@ -1601,11 +1681,7 @@ def register_callbacks(
             return _toast(_format_exception(exc), ok=False)
 
     @app.callback(
-        Output(ids.RC_STORE_PIPELINE_PATH, "data", allow_duplicate=True),
-        Output(ids.RC_STORE_INPUT_DIR, "data", allow_duplicate=True),
-        Output(ids.RC_STORE_OUTPUT_DIR, "data", allow_duplicate=True),
-        Output(ids.RC_RADIO_MODE, "value"),
-        Output(ids.RC_CHECKS_FLAGS, "value"),
+        *_action_control_outputs(),
         Output(ids.RC_TOAST, "is_open", allow_duplicate=True),
         Output(ids.RC_TOAST, "children", allow_duplicate=True),
         Output(ids.RC_TOAST, "icon", allow_duplicate=True),
@@ -1614,33 +1690,20 @@ def register_callbacks(
         prevent_initial_call=True,
     )
     def click_load_preset(preset_path: Optional[str]) -> Tuple[Any, ...]:
-        """Populate the form from a preset file."""
+        """Restore every authoritative visible control from a preset file."""
         if not preset_path:
-            return (no_update,) * 9
+            return (no_update,) * 24
         try:
             payload = json.loads(Path(preset_path).read_text(encoding="utf-8"))
             state = run_state_from_json(payload)
-            flags: List[str] = []
-            if state.dry_run:
-                flags.append("dry_run")
-            if state.resume:
-                flags.append("resume")
             return (
-                state.pipeline_path,
-                state.input_dir,
-                state.output_dir,
-                state.mode,
-                flags,
+                *_controls_from_run_state(state, sandbox=sandbox),
                 *_toast(f"Loaded preset {Path(preset_path).stem}", ok=True),
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Load preset failed")
             return (
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
+                *((no_update,) * 20),
                 *_toast(_format_exception(exc), ok=False),
             )
 

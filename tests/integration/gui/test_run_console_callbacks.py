@@ -23,6 +23,7 @@ import sys
 import time
 from concurrent.futures import Future
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -279,6 +280,164 @@ def test_action_callbacks_capture_raw_controls_not_aggregate_store(
         assert "rc-store-form-state" not in state_ids
         start = state_ids.index(expected[0])
         assert state_ids[start:start + len(expected)] == expected
+
+
+def test_preset_round_trip_restores_all_controls_for_raw_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Save and Load preserve every control consumed by the Run callback."""
+    from phenotypic.gui.shell._metadata_context import (
+        metadata_payload_from_path,
+        resolve_metadata_csv,
+    )
+    from phenotypic.schema import METADATA
+
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    app = create_app(sandbox, registry=registry)
+    pipeline = tmp_path / "pipeline.json"
+    images = tmp_path / "images"
+    output = tmp_path / "output"
+    metadata = tmp_path / "metadata.csv"
+    pipeline.write_text('{"operations": []}', encoding="utf-8")
+    images.mkdir()
+    output.mkdir()
+    metadata.write_text(
+        f"{METADATA.IMAGE_NAME},Treatment\nplate_a,control\n",
+        encoding="utf-8",
+    )
+    metadata_payload = metadata_payload_from_path(sandbox, metadata)
+    controls = (
+        str(pipeline),
+        str(images),
+        str(output),
+        "slurm",
+        ["dry_run", "resume"],
+        7,
+        8,
+        12,
+        "GridImage",
+        3,
+        "DEBUG",
+        "compute",
+        "02:30:00",
+        "32G",
+        8,
+        2,
+        "account=lab\nqos=normal",
+        "slurm_partition=gpu\nslurm_account=lab",
+        4,
+        metadata_payload,
+    )
+
+    save_callback = next(
+        spec["callback"].__wrapped__
+        for spec in app.callback_map.values()
+        if spec["inputs"]
+        and spec["inputs"][0]["id"] == "rc-btn-save-preset"
+    )
+    load_callback = next(
+        spec["callback"].__wrapped__
+        for spec in app.callback_map.values()
+        if spec["inputs"]
+        and spec["inputs"][0]["id"] == "rc-dropdown-load-preset"
+    )
+    run_callback = next(
+        spec["callback"].__wrapped__
+        for spec in app.callback_map.values()
+        if spec["inputs"] and spec["inputs"][0]["id"] == "rc-btn-run"
+    )
+
+    save_response = save_callback(1, "full-slurm", *controls)
+    assert save_response[1] == "Saved preset full-slurm"
+
+    preset = (
+        tmp_path
+        / ".phenotypic-gui"
+        / "presets"
+        / "full-slurm.json"
+    )
+    load_response = load_callback(str(preset))
+    loaded_controls = tuple(load_response[:20])
+
+    assert loaded_controls[:17] == controls[:17]
+    assert loaded_controls[17:19] == controls[17:19]
+    assert resolve_metadata_csv(sandbox, loaded_controls[19]) == metadata
+
+    captured_states = []
+
+    def _capture_submit(*args: object, **kwargs: object) -> Future[Any]:
+        state = args[1]
+        captured_states.append(state)
+        future: Future[Any] = Future()
+        future.set_result(
+            SlurmSubmitResult(
+                job_id="901",
+                output_dir=Path(state.output_dir),
+                stdout="",
+                stderr="",
+                returncode=0,
+            )
+        )
+        return future
+
+    monkeypatch.setattr(
+        callbacks_module._SLURM_EXECUTOR,
+        "submit",
+        _capture_submit,
+    )
+    run_response = run_callback(1, *loaded_controls, 0)
+
+    assert "SLURM submitting" in run_response[1]
+    assert len(captured_states) == 1
+    raw_run_state = captured_states[0]
+    assert raw_run_state.advanced_args == {
+        "sample": 7,
+        "nrows": 8,
+        "ncols": 12,
+        "image_type": "GridImage",
+        "workers": 3,
+        "log_level": "DEBUG",
+    }
+    assert raw_run_state.slurm_args == {
+        "partition": "compute",
+        "time": "02:30:00",
+        "mem": "32G",
+        "cpus_per_task": 8,
+        "gpus": 2,
+        "extra": {"account": "lab", "qos": "normal"},
+    }
+    assert raw_run_state.gpu_slurm_args == (
+        "slurm_partition=gpu",
+        "slurm_account=lab",
+    )
+    assert raw_run_state.gpu_shards == 4
+    assert raw_run_state.metadata_csv == str(metadata)
+
+
+def test_load_legacy_preset_uses_visible_control_defaults(
+    tmp_path: Path,
+) -> None:
+    """A preset missing newer fields clears them to layout-safe defaults."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    app = create_app(sandbox)
+    preset = tmp_path / "legacy.json"
+    preset.write_text("{}", encoding="utf-8")
+    load_callback = next(
+        spec["callback"].__wrapped__
+        for spec in app.callback_map.values()
+        if spec["inputs"]
+        and spec["inputs"][0]["id"] == "rc-dropdown-load-preset"
+    )
+
+    response = load_callback(str(preset))
+
+    assert response[:5] == (None, None, None, "local", [])
+    assert response[5:18] == (None,) * 13
+    assert response[18] == 1
+    assert response[19] is None
+    assert response[21] == "Loaded preset legacy"
 
 
 def test_raw_mode_at_action_time_is_authoritative(tmp_path: Path) -> None:
