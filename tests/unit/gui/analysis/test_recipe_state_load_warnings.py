@@ -33,6 +33,7 @@ from phenotypic.gui.analysis._recipe_state import (
     _merge_opaque_pipeline_payload,
 )
 from phenotypic.measure import MeasureShape
+from phenotypic.plotting._bindings import AnalysisInput, MeasurementInput
 from phenotypic.sdk_ import pipeline_json_path
 
 
@@ -106,6 +107,11 @@ def _known_pipeline_with_extensions_payload() -> dict:
                     "slot": "model",
                     "key": None,
                     "future_ref_field": {"revision": 4},
+                },
+                "input": {
+                    "kind": "analysis",
+                    "analysis_id": "growth-table",
+                    "future_input_field": {"revision": 6},
                 },
                 "future_plot_envelope": {"revision": 5},
             }
@@ -268,6 +274,9 @@ def test_name_only_edit_preserves_known_envelope_extensions_without_warnings(
     assert saved["plots"][0]["future_plot_envelope"] == {
         "revision": 5
     }
+    assert saved["plots"][0]["input"]["future_input_field"] == {
+        "revision": 6
+    }
 
 
 def test_explicit_known_replacement_drops_nested_extensions_after_load(
@@ -303,6 +312,64 @@ def test_explicit_known_replacement_drops_nested_extensions_after_load(
     assert saved["model"]["class"] == "LogGrowthModel"
     assert "future_ref_field" not in saved["plots"][0]["ref"]
     assert "future_plot_envelope" not in saved["plots"][0]
+    assert "future_input_field" not in saved["plots"][0]["input"]
+
+
+@pytest.mark.parametrize(
+    ("source_input", "replacement"),
+    [
+        (
+            {
+                "kind": "analysis",
+                "analysis_id": "growth-table",
+                "future_input_field": {"revision": 1},
+            },
+            MeasurementInput(),
+        ),
+        (
+            {
+                "kind": "measurements",
+                "future_input_field": {"revision": 2},
+            },
+            AnalysisInput(analysis_id="new-analysis"),
+        ),
+        (
+            {
+                "kind": "analysis",
+                "analysis_id": "old-analysis",
+                "future_input_field": {"revision": 3},
+            },
+            AnalysisInput(analysis_id="new-analysis"),
+        ),
+    ],
+)
+def test_plot_input_replacement_does_not_resurrect_prior_variant(
+    tmp_path: Path,
+    source_input: dict,
+    replacement: AnalysisInput | MeasurementInput,
+) -> None:
+    """Variant or stable-ID changes replace the prior input envelope."""
+    payload = _known_pipeline_with_extensions_payload()
+    del payload["filters"]["edge"]["params"]["future_filter_param"]
+    payload["plots"][0]["input"] = source_input
+    path = pipeline_json_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    state = RecipeState.load(tmp_path)
+    binding = state.pipeline.get_plots()[0].model_copy(
+        update={"input": replacement}
+    )
+    state.pipeline.set_plots([binding])
+
+    assert state.save() is True
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["plots"][0]["input"] == replacement.model_dump(mode="json")
+    assert "future_input_field" not in saved["plots"][0]["input"]
+    assert "future_ref_field" not in saved["plots"][0]["ref"]
+    assert "future_plot_envelope" not in saved["plots"][0]
+    strict = ImagePipeline.from_json(saved)
+    assert strict.get_plots()[0].input == replacement
 
 
 def test_stable_serialized_identity_preserves_known_envelope_extensions() -> None:
@@ -338,7 +405,11 @@ def test_stable_serialized_identity_preserves_known_envelope_extensions() -> Non
                     "key": None,
                     "future_ref": {"kept": True},
                 },
-                "input": {"source": "measurements.csv"},
+                "input": {
+                    "kind": "analysis",
+                    "analysis_id": "growth-table",
+                    "future_input": {"kept": True},
+                },
                 "future_plot": {"kept": True},
             }
         ],
@@ -368,7 +439,10 @@ def test_stable_serialized_identity_preserves_known_envelope_extensions() -> Non
             {
                 "id": "growth",
                 "ref": {"slot": "model", "key": None},
-                "input": {"source": "curated.csv"},
+                "input": {
+                    "kind": "analysis",
+                    "analysis_id": "growth-table",
+                },
             }
         ],
     }
@@ -381,6 +455,7 @@ def test_stable_serialized_identity_preserves_known_envelope_extensions() -> Non
     assert merged["qc"][0]["future_qc"] == {"kept": True}
     assert merged["plots"][0]["future_plot"] == {"kept": True}
     assert merged["plots"][0]["ref"]["future_ref"] == {"kept": True}
+    assert merged["plots"][0]["input"]["future_input"] == {"kept": True}
 
 
 def test_explicit_replacement_drops_prior_nested_extensions() -> None:

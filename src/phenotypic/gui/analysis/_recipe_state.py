@@ -372,6 +372,20 @@ def _plot_identity(
     return None
 
 
+def _plot_input_identity(node: object) -> tuple[object, ...] | None:
+    """Return one known input variant's durable serialized identity."""
+    if not isinstance(node, dict):
+        return None
+    kind = node.get("kind")
+    if kind == "measurements":
+        return ("measurements",)
+    if kind == "analysis":
+        analysis_id = node.get("analysis_id")
+        if isinstance(analysis_id, str):
+            return ("analysis", analysis_id)
+    return None
+
+
 def _merge_known_node_extensions(
     current: dict[str, Any],
     original: dict[str, Any],
@@ -451,16 +465,47 @@ def _merge_known_node_extensions(
             if not isinstance(current_node, dict):
                 continue
             original_node = original_by_id.get(str(current_node.get("id")))
-            current_plots[index] = _merge_envelope_extensions(
+            current_input = current_node.get("input")
+            original_input = (
+                original_node.get("input")
+                if isinstance(original_node, dict)
+                else None
+            )
+            current_input_identity = _plot_input_identity(current_input)
+            original_input_identity = _plot_input_identity(original_input)
+            same_input_identity = (
+                current_input is None
+                and original_input is None
+            ) or (
+                current_input_identity is not None
+                and current_input_identity == original_input_identity
+            )
+            same_plot_identity = (
+                _plot_identity(current_node, current)
+                == _plot_identity(original_node, original)
+                and same_input_identity
+            )
+            merged_node = _merge_envelope_extensions(
                 current_node,
                 original_node,
                 owned_keys=_PLOT_ENVELOPE_KEYS,
-                same_identity=(
-                    _plot_identity(current_node, current)
-                    == _plot_identity(original_node, original)
-                ),
-                nested_mapping_keys=frozenset({"ref", "inline", "input"}),
+                same_identity=same_plot_identity,
+                nested_mapping_keys=frozenset({"ref", "inline"}),
             )
+            if (
+                same_plot_identity
+                and isinstance(merged_node, dict)
+                and isinstance(original_node, dict)
+            ):
+                if (
+                    current_input_identity is not None
+                    and current_input_identity == original_input_identity
+                ):
+                    merged_node["input"] = _merge_missing_mapping_fields(
+                        merged_node.get("input"),
+                        original_input,
+                    )
+            current_plots[index] = merged_node
     return merged
 
 
