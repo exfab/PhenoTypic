@@ -4,6 +4,7 @@ from pathlib import Path
 from dash.development.base_component import Component
 
 from phenotypic.gui.shell._ids import TUNE_PIPELINE_PATH_STORE
+from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.tune import _ids as ids
 from phenotypic.gui.tune import create_app
 from phenotypic.gui.tune._callbacks import (
@@ -102,7 +103,7 @@ def test_setup_pipeline_input_and_shell_store_feed_pipeline_store():
     setup_store_callbacks = [
         meta
         for callback_id, meta in app.callback_map.items()
-        if callback_id.startswith(f"{ids.TUNE_SETUP_PIPELINE_STORE}.data")
+        if f"{ids.TUNE_SETUP_PIPELINE_STORE}.data" in callback_id
     ]
     assert setup_store_callbacks
     callback_inputs = json.dumps(setup_store_callbacks[0]["inputs"])
@@ -110,11 +111,11 @@ def test_setup_pipeline_input_and_shell_store_feed_pipeline_store():
     assert TUNE_PIPELINE_PATH_STORE in callback_inputs
 
 
-def test_setup_pipeline_source_prefers_shell_handoff():
+def test_setup_pipeline_source_prefers_explicit_typed_path():
     assert setup_pipeline_path_from_sources(
         "typed.json.pht-pipe",
         "handoff.json.pht-pipe",
-    ) == "handoff.json.pht-pipe"
+    ) == "typed.json.pht-pipe"
     assert setup_pipeline_path_from_sources("typed.json.pht-pipe", None) == (
         "typed.json.pht-pipe"
     )
@@ -123,18 +124,11 @@ def test_setup_pipeline_source_prefers_shell_handoff():
 
 def test_setup_gate_callback_enables_run_destination():
     app = create_app(root=None, url_prefix="/tune/")
-    gate_callbacks = [
-        meta
-        for callback_id, meta in app.callback_map.items()
-        if ids.TUNE_SETUP_SEARCH_SPACE in callback_id
-        and ids.TUNE_SETUP_SCORER in callback_id
-    ]
-    assert gate_callbacks
     callback_id = next(
         callback_id
         for callback_id in app.callback_map
-        if ids.TUNE_SETUP_SEARCH_SPACE in callback_id
-        and ids.TUNE_SETUP_SCORER in callback_id
+        if f"{ids.TUNE_SETUP_CONTINUE}.disabled" in callback_id
+        and "tune-dest-run.disabled" in callback_id
     )
     assert "tune-dest-run.disabled" in callback_id
 
@@ -164,22 +158,32 @@ def test_authored_spec_descriptor_invalidates_when_setup_inputs_change():
         path="/root/.phenotypic-gui/presets/tune/a.json.pht-tune",
         pipeline_path="/root/a.json.pht-pipe",
         metadata_path="/root/layout.csv",
+        setup_signature="current",
     )
 
     assert active_authored_spec_path(
         descriptor,
         pipeline_path="/root/a.json.pht-pipe",
         metadata_path="/root/layout.csv",
+        setup_signature="current",
     ) == "/root/.phenotypic-gui/presets/tune/a.json.pht-tune"
     assert active_authored_spec_path(
         descriptor,
         pipeline_path="/root/b.json.pht-pipe",
         metadata_path="/root/layout.csv",
+        setup_signature="current",
     ) is None
     assert active_authored_spec_path(
         descriptor,
         pipeline_path="/root/a.json.pht-pipe",
         metadata_path="/root/other-layout.csv",
+        setup_signature="current",
+    ) is None
+    assert active_authored_spec_path(
+        descriptor,
+        pipeline_path="/root/a.json.pht-pipe",
+        metadata_path="/root/layout.csv",
+        setup_signature="edited",
     ) is None
 
 
@@ -187,8 +191,25 @@ def test_run_destination_exposes_form_and_deploy_callbacks():
     app = create_app(root=None, url_prefix="/tune/")
     assert _component_by_id(app.layout, ids.TUNE_RUN_OUTPUT_DIR) is not None
     assert _component_by_id(app.layout, ids.TUNE_RUN_STRATEGY) is not None
+    assert _component_by_id(app.layout, ids.TUNE_RUN_STORAGE_MODE) is not None
+    assert _component_by_id(app.layout, ids.TUNE_RUN_STORAGE_ENV) is not None
+    assert _component_by_id(app.layout, ids.TUNE_RUN_PORTABLE_COMMAND) is not None
+    assert _component_by_id(app.layout, ids.TUNE_RUN_COPY) is not None
     assert _component_by_id(app.layout, ids.TUNE_RUN_DEPLOY).disabled is True
 
     callbacks = "\n".join(app.callback_map)
     assert ids.TUNE_RUN_COMMAND in callbacks
     assert ids.TUNE_RUN_STATUS in callbacks
+
+
+def test_setup_exposes_pipeline_and_metadata_pickers(tmp_path: Path):
+    app = create_app(
+        root=None,
+        sandbox=SandboxRoot.from_path(tmp_path),
+        url_prefix="/tune/",
+    )
+
+    assert _component_by_id(app.layout, ids.TUNE_SETUP_PICK_PIPELINE) is not None
+    assert _component_by_id(app.layout, ids.TUNE_SETUP_PICK_METADATA) is not None
+    assert _component_by_id(app.layout, ids.TUNE_SETUP_PIPELINE_MODAL) is not None
+    assert _component_by_id(app.layout, ids.TUNE_SETUP_METADATA_MODAL) is not None

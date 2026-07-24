@@ -15,6 +15,16 @@ from pathlib import Path
 import numpy as np
 
 
+def test_plate_discovery_uses_canonical_image_extensions(tmp_path: Path) -> None:
+    from phenotypic.gui.tune._callbacks import _list_plate_names
+
+    (tmp_path / "camera.cr3").touch()
+    (tmp_path / "ambiguous.raw").touch()
+    (tmp_path / "colony.tif").touch()
+
+    assert _list_plate_names(str(tmp_path)) == ["camera.cr3", "colony.tif"]
+
+
 def test_get_overlay_cache_is_a_per_run_singleton(tmp_path: Path) -> None:
     from phenotypic.gui.tune._overlays import get_overlay_cache, overlay_cache_dir
 

@@ -25,6 +25,8 @@ optuna-free import surface.
 from __future__ import annotations
 
 import importlib.util
+import hashlib
+import json
 import logging
 from pathlib import Path
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeout
@@ -32,9 +34,17 @@ from typing import TYPE_CHECKING, Optional
 
 from dash import ctx, no_update
 
-from phenotypic.gui._config import CFG_RUNNER, CFG_RUN_REGISTRY, THREAD_NAME_PREFIX
-from phenotypic.gui.shell._ids import TUNE_PIPELINE_PATH_STORE
-from phenotypic.gui.shell._ids import SHELL_SOURCE_IMAGE_ROOT_STORE
+from phenotypic.gui._config import (
+    CFG_RUNNER,
+    CFG_RUN_REGISTRY,
+    IMAGE_EXTS,
+    THREAD_NAME_PREFIX,
+)
+from phenotypic.gui.shell._ids import (
+    SHELL_METADATA_CSV_STORE,
+    SHELL_SOURCE_IMAGE_ROOT_STORE,
+    TUNE_PIPELINE_PATH_STORE,
+)
 from phenotypic.gui.shell._source_context import (
     SourcePayload,
     resolve_source_image_root,
@@ -42,13 +52,19 @@ from phenotypic.gui.shell._source_context import (
 )
 from phenotypic.gui.tune import _ids as ids
 from phenotypic.gui.tune import _nav
-from phenotypic.gui.tune._command import render_launch_command
+from phenotypic.gui.tune._command import StorageMode, build_tune_command
 from phenotypic.gui.tune._deploy import deploy_tune_run
 from phenotypic.gui.tune._export import export_best_from_run
 from phenotypic.gui.tune._monitor import cancel_prompt, run_switcher_items
 from phenotypic.gui.tune._run_image_source import resolve_run_images
-from phenotypic.gui.tune._run_argv import tune_run_argv
-from phenotypic.gui.tune._setup_authoring import write_authored_setup_spec
+from phenotypic.gui.tune._setup_authoring import (
+    SetupPathResolution,
+    build_authored_setup_spec,
+    load_pipeline_or_spec,
+    resolve_setup_path,
+    setup_path_payload,
+    write_authored_setup_spec,
+)
 from phenotypic.gui.tune._validation import preflight_issues, spec_path_issue
 from phenotypic.sdk_ import (
     CONFIG_SUFFIX_TUNING,
@@ -144,7 +160,8 @@ def _tune_image_source_from_shared(
 #: The note shown when the run wants a live study but the ``tune`` extra (and so
 #: ``optuna``) is not installed.
 _NOTE_MISSING_EXTRA: str = (
-    "install the tune extra for live monitoring (pip install 'phenotypic[tune]')."
+    "install the tune extra for live monitoring "
+    "(uv sync --extra tune)."
 )
 
 #: Reverse map: a sub-tab button ID -> its view name. Built once from the
@@ -157,21 +174,39 @@ _BUTTON_ID_TO_VIEW: dict[str, ids.SubTabName] = {
 def setup_gate_state(
     pipeline_path: str | None,
     metadata_path: str | None = None,
+    *,
+    source_is_spec: bool = False,
+    replace_scorer: bool = False,
+    validation_issues: tuple[str, ...] = (),
 ) -> tuple[str, str, bool, str]:
-    """Return Setup section classes, Continue state, and gate note."""
+    """Return Setup section classes, Continue state, and complete gate note."""
     if pipeline_path:
-        if metadata_path:
+        metadata_required = not source_is_spec or replace_scorer
+        if (metadata_path or not metadata_required) and not validation_issues:
+            metadata_note = (
+                f" Metadata selected: {metadata_path}."
+                if metadata_path
+                else " Existing scorer preserved."
+            )
             return (
                 "tune-setup-section",
                 "tune-setup-section",
                 False,
-                f"Pipeline selected: {pipeline_path}. Metadata selected: {metadata_path}",
+                f"Pipeline selected: {pipeline_path}.{metadata_note}",
+            )
+        issue_text = " ".join(validation_issues)
+        if issue_text:
+            note = issue_text
+        else:
+            note = (
+                f"Pipeline selected: {pipeline_path}. "
+                "Add metadata to author a tune spec."
             )
         return (
             "tune-setup-section",
             "tune-setup-section",
             True,
-            f"Pipeline selected: {pipeline_path}. Add metadata to author a tune spec.",
+            note,
         )
     return (
         "tune-setup-section tune-setup-locked",
@@ -184,19 +219,22 @@ def setup_gate_state(
 def setup_pipeline_path_from_sources(
     typed_path: str | None,
     shell_handoff: object,
+    picker_path: str | None = None,
 ) -> str | None:
-    """Resolve the Setup pipeline path from direct entry and shell handoff."""
+    """Resolve pipeline text using typed, picker, then handoff precedence."""
     candidates: list[str] = []
+    if typed_path:
+        candidates.append(typed_path)
+    if picker_path:
+        candidates.append(picker_path)
     if isinstance(shell_handoff, str):
         candidates.append(shell_handoff)
     elif isinstance(shell_handoff, dict):
-        for key in ("path", "abs_path"):
+        for key in ("relative_path", "path", "abs_path"):
             value = shell_handoff.get(key)
             if isinstance(value, str):
                 candidates.append(value)
                 break
-    if typed_path:
-        candidates.append(typed_path)
 
     valid_suffixes = PIPELINE_CONFIG_SUFFIXES | frozenset({CONFIG_SUFFIX_TUNING})
     for candidate in candidates:
@@ -210,13 +248,17 @@ def authored_spec_descriptor(
     *,
     path: str,
     pipeline_path: str,
-    metadata_path: str,
-) -> dict[str, str]:
+    metadata_path: str | None,
+    replace_scorer: bool = False,
+    setup_signature: str | None = None,
+) -> dict[str, object]:
     """Return the Setup-authored spec descriptor stored in Dash state."""
     return {
         "path": path,
         "pipeline_path": pipeline_path,
-        "metadata_path": metadata_path,
+        "metadata_path": metadata_path or "",
+        "replace_scorer": replace_scorer,
+        "setup_signature": setup_signature or "",
     }
 
 
@@ -225,6 +267,8 @@ def active_authored_spec_path(
     *,
     pipeline_path: str | None,
     metadata_path: str | None,
+    replace_scorer: bool = False,
+    setup_signature: str | None = None,
 ) -> str | None:
     """Return the authored spec path only when it matches current Setup inputs."""
     if not isinstance(descriptor, dict):
@@ -232,6 +276,8 @@ def active_authored_spec_path(
     path = descriptor.get("path")
     source = descriptor.get("pipeline_path")
     metadata = descriptor.get("metadata_path")
+    replace = descriptor.get("replace_scorer", False)
+    stored_signature = descriptor.get("setup_signature", "")
     if (
         isinstance(path, str)
         and path
@@ -239,9 +285,65 @@ def active_authored_spec_path(
         and isinstance(metadata, str)
         and source == (pipeline_path or "")
         and metadata == (metadata_path or "")
+        and replace is replace_scorer
+        and (
+            setup_signature is None
+            or stored_signature == setup_signature
+        )
     ):
         return path
     return None
+
+
+def setup_authoring_signature(
+    *,
+    pipeline_path: str | None,
+    metadata_path: str | None,
+    replace_scorer: bool,
+    edits: dict[str, dict],
+) -> str:
+    """Return a stable digest for every input that affects the authored spec."""
+    payload = {
+        "pipeline_path": pipeline_path or "",
+        "metadata_path": metadata_path or "",
+        "replace_scorer": replace_scorer,
+        "edits": edits,
+    }
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _path_from_resolution_store(value: object) -> str | None:
+    """Read a resolved path from a Setup resolution store."""
+    if not isinstance(value, dict):
+        return None
+    path = value.get("path")
+    return path if isinstance(path, str) and path else None
+
+
+def _issues_from_resolution_store(value: object) -> tuple[str, ...]:
+    """Read all path issues from a Setup resolution store."""
+    if not isinstance(value, dict):
+        return ()
+    issues = value.get("issues")
+    if not isinstance(issues, list):
+        return ()
+    return tuple(str(issue) for issue in issues)
+
+
+def _source_label(
+    label: str,
+    resolution: SetupPathResolution,
+) -> str:
+    """Describe a Setup path and its effective precedence source."""
+    if resolution.path is None:
+        return f"{label}: unset"
+    return f"{label} ({resolution.source}): {resolution.path}"
 
 
 def _toggle_on(values: object) -> bool:
@@ -265,6 +367,104 @@ def _optional_float(value: object) -> float | None:
     if isinstance(value, (int, float, str)):
         return float(value)
     raise TypeError(f"expected numeric input, got {type(value).__name__}")
+
+
+def _build_command_from_controls(
+    *,
+    sandbox: "SandboxRoot",
+    authored_descriptor: object,
+    pipeline_store: object,
+    metadata_store: object,
+    replace_values: object,
+    setup_signature: str | None,
+    shared_source: object,
+    images_override: str | None,
+    output_dir: str | None,
+    strategy: str | None,
+    n_trials: object,
+    storage_mode: str | None,
+    storage_local_path: str | None,
+    storage_environment_name: str | None,
+    n_workers: object,
+    slurm_partition: str | None,
+    slurm_mem: str | None,
+    slurm_time: str | None,
+    held_out_fraction: object,
+    cv_group: str | None,
+    mode: str | None,
+    screen_values: object,
+):  # type: ignore[no-untyped-def]
+    """Build the authoritative command from the raw action controls."""
+    pipeline_path = _path_from_resolution_store(pipeline_store)
+    metadata_path = _path_from_resolution_store(metadata_store)
+    replace = _toggle_on(replace_values)
+    spec_path = active_authored_spec_path(
+        authored_descriptor,
+        pipeline_path=pipeline_path,
+        metadata_path=metadata_path,
+        replace_scorer=replace,
+        setup_signature=setup_signature,
+    )
+    issues: list[str] = []
+    spec_issue = spec_path_issue(spec_path)
+    if spec_issue is not None:
+        issues.append(spec_issue.message)
+    elif spec_path is not None:
+        try:
+            issues.extend(
+                _load_spec_preflight_issues(spec_path, strategy or "tpe")
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("Tune command preflight failed", exc_info=True)
+            issues.append("Could not inspect the authored tuning spec.")
+
+    images_dir = (
+        images_override
+        if images_override and images_override.strip()
+        else resolve_run_images(sandbox, shared_source, None)
+    )
+    try:
+        normalized_trials = _optional_int(n_trials)
+    except (TypeError, ValueError):
+        normalized_trials = None
+        issues.append("Trial budget must be an integer.")
+    try:
+        normalized_workers = _optional_int(n_workers)
+    except (TypeError, ValueError):
+        normalized_workers = None
+        issues.append("Worker count must be an integer.")
+    try:
+        normalized_fraction = _optional_float(held_out_fraction)
+    except (TypeError, ValueError):
+        normalized_fraction = None
+        issues.append("Held-out fraction must be numeric.")
+
+    if storage_mode == "environment":
+        normalized_storage_mode: StorageMode = "environment"
+    else:
+        normalized_storage_mode = "local"
+        if storage_mode not in {None, "local"}:
+            issues.append("Choose a valid storage mode.")
+    return build_tune_command(
+        sandbox=sandbox,
+        spec_path=spec_path,
+        images_dir=images_dir,
+        output_dir=output_dir,
+        strategy=strategy or "tpe",
+        n_trials=normalized_trials,
+        storage_mode=normalized_storage_mode,
+        storage_local_path=storage_local_path,
+        storage_environment_name=storage_environment_name,
+        n_workers=normalized_workers,
+        slurm_partition=slurm_partition or None,
+        slurm_mem=slurm_mem or None,
+        slurm_time=slurm_time or None,
+        held_out_fraction=normalized_fraction,
+        cv_group=cv_group or None,
+        slurm=mode == "slurm",
+        screen=_toggle_on(screen_values),
+        additional_issues=issues,
+    )
 
 
 def cancel_monitor_run(
@@ -639,6 +839,139 @@ def _gap_badge_outputs(store: "Optional[_ReadableStore]") -> tuple[str, str]:
     return label, f"tune-gap-badge tune-gap-badge-{variant}"
 
 
+def _replace_scorer_control(*, disabled: bool = False):  # type: ignore[no-untyped-def]
+    """Render the explicit existing-spec scorer replacement control."""
+    from dash import dcc
+
+    return dcc.Checklist(
+        id=ids.TUNE_SETUP_REPLACE_SCORER,
+        options=[
+            {
+                "label": "Replace scorer with metadata-backed QC scorer",
+                "value": "on",
+                "disabled": disabled,
+            }
+        ],
+        value=[],
+        className="tune-run-mode",
+    )
+
+
+def _register_setup_picker_callbacks(app, sandbox) -> None:  # type: ignore[no-untyped-def]
+    """Register both sandbox-bounded Setup file pickers."""
+    from dash import ALL, Input, Output, no_update
+
+    from phenotypic.gui.builder._directory_browser import directory_tree
+
+    picker_specs = (
+        (
+            "pipeline",
+            ids.TUNE_SETUP_PICK_PIPELINE,
+            ids.TUNE_SETUP_PIPELINE_CANCEL,
+            ids.TUNE_SETUP_PIPELINE_MODAL,
+            ids.TUNE_SETUP_PIPELINE_BROWSE_DIR,
+            ids.TUNE_SETUP_PIPELINE_MODAL_BODY,
+            ids.TUNE_SETUP_PIPELINE_ENTRY,
+            ids.TUNE_SETUP_PIPELINE_PICKER_STORE,
+            PIPELINE_CONFIG_SUFFIXES | frozenset({CONFIG_SUFFIX_TUNING}),
+        ),
+        (
+            "metadata",
+            ids.TUNE_SETUP_PICK_METADATA,
+            ids.TUNE_SETUP_METADATA_CANCEL,
+            ids.TUNE_SETUP_METADATA_MODAL,
+            ids.TUNE_SETUP_METADATA_BROWSE_DIR,
+            ids.TUNE_SETUP_METADATA_MODAL_BODY,
+            ids.TUNE_SETUP_METADATA_ENTRY,
+            ids.TUNE_SETUP_METADATA_PICKER_STORE,
+            frozenset({".csv", ".parquet"}),
+        ),
+    )
+
+    for (
+        kind,
+        open_id,
+        cancel_id,
+        modal_id,
+        browse_id,
+        body_id,
+        entry_type,
+        store_id,
+        extensions,
+    ) in picker_specs:
+
+        @app.callback(
+            Output(modal_id, "is_open", allow_duplicate=True),
+            Input(open_id, "n_clicks"),
+            Input(cancel_id, "n_clicks"),
+            prevent_initial_call=True,
+        )
+        def _toggle_picker(open_clicks, cancel_clicks, _open=open_id, _cancel=cancel_id):  # type: ignore[no-untyped-def]
+            if ctx.triggered_id == _open and open_clicks:
+                return True
+            if ctx.triggered_id == _cancel and cancel_clicks:
+                return False
+            return no_update
+
+        @app.callback(
+            Output(body_id, "children"),
+            Input(browse_id, "data"),
+            prevent_initial_call=True,
+        )
+        def _render_picker_body(
+            current,
+            _extensions=extensions,
+            _entry_type=entry_type,
+        ):  # type: ignore[no-untyped-def]
+            return directory_tree(
+                sandbox.root,
+                current=Path(current) if current else None,
+                extensions=_extensions,
+                select_files=True,
+                id_type=_entry_type,
+            )
+
+        @app.callback(
+            Output(browse_id, "data", allow_duplicate=True),
+            Output(store_id, "data"),
+            Output(modal_id, "is_open", allow_duplicate=True),
+            Input(
+                {"type": entry_type, "kind": ALL, "path": ALL},
+                "n_clicks",
+            ),
+            prevent_initial_call=True,
+        )
+        def _select_picker_entry(
+            _clicks,
+            _entry_type=entry_type,
+            _kind=kind,
+        ):  # type: ignore[no-untyped-def]
+            triggered = ctx.triggered_id
+            if (
+                not isinstance(triggered, dict)
+                or triggered.get("type") != _entry_type
+                or not ctx.triggered
+                or not ctx.triggered[0].get("value")
+            ):
+                return no_update, no_update, no_update
+            selected = triggered.get("path")
+            entry_kind = triggered.get("kind")
+            if not isinstance(selected, str):
+                return no_update, no_update, no_update
+            if entry_kind in {"dir", "parent"}:
+                return selected, no_update, no_update
+            payload = setup_path_payload(
+                sandbox,
+                selected,
+                kind=_kind,
+            )
+            if payload is None:
+                return no_update, no_update, no_update
+            # Always emit a fresh payload, even for the same path, so an
+            # explicit re-selection repairs stale or mismatched session state.
+            return no_update, payload, False
+
+
 def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped-def]
     """Register the tune sub-app's Dash callbacks on ``app``.
 
@@ -678,17 +1011,29 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         ],
         State(ids.TUNE_SETUP_AUTHORED_SPEC_STORE, "data"),
         State(ids.TUNE_SETUP_PIPELINE_STORE, "data"),
-        State(ids.TUNE_SETUP_METADATA_INPUT, "value"),
+        State(ids.TUNE_SETUP_METADATA_STORE, "data"),
+        State(ids.TUNE_SETUP_REPLACE_SCORER, "value"),
+        State(ids.TUNE_SETUP_SIGNATURE_STORE, "data"),
         prevent_initial_call=True,
     )
     def _switch_destination(*args: object) -> tuple[str, ...]:
-        descriptor = args[-3] if len(args) >= 3 else None
-        pipeline_path = args[-2] if len(args) >= 2 else None
-        metadata_path = args[-1] if args else None
+        descriptor = args[-5] if len(args) >= 5 else None
+        pipeline_path = _path_from_resolution_store(
+            args[-4] if len(args) >= 4 else None
+        )
+        metadata_path = _path_from_resolution_store(
+            args[-3] if len(args) >= 3 else None
+        )
+        replace_scorer = _toggle_on(args[-2] if len(args) >= 2 else None)
+        setup_signature = args[-1] if args else None
         spec_path = active_authored_spec_path(
             descriptor,
-            pipeline_path=pipeline_path if isinstance(pipeline_path, str) else None,
-            metadata_path=metadata_path if isinstance(metadata_path, str) else None,
+            pipeline_path=pipeline_path,
+            metadata_path=metadata_path,
+            replace_scorer=replace_scorer,
+            setup_signature=(
+                setup_signature if isinstance(setup_signature, str) else None
+            ),
         )
         active = _nav.active_destination(
             ctx.triggered_id,
@@ -702,51 +1047,213 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         ]
         return (active, *view_classes, *button_classes)
 
-    @app.callback(
-        Output(ids.TUNE_SETUP_PIPELINE_STORE, "data"),
-        Input(ids.TUNE_SETUP_PIPELINE_INPUT, "value"),
-        Input(TUNE_PIPELINE_PATH_STORE, "data"),
-    )
-    def _select_setup_pipeline(
-        typed_path: str | None,
-        shell_handoff: object,
-    ) -> str | None:
-        return setup_pipeline_path_from_sources(typed_path, shell_handoff)
+    if sandbox is not None:
+        _register_setup_picker_callbacks(app, sandbox)
 
     @app.callback(
+        Output(ids.TUNE_SETUP_PIPELINE_STORE, "data"),
+        Output(ids.TUNE_SETUP_METADATA_STORE, "data"),
+        Output(ids.TUNE_SETUP_PIPELINE_SOURCE, "children"),
+        Output(ids.TUNE_SETUP_METADATA_SOURCE, "children"),
+        Output(ids.TUNE_SETUP_SEARCH_SPACE, "children"),
         Output(ids.TUNE_SETUP_SEARCH_SPACE, "className"),
+        Output(ids.TUNE_SETUP_SCORER, "children"),
         Output(ids.TUNE_SETUP_SCORER, "className"),
+        Input(ids.TUNE_SETUP_PIPELINE_INPUT, "value"),
+        Input(ids.TUNE_SETUP_PIPELINE_PICKER_STORE, "data"),
+        Input(TUNE_PIPELINE_PATH_STORE, "data", allow_optional=True),
+        Input(ids.TUNE_SETUP_METADATA_INPUT, "value"),
+        Input(ids.TUNE_SETUP_METADATA_PICKER_STORE, "data"),
+        Input(SHELL_METADATA_CSV_STORE, "data", allow_optional=True),
+    )
+    def _resolve_setup_inputs(
+        typed_pipeline: str | None,
+        pipeline_picker: object,
+        pipeline_handoff: object,
+        typed_metadata: str | None,
+        metadata_picker: object,
+        metadata_handoff: object,
+    ) -> tuple[object, ...]:
+        if sandbox is None:
+            locked = "tune-setup-section tune-setup-locked"
+            return (
+                None,
+                None,
+                "Pipeline: unavailable without sandbox",
+                "Metadata: unavailable without sandbox",
+                [html.H3("Search space"), html.Div("Sandbox required.")],
+                locked,
+                [html.H3("Scorer"), html.Div("Sandbox required.")],
+                locked,
+            )
+        pipeline = resolve_setup_path(
+            sandbox=sandbox,
+            kind="pipeline",
+            typed_path=typed_pipeline,
+            picker_payload=pipeline_picker,
+            shared_payload=pipeline_handoff,
+        )
+        metadata = resolve_setup_path(
+            sandbox=sandbox,
+            kind="metadata",
+            typed_path=typed_metadata,
+            picker_payload=metadata_picker,
+            shared_payload=metadata_handoff,
+        )
+        locked = "tune-setup-section tune-setup-locked"
+        if pipeline.path is None or pipeline.issues:
+            issue_text = " ".join(pipeline.issues) or "Choose a pipeline."
+            return (
+                pipeline.to_store(),
+                metadata.to_store(),
+                _source_label("Pipeline", pipeline),
+                _source_label("Metadata", metadata),
+                [html.H3("Search space"), html.Div(issue_text)],
+                locked,
+                [
+                    html.H3("Scorer"),
+                    html.Div("Locked until the pipeline/spec validates."),
+                    _replace_scorer_control(),
+                ],
+                locked,
+            )
+        try:
+            source = load_pipeline_or_spec(pipeline.path)
+            from phenotypic.gui.tune._space import setup_knob_forms
+
+            rows = setup_knob_forms(source)
+            source_is_spec = hasattr(source, "search_space")
+            scorer_note = (
+                f"Preserving existing {type(getattr(source, 'scorer')).__name__}."
+                if source_is_spec
+                else "A metadata-backed QC scorer will be authored."
+            )
+        except Exception as exc:  # noqa: BLE001
+            rows = []
+            source_is_spec = False
+            scorer_note = f"Could not load pipeline/spec: {exc}"
+        search_class = (
+            "tune-setup-section"
+            if rows
+            else "tune-setup-section tune-setup-locked"
+        )
+        scorer_class = (
+            "tune-setup-section"
+            if rows
+            else "tune-setup-section tune-setup-locked"
+        )
+        return (
+            pipeline.to_store(),
+            metadata.to_store(),
+            _source_label("Pipeline", pipeline),
+            _source_label("Metadata", metadata),
+            [
+                html.H3("Search space"),
+                html.Div(rows, className="tune-space-knobs"),
+            ],
+            search_class,
+            [
+                html.H3("Scorer"),
+                html.Div(scorer_note),
+                _replace_scorer_control(disabled=not source_is_spec),
+            ],
+            scorer_class,
+        )
+
+    @app.callback(
         Output(ids.TUNE_SETUP_CONTINUE, "disabled"),
         Output(ids.TUNE_SETUP_GATE, "children"),
         Output(_nav.destination_button_id("run"), "disabled"),
+        Output(ids.TUNE_SETUP_SIGNATURE_STORE, "data"),
         Input(ids.TUNE_SETUP_PIPELINE_STORE, "data"),
-        Input(ids.TUNE_SETUP_METADATA_INPUT, "value"),
+        Input(ids.TUNE_SETUP_METADATA_STORE, "data"),
+        Input(ids.TUNE_SETUP_REPLACE_SCORER, "value"),
+        Input({"type": ids.TUNE_SETUP_SPACE_TUNABLE, "key": ALL}, "id"),
+        Input({"type": ids.TUNE_SETUP_SPACE_LOW, "key": ALL}, "id"),
+        Input({"type": ids.TUNE_SETUP_SPACE_LOW, "key": ALL}, "value"),
+        Input({"type": ids.TUNE_SETUP_SPACE_HIGH, "key": ALL}, "id"),
+        Input({"type": ids.TUNE_SETUP_SPACE_HIGH, "key": ALL}, "value"),
+        Input({"type": ids.TUNE_SETUP_SPACE_LOG, "key": ALL}, "id"),
+        Input({"type": ids.TUNE_SETUP_SPACE_LOG, "key": ALL}, "value"),
+        Input({"type": ids.TUNE_SETUP_SPACE_CHOICES, "key": ALL}, "id"),
+        Input({"type": ids.TUNE_SETUP_SPACE_CHOICES, "key": ALL}, "value"),
+        Input({"type": ids.TUNE_SETUP_SPACE_TUNABLE, "key": ALL}, "value"),
         Input(ids.TUNE_SETUP_AUTHORED_SPEC_STORE, "data"),
     )
-    def _toggle_setup_gate(
-        pipeline_path: str | None,
-        metadata_path: str | None,
-        authored_spec_descriptor_value: object,
-    ) -> tuple[str, str, bool, str, bool]:
-        search_class, scorer_class, disabled, note = setup_gate_state(
-            pipeline_path,
-            metadata_path,
-        )
-        authored_spec_path = active_authored_spec_path(
-            authored_spec_descriptor_value,
+    def _validate_setup(
+        pipeline_store: object,
+        metadata_store: object,
+        replace_values: object,
+        tunable_ids: list[dict[str, object]],
+        low_ids: list[dict[str, object]],
+        lows: list[object],
+        high_ids: list[dict[str, object]],
+        highs: list[object],
+        log_ids: list[dict[str, object]],
+        logs: list[object],
+        choice_ids: list[dict[str, object]],
+        choices: list[object],
+        tunables: list[object],
+        descriptor: object,
+    ) -> tuple[bool, object, bool, str]:
+        pipeline_path = _path_from_resolution_store(pipeline_store)
+        metadata_path = _path_from_resolution_store(metadata_store)
+        replace = _toggle_on(replace_values)
+        issues = [
+            *_issues_from_resolution_store(pipeline_store),
+            *_issues_from_resolution_store(metadata_store),
+        ]
+        edits: dict[str, dict] = {}
+        if pipeline_path:
+            keys = [
+                entry.get("key") if isinstance(entry, dict) else None
+                for entry in (tunable_ids or [])
+            ]
+            edits = _collect_space_edits(
+                keys,
+                lows or [],
+                highs or [],
+                logs or [],
+                choices or [],
+                tunables or [],
+                low_keys=low_ids,
+                high_keys=high_ids,
+                log_keys=log_ids,
+                choice_keys=choice_ids,
+            )
+            result = build_authored_setup_spec(
+                pipeline_or_spec_path=Path(pipeline_path),
+                metadata_path=Path(metadata_path) if metadata_path else None,
+                edits=edits,
+                replace_scorer=replace,
+            )
+            issues.extend(result.issues)
+        elif not issues:
+            issues.append("Choose a pipeline or existing tuning spec.")
+        signature = setup_authoring_signature(
             pipeline_path=pipeline_path,
             metadata_path=metadata_path,
+            replace_scorer=replace,
+            edits=edits,
         )
-        if authored_spec_path:
-            note = f"Authored tuning spec: {authored_spec_path}"
+        authored = active_authored_spec_path(
+            descriptor,
+            pipeline_path=pipeline_path,
+            metadata_path=metadata_path,
+            replace_scorer=replace,
+            setup_signature=signature,
+        )
+        note = (
+            f"Authored tuning spec: {authored}"
+            if authored
+            else "\n".join(dict.fromkeys(issues))
+        )
+        disabled = bool(issues)
         return (
-            search_class,
-            scorer_class,
             disabled,
             note,
-            _nav.destination_button_disabled(
-                "run", pipeline_path=authored_spec_path
-            ),
+            _nav.destination_button_disabled("run", pipeline_path=authored),
+            signature,
         )
 
     @app.callback(
@@ -762,26 +1269,99 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
             for name in _nav.DESTINATIONS
         ],
         Input(ids.TUNE_SETUP_CONTINUE, "n_clicks"),
-        State(ids.TUNE_SETUP_PIPELINE_STORE, "data"),
+        State(ids.TUNE_SETUP_PIPELINE_INPUT, "value"),
+        State(ids.TUNE_SETUP_PIPELINE_PICKER_STORE, "data"),
+        State(TUNE_PIPELINE_PATH_STORE, "data", allow_optional=True),
         State(ids.TUNE_SETUP_METADATA_INPUT, "value"),
+        State(ids.TUNE_SETUP_METADATA_PICKER_STORE, "data"),
+        State(SHELL_METADATA_CSV_STORE, "data", allow_optional=True),
+        State(ids.TUNE_SETUP_REPLACE_SCORER, "value"),
+        State({"type": ids.TUNE_SETUP_SPACE_TUNABLE, "key": ALL}, "id"),
+        State({"type": ids.TUNE_SETUP_SPACE_LOW, "key": ALL}, "id"),
+        State({"type": ids.TUNE_SETUP_SPACE_LOW, "key": ALL}, "value"),
+        State({"type": ids.TUNE_SETUP_SPACE_HIGH, "key": ALL}, "id"),
+        State({"type": ids.TUNE_SETUP_SPACE_HIGH, "key": ALL}, "value"),
+        State({"type": ids.TUNE_SETUP_SPACE_LOG, "key": ALL}, "id"),
+        State({"type": ids.TUNE_SETUP_SPACE_LOG, "key": ALL}, "value"),
+        State({"type": ids.TUNE_SETUP_SPACE_CHOICES, "key": ALL}, "id"),
+        State({"type": ids.TUNE_SETUP_SPACE_CHOICES, "key": ALL}, "value"),
+        State({"type": ids.TUNE_SETUP_SPACE_TUNABLE, "key": ALL}, "value"),
         prevent_initial_call=True,
     )
     def _author_setup_spec(
         n_clicks: int | None,
-        pipeline_path: str | None,
-        metadata_path: str | None,
+        typed_pipeline: str | None,
+        pipeline_picker: object,
+        pipeline_handoff: object,
+        typed_metadata: str | None,
+        metadata_picker: object,
+        metadata_handoff: object,
+        replace_values: object,
+        tunable_ids: list[dict[str, object]],
+        low_ids: list[dict[str, object]],
+        lows: list[object],
+        high_ids: list[dict[str, object]],
+        highs: list[object],
+        log_ids: list[dict[str, object]],
+        logs: list[object],
+        choice_ids: list[dict[str, object]],
+        choices: list[object],
+        tunables: list[object],
     ) -> tuple[object, ...]:
         if not n_clicks:
             return (no_update,) * 9
         if sandbox is None:
             return ("", "Setup authoring requires a sandbox-bound GUI launch.", *([no_update] * 7))
-        if not pipeline_path or not metadata_path:
-            return ("", "Choose a pipeline and metadata layout before Continue.", *([no_update] * 7))
+        pipeline = resolve_setup_path(
+            sandbox=sandbox,
+            kind="pipeline",
+            typed_path=typed_pipeline,
+            picker_payload=pipeline_picker,
+            shared_payload=pipeline_handoff,
+        )
+        metadata = resolve_setup_path(
+            sandbox=sandbox,
+            kind="metadata",
+            typed_path=typed_metadata,
+            picker_payload=metadata_picker,
+            shared_payload=metadata_handoff,
+        )
+        issues = [*pipeline.issues, *metadata.issues]
+        if pipeline.path is None:
+            issues.append("Choose a pipeline or existing tuning spec.")
+        if issues:
+            return ("", "\n".join(dict.fromkeys(issues)), *([no_update] * 7))
+        keys = [
+            entry.get("key") if isinstance(entry, dict) else None
+            for entry in (tunable_ids or [])
+        ]
+        edits = _collect_space_edits(
+            keys,
+            lows or [],
+            highs or [],
+            logs or [],
+            choices or [],
+            tunables or [],
+            low_keys=low_ids,
+            high_keys=high_ids,
+            log_keys=log_ids,
+            choice_keys=choice_ids,
+        )
+        assert pipeline.path is not None
+        replace = _toggle_on(replace_values)
+        setup_signature = setup_authoring_signature(
+            pipeline_path=str(pipeline.path),
+            metadata_path=str(metadata.path) if metadata.path else None,
+            replace_scorer=replace,
+            edits=edits,
+        )
         try:
             authored = write_authored_setup_spec(
                 sandbox_root=sandbox.root,
-                pipeline_or_spec_path=sandbox.resolve(pipeline_path),
-                metadata_path=sandbox.resolve(metadata_path),
+                pipeline_or_spec_path=pipeline.path,
+                metadata_path=metadata.path,
+                edits=edits,
+                replace_scorer=replace,
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Tune setup authoring failed")
@@ -796,8 +1376,10 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         return (
             authored_spec_descriptor(
                 path=str(authored),
-                pipeline_path=pipeline_path,
-                metadata_path=metadata_path,
+                pipeline_path=str(pipeline.path),
+                metadata_path=str(metadata.path) if metadata.path else None,
+                replace_scorer=replace,
+                setup_signature=setup_signature,
             ),
             f"Authored tuning spec: {authored}",
             active,
@@ -807,17 +1389,23 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
 
     @app.callback(
         Output(ids.TUNE_RUN_COMMAND, "children"),
+        Output(ids.TUNE_RUN_PORTABLE_COMMAND, "children"),
         Output(ids.TUNE_RUN_PREFLIGHT, "children"),
         Output(ids.TUNE_RUN_DEPLOY, "disabled"),
+        Output(ids.TUNE_RUN_COPY, "style"),
         Input(ids.TUNE_SETUP_AUTHORED_SPEC_STORE, "data"),
         Input(ids.TUNE_SETUP_PIPELINE_STORE, "data"),
-        Input(ids.TUNE_SETUP_METADATA_INPUT, "value"),
-        Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        Input(ids.TUNE_SETUP_METADATA_STORE, "data"),
+        Input(ids.TUNE_SETUP_REPLACE_SCORER, "value"),
+        Input(ids.TUNE_SETUP_SIGNATURE_STORE, "data"),
+        Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_optional=True),
         Input(ids.TUNE_RUN_IMAGES_OVERRIDE, "value"),
         Input(ids.TUNE_RUN_OUTPUT_DIR, "value"),
         Input(ids.TUNE_RUN_STRATEGY, "value"),
         Input(ids.TUNE_RUN_N_TRIALS, "value"),
+        Input(ids.TUNE_RUN_STORAGE_MODE, "value"),
         Input(ids.TUNE_RUN_STORAGE_URL, "value"),
+        Input(ids.TUNE_RUN_STORAGE_ENV, "value"),
         Input(ids.TUNE_RUN_N_WORKERS, "value"),
         Input(ids.TUNE_RUN_SLURM_PARTITION, "value"),
         Input(ids.TUNE_RUN_SLURM_MEM, "value"),
@@ -829,14 +1417,18 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
     )
     def _render_run_command(
         authored_spec_descriptor_value: object,
-        pipeline_path: str | None,
-        metadata_path: str | None,
+        pipeline_store: object,
+        metadata_store: object,
+        replace_values: object,
+        setup_signature: str | None,
         shared_source: object,
         images_override: str | None,
         output_dir: str | None,
         strategy: str | None,
         n_trials: object,
-        storage_url: str | None,
+        storage_mode: str | None,
+        storage_local_path: str | None,
+        storage_environment_name: str | None,
         n_workers: object,
         slurm_partition: str | None,
         slurm_mem: str | None,
@@ -845,55 +1437,47 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         cv_group: str | None,
         mode: str | None,
         screen_values: object,
-    ) -> tuple[str, str, bool]:
+    ) -> tuple[str, str, str, bool, dict[str, str]]:
         if sandbox is None:
-            return "", "Run requires a sandbox-bound GUI launch.", True
-        spec_path = active_authored_spec_path(
-            authored_spec_descriptor_value,
-            pipeline_path=pipeline_path,
-            metadata_path=metadata_path,
+            return (
+                "",
+                "",
+                "Run requires a sandbox-bound GUI launch.",
+                True,
+                {"display": "none"},
+            )
+        command = _build_command_from_controls(
+            sandbox=sandbox,
+            authored_descriptor=authored_spec_descriptor_value,
+            pipeline_store=pipeline_store,
+            metadata_store=metadata_store,
+            replace_values=replace_values,
+            setup_signature=setup_signature,
+            shared_source=shared_source,
+            images_override=images_override,
+            output_dir=output_dir,
+            strategy=strategy,
+            n_trials=n_trials,
+            storage_mode=storage_mode,
+            storage_local_path=storage_local_path,
+            storage_environment_name=storage_environment_name,
+            n_workers=n_workers,
+            slurm_partition=slurm_partition,
+            slurm_mem=slurm_mem,
+            slurm_time=slurm_time,
+            held_out_fraction=held_out_fraction,
+            cv_group=cv_group,
+            mode=mode,
+            screen_values=screen_values,
         )
-        spec_issue = spec_path_issue(spec_path)
-        if spec_issue is not None:
-            return "", spec_issue.message, True
-        assert spec_path is not None
-        try:
-            run_issues = _load_spec_preflight_issues(spec_path, strategy or "tpe")
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Tune preflight failed", exc_info=True)
-            return "", f"Could not inspect tuning spec: {exc}", True
-        if run_issues:
-            return "", " ".join(run_issues), True
-        images_dir = resolve_run_images(sandbox, shared_source, images_override)
-        missing = []
-        if not spec_path:
-            missing.append("pipeline/spec")
-        if not images_dir:
-            missing.append("images")
-        if not output_dir:
-            missing.append("output")
-        if missing:
-            return "", "Set " + ", ".join(missing) + " before Deploy.", True
-        assert spec_path is not None
-        assert images_dir is not None
-        assert output_dir is not None
-        command = render_launch_command(
-            spec_path,
-            images_dir,
-            output_dir,
-            strategy=strategy or "tpe",
-            n_trials=_optional_int(n_trials),
-            storage_url=storage_url or None,
-            n_workers=_optional_int(n_workers),
-            slurm_partition=slurm_partition or None,
-            slurm_mem=slurm_mem or None,
-            slurm_time=slurm_time or None,
-            held_out_fraction=_optional_float(held_out_fraction),
-            cv_group=cv_group or None,
-            screen=_toggle_on(screen_values),
-            slurm=mode == "slurm",
+        note = "\n".join(command.issues) if command.issues else "Ready to deploy."
+        return (
+            command.display_command(),
+            command.portable_command(),
+            note,
+            not command.deploy_eligible,
+            {} if command.copy_eligible else {"display": "none"},
         )
-        return command, "Ready to deploy.", False
 
     @app.callback(
         Output(ids.TUNE_RUN_STATUS, "children"),
@@ -911,13 +1495,17 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         Input(ids.TUNE_RUN_DEPLOY, "n_clicks"),
         State(ids.TUNE_SETUP_AUTHORED_SPEC_STORE, "data"),
         State(ids.TUNE_SETUP_PIPELINE_STORE, "data"),
-        State(ids.TUNE_SETUP_METADATA_INPUT, "value"),
-        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        State(ids.TUNE_SETUP_METADATA_STORE, "data"),
+        State(ids.TUNE_SETUP_REPLACE_SCORER, "value"),
+        State(ids.TUNE_SETUP_SIGNATURE_STORE, "data"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_optional=True),
         State(ids.TUNE_RUN_IMAGES_OVERRIDE, "value"),
         State(ids.TUNE_RUN_OUTPUT_DIR, "value"),
         State(ids.TUNE_RUN_STRATEGY, "value"),
         State(ids.TUNE_RUN_N_TRIALS, "value"),
+        State(ids.TUNE_RUN_STORAGE_MODE, "value"),
         State(ids.TUNE_RUN_STORAGE_URL, "value"),
+        State(ids.TUNE_RUN_STORAGE_ENV, "value"),
         State(ids.TUNE_RUN_N_WORKERS, "value"),
         State(ids.TUNE_RUN_SLURM_PARTITION, "value"),
         State(ids.TUNE_RUN_SLURM_MEM, "value"),
@@ -931,14 +1519,18 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
     def _deploy_run(
         n_clicks: int | None,
         authored_spec_descriptor_value: object,
-        pipeline_path: str | None,
-        metadata_path: str | None,
+        pipeline_store: object,
+        metadata_store: object,
+        replace_values: object,
+        setup_signature: str | None,
         shared_source: object,
         images_override: str | None,
         output_dir: str | None,
         strategy: str | None,
         n_trials: object,
-        storage_url: str | None,
+        storage_mode: str | None,
+        storage_local_path: str | None,
+        storage_environment_name: str | None,
         n_workers: object,
         slurm_partition: str | None,
         slurm_mem: str | None,
@@ -956,54 +1548,48 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         registry = app.server.config.get(CFG_RUN_REGISTRY)
         if runner is None or registry is None:
             return ("Runner unavailable.", no_update, *([no_update] * 8))
-        spec_path = active_authored_spec_path(
-            authored_spec_descriptor_value,
-            pipeline_path=pipeline_path,
-            metadata_path=metadata_path,
-        )
-        spec_issue = spec_path_issue(spec_path)
-        if spec_issue is not None:
-            return (spec_issue.message, no_update, *([no_update] * 8))
-        assert spec_path is not None
-        try:
-            run_issues = _load_spec_preflight_issues(spec_path, strategy or "tpe")
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Tune deploy preflight failed", exc_info=True)
-            return (f"Could not inspect tuning spec: {exc}", no_update, *([no_update] * 8))
-        if run_issues:
-            return (" ".join(run_issues), no_update, *([no_update] * 8))
-        images_dir = resolve_run_images(sandbox, shared_source, images_override)
-        if not spec_path or not images_dir or not output_dir:
-            return ("Set pipeline/spec, images, and output before Deploy.", no_update, *([no_update] * 8))
-        slurm = mode == "slurm"
-        argv = tune_run_argv(
-            spec_path=spec_path,
-            images_dir=images_dir,
+        command = _build_command_from_controls(
+            sandbox=sandbox,
+            authored_descriptor=authored_spec_descriptor_value,
+            pipeline_store=pipeline_store,
+            metadata_store=metadata_store,
+            replace_values=replace_values,
+            setup_signature=setup_signature,
+            shared_source=shared_source,
+            images_override=images_override,
             output_dir=output_dir,
-            strategy=strategy or "tpe",
-            n_trials=_optional_int(n_trials),
-            storage_url=storage_url or None,
-            n_workers=_optional_int(n_workers),
-            slurm_partition=slurm_partition or None,
-            slurm_mem=slurm_mem or None,
-            slurm_time=slurm_time or None,
-            held_out_fraction=_optional_float(held_out_fraction),
-            cv_group=cv_group or None,
-            slurm=slurm,
-            screen=_toggle_on(screen_values),
+            strategy=strategy,
+            n_trials=n_trials,
+            storage_mode=storage_mode,
+            storage_local_path=storage_local_path,
+            storage_environment_name=storage_environment_name,
+            n_workers=n_workers,
+            slurm_partition=slurm_partition,
+            slurm_mem=slurm_mem,
+            slurm_time=slurm_time,
+            held_out_fraction=held_out_fraction,
+            cv_group=cv_group,
+            mode=mode,
+            screen_values=screen_values,
         )
+        if not command.deploy_eligible or command.output_dir is None:
+            return ("\n".join(command.issues), no_update, *([no_update] * 8))
         try:
             run_id = deploy_tune_run(
                 runner=runner,
                 registry=registry,
                 sandbox=sandbox,
-                argv=argv,
-                output_dir=Path(output_dir),
-                slurm=slurm,
+                argv=list(command.argv),
+                output_dir=command.output_dir,
+                slurm=command.execution_target == "slurm",
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             logger.exception("Tune deploy failed")
-            return (str(exc), no_update, *([no_update] * 8))
+            return (
+                "Deploy failed. See the server log for details.",
+                no_update,
+                *([no_update] * 8),
+            )
         active: _nav.Destination = "monitor"
         view_classes = [
             _nav.destination_view_class(name, active) for name in _nav.DESTINATIONS
@@ -1013,7 +1599,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         ]
         return (
             f"Deployed: {run_id}",
-            {"run_id": run_id, "mode": "slurm" if slurm else "local"},
+            {"run_id": run_id, "mode": command.execution_target},
             run_id,
             active,
             *view_classes,
@@ -1388,7 +1974,17 @@ def _register_launch_command_mirror(app) -> None:  # type: ignore[no-untyped-def
 # ---------------------------------------------------------------------------
 
 def _collect_space_edits(
-    keys, lows, highs, logs, choices, tunables  # type: ignore[no-untyped-def]
+    keys,
+    lows,
+    highs,
+    logs,
+    choices,
+    tunables,
+    *,
+    low_keys=None,
+    high_keys=None,
+    log_keys=None,
+    choice_keys=None,
 ) -> "dict[str, dict]":
     """Zip the pattern-matching Space inputs into a per-key edit map.
 
@@ -1408,15 +2004,34 @@ def _collect_space_edits(
     Returns:
         ``{knob_key: {"low": …, "tunable": bool, …}}`` for every knob.
     """
+    def _keyed_values(component_ids, values):  # type: ignore[no-untyped-def]
+        if component_ids is None:
+            return None
+        return {
+            component_id.get("key"): value
+            for component_id, value in zip(component_ids, values)
+            if isinstance(component_id, dict)
+        }
+
+    low_by_key = _keyed_values(low_keys, lows)
+    high_by_key = _keyed_values(high_keys, highs)
+    log_by_key = _keyed_values(log_keys, logs)
+    choice_by_key = _keyed_values(choice_keys, choices)
+
+    def _value(index, key, values, keyed):  # type: ignore[no-untyped-def]
+        if keyed is not None:
+            return keyed.get(key)
+        return values[index] if index < len(values) else None
+
     edits: "dict[str, dict]" = {}
     for index, key in enumerate(keys):
         if key is None:
             continue
         edit: dict = {}
-        low = lows[index] if index < len(lows) else None
-        high = highs[index] if index < len(highs) else None
-        log = logs[index] if index < len(logs) else None
-        choice = choices[index] if index < len(choices) else None
+        low = _value(index, key, lows, low_by_key)
+        high = _value(index, key, highs, high_by_key)
+        log = _value(index, key, logs, log_by_key)
+        choice = _value(index, key, choices, choice_by_key)
         tunable = tunables[index] if index < len(tunables) else None
         if low is not None:
             edit["low"] = low
@@ -1708,7 +2323,7 @@ def _register_curate_callbacks(app, sandbox) -> None:  # type: ignore[no-untyped
     @app.callback(
         Output(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_duplicate=True),
         Input(ids.TUNE_IMAGE_SOURCE_STORE, "data"),
-        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_optional=True),
         prevent_initial_call=True,
     )
     def _mirror_tune_image_source_to_shared(
@@ -1722,7 +2337,7 @@ def _register_curate_callbacks(app, sandbox) -> None:  # type: ignore[no-untyped
     @app.callback(
         Output(ids.TUNE_IMAGE_SOURCE_STORE, "data", allow_duplicate=True),
         Output(ids.TUNE_IMAGE_SOURCE_LABEL, "children", allow_duplicate=True),
-        Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_optional=True),
         State(ids.TUNE_IMAGE_SOURCE_STORE, "data"),
         prevent_initial_call="initial_duplicate",
     )
@@ -1753,12 +2368,6 @@ def _register_curate_callbacks(app, sandbox) -> None:  # type: ignore[no-untyped
 # ---------------------------------------------------------------------------
 
 
-#: Image extensions the plate picker surfaces (mirrors the builder image picker).
-_PLATE_EXTS: frozenset[str] = frozenset(
-    {".png", ".tif", ".tiff", ".jpg", ".jpeg", ".nef", ".cr2", ".arw", ".dng"}
-)
-
-
 def _list_plate_names(
     image_source: "Optional[str]", *, sandbox=None
 ) -> list[str]:
@@ -1786,7 +2395,7 @@ def _list_plate_names(
         names = [
             entry.name
             for entry in directory.iterdir()
-            if entry.is_file() and entry.suffix.lower() in _PLATE_EXTS
+            if entry.is_file() and entry.suffix.lower() in IMAGE_EXTS
         ]
     except OSError:
         return []

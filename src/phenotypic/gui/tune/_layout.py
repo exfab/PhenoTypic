@@ -26,12 +26,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
+import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 from dash.development.base_component import Component
 
 from phenotypic.gui.tune import _ids as ids
 from phenotypic.gui.tune import _nav
 from phenotypic.gui.tune._run_picker import build_run_picker_modal, build_run_picker_row
+from phenotypic.gui.builder._directory_browser import directory_tree
+from phenotypic.sdk_ import CONFIG_SUFFIX_TUNING, PIPELINE_CONFIG_SUFFIXES
+from phenotypic.gui.tune._command import DEFAULT_STORAGE_ENV
 from phenotypic.tune.strategy._config import STRATEGY_CHOICES
 
 if TYPE_CHECKING:
@@ -84,7 +88,11 @@ def build_layout(
         dcc.Store(id=ids.TUNE_RUN_ROOT_STORE, data=store_data),
         dcc.Store(id=ids.TUNE_ACTIVE_DESTINATION_STORE, data=active_destination),
         dcc.Store(id=ids.TUNE_SETUP_PIPELINE_STORE, data=None),
+        dcc.Store(id=ids.TUNE_SETUP_METADATA_STORE, data=None),
+        dcc.Store(id=ids.TUNE_SETUP_PIPELINE_PICKER_STORE, data=None),
+        dcc.Store(id=ids.TUNE_SETUP_METADATA_PICKER_STORE, data=None),
         dcc.Store(id=ids.TUNE_SETUP_AUTHORED_SPEC_STORE, data=None),
+        dcc.Store(id=ids.TUNE_SETUP_SIGNATURE_STORE, data=None),
         dcc.Store(id=ids.TUNE_RUN_ACTIVE_RECORD_STORE, data=None),
         html.Div(
             [
@@ -98,7 +106,7 @@ def build_layout(
         html.Div(
             [
                 html.Div(
-                    build_setup_view(),
+                    build_setup_view(sandbox=sandbox),
                     id=_nav.destination_view_id("setup"),
                     className=_nav.destination_view_class(
                         "setup", active_destination
@@ -124,6 +132,7 @@ def build_layout(
     # reachable in both the empty and loaded states; ``None`` sandbox omits it.
     if sandbox is not None:
         children.append(build_run_picker_modal(sandbox))
+        children.extend(_build_setup_picker_modals(sandbox))
     return html.Div(children, id=ids.TUNE_PAGE, className="tune-page")
 
 
@@ -147,29 +156,64 @@ def _build_destination_row(active: _nav.Destination) -> html.Div:
     )
 
 
-def build_setup_view() -> html.Div:
-    """Render the initial Setup destination scaffold."""
+def build_setup_view(
+    *, sandbox: "Optional[SandboxRoot]" = None
+) -> html.Div:
+    """Render the functional Setup authoring destination."""
+    picker_disabled = sandbox is None
     return html.Div(
         [
             html.Div(
                 [
                     html.H3("Pipeline"),
-                    dcc.Input(
-                        id=ids.TUNE_SETUP_PIPELINE_INPUT,
-                        type="text",
-                        debounce=True,
-                        placeholder="Pipeline or tuning spec path",
-                        className="tune-setup-path-input",
-                    ),
-                    dcc.Input(
-                        id=ids.TUNE_SETUP_METADATA_INPUT,
-                        type="text",
-                        debounce=True,
-                        placeholder="Metadata layout CSV/Parquet for QC scorer",
-                        className="tune-setup-path-input",
+                    html.Div(
+                        [
+                            dcc.Input(
+                                id=ids.TUNE_SETUP_PIPELINE_INPUT,
+                                type="text",
+                                debounce=True,
+                                placeholder="Pipeline or tuning spec path",
+                                className="tune-setup-path-input",
+                            ),
+                            html.Button(
+                                "Pick pipeline",
+                                id=ids.TUNE_SETUP_PICK_PIPELINE,
+                                n_clicks=0,
+                                disabled=picker_disabled,
+                            ),
+                        ],
+                        className="tune-setup-path-row",
                     ),
                     html.Div(
-                        "Choose a pipeline and metadata layout to author a tune spec.",
+                        "Pipeline: unset",
+                        id=ids.TUNE_SETUP_PIPELINE_SOURCE,
+                        className="tune-setup-note",
+                    ),
+                    html.Div(
+                        [
+                            dcc.Input(
+                                id=ids.TUNE_SETUP_METADATA_INPUT,
+                                type="text",
+                                debounce=True,
+                                placeholder="Metadata layout CSV/Parquet",
+                                className="tune-setup-path-input",
+                            ),
+                            html.Button(
+                                "Pick metadata",
+                                id=ids.TUNE_SETUP_PICK_METADATA,
+                                n_clicks=0,
+                                disabled=picker_disabled,
+                            ),
+                        ],
+                        className="tune-setup-path-row",
+                    ),
+                    html.Div(
+                        "Metadata: unset",
+                        id=ids.TUNE_SETUP_METADATA_SOURCE,
+                        className="tune-setup-note",
+                    ),
+                    html.Div(
+                        "Choose a pipeline or existing tuning spec.",
                         id=ids.TUNE_SETUP_GATE,
                         className="tune-setup-note",
                     ),
@@ -182,7 +226,23 @@ def build_setup_view() -> html.Div:
                 className="tune-setup-section tune-setup-locked",
             ),
             html.Div(
-                [html.H3("Scorer"), html.Div("Locked until pipeline is chosen.")],
+                [
+                    html.H3("Scorer"),
+                    html.Div("Locked until pipeline is chosen."),
+                    dcc.Checklist(
+                        id=ids.TUNE_SETUP_REPLACE_SCORER,
+                        options=[
+                            {
+                                "label": (
+                                    "Replace scorer with metadata-backed QC scorer"
+                                ),
+                                "value": "on",
+                            }
+                        ],
+                        value=[],
+                        className="tune-run-mode",
+                    ),
+                ],
                 id=ids.TUNE_SETUP_SCORER,
                 className="tune-setup-section tune-setup-locked",
             ),
@@ -199,6 +259,73 @@ def build_setup_view() -> html.Div:
         ],
         className="tune-setup",
     )
+
+
+def _build_setup_picker_modals(
+    sandbox: "SandboxRoot",
+) -> list[dbc.Modal]:
+    """Build the pipeline/spec and metadata file pickers."""
+    pipeline_suffixes = PIPELINE_CONFIG_SUFFIXES | frozenset(
+        {CONFIG_SUFFIX_TUNING}
+    )
+
+    def _modal(
+        *,
+        modal_id: str,
+        body_id: str,
+        browse_id: str,
+        cancel_id: str,
+        title: str,
+        extensions: frozenset[str],
+        entry_type: str,
+    ) -> dbc.Modal:
+        return dbc.Modal(
+            [
+                dbc.ModalHeader(dbc.ModalTitle(title)),
+                dbc.ModalBody(
+                    [
+                        dcc.Store(id=browse_id, data=str(sandbox.root)),
+                        html.Div(
+                            directory_tree(
+                                sandbox.root,
+                                extensions=extensions,
+                                select_files=True,
+                                id_type=entry_type,
+                            ),
+                            id=body_id,
+                        ),
+                    ]
+                ),
+                dbc.ModalFooter(
+                    dbc.Button("Cancel", id=cancel_id, n_clicks=0)
+                ),
+            ],
+            id=modal_id,
+            is_open=False,
+            size="lg",
+            scrollable=True,
+        )
+
+    return [
+        _modal(
+            modal_id=ids.TUNE_SETUP_PIPELINE_MODAL,
+            body_id=ids.TUNE_SETUP_PIPELINE_MODAL_BODY,
+            browse_id=ids.TUNE_SETUP_PIPELINE_BROWSE_DIR,
+            cancel_id=ids.TUNE_SETUP_PIPELINE_CANCEL,
+            title="Choose pipeline or tuning spec",
+            extensions=pipeline_suffixes,
+            entry_type=ids.TUNE_SETUP_PIPELINE_ENTRY,
+        ),
+        _modal(
+            modal_id=ids.TUNE_SETUP_METADATA_MODAL,
+            body_id=ids.TUNE_SETUP_METADATA_MODAL_BODY,
+            browse_id=ids.TUNE_SETUP_METADATA_BROWSE_DIR,
+            cancel_id=ids.TUNE_SETUP_METADATA_CANCEL,
+            title="Choose metadata",
+            extensions=frozenset({".csv", ".parquet"}),
+            entry_type=ids.TUNE_SETUP_METADATA_ENTRY,
+        ),
+    ]
 
 
 def build_run_view_placeholder() -> html.Div:
@@ -250,7 +377,27 @@ def build_run_view_placeholder() -> html.Div:
                         id=ids.TUNE_RUN_STORAGE_URL,
                         type="text",
                         debounce=True,
-                        placeholder="Storage URL",
+                        placeholder="Local SQLite path (optional)",
+                        className="tune-run-input tune-run-input-wide",
+                    ),
+                    dcc.RadioItems(
+                        id=ids.TUNE_RUN_STORAGE_MODE,
+                        options=[
+                            {"label": "Local SQLite", "value": "local"},
+                            {
+                                "label": "Server environment variable",
+                                "value": "environment",
+                            },
+                        ],
+                        value="local",
+                        inline=True,
+                    ),
+                    dcc.Input(
+                        id=ids.TUNE_RUN_STORAGE_ENV,
+                        type="text",
+                        debounce=True,
+                        value=DEFAULT_STORAGE_ENV,
+                        placeholder="Environment variable name",
                         className="tune-run-input tune-run-input-wide",
                     ),
                 ],
@@ -330,7 +477,19 @@ def build_run_view_placeholder() -> html.Div:
                 className="tune-run-section",
             ),
             html.Div(id=ids.TUNE_RUN_PREFLIGHT, className="tune-run-note"),
+            html.Div("GUI-equivalent", className="tune-run-note"),
             html.Code(id=ids.TUNE_RUN_COMMAND, className="tune-launch-command"),
+            html.Div("Portable project command", className="tune-run-note"),
+            html.Code(
+                id=ids.TUNE_RUN_PORTABLE_COMMAND,
+                className="tune-launch-command",
+            ),
+            dcc.Clipboard(
+                id=ids.TUNE_RUN_COPY,
+                target_id=ids.TUNE_RUN_PORTABLE_COMMAND,
+                title="Copy portable project command",
+                style={"display": "none"},
+            ),
             html.Div(
                 [
                     html.Button(

@@ -14,6 +14,18 @@ from __future__ import annotations
 
 import shlex
 import sys
+from pathlib import Path
+
+from phenotypic.gui.shell._sandbox import SandboxRoot
+
+
+def _command_paths(tmp_path: Path) -> tuple[SandboxRoot, Path, Path, Path]:
+    spec = tmp_path / "spec with spaces.json.pht-tune"
+    spec.write_text("{}", encoding="utf-8")
+    images = tmp_path / "plate images"
+    images.mkdir()
+    output = tmp_path / "tune output"
+    return SandboxRoot.from_path(tmp_path), spec, images, output
 
 
 def test_render_postgres_tpe_run_includes_strategy_trials_and_storage() -> None:
@@ -226,3 +238,91 @@ def test_render_launch_command_does_not_import_optuna() -> None:
 
     importlib.import_module("phenotypic.gui.tune._command")
     assert "optuna" not in sys.modules
+
+
+def test_validated_command_owns_actual_display_and_portable_tokens(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.tune._command import build_tune_command
+
+    sandbox, spec, images, output = _command_paths(tmp_path)
+    secret = "postgresql+psycopg://user:password@db/tune"
+    command = build_tune_command(
+        sandbox=sandbox,
+        spec_path=str(spec),
+        images_dir=str(images),
+        output_dir=str(output),
+        strategy="tpe",
+        n_trials=9,
+        storage_mode="environment",
+        storage_environment_name="PHENOTYPIC_STORAGE_URL",
+        environ={"PHENOTYPIC_STORAGE_URL": secret},
+    )
+
+    assert command.deploy_eligible is True
+    assert command.copy_eligible is True
+    assert command.argv[0] == sys.executable
+    assert command.argv[3:] == command.semantic_tail
+    assert command.portable_tokens[:5] == (
+        "uv",
+        "run",
+        "python",
+        "-m",
+        "phenotypic.tune",
+    )
+    assert command.portable_tokens[5:] == command.display_tokens[3:]
+    assert secret in command.argv
+    assert secret not in command.display_command()
+    assert secret not in command.portable_command()
+    assert secret not in repr(command)
+    assert "$PHENOTYPIC_STORAGE_URL" in command.display_command()
+    assert "$PHENOTYPIC_STORAGE_URL" in command.portable_command()
+
+
+def test_validated_command_disables_copy_for_missing_images_and_env(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.tune._command import build_tune_command
+
+    sandbox, spec, _, output = _command_paths(tmp_path)
+    command = build_tune_command(
+        sandbox=sandbox,
+        spec_path=str(spec),
+        images_dir="missing images",
+        output_dir=str(output),
+        strategy="tpe",
+        n_trials=9,
+        storage_mode="environment",
+        storage_environment_name="SERVER_TUNE_URL",
+        environ={},
+    )
+
+    assert command.deploy_eligible is False
+    assert command.copy_eligible is False
+    assert any("Image source" in issue for issue in command.issues)
+    assert any("SERVER_TUNE_URL" in issue for issue in command.issues)
+    assert command.argv == ()
+
+
+def test_local_storage_path_is_sandbox_resolved_and_displayable(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.tune._command import build_tune_command
+
+    sandbox, spec, images, output = _command_paths(tmp_path)
+    command = build_tune_command(
+        sandbox=sandbox,
+        spec_path=str(spec),
+        images_dir=str(images),
+        output_dir=str(output),
+        strategy="grid",
+        n_trials=99,
+        storage_mode="local",
+        storage_local_path="state/study.sqlite3",
+    )
+
+    storage_url = f"sqlite:///{tmp_path / 'state/study.sqlite3'}"
+    assert command.issues == ()
+    assert storage_url in command.argv
+    assert storage_url in command.display_tokens
+    assert "--n-trials" not in command.argv
