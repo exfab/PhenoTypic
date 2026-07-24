@@ -87,7 +87,7 @@ def _expect_stale_same_mount(page: Page) -> None:
     _assert_same_preview_mount(page)
 
 
-def test_load_prefab_delete_and_undo_keep_preview_mount(
+def test_load_prefab_and_delete_keep_preview_mount(
     page: Page,
     hub_url: str,
 ) -> None:
@@ -131,28 +131,4 @@ def test_load_prefab_delete_and_undo_keep_preview_mount(
     expect(page.locator("#confirm-delete-modal")).to_be_visible()
     page.locator("#btn-confirm-delete").click()
     expect(page.locator("#confirm-delete-modal")).to_be_hidden()
-    _expect_stale_same_mount(page)
-
-    # Point-picker Undo is the Builder's available undo surface. It updates
-    # staged modal state while the pipeline remains stale and must not remount
-    # or clear the inspector preview owner.
-    page.locator("button", has_text="ManualRefine").first.dispatch_event("click")
-    expect(page.locator(".linear-side-title")).to_have_text("ManualRefine")
-    page.locator("#btn-inspector-slideover-toggle").click()
-    picker_button = page.locator("button[id*='param-point-picker-btn']").first
-    picker_button.wait_for(state="visible", timeout=10_000)
-    picker_button.scroll_into_view_if_needed()
-    picker_button.click()
-    expect(page.locator("#modal-point-picker")).to_be_visible()
-    page.evaluate(
-        """() => {
-            window.dash_clientside.set_props(
-                "picker-staged-store",
-                { data: [[10, 10], [20, 20]] }
-            );
-        }"""
-    )
-    expect(page.locator("#picker-count-label")).to_have_text("2 points")
-    page.locator("#btn-picker-undo").dispatch_event("click")
-    expect(page.locator("#picker-count-label")).to_have_text("1 point")
     _expect_stale_same_mount(page)

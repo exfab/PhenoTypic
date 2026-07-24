@@ -81,7 +81,8 @@ class PreviewGenerationWriter:
     Attributes:
         session_id: Per-tab session owning the generation.
         pipeline_revision: Canonical semantic revision baked by the caller.
-        request_sequence: Monotonic reservation assigned before preview work.
+        request_sequence: Cache-global monotonic token assigned before preview
+            work.
         max_intermediates: Per-session cache bound applied while staging.
         intermediates: Ordered staged payloads, never directly exposed live.
     """
@@ -136,8 +137,8 @@ class SessionData:
             invalidates the cache by rotating the keys.
         pipeline_revision: Semantic revision of the published generation.
         preview_generation: Monotonic count of successful publications.
-        preview_request_sequence: Monotonic count of preview requests started;
-            only a writer carrying the current value may publish.
+        preview_request_sequence: Cache-global monotonic request token currently
+            authorized to publish for this session.
     """
 
     image: Optional["Image"] = None
@@ -170,6 +171,9 @@ class IntermediatesCache:
         self._max_per_session = max_per_session
         # OrderedDict so we can FIFO-evict the oldest session.
         self._sessions: "OrderedDict[str, SessionData]" = OrderedDict()
+        # Cache-global so clearing, evicting, and recreating a session id can
+        # never re-authorize an older in-flight writer by reusing its token.
+        self._preview_request_sequence = 0
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
@@ -278,14 +282,15 @@ class IntermediatesCache:
     def begin_preview_generation(
         self, session_id: str, pipeline_revision: str
     ) -> PreviewGenerationWriter:
-        """Reserve the next request sequence and return a detached writer."""
+        """Reserve a cache-global request token and return a detached writer."""
         with self._lock:
             data = self._ensure_session(session_id)
-            data.preview_request_sequence += 1
+            self._preview_request_sequence += 1
+            data.preview_request_sequence = self._preview_request_sequence
             return PreviewGenerationWriter(
                 session_id=session_id,
                 pipeline_revision=pipeline_revision,
-                request_sequence=data.preview_request_sequence,
+                request_sequence=self._preview_request_sequence,
                 max_intermediates=self._max_per_session,
             )
 

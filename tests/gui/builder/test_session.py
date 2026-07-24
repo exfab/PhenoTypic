@@ -268,3 +268,31 @@ def test_superseded_prefix_publish_preserves_complete_downstream_snapshot() -> N
     assert cache.get_preview(
         ("s1", "downstream", "revision-1", full_generation)
     ) == b"downstream-2"
+
+
+@pytest.mark.parametrize("removal", ["clear", "fifo-eviction"])
+def test_recreated_session_rejects_writer_from_prior_lifetime(
+    removal: str,
+) -> None:
+    """Session recreation cannot reuse an old in-flight writer's token."""
+    cache = IntermediatesCache(max_sessions=1)
+    stale = cache.begin_preview_generation("s1", "old-revision")
+    stale.set_intermediate("s1", "node-a", b"stale")
+
+    if removal == "clear":
+        cache.clear("s1")
+    else:
+        # Creating another session FIFO-evicts s1 while its writer is still
+        # detached and able to complete later.
+        cache.begin_preview_generation("s2", "other-revision")
+
+    current = cache.begin_preview_generation("s1", "current-revision")
+    current.set_intermediate("s1", "node-a", b"current")
+    assert current.request_sequence > stale.request_sequence
+
+    generation = cache.publish_preview_generation(current)
+    assert generation == 1
+    assert cache.publish_preview_generation(stale) is None
+    assert cache.get_preview(
+        ("s1", "node-a", "current-revision", generation)
+    ) == b"current"
