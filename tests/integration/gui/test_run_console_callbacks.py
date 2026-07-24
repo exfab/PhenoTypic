@@ -469,6 +469,9 @@ def test_run_app_owns_one_startable_observer_lifecycle(
         def bind_generation(self, **_kwargs: object) -> None:
             return None
 
+        def reconcile_durable_bindings(self) -> int:
+            return 0
+
     observer = ObserverSpy()
     cleanup_callbacks: list[Any] = []
     monkeypatch.setattr(
@@ -505,6 +508,46 @@ def test_staged_gpu_controls_follow_pipeline_capability(
     assert callback("/gpu.json", "slurm") == {"display": "block"}
     assert callback("/cpu.json", "slurm") == {"display": "none"}
     assert callback("/gpu.json", "local") == {"display": "none"}
+
+
+def test_terminal_no_dashboard_surfaces_detail_and_manual_refresh(
+    tmp_path: Path,
+) -> None:
+    """Terminal output remains diagnosable and can be checked on demand."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    record = registry.allocate(
+        mode="slurm",
+        output_dir=output_dir,
+        rel_path="out",
+        command_digest="digest",
+        status="failed",
+    )
+    assert record.generation is not None
+    registry.compare_and_set(
+        record.run_id,
+        record.generation,
+        status_detail="finalizer exited before dashboard publication",
+    )
+    app = create_app(sandbox, registry=registry)
+    callback = _callback_by_name(app, "poll_dashboard")
+
+    missing = callback(1, 0, "out", record.run_id)
+
+    assert missing[1] == {"display": "none"}
+    assert "finalizer exited" in missing[3]
+    assert missing[4] is True
+
+    dashboard = output_dir / "deliverables" / "dashboard.html"
+    dashboard.parent.mkdir(parents=True)
+    dashboard.write_text("<html></html>", encoding="utf-8")
+    refreshed = callback(1, 1, "out", record.run_id)
+
+    assert refreshed[0].endswith("/runs/out/deliverables/dashboard.html")
+    assert refreshed[1] == {"display": "block"}
+    assert refreshed[4] is True
 
 
 def test_slurm_log_callback_reads_incrementally(

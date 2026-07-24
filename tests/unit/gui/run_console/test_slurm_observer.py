@@ -18,7 +18,9 @@ from phenotypic._cli._cli_slurm_lifecycle import (
 )
 from phenotypic._cli._cli_staged_orchestration import (
     orchestration_state_path,
+    staged_completion_path,
 )
+from phenotypic._cli._cli_staged_resume import write_stage3_completion_marker
 from phenotypic.gui.run_console._slurm_observer import (
     IncrementalLogReader,
     SchedulerCommentQueryResult,
@@ -191,6 +193,91 @@ def test_unbound_observer_does_not_race_active_submitter(
     assert updated.status == "submitting"
     assert "awaiting explicit" in (updated.status_detail or "")
     assert scheduler.queries == []
+
+
+def test_restart_binding_retries_when_lifecycle_appears_late(
+    tmp_path: Path,
+) -> None:
+    """A restart window heals only after all durable identities agree."""
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    gui_generation = uuid4()
+    scheduler_generation = uuid4()
+    registry = RunRegistry()
+    record = RunRecord(
+        run_id="out",
+        generation=gui_generation,
+        mode="slurm",
+        output_dir=output_dir,
+        rel_path="out",
+        status="submitting",
+    )
+    registry.register(record)
+    atomic_write_json(
+        job_metadata_path(output_dir),
+        {
+            "gui_record_generation": gui_generation.hex,
+            "slurm_generation": scheduler_generation.hex,
+            "slurm_job_ids": {},
+        },
+    )
+    observer = SlurmLifecycleObserver(registry, FakeScheduler())
+
+    assert observer.reconcile_durable_bindings() == 0
+    initialize_slurm_lifecycle(
+        output_dir,
+        generation=scheduler_generation.hex,
+        mode="ordinary",
+    )
+    assert observer.reconcile_durable_bindings() == 1
+
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.lifecycle_epoch == scheduler_generation.hex
+    assert (record.run_id, gui_generation) in observer._bindings  # noqa: SLF001
+
+
+def test_restart_binding_rejects_stale_old_lifecycle(
+    tmp_path: Path,
+) -> None:
+    """A prior launch cannot be attached to a newer GUI owner record."""
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    old_gui_generation = uuid4()
+    current_gui_generation = uuid4()
+    old_scheduler_generation = uuid4()
+    registry = RunRegistry()
+    record = RunRecord(
+        run_id="out",
+        generation=current_gui_generation,
+        mode="slurm",
+        output_dir=output_dir,
+        rel_path="out",
+        status="unknown",
+    )
+    registry.register(record)
+    initialize_slurm_lifecycle(
+        output_dir,
+        generation=old_scheduler_generation.hex,
+        mode="ordinary",
+    )
+    atomic_write_json(
+        job_metadata_path(output_dir),
+        {
+            "gui_record_generation": old_gui_generation.hex,
+            "slurm_generation": old_scheduler_generation.hex,
+            "slurm_job_ids": {},
+        },
+    )
+    observer = SlurmLifecycleObserver(registry, FakeScheduler())
+
+    assert observer.reconcile_durable_bindings() == 0
+    observer.observe_once()
+
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "unknown"
+    assert (record.run_id, current_gui_generation) not in observer._bindings  # noqa: SLF001
 
 
 def test_binding_rejects_mismatched_scheduler_epoch(tmp_path: Path) -> None:
@@ -522,6 +609,11 @@ def test_generation_marker_manifest_and_finalizer_complete_run(
             "total_images": 3,
         },
     )
+    lifecycle = json.loads(
+        lifecycle_state_path(record.output_dir).read_text(encoding="utf-8")
+    )
+    lifecycle["active"] = False
+    atomic_write_json(lifecycle_state_path(record.output_dir), lifecycle)
 
     _bound_observer(
         registry,
@@ -593,6 +685,56 @@ def test_staged_missing_publication_markers_fails_after_grace(
     now[0] = 26.0
     observer.observe_once()
     assert registry.get(record.run_id).status == "failed"  # type: ignore[union-attr]
+
+
+def test_exact_staged_completion_precedes_inactive_fence(
+    tmp_path: Path,
+) -> None:
+    """A completed staged publication is not relabelled as cancellation."""
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    atomic_write_json(
+        job_metadata_path(record.output_dir),
+        {
+            "slurm_generation": record.generation.hex,
+            "datasets": {
+                "plate": {"total": 1, "images": ["image.tif"]},
+            },
+            "slurm_job_ids": {},
+        },
+    )
+    atomic_write_json(
+        orchestration_state_path(record.output_dir),
+        {
+            "epoch": record.generation.hex,
+            "phase": "complete",
+        },
+    )
+    write_stage3_completion_marker(
+        record.output_dir,
+        "plate",
+        "image.tif",
+        "image",
+    )
+    atomic_write_json(
+        staged_completion_path(record.output_dir),
+        {"epoch": record.generation.hex},
+    )
+    state = json.loads(
+        lifecycle_state_path(record.output_dir).read_text(encoding="utf-8")
+    )
+    state["active"] = False
+    atomic_write_json(lifecycle_state_path(record.output_dir), state)
+
+    _bound_observer(registry, record, FakeScheduler()).observe_once()
+
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "complete"
+    assert (
+        updated.status_detail
+        == "staged orchestration and publication completed"
+    )
 
 
 def test_incremental_logs_handle_multiple_sources_and_rotation(

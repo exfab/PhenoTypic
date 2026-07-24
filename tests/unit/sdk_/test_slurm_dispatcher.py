@@ -56,6 +56,68 @@ def test_infer_output_dir_rejects_unscoped_slurm_scripts_name(
     assert _infer_output_dir(script) == script.parent.resolve()
 
 
+def test_single_chunk_process_finalizer_depends_on_chunk(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A process publisher cannot run concurrently with its image array."""
+    scripts = slurm_scripts_dir(tmp_path)
+    scripts.mkdir(parents=True)
+    chunk = scripts / "chunk0.sh"
+    finalizer = scripts / "process_finalizer.sh"
+    chunk.touch()
+    finalizer.touch()
+    calls: list[dict[str, object]] = []
+
+    def fake_submit(
+        _output_dir: Path,
+        **kwargs: object,
+    ) -> str:
+        calls.append(kwargs)
+        return str(700 + len(calls))
+
+    monkeypatch.setattr(lifecycle, "submit_with_lifecycle", fake_submit)
+
+    job_ids, warning = submit_drip_feed_start(
+        [chunk],
+        [],
+        finalizer_script=finalizer,
+    )
+
+    assert warning is None
+    assert job_ids == ["701", "702"]
+    assert calls[0]["role"] == "chunk"
+    assert calls[1]["role"] == "finalizer"
+    assert calls[1]["dependencies"] == ("701",)
+
+
+def test_last_dispatcher_carries_process_finalizer(
+    tmp_path: Path,
+    slurm_args: dict[str, object],
+) -> None:
+    """Only the dispatcher for the final chunk can submit the publisher."""
+    scripts = slurm_scripts_dir(tmp_path)
+    scripts.mkdir(parents=True)
+    chunks = [scripts / f"chunk{i}.sh" for i in range(3)]
+    for chunk in chunks:
+        chunk.touch()
+    finalizer = scripts / "process_finalizer.sh"
+    finalizer.touch()
+
+    dispatchers = generate_dispatcher_chain(
+        chunk_scripts=chunks,
+        output_dir=tmp_path,
+        slurm_args=slurm_args,
+        log_dir=tmp_path / "logs",
+        finalizer_script=finalizer,
+    )
+
+    assert "--finalizer-script" not in dispatchers[0].read_text()
+    last = dispatchers[-1].read_text()
+    assert f"--finalizer-script {finalizer}" in last
+    assert "--dispatcher-script" not in last
+
+
 class TestGenerateDispatcherScript:
 
     def test_script_submits_next_chunk(self, tmp_path, slurm_args):

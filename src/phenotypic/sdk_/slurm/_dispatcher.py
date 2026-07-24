@@ -45,6 +45,7 @@ def generate_dispatcher_script(
     output_dir: Path | None = None,
     generation: str | None = None,
     chunk_index: int = 1,
+    finalizer_script: Path | None = None,
 ) -> Path:
     """Generate a dispatcher script that submits the next chunk and dispatcher.
 
@@ -59,6 +60,11 @@ def generate_dispatcher_script(
         output_path: Where to write the generated dispatcher script.
         slurm_args: SLURM parameters dict (used to extract partition).
         log_dir: Directory for dispatcher log files.
+        output_dir: Base output directory containing the lifecycle state.
+        generation: Exact scheduler generation for lifecycle submissions.
+        chunk_index: Zero-based index of the chunk this dispatcher submits.
+        finalizer_script: Process/export finalizer submitted after the last
+            chunk becomes terminal.
 
     Returns:
         Path to the generated dispatcher script.
@@ -82,6 +88,8 @@ def generate_dispatcher_script(
     ]
     if next_dispatcher_script is not None:
         command.extend(["--dispatcher-script", str(next_dispatcher_script)])
+    elif finalizer_script is not None:
+        command.extend(["--finalizer-script", str(finalizer_script)])
     quoted_command = " ".join(shlex.quote(part) for part in command)
     final_dispatcher_message = (
         'echo "Last chunk: no further dispatcher needed"'
@@ -124,6 +132,7 @@ def generate_dispatcher_chain(
     output_dir: Path,
     slurm_args: Dict[str, Any],
     log_dir: Path,
+    finalizer_script: Path | None = None,
 ) -> List[Path]:
     """Generate dispatcher scripts for a chain of chunk scripts.
 
@@ -136,6 +145,8 @@ def generate_dispatcher_chain(
         output_dir: Directory to write dispatcher scripts into.
         slurm_args: SLURM parameters dict (partition, etc.).
         log_dir: Directory for dispatcher log files.
+        finalizer_script: Process/export finalizer passed only to the last
+            dispatcher in the chain.
 
     Returns:
         List of dispatcher script paths (one fewer than ``chunk_scripts``,
@@ -176,6 +187,9 @@ def generate_dispatcher_chain(
             output_dir=output_dir,
             generation=generation,
             chunk_index=i + 1,
+            finalizer_script=(
+                finalizer_script if next_dispatcher is None else None
+            ),
         )
         dispatcher_paths.append(dispatcher_path)
 
@@ -185,6 +199,8 @@ def generate_dispatcher_chain(
 def submit_drip_feed_start(
     chunk_scripts: List[Path],
     dispatcher_scripts: List[Path],
+    *,
+    finalizer_script: Path | None = None,
 ) -> Tuple[List[str], Optional[str]]:
     """Submit the first chunk and first dispatcher to start a drip-feed chain.
 
@@ -192,6 +208,8 @@ def submit_drip_feed_start(
         chunk_scripts: Ordered list of chunk script paths (must be non-empty).
         dispatcher_scripts: Dispatcher scripts from
             :func:`generate_dispatcher_chain` (may be empty for single-chunk).
+        finalizer_script: Process/export finalizer submitted after the only
+            chunk when no dispatcher is required.
 
     Returns:
         Tuple of (job_ids, warning_message).  ``job_ids`` contains the
@@ -248,6 +266,33 @@ def submit_drip_feed_start(
             )
             raise RuntimeError(
                 f"Initial dispatcher submission failed; {detail}: {exc}"
+            ) from exc
+    elif finalizer_script is not None:
+        try:
+            finalizer_job = submit_with_lifecycle(
+                output_dir,
+                generation=generation,
+                token="process-finalizer",
+                role="finalizer",
+                script_path=finalizer_script,
+                dependencies=(chunk0_job,),
+            )
+            job_ids.append(finalizer_job)
+            logger.info(
+                "Submitted process finalizer: Job %s (depends on %s)",
+                finalizer_job,
+                chunk0_job,
+            )
+        except RuntimeError as exc:
+            cancellation = cancel_generation(output_dir, generation)
+            detail = (
+                "the launch was fenced and all discovered jobs were cancelled"
+                if cancellation.quiescent
+                else "the launch was fenced but scheduler reconciliation remains "
+                "incomplete"
+            )
+            raise RuntimeError(
+                f"Process finalizer submission failed; {detail}: {exc}"
             ) from exc
 
     return job_ids, warning

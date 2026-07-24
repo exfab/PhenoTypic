@@ -351,7 +351,12 @@ def test_strategy_rejects_max_submit_limit_below_three(monkeypatch, tmp_path):
         strategy.execute([], tmp_path)
 
 
-def test_staged_job_metadata_supports_canonical_finalizer(tmp_path):
+def test_staged_job_metadata_supports_canonical_finalizer(
+    tmp_path,
+    monkeypatch,
+):
+    gui_generation = "41234567-89ab-cdef-0123-456789abcdef"
+    monkeypatch.setenv("PHENOTYPIC_GUI_RECORD_GENERATION", gui_generation)
     images = [tmp_path / f"image_{index}.tif" for index in range(3)]
     datasets = [
         Dataset(
@@ -397,3 +402,4 @@ def test_staged_job_metadata_supports_canonical_finalizer(tmp_path):
     assert metadata["chunk_scripts"][-1] == "finalizer.sh"
     assert metadata["no_qc"] is True
     assert metadata["image_task_mapping"] == {}
+    assert metadata["gui_record_generation"] == gui_generation

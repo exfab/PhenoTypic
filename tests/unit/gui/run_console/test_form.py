@@ -42,6 +42,14 @@ def test_staged_gpu_form_controls_are_mounted_hidden(tmp_path) -> None:
     assert by_id[_ids.RC_STAGED_GPU_SECTION].style == {"display": "none"}
     assert by_id[_ids.RC_INPUT_GPU_SHARDS].value == 1
     assert _ids.RC_INPUT_GPU_SLURM in by_id
+    cpu_gpu_labels = [
+        component
+        for component in components
+        if getattr(component, "html_for", None)
+        == _ids.RC_INPUT_SLURM_GPUS
+    ]
+    assert len(cpu_gpu_labels) == 1
+    assert cpu_gpu_labels[0].children == "CPU-stage GPUs"
 
 
 def _walk_components(component: Any):

@@ -161,6 +161,7 @@ RC_BTN_OUTPUT_CONFIRM = "rc-btn-output-confirm"
 RC_BTN_VALIDATE = "rc-btn-validate"
 RC_BTN_RUN = "rc-btn-run"
 RC_BTN_CANCEL = "rc-btn-cancel"
+RC_BTN_REFRESH_DASHBOARD = "rc-btn-refresh-dashboard"
 RC_BTN_SAVE_PRESET = "rc-btn-save-preset"
 RC_INPUT_PRESET_NAME = "rc-input-preset-name"
 RC_DROPDOWN_LOAD_PRESET = "rc-dropdown-load-preset"
@@ -292,6 +293,7 @@ __all__ = [
     "RC_BTN_VALIDATE",
     "RC_BTN_RUN",
     "RC_BTN_CANCEL",
+    "RC_BTN_REFRESH_DASHBOARD",
     "RC_BTN_SAVE_PRESET",
     "RC_INPUT_PRESET_NAME",
     "RC_HANDOFF_BANNER",

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 import sys
 import time
@@ -530,6 +531,7 @@ def submit_slurm(
     state: RunConsoleState,
     *,
     sandbox_root: Path,
+    record_generation: UUID | None = None,
     timeout: float = 60.0,
 ) -> SlurmSubmitResult:
     """Run the CLI submitter and attach to all durably submitted jobs.
@@ -537,6 +539,13 @@ def submit_slurm(
     Timeout and abnormal-exit paths reconcile the lifecycle records before
     reporting failure. If durable evidence proves that work was submitted,
     the method returns a reconciled result instead of orphaning that work.
+
+    Args:
+        state: Validated Run Console request.
+        sandbox_root: Working directory for the CLI subprocess.
+        record_generation: Durable GUI owner generation propagated into CLI
+            scheduler metadata.
+        timeout: Maximum submitter subprocess duration in seconds.
     """
     if state.mode != "slurm":
         raise SlurmSubmitError(
@@ -559,6 +568,9 @@ def submit_slurm(
     stderr = ""
     returncode = 0
     ambiguous_error: BaseException | None = None
+    env = os.environ.copy()
+    if record_generation is not None:
+        env["PHENOTYPIC_GUI_RECORD_GENERATION"] = str(record_generation)
     try:
         completed = subprocess.run(
             argv,
@@ -567,6 +579,7 @@ def submit_slurm(
             timeout=timeout,
             cwd=str(sandbox_root),
             check=False,
+            env=env,
         )
         stdout = completed.stdout or ""
         stderr = completed.stderr or ""

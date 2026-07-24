@@ -388,6 +388,7 @@ class RunRegistry:
         terminal_at: datetime | None | object = _UNSET,
         returncode: int | None | object = _UNSET,
         status_detail: str | None | object = _UNSET,
+        lifecycle_epoch: str | None | object = _UNSET,
     ) -> bool:
         """Atomically mutate a record only when generation and guards match.
 
@@ -445,6 +446,9 @@ class RunRegistry:
             )
             changed |= self._set_if_changed(
                 candidate, "status_detail", status_detail
+            )
+            changed |= self._set_if_changed(
+                candidate, "lifecycle_epoch", lifecycle_epoch
             )
 
             if not changed:

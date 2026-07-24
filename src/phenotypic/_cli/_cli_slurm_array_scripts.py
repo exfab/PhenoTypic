@@ -181,17 +181,11 @@ def generate_array_job_script(
         )
 
     # Build task entries, interleaving checkpoint sentinels at regular intervals.
-    # Process-only runs carry no aggregation chain (D13): no checkpoint sentinels
-    # and no full finalizer. But the LAST chunk appends a single manifest-only
-    # sentinel so the final array task rebuilds progress/manifest.json after every
-    # image — this reuses the forward path's embedded-finalizer mechanism (minus
-    # aggregation/dashboard), so the completion signal is correct across the
-    # drip-feed for ANY number of chunks (the chunk sizing already reserves
-    # headroom for forward sentinels, which process-only otherwise leaves unused).
+    # Process-only chunks contain images only. Their manifest publisher is a
+    # separate scheduler-dependent finalizer, so it cannot race sibling array
+    # tasks in the last chunk.
     if config.process_only_layer:
         entries = [str(img_path.absolute()) for img_path in chunk_images]
-        if is_last_chunk:
-            entries.append(_MANIFEST_SENTINEL)
     else:
         entries = _build_entry_list(
             chunk_images, checkpoint_interval, is_last_chunk
@@ -317,25 +311,14 @@ def generate_array_job_script(
         f"--checkpoint-type finalize"
     )
 
-    # Dispatch block: process-only runs carry no aggregation sentinels, but the
-    # last chunk's final task is a manifest-only sentinel (rebuild
-    # progress/manifest.json — no aggregation, no dashboard). Forward / measure
-    # runs keep the full checkpoint→manifest→finalizer sentinel dispatch.
+    # Process-only runs execute image work only. Their manifest finalizer is a
+    # separate job submitted with ``afterany`` on the last chunk.
     if config.process_only_layer:
-        dispatch_block = f"""if [ "$CURRENT_IMAGE" = "{_MANIFEST_SENTINEL}" ]; then
-    # Manifest-only finalize (process-only, D13): rebuild progress/manifest.json
-    # after every image in the last chunk. No aggregation, no dashboard HTML.
-    echo "Running manifest rebuild (task $SLURM_ARRAY_TASK_ID)"
-    echo ""
+        dispatch_block = f"""# Apply-only image processing
+echo "Processing image $((SLURM_ARRAY_TASK_ID + 1))/${{#IMAGE_LIST[@]}}: $CURRENT_IMAGE"
+echo ""
 
-    {manifest_cmd}
-else
-    # Normal image processing (apply-only mode)
-    echo "Processing image $((SLURM_ARRAY_TASK_ID + 1))/${{#IMAGE_LIST[@]}}: $CURRENT_IMAGE"
-    echo ""
-
-    {cmd}
-fi"""
+{cmd}"""
     else:
         dispatch_block = f"""if [ "$CURRENT_IMAGE" = "{_CHECKPOINT_SENTINEL}" ]; then
     # Checkpoint task: aggregate per-image Parquets into a dashboard chunk
@@ -397,6 +380,48 @@ fi"""
     )
 
     return script_path
+
+
+def generate_process_finalizer_script(
+    config: ExecutionConfig,
+    output_dir: Path,
+) -> Path:
+    """Write the dependent manifest publisher for process/export mode."""
+    if config.process_only_layer is None:
+        raise ValueError("process finalizer requires process_only_layer")
+    python_cmd, _ = get_python_command(for_slurm=True)
+    command = " ".join(
+        [
+            *(shlex.quote(part) for part in python_cmd),
+            "-m",
+            "phenotypic._cli._cli_checkpoint_handler",
+            "--output-dir",
+            shlex.quote(str(output_dir.absolute())),
+            "--checkpoint-type",
+            "manifest",
+        ]
+    )
+    script_path = slurm_scripts_dir(output_dir) / "process_export_finalizer.sh"
+    log_path = (
+        logs_dir(output_dir)
+        / "slurm"
+        / "process_export_finalizer_%A_%a.log"
+    )
+    return write_slurm_array_script(
+        script_path,
+        SlurmArrayScriptSpec(
+            job_name="pht-process-finalizer",
+            slurm_args=config.slurm_args,
+            log_path=log_path,
+            task_indices=[0],
+            body=command,
+            prelude=SLURM_THREAD_PIN_BASH,
+            comments=[
+                "# Process/export manifest finalizer",
+                "# Submitted after the final image chunk becomes terminal",
+            ],
+        ),
+    )
 
 
 def generate_all_array_job_scripts(

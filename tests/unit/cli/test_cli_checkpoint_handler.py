@@ -24,6 +24,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 from phenotypic._cli._cli_checkpoint_handler import (  # noqa: E402
+    _publish_run_completion_marker,
     _run_finalize,
     _run_manifest,
     main,
@@ -38,6 +39,12 @@ from phenotypic.sdk_ import (  # noqa: E402
     progress_dir as progress_dir_helper,
     resolve_manifest_json_path,
     run_completion_marker_path,
+)
+from phenotypic._cli._cli_slurm_lifecycle import (  # noqa: E402
+    deactivate_generation,
+    initialize_slurm_lifecycle,
+    lifecycle_state_path,
+    load_slurm_lifecycle,
 )
 
 
@@ -114,6 +121,11 @@ class TestRunManifestCoercion:
             progress_dir,
             {"ds1": {"total": 1, "images": ["a.tif"]}},
             slurm_generation=generation,
+        )
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=generation,
+            mode="ordinary",
         )
         marker_path = run_completion_marker_path(output_dir)
 
@@ -273,6 +285,11 @@ class TestRunFinalizeCoercion:
             {"ds1": {"total": 1, "images": ["a.tif"]}},
             slurm_generation=generation,
         )
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=generation,
+            mode="ordinary",
+        )
         marker_path = run_completion_marker_path(output_dir)
 
         def publish_manifest(**_kwargs: object) -> None:
@@ -312,6 +329,9 @@ class TestRunFinalizeCoercion:
         assert marker["generation"] == generation
         assert marker["status"] == "complete"
         assert marker["finalizer_succeeded"] is True
+        lifecycle = load_slurm_lifecycle(output_dir)
+        assert lifecycle is not None
+        assert lifecycle["active"] is False
 
     def test_ordinary_finalizer_refuses_marker_for_failed_manifest(
         self,
@@ -323,6 +343,11 @@ class TestRunFinalizeCoercion:
             progress_dir,
             {"ds1": {"total": 1, "images": ["a.tif"]}},
             slurm_generation="0123456789abcdef0123456789abcdef",
+        )
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation="0123456789abcdef0123456789abcdef",
+            mode="ordinary",
         )
 
         def publish_failed_manifest(**_kwargs: object) -> None:
@@ -357,6 +382,103 @@ class TestRunFinalizeCoercion:
             pytest.raises(RuntimeError, match="incomplete or failed manifest"),
         ):
             _run_finalize(output_dir, progress_dir)
+
+        assert not run_completion_marker_path(output_dir).exists()
+
+    def test_completion_marker_is_idempotent_for_same_finished_generation(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        output_dir = tmp_path / "out"
+        generation = "1123456789abcdef0123456789abcdef"
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=generation,
+            mode="ordinary",
+        )
+        atomic_write_json(
+            resolve_manifest_json_path(output_dir),
+            {
+                "is_complete": True,
+                "completed": 1,
+                "failed": 0,
+                "total_images": 1,
+            },
+        )
+
+        _publish_run_completion_marker(output_dir, generation)
+        _publish_run_completion_marker(output_dir, generation)
+
+        marker = json.loads(
+            run_completion_marker_path(output_dir).read_text(encoding="utf-8")
+        )
+        assert marker["generation"] == generation
+        assert load_slurm_lifecycle(output_dir)["active"] is False  # type: ignore[index]
+
+    def test_old_finalizer_cannot_publish_after_new_generation(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        output_dir = tmp_path / "out"
+        old_generation = "2123456789abcdef0123456789abcdef"
+        new_generation = "3123456789abcdef0123456789abcdef"
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=old_generation,
+            mode="ordinary",
+        )
+        state = load_slurm_lifecycle(output_dir)
+        assert state is not None
+        state["active"] = False
+        atomic_write_json(lifecycle_state_path(output_dir), state)
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=new_generation,
+            mode="ordinary",
+        )
+        atomic_write_json(
+            resolve_manifest_json_path(output_dir),
+            {
+                "is_complete": True,
+                "completed": 1,
+                "failed": 0,
+                "total_images": 1,
+            },
+        )
+
+        with pytest.raises(RuntimeError, match="stale SLURM generation"):
+            _publish_run_completion_marker(output_dir, old_generation)
+
+        assert not run_completion_marker_path(output_dir).exists()
+        lifecycle = load_slurm_lifecycle(output_dir)
+        assert lifecycle is not None
+        assert lifecycle["generation"] == new_generation
+        assert lifecycle["active"] is True
+
+    def test_cancelled_generation_cannot_publish_completion_marker(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        output_dir = tmp_path / "out"
+        generation = "4123456789abcdef0123456789abcdef"
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=generation,
+            mode="ordinary",
+        )
+        assert deactivate_generation(output_dir, generation) is True
+        atomic_write_json(
+            resolve_manifest_json_path(output_dir),
+            {
+                "is_complete": True,
+                "completed": 1,
+                "failed": 0,
+                "total_images": 1,
+            },
+        )
+
+        with pytest.raises(RuntimeError, match="cancelled or superseded"):
+            _publish_run_completion_marker(output_dir, generation)
 
         assert not run_completion_marker_path(output_dir).exists()
 

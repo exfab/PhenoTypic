@@ -594,6 +594,39 @@ _MAX_SLURM_COMPLETIONS = 128
 _PENDING_SLURM_LOCK = threading.Lock()
 
 
+def _persist_scheduler_binding(
+    registry: RunRegistry,
+    run_id: str,
+    record_generation: UUID,
+    output_dir: Path,
+    scheduler_generation: UUID,
+) -> bool:
+    """Persist an exact GUI-owner to scheduler-lifecycle binding."""
+    from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
+
+    lifecycle = load_slurm_lifecycle(output_dir)
+    raw_epoch = lifecycle.get("generation") if lifecycle else None
+    try:
+        parsed_epoch = UUID(str(raw_epoch))
+    except (TypeError, ValueError):
+        return False
+    if parsed_epoch != scheduler_generation:
+        return False
+    return registry.compare_and_set(
+        run_id,
+        record_generation,
+        expected_statuses={
+            "submitting",
+            "queued",
+            "running",
+            "reconciling",
+            "cancelling",
+            "unknown",
+        },
+        lifecycle_epoch=str(raw_epoch),
+    )
+
+
 def _complete_slurm_submission(
     future: Future[Any],
     *,
@@ -613,6 +646,13 @@ def _complete_slurm_submission(
             )
     except SlurmSubmitPending as exc:
         jobs = exc.submitted_jobs
+        _persist_scheduler_binding(
+            registry,
+            run_id,
+            generation,
+            exc.output_dir,
+            exc.generation,
+        )
         try:
             observer.bind_generation(
                 run_id=run_id,
@@ -690,6 +730,13 @@ def _complete_slurm_submission(
             )
             completion = _SlurmCompletion(error=detail) if updated else None
         else:
+            _persist_scheduler_binding(
+                registry,
+                run_id,
+                generation,
+                result.output_dir,
+                jobs.generation,
+            )
             try:
                 observer.bind_generation(
                     run_id=run_id,
@@ -1571,7 +1618,10 @@ def register_callbacks(
             if slurm_generation is None:  # pragma: no cover
                 raise RuntimeError("allocated SLURM run has no generation")
             future = _SLURM_EXECUTOR.submit(
-                submit_slurm, state, sandbox_root=sandbox.root
+                submit_slurm,
+                state,
+                sandbox_root=sandbox.root,
+                record_generation=slurm_generation,
             )
             _track_pending_slurm(
                 record.run_id,
@@ -1741,28 +1791,31 @@ def register_callbacks(
         Output(ids.RC_IFRAME, "src", allow_duplicate=True),
         Output(ids.RC_IFRAME, "style", allow_duplicate=True),
         Output(ids.RC_IFRAME_PLACEHOLDER, "style", allow_duplicate=True),
+        Output(ids.RC_IFRAME_PLACEHOLDER, "children", allow_duplicate=True),
         Output(
             ids.RC_INTERVAL_DASHBOARD_POLL, "disabled", allow_duplicate=True
         ),
         Input(ids.RC_INTERVAL_DASHBOARD_POLL, "n_intervals"),
+        Input(ids.RC_BTN_REFRESH_DASHBOARD, "n_clicks"),
         State(ids.RC_STORE_ACTIVE_REL_PATH, "data"),
         State(ids.RC_STORE_ACTIVE_RUN_ID, "data"),
         prevent_initial_call=True,
     )
     def poll_dashboard(
         _n: Optional[int],
+        _refresh_clicks: Optional[int],
         rel_path: Optional[str],
         run_id: Optional[str],
     ) -> Tuple[Any, ...]:
         """Wait for ``dashboard.html`` to land then point the iframe at it."""
         if not rel_path:
-            return (no_update,) * 4
+            return (no_update,) * 5
         try:
             target = sandbox.resolve(
                 Path(rel_path) / DELIVERABLES_DIRNAME / DASHBOARD_FILENAME
             )
         except ValueError:
-            return (no_update,) * 4
+            return (no_update,) * 5
         if not target.is_file():
             record = registry.get(run_id) if run_id else None
             if record is not None and record.status in {
@@ -1770,12 +1823,23 @@ def register_callbacks(
                 "failed",
                 "cancelled",
             }:
-                return no_update, no_update, no_update, True
-            return (no_update,) * 4
+                detail = record.status_detail or "No dashboard was published."
+                return (
+                    no_update,
+                    {"display": "none"},
+                    {"display": "flex"},
+                    (
+                        f"Run status: {record.status}. {detail} "
+                        "Use Refresh to check again."
+                    ),
+                    True,
+                )
+            return (no_update,) * 5
         return (
             _dashboard_url(rel_path, url_prefix=server_url_prefix),
             {"display": "block"},
             {"display": "none"},
+            no_update,
             True,
         )
 
@@ -1824,6 +1888,8 @@ def register_callbacks(
                     key, "(waiting for submission or scheduler output...)"
                 )
             banner = f"slurm | {record.rel_path} | status={record.status}"
+            if record.status_detail:
+                banner += f" | {record.status_detail}"
             return text, banner
         lines = runner.snapshot_log(run_id, tail=200)
         text = "".join(lines) if lines else "(waiting for first output...)"
@@ -1833,6 +1899,8 @@ def register_callbacks(
             running = runner.is_running(run_id)
             status = "running" if running else record.status
             banner = f"{record.mode} | {record.rel_path} | status={status}"
+            if record.status_detail:
+                banner += f" | {record.status_detail}"
         return text, banner
 
     # ----------------------------------------------------------------------

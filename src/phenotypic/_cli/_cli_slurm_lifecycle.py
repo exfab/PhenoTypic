@@ -624,8 +624,9 @@ def dispatch_continuation(
     chunk_index: int,
     chunk_script: Path,
     dispatcher_script: Path | None = None,
+    finalizer_script: Path | None = None,
 ) -> tuple[str, str | None]:
-    """Submit a later chunk and optional successor dispatcher safely."""
+    """Submit a later chunk and its optional dependent continuation safely."""
     chunk_id = submit_with_lifecycle(
         output_dir,
         generation=generation,
@@ -633,9 +634,9 @@ def dispatch_continuation(
         role="chunk",
         script_path=chunk_script,
     )
-    dispatcher_id = None
+    continuation_id = None
     if dispatcher_script is not None:
-        dispatcher_id = submit_with_lifecycle(
+        continuation_id = submit_with_lifecycle(
             output_dir,
             generation=generation,
             token=f"dispatcher-{chunk_index + 1}",
@@ -643,7 +644,16 @@ def dispatch_continuation(
             script_path=dispatcher_script,
             dependencies=(chunk_id,),
         )
-    return chunk_id, dispatcher_id
+    elif finalizer_script is not None:
+        continuation_id = submit_with_lifecycle(
+            output_dir,
+            generation=generation,
+            token="process-finalizer",
+            role="finalizer",
+            script_path=finalizer_script,
+            dependencies=(chunk_id,),
+        )
+    return chunk_id, continuation_id
 
 
 def _record_submission(
@@ -744,6 +754,7 @@ def _dispatch_from_argv(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--chunk-index", type=int, required=True)
     parser.add_argument("--chunk-script", type=Path, required=True)
     parser.add_argument("--dispatcher-script", type=Path)
+    parser.add_argument("--finalizer-script", type=Path)
     args = parser.parse_args(argv)
     dispatch_continuation(
         args.output,
@@ -751,6 +762,7 @@ def _dispatch_from_argv(argv: Sequence[str] | None = None) -> int:
         chunk_index=args.chunk_index,
         chunk_script=args.chunk_script,
         dispatcher_script=args.dispatcher_script,
+        finalizer_script=args.finalizer_script,
     )
     return 0
 

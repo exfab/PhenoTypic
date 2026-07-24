@@ -473,7 +473,7 @@ def _build_slurm_section() -> html.Div:
                     dbc.Col(
                         [
                             dbc.Label(
-                                "GPUs",
+                                "CPU-stage GPUs",
                                 html_for=ids.RC_INPUT_SLURM_GPUS,
                                 className="run-console-form-label",
                             ),

@@ -34,6 +34,7 @@ from phenotypic.sdk_ import (
     progress_dir as progress_dir_helper,
 )
 from phenotypic.sdk_.typing_ import CheckpointType
+from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 logger = logging.getLogger(__name__)
 
@@ -150,10 +151,9 @@ def _run_manifest(output_dir: Path, progress_dir: Path) -> None:
         input_path=job_metadata.get(JobMetadataKey.INPUT_PATH),
     )
 
-    # Process/export arrays intentionally have no aggregation/dashboard
-    # finalizer. Their last array entry is this manifest sentinel, after every
-    # exported image is atomically visible. Publish the generation-bearing
-    # marker here, but never for forward/measure manifest checkpoints.
+    # Process/export runs use a scheduler-dependent manifest finalizer after
+    # the final image array. Publish here only for that mode; forward/measure
+    # manifest checkpoints never publish completion.
     slurm_generation = job_metadata.get("slurm_generation")
     if isinstance(slurm_generation, str) and slurm_generation:
         from ._cli_state_management import load_processing_state
@@ -335,48 +335,85 @@ def _publish_run_completion_marker(
     output_dir: Path,
     slurm_generation: str,
 ) -> None:
-    """Publish ordinary SLURM completion after a successful final manifest."""
-    try:
-        manifest = json.loads(
-            resolve_manifest_json_path(output_dir).read_text(encoding="utf-8")
-        )
-    except (OSError, ValueError) as exc:
-        raise RuntimeError(
-            "Cannot publish the SLURM completion marker without a valid manifest"
-        ) from exc
-    if not isinstance(manifest, dict):
-        raise RuntimeError("Final dashboard manifest is not a JSON object")
-    completed = manifest.get(DashboardManifestKey.COMPLETED)
-    failed = manifest.get(DashboardManifestKey.FAILED)
-    total = manifest.get(DashboardManifestKey.TOTAL_IMAGES)
-    complete = (
-        manifest.get(DashboardManifestKey.IS_COMPLETE) is True
-        and isinstance(completed, int)
-        and not isinstance(completed, bool)
-        and isinstance(failed, int)
-        and not isinstance(failed, bool)
-        and isinstance(total, int)
-        and not isinstance(total, bool)
-        and failed == 0
-        and completed == total
+    """Publish and fence ordinary completion for the exact active generation."""
+    from ._cli_slurm_lifecycle import (
+        deactivate_generation,
+        lifecycle_lock_path,
+        load_slurm_lifecycle,
     )
-    if not complete:
-        raise RuntimeError(
-            "Cannot publish the SLURM completion marker for an incomplete "
-            "or failed manifest"
+
+    marker_path = run_completion_marker_path(output_dir)
+    with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
+        lifecycle = load_slurm_lifecycle(output_dir)
+        if lifecycle is None or lifecycle.get("generation") != slurm_generation:
+            raise RuntimeError(
+                "Cannot publish completion for a stale SLURM generation"
+            )
+        if lifecycle.get("active") is not True:
+            try:
+                existing = json.loads(marker_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                existing = None
+            if (
+                isinstance(existing, dict)
+                and existing.get("generation") == slurm_generation
+                and existing.get("status") == "complete"
+                and existing.get("finalizer_succeeded") is True
+            ):
+                return
+            raise RuntimeError(
+                "Cannot publish completion after the SLURM generation "
+                "was cancelled or superseded"
+            )
+        try:
+            manifest = json.loads(
+                resolve_manifest_json_path(output_dir).read_text(
+                    encoding="utf-8"
+                )
+            )
+        except (OSError, ValueError) as exc:
+            raise RuntimeError(
+                "Cannot publish the SLURM completion marker without "
+                "a valid manifest"
+            ) from exc
+        if not isinstance(manifest, dict):
+            raise RuntimeError("Final dashboard manifest is not a JSON object")
+        completed = manifest.get(DashboardManifestKey.COMPLETED)
+        failed = manifest.get(DashboardManifestKey.FAILED)
+        total = manifest.get(DashboardManifestKey.TOTAL_IMAGES)
+        complete = (
+            manifest.get(DashboardManifestKey.IS_COMPLETE) is True
+            and isinstance(completed, int)
+            and not isinstance(completed, bool)
+            and isinstance(failed, int)
+            and not isinstance(failed, bool)
+            and isinstance(total, int)
+            and not isinstance(total, bool)
+            and failed == 0
+            and completed == total
         )
-    atomic_write_json(
-        run_completion_marker_path(output_dir),
-        {
-            "schema_version": 1,
-            "generation": slurm_generation,
-            "status": "complete",
-            "finalizer_succeeded": True,
-            "completed_at": datetime.now(timezone.utc).isoformat(
-                timespec="milliseconds"
-            ),
-        },
-    )
+        if not complete:
+            raise RuntimeError(
+                "Cannot publish the SLURM completion marker for an incomplete "
+                "or failed manifest"
+            )
+        atomic_write_json(
+            marker_path,
+            {
+                "schema_version": 1,
+                "generation": slurm_generation,
+                "status": "complete",
+                "finalizer_succeeded": True,
+                "completed_at": datetime.now(timezone.utc).isoformat(
+                    timespec="milliseconds"
+                ),
+            },
+        )
+        if not deactivate_generation(output_dir, slurm_generation):
+            raise RuntimeError(
+                "SLURM completion marker was published but the generation "
+                "could not be deactivated"
+            )
 
 
 def _publish_staged_report_and_readme(

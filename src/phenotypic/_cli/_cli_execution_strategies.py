@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 import time
 from abc import ABC, abstractmethod
@@ -35,7 +36,10 @@ from ._cli_output_manager import OutputManager
 from ._cli_process_single import process_single_image_core
 from phenotypic.sdk_.slurm import get_slurm_array_limit
 from phenotypic.sdk_._file_locking import exclusive_path_lock
-from ._cli_slurm_array_scripts import generate_all_array_job_scripts
+from ._cli_slurm_array_scripts import (
+    generate_all_array_job_scripts,
+    generate_process_finalizer_script,
+)
 from ._cli_slurm_submission import submit_slurm_script_chain
 from ._cli_slurm_lifecycle import (
     initialize_slurm_lifecycle,
@@ -779,16 +783,25 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
                 else None
             ),
             JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
+            JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(
+                "PHENOTYPIC_GUI_RECORD_GENERATION"
+            ),
             "slurm_metadata_version": 2,
             "slurm_generation": generation,
         }
         atomic_write_json(metadata_path, job_metadata)
 
+        process_finalizer_script = (
+            generate_process_finalizer_script(self.config, output_dir)
+            if self.config.process_only_layer
+            else None
+        )
         submission = submit_slurm_script_chain(
             flat_chunk_scripts=flat_scripts,
             output_dir=output_dir,
             slurm_args=self.config.slurm_args,
             console=console,
+            finalizer_script=process_finalizer_script,
         )
         job_ids = submission.job_ids
         flat_scripts = submission.flat_scripts
@@ -800,11 +813,16 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             job_id=str(job_ids[0]),
         )
         if len(job_ids) > 1:
+            has_initial_dispatcher = bool(submission.dispatcher_scripts)
             mirror_job_to_metadata(
                 output_dir,
                 generation=generation,
-                token="dispatcher-1",
-                role="dispatcher",
+                token=(
+                    "dispatcher-1"
+                    if has_initial_dispatcher
+                    else "process-finalizer"
+                ),
+                role="dispatcher" if has_initial_dispatcher else "finalizer",
                 job_id=str(job_ids[1]),
             )
 
@@ -827,14 +845,10 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         console.print(f"[green]✓[/green] Job metadata: [dim]{metadata_path}[/dim]")
 
         if self.config.process_only_layer:
-            # Process-only (D13): no aggregation/checkpoint chain and no dashboard
-            # HTML. The manifest-only finalizer is embedded as a sentinel in the
-            # LAST chunk (reusing the forward path's last-chunk finalizer
-            # mechanism), so it rebuilds progress/manifest.json after every image
-            # across all chunks — no separate dependent job, correct under the
-            # drip-feed for any number of chunks.
+            # Process-only (D13): no aggregation/dashboard. A dedicated
+            # finalizer is dependency-ordered after the final image chunk.
             console.print(
-                "[green]✓[/green] Manifest finalizer embedded in last chunk "
+                "[green]✓[/green] Manifest finalizer follows the last chunk "
                 "(process-only: no aggregation/dashboard)\n"
             )
         else:

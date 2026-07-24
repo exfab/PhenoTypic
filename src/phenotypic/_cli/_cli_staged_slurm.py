@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import shlex
 import time
 from datetime import datetime
@@ -437,6 +438,9 @@ def _write_staged_job_metadata(
         JobMetadataKey.NO_QC: config.no_qc,
         JobMetadataKey.INPUT_PATH: config.input_path.stem,
         JobMetadataKey.ORCHESTRATION_EPOCH: epoch,
+        JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(
+            "PHENOTYPIC_GUI_RECORD_GENERATION"
+        ),
         "slurm_metadata_version": 2,
         "slurm_generation": epoch,
         JobMetadataKey.PIPELINE_PATH: str(

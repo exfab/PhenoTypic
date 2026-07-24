@@ -22,7 +22,6 @@ import atexit
 import logging
 import os
 from pathlib import Path
-from uuid import UUID
 
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
@@ -45,7 +44,6 @@ from phenotypic.gui.run_console._runner import LocalRunner
 from phenotypic.gui.run_console._slurm_observer import SlurmLifecycleObserver
 from phenotypic.gui.shell._runs_registry import RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
 
 logger = logging.getLogger(__name__)
 
@@ -59,29 +57,8 @@ def _bind_rehydrated_slurm_records(
     registry: RunRegistry,
 ) -> None:
     """Restore exact lifecycle bindings for nonterminal durable records."""
-    for record in registry.list():
-        if (
-            record.mode != "slurm"
-            or record.generation is None
-            or record.status in {"complete", "failed", "cancelled"}
-        ):
-            continue
-        lifecycle = load_slurm_lifecycle(record.output_dir)
-        if lifecycle is None:
-            continue
-        try:
-            scheduler_generation = UUID(str(lifecycle["generation"]))
-            observer.bind_generation(
-                run_id=record.run_id,
-                record_generation=record.generation,
-                scheduler_generation=scheduler_generation,
-            )
-        except (KeyError, ValueError):
-            logger.warning(
-                "Could not restore SLURM lifecycle binding for %s",
-                record.run_id,
-                exc_info=True,
-            )
+    del registry  # The observer owns the shared registry instance.
+    observer.reconcile_durable_bindings()
 
 
 def create_app(

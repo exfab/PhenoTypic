@@ -390,6 +390,63 @@ class SlurmLifecycleObserver:
         self._bindings[(run_id, record_generation)] = binding
         return binding
 
+    def reconcile_durable_binding(self, record: RunRecord) -> bool:
+        """Bind only when metadata durably proves both sides of the identity."""
+        if record.generation is None or record.mode != "slurm":
+            return False
+        try:
+            metadata = json.loads(
+                job_metadata_path(record.output_dir).read_text(
+                    encoding="utf-8"
+                )
+            )
+        except (OSError, json.JSONDecodeError):
+            return False
+        if not isinstance(metadata, dict):
+            return False
+        if (
+            _parse_generation(
+                metadata.get(JobMetadataKey.GUI_RECORD_GENERATION)
+            )
+            != record.generation
+        ):
+            return False
+        scheduler_generation = _parse_generation(
+            metadata.get("slurm_generation")
+            or metadata.get(JobMetadataKey.ORCHESTRATION_EPOCH)
+        )
+        lifecycle = load_slurm_lifecycle(record.output_dir)
+        raw_epoch = lifecycle.get("generation") if lifecycle else None
+        if (
+            scheduler_generation is None
+            or _parse_generation(raw_epoch) != scheduler_generation
+        ):
+            return False
+        if not self.registry.compare_and_set(
+            record.run_id,
+            record.generation,
+            lifecycle_epoch=str(raw_epoch),
+        ):
+            return False
+        self.bind_generation(
+            run_id=record.run_id,
+            record_generation=record.generation,
+            scheduler_generation=scheduler_generation,
+        )
+        return True
+
+    def reconcile_durable_bindings(self) -> int:
+        """Retry restart-window bindings for every nonterminal SLURM record."""
+        reconciled = 0
+        for record in self.registry.list():
+            if (
+                record.status not in _TERMINAL_RUN_STATUSES
+                and (record.run_id, record.generation) not in self._bindings
+                and self.reconcile_durable_binding(record)
+            ):
+                reconciled += 1
+        return reconciled
+
     def start(self) -> None:
         """Start at most one daemon observer thread."""
         if self._thread is not None and self._thread.is_alive():
@@ -453,6 +510,8 @@ class SlurmLifecycleObserver:
     def _observe_record(self, record: RunRecord) -> _Observation:
         assert record.generation is not None
         binding = self._bindings.get((record.run_id, record.generation))
+        if binding is None and self.reconcile_durable_binding(record):
+            binding = self._bindings.get((record.run_id, record.generation))
         logs = discover_log_files(record.output_dir, record.log_paths)
         if binding is None:
             if record.status in {"submitting", "cancelling"}:
@@ -524,6 +583,21 @@ class SlurmLifecycleObserver:
                 for job_id in job_ids
             )
         )
+        staged = _staged_terminal_observation(
+            record, binding.scheduler_generation, inventory, normalized_states
+        )
+        if staged is not None and staged.status == "complete":
+            staged = self._apply_publication_grace(record, staged)
+            return _with_identity(staged, job_ids, primary, logs)
+        marker = _run_marker_observation(
+            record,
+            binding.scheduler_generation,
+            inventory,
+            normalized_states,
+        )
+        if marker is not None and marker.status == "complete":
+            marker = self._apply_publication_grace(record, marker)
+            return _with_identity(marker, job_ids, primary, logs)
         if inactive:
             if all_confirmed_inactive:
                 return _Observation(
@@ -542,19 +616,10 @@ class SlurmLifecycleObserver:
                 "cancellation fence is inactive; awaiting scheduler quiescence",
             )
 
-        staged = _staged_terminal_observation(
-            record, binding.scheduler_generation, inventory, normalized_states
-        )
         if staged is not None:
             staged = self._apply_publication_grace(record, staged)
             return _with_identity(staged, job_ids, primary, logs)
 
-        marker = _run_marker_observation(
-            record,
-            binding.scheduler_generation,
-            inventory,
-            normalized_states,
-        )
         if marker is not None:
             marker = self._apply_publication_grace(record, marker)
             return _with_identity(marker, job_ids, primary, logs)

@@ -1757,6 +1757,10 @@ class JobMetadataKey:
     INCLUDE_DATASET_COLUMN: Final[str] = "include_dataset_column"
     IMAGE_TASK_MAPPING: Final[str] = "image_task_mapping"
     ORCHESTRATION_EPOCH: Final[str] = "orchestration_epoch"
+    #: GUI owner-record generation that initiated this scheduler launch.
+    #: Together with ``slurm_generation`` this is the durable restart-safe
+    #: binding between GUI identity and the CLI lifecycle epoch.
+    GUI_RECORD_GENERATION: Final[str] = "gui_record_generation"
     PIPELINE_PATH: Final[str] = "pipeline_path"
     IMAGE_TYPE: Final[str] = "image_type"
     NROWS: Final[str] = "nrows"

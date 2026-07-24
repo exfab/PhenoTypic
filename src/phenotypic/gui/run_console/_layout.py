@@ -80,9 +80,17 @@ def _iframe_panel() -> html.Div:
         className="run-console-status-banner",
         children="(no active run)",
     )
+    refresh_button = dbc.Button(
+        "Refresh",
+        id=ids.RC_BTN_REFRESH_DASHBOARD,
+        color="secondary",
+        outline=True,
+        size="sm",
+        className="mb-2",
+    )
 
     return html.Div(
-        [status_banner, placeholder, iframe],
+        [status_banner, refresh_button, placeholder, iframe],
         id=ids.RC_IFRAME_PANEL,
         className="run-console-iframe-panel",
     )

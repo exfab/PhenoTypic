@@ -80,8 +80,14 @@ def test_submit_slurm_returns_array_job_id(tmp_path: Path) -> None:
     _write_manifest(output_dir, {"0": "45678901_0", "1": "45678901_1"})
 
     state = _state_for(output_dir)
+    record_generation = uuid4()
     with mock.patch("subprocess.run", return_value=_completed()) as run_mock:
-        result = submit_slurm(state, sandbox_root=tmp_path, timeout=5.0)
+        result = submit_slurm(
+            state,
+            sandbox_root=tmp_path,
+            record_generation=record_generation,
+            timeout=5.0,
+        )
 
     assert isinstance(result, SlurmSubmitResult)
     assert result.job_id == "45678901"
@@ -107,6 +113,12 @@ def test_submit_slurm_returns_array_job_id(tmp_path: Path) -> None:
     pairs = [argv[i + 1] for i, t in enumerate(argv) if t == "--slurm"]
     assert "partition=compute" in pairs
     assert "mem=16G" in pairs
+    assert (
+        run_mock.call_args.kwargs["env"][
+            "PHENOTYPIC_GUI_RECORD_GENERATION"
+        ]
+        == str(record_generation)
+    )
 
 
 def test_submit_slurm_uses_sandbox_root_as_cwd(tmp_path: Path) -> None:

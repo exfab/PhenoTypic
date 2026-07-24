@@ -2,7 +2,10 @@ from phenotypic._cli._cli_directory_scanner import (
     organize_by_dataset,
     scan_directory_structure,
 )
-from phenotypic._cli._cli_slurm_array_scripts import generate_all_array_job_scripts
+from phenotypic._cli._cli_slurm_array_scripts import (
+    generate_all_array_job_scripts,
+    generate_process_finalizer_script,
+)
 from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
 
 
@@ -49,10 +52,12 @@ def test_array_script_threads_process_only_and_omits_aggregation(
     # No measurement aggregation / full finalizer chain in process-only.
     assert "_cli_chunk_writer" not in blob
     assert "--checkpoint-type finalize" not in blob
-    # But the last chunk (here the only chunk) embeds a manifest-ONLY finalizer
-    # sentinel so the final task rebuilds progress/manifest.json (D13).
-    assert "__PHENOTYPIC_MANIFEST__" in blob
-    assert "--checkpoint-type manifest" in blob
+    # Completion is not embedded in the concurrent image array.
+    assert "__PHENOTYPIC_MANIFEST__" not in blob
+    assert "--checkpoint-type manifest" not in blob
+    finalizer = generate_process_finalizer_script(config, out).read_text()
+    assert "--checkpoint-type manifest" in finalizer
+    assert "--checkpoint-type finalize" not in finalizer
     # Process-only never threads the forward-run overlay flag
     assert "--save-overlays" not in blob
 
@@ -99,13 +104,10 @@ def test_array_script_mode_rewrite_does_not_mutate_dataset_named_full(
     assert "--mode \\\n    measure \\" in measure_script
 
 
-def test_process_only_embeds_manifest_sentinel_on_last_chunk_only(
+def test_process_only_never_embeds_concurrent_manifest_sentinel(
     tmp_path, simple_pipeline_json, make_exec_config
 ):
-    """Multi-chunk process-only: the manifest-only finalizer sentinel is appended
-    to the LAST chunk only (reusing the forward path's embedded-finalizer
-    mechanism), so the manifest is rebuilt after every image across the drip-feed
-    — never prematurely on an earlier chunk."""
+    """Every process-only chunk contains only image work."""
     from phenotypic._cli._cli_slurm_array_scripts import (
         _MANIFEST_SENTINEL,
         generate_array_job_script,
@@ -137,10 +139,6 @@ def test_process_only_embeds_manifest_sentinel_on_last_chunk_only(
     last = generate_array_job_script(
         dataset, (2, len(dataset.images)), config, out, chunk_id=1, is_last_chunk=True
     )
-    # The manifest dispatch *branch* is part of every process-only script
-    # template, so the distinguishing signal is the IMAGE_LIST (the array of
-    # tasks), not the whole script text — only the last chunk carries the
-    # sentinel as an actual task entry.
     import re
 
     def image_list_entries(script_text: str) -> list[str]:
@@ -151,13 +149,10 @@ def test_process_only_embeds_manifest_sentinel_on_last_chunk_only(
     non_last_entries = image_list_entries(non_last.read_text())
     last_entries = image_list_entries(last.read_text())
 
-    # Earlier chunk: image tasks only — no finalizer sentinel.
     assert _MANIFEST_SENTINEL not in non_last_entries
-    # Last chunk: the manifest-only sentinel is appended as the FINAL task.
-    assert _MANIFEST_SENTINEL in last_entries
-    assert last_entries[-1] == _MANIFEST_SENTINEL
-    assert last_entries.count(_MANIFEST_SENTINEL) == 1
-    # Never any aggregation / full finalizer entry, on either chunk.
+    assert _MANIFEST_SENTINEL not in last_entries
+    assert len(non_last_entries) == 2
+    assert len(last_entries) == len(dataset.images) - 2
     last_text = last.read_text()
     assert "__PHENOTYPIC_FINALIZER__" not in last_entries
     assert "--checkpoint-type finalize" not in last_text
