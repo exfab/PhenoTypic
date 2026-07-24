@@ -32,15 +32,17 @@ Wired effects (per ``GUI_SPEC_V1.md`` section 5):
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import sys
 import threading
-import time
-import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple
+from uuid import UUID
 
 import dash
 from dash import ALL, Input, Output, State, ctx, no_update
@@ -49,6 +51,7 @@ from phenotypic.gui._config import (
     DASHBOARD_FILENAME,
     DEFAULT_URL_PREFIX,
     DELIVERABLES_DIRNAME,
+    IMAGE_EXTS,
     RUNS_BLUEPRINT_PREFIX,
     SANDBOX_GUI_DIRNAME,
     SANDBOX_PRESETS_SUBDIR,
@@ -148,7 +151,12 @@ def _source_payload_for_input_dir(
         return None
     if (
         isinstance(current_payload, dict)
-        and current_payload.get("abs_path") == payload["abs_path"]
+        and current_payload.get("version") == payload["version"]
+        and current_payload.get("kind") == payload["kind"]
+        and current_payload.get("relative_path") == payload["relative_path"]
+        and current_payload.get("sandbox_fingerprint")
+        == payload["sandbox_fingerprint"]
+        and current_payload.get("validation") == payload["validation"]
     ):
         return None
     return payload
@@ -195,6 +203,7 @@ from phenotypic.gui.run_console._state import (  # noqa: E402
     RunConsoleState,
     run_state_from_json,
     run_state_to_json,
+    state_from_controls,
     to_argv as state_to_argv_tail,
 )
 
@@ -222,6 +231,97 @@ def _local_argv_for(state: RunConsoleState) -> list[str]:
             required slot is missing.
     """
     return [sys.executable, "-m", "phenotypic", *state_to_argv_tail(state)]
+
+
+def _action_control_states() -> tuple[State, ...]:
+    """Return every visible run-form control in authoritative action order."""
+    return (
+        State(ids.RC_STORE_PIPELINE_PATH, "data"),
+        State(ids.RC_STORE_INPUT_DIR, "data"),
+        State(ids.RC_STORE_OUTPUT_DIR, "data"),
+        State(ids.RC_RADIO_MODE, "value"),
+        State(ids.RC_CHECKS_FLAGS, "value"),
+        State(ids.RC_INPUT_SAMPLE, "value"),
+        State(ids.RC_INPUT_NROWS, "value"),
+        State(ids.RC_INPUT_NCOLS, "value"),
+        State(ids.RC_INPUT_IMAGE_TYPE, "value"),
+        State(ids.RC_INPUT_WORKERS, "value"),
+        State(ids.RC_INPUT_LOG_LEVEL, "value"),
+        State(ids.RC_INPUT_SLURM_PARTITION, "value"),
+        State(ids.RC_INPUT_SLURM_TIME, "value"),
+        State(ids.RC_INPUT_SLURM_MEM, "value"),
+        State(ids.RC_INPUT_SLURM_CPUS, "value"),
+        State(ids.RC_INPUT_SLURM_GPUS, "value"),
+        State(ids.RC_INPUT_SLURM_EXTRA, "value"),
+        State(ids.RC_INPUT_GPU_SLURM, "value"),
+        State(ids.RC_INPUT_GPU_SHARDS, "value"),
+        State(SHELL_METADATA_CSV_STORE, "data"),
+    )
+
+
+def _state_from_action_controls(
+    values: tuple[Any, ...],
+    *,
+    sandbox: SandboxRoot,
+) -> RunConsoleState:
+    """Build authoritative state from one action callback's raw controls."""
+    if len(values) != 20:
+        raise ValueError(
+            f"expected 20 raw run controls, received {len(values)}"
+        )
+    return state_from_controls(
+        pipeline_path=values[0],
+        input_dir=values[1],
+        output_dir=values[2],
+        mode=values[3],
+        flags=values[4],
+        sample=values[5],
+        nrows=values[6],
+        ncols=values[7],
+        image_type=values[8],
+        workers=values[9],
+        log_level=values[10],
+        slurm_partition=values[11],
+        slurm_time=values[12],
+        slurm_mem=values[13],
+        slurm_cpus=values[14],
+        slurm_gpus=values[15],
+        slurm_extra=values[16],
+        gpu_slurm=values[17],
+        gpu_shards=values[18],
+        metadata_payload=values[19],
+        sandbox=sandbox,
+    )
+
+
+def _command_digest(state: RunConsoleState) -> str:
+    """Return a stable digest for the exact validated launch state."""
+    payload = json.dumps(
+        run_state_to_json(state),
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return f"sha256:{hashlib.sha256(payload).hexdigest()}"
+
+
+def _resolved_output_identity(
+    state: RunConsoleState,
+    *,
+    sandbox: SandboxRoot,
+) -> tuple[Path, str]:
+    """Return the contained output path and canonical registry run id."""
+    if state.output_dir is None:
+        raise ValueError("output_dir is required")
+    output_dir = sandbox.resolve(state.output_dir)
+    return output_dir, str(output_dir.relative_to(sandbox.root))
+
+
+def _require_slurm_request(state: RunConsoleState) -> None:
+    """Reject any request that could reach the submitter without SLURM flags."""
+    if state.mode != "slurm":
+        raise ValueError("SLURM submitter requires mode='slurm'")
+    if not state.slurm_args:
+        raise ValueError("SLURM mode requires a nonempty CPU SLURM profile")
 
 
 def _parse_slurm_extra(text: Optional[str]) -> dict[str, str]:
@@ -381,36 +481,109 @@ _SLURM_EXECUTOR: ThreadPoolExecutor = ThreadPoolExecutor(
     max_workers=2,
     thread_name_prefix=f"{THREAD_NAME_PREFIX}-slurm",
 )
-_PENDING_SLURM: dict[str, Future[Any]] = {}
+@dataclass(frozen=True)
+class _SlurmCompletion:
+    """Presentation event emitted after durable registry reconciliation."""
+
+    result: SlurmSubmitResult | None = None
+    error: str | None = None
+
+
+_PENDING_SLURM: dict[tuple[str, UUID], Future[Any]] = {}
+_COMPLETED_SLURM: dict[tuple[str, UUID], _SlurmCompletion] = {}
+_MAX_SLURM_COMPLETIONS = 128
 _PENDING_SLURM_LOCK = threading.Lock()
 
 
-def _stash_pending_slurm(transient_id: str, future: "Future[Any]") -> None:
-    """Record a pending SLURM submission keyed by its transient run id."""
+def _complete_slurm_submission(
+    future: Future[Any],
+    *,
+    registry: RunRegistry,
+    run_id: str,
+    generation: UUID,
+) -> None:
+    """Reconcile one submitter future independently of browser page state."""
+    key = (run_id, generation)
+    try:
+        result = future.result()
+        if not isinstance(result, SlurmSubmitResult):
+            raise TypeError(
+                "SLURM submitter returned an unexpected result "
+                f"{type(result).__name__}"
+            )
+    except Exception as exc:  # noqa: BLE001
+        detail = (
+            str(exc)
+            if isinstance(exc, SlurmSubmitError)
+            else _format_exception(exc)
+        )
+        updated = registry.compare_and_set(
+            run_id,
+            generation,
+            expected_statuses={"submitting", "reconciling"},
+            status="failed",
+            status_detail=detail,
+        )
+        completion = _SlurmCompletion(error=detail) if updated else None
+    else:
+        updated = registry.compare_and_set(
+            run_id,
+            generation,
+            expected_statuses={"submitting", "reconciling"},
+            status="running",
+            scheduler_ids=(result.job_id,),
+            primary_scheduler_id=result.job_id,
+            submitted_at=datetime.now(timezone.utc),
+            returncode=result.returncode,
+            status_detail=None,
+        )
+        completion = _SlurmCompletion(result=result) if updated else None
+
     with _PENDING_SLURM_LOCK:
-        _PENDING_SLURM[transient_id] = future
+        if _PENDING_SLURM.get(key) is future:
+            _PENDING_SLURM.pop(key, None)
+        if completion is not None:
+            _COMPLETED_SLURM[key] = completion
+            while len(_COMPLETED_SLURM) > _MAX_SLURM_COMPLETIONS:
+                oldest_key = next(iter(_COMPLETED_SLURM))
+                _COMPLETED_SLURM.pop(oldest_key)
 
 
-def _take_pending_slurm(transient_id: str) -> "Future[Any] | None":
-    """Pop a pending submission; return ``None`` if unknown or still in flight.
-
-    Returns the future ONLY when it has completed (success or exception).
-    Callers should call ``future.result()`` afterwards to surface the
-    outcome.
-    """
+def _track_pending_slurm(
+    run_id: str,
+    generation: UUID,
+    future: Future[Any],
+    *,
+    registry: RunRegistry,
+) -> None:
+    """Track a future and immediately attach its generation-matched callback."""
+    key = (run_id, generation)
     with _PENDING_SLURM_LOCK:
-        future = _PENDING_SLURM.get(transient_id)
-        if future is None or not future.done():
-            return None
-        # Pop only after we've decided to handle it — avoids losing
-        # the future on a transient race with a parallel poll.
-        return _PENDING_SLURM.pop(transient_id, None)
+        _PENDING_SLURM[key] = future
+    future.add_done_callback(
+        lambda completed: _complete_slurm_submission(
+            completed,
+            registry=registry,
+            run_id=run_id,
+            generation=generation,
+        )
+    )
+
+
+def _take_slurm_completion(
+    run_id: str,
+    generation: UUID,
+) -> _SlurmCompletion | None:
+    """Pop one presentation event after lifecycle reconciliation."""
+    with _PENDING_SLURM_LOCK:
+        return _COMPLETED_SLURM.pop((run_id, generation), None)
 
 
 def _has_pending_slurm() -> bool:
-    """True iff at least one pending submission is registered (any state)."""
+    """True iff at least one pending submission is registered."""
     with _PENDING_SLURM_LOCK:
         return bool(_PENDING_SLURM)
+
 
 
 # ---------------------------------------------------------------------------
@@ -648,19 +821,7 @@ def register_callbacks(
                 p
                 for p in chosen.iterdir()
                 if p.is_file()
-                and p.suffix.lower()
-                in {
-                    ".png",
-                    ".tif",
-                    ".tiff",
-                    ".jpg",
-                    ".jpeg",
-                    ".raw",
-                    ".nef",
-                    ".cr2",
-                    ".arw",
-                    ".dng",
-                }
+                and p.suffix.lower() in IMAGE_EXTS
             ]
         except OSError:
             sample = []
@@ -911,11 +1072,11 @@ def register_callbacks(
         Output(ids.RC_STORE_ACTIVE_REL_PATH, "data", allow_duplicate=True),
         Output(ids.RC_INTERVAL_LOG, "disabled", allow_duplicate=True),
         Input(ids.RC_BTN_VALIDATE, "n_clicks"),
-        State(ids.RC_STORE_FORM_STATE, "data"),
+        *_action_control_states(),
         prevent_initial_call=True,
     )
     def click_validate(
-        n_clicks: Optional[int], form_state: dict[str, Any]
+        n_clicks: Optional[int], *control_values: Any
     ) -> Tuple[Any, ...]:
         """Run the pipeline with ``--dry-run`` for validation.
 
@@ -926,40 +1087,65 @@ def register_callbacks(
         """
         if not n_clicks:
             return (no_update,) * 7
+        record: RunRecord | None = None
         try:
-            state_dict = dict(form_state or {})
-            state_dict["dry_run"] = True
-            state = run_state_from_json(state_dict)
+            state = _state_from_action_controls(
+                tuple(control_values), sandbox=sandbox
+            )
+            state.dry_run = True
             argv = _local_argv_for(state)
-            if state.output_dir is None:
-                raise ValueError("output_dir is required")
-            output_dir = Path(state.output_dir)
-            run_id = f"validate-{int(time.time() * 1000)}"
-            runner.start(run_id, argv, output_dir=output_dir)
-            # ``mode="validate"`` is intentionally distinct from ``"local"``
-            # so the run-button concurrency cap (``_local_run_active``)
-            # does NOT block a real run while a dry-run probe is alive.
-            registry.register(
-                RunRecord(
-                    run_id=run_id,
-                    mode="validate",
-                    output_dir=output_dir,
-                    rel_path=str(
-                        output_dir.relative_to(sandbox.root)
-                        if sandbox.contains(output_dir)
-                        else output_dir
-                    ),
-                    status="running",
+            output_dir, rel_path = _resolved_output_identity(
+                state, sandbox=sandbox
+            )
+            record = registry.allocate(
+                mode="validate",
+                output_dir=output_dir,
+                rel_path=rel_path,
+                command_digest=_command_digest(state),
+                status="queued",
+            )
+            generation = record.generation
+            if generation is None:  # pragma: no cover - allocate guarantees it
+                raise RuntimeError("allocated validation has no generation")
+
+            def _observe_validation_exit(_handle: Any, returncode: int) -> None:
+                registry.observe_local_exit(
+                    record.run_id,
+                    generation,
+                    returncode,
                 )
+
+            handle = runner.start(
+                record.run_id,
+                argv,
+                output_dir=output_dir,
+                generation=generation,
+                on_exit=_observe_validation_exit,
+            )
+            registry.compare_and_set(
+                record.run_id,
+                generation,
+                expected_statuses={"queued"},
+                status="running",
+                pid=handle.process.pid,
+                log_paths=(handle.stdout_log_path,),
             )
             return (
                 *_toast("Validation (dry-run) started", ok=True),
-                run_id,
+                record.run_id,
                 None,  # Clear active rel_path so dashboard poll stays idle.
                 False,
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Validate failed")
+            if record is not None and record.generation is not None:
+                registry.compare_and_set(
+                    record.run_id,
+                    record.generation,
+                    expected_statuses={"queued", "running"},
+                    status="failed",
+                    status_detail=_format_exception(exc),
+                )
             return (
                 *_toast(_format_exception(exc), ok=False),
                 no_update,
@@ -984,39 +1170,29 @@ def register_callbacks(
         Output(ids.RC_BTN_CANCEL, "disabled", allow_duplicate=True),
         Output(ids.RC_STORE_RECENTS_REFRESH, "data", allow_duplicate=True),
         Input(ids.RC_BTN_RUN, "n_clicks"),
-        State(ids.RC_STORE_FORM_STATE, "data"),
+        *_action_control_states(),
         State(ids.RC_STORE_RECENTS_REFRESH, "data"),
         prevent_initial_call=True,
     )
     def click_run(
         n_clicks: Optional[int],
-        form_state: dict[str, Any],
-        refresh_count: Optional[int],
+        *args: Any,
     ) -> Tuple[Any, ...]:
-        """Spawn a Local or SLURM run from the form state."""
+        """Spawn a Local or SLURM run from the controls visible at click time."""
         if not n_clicks:
             return (no_update,) * 11
-        if not form_state:
-            return (
-                *_toast("Form is empty", ok=False),
-                *((no_update,) * 7),
-            )
-        state = run_state_from_json(form_state)
-        if state.output_dir is None:
-            return (
-                *_toast("Output directory not set", ok=False),
-                *((no_update,) * 7),
-            )
-        output_dir = Path(state.output_dir)
-
+        control_values = tuple(args[:-1])
+        refresh_count = args[-1] if args else None
         try:
-            rel_path = str(output_dir.relative_to(sandbox.root))
-        except ValueError:
+            state = _state_from_action_controls(
+                control_values, sandbox=sandbox
+            )
+            output_dir, rel_path = _resolved_output_identity(
+                state, sandbox=sandbox
+            )
+        except Exception as exc:  # noqa: BLE001
             return (
-                *_toast(
-                    f"Refused: output {output_dir} escapes sandbox",
-                    ok=False,
-                ),
+                *_toast(_format_exception(exc), ok=False),
                 *((no_update,) * 7),
             )
 
@@ -1031,26 +1207,42 @@ def register_callbacks(
                     ),
                     *((no_update,) * 7),
                 )
+            record: RunRecord | None = None
             try:
                 argv = _local_argv_for(state)
-                run_id = rel_path
-                # Reap any stale handle from a previous completed run on
-                # the same output dir; otherwise ``runner.start`` would
-                # raise "run_id already running" (the runner's reap is
-                # caller-driven — Phase 4 left it that way deliberately).
-                runner.reap(run_id)
-                runner.start(run_id, argv, output_dir=output_dir)
-                handle = runner.get(run_id)
-                pid = handle.process.pid if handle is not None else None
-                registry.register(
-                    RunRecord(
-                        run_id=run_id,
-                        mode="local",
-                        output_dir=output_dir,
-                        rel_path=rel_path,
-                        status="running",
-                        pid=pid,
+                record = registry.allocate(
+                    mode="local",
+                    output_dir=output_dir,
+                    rel_path=rel_path,
+                    command_digest=_command_digest(state),
+                    status="queued",
+                )
+                local_generation = record.generation
+                if local_generation is None:  # pragma: no cover
+                    raise RuntimeError("allocated local run has no generation")
+                run_id = record.run_id
+
+                def _observe_local_exit(_handle: Any, returncode: int) -> None:
+                    registry.observe_local_exit(
+                        run_id,
+                        local_generation,
+                        returncode,
                     )
+
+                handle = runner.start(
+                    run_id,
+                    argv,
+                    output_dir=output_dir,
+                    generation=local_generation,
+                    on_exit=_observe_local_exit,
+                )
+                registry.compare_and_set(
+                    run_id,
+                    local_generation,
+                    expected_statuses={"queued"},
+                    status="running",
+                    pid=handle.process.pid,
+                    log_paths=(handle.stdout_log_path,),
                 )
                 return (
                     *_toast(f"Local run started: {rel_path}", ok=True),
@@ -1064,37 +1256,63 @@ def register_callbacks(
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Local run start failed")
+                if record is not None and record.generation is not None:
+                    registry.compare_and_set(
+                        record.run_id,
+                        record.generation,
+                        expected_statuses={"queued", "running"},
+                        status="failed",
+                        status_detail=_format_exception(exc),
+                    )
                 return (
                     *_toast(_format_exception(exc), ok=False),
                     *((no_update,) * 7),
                 )
 
-        # SLURM path. ``submit_slurm`` shells out to ``sbatch`` and can
-        # block up to its 60s timeout; running it inline would freeze
-        # every other callback. Offload to the module-level executor and
-        # let ``resolve_pending_slurm`` (driven by the log-tail interval)
-        # surface the outcome.
-        transient_id = f"slurm-pending-{uuid.uuid4().hex[:8]}"
-        registry.register(
-            RunRecord(
-                run_id=transient_id,
+        record = None
+        try:
+            _require_slurm_request(state)
+            record = registry.allocate(
                 mode="slurm",
                 output_dir=output_dir,
                 rel_path=rel_path,
+                command_digest=_command_digest(state),
                 status="submitting",
             )
-        )
-        future = _SLURM_EXECUTOR.submit(
-            submit_slurm, state, sandbox_root=sandbox.root
-        )
-        _stash_pending_slurm(transient_id, future)
+            slurm_generation = record.generation
+            if slurm_generation is None:  # pragma: no cover
+                raise RuntimeError("allocated SLURM run has no generation")
+            future = _SLURM_EXECUTOR.submit(
+                submit_slurm, state, sandbox_root=sandbox.root
+            )
+            _track_pending_slurm(
+                record.run_id,
+                slurm_generation,
+                future,
+                registry=registry,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("SLURM submitter startup failed")
+            if record is not None and record.generation is not None:
+                registry.compare_and_set(
+                    record.run_id,
+                    record.generation,
+                    expected_statuses={"submitting"},
+                    status="failed",
+                    status_detail=_format_exception(exc),
+                )
+            return (
+                *_toast(_format_exception(exc), ok=False),
+                *((no_update,) * 7),
+            )
+
         return (
             *_toast(
                 f"SLURM submitting: {rel_path}",
                 ok=True,
                 header="Submitting…",
             ),
-            transient_id,
+            record.run_id,
             rel_path,
             False,
             True,
@@ -1210,20 +1428,14 @@ def register_callbacks(
         """Render the last N log lines + a status banner string."""
         if not run_id:
             return "(no log yet)", "(no active run)"
-        # SLURM submissions live as ``slurm-pending-<uuid>`` until the
-        # async submit resolves. Show the registry status (``submitting``)
-        # in the banner; there is no log yet.
-        if run_id.startswith("slurm-pending-"):
-            record = registry.get(run_id)
+        record = registry.get(run_id)
+        if record is not None and record.mode == "slurm":
             banner = (
-                f"slurm | {record.rel_path} | status=submitting"
-                if record is not None
-                else f"run_id={run_id} (submitting)"
+                f"slurm | {record.rel_path} | status={record.status}"
             )
-            return "(SLURM submission in flight…)", banner
+            return "(SLURM lifecycle is tracked in scheduler logs.)", banner
         lines = runner.snapshot_log(run_id, tail=200)
         text = "".join(lines) if lines else "(waiting for first output...)"
-        record = registry.get(run_id)
         if record is None:
             banner = f"run_id={run_id} (not in registry)"
         else:
@@ -1253,67 +1465,35 @@ def register_callbacks(
         run_id: Optional[str],
         refresh_count: Optional[int],
     ) -> Tuple[Any, ...]:
-        """Promote a completed pending SLURM future to a real RunRecord.
-
-        The :func:`click_run` SLURM path returns immediately with a
-        transient ``slurm-pending-<uuid>`` run id and stashes the future
-        in :data:`_PENDING_SLURM`. This callback (driven once per
-        ``RC_INTERVAL_LOG`` tick) checks whether the future for the
-        currently-active transient id has completed and, if so, replaces
-        its registry record with the real ``slurm-{job_id}`` entry and
-        toasts the outcome.
-        """
-        if not run_id or not run_id.startswith("slurm-pending-"):
+        """Surface a lifecycle result already committed by the future callback."""
+        if not run_id:
             return (no_update,) * 6
-        future = _take_pending_slurm(run_id)
-        if future is None:
-            # Either still in flight or already handled by a prior tick.
+        record = registry.get(run_id)
+        if (
+            record is None
+            or record.mode != "slurm"
+            or record.generation is None
+        ):
             return (no_update,) * 6
-
-        prior = registry.get(run_id)
-        rel_path = prior.rel_path if prior is not None else ""
-        output_dir = prior.output_dir if prior is not None else None
+        completion = _take_slurm_completion(run_id, record.generation)
+        if completion is None:
+            return (no_update,) * 6
         new_refresh = (refresh_count or 0) + 1
-
-        try:
-            result: SlurmSubmitResult = future.result()
-        except SlurmSubmitError as exc:
-            registry.remove(run_id)
+        if completion.error is not None:
             return (
-                *_toast(str(exc), ok=False),
-                None,  # clear active run id
+                *_toast(completion.error, ok=False),
+                run_id,
                 new_refresh,
             )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("SLURM submit (async) raised")
-            registry.remove(run_id)
-            return (
-                *_toast(_format_exception(exc), ok=False),
-                None,
-                new_refresh,
-            )
-
-        real_run_id = f"slurm-{result.job_id}"
-        # Drop the transient and register the real record.
-        registry.remove(run_id)
-        registry.register(
-            RunRecord(
-                run_id=real_run_id,
-                mode="slurm",
-                output_dir=(
-                    output_dir if output_dir is not None else result.output_dir
-                ),
-                rel_path=rel_path,
-                status="running",
-                slurm_job_id=result.job_id,
-            )
-        )
+        result = completion.result
+        if result is None:  # pragma: no cover - dataclass invariant
+            return (no_update,) * 6
         return (
             *_toast(
-                f"SLURM submitted ({result.job_id}): {rel_path}",
+                f"SLURM submitted ({result.job_id}): {record.rel_path}",
                 ok=True,
             ),
-            real_run_id,
+            run_id,
             new_refresh,
         )
 
@@ -1390,13 +1570,13 @@ def register_callbacks(
         Output(ids.RC_TOAST, "header", allow_duplicate=True),
         Input(ids.RC_BTN_SAVE_PRESET, "n_clicks"),
         State(ids.RC_INPUT_PRESET_NAME, "value"),
-        State(ids.RC_STORE_FORM_STATE, "data"),
+        *_action_control_states(),
         prevent_initial_call=True,
     )
     def click_save_preset(
         n_clicks: Optional[int],
         name: Optional[str],
-        form_state: dict[str, Any],
+        *control_values: Any,
     ) -> Tuple[Any, ...]:
         """Write the current form state to ``presets/<name>.json``."""
         if not n_clicks:
@@ -1410,7 +1590,9 @@ def register_callbacks(
             return _toast("Invalid preset name", ok=False)
         try:
             target = _presets_dir(sandbox) / f"{safe_name}.json"
-            state = run_state_from_json(form_state or {})
+            state = _state_from_action_controls(
+                tuple(control_values), sandbox=sandbox
+            )
             payload = run_state_to_json(state)
             target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
             return _toast(f"Saved preset {safe_name}", ok=True)

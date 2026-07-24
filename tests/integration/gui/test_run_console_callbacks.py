@@ -20,12 +20,23 @@ coverage for the post-review fixes.
 from __future__ import annotations
 
 import sys
+import time
+from concurrent.futures import Future
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
-from phenotypic.gui.run_console._callbacks import _local_run_active
+import phenotypic.gui.run_console._callbacks as callbacks_module
+from phenotypic.gui.run_console._callbacks import (
+    _action_control_states,
+    _local_run_active,
+    _state_from_action_controls,
+    _track_pending_slurm,
+)
+from phenotypic.gui.run_console._slurm import SlurmSubmitResult
 from phenotypic.gui.run_console._runner import LocalRunner
+from phenotypic.gui.run_console._app import create_app
 from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
@@ -141,34 +152,348 @@ def test_local_run_active_excludes_validate_records(
 # Async SLURM submit infrastructure
 # ---------------------------------------------------------------------------
 
-def test_pending_slurm_dict_takes_only_completed_futures() -> None:
-    """``_take_pending_slurm`` returns ``None`` for futures still in flight.
-
-    The follow-up callback driven by the log-tail interval relies on this
-    contract: a tick that arrives before the submission has resolved must
-    leave the dict untouched and return ``None`` so the user keeps seeing
-    the "submitting" banner.
-    """
-    from concurrent.futures import Future
-
-    from phenotypic.gui.run_console._callbacks import (
-        _stash_pending_slurm,
-        _take_pending_slurm,
+def test_slurm_future_terminalizes_stable_record_without_browser_poll(
+    tmp_path: Path,
+) -> None:
+    """The future callback updates its allocated generation immediately."""
+    registry = RunRegistry()
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    record = registry.allocate(
+        mode="slurm",
+        output_dir=output_dir,
+        rel_path="out",
+        command_digest="digest",
+        status="submitting",
+    )
+    assert record.generation is not None
+    future: Future[SlurmSubmitResult] = Future()
+    _track_pending_slurm(
+        record.run_id,
+        record.generation,
+        future,
+        registry=registry,
     )
 
-    fut: Future[str] = Future()
-    _stash_pending_slurm("slurm-pending-test", fut)
+    future.set_result(
+        SlurmSubmitResult(
+            job_id="701",
+            output_dir=output_dir,
+            stdout="",
+            stderr="",
+            returncode=0,
+        )
+    )
 
-    # In flight → returns None, dict still holds the future.
-    assert _take_pending_slurm("slurm-pending-test") is None
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "running"
+    assert updated.scheduler_ids == ("701",)
+    assert updated.primary_scheduler_id == "701"
 
-    # Resolve → next call returns the future and pops it.
-    fut.set_result("done")
-    taken = _take_pending_slurm("slurm-pending-test")
-    assert taken is fut
-    assert taken.result() == "done"
-    # Already taken → next call returns None.
-    assert _take_pending_slurm("slurm-pending-test") is None
+
+def test_slurm_future_cannot_update_replaced_generation(tmp_path: Path) -> None:
+    """A late callback cannot write through a stale launch generation."""
+    registry = RunRegistry()
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    current = RunRecord(
+        run_id="out",
+        generation=uuid4(),
+        mode="slurm",
+        output_dir=output_dir,
+        rel_path="out",
+        status="submitting",
+        command_digest="current",
+    )
+    registry.register(current)
+    stale_generation = uuid4()
+    future: Future[SlurmSubmitResult] = Future()
+    _track_pending_slurm(
+        "out",
+        stale_generation,
+        future,
+        registry=registry,
+    )
+
+    future.set_result(
+        SlurmSubmitResult("702", output_dir, "", "", 0)
+    )
+
+    unchanged = registry.get("out")
+    assert unchanged is not None
+    assert unchanged.generation == current.generation
+    assert unchanged.status == "submitting"
+    assert unchanged.scheduler_ids == ()
+
+
+def test_slurm_future_failure_preserves_diagnostic_record(
+    tmp_path: Path,
+) -> None:
+    """Submission failures terminalize instead of deleting their run row."""
+    registry = RunRegistry()
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    record = registry.allocate(
+        mode="slurm",
+        output_dir=output_dir,
+        rel_path="out",
+        command_digest="digest",
+        status="submitting",
+    )
+    assert record.generation is not None
+    future: Future[SlurmSubmitResult] = Future()
+    _track_pending_slurm(
+        record.run_id,
+        record.generation,
+        future,
+        registry=registry,
+    )
+
+    future.set_exception(RuntimeError("scheduler unavailable"))
+
+    failed = registry.get(record.run_id)
+    assert failed is not None
+    assert failed.status == "failed"
+    assert failed.status_detail == "RuntimeError: scheduler unavailable"
+
+
+def test_action_callbacks_capture_raw_controls_not_aggregate_store(
+    tmp_path: Path,
+) -> None:
+    """Run, Validate, and Save Preset have the full raw control contract."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    app = create_app(sandbox)
+    expected = [dependency.component_id for dependency in _action_control_states()]
+    for action_id in (
+        "rc-btn-run",
+        "rc-btn-validate",
+        "rc-btn-save-preset",
+    ):
+        callback = next(
+            spec
+            for spec in app.callback_map.values()
+            if spec["inputs"] and spec["inputs"][0]["id"] == action_id
+        )
+        state_ids = [item["id"] for item in callback["state"]]
+        assert "rc-store-form-state" not in state_ids
+        start = state_ids.index(expected[0])
+        assert state_ids[start:start + len(expected)] == expected
+
+
+def test_raw_mode_at_action_time_is_authoritative(tmp_path: Path) -> None:
+    """Derived-store lag cannot change the execution mode selected at click."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    pipeline = tmp_path / "pipeline.json"
+    images = tmp_path / "images"
+    output = tmp_path / "output"
+    pipeline.write_text('{"operations": []}', encoding="utf-8")
+    images.mkdir()
+    output.mkdir()
+    base = (
+        str(pipeline),
+        str(images),
+        str(output),
+        "local",
+        [],
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        1,
+        None,
+    )
+
+    local = _state_from_action_controls(base, sandbox=sandbox)
+    slurm_values = list(base)
+    slurm_values[3] = "slurm"
+    slurm_values[11] = "compute"
+    slurm = _state_from_action_controls(tuple(slurm_values), sandbox=sandbox)
+
+    assert local.mode == "local"
+    assert slurm.mode == "slurm"
+    assert slurm.slurm_args["partition"] == "compute"
+
+
+def test_empty_slurm_profile_never_invokes_submitter(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """SLURM validation fails before executor submission or durable claim."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    app = create_app(sandbox, registry=registry)
+    pipeline = tmp_path / "pipeline.json"
+    images = tmp_path / "images"
+    output = tmp_path / "output"
+    pipeline.write_text('{"operations": []}', encoding="utf-8")
+    images.mkdir()
+    output.mkdir()
+    controls = (
+        str(pipeline),
+        str(images),
+        str(output),
+        "slurm",
+        [],
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        1,
+        None,
+    )
+    monkeypatch.setattr(
+        callbacks_module._SLURM_EXECUTOR,
+        "submit",
+        lambda *args, **kwargs: pytest.fail("submitter was invoked"),
+    )
+    callback = next(
+        spec["callback"].__wrapped__
+        for spec in app.callback_map.values()
+        if spec["inputs"] and spec["inputs"][0]["id"] == "rc-btn-run"
+    )
+
+    response = callback(1, *controls, 0)
+
+    assert "nonempty CPU SLURM profile" in response[1]
+    assert registry.list() == []
+
+
+def test_immediate_local_exit_terminalizes_allocated_generation(
+    tmp_path: Path,
+) -> None:
+    """A process that exits before the Dash response still becomes terminal."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    runner = LocalRunner()
+    app = create_app(sandbox, registry=registry, runner=runner)
+    pipeline = tmp_path / "invalid-pipeline.json"
+    images = tmp_path / "images"
+    output = tmp_path / "output"
+    pipeline.write_text('{"operations": "invalid"}', encoding="utf-8")
+    images.mkdir()
+    output.mkdir()
+    controls = (
+        str(pipeline),
+        str(images),
+        str(output),
+        "local",
+        [],
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        1,
+        None,
+    )
+    callback = next(
+        spec["callback"].__wrapped__
+        for spec in app.callback_map.values()
+        if spec["inputs"] and spec["inputs"][0]["id"] == "rc-btn-run"
+    )
+
+    response = callback(1, *controls, 0)
+    run_id = response[4]
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline:
+        record = registry.get(run_id)
+        if record is not None and record.status in {"complete", "failed"}:
+            break
+        time.sleep(0.02)
+    else:
+        pytest.fail("local exit observer did not terminalize the run")
+
+    assert record is not None
+    assert record.generation is not None
+    assert record.status == "failed"
+    assert record.returncode not in {None, 0}
+
+
+def test_local_record_is_durable_before_spawn_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Popen-boundary failures retain a failed generation owner."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    runner = LocalRunner()
+    app = create_app(sandbox, registry=registry, runner=runner)
+    pipeline = tmp_path / "pipeline.json"
+    images = tmp_path / "images"
+    output = tmp_path / "output"
+    pipeline.write_text('{"operations": []}', encoding="utf-8")
+    images.mkdir()
+    output.mkdir()
+    controls = (
+        str(pipeline),
+        str(images),
+        str(output),
+        "local",
+        [],
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        1,
+        None,
+    )
+
+    def fail_after_claim(*args, **kwargs):
+        claimed = registry.get("output")
+        assert claimed is not None
+        assert claimed.status == "queued"
+        assert claimed.generation is not None
+        raise OSError("Popen failed")
+
+    monkeypatch.setattr(runner, "start", fail_after_claim)
+    callback = next(
+        spec["callback"].__wrapped__
+        for spec in app.callback_map.values()
+        if spec["inputs"] and spec["inputs"][0]["id"] == "rc-btn-run"
+    )
+
+    callback(1, *controls, 0)
+
+    failed = registry.get("output")
+    assert failed is not None
+    assert failed.status == "failed"
+    assert failed.status_detail == "OSError: Popen failed"
 
 
 # ---------------------------------------------------------------------------
@@ -208,6 +533,34 @@ def test_run_input_dir_does_not_rewrite_matching_shared_source(
 
     assert current is not None
     assert _source_payload_for_input_dir(sandbox, str(plates), current) is None
+
+
+def test_same_path_reselection_upgrades_v1_shared_source(
+    tmp_path: Path,
+) -> None:
+    """Explicitly reselecting the same path must publish the V2 binding."""
+    from phenotypic.gui.run_console._callbacks import (
+        _source_payload_for_input_dir,
+    )
+
+    plates = tmp_path / "plates"
+    plates.mkdir()
+    sandbox = SandboxRoot.from_path(tmp_path)
+    legacy = {
+        "version": 1,
+        "abs_path": str(plates.resolve()),
+        "rel_path": "plates",
+        "source": "manual",
+    }
+
+    upgraded = _source_payload_for_input_dir(
+        sandbox, str(plates), legacy
+    )
+
+    assert upgraded is not None
+    assert upgraded["version"] == 2
+    assert upgraded["relative_path"] == "plates"
+    assert upgraded["sandbox_fingerprint"]
 
 
 def test_shared_source_initializes_empty_run_input(tmp_path: Path) -> None:
