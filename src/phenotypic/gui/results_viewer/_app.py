@@ -54,6 +54,12 @@ from phenotypic.gui._config import (
     join_url_prefix,
 )
 from phenotypic.gui._operation_registry import OperationRegistry
+from phenotypic.gui._binding_generation import (
+    BindingRequestFence,
+    binding_generation_hooks,
+    install_bound_output_callback_guard,
+    install_binding_generation_guard,
+)
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
@@ -69,6 +75,7 @@ from phenotypic.gui.results_viewer.timeline_view import (
 )
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._layout import (
+    build_active_snapshot_layout,
     build_app_layout,
     build_empty_state_layout,
 )
@@ -85,6 +92,8 @@ def create_app(
     *,
     url_prefix: str = MOUNT_HOME,
     api_url_prefix: str = DEFAULT_URL_PREFIX,
+    binding_generation: str | None = None,
+    binding_fence: BindingRequestFence | None = None,
 ) -> dash.Dash:
     """Build a Dash application instance for the results viewer.
 
@@ -104,6 +113,9 @@ def create_app(
         api_url_prefix: Browser-visible base prefix for shell-level
             Flask APIs. Defaults to ``"/"``; the hub passes the external
             proxy prefix when configured.
+        binding_generation: Optional shell generation used to fence stale
+            browser callback requests after a rebind.
+        binding_fence: Shared Results/Analysis request fence for the binding.
 
     Returns:
         A configured :class:`dash.Dash` instance whose ``app.run(...)``
@@ -122,19 +134,30 @@ def create_app(
         # mount prefix from PATH_INFO, so Dash must route at "/".
         requests_pathname_prefix=url_prefix,
         routes_pathname_prefix=MOUNT_HOME,
+        hooks=binding_generation_hooks(binding_generation),
     )
 
     # Inject window.__phenotypicAppPrefix so results_viewer.js can build
     # mount-aware URLs for DZI tiles and OSD assets.
-    app.index_string = dash_index_string_with_app_prefix(url_prefix)
+    app.index_string = dash_index_string_with_app_prefix(
+        url_prefix,
+        binding_generation=binding_generation,
+    )
 
     inject_design_tokens(app)
     register_shared_static(app.server)
 
     app.server.config[CFG_URL_PREFIX] = url_prefix
+    install_binding_generation_guard(
+        app,
+        binding_generation,
+        binding_fence,
+    )
 
     if output_root is None:
-        app.layout = build_empty_state_layout()
+        app.layout = build_empty_state_layout(
+            binding_generation=binding_generation,
+        )
         _register_empty_state_callbacks(
             app,
             url_prefix=url_prefix,
@@ -150,6 +173,32 @@ def create_app(
         context="Results session pre-read",
     )
     app.server.config[CFG_OUTPUT_ROOT] = output_root
+    mutation_is_safe = (
+        output_root.mutation_snapshot_is_safe
+        if binding_generation is not None
+        else lambda: not output_root.active_run_is_currently_running()
+    )
+    install_bound_output_callback_guard(
+        app,
+        mutation_is_safe=mutation_is_safe,
+        status_output_id=ids.HEADER_SNAPSHOT_STATUS_ID,
+    )
+    if output_root.snapshot.active_run:
+        app.layout = build_active_snapshot_layout(
+            output_root,
+            url_prefix=url_prefix,
+            binding_generation=binding_generation,
+        )
+        output_root.require_session_snapshot_current(
+            context="Results active session post-read",
+        )
+        _register_snapshot_refresh_callbacks(
+            app,
+            output_root,
+            url_prefix=url_prefix,
+            api_url_prefix=api_url_prefix,
+        )
+        return configure_url_prefix_routing(app, url_prefix)
 
     _tile_routes.register(app, output_root)
     timeline_thumb_routes.register(app, output_root)
@@ -193,7 +242,12 @@ def create_app(
     app.server.config[CFG_QC_PIPELINE] = _load_qc_pipeline(output_root)
     app.server.config.setdefault(CFG_QC_INSTANCES_CACHE, {})
 
-    app.layout = build_app_layout(output_root, filtered_state, url_prefix=url_prefix)
+    app.layout = build_app_layout(
+        output_root,
+        filtered_state,
+        url_prefix=url_prefix,
+        binding_generation=binding_generation,
+    )
     output_root.require_session_snapshot_current(
         context="Results session post-read",
     )
@@ -220,17 +274,22 @@ def _register_snapshot_refresh_callbacks(
     @app.callback(
         Output(ids.HEADER_SNAPSHOT_STATUS_ID, "children"),
         Output(ids.HEADER_SNAPSHOT_STATUS_ID, "color"),
+        Output(ids.BTN_REFRESH_SNAPSHOT, "disabled"),
         Input(ids.SNAPSHOT_STATUS_INTERVAL_ID, "n_intervals"),
     )
-    def _snapshot_status(_n_intervals: int) -> tuple[str, str]:
+    def _snapshot_status(_n_intervals: int) -> tuple[str, str, bool]:
+        if output_root.active_run_is_currently_running():
+            if output_root.snapshot.active_run:
+                return "Active run snapshot", "warning", True
+            return "Active run detected · refresh snapshot", "warning", False
         if output_root.snapshot.active_run:
-            return "Active run snapshot", "warning"
+            return "Run finished · refresh snapshot", "info", False
         if (
             output_root.snapshot_is_current()
             and output_root.refresh_state_is_current()
         ):
-            return "Current", "success"
-        return "Changed on disk", "danger"
+            return "Current", "success", False
+        return "Changed on disk", "danger", False
 
     api_output_root = join_url_prefix(
         api_url_prefix,

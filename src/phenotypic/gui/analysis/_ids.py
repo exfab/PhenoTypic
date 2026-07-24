@@ -49,6 +49,9 @@ ANALYSIS_REFRESH_ERROR = "analysis-refresh-error"
 #: Status-only fingerprint poll trigger.
 ANALYSIS_SNAPSHOT_INTERVAL = "analysis-snapshot-interval"
 
+#: Monotonic shell binding generation carried by this rendered page.
+ANALYSIS_BINDING_GENERATION = "analysis-binding-generation"
+
 #: Pipeline summary chip (e.g. "3 ops · 1 post · 2 filters · LogGrowthModel").
 ANALYSIS_PIPELINE_HEADER = "analysis-pipeline-header"
 

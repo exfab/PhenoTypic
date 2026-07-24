@@ -36,10 +36,12 @@ import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import html
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from uuid import uuid4
 
 from phenotypic.gui._config import (
     CFG_ANALYSIS_SESSION,
     CFG_RESULTS_BINDING_STATE,
+    CFG_RESULTS_BINDING_COORDINATOR,
     CFG_RUN_REGISTRY,
     CFG_RUNNER,
     CFG_VIEWER_SESSION,
@@ -56,6 +58,7 @@ from phenotypic.gui._config import (
     join_url_prefix,
     normalize_url_prefix,
 )
+from phenotypic.gui._binding_generation import BindingRequestFence
 from phenotypic.gui.shell._home import build_home_layout
 from phenotypic.gui.shell._ids import (
     SHELL_TAB_ANALYSIS,
@@ -69,6 +72,7 @@ from phenotypic.gui.shell._ids import (
 from phenotypic.gui.shell._layout import wrap_in_chrome
 from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui.shell._routes import register_sandbox_api
+from phenotypic.gui.shell._binding import BindingCoordinator
 from phenotypic.gui.shell._runs_blueprint import register as register_runs
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._session import (
@@ -244,19 +248,29 @@ def compose_hub(
 
     # Shared binding record. A successful bind or explicit Refresh publishes
     # all four fields together with the paired ToolSession states.
+    initial_binding_fence = BindingRequestFence()
     viewer_state: dict[str, Any] = {
         "bound_path": None,
         "output_root": None,
         "snapshot": None,
         "status": "unavailable",
         "error": None,
+        "binding_generation": str(uuid4()),
+        "binding_fence": initial_binding_fence,
     }
+    binding_coordinator = BindingCoordinator()
 
-    def _make_viewer(output_root: OutputRoot | None) -> dash.Dash:
+    def _make_viewer(
+        output_root: OutputRoot | None,
+        binding_generation: str,
+        binding_fence: BindingRequestFence,
+    ) -> dash.Dash:
         viewer_app = results_viewer.create_app(
             output_root=output_root,
             url_prefix=join_url_prefix(base_url_prefix, MOUNT_VIEWER),
             api_url_prefix=base_url_prefix,
+            binding_generation=binding_generation,
+            binding_fence=binding_fence,
         )
         wrap_in_chrome(
             viewer_app,
@@ -268,7 +282,11 @@ def compose_hub(
 
     # 1. Viewer session (lazy — heavy parquet load deferred to first GET).
     def _build_viewer() -> dash.Dash:
-        return _make_viewer(viewer_state["output_root"])
+        return _make_viewer(
+            viewer_state["output_root"],
+            viewer_state["binding_generation"],
+            viewer_state["binding_fence"],
+        )
 
     def _teardown_viewer(viewer_app: dash.Dash) -> None:
         # Intentionally a no-op: the released ``viewer_app`` is dropped
@@ -289,11 +307,17 @@ def compose_hub(
         teardown=_teardown_viewer,
     )
 
-    def _make_analysis(output_root: OutputRoot | None) -> dash.Dash:
+    def _make_analysis(
+        output_root: OutputRoot | None,
+        binding_generation: str,
+        binding_fence: BindingRequestFence,
+    ) -> dash.Dash:
         analysis_app = analysis.create_app(
             output_root=output_root,
             url_prefix=join_url_prefix(base_url_prefix, MOUNT_ANALYSIS),
             api_url_prefix=base_url_prefix,
+            binding_generation=binding_generation,
+            binding_fence=binding_fence,
         )
         wrap_in_chrome(
             analysis_app,
@@ -305,7 +329,11 @@ def compose_hub(
 
     # 1b. Analysis shares the same binding record as Results.
     def _build_analysis() -> dash.Dash:
-        return _make_analysis(viewer_state["output_root"])
+        return _make_analysis(
+            viewer_state["output_root"],
+            viewer_state["binding_generation"],
+            viewer_state["binding_fence"],
+        )
 
     def _teardown_analysis(_app: dash.Dash) -> None:
         del _app  # pragma: no cover
@@ -318,38 +346,73 @@ def compose_hub(
 
     def _bind_output(target: Path | None) -> OutputRoot:
         """Build and atomically publish one Results/Analysis revision."""
-        selected = target
-        if selected is None:
-            selected = viewer_state.get("bound_path")
-        if not isinstance(selected, Path):
-            raise ValueError("no output is currently bound")
+        ticket = binding_coordinator.issue_request()
+        with binding_coordinator.serialized():
+            binding_coordinator.require_latest(ticket)
+            selected = target
+            if selected is None:
+                selected = viewer_state.get("bound_path")
+            if not isinstance(selected, Path):
+                raise ValueError("no output is currently bound")
 
-        candidate_root = OutputRoot.discover(
-            selected,
-            cache_root=sandbox_viewer_cache_root(sandbox.root),
-        )
-        candidate_viewer = _make_viewer(candidate_root)
-        candidate_analysis = _make_analysis(candidate_root)
-
-        def _commit_binding() -> None:
-            viewer_state.update(
-                {
-                    "bound_path": selected,
-                    "output_root": candidate_root,
-                    "snapshot": candidate_root.snapshot,
-                    "status": "current",
-                    "error": None,
-                }
+            candidate_root = OutputRoot.discover(
+                selected,
+                cache_root=sandbox_viewer_cache_root(sandbox.root),
+            )
+            binding_generation = str(uuid4())
+            candidate_fence = BindingRequestFence()
+            candidate_viewer = _make_viewer(
+                candidate_root,
+                binding_generation,
+                candidate_fence,
+            )
+            candidate_analysis = _make_analysis(
+                candidate_root,
+                binding_generation,
+                candidate_fence,
             )
 
-        swap_tool_session_states(
-            (
-                (viewer_session, candidate_viewer),
-                (analysis_session, candidate_analysis),
-            ),
-            commit=_commit_binding,
-        )
-        return candidate_root
+            def _commit_binding() -> None:
+                # Runs with both ToolSession locks held. This closes the final
+                # candidate-build-to-publish gap and acts as the request CAS.
+                def _publish_latest() -> None:
+                    candidate_root.require_session_snapshot_current(
+                        context="Shared Results/Analysis publish",
+                    )
+                    viewer_state.update(
+                        {
+                            "bound_path": selected,
+                            "output_root": candidate_root,
+                            "snapshot": candidate_root.snapshot,
+                            "status": "current",
+                            "error": None,
+                            "binding_generation": binding_generation,
+                            "binding_fence": candidate_fence,
+                        }
+                    )
+
+                binding_coordinator.commit_if_latest(
+                    ticket,
+                    _publish_latest,
+                )
+
+            old_fence = viewer_state["binding_fence"]
+            if not isinstance(old_fence, BindingRequestFence):
+                raise RuntimeError("bound output request fence is unavailable")
+            binding_coordinator.require_latest(ticket)
+            old_fence.close_and_wait()
+            try:
+                swap_tool_session_states(
+                    (
+                        (viewer_session, candidate_viewer),
+                        (analysis_session, candidate_analysis),
+                    ),
+                    commit=_commit_binding,
+                )
+            except Exception:
+                old_fence.reopen()
+                raise
+            return candidate_root
 
     # 2. Shell Dash (registers the API + runs blueprints with the
     #    viewer-session touch hook + atomic Results/Analysis binder).
@@ -365,6 +428,9 @@ def compose_hub(
     shell_app.server.config[CFG_VIEWER_SESSION] = viewer_session
     shell_app.server.config[CFG_ANALYSIS_SESSION] = analysis_session
     shell_app.server.config[CFG_RESULTS_BINDING_STATE] = viewer_state
+    shell_app.server.config[CFG_RESULTS_BINDING_COORDINATOR] = (
+        binding_coordinator
+    )
 
     # 3. Builder Dash (eager — single-process registry build).
     _tick("builder")

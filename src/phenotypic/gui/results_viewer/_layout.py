@@ -248,6 +248,7 @@ def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> C
                 outline=True,
                 size="sm",
                 n_clicks=0,
+                disabled=output_root.snapshot.active_run,
                 className="ms-2",
             ),
             html.Span(
@@ -522,6 +523,7 @@ def build_app_layout(
     filtered_state: "CurationLabels",
     *,
     url_prefix: str = MOUNT_HOME,
+    binding_generation: str | None = None,
 ) -> Component:
     """Compose the top-level Dash component tree for the results viewer.
 
@@ -542,6 +544,7 @@ def build_app_layout(
         url_prefix: Mount-point prefix passed through to
             :func:`_build_header` so the dashboard logo resolves
             correctly under both standalone and hub-mounted launches.
+        binding_generation: Optional shell generation embedded in the page.
 
     Returns:
         A :class:`dash.html.Div` ready to assign to ``app.layout``.
@@ -633,25 +636,82 @@ def build_app_layout(
         backdrop=True,
     )
 
-    return html.Div(
-        [
-            stores,
-            dcc.Interval(
-                id=ids.SNAPSHOT_STATUS_INTERVAL_ID,
-                interval=10_000,
-                n_intervals=0,
+    children: list[Component] = [
+        stores,
+        dcc.Interval(
+            id=ids.SNAPSHOT_STATUS_INTERVAL_ID,
+            interval=10_000,
+            n_intervals=0,
+        ),
+        header,
+        banner,
+        body,
+        filter_offcanvas,
+    ]
+    if binding_generation is not None:
+        children.insert(
+            0,
+            dcc.Store(
+                id=ids.STORE_BINDING_GENERATION,
+                data=binding_generation,
             ),
-            header,
-            banner,
-            body,
-            filter_offcanvas,
-        ],
+        )
+    return html.Div(
+        children,
         id="results-viewer-root",
         style={"background": _BG, "minHeight": "100vh"},
     )
 
 
-def build_empty_state_layout() -> Component:
+def build_active_snapshot_layout(
+    output_root: OutputRoot,
+    *,
+    url_prefix: str = MOUNT_HOME,
+    binding_generation: str | None = None,
+) -> Component:
+    """Build a mutation-free placeholder for a nonterminal output."""
+    children: list[Component] = [
+        dcc.Interval(
+            id=ids.SNAPSHOT_STATUS_INTERVAL_ID,
+            interval=5_000,
+            n_intervals=0,
+        ),
+        _build_header(output_root, url_prefix=url_prefix),
+        dbc.Alert(
+            [
+                html.H5("Processing output is read-only"),
+                html.P(
+                    "This output still has a nonterminal run owner. Results, "
+                    "curation, and QC callbacks are not loaded for this page."
+                ),
+                html.P(
+                    "When processing finishes, use Refresh snapshot to load a "
+                    "stable Results and Analysis revision."
+                ),
+            ],
+            color="warning",
+            className="m-4",
+        ),
+    ]
+    if binding_generation is not None:
+        children.insert(
+            0,
+            dcc.Store(
+                id=ids.STORE_BINDING_GENERATION,
+                data=binding_generation,
+            ),
+        )
+    return html.Div(
+        children,
+        id="results-viewer-active-snapshot",
+        style={"background": _BG, "minHeight": "100vh"},
+    )
+
+
+def build_empty_state_layout(
+    *,
+    binding_generation: str | None = None,
+) -> Component:
     """Compose a placeholder layout when no ``OutputRoot`` is available.
 
     The hub mounts the viewer with ``output_root=None`` so the page is
@@ -712,8 +772,7 @@ def build_empty_state_layout() -> Component:
         style={"marginTop": "0.5rem", "minHeight": "1.25rem"},
     )
 
-    return html.Div(
-        [
+    children: list[Component] = [
             html.Div(
                 [
                     html.H2(
@@ -732,7 +791,17 @@ def build_empty_state_layout() -> Component:
                 ],
                 className="results-viewer-empty-card",
             ),
-        ],
+        ]
+    if binding_generation is not None:
+        children.insert(
+            0,
+            dcc.Store(
+                id=ids.STORE_BINDING_GENERATION,
+                data=binding_generation,
+            ),
+        )
+    return html.Div(
+        children,
         id="results-viewer-empty-state",
         className="results-viewer-empty",
         style={

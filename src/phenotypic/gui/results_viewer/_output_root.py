@@ -394,6 +394,21 @@ class OutputRoot:
             return False
         return current == self.consumed_state_fingerprint
 
+    def active_run_is_currently_running(self) -> bool:
+        """Return whether the captured output still has a nonterminal owner."""
+        return _active_run_snapshot(self.layout)
+
+    def mutation_snapshot_is_safe(self) -> bool:
+        """Return whether mutations still target this processing generation.
+
+        GUI-owned consumed state can advance within a session. Its individual
+        writers retain their own mtime/fingerprint CAS guards.
+        """
+        return (
+            not self.active_run_is_currently_running()
+            and self.snapshot_is_current()
+        )
+
     def require_session_snapshot_current(self, *, context: str) -> None:
         """Reject construction that would mix any source generations.
 

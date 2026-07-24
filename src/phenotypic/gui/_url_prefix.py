@@ -108,7 +108,11 @@ def configure_url_prefix_routing(app: dash.Dash, url_prefix: str) -> dash.Dash:
     return app
 
 
-def dash_index_string_with_app_prefix(url_prefix: str) -> str:
+def dash_index_string_with_app_prefix(
+    url_prefix: str,
+    *,
+    binding_generation: str | None = None,
+) -> str:
     """Return a Dash ``index_string`` that exposes the app URL prefix.
 
     The injected ``<script>`` defines ``window.__phenotypicAppPrefix`` so
@@ -117,6 +121,9 @@ def dash_index_string_with_app_prefix(url_prefix: str) -> str:
 
     Args:
         url_prefix: Browser-visible path prefix.
+        binding_generation: Optional shell binding generation. When supplied,
+            Dash's request hook places the immutable page UUID in every
+            callback JSON payload checked by the destination app.
 
     Returns:
         Dash HTML template containing the standard Dash placeholders.
@@ -126,6 +133,19 @@ def dash_index_string_with_app_prefix(url_prefix: str) -> str:
         .replace('"', '\\"')
         .replace("</", "<\\/")
     )
+    generation_script = ""
+    if binding_generation is not None:
+        safe_generation = (
+            binding_generation.replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("</", "<\\/")
+        )
+        generation_script = (
+            "        <script>"
+            "window.__phenotypicBindingGeneration = "
+            f'"{safe_generation}";'
+            "</script>\n"
+        )
     return (
         "<!DOCTYPE html>\n"
         "<html>\n"
@@ -135,6 +155,7 @@ def dash_index_string_with_app_prefix(url_prefix: str) -> str:
         "        {%favicon%}\n"
         "        {%css%}\n"
         f'        <script>window.__phenotypicAppPrefix = "{safe_prefix}";</script>\n'
+        f"{generation_script}"
         "    </head>\n"
         "    <body>\n"
         "        {%app_entry%}\n"

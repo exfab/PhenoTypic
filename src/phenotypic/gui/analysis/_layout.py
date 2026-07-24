@@ -91,6 +91,7 @@ def build_app_layout(
     *,
     url_prefix: str = MOUNT_HOME,
     columns_provider: Optional[ColumnsProvider] = None,
+    binding_generation: str | None = None,
 ) -> html.Div:
     """Assemble the analysis page body.
 
@@ -110,12 +111,12 @@ def build_app_layout(
             dropdowns. Standalone launches that build the layout before
             the app boots can leave this ``None``; ``create_app``
             passes :meth:`MeasurementSchema.columns_for`.
+        binding_generation: Optional shell generation embedded in the page.
 
     Returns:
         Top-level ``html.Div`` ready to drop into the shell's main pane.
     """
-    return html.Div(
-        [
+    children: list[Any] = [
             _build_output_header(output_root, url_prefix=url_prefix),
             _build_pipeline_header(recipe),
             _build_stale_banner(),
@@ -140,13 +141,71 @@ def build_app_layout(
                 storage_type="session",
                 data={},
             ),
-        ],
+        ]
+    if binding_generation is not None:
+        children.insert(
+            0,
+            dcc.Store(
+                id=ids.ANALYSIS_BINDING_GENERATION,
+                data=binding_generation,
+            ),
+        )
+    return html.Div(
+        children,
         id=ids.ANALYSIS_PAGE,
         className="analysis-page",
     )
 
 
-def build_empty_state_layout() -> html.Div:
+def build_active_snapshot_layout(
+    output_root: "OutputRoot",
+    *,
+    url_prefix: str = MOUNT_HOME,
+    binding_generation: str | None = None,
+) -> html.Div:
+    """Build a mutation-free Analysis placeholder for active processing."""
+    children = [
+        _build_output_header(output_root, url_prefix=url_prefix),
+        dcc.Interval(
+            id=ids.ANALYSIS_SNAPSHOT_INTERVAL,
+            interval=5_000,
+            n_intervals=0,
+        ),
+        dbc.Alert(
+            [
+                html.H5("Analysis is read-only while processing"),
+                html.P(
+                    "Analysis authoring and publication callbacks are not "
+                    "loaded for this active output."
+                ),
+                html.P(
+                    "When processing finishes, use Refresh snapshot to load "
+                    "one stable Results and Analysis revision."
+                ),
+            ],
+            color="warning",
+            className="m-4",
+        ),
+    ]
+    if binding_generation is not None:
+        children.insert(
+            0,
+            dcc.Store(
+                id=ids.ANALYSIS_BINDING_GENERATION,
+                data=binding_generation,
+            ),
+        )
+    return html.Div(
+        children,
+        id=ids.ANALYSIS_PAGE,
+        className="analysis-page analysis-active-snapshot",
+    )
+
+
+def build_empty_state_layout(
+    *,
+    binding_generation: str | None = None,
+) -> html.Div:
     """Layout shown when the hub mounts ``/analysis/`` without an output root.
 
     Mirrors the results viewer's empty-state hand-off banner: the user
@@ -198,9 +257,8 @@ def build_empty_state_layout() -> html.Div:
         style={"marginTop": "0.5rem", "minHeight": "1.25rem"},
     )
 
-    return html.Div(
-        [
-            html.Div(
+    children: list[Any] = [
+        html.Div(
                 [
                     html.H2(
                         "No output selected",
@@ -217,7 +275,17 @@ def build_empty_state_layout() -> html.Div:
                     error_slot,
                 ],
             ),
-        ],
+        ]
+    if binding_generation is not None:
+        children.insert(
+            0,
+            dcc.Store(
+                id=ids.ANALYSIS_BINDING_GENERATION,
+                data=binding_generation,
+            ),
+        )
+    return html.Div(
+        children,
         id=ids.ANALYSIS_PAGE,
         className="analysis-page analysis-empty",
         style={"padding": "2rem"},
@@ -272,6 +340,7 @@ def _build_output_header(
                 outline=True,
                 size="sm",
                 n_clicks=0,
+                disabled=output_root.snapshot.active_run,
                 className="ms-2",
             ),
             html.Span(

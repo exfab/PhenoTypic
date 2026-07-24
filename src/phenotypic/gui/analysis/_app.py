@@ -30,6 +30,12 @@ from phenotypic.gui._config import (
     TITLE_ANALYSIS,
     join_url_prefix,
 )
+from phenotypic.gui._binding_generation import (
+    BindingRequestFence,
+    binding_generation_hooks,
+    install_bound_output_callback_guard,
+    install_binding_generation_guard,
+)
 from dash import Input, Output, State
 
 from phenotypic.gui._design import (
@@ -39,10 +45,14 @@ from phenotypic.gui._design import (
     inject_design_tokens,
 )
 from phenotypic.gui._shared import register_shared_static
-from phenotypic.gui._url_prefix import configure_url_prefix_routing
+from phenotypic.gui._url_prefix import (
+    configure_url_prefix_routing,
+    dash_index_string_with_app_prefix,
+)
 from phenotypic.gui.analysis import _ids as analysis_ids
 from phenotypic.gui.analysis._callbacks import register_callbacks
 from phenotypic.gui.analysis._layout import (
+    build_active_snapshot_layout,
     build_app_layout,
     build_empty_state_layout,
 )
@@ -59,6 +69,8 @@ def create_app(
     output_root: Optional[OutputRoot] = None,
     url_prefix: str = MOUNT_HOME,
     api_url_prefix: str = DEFAULT_URL_PREFIX,
+    binding_generation: str | None = None,
+    binding_fence: BindingRequestFence | None = None,
 ) -> dash.Dash:
     """Build a configured Dash instance for the analysis sub-app.
 
@@ -75,6 +87,9 @@ def create_app(
         api_url_prefix: Browser-visible base prefix for shell-level
             Flask APIs. Defaults to ``"/"``; the hub passes the external
             proxy prefix when configured.
+        binding_generation: Optional immutable shell bind UUID used to reject
+            callbacks from a browser page rendered for an older output.
+        binding_fence: Shared Results/Analysis request fence for this binding.
 
     Returns:
         Configured :class:`dash.Dash` instance.
@@ -94,13 +109,25 @@ def create_app(
         title=TITLE_ANALYSIS,
         requests_pathname_prefix=url_prefix,
         routes_pathname_prefix=MOUNT_HOME,
+        hooks=binding_generation_hooks(binding_generation),
+    )
+    app.index_string = dash_index_string_with_app_prefix(
+        url_prefix,
+        binding_generation=binding_generation,
     )
     inject_design_tokens(app)
     register_shared_static(app.server)
     app.server.config[CFG_URL_PREFIX] = url_prefix
+    install_binding_generation_guard(
+        app,
+        binding_generation,
+        binding_fence,
+    )
 
     if output_root is None:
-        app.layout = build_empty_state_layout()
+        app.layout = build_empty_state_layout(
+            binding_generation=binding_generation,
+        )
         _register_empty_state_callbacks(
             app,
             url_prefix=url_prefix,
@@ -115,9 +142,36 @@ def create_app(
     output_root.require_session_snapshot_current(
         context="Analysis session pre-read",
     )
+    app.server.config[CFG_OUTPUT_ROOT] = output_root
+    mutation_is_safe = (
+        output_root.mutation_snapshot_is_safe
+        if binding_generation is not None
+        else lambda: not output_root.active_run_is_currently_running()
+    )
+    install_bound_output_callback_guard(
+        app,
+        mutation_is_safe=mutation_is_safe,
+        status_output_id=analysis_ids.ANALYSIS_SNAPSHOT_STATUS,
+    )
+    if output_root.snapshot.active_run:
+        app.layout = build_active_snapshot_layout(
+            output_root,
+            url_prefix=url_prefix,
+            binding_generation=binding_generation,
+        )
+        output_root.require_session_snapshot_current(
+            context="Analysis active session post-read",
+        )
+        _register_snapshot_refresh_callbacks(
+            app,
+            output_root,
+            url_prefix=url_prefix,
+            api_url_prefix=api_url_prefix,
+        )
+        return configure_url_prefix_routing(app, url_prefix)
+
     recipe = RecipeState.from_layout(output_root.layout)
     schema = MeasurementSchema.from_layout(output_root.layout)
-    app.server.config[CFG_OUTPUT_ROOT] = output_root
     app.server.config[CFG_RECIPE_STATE] = recipe
     app.server.config[CFG_MEASUREMENT_SCHEMA] = schema
 
@@ -126,6 +180,7 @@ def create_app(
         recipe,
         url_prefix=url_prefix,
         columns_provider=schema.columns_for,
+        binding_generation=binding_generation,
     )
     output_root.require_session_snapshot_current(
         context="Analysis session post-read",
@@ -158,17 +213,22 @@ def _register_snapshot_refresh_callbacks(
     @app.callback(
         Output(analysis_ids.ANALYSIS_SNAPSHOT_STATUS, "children"),
         Output(analysis_ids.ANALYSIS_SNAPSHOT_STATUS, "color"),
+        Output(analysis_ids.ANALYSIS_REFRESH_SNAPSHOT, "disabled"),
         Input(analysis_ids.ANALYSIS_SNAPSHOT_INTERVAL, "n_intervals"),
     )
-    def _snapshot_status(_n_intervals: int) -> tuple[str, str]:
+    def _snapshot_status(_n_intervals: int) -> tuple[str, str, bool]:
+        if output_root.active_run_is_currently_running():
+            if output_root.snapshot.active_run:
+                return "Active run snapshot", "warning", True
+            return "Active run detected · refresh snapshot", "warning", False
         if output_root.snapshot.active_run:
-            return "Active run snapshot", "warning"
+            return "Run finished · refresh snapshot", "info", False
         if (
             output_root.snapshot_is_current()
             and output_root.refresh_state_is_current()
         ):
-            return "Current", "success"
-        return "Changed on disk", "danger"
+            return "Current", "success", False
+        return "Changed on disk", "danger", False
 
     api_output_root = join_url_prefix(
         api_url_prefix,

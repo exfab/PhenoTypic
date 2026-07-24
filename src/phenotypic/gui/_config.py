@@ -104,6 +104,8 @@ __all__ = [
     "CFG_VIEWER_SESSION",
     "CFG_ANALYSIS_SESSION",
     "CFG_RESULTS_BINDING_STATE",
+    "CFG_RESULTS_BINDING_COORDINATOR",
+    "CFG_BINDING_GENERATION",
     # Sandbox subdirectories
     "SANDBOX_GUI_DIRNAME",
     "SANDBOX_PRESETS_SUBDIR",
@@ -319,6 +321,13 @@ CFG_ANALYSIS_SESSION: str = "pheno_analysis_session"
 #: Mutable shell binding record containing the selected output path,
 #: :class:`OutputRoot`, and shared :class:`OutputSnapshotDescriptor`.
 CFG_RESULTS_BINDING_STATE: str = "pheno_results_binding_state"
+
+#: Shell-owned binding coordinator used to serialize and generation-fence
+#: Results/Analysis selection and Refresh requests.
+CFG_RESULTS_BINDING_COORDINATOR: str = "pheno_results_binding_coordinator"
+
+#: Immutable per-bind UUID embedded in a bound Results or Analysis page.
+CFG_BINDING_GENERATION: str = "pheno_binding_generation"
 
 # ---------------------------------------------------------------------------
 # Sandbox subdirectories

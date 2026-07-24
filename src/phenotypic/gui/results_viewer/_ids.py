@@ -38,6 +38,9 @@ STORE_CARD_LIST = "store-card-list"
 #: pan/zoom on one mirrors to the others.
 STORE_LOCK_VIEWS = "store-lock-views"
 
+#: Monotonic shell binding generation carried by this rendered page.
+STORE_BINDING_GENERATION = "results-binding-generation"
+
 
 # ---------------------------------------------------------------------------
 # Empty-state hand-off (only mounted when ``output_root is None``)

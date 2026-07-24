@@ -53,6 +53,7 @@ from flask import Blueprint, abort, jsonify, request
 
 from phenotypic.gui._config import SANDBOX_API_PREFIX
 from phenotypic.gui.shell._classifier import Capabilities, classify
+from phenotypic.gui.shell._binding import BindingSupersededError
 
 if TYPE_CHECKING:
     from flask import Flask
@@ -302,7 +303,7 @@ def build_sandbox_api(
                     target,
                     cache_root=sandbox_viewer_cache_root(sandbox.root),
                 )
-        except OutputSnapshotChangedError as exc:
+        except (OutputSnapshotChangedError, BindingSupersededError) as exc:
             logger.info("refused unstable viewer snapshot: %s", exc)
             return (
                 jsonify(
