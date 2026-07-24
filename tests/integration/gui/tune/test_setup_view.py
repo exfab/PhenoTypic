@@ -24,9 +24,17 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur
-from phenotypic.tune import Budget, Evaluator, TuningSpec, infer_search_space
+from phenotypic.tune import (
+    Budget,
+    Categorical,
+    Evaluator,
+    Knob,
+    SearchSpace,
+    TuningSpec,
+    infer_search_space,
+)
 from phenotypic.tune.score import QCScorer
-from phenotypic.tune.strategy import RandomConfig
+from phenotypic.tune.strategy import GridConfig, RandomConfig
 
 
 def _walk(component):
@@ -341,6 +349,82 @@ def test_existing_spec_trial_override_preserves_authored_strategy(
     assert command.semantic_tail[-2:] == ("--n-trials", "21")
     reloaded = TuningSpec.model_validate_json(authored.read_text(encoding="utf-8"))
     assert reloaded.strategy.seed == 71
+
+
+def test_existing_grid_spec_never_emits_trial_override(
+    tmp_path: Path,
+) -> None:
+    metadata = tmp_path / "layout.csv"
+    metadata.write_text(
+        "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
+        encoding="utf-8",
+    )
+    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    original = TuningSpec(
+        pipeline=pipeline,
+        search_space=SearchSpace(
+            knobs=(
+                Knob(
+                    key="1.ignore_zeros",
+                    domain=Categorical(choices=(True, False)),
+                ),
+            )
+        ),
+        scorer=QCScorer(
+            check=ExpectedVsDetectedCount(
+                metadata=str(metadata),
+                groupby=["MetadataImage_ImageName"],
+            )
+        ),
+        evaluator=Evaluator(),
+        strategy=GridConfig(),
+        budget=Budget(),
+    )
+    authored = tmp_path / "grid.json.pht-tune"
+    authored.write_text(original.model_dump_json(), encoding="utf-8")
+    signature = setup_authoring_signature(
+        pipeline_path=str(authored),
+        metadata_path=None,
+        replace_scorer=False,
+        edits={},
+    )
+    descriptor = authored_spec_descriptor(
+        path=str(authored),
+        pipeline_path=str(authored),
+        metadata_path=None,
+        setup_signature=signature,
+        launch_defaults=authored_spec_launch_defaults(authored),
+    )
+    images = tmp_path / "images"
+    images.mkdir()
+    command = _build_command_from_controls(
+        sandbox=SandboxRoot.from_path(tmp_path),
+        authored_descriptor=descriptor,
+        pipeline_store={"path": str(authored), "issues": []},
+        metadata_store={"path": None, "issues": []},
+        replace_values=[],
+        setup_signature=signature,
+        shared_source=None,
+        images_override=str(images),
+        output_dir=str(tmp_path / "output"),
+        strategy="grid",
+        n_trials=50,
+        storage_mode="spec",
+        storage_local_path=None,
+        storage_environment_name=None,
+        n_workers=None,
+        slurm_partition=None,
+        slurm_mem=None,
+        slurm_time=None,
+        held_out_fraction=None,
+        cv_group=None,
+        mode="local",
+        screen_values=[],
+    )
+
+    assert command.issues == ()
+    assert "--strategy" not in command.semantic_tail
+    assert "--n-trials" not in command.semantic_tail
 
 
 def test_descriptor_invalidates_when_authored_content_changes(tmp_path: Path):

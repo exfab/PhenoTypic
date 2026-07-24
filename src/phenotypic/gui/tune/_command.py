@@ -225,6 +225,9 @@ def build_tune_command(
         issues.append(f"Unknown tuning strategy override: {normalized_strategy}")
     if n_trials is not None and n_trials <= 0:
         issues.append("Trial budget must be positive.")
+    effective_n_trials = (
+        None if normalized_effective_strategy == "grid" else n_trials
+    )
     if n_workers is not None and n_workers <= 0:
         issues.append("Worker count must be positive.")
     if held_out_fraction is not None and not 0 <= held_out_fraction <= 1:
@@ -257,7 +260,7 @@ def build_tune_command(
             images_dir=str(resolved_images),
             output_dir=str(resolved_output),
             strategy=normalized_strategy,
-            n_trials=n_trials,
+            n_trials=effective_n_trials,
             storage_url=actual_storage,
             n_workers=n_workers,
             slurm_partition=slurm_partition,
@@ -273,7 +276,7 @@ def build_tune_command(
             images_dir=str(resolved_images),
             output_dir=str(resolved_output),
             strategy=normalized_strategy,
-            n_trials=n_trials,
+            n_trials=effective_n_trials,
             storage_url=redacted_storage,
             n_workers=n_workers,
             slurm_partition=slurm_partition,
