@@ -92,6 +92,7 @@ def build_app_layout(
     url_prefix: str = MOUNT_HOME,
     columns_provider: Optional[ColumnsProvider] = None,
     binding_generation: str | None = None,
+    refresh_supported: bool = True,
 ) -> html.Div:
     """Assemble the analysis page body.
 
@@ -112,12 +113,17 @@ def build_app_layout(
             the app boots can leave this ``None``; ``create_app``
             passes :meth:`MeasurementSchema.columns_for`.
         binding_generation: Optional shell generation embedded in the page.
+        refresh_supported: Whether the host supports in-process rebinding.
 
     Returns:
         Top-level ``html.Div`` ready to drop into the shell's main pane.
     """
     children: list[Any] = [
-            _build_output_header(output_root, url_prefix=url_prefix),
+            _build_output_header(
+                output_root,
+                url_prefix=url_prefix,
+                refresh_supported=refresh_supported,
+            ),
             _build_pipeline_header(recipe),
             _build_stale_banner(),
             _build_load_warnings_banner(recipe),
@@ -297,7 +303,10 @@ def build_empty_state_layout(
 # ---------------------------------------------------------------------------
 
 def _build_output_header(
-    output_root: "OutputRoot", *, url_prefix: str = MOUNT_HOME
+    output_root: "OutputRoot",
+    *,
+    url_prefix: str = MOUNT_HOME,
+    refresh_supported: bool = True,
 ) -> html.Div:
     return html.Div(
         [
@@ -340,7 +349,9 @@ def _build_output_header(
                 outline=True,
                 size="sm",
                 n_clicks=0,
-                disabled=output_root.snapshot.active_run,
+                disabled=(
+                    output_root.snapshot.active_run or not refresh_supported
+                ),
                 className="ms-2",
             ),
             html.Span(

@@ -29,7 +29,8 @@ from typing import Literal
 import polars as pl
 
 from phenotypic.schema import CURATION, METADATA, OBJECT, ErrorCategory
-from phenotypic.sdk_ import BundleLayout
+from phenotypic.sdk_ import BundleLayout, paths_fingerprint
+from phenotypic.sdk_._file_locking import ArtifactLockTimeout, exclusive_path_lock
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +204,12 @@ class CurationLabels:
             rewrites (CLI measure / recompile mode against a directory
             whose viewer session is still open) so we don't clobber a freshly
             seeded master with stale curation derived from an older
-            ``_master_df``.  Watches ``measurements.parquet`` only (C7).
+            ``_master_df``.
+        _expected_source_fingerprint: Combined content fingerprint of every
+            curation source and derived artifact observed at load or after this
+            instance's last successful publication. It protects labels,
+            custom categories, mirrors, and category partitions from
+            concurrent or external writers.
         _stale: Set to ``True`` once a write refusal has fired.  Exposed as
             the read-only :attr:`stale` property; external callers may not
             clear it.
@@ -226,6 +232,7 @@ class CurationLabels:
     _mirror_df: pl.DataFrame | None = field(default=None, repr=False)
     _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
     _seed_mtime_ns: int | None = field(default=None, repr=False)
+    _expected_source_fingerprint: str = field(default="", repr=False)
     _stale: bool = field(default=False, repr=False)
 
     @property
@@ -280,7 +287,8 @@ class CurationLabels:
         with self._lock:
             if token not in self.custom_categories:
                 self.custom_categories.append(token)
-                self._save_custom_registry()
+                if not self._save_custom_registry():
+                    self.custom_categories.remove(token)
         return token
 
     # -- load ----------------------------------------------------------------
@@ -346,6 +354,7 @@ class CurationLabels:
             _master_df=clean_master,
             _mirror_df=master_df,
             _seed_mtime_ns=seed_mtime,
+            _expected_source_fingerprint=cls._source_fingerprint(layout),
         )
 
     @staticmethod
@@ -390,13 +399,20 @@ class CurationLabels:
                 out.append(token)
         return out
 
-    def _save_custom_registry(self) -> None:
-        """Atomically persist the custom-category registry (lock held)."""
+    def _write_custom_registry(self) -> None:
+        """Atomically persist the custom-category registry (locks held)."""
         self.custom_path.parent.mkdir(parents=True, exist_ok=True)
         payload = json.dumps({"categories": self.custom_categories}, indent=2)
         tmp = self.custom_path.with_suffix(self.custom_path.suffix + ".tmp")
         tmp.write_text(payload, encoding="utf-8")
         os.replace(tmp, self.custom_path)
+
+    def _save_custom_registry(self) -> bool:
+        """Persist the custom-category registry under the shared CAS lock."""
+        return self._publish_if_current(
+            self._write_custom_registry,
+            context="custom-category registry",
+        )
 
     # -- labels parquet IO + re-keying --------------------------------------
     @staticmethod
@@ -644,12 +660,18 @@ class CurationLabels:
         mirror — used by CLI finalize to re-emit the durable error deliverables
         headlessly while leaving the post-applied measurements seed untouched
         (curation of the mirror stays the GUI's live responsibility, re-derived
-        on the next viewer load from the re-keyed labels). Bypasses the mirror
-        mtime guard for the same reason. Dash-free.
+        on the next viewer load from the re-keyed labels). Dash-free.
         """
         with self._lock:
-            self._write_category_parquets()
-            self._write_labels_parquet()
+            self._publish_if_current(
+                self._write_error_partitions_locked,
+                context="error partitions",
+            )
+
+    def _write_error_partitions_locked(self) -> None:
+        """Write error partitions and labels while publication locks are held."""
+        self._write_category_parquets()
+        self._write_labels_parquet()
 
     def _save_locked(self) -> None:
         """Write curated mirror + per-category files, then labels parquet (lock held).
@@ -658,35 +680,80 @@ class CurationLabels:
         durable store consistent with the previously written derived outputs,
         not ahead of them.
 
-        Refuses to write (logging at WARNING and setting :attr:`stale`) when the
-        on-disk ``measurements.parquet`` mtime no longer matches
-        :attr:`_seed_mtime_ns` — that means something else (typically a CLI
-        measure / recompile-mode run) has rewritten the mirror since
-        this instance was loaded, and our cached ``_master_df`` may no longer
-        match disk.  The guard watches ``measurements.parquet`` only (C7).
+        Refuses to write when any curation source changed after this store
+        loaded or last published successfully.
         """
-        mirror = self.measurements_parquet
-        if mirror.exists() and self._seed_mtime_ns is not None:
-            current_mtime = mirror.stat().st_mtime_ns
-            if current_mtime != self._seed_mtime_ns:
-                logger.warning(
-                    "Refusing to overwrite curation mirror at %s — the "
-                    "file's mtime changed since this viewer session loaded it "
-                    "(likely a CLI measure/recompile-mode run). Reload the "
-                    "viewer to pick up the fresh master before curating again.",
-                    mirror,
-                )
-                self._stale = True
-                return
+        self._publish_if_current(
+            self._write_all_derived_outputs_locked,
+            context="curation outputs",
+        )
 
+    def _write_all_derived_outputs_locked(self) -> None:
+        """Write every curation output while publication locks are held."""
         self._write_curated_mirror()
         self._write_category_parquets()
         self._write_labels_parquet()
 
-        # Refresh the seed mtime after a successful write so subsequent saves
-        # compare against the file we just wrote, not the original.
-        if mirror.exists():
-            self._seed_mtime_ns = mirror.stat().st_mtime_ns
+    @property
+    def _publication_lock_path(self) -> Path:
+        """Return the stable interprocess lock shared by curation writers."""
+        return self.labels_path.with_suffix(".lock")
+
+    @staticmethod
+    def _source_fingerprint(layout: BundleLayout) -> str:
+        """Fingerprint curation inputs and every currently published partition."""
+        paths = [
+            layout.mirror_parquet,
+            layout.mirror_csv,
+            layout.curation_labels_parquet,
+            layout.custom_categories_json,
+        ]
+        if layout.errors_dir.is_dir():
+            paths.extend(sorted(layout.errors_dir.glob("*.parquet")))
+        return paths_fingerprint(paths, root=layout.deliverables_base)
+
+    def _publish_if_current(
+        self,
+        writer: Callable[[], None],
+        *,
+        context: str,
+    ) -> bool:
+        """Compare-and-publish one curation mutation under a shared file lock."""
+        try:
+            with exclusive_path_lock(self._publication_lock_path):
+                mirror = self.measurements_parquet
+                current_fingerprint = self._source_fingerprint(self._layout)
+                current_mtime = (
+                    mirror.stat().st_mtime_ns if mirror.exists() else None
+                )
+                if (
+                    current_fingerprint != self._expected_source_fingerprint
+                    or current_mtime != self._seed_mtime_ns
+                ):
+                    logger.warning(
+                        "Refusing to overwrite %s because curation sources "
+                        "changed since this viewer session loaded them. Reload "
+                        "the viewer before curating again.",
+                        context,
+                    )
+                    self._stale = True
+                    return False
+                writer()
+                self._expected_source_fingerprint = self._source_fingerprint(
+                    self._layout
+                )
+                self._seed_mtime_ns = (
+                    mirror.stat().st_mtime_ns if mirror.exists() else None
+                )
+                return True
+        except ArtifactLockTimeout:
+            logger.warning(
+                "Refusing to overwrite %s because another curation writer "
+                "did not release the shared publication lock.",
+                context,
+            )
+            self._stale = True
+            return False
 
     def _write_labels_parquet(self) -> None:
         path = self.labels_path

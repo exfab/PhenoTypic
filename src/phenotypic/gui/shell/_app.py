@@ -199,6 +199,7 @@ def compose_hub(
     url_prefix: str = DEFAULT_URL_PREFIX,
     idle_release_seconds: float = DEFAULT_IDLE_RELEASE_SECONDS,
     start_idle_thread: bool = True,
+    binding_drain_timeout_seconds: float = 5.0,
     progress: Callable[[str], None] | None = None,
 ) -> tuple[dash.Dash, ToolSession[dash.Dash]]:
     """Build the shell + builder + viewer-session + run console; mount via DispatcherMiddleware.
@@ -218,6 +219,8 @@ def compose_hub(
         start_idle_thread: When ``True`` (default), spawn the daemon
             thread that releases idle sessions. Tests pass ``False``
             so they don't leak background threads.
+        binding_drain_timeout_seconds: Maximum time an output Refresh waits
+            for callbacks admitted by the previous binding to finish.
         progress: Optional callback invoked with a short label before each
             eager sub-app is built (``"sub-app modules"``, ``"shell"``,
             ``"builder"``, …). The launcher passes
@@ -400,8 +403,10 @@ def compose_hub(
             if not isinstance(old_fence, BindingRequestFence):
                 raise RuntimeError("bound output request fence is unavailable")
             binding_coordinator.require_latest(ticket)
-            old_fence.close_and_wait()
             try:
+                old_fence.close_and_wait(
+                    timeout_seconds=binding_drain_timeout_seconds,
+                )
                 swap_tool_session_states(
                     (
                         (viewer_session, candidate_viewer),

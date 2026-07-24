@@ -157,7 +157,12 @@ def build_mode_badge(output_root: OutputRoot) -> Component:
     )
 
 
-def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> Component:
+def _build_header(
+    output_root: OutputRoot,
+    *,
+    url_prefix: str = MOUNT_HOME,
+    refresh_supported: bool = True,
+) -> Component:
     """Build the top header bar.
 
     Args:
@@ -166,6 +171,7 @@ def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> C
         url_prefix: Mount-point prefix used to resolve the dashboard
             logo URL. Defaults to ``MOUNT_HOME`` ("/") for standalone
             launches; the hub passes ``MOUNT_VIEWER``.
+        refresh_supported: Whether the host can replace the bound app.
 
     Returns:
         A header :class:`dash.html.Div` styled as a navy-on-white bar.
@@ -248,7 +254,9 @@ def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> C
                 outline=True,
                 size="sm",
                 n_clicks=0,
-                disabled=output_root.snapshot.active_run,
+                disabled=(
+                    output_root.snapshot.active_run or not refresh_supported
+                ),
                 className="ms-2",
             ),
             html.Span(
@@ -524,6 +532,7 @@ def build_app_layout(
     *,
     url_prefix: str = MOUNT_HOME,
     binding_generation: str | None = None,
+    refresh_supported: bool = True,
 ) -> Component:
     """Compose the top-level Dash component tree for the results viewer.
 
@@ -545,11 +554,16 @@ def build_app_layout(
             :func:`_build_header` so the dashboard logo resolves
             correctly under both standalone and hub-mounted launches.
         binding_generation: Optional shell generation embedded in the page.
+        refresh_supported: Whether the host supports in-process rebinding.
 
     Returns:
         A :class:`dash.html.Div` ready to assign to ``app.layout``.
     """
-    header = _build_header(output_root, url_prefix=url_prefix)
+    header = _build_header(
+        output_root,
+        url_prefix=url_prefix,
+        refresh_supported=refresh_supported,
+    )
     banner = _build_startup_banner(output_root)
     sidebar = _filter_panel.layout(output_root)
     cards_column = _build_cards_column()

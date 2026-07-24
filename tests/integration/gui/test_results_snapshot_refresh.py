@@ -139,6 +139,23 @@ def _find_output_key(app: Any, *substrings: str) -> str:
     raise KeyError(substrings)
 
 
+def _find_component(component: Any, component_id: str) -> Any:
+    """Find one Dash component recursively by its string id."""
+    if getattr(component, "id", None) == component_id:
+        return component
+    children = getattr(component, "children", None)
+    if not isinstance(children, list):
+        children = [children]
+    for child in children:
+        if child is None or isinstance(child, (str, int, float)):
+            continue
+        try:
+            return _find_component(child, component_id)
+        except KeyError:
+            continue
+    raise KeyError(component_id)
+
+
 def _post_bound_colony_wedge(
     app: Any,
     *,
@@ -202,20 +219,22 @@ def _threaded_post(
 def _callback_probe(
     app: Any,
     *,
-    generation: str,
+    generation: str | None,
     component_id: str,
 ) -> Any:
     """Issue one mutation-shaped Dash callback payload."""
+    payload: dict[str, Any] = {
+        "output": f"{component_id}.data",
+        "outputs": {"id": component_id, "property": "data"},
+        "inputs": [],
+        "state": [],
+        "changedPropIds": [],
+    }
+    if generation is not None:
+        payload[BINDING_GENERATION_PAYLOAD_KEY] = generation
     return app.server.test_client().post(
         "/_dash-update-component",
-        json={
-            "output": f"{component_id}.data",
-            "outputs": {"id": component_id, "property": "data"},
-            "inputs": [],
-            "state": [],
-            "changedPropIds": [],
-            BINDING_GENERATION_PAYLOAD_KEY: generation,
-        },
+        json=payload,
     )
 
 
@@ -675,10 +694,12 @@ def test_stale_results_qc_and_analysis_posts_are_rejected_before_dispatch(
     assert _source_tree(output_b) == before
 
 
-def test_run_becoming_active_after_bind_blocks_current_page_mutations(
+@pytest.mark.parametrize("owner_status", ["running", "unknown"])
+def test_nonterminal_run_after_bind_blocks_current_page_mutations(
     tmp_path: Path,
+    owner_status: str,
 ) -> None:
-    """A live page becomes server-enforced read-only when a run starts."""
+    """Every registry nonterminal state makes a bound page read-only."""
     output = _seed_output(tmp_path)
     shell_app, viewer_session = compose_hub(
         SandboxRoot.from_path(tmp_path),
@@ -700,7 +721,7 @@ def test_run_becoming_active_after_bind_blocks_current_page_mutations(
             "version": 1,
             "run_id": "new-active-run",
             "generation": "new-active-generation",
-            "status": "running",
+            "status": owner_status,
         },
     )
     before = _source_tree(output)
@@ -745,6 +766,50 @@ def test_run_becoming_active_after_bind_blocks_current_page_mutations(
     assert status_response.status_code == 200
     assert "Active run detected" in status_response.get_data(as_text=True)
     assert _source_tree(output) == before
+
+
+def test_standalone_apps_block_processing_stale_mutation_callbacks(
+    tmp_path: Path,
+) -> None:
+    """Standalone Results and Analysis enforce the processing snapshot guard."""
+    output = _seed_output(tmp_path)
+    root = OutputRoot.discover(
+        output,
+        cache_root=tmp_path / "viewer-cache",
+    )
+    viewer_app = results_viewer.create_app(root)
+    analysis_app = analysis.create_app(output_root=root)
+    assert _find_component(
+        viewer_app.layout,
+        results_ids.BTN_REFRESH_SNAPSHOT,
+    ).disabled is True
+    assert _find_component(
+        analysis_app.layout,
+        analysis_ids.ANALYSIS_REFRESH_SNAPSHOT,
+    ).disabled is True
+    assert all(
+        results_ids.HEADER_REFRESH_ERROR_ID not in key
+        for key in viewer_app.callback_map
+    )
+    assert all(
+        analysis_ids.ANALYSIS_REFRESH_ERROR not in key
+        for key in analysis_app.callback_map
+    )
+    overlay = output / "deliverables" / "overlays" / "dataset" / "plate.png"
+    overlay.write_bytes(b"externally-rewritten-overlay")
+
+    for app, component_id in (
+        (viewer_app, results_ids.STORE_REMOVED_KEYS),
+        (viewer_app, results_ids.STORE_QC_RECIPE_REVISION),
+        (analysis_app, analysis_ids.ANALYSIS_PIPELINE_STORE),
+    ):
+        response = _callback_probe(
+            app,
+            generation=None,
+            component_id=component_id,
+        )
+        assert response.status_code == 423
+        assert response.get_json()["status"] == "bound_output_read_only"
 
 
 def test_hub_allows_two_sequential_curation_writes(
@@ -906,3 +971,44 @@ def test_publish_waits_for_admitted_analysis_writer(
     assert shell_app.server.config[CFG_RESULTS_BINDING_STATE][
         "bound_path"
     ] == output_b
+
+
+def test_stuck_callback_times_out_then_later_refresh_recovers(
+    tmp_path: Path,
+) -> None:
+    """A stuck old callback cannot hold the binder lock indefinitely."""
+    output_a = _seed_output(tmp_path, "output-a")
+    output_b = _seed_output(tmp_path, "output-b")
+    shell_app, _viewer_session = compose_hub(
+        SandboxRoot.from_path(tmp_path),
+        start_idle_thread=False,
+        binding_drain_timeout_seconds=0.05,
+    )
+    client = shell_app.server.test_client()
+    _bind(client, output_a.name)
+    state = shell_app.server.config[CFG_RESULTS_BINDING_STATE]
+    old_generation = state["binding_generation"]
+    old_fence = state["binding_fence"]
+    assert old_fence.try_enter() is True
+
+    timed_out = client.post(
+        "/sandbox/api/viewer/output-root",
+        json={"path": output_b.name},
+    )
+
+    assert timed_out.status_code == 500
+    assert timed_out.get_json()["status"] == "unavailable"
+    assert state["bound_path"] == output_a
+    assert state["binding_generation"] == old_generation
+    # The rollback reopens the old binding even while the admitted request is
+    # still represented, then releasing it allows a later Refresh to proceed.
+    assert old_fence.try_enter() is True
+    old_fence.leave()
+    old_fence.leave()
+
+    recovered = client.post(
+        "/sandbox/api/viewer/output-root",
+        json={"path": output_b.name},
+    )
+    assert recovered.status_code == 200
+    assert state["bound_path"] == output_b

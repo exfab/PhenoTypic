@@ -61,6 +61,7 @@ __all__ = [
     "RunStatus",
     "RunRecord",
     "RunRegistry",
+    "run_status_is_nonterminal",
 ]
 
 # Mode and status tags typed as Literal aliases. We keep them as ``str``
@@ -100,6 +101,15 @@ _TERMINAL_STATUSES: frozenset[str] = frozenset(
 )
 _OWNER_RECORD_VERSION = 1
 _UNSET = object()
+
+
+def run_status_is_nonterminal(status: object) -> bool:
+    """Return whether ``status`` is a recognized nonterminal run status."""
+    return (
+        isinstance(status, str)
+        and status in _RUN_STATUSES
+        and status not in _TERMINAL_STATUSES
+    )
 
 
 def _owner_record_path(output_dir: Path) -> Path:

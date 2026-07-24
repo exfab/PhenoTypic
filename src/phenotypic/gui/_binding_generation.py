@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from typing import TYPE_CHECKING, Any, Callable
 
 from flask import g, jsonify, request
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "BINDING_GENERATION_PAYLOAD_KEY",
+    "BindingFenceTimeoutError",
     "BindingRequestFence",
     "binding_generation_hooks",
     "install_bound_output_callback_guard",
@@ -24,6 +26,10 @@ __all__ = [
 BINDING_GENERATION_PAYLOAD_KEY = "__phenotypic_binding_generation"
 _DASH_CALLBACK_PATH = "/_dash-update-component"
 _FENCE_G_KEY = "_phenotypic_binding_fence_entered"
+
+
+class BindingFenceTimeoutError(TimeoutError):
+    """Raised when an old binding cannot drain within its publication budget."""
 
 
 class BindingRequestFence:
@@ -51,12 +57,29 @@ class BindingRequestFence:
             if self._active_requests == 0:
                 self._condition.notify_all()
 
-    def close_and_wait(self) -> None:
-        """Reject new callbacks and wait for every admitted callback."""
+    def close_and_wait(self, *, timeout_seconds: float) -> None:
+        """Reject new callbacks and wait boundedly for admitted callbacks.
+
+        Args:
+            timeout_seconds: Positive maximum drain duration.
+
+        Raises:
+            ValueError: If ``timeout_seconds`` is not positive.
+            BindingFenceTimeoutError: If a callback remains active at timeout.
+        """
+        if timeout_seconds <= 0:
+            raise ValueError("binding fence timeout must be positive")
+        deadline = time.monotonic() + timeout_seconds
         with self._condition:
             self._accepting = False
             while self._active_requests:
-                self._condition.wait()
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise BindingFenceTimeoutError(
+                        "Timed out waiting for the previous Results/Analysis "
+                        "binding to finish active callbacks."
+                    )
+                self._condition.wait(timeout=remaining)
 
     def reopen(self) -> None:
         """Re-admit callbacks after a failed publication rollback."""

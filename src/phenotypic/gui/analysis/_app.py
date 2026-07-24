@@ -143,14 +143,9 @@ def create_app(
         context="Analysis session pre-read",
     )
     app.server.config[CFG_OUTPUT_ROOT] = output_root
-    mutation_is_safe = (
-        output_root.mutation_snapshot_is_safe
-        if binding_generation is not None
-        else lambda: not output_root.active_run_is_currently_running()
-    )
     install_bound_output_callback_guard(
         app,
-        mutation_is_safe=mutation_is_safe,
+        mutation_is_safe=output_root.mutation_snapshot_is_safe,
         status_output_id=analysis_ids.ANALYSIS_SNAPSHOT_STATUS,
     )
     if output_root.snapshot.active_run:
@@ -167,6 +162,7 @@ def create_app(
             output_root,
             url_prefix=url_prefix,
             api_url_prefix=api_url_prefix,
+            refresh_supported=binding_generation is not None,
         )
         return configure_url_prefix_routing(app, url_prefix)
 
@@ -181,6 +177,7 @@ def create_app(
         url_prefix=url_prefix,
         columns_provider=schema.columns_for,
         binding_generation=binding_generation,
+        refresh_supported=binding_generation is not None,
     )
     output_root.require_session_snapshot_current(
         context="Analysis session post-read",
@@ -191,6 +188,7 @@ def create_app(
         output_root,
         url_prefix=url_prefix,
         api_url_prefix=api_url_prefix,
+        refresh_supported=binding_generation is not None,
     )
 
     logger.info(
@@ -207,6 +205,7 @@ def _register_snapshot_refresh_callbacks(
     *,
     url_prefix: str,
     api_url_prefix: str,
+    refresh_supported: bool,
 ) -> None:
     """Wire status-only polling and explicit shared-session Refresh."""
 
@@ -223,12 +222,20 @@ def _register_snapshot_refresh_callbacks(
             return "Active run detected · refresh snapshot", "warning", False
         if output_root.snapshot.active_run:
             return "Run finished · refresh snapshot", "info", False
-        if (
+        current = (
             output_root.snapshot_is_current()
             and output_root.refresh_state_is_current()
-        ):
+        )
+        if not refresh_supported:
+            if current:
+                return "Current · restart app to refresh", "success", True
+            return "Changed on disk · restart standalone app", "danger", True
+        if current:
             return "Current", "success", False
         return "Changed on disk", "danger", False
+
+    if not refresh_supported:
+        return
 
     api_output_root = join_url_prefix(
         api_url_prefix,

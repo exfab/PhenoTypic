@@ -1,5 +1,6 @@
 """Tests for the durable CurationLabels store."""
 
+import json
 from pathlib import Path
 
 import polars as pl
@@ -431,6 +432,79 @@ def test_save_refuses_after_external_reseed(tmp_path: Path):
     assert 2 in on_disk.get_column("Object_Label").to_list()
     # The staleness flag must be set.
     assert store.stale is True
+
+
+def test_save_refuses_external_labels_replacement(tmp_path: Path) -> None:
+    """An external labels publication cannot be overwritten by a stale store."""
+    store = CurationLabels.load(_layout(tmp_path), _master())
+    _write_store_with_label(
+        tmp_path,
+        "plateA",
+        4,
+        "merged",
+        40.0,
+        80.0,
+    )
+    externally_written = tools_.curation_labels_parquet_path(tmp_path).read_bytes()
+
+    store.mark("plateA", 1, "debris")
+
+    assert store.stale is True
+    assert tools_.curation_labels_parquet_path(tmp_path).read_bytes() == externally_written
+
+
+def test_register_refuses_external_custom_registry_replacement(
+    tmp_path: Path,
+) -> None:
+    """A stale store preserves an externally replaced custom-category registry."""
+    store = CurationLabels.load(_layout(tmp_path), _master())
+    registry = tools_.custom_categories_json_path(tmp_path)
+    registry.parent.mkdir(parents=True, exist_ok=True)
+    registry.write_text(
+        json.dumps({"categories": ["external_category"]}),
+        encoding="utf-8",
+    )
+    externally_written = registry.read_bytes()
+
+    store.register_custom_category("local category")
+
+    assert store.stale is True
+    assert "local_category" not in store.custom_categories
+    assert registry.read_bytes() == externally_written
+
+
+def test_sequential_category_mark_and_restore_update_expected_fingerprint(
+    tmp_path: Path,
+) -> None:
+    """One store can publish multiple intentional curation revisions."""
+    store = CurationLabels.load(_layout(tmp_path), _master())
+
+    category = store.register_custom_category("halo")
+    store.mark("plateA", 1, category)
+    store.restore("plateA", 1)
+
+    assert store.stale is False
+    assert category in store.custom_categories
+    assert store.labels == {}
+    assert pl.read_parquet(tools_.measurements_parquet_path(tmp_path)).height == 4
+
+
+def test_concurrent_curation_store_loses_compare_and_swap(
+    tmp_path: Path,
+) -> None:
+    """Only the first of two stores loaded from one revision may publish."""
+    first = CurationLabels.load(_layout(tmp_path), _master())
+    second = CurationLabels.load(_layout(tmp_path), _master())
+
+    first.mark("plateA", 1, "debris")
+    first_labels = tools_.curation_labels_parquet_path(tmp_path).read_bytes()
+    second.mark("plateA", 2, "merged")
+
+    assert first.stale is False
+    assert second.stale is True
+    assert tools_.curation_labels_parquet_path(tmp_path).read_bytes() == first_labels
+    on_disk = pl.read_parquet(tools_.curation_labels_parquet_path(tmp_path))
+    assert on_disk.get_column("Object_Label").to_list() == [1]
 
 
 def test_labels_survive_reload_against_curated_mirror(tmp_path: Path):

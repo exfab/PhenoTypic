@@ -27,6 +27,7 @@ from phenotypic.gui.results_viewer._filtered_state import (
     KEY_DATASET,
     KEY_IMAGE_FILE,
 )
+from phenotypic.gui.shell._runs_registry import run_status_is_nonterminal
 from phenotypic.sdk_ import (
     DIR_OVERLAYS,
     BundleLayout,
@@ -609,14 +610,7 @@ def _active_run_snapshot(layout: BundleLayout) -> bool:
         return False
     if not isinstance(payload, dict):
         return False
-    status = payload.get("status")
-    return isinstance(status, str) and status in {
-        "queued",
-        "submitting",
-        "running",
-        "reconciling",
-        "cancelling",
-    }
+    return run_status_is_nonterminal(payload.get("status"))
 
 
 def _processing_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
