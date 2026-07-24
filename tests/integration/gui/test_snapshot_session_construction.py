@@ -47,6 +47,18 @@ def _bound_output(tmp_path: Path) -> OutputRoot:
     )
 
 
+def _rewrite_master(output_root: OutputRoot) -> None:
+    """Atomically publish a distinct master generation."""
+    master_path = output_root.layout.master_parquet
+    replacement = master_path.with_name("master-replacement.parquet")
+    (
+        pl.read_parquet(master_path)
+        .with_columns((pl.col("Shape_Area") + 1.0).alias("Shape_Area"))
+        .write_parquet(replacement)
+    )
+    replacement.replace(master_path)
+
+
 def test_shared_apps_accept_the_same_verified_revision(tmp_path: Path) -> None:
     """Clean construction keeps Results and Analysis on one descriptor."""
     output_root = _bound_output(tmp_path)
@@ -130,6 +142,52 @@ def test_analysis_rejects_change_during_recipe_state_load(
         analysis_app.RecipeState,
         "from_layout",
         staticmethod(_load_then_mutate),
+    )
+
+    with pytest.raises(OutputSnapshotChangedError, match="post-read"):
+        analysis_app.create_app(output_root=output_root)
+
+
+def test_results_rejects_master_rewrite_during_construction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Results cannot finish against a changed processing generation."""
+    output_root = _bound_output(tmp_path)
+    real_load = results_app.CurationLabels.load
+
+    def _load_then_rewrite_master(layout, frame):
+        labels = real_load(layout, frame)
+        _rewrite_master(output_root)
+        return labels
+
+    monkeypatch.setattr(
+        results_app.CurationLabels,
+        "load",
+        staticmethod(_load_then_rewrite_master),
+    )
+
+    with pytest.raises(OutputSnapshotChangedError, match="post-read"):
+        results_app.create_app(output_root=output_root)
+
+
+def test_analysis_rejects_master_rewrite_during_construction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Analysis cannot finish against a changed processing generation."""
+    output_root = _bound_output(tmp_path)
+    real_load = analysis_app.RecipeState.from_layout
+
+    def _load_then_rewrite_master(layout):
+        recipe = real_load(layout)
+        _rewrite_master(output_root)
+        return recipe
+
+    monkeypatch.setattr(
+        analysis_app.RecipeState,
+        "from_layout",
+        staticmethod(_load_then_rewrite_master),
     )
 
     with pytest.raises(OutputSnapshotChangedError, match="post-read"):

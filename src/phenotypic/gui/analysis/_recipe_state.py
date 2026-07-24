@@ -32,8 +32,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List, Optional
 
+from pydantic import AliasChoices, AliasPath, BaseModel
+
 from phenotypic._core._pipeline_parts._serializable_pipeline import (
     PipelineLoadWarning,
+    SerializablePipeline,
 )
 from phenotypic.sdk_ import (
     DIR_DELIVERABLES,
@@ -67,6 +70,207 @@ _SERIALIZED_PIPELINE_KEYS = frozenset({
 _ANALYZER_ENVELOPE_KEYS = frozenset({"class", "params"})
 _QC_ENVELOPE_KEYS = frozenset({"instance_id", "class", "enabled", "params"})
 _PLOT_ENVELOPE_KEYS = frozenset({"id", "ref", "inline", "input"})
+_INLINE_PLOT_KEYS = frozenset({"module", "qualname", "params"})
+
+
+def _validation_alias_roots(
+    alias: str | AliasChoices | AliasPath | None,
+) -> set[str]:
+    """Return top-level mapping keys accepted by one Pydantic alias."""
+    if isinstance(alias, str):
+        return {alias}
+    if isinstance(alias, AliasChoices):
+        roots: set[str] = set()
+        for choice in alias.choices:
+            roots.update(_validation_alias_roots(choice))
+        return roots
+    if isinstance(alias, AliasPath) and alias.path:
+        root = alias.path[0]
+        return {root} if isinstance(root, str) else set()
+    return set()
+
+
+def _strip_unowned_model_fields(
+    raw: object,
+    model_class: type[BaseModel] | None,
+) -> object:
+    """Copy a model payload with only fields its validation schema owns."""
+    if not isinstance(raw, dict) or model_class is None:
+        return copy.deepcopy(raw)
+    if model_class.model_config.get("extra") != "forbid":
+        return copy.deepcopy(raw)
+
+    accepted: set[str] = set()
+    for name, model_field in model_class.model_fields.items():
+        accepted.add(name)
+        accepted.update(_validation_alias_roots(model_field.validation_alias))
+        if isinstance(model_field.alias, str):
+            accepted.add(model_field.alias)
+    return {
+        key: copy.deepcopy(value)
+        for key, value in raw.items()
+        if key in accepted
+    }
+
+
+def _resolved_analyzer_class(node: object) -> type[BaseModel] | None:
+    """Resolve a known analyzer envelope through the production registry."""
+    if not isinstance(node, dict):
+        return None
+    class_name = node.get("class")
+    if not isinstance(class_name, str):
+        return None
+    resolved = SerializablePipeline._find_class_in_phenotypic(class_name)
+    if (
+        isinstance(resolved, type)
+        and issubclass(resolved, BaseModel)
+    ):
+        return resolved
+    return None
+
+
+def _analyzer_validation_node(node: object) -> object:
+    """Build the strict-loader copy of one filter or model envelope."""
+    if not isinstance(node, dict):
+        return copy.deepcopy(node)
+    validation_node = {
+        key: copy.deepcopy(value)
+        for key, value in node.items()
+        if key in _ANALYZER_ENVELOPE_KEYS
+    }
+    if "params" in validation_node:
+        validation_node["params"] = _strip_unowned_model_fields(
+            validation_node["params"],
+            _resolved_analyzer_class(node),
+        )
+    return validation_node
+
+
+def _qc_validation_node(node: object) -> object:
+    """Build the strict-loader copy of one QC envelope."""
+    if not isinstance(node, dict):
+        return copy.deepcopy(node)
+    validation_node = {
+        key: copy.deepcopy(value)
+        for key, value in node.items()
+        if key in _QC_ENVELOPE_KEYS
+    }
+    from phenotypic.sdk_._qc_recipe import QcRecipeEntry
+
+    parsed = QcRecipeEntry.from_dict(node)
+    model_class = parsed.cls if isinstance(parsed, QcRecipeEntry) else None
+    if "params" in validation_node:
+        validation_node["params"] = _strip_unowned_model_fields(
+            validation_node["params"],
+            model_class,
+        )
+    return validation_node
+
+
+def _plot_validation_node(node: object) -> object:
+    """Build the strict-loader copy of one plot binding envelope."""
+    if not isinstance(node, dict):
+        return copy.deepcopy(node)
+    validation_node = {
+        key: copy.deepcopy(value)
+        for key, value in node.items()
+        if key in _PLOT_ENVELOPE_KEYS
+    }
+
+    from phenotypic.plotting._bindings import (
+        AnalysisInput,
+        MeasurementInput,
+        PipelineObjectRef,
+        _load_qualified_class,
+    )
+
+    if "ref" in validation_node:
+        validation_node["ref"] = _strip_unowned_model_fields(
+            validation_node["ref"],
+            PipelineObjectRef,
+        )
+
+    input_payload = validation_node.get("input")
+    if isinstance(input_payload, dict):
+        input_models = {
+            "measurements": MeasurementInput,
+            "analysis": AnalysisInput,
+        }
+        input_kind = input_payload.get("kind")
+        validation_node["input"] = _strip_unowned_model_fields(
+            input_payload,
+            input_models.get(input_kind)
+            if isinstance(input_kind, str)
+            else None,
+        )
+
+    inline = validation_node.get("inline")
+    if isinstance(inline, dict):
+        validation_inline = {
+            key: copy.deepcopy(value)
+            for key, value in inline.items()
+            if key in _INLINE_PLOT_KEYS
+        }
+        module = inline.get("module")
+        qualname = inline.get("qualname")
+        plot_class: type[BaseModel] | None = None
+        if isinstance(module, str) and isinstance(qualname, str):
+            try:
+                resolved = _load_qualified_class(
+                    module_name=module,
+                    qualname=qualname,
+                )
+            except (AttributeError, ImportError):
+                pass
+            else:
+                if isinstance(resolved, type) and issubclass(
+                    resolved,
+                    BaseModel,
+                ):
+                    plot_class = resolved
+        if "params" in validation_inline:
+            validation_inline["params"] = _strip_unowned_model_fields(
+                validation_inline["params"],
+                plot_class,
+            )
+        validation_node["inline"] = validation_inline
+    return validation_node
+
+
+def _pipeline_validation_payload(
+    source_payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Return a deep-copied payload safe for this version's strict schemas.
+
+    The exact parsed payload remains the round-trip source of truth. This
+    temporary copy removes only fields unowned by current known-node schemas
+    so forward-compatible extensions cannot block tolerant GUI loading.
+    """
+    validation_payload = copy.deepcopy(source_payload)
+
+    filters = validation_payload.get("filters")
+    if isinstance(filters, dict):
+        validation_payload["filters"] = {
+            name: _analyzer_validation_node(node)
+            for name, node in filters.items()
+        }
+
+    model = validation_payload.get("model")
+    if model is not None:
+        validation_payload["model"] = _analyzer_validation_node(model)
+
+    qc = validation_payload.get("qc")
+    if isinstance(qc, list):
+        validation_payload["qc"] = [
+            _qc_validation_node(node) for node in qc
+        ]
+
+    plots = validation_payload.get("plots")
+    if isinstance(plots, list):
+        validation_payload["plots"] = [
+            _plot_validation_node(node) for node in plots
+        ]
+    return validation_payload
 
 
 def _merge_missing_mapping_fields(
@@ -121,13 +325,47 @@ def _merge_envelope_extensions(
     return merged
 
 
-def _plot_identity(node: object) -> tuple[object, ...] | None:
-    """Return the stable serialized identity of one plot envelope."""
+def _referenced_class(
+    pipeline_payload: dict[str, Any],
+    ref: dict[str, Any],
+) -> object:
+    """Return the serialized class targeted by one plot reference."""
+    slot = ref.get("slot")
+    key = ref.get("key")
+    if slot == "model":
+        model = pipeline_payload.get("model")
+        return model.get("class") if isinstance(model, dict) else None
+    if not isinstance(slot, str):
+        return None
+    section = pipeline_payload.get(slot)
+    if isinstance(section, dict):
+        node = section.get(key)
+        return node.get("class") if isinstance(node, dict) else None
+    if isinstance(section, list):
+        for node in section:
+            if (
+                isinstance(node, dict)
+                and node.get("instance_id") == key
+            ):
+                return node.get("class")
+    return None
+
+
+def _plot_identity(
+    node: object,
+    pipeline_payload: dict[str, Any],
+) -> tuple[object, ...] | None:
+    """Return the stable serialized identity and class of one plot."""
     if not isinstance(node, dict):
         return None
     ref = node.get("ref")
     if isinstance(ref, dict):
-        return ("ref", ref.get("slot"), ref.get("key"))
+        return (
+            "ref",
+            ref.get("slot"),
+            ref.get("key"),
+            _referenced_class(pipeline_payload, ref),
+        )
     inline = node.get("inline")
     if isinstance(inline, dict):
         return ("inline", inline.get("module"), inline.get("qualname"))
@@ -218,7 +456,8 @@ def _merge_known_node_extensions(
                 original_node,
                 owned_keys=_PLOT_ENVELOPE_KEYS,
                 same_identity=(
-                    _plot_identity(current_node) == _plot_identity(original_node)
+                    _plot_identity(current_node, current)
+                    == _plot_identity(original_node, original)
                 ),
                 nested_mapping_keys=frozenset({"ref", "inline", "input"}),
             )
@@ -528,7 +767,7 @@ class RecipeState:
                 raise TypeError("pipeline configuration must be a JSON object")
             source_payload = parsed_payload
             pipeline = ImagePipeline.from_json(
-                parsed_payload,
+                _pipeline_validation_payload(parsed_payload),
                 skip_unknown_analyzers=True,
                 load_warnings=load_warnings,
             )

@@ -146,7 +146,7 @@ def create_app(
         )
         return configure_url_prefix_routing(app, url_prefix)
 
-    output_root.require_refresh_state_current(
+    output_root.require_session_snapshot_current(
         context="Results session pre-read",
     )
     app.server.config[CFG_OUTPUT_ROOT] = output_root
@@ -203,7 +203,7 @@ def create_app(
     app.server.config.setdefault(CFG_QC_INSTANCES_CACHE, {})
 
     app.layout = build_app_layout(output_root, filtered_state, url_prefix=url_prefix)
-    output_root.require_refresh_state_current(
+    output_root.require_session_snapshot_current(
         context="Results session post-read",
     )
     register_callbacks(app, output_root)

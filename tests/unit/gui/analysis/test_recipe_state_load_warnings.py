@@ -71,6 +71,49 @@ def _write_pipeline_with_unknown_classes(output_dir: Path) -> Path:
     return path
 
 
+def _known_pipeline_with_extensions_payload() -> dict:
+    """Return a current-schema pipeline carrying future nested fields."""
+    return {
+        "version": "test",
+        "name": "before",
+        "desc": None,
+        "reset": False,
+        "pipe_cfgs": {},
+        "meas": {},
+        "post": {},
+        "filters": {
+            "edge": {
+                "class": "EdgeCorrector",
+                "params": {
+                    "on": "Shape_Area",
+                    "groupby": ["Metadata_Strain"],
+                    "future_filter_param": {"revision": 3},
+                },
+                "future_filter_envelope": {"revision": 2},
+            }
+        },
+        "model": {
+            "class": "LinearLagModel",
+            "params": {
+                "on": "Shape_Area",
+                "groupby": ["Metadata_Strain"],
+            },
+        },
+        "plots": [
+            {
+                "id": "growth",
+                "ref": {
+                    "slot": "model",
+                    "key": None,
+                    "future_ref_field": {"revision": 4},
+                },
+                "future_plot_envelope": {"revision": 5},
+            }
+        ],
+        "future_top_level": {"schema": "vNext"},
+    }
+
+
 def test_from_json_skip_mode_collects_unknown_analyzers(tmp_path: Path) -> None:
     """``from_json(skip_unknown_analyzers=True)`` returns a partial pipeline
     plus a populated warnings sink; the original JSON is untouched."""
@@ -199,28 +242,8 @@ def test_explicit_live_model_replaces_opaque_model_node(tmp_path: Path) -> None:
 def test_name_only_edit_preserves_known_envelope_extensions_without_warnings(
     tmp_path: Path,
 ) -> None:
-    """Forward fields survive even when every live class resolves."""
-    payload = {
-        "version": "test",
-        "name": "before",
-        "desc": None,
-        "reset": False,
-        "pipe_cfgs": {},
-        "meas": {},
-        "post": {},
-        "filters": {
-            "edge": {
-                "class": "EdgeCorrector",
-                "params": {
-                    "on": "Shape_Area",
-                    "groupby": ["Metadata_Strain"],
-                },
-                "future_filter_envelope": {"revision": 2},
-            }
-        },
-        "model": None,
-        "future_top_level": {"schema": "vNext"},
-    }
+    """Known nested fields validate via a copy and round-trip exactly."""
+    payload = _known_pipeline_with_extensions_payload()
     path = pipeline_json_path(tmp_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -236,6 +259,50 @@ def test_name_only_edit_preserves_known_envelope_extensions_without_warnings(
     assert saved["filters"]["edge"]["future_filter_envelope"] == {
         "revision": 2
     }
+    assert saved["filters"]["edge"]["params"]["future_filter_param"] == {
+        "revision": 3
+    }
+    assert saved["plots"][0]["ref"]["future_ref_field"] == {
+        "revision": 4
+    }
+    assert saved["plots"][0]["future_plot_envelope"] == {
+        "revision": 5
+    }
+
+
+def test_explicit_known_replacement_drops_nested_extensions_after_load(
+    tmp_path: Path,
+) -> None:
+    """Changed classes replace future fields bound to the prior nodes."""
+    from phenotypic.analysis import LogGrowthModel, TukeyOutlierRemover
+
+    payload = _known_pipeline_with_extensions_payload()
+    path = pipeline_json_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    state = RecipeState.load(tmp_path)
+
+    state.pipeline.set_filters({
+        "edge": TukeyOutlierRemover(
+            on="Shape_Area",
+            groupby=["Metadata_Strain"],
+        )
+    })
+    state.pipeline.set_model(
+        LogGrowthModel(
+            on="Shape_Area",
+            groupby=["Metadata_Strain"],
+        )
+    )
+    assert state.save() is True
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["filters"]["edge"]["class"] == "TukeyOutlierRemover"
+    assert "future_filter_param" not in saved["filters"]["edge"]["params"]
+    assert "future_filter_envelope" not in saved["filters"]["edge"]
+    assert saved["model"]["class"] == "LogGrowthModel"
+    assert "future_ref_field" not in saved["plots"][0]["ref"]
+    assert "future_plot_envelope" not in saved["plots"][0]
 
 
 def test_stable_serialized_identity_preserves_known_envelope_extensions() -> None:

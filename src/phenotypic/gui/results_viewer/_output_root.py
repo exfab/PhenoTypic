@@ -389,19 +389,23 @@ class OutputRoot:
             return False
         return current == self.consumed_state_fingerprint
 
-    def require_refresh_state_current(self, *, context: str) -> None:
-        """Reject construction that would mix consumed-state generations.
+    def require_session_snapshot_current(self, *, context: str) -> None:
+        """Reject construction that would mix any source generations.
 
         Args:
             context: Reader-facing construction phase included in the error.
 
         Raises:
-            OutputSnapshotChangedError: If any consumed Results or Analysis
-                state differs from the descriptor captured by discovery.
+            OutputSnapshotChangedError: If processing products or consumed
+                Results and Analysis state differ from discovery.
         """
-        if not self.refresh_state_is_current():
+        if not (
+            self.snapshot_is_current()
+            and self.refresh_state_is_current()
+        ):
             raise OutputSnapshotChangedError(
-                f"{context} consumed state changed after output discovery; "
+                f"{context} processing or consumed state changed after "
+                "output discovery; "
                 "refresh the shared Results and Analysis snapshot."
             )
 
