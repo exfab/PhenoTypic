@@ -101,6 +101,9 @@ __all__ = [
     "CFG_QC_INSTANCES_CACHE",
     "CFG_QC_AUGMENTED_FRAME",
     "CFG_QC_PIPELINE",
+    "CFG_VIEWER_SESSION",
+    "CFG_ANALYSIS_SESSION",
+    "CFG_RESULTS_BINDING_STATE",
     # Sandbox subdirectories
     "SANDBOX_GUI_DIRNAME",
     "SANDBOX_PRESETS_SUBDIR",
@@ -304,6 +307,18 @@ CFG_QC_AUGMENTED_FRAME: str = "pheno_qc_augmented_frame"
 #: ``pipeline.json`` exists (or it failed to load) — recompute degrades to
 #: a no-op in that case. Spec §D.5.
 CFG_QC_PIPELINE: str = "pheno_qc_pipeline"
+
+#: Shell-owned Results :class:`ToolSession`, exposed for coordinated
+#: Results/Analysis refresh and integration diagnostics.
+CFG_VIEWER_SESSION: str = "pheno_viewer_session"
+
+#: Shell-owned Analysis :class:`ToolSession` paired with
+#: :data:`CFG_VIEWER_SESSION`.
+CFG_ANALYSIS_SESSION: str = "pheno_analysis_session"
+
+#: Mutable shell binding record containing the selected output path,
+#: :class:`OutputRoot`, and shared :class:`OutputSnapshotDescriptor`.
+CFG_RESULTS_BINDING_STATE: str = "pheno_results_binding_state"
 
 # ---------------------------------------------------------------------------
 # Sandbox subdirectories

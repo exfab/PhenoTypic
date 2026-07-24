@@ -186,18 +186,9 @@ def create_app(
         operation_registry.discover()
         app.server.config[CFG_OPERATION_REGISTRY] = operation_registry
 
-    # QC recipe is now the ``qc`` section of ``pipeline.json`` (pipeline-
-    # backed adapter), not the legacy ``.viewer_cache/qc_recipe.json``
-    # sidecar. Fold any legacy sidecar into the pipeline exactly once, then
-    # load the recipe + the full pipeline (for the Review tab's in-session
-    # recompute via ``run_qc``). The per-revision instance cache is keyed
-    # on the recipe revision counter so a stale entry can never serve a
-    # moved configuration.
-    # Legacy ``.viewer_cache/qc_recipe.json`` sidecar migration only applies to
-    # full runs (the sidecar lived at the *output root*). A standalone bundle
-    # (``layout.output_root is None``) never has one, so skip it (review W6).
-    if output_root.layout.output_root is not None:
-        QcRecipe.migrate_from_sidecar(output_root.layout.output_root)
+    # Viewer boot is source-preserving. Legacy sidecar migration is an
+    # explicit compatibility action, never an implicit consequence of bind
+    # or Refresh.
     app.server.config[CFG_QC_RECIPE] = QcRecipe.from_layout(output_root.layout)
     app.server.config[CFG_QC_PIPELINE] = _load_qc_pipeline(output_root)
     app.server.config.setdefault(CFG_QC_INSTANCES_CACHE, {})
@@ -207,8 +198,77 @@ def create_app(
         context="Results session post-read",
     )
     register_callbacks(app, output_root)
+    _register_snapshot_refresh_callbacks(
+        app,
+        output_root,
+        url_prefix=url_prefix,
+        api_url_prefix=api_url_prefix,
+    )
 
     return configure_url_prefix_routing(app, url_prefix)
+
+
+def _register_snapshot_refresh_callbacks(
+    app: dash.Dash,
+    output_root: OutputRoot,
+    *,
+    url_prefix: str,
+    api_url_prefix: str,
+) -> None:
+    """Wire status-only polling and explicit shared-session Refresh."""
+
+    @app.callback(
+        Output(ids.HEADER_SNAPSHOT_STATUS_ID, "children"),
+        Output(ids.HEADER_SNAPSHOT_STATUS_ID, "color"),
+        Input(ids.SNAPSHOT_STATUS_INTERVAL_ID, "n_intervals"),
+    )
+    def _snapshot_status(_n_intervals: int) -> tuple[str, str]:
+        if output_root.snapshot.active_run:
+            return "Active run snapshot", "warning"
+        if (
+            output_root.snapshot_is_current()
+            and output_root.refresh_state_is_current()
+        ):
+            return "Current", "success"
+        return "Changed on disk", "danger"
+
+    api_output_root = join_url_prefix(
+        api_url_prefix,
+        SANDBOX_API_VIEWER_OUTPUT_ROOT,
+    )
+    app.clientside_callback(
+        """
+        async function(n_clicks) {
+            if (!n_clicks) {
+                return window.dash_clientside.no_update;
+            }
+            try {
+                const resp = await fetch(
+                    "__PHENO_API_OUTPUT_ROOT__",
+                    {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({refresh: true}),
+                    }
+                );
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    return (data && data.error) || ("HTTP " + resp.status);
+                }
+                window.location.assign(__PHENO_VIEWER_PREFIX__);
+                return "";
+            } catch (err) {
+                return String(err);
+            }
+        }
+        """.replace(
+            "__PHENO_API_OUTPUT_ROOT__",
+            api_output_root,
+        ).replace("__PHENO_VIEWER_PREFIX__", repr(url_prefix)),
+        Output(ids.HEADER_REFRESH_ERROR_ID, "children"),
+        Input(ids.BTN_REFRESH_SNAPSHOT, "n_clicks"),
+        prevent_initial_call=True,
+    )
 
 
 def _load_qc_pipeline(output_root: OutputRoot):
@@ -312,11 +372,10 @@ def _register_empty_state_callbacks(
        has the ``is_cli_output`` capability.
 
     2. **Open button -> POST + redirect.** A clientside callback fetches
-       ``/sandbox/api/viewer/output-root`` with the selection's
-       ``abs_path`` (or rel ``path`` as fallback). On success the
-       browser navigates to ``url_prefix`` so :class:`_ViewerProxy`
-       resolves a freshly-built loaded viewer; on 4xx the JSON
-       ``error`` is rendered into the inline error slot.
+       ``/sandbox/api/viewer/output-root`` with the selection's rel ``path``.
+       On success the browser navigates to ``url_prefix`` so
+       :class:`_ViewerProxy` serves the atomically published loaded viewer;
+       on failure the JSON ``error`` is rendered into the inline error slot.
     """
     @app.callback(
         Output(ids.EMPTY_HANDOFF_BANNER, "style"),
@@ -332,9 +391,9 @@ def _register_empty_state_callbacks(
     # Clientside POST + navigate. Uses ``window.fetch`` with the prefix
     # so it works under any DispatcherMiddleware mount. On success the
     # callback calls ``window.location.assign(prefix)`` directly (forces
-    # a full reload even though the URL is unchanged), which is what
-    # ``_ViewerProxy`` needs to resolve the freshly-built session. On
-    # 4xx the JSON ``error`` is rendered into the inline error slot.
+    # a full reload even though the URL is unchanged), which makes the
+    # ``_ViewerProxy`` serve the newly published session. On failure the
+    # JSON ``error`` is rendered into the inline error slot.
     api_output_root = join_url_prefix(api_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT)
 
     app.clientside_callback(

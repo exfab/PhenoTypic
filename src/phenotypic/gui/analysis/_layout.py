@@ -126,6 +126,11 @@ def build_app_layout(
             _build_edge_panel(recipe, columns_provider=columns_provider),
             _build_model_panel(recipe, columns_provider=columns_provider),
             _build_run_console(recipe),
+            dcc.Interval(
+                id=ids.ANALYSIS_SNAPSHOT_INTERVAL,
+                interval=10_000,
+                n_intervals=0,
+            ),
             dcc.Store(
                 id=ids.ANALYSIS_PIPELINE_STORE,
                 data=recipe.last_json or recipe.pipeline.to_json() or "{}",
@@ -235,6 +240,44 @@ def _build_output_header(
             ),
             html.Strong("Output: "),
             html.Code(str(output_root.root)),
+            html.Span(" · Snapshot "),
+            html.Span(
+                output_root.snapshot.captured_at.astimezone().strftime(
+                    "%Y-%m-%d %H:%M:%S %Z"
+                )
+            ),
+            html.Span(" · "),
+            html.Code(
+                output_root.snapshot.processing_fingerprint[:12],
+                title=output_root.snapshot.processing_fingerprint,
+            ),
+            dbc.Badge(
+                (
+                    "Active run snapshot"
+                    if output_root.snapshot.active_run
+                    else "Current"
+                ),
+                id=ids.ANALYSIS_SNAPSHOT_STATUS,
+                color=(
+                    "warning"
+                    if output_root.snapshot.active_run
+                    else "success"
+                ),
+                className="ms-2",
+            ),
+            dbc.Button(
+                "Refresh snapshot",
+                id=ids.ANALYSIS_REFRESH_SNAPSHOT,
+                color="secondary",
+                outline=True,
+                size="sm",
+                n_clicks=0,
+                className="ms-2",
+            ),
+            html.Span(
+                id=ids.ANALYSIS_REFRESH_ERROR,
+                className="text-danger ms-2",
+            ),
         ],
         id=ids.ANALYSIS_OUTPUT_HEADER,
         className="analysis-output-header",

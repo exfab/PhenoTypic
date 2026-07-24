@@ -68,7 +68,8 @@ def test_post_swaps_output_root_and_rebuilds(
     layout_before = client.get("/results/_dash-layout").get_json()
     assert "results-viewer-empty-state" in str(layout_before)
 
-    # POST hand-off; endpoint validates layout, swaps state, releases session.
+    # POST hand-off validates and builds both candidate apps, then atomically
+    # publishes the already-built Results/Analysis pair.
     post_resp = client.post(
         "/sandbox/api/viewer/output-root",
         data=json.dumps({"path": rel}),
@@ -78,9 +79,9 @@ def test_post_swaps_output_root_and_rebuilds(
     payload = post_resp.get_json()
     assert payload["status"] == "ok"
     assert payload["abs_path"].endswith(rel)
-    assert viewer_session.is_built() is False, "session should be released"
+    assert viewer_session.is_built() is True
 
-    # Next /results/ hit rebuilds with the new OutputRoot — empty-state gone.
+    # The next /results/ hit serves the atomically published loaded app.
     assert client.get("/results/").status_code == 200
     assert viewer_session.is_built() is True
     layout_after = client.get("/results/_dash-layout").get_json()

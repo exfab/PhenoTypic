@@ -131,6 +131,12 @@ def create_app(
         context="Analysis session post-read",
     )
     register_callbacks(app)
+    _register_snapshot_refresh_callbacks(
+        app,
+        output_root,
+        url_prefix=url_prefix,
+        api_url_prefix=api_url_prefix,
+    )
 
     logger.info(
         "Analysis sub-app ready: output_root=%s pipeline=%s",
@@ -138,6 +144,69 @@ def create_app(
         recipe.pipeline.name,
     )
     return configure_url_prefix_routing(app, url_prefix)
+
+
+def _register_snapshot_refresh_callbacks(
+    app: dash.Dash,
+    output_root: OutputRoot,
+    *,
+    url_prefix: str,
+    api_url_prefix: str,
+) -> None:
+    """Wire status-only polling and explicit shared-session Refresh."""
+
+    @app.callback(
+        Output(analysis_ids.ANALYSIS_SNAPSHOT_STATUS, "children"),
+        Output(analysis_ids.ANALYSIS_SNAPSHOT_STATUS, "color"),
+        Input(analysis_ids.ANALYSIS_SNAPSHOT_INTERVAL, "n_intervals"),
+    )
+    def _snapshot_status(_n_intervals: int) -> tuple[str, str]:
+        if output_root.snapshot.active_run:
+            return "Active run snapshot", "warning"
+        if (
+            output_root.snapshot_is_current()
+            and output_root.refresh_state_is_current()
+        ):
+            return "Current", "success"
+        return "Changed on disk", "danger"
+
+    api_output_root = join_url_prefix(
+        api_url_prefix,
+        SANDBOX_API_VIEWER_OUTPUT_ROOT,
+    )
+    app.clientside_callback(
+        """
+        async function(n_clicks) {
+            if (!n_clicks) {
+                return window.dash_clientside.no_update;
+            }
+            try {
+                const resp = await fetch(
+                    "__PHENO_API_OUTPUT_ROOT__",
+                    {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({refresh: true}),
+                    }
+                );
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    return (data && data.error) || ("HTTP " + resp.status);
+                }
+                window.location.assign(__PHENO_ANALYSIS_PREFIX__);
+                return "";
+            } catch (err) {
+                return String(err);
+            }
+        }
+        """.replace(
+            "__PHENO_API_OUTPUT_ROOT__",
+            api_output_root,
+        ).replace("__PHENO_ANALYSIS_PREFIX__", repr(url_prefix)),
+        Output(analysis_ids.ANALYSIS_REFRESH_ERROR, "children"),
+        Input(analysis_ids.ANALYSIS_REFRESH_SNAPSHOT, "n_clicks"),
+        prevent_initial_call=True,
+    )
 
 
 def _handoff_banner_state(selection):
@@ -191,10 +260,10 @@ def _register_empty_state_callbacks(
 
     Mirrors the results-viewer empty-state pattern. The clientside
     callback POSTs to the shared ``/sandbox/api/viewer/output-root``
-    endpoint, which releases both viewer + analysis ToolSessions and
-    rebuilds them against the new ``viewer_state["output_root"]``. On
-    success the page navigates to ``url_prefix`` so the dispatcher
-    proxy resolves a freshly-built loaded analysis app.
+    endpoint, which builds and atomically publishes both the Results and
+    Analysis ToolSessions against one descriptor. On success the page
+    navigates to ``url_prefix`` so the dispatcher proxy serves the newly
+    published analysis app.
     """
 
     @app.callback(

@@ -47,7 +47,7 @@ from __future__ import annotations
 import logging
 from dataclasses import asdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from flask import Blueprint, abort, jsonify, request
 
@@ -118,6 +118,7 @@ def build_sandbox_api(
     viewer_session: "ToolSession[object] | None" = None,
     viewer_state: "dict[str, Any] | None" = None,
     extra_release_sessions: "tuple[ToolSession[object], ...] | None" = None,
+    bind_output: "Callable[[Path | None], Any] | None" = None,
     name: str = "phenotypic_sandbox_api",
     url_prefix: str = SANDBOX_API_PREFIX,
 ) -> Blueprint:
@@ -135,6 +136,11 @@ def build_sandbox_api(
             The analysis sub-app's session goes here so a single bind
             mutates ``viewer_state`` and rebuilds both tools in lock-step
             (per the locked "shared output_root" decision).
+        bind_output: Optional production binder that constructs Results and
+            Analysis candidates and atomically publishes both sessions. A
+            ``None`` target means explicit refresh of the currently bound
+            path. When omitted, the legacy release-and-lazy-rebuild adapter
+            remains available for isolated route users.
         name: Blueprint name. Defaults to ``"phenotypic_sandbox_api"``.
         url_prefix: Defaults to ``"/sandbox/api"``.
 
@@ -241,19 +247,19 @@ def build_sandbox_api(
 
     @bp.route("/viewer/output-root", methods=["POST"])
     def viewer_output_root_endpoint() -> Any:
-        """Hand a CLI output directory to the results viewer.
+        """Bind or explicitly refresh the shared Results/Analysis snapshot.
 
-        Validates ``path`` (rel-path inside the sandbox) by calling
-        :meth:`OutputRoot.discover`, which raises ``FileNotFoundError`` /
-        ``ValueError`` for malformed layouts. On success the resolved
-        ``OutputRoot`` is stamped into the shared ``viewer_state`` slot
-        and the viewer ``ToolSession`` is released so the next GET to
-        ``/results/`` rebuilds against the new root.
+        A ``{"path": "<sandbox-relative>"}`` payload selects an output.
+        ``{"refresh": true}`` rediscovers the current selection. The hub's
+        production binder constructs both candidate apps and publishes them
+        together only after both pass their post-read fingerprint checks.
+        The fallback adapter retained for isolated route users performs the
+        former release-and-lazy-rebuild hand-off.
 
-        Returns ``{"status": "ok", "abs_path": "<resolved>"}`` on
-        success. Returns ``{"status": "error", "error": "<message>"}``
-        with HTTP 400 for sandbox-escape / unknown-layout / missing-
-        column errors.
+        Returns the selected absolute path and shared snapshot descriptor on
+        success. Invalid selections return 400, concurrent source changes
+        return 409 ``stale``, and candidate-construction failures return 500
+        ``unavailable`` without replacing either live session.
         """
         if viewer_state is None or viewer_session is None:
             return (
@@ -262,29 +268,50 @@ def build_sandbox_api(
             )
 
         payload = request.get_json(silent=True) or {}
+        refresh = payload.get("refresh") is True
         rel = payload.get("path", "")
-        if not isinstance(rel, str) or not rel:
+        if refresh and rel in ("", None):
+            target: Path | None = None
+        elif not isinstance(rel, str) or not rel:
             return (
                 jsonify({"status": "error", "error": "missing 'path'"}),
                 400,
             )
-        try:
-            target = sandbox.resolve(rel)
-        except ValueError:
-            return (
-                jsonify({"status": "error", "error": "path escapes sandbox"}),
-                400,
-            )
+        else:
+            try:
+                target = sandbox.resolve(rel)
+            except ValueError:
+                return (
+                    jsonify({"status": "error", "error": "path escapes sandbox"}),
+                    400,
+                )
 
         from phenotypic.gui.results_viewer._output_root import (
             OutputRoot,
+            OutputSnapshotChangedError,
             sandbox_viewer_cache_root,
         )
 
         try:
-            output_root = OutputRoot.discover(
-                target,
-                cache_root=sandbox_viewer_cache_root(sandbox.root),
+            if bind_output is not None:
+                output_root = bind_output(target)
+            else:
+                if target is None:
+                    raise ValueError("no output is currently bound")
+                output_root = OutputRoot.discover(
+                    target,
+                    cache_root=sandbox_viewer_cache_root(sandbox.root),
+                )
+        except OutputSnapshotChangedError as exc:
+            logger.info("refused unstable viewer snapshot: %s", exc)
+            return (
+                jsonify(
+                    {
+                        "status": "stale",
+                        "error": str(exc),
+                    }
+                ),
+                409,
             )
         except (FileNotFoundError, ValueError) as exc:
             logger.info(
@@ -294,16 +321,45 @@ def build_sandbox_api(
                 jsonify({"status": "error", "error": str(exc)}),
                 400,
             )
+        except Exception as exc:  # noqa: BLE001 - preserve prior live sessions
+            logger.exception(
+                "viewer refresh construction failed for %s", target
+            )
+            return (
+                jsonify(
+                    {
+                        "status": "unavailable",
+                        "error": str(exc),
+                    }
+                ),
+                500,
+            )
 
-        viewer_state["output_root"] = output_root
-        viewer_session.release()
-        viewer_session.touch()
-        if extra_release_sessions:
-            for sess in extra_release_sessions:
-                sess.release()
-                sess.touch()
-        logger.info("viewer hand-off accepted: %s", target)
-        return jsonify({"status": "ok", "abs_path": str(target)})
+        if bind_output is None:
+            viewer_state["output_root"] = output_root
+            viewer_session.release()
+            viewer_session.touch()
+            if extra_release_sessions:
+                for sess in extra_release_sessions:
+                    sess.release()
+                    sess.touch()
+        resolved_target = output_root.root
+        snapshot = output_root.snapshot
+        logger.info("viewer hand-off accepted: %s", resolved_target)
+        return jsonify(
+            {
+                "status": "ok",
+                "abs_path": str(resolved_target),
+                "snapshot": {
+                    "processing_fingerprint": snapshot.processing_fingerprint,
+                    "consumed_state_fingerprint": (
+                        snapshot.consumed_state_fingerprint
+                    ),
+                    "captured_at": snapshot.captured_at.isoformat(),
+                    "active_run": snapshot.active_run,
+                },
+            }
+        )
 
     return bp
 
@@ -315,6 +371,7 @@ def register_sandbox_api(
     viewer_session: "ToolSession[object] | None" = None,
     viewer_state: "dict[str, Any] | None" = None,
     extra_release_sessions: "tuple[ToolSession[object], ...] | None" = None,
+    bind_output: "Callable[[Path | None], Any] | None" = None,
 ) -> Blueprint:
     """Build and register the sandbox-API blueprint on ``server``."""
     bp = build_sandbox_api(
@@ -322,6 +379,7 @@ def register_sandbox_api(
         viewer_session=viewer_session,
         viewer_state=viewer_state,
         extra_release_sessions=extra_release_sessions,
+        bind_output=bind_output,
     )
     server.register_blueprint(bp)
     logger.debug(

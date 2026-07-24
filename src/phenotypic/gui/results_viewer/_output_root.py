@@ -30,6 +30,7 @@ from phenotypic.gui.results_viewer._filtered_state import (
 from phenotypic.sdk_ import (
     DIR_OVERLAYS,
     BundleLayout,
+    gui_launch_owner_path,
     is_metadata_header,
     paths_fingerprint,
     source_cache_key,
@@ -75,11 +76,14 @@ class OutputSnapshotDescriptor:
         processing_fingerprint: Content identity of stable processing outputs.
         consumed_state_fingerprint: Content identity of refresh-owned state.
         captured_at: UTC time at which both fingerprints were verified.
+        active_run: Whether a nonterminal GUI launch owner existed when the
+            descriptor was captured.
     """
 
     processing_fingerprint: str
     consumed_state_fingerprint: str
     captured_at: datetime
+    active_run: bool
 
 
 @dataclass(frozen=True)
@@ -316,6 +320,7 @@ class OutputRoot:
             processing_fingerprint=verified_fingerprint,
             consumed_state_fingerprint=verified_consumed_state,
             captured_at=datetime.now(timezone.utc),
+            active_run=_active_run_snapshot(layout),
         )
 
         return cls(
@@ -572,6 +577,31 @@ def _snapshot_fingerprints(
             root=source_root,
         ),
     )
+
+
+def _active_run_snapshot(layout: BundleLayout) -> bool:
+    """Return whether discovery captured a nonterminal GUI-owned run.
+
+    This is descriptive snapshot metadata, not a mutation gate. Missing,
+    malformed, and historical owner records are treated as inactive.
+    """
+    if layout.output_root is None:
+        return False
+    owner_path = gui_launch_owner_path(layout.output_root)
+    try:
+        payload = json.loads(owner_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    if not isinstance(payload, dict):
+        return False
+    status = payload.get("status")
+    return isinstance(status, str) and status in {
+        "queued",
+        "submitting",
+        "running",
+        "reconciling",
+        "cancelling",
+    }
 
 
 def _processing_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:

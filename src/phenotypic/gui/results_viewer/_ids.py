@@ -97,6 +97,18 @@ HEADER_PIPELINE_CHIP_ID = "header-pipeline-chip"
 #: vs "Standalone bundle" (deliverables-only). Reads ``OutputRoot.has_results``.
 HEADER_MODE_BADGE_ID = "header-mode-badge"
 
+#: Snapshot freshness badge updated by a lightweight fingerprint check.
+HEADER_SNAPSHOT_STATUS_ID = "header-snapshot-status"
+
+#: Explicit shared Results/Analysis snapshot refresh action.
+BTN_REFRESH_SNAPSHOT = "btn-refresh-snapshot"
+
+#: Inline error surfaced when an explicit snapshot refresh is refused.
+HEADER_REFRESH_ERROR_ID = "header-refresh-error"
+
+#: Poll trigger for status-only freshness checks. It never refreshes data.
+SNAPSHOT_STATUS_INTERVAL_ID = "snapshot-status-interval"
+
 #: Outer pattern-matching root for the dynamic filter rows. The filter
 #: rows are rendered into this ``html.Div`` by a callback whenever
 #: ``STORE_FILTER_SPEC`` changes.

@@ -37,6 +37,18 @@ ANALYSIS_PAGE = "analysis-page"
 #: Output-root header (path display + reload button).
 ANALYSIS_OUTPUT_HEADER = "analysis-output-header"
 
+#: Snapshot freshness badge. Polling updates only this status, not app data.
+ANALYSIS_SNAPSHOT_STATUS = "analysis-snapshot-status"
+
+#: Explicit shared Results/Analysis snapshot refresh action.
+ANALYSIS_REFRESH_SNAPSHOT = "analysis-refresh-snapshot"
+
+#: Inline failure message from an explicit refresh attempt.
+ANALYSIS_REFRESH_ERROR = "analysis-refresh-error"
+
+#: Status-only fingerprint poll trigger.
+ANALYSIS_SNAPSHOT_INTERVAL = "analysis-snapshot-interval"
+
 #: Pipeline summary chip (e.g. "3 ops · 1 post · 2 filters · LogGrowthModel").
 ANALYSIS_PIPELINE_HEADER = "analysis-pipeline-header"
 

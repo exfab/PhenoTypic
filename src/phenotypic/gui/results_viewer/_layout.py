@@ -215,8 +215,50 @@ def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> C
     )
 
     subtitle = html.Div(
-        str(output_root.root),
-        className="text-muted small results-viewer-header-subtitle",
+        [
+            html.Span(str(output_root.root)),
+            html.Span(" · "),
+            html.Span(
+                "Snapshot "
+                f"{output_root.snapshot.captured_at.astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')}"
+            ),
+            html.Span(" · "),
+            html.Code(
+                output_root.snapshot.processing_fingerprint[:12],
+                title=output_root.snapshot.processing_fingerprint,
+            ),
+            dbc.Badge(
+                (
+                    "Active run snapshot"
+                    if output_root.snapshot.active_run
+                    else "Current"
+                ),
+                id=ids.HEADER_SNAPSHOT_STATUS_ID,
+                color=(
+                    "warning"
+                    if output_root.snapshot.active_run
+                    else "success"
+                ),
+                className="ms-2",
+            ),
+            dbc.Button(
+                "Refresh snapshot",
+                id=ids.BTN_REFRESH_SNAPSHOT,
+                color="secondary",
+                outline=True,
+                size="sm",
+                n_clicks=0,
+                className="ms-2",
+            ),
+            html.Span(
+                id=ids.HEADER_REFRESH_ERROR_ID,
+                className="text-danger ms-2",
+            ),
+        ],
+        className=(
+            "text-muted small results-viewer-header-subtitle "
+            "d-flex align-items-center flex-wrap gap-1"
+        ),
         style={"marginTop": "0.1rem"},
     )
 
@@ -592,7 +634,18 @@ def build_app_layout(
     )
 
     return html.Div(
-        [stores, header, banner, body, filter_offcanvas],
+        [
+            stores,
+            dcc.Interval(
+                id=ids.SNAPSHOT_STATUS_INTERVAL_ID,
+                interval=10_000,
+                n_intervals=0,
+            ),
+            header,
+            banner,
+            body,
+            filter_offcanvas,
+        ],
         id="results-viewer-root",
         style={"background": _BG, "minHeight": "100vh"},
     )

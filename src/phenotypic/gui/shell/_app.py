@@ -38,9 +38,12 @@ from dash import html
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 from phenotypic.gui._config import (
-    DEFAULT_URL_PREFIX,
+    CFG_ANALYSIS_SESSION,
+    CFG_RESULTS_BINDING_STATE,
     CFG_RUN_REGISTRY,
     CFG_RUNNER,
+    CFG_VIEWER_SESSION,
+    DEFAULT_URL_PREFIX,
     DEFAULT_IDLE_RELEASE_SECONDS,
     MOUNT_ANALYSIS,
     MOUNT_BROWSE,
@@ -68,7 +71,11 @@ from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui.shell._routes import register_sandbox_api
 from phenotypic.gui.shell._runs_blueprint import register as register_runs
 from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.gui.shell._session import ToolSession, start_idle_release_thread
+from phenotypic.gui.shell._session import (
+    ToolSession,
+    start_idle_release_thread,
+    swap_tool_session_states,
+)
 from phenotypic.gui._url_prefix import configure_url_prefix_routing
 
 if TYPE_CHECKING:
@@ -127,6 +134,7 @@ def _build_shell_dash_app(
     viewer_session: "ToolSession[Any] | None" = None,
     viewer_state: "dict[str, Any] | None" = None,
     extra_release_sessions: "tuple[ToolSession[Any], ...] | None" = None,
+    bind_output: "Callable[[Path | None], Any] | None" = None,
 ) -> dash.Dash:
     """Build the shell's home Dash (chrome + home pane + Flask blueprints).
 
@@ -170,6 +178,7 @@ def _build_shell_dash_app(
         viewer_session=viewer_session,
         viewer_state=viewer_state,
         extra_release_sessions=extra_release_sessions,
+        bind_output=bind_output,
     )
     register_runs(app.server, sandbox, viewer_session=viewer_session)
     register_shared_static(app.server)
@@ -228,20 +237,24 @@ def compose_hub(
         run_console,
         tune,
     )
-    from phenotypic.gui.results_viewer._output_root import OutputRoot
+    from phenotypic.gui.results_viewer._output_root import (
+        OutputRoot,
+        sandbox_viewer_cache_root,
+    )
 
-    # Mutable handoff slot so the sidebar can hand a CLI output path to the
-    # viewer without changing the ToolSession's build identity. The
-    # ``/sandbox/api/viewer/output-root`` endpoint validates an incoming
-    # path with ``OutputRoot.discover``, stamps the result here, and calls
-    # ``viewer_session.release()``; the next GET to ``/results/`` rebuilds
-    # the viewer with this OutputRoot.
-    viewer_state: dict[str, "OutputRoot | None"] = {"output_root": None}
+    # Shared binding record. A successful bind or explicit Refresh publishes
+    # all four fields together with the paired ToolSession states.
+    viewer_state: dict[str, Any] = {
+        "bound_path": None,
+        "output_root": None,
+        "snapshot": None,
+        "status": "unavailable",
+        "error": None,
+    }
 
-    # 1. Viewer session (lazy — heavy parquet load deferred to first GET).
-    def _build_viewer() -> dash.Dash:
+    def _make_viewer(output_root: OutputRoot | None) -> dash.Dash:
         viewer_app = results_viewer.create_app(
-            output_root=viewer_state["output_root"],
+            output_root=output_root,
             url_prefix=join_url_prefix(base_url_prefix, MOUNT_VIEWER),
             api_url_prefix=base_url_prefix,
         )
@@ -252,6 +265,10 @@ def compose_hub(
             url_prefix=base_url_prefix,
         )
         return viewer_app
+
+    # 1. Viewer session (lazy — heavy parquet load deferred to first GET).
+    def _build_viewer() -> dash.Dash:
+        return _make_viewer(viewer_state["output_root"])
 
     def _teardown_viewer(viewer_app: dash.Dash) -> None:
         # Intentionally a no-op: the released ``viewer_app`` is dropped
@@ -272,14 +289,9 @@ def compose_hub(
         teardown=_teardown_viewer,
     )
 
-    # 1b. Analysis session built up front so the bind endpoint in step 2
-    #     can release it alongside the viewer when the sidebar hands off
-    #     a CLI output. The session's build closure reads
-    #     ``viewer_state["output_root"]`` lazily, so the order between
-    #     this and the analysis layout factory doesn't matter.
-    def _build_analysis() -> dash.Dash:
+    def _make_analysis(output_root: OutputRoot | None) -> dash.Dash:
         analysis_app = analysis.create_app(
-            output_root=viewer_state["output_root"],
+            output_root=output_root,
             url_prefix=join_url_prefix(base_url_prefix, MOUNT_ANALYSIS),
             api_url_prefix=base_url_prefix,
         )
@@ -291,6 +303,10 @@ def compose_hub(
         )
         return analysis_app
 
+    # 1b. Analysis shares the same binding record as Results.
+    def _build_analysis() -> dash.Dash:
+        return _make_analysis(viewer_state["output_root"])
+
     def _teardown_analysis(_app: dash.Dash) -> None:
         del _app  # pragma: no cover
 
@@ -300,8 +316,43 @@ def compose_hub(
         teardown=_teardown_analysis,
     )
 
+    def _bind_output(target: Path | None) -> OutputRoot:
+        """Build and atomically publish one Results/Analysis revision."""
+        selected = target
+        if selected is None:
+            selected = viewer_state.get("bound_path")
+        if not isinstance(selected, Path):
+            raise ValueError("no output is currently bound")
+
+        candidate_root = OutputRoot.discover(
+            selected,
+            cache_root=sandbox_viewer_cache_root(sandbox.root),
+        )
+        candidate_viewer = _make_viewer(candidate_root)
+        candidate_analysis = _make_analysis(candidate_root)
+
+        def _commit_binding() -> None:
+            viewer_state.update(
+                {
+                    "bound_path": selected,
+                    "output_root": candidate_root,
+                    "snapshot": candidate_root.snapshot,
+                    "status": "current",
+                    "error": None,
+                }
+            )
+
+        swap_tool_session_states(
+            (
+                (viewer_session, candidate_viewer),
+                (analysis_session, candidate_analysis),
+            ),
+            commit=_commit_binding,
+        )
+        return candidate_root
+
     # 2. Shell Dash (registers the API + runs blueprints with the
-    #    viewer-session touch hook + analysis-session release hook).
+    #    viewer-session touch hook + atomic Results/Analysis binder).
     _tick("shell")
     shell_app = _build_shell_dash_app(
         sandbox,
@@ -309,7 +360,11 @@ def compose_hub(
         viewer_session=viewer_session,
         viewer_state=viewer_state,
         extra_release_sessions=(analysis_session,),
+        bind_output=_bind_output,
     )
+    shell_app.server.config[CFG_VIEWER_SESSION] = viewer_session
+    shell_app.server.config[CFG_ANALYSIS_SESSION] = analysis_session
+    shell_app.server.config[CFG_RESULTS_BINDING_STATE] = viewer_state
 
     # 3. Builder Dash (eager — single-process registry build).
     _tick("builder")
