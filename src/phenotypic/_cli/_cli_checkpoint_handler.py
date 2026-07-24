@@ -7,9 +7,10 @@ election so that only one concurrent task performs the work.
 
 from __future__ import annotations
 
+import json
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Optional, cast
@@ -20,12 +21,16 @@ from ._cli_file_locking import FileLockTimeout, file_lock
 from ._cli_utils import load_job_metadata
 from phenotypic.sdk_ import (
     PROCESSING_EVENTS_LOG,
+    DashboardManifestKey,
     JobMetadataKey,
+    atomic_write_json,
     checkpoint_lock_filename,
     event_log_path,
     measurements_parquet_path,
     processing_report_html_path,
+    resolve_manifest_json_path,
     resolve_execution_mode,
+    run_completion_marker_path,
     progress_dir as progress_dir_helper,
 )
 from phenotypic.sdk_.typing_ import CheckpointType
@@ -145,6 +150,21 @@ def _run_manifest(output_dir: Path, progress_dir: Path) -> None:
         input_path=job_metadata.get(JobMetadataKey.INPUT_PATH),
     )
 
+    # Process/export arrays intentionally have no aggregation/dashboard
+    # finalizer. Their last array entry is this manifest sentinel, after every
+    # exported image is atomically visible. Publish the generation-bearing
+    # marker here, but never for forward/measure manifest checkpoints.
+    slurm_generation = job_metadata.get("slurm_generation")
+    if isinstance(slurm_generation, str) and slurm_generation:
+        from ._cli_state_management import load_processing_state
+
+        state = load_processing_state(output_dir)
+        process_only_layer = (
+            state.config.get("process_only_layer") if state is not None else None
+        )
+        if process_only_layer:
+            _publish_run_completion_marker(output_dir, slurm_generation)
+
 
 # ---------------------------------------------------------------------------
 # Finalize checkpoint
@@ -166,6 +186,12 @@ def _run_finalize(
             logger.warning("No job_metadata.json; cannot finalize")
             return
         raise RuntimeError("No job_metadata.json; cannot finalize")
+    slurm_generation_raw = job_metadata.get("slurm_generation")
+    slurm_generation = (
+        str(slurm_generation_raw)
+        if isinstance(slurm_generation_raw, str) and slurm_generation_raw
+        else None
+    )
 
     if epoch is not None:
         from ._cli_staged_orchestration import assert_active_epoch
@@ -290,7 +316,7 @@ def _run_finalize(
         )
         _check_epoch()
     except Exception:
-        if epoch is not None:
+        if epoch is not None or slurm_generation is not None:
             raise
         logger.warning("Dashboard generation failed", exc_info=True)
 
@@ -299,8 +325,58 @@ def _run_finalize(
         from ._cli_staged_orchestration import mark_staged_complete
 
         mark_staged_complete(output_dir, epoch)
+    elif slurm_generation is not None:
+        _publish_run_completion_marker(output_dir, slurm_generation)
 
     logger.info("Finalization complete")
+
+
+def _publish_run_completion_marker(
+    output_dir: Path,
+    slurm_generation: str,
+) -> None:
+    """Publish ordinary SLURM completion after a successful final manifest."""
+    try:
+        manifest = json.loads(
+            resolve_manifest_json_path(output_dir).read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError) as exc:
+        raise RuntimeError(
+            "Cannot publish the SLURM completion marker without a valid manifest"
+        ) from exc
+    if not isinstance(manifest, dict):
+        raise RuntimeError("Final dashboard manifest is not a JSON object")
+    completed = manifest.get(DashboardManifestKey.COMPLETED)
+    failed = manifest.get(DashboardManifestKey.FAILED)
+    total = manifest.get(DashboardManifestKey.TOTAL_IMAGES)
+    complete = (
+        manifest.get(DashboardManifestKey.IS_COMPLETE) is True
+        and isinstance(completed, int)
+        and not isinstance(completed, bool)
+        and isinstance(failed, int)
+        and not isinstance(failed, bool)
+        and isinstance(total, int)
+        and not isinstance(total, bool)
+        and failed == 0
+        and completed == total
+    )
+    if not complete:
+        raise RuntimeError(
+            "Cannot publish the SLURM completion marker for an incomplete "
+            "or failed manifest"
+        )
+    atomic_write_json(
+        run_completion_marker_path(output_dir),
+        {
+            "schema_version": 1,
+            "generation": slurm_generation,
+            "status": "complete",
+            "finalizer_succeeded": True,
+            "completed_at": datetime.now(timezone.utc).isoformat(
+                timespec="milliseconds"
+            ),
+        },
+    )
 
 
 def _publish_staged_report_and_readme(

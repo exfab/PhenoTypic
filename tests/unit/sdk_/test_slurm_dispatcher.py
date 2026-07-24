@@ -8,6 +8,7 @@ import pytest
 import phenotypic._cli._cli_slurm_lifecycle as lifecycle
 from phenotypic._cli._cli_slurm_lifecycle import CancellationResult
 from phenotypic.sdk_.slurm._dispatcher import (
+    _infer_output_dir,
     generate_dispatcher_chain,
     generate_dispatcher_script,
     submit_drip_feed_start,
@@ -33,6 +34,26 @@ def chunk_scripts(tmp_path):
         p.write_text(f"#!/bin/bash\necho chunk {i}")
         paths.append(p)
     return paths
+
+
+def test_infer_output_dir_from_nested_dataset_script(tmp_path: Path) -> None:
+    """Dataset nesting below the canonical scripts root retains one ledger."""
+    script = slurm_scripts_dir(tmp_path) / "dataset-a" / "array_job.sh"
+    script.parent.mkdir(parents=True)
+    script.touch()
+
+    assert _infer_output_dir(script) == tmp_path.resolve()
+
+
+def test_infer_output_dir_rejects_unscoped_slurm_scripts_name(
+    tmp_path: Path,
+) -> None:
+    """A similarly named directory outside ``.phenotypic`` is not trusted."""
+    script = tmp_path / "other" / "slurm_scripts" / "array_job.sh"
+    script.parent.mkdir(parents=True)
+    script.touch()
+
+    assert _infer_output_dir(script) == script.parent.resolve()
 
 
 class TestGenerateDispatcherScript:

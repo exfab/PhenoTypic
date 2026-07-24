@@ -455,6 +455,14 @@ class SlurmLifecycleObserver:
         binding = self._bindings.get((record.run_id, record.generation))
         logs = discover_log_files(record.output_dir, record.log_paths)
         if binding is None:
+            if record.status in {"submitting", "cancelling"}:
+                return _Observation(
+                    record.status,
+                    record.scheduler_ids,
+                    record.primary_scheduler_id,
+                    logs,
+                    "awaiting explicit scheduler lifecycle generation binding",
+                )
             return _Observation(
                 "unknown",
                 record.scheduler_ids,

@@ -331,11 +331,16 @@ def compose_hub(
     #    visible immediately without waiting for a refresh.
     _tick("run console")
     from phenotypic.gui.run_console._runner import LocalRunner
+    from phenotypic.gui.run_console._slurm_observer import (
+        SlurmLifecycleObserver,
+    )
+    from phenotypic.gui.run_console._app import SLURM_OBSERVER_EXTENSION
     from phenotypic.gui.shell._runs_registry import RunRegistry
 
     registry = RunRegistry()
     registry.rehydrate_from_sandbox(sandbox)
     runner = LocalRunner()
+    slurm_observer = SlurmLifecycleObserver(registry)
 
     run_app = run_console.create_app(
         sandbox,
@@ -343,6 +348,8 @@ def compose_hub(
         server_url_prefix=base_url_prefix,
         registry=registry,
         runner=runner,
+        slurm_observer=slurm_observer,
+        start_slurm_observer=start_idle_thread,
     )
     wrap_in_chrome(
         run_app,
@@ -390,6 +397,7 @@ def compose_hub(
     # same singletons.
     shell_app.server.config[CFG_RUNNER] = runner
     shell_app.server.config[CFG_RUN_REGISTRY] = registry
+    shell_app.server.extensions[SLURM_OBSERVER_EXTENSION] = slurm_observer
 
     # 5. Compose at the WSGI layer. The dispatcher receives the shell's
     #    Flask app as its default; any path not matching a mount prefix

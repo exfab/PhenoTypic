@@ -28,6 +28,7 @@ from uuid import uuid4
 
 import pytest
 
+import phenotypic.gui.run_console._app as app_module
 import phenotypic.gui.run_console._callbacks as callbacks_module
 from phenotypic.gui.run_console._callbacks import (
     _action_control_states,
@@ -36,10 +37,64 @@ from phenotypic.gui.run_console._callbacks import (
     _track_pending_slurm,
 )
 from phenotypic.gui.run_console._slurm import SlurmSubmitResult
+from phenotypic.gui.run_console._slurm import (
+    SlurmSubmitPending,
+    SubmittedJobSet,
+)
+from phenotypic.gui.run_console._slurm_observer import SlurmLifecycleObserver
 from phenotypic.gui.run_console._runner import LocalRunner
 from phenotypic.gui.run_console._app import create_app
 from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._cli._cli_slurm_lifecycle import (
+    CancellationResult,
+    append_lifecycle_entry,
+    initialize_slurm_lifecycle,
+)
+from phenotypic.sdk_ import atomic_write_json, job_metadata_path
+
+
+def _durable_submission(
+    output_dir: Path,
+    *,
+    job_id: str = "701",
+    role: str = "controller-initial",
+) -> SubmittedJobSet:
+    """Write one exact lifecycle generation and return its typed job set."""
+    generation = uuid4()
+    initialize_slurm_lifecycle(
+        output_dir,
+        generation=generation.hex,
+        mode="ordinary",
+    )
+    atomic_write_json(
+        job_metadata_path(output_dir),
+        {
+            "slurm_generation": generation.hex,
+            "slurm_job_ids": {
+                role: {
+                    "job_id": job_id,
+                    "role": role,
+                    "generation": generation.hex,
+                }
+            },
+            "chunk_job_ids": {},
+        },
+    )
+    append_lifecycle_entry(
+        output_dir,
+        generation=generation.hex,
+        token=role,
+        role=role,
+        status="submitted",
+        job_id=job_id,
+    )
+    return SubmittedJobSet(
+        primary_id=job_id,
+        all_ids=(job_id,),
+        roles={role: (job_id,)},
+        generation=generation,
+    )
 
 
 @pytest.fixture()
@@ -50,6 +105,15 @@ def runner() -> LocalRunner:
 @pytest.fixture()
 def registry() -> RunRegistry:
     return RunRegistry()
+
+
+def _callback_by_name(app: Any, name: str) -> Any:
+    """Return one unwrapped Dash callback by its Python function name."""
+    return next(
+        spec["callback"].__wrapped__
+        for spec in app.callback_map.values()
+        if spec["callback"].__wrapped__.__name__ == name
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -168,12 +232,15 @@ def test_slurm_future_terminalizes_stable_record_without_browser_poll(
         status="submitting",
     )
     assert record.generation is not None
+    jobs = _durable_submission(output_dir)
+    observer = SlurmLifecycleObserver(registry)
     future: Future[SlurmSubmitResult] = Future()
     _track_pending_slurm(
         record.run_id,
         record.generation,
         future,
         registry=registry,
+        observer=observer,
     )
 
     future.set_result(
@@ -183,12 +250,13 @@ def test_slurm_future_terminalizes_stable_record_without_browser_poll(
             stdout="",
             stderr="",
             returncode=0,
+            submitted_jobs=jobs,
         )
     )
 
     updated = registry.get(record.run_id)
     assert updated is not None
-    assert updated.status == "running"
+    assert updated.status == "queued"
     assert updated.scheduler_ids == ("701",)
     assert updated.primary_scheduler_id == "701"
 
@@ -209,16 +277,26 @@ def test_slurm_future_cannot_update_replaced_generation(tmp_path: Path) -> None:
     )
     registry.register(current)
     stale_generation = uuid4()
+    jobs = _durable_submission(output_dir, job_id="702")
+    observer = SlurmLifecycleObserver(registry)
     future: Future[SlurmSubmitResult] = Future()
     _track_pending_slurm(
         "out",
         stale_generation,
         future,
         registry=registry,
+        observer=observer,
     )
 
     future.set_result(
-        SlurmSubmitResult("702", output_dir, "", "", 0)
+        SlurmSubmitResult(
+            "702",
+            output_dir,
+            "",
+            "",
+            0,
+            submitted_jobs=jobs,
+        )
     )
 
     unchanged = registry.get("out")
@@ -243,12 +321,14 @@ def test_slurm_future_failure_preserves_diagnostic_record(
         status="submitting",
     )
     assert record.generation is not None
+    observer = SlurmLifecycleObserver(registry)
     future: Future[SlurmSubmitResult] = Future()
     _track_pending_slurm(
         record.run_id,
         record.generation,
         future,
         registry=registry,
+        observer=observer,
     )
 
     future.set_exception(RuntimeError("scheduler unavailable"))
@@ -257,6 +337,243 @@ def test_slurm_future_failure_preserves_diagnostic_record(
     assert failed is not None
     assert failed.status == "failed"
     assert failed.status_detail == "RuntimeError: scheduler unavailable"
+
+
+def test_pending_timeout_binds_generation_and_remains_nonterminal(
+    tmp_path: Path,
+) -> None:
+    """An unresolved timeout is observer-owned, not a submission failure."""
+    registry = RunRegistry()
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    record = registry.allocate(
+        mode="slurm",
+        output_dir=output_dir,
+        rel_path="out",
+        command_digest="digest",
+        status="submitting",
+    )
+    assert record.generation is not None
+    scheduler_generation = uuid4()
+    initialize_slurm_lifecycle(
+        output_dir,
+        generation=scheduler_generation.hex,
+        mode="ordinary",
+    )
+    append_lifecycle_entry(
+        output_dir,
+        generation=scheduler_generation.hex,
+        token="controller-initial",
+        role="controller-initial",
+        status="intent",
+    )
+    observer = SlurmLifecycleObserver(registry)
+    future: Future[SlurmSubmitResult] = Future()
+    _track_pending_slurm(
+        record.run_id,
+        record.generation,
+        future,
+        registry=registry,
+        observer=observer,
+    )
+
+    future.set_exception(
+        SlurmSubmitPending(
+            output_dir=output_dir,
+            generation=scheduler_generation,
+            unresolved_tokens=("controller-initial",),
+            submitted_jobs=None,
+            scheduler_available=False,
+            returncode=-1,
+        )
+    )
+
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "unknown"
+    assert updated.terminal_at is None
+    assert "remains recoverable" in (updated.status_detail or "")
+    assert (record.run_id, record.generation) in observer._bindings  # noqa: SLF001
+
+
+@pytest.mark.parametrize("lifecycle_mode", ["ordinary", "staged"])
+def test_slurm_cancel_fences_exact_epoch_and_stays_cancelling(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    lifecycle_mode: str,
+) -> None:
+    """Ordinary and staged Cancel share the observer-owned semantics."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    record = registry.allocate(
+        mode="slurm",
+        output_dir=output_dir,
+        rel_path="out",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+    scheduler_generation = uuid4()
+    initialize_slurm_lifecycle(
+        output_dir,
+        generation=str(scheduler_generation),
+        mode=lifecycle_mode,
+    )
+    observer = SlurmLifecycleObserver(registry)
+    calls: list[tuple[Path, str]] = []
+
+    def fake_cancel(output: Path, generation: str, **_kwargs: object) -> Any:
+        calls.append((output, generation))
+        return CancellationResult(("801",), (), False)
+
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_slurm_lifecycle.cancel_generation",
+        fake_cancel,
+    )
+    app = create_app(
+        sandbox,
+        registry=registry,
+        slurm_observer=observer,
+        start_slurm_observer=False,
+    )
+
+    response = _callback_by_name(app, "click_cancel")(1, record.run_id)
+
+    assert calls == [(output_dir, str(scheduler_generation))]
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "cancelling"
+    assert updated.terminal_at is None
+    assert response[-2:] == (False, False)
+
+
+def test_run_app_owns_one_startable_observer_lifecycle(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The app starts, stores, and registers cleanup for the exact observer."""
+    class ObserverSpy:
+        def __init__(self) -> None:
+            self.starts = 0
+            self.stops = 0
+
+        def start(self) -> None:
+            self.starts += 1
+
+        def stop(self, *, timeout: float = 5.0) -> None:
+            del timeout
+            self.stops += 1
+
+        def bind_generation(self, **_kwargs: object) -> None:
+            return None
+
+    observer = ObserverSpy()
+    cleanup_callbacks: list[Any] = []
+    monkeypatch.setattr(
+        app_module.atexit,
+        "register",
+        lambda callback: cleanup_callbacks.append(callback),
+    )
+    app = create_app(
+        SandboxRoot.from_path(tmp_path),
+        slurm_observer=observer,  # type: ignore[arg-type]
+        start_slurm_observer=True,
+    )
+
+    assert app.server.extensions["phenotypic_slurm_observer"] is observer
+    assert observer.starts == 1
+    assert cleanup_callbacks == [observer.stop]
+    cleanup_callbacks[0]()
+    assert observer.stops == 1
+
+
+def test_staged_gpu_controls_follow_pipeline_capability(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The GPU-stage profile is visible only for SLURM GPU pipelines."""
+    app = create_app(SandboxRoot.from_path(tmp_path))
+    monkeypatch.setattr(
+        callbacks_module,
+        "_pipeline_uses_staged_gpu",
+        lambda path: path == "/gpu.json",
+    )
+    callback = _callback_by_name(app, "show_staged_gpu_controls")
+
+    assert callback("/gpu.json", "slurm") == {"display": "block"}
+    assert callback("/cpu.json", "slurm") == {"display": "none"}
+    assert callback("/gpu.json", "local") == {"display": "none"}
+
+
+def test_slurm_log_callback_reads_incrementally(
+    tmp_path: Path,
+) -> None:
+    """Scheduler log polling appends new bytes without rereading old content."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    log_path = output_dir / ".phenotypic" / "logs" / "gui" / "stdout.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text("alpha\n", encoding="utf-8")
+    record = registry.allocate(
+        mode="slurm",
+        output_dir=output_dir,
+        rel_path="out",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+    registry.compare_and_set(
+        record.run_id,
+        record.generation,
+        log_paths=(log_path,),
+    )
+    app = create_app(sandbox, registry=registry)
+    callback = _callback_by_name(app, "update_log_tail")
+
+    first, _banner = callback(1, record.run_id)
+    with log_path.open("a", encoding="utf-8") as handle:
+        handle.write("beta\n")
+    second, _banner = callback(2, record.run_id)
+
+    assert "alpha" in first
+    assert second.count("alpha") == 1
+    assert "beta" in second
+
+
+def test_recents_redraw_uses_registry_revision_without_rescan(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Lifecycle changes redraw cached registry rows without a sandbox walk."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    app = create_app(sandbox, registry=registry)
+    publish = _callback_by_name(app, "publish_registry_revision")
+    refresh = _callback_by_name(app, "refresh_recents")
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    registry.allocate(
+        mode="local",
+        output_dir=output_dir,
+        rel_path="out",
+        command_digest="digest",
+        status="running",
+    )
+    monkeypatch.setattr(
+        registry,
+        "rehydrate_from_sandbox",
+        lambda *_args, **_kwargs: pytest.fail("unexpected sandbox rescan"),
+    )
+
+    revision = publish(1, 0)
+    rows, _presets = refresh(revision)
+
+    assert revision == registry.revision
+    assert rows
 
 
 def test_action_callbacks_capture_raw_controls_not_aggregate_store(

@@ -105,9 +105,9 @@ def _log_tail() -> html.Div:
             ),
             dcc.Interval(
                 id=ids.RC_INTERVAL_DASHBOARD_POLL,
-                interval=250,
+                interval=2000,
                 disabled=True,
-                max_intervals=40,  # 40 * 250ms = 10s upper bound.
+                max_intervals=-1,
             ),
         ],
         className="run-console-log-section",

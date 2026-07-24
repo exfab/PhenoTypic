@@ -139,6 +139,36 @@ def test_submit_slurm_includes_extra_pairs(tmp_path: Path) -> None:
     assert "account=lab" in pairs
 
 
+def test_submit_slurm_forwards_gpu_stage_profile_and_shards(
+    tmp_path: Path,
+) -> None:
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    _write_manifest(output_dir, {"0": "1_0"})
+    state = _state_for(output_dir)
+    state.gpu_slurm_args = (
+        "slurm_partition=gpu",
+        "slurm_account=lab",
+    )
+    state.gpu_shards = 4
+
+    with mock.patch("subprocess.run", return_value=_completed()) as run_mock:
+        submit_slurm(state, sandbox_root=tmp_path)
+
+    argv = run_mock.call_args.args[0]
+    gpu_pairs = [
+        argv[index + 1]
+        for index, token in enumerate(argv)
+        if token == "--gpu-slurm"
+    ]
+    assert gpu_pairs == [
+        "slurm_partition=gpu",
+        "slurm_account=lab",
+    ]
+    shards_index = argv.index("--gpu-shards")
+    assert argv[shards_index + 1] == "4"
+
+
 # ---------------------------------------------------------------------------
 # Error paths
 # ---------------------------------------------------------------------------

@@ -175,13 +175,18 @@ def _slurm_argv_extension(slurm_args: dict[str, object]) -> list[str]:
 
 def _build_subprocess_argv(state: RunConsoleState) -> list[str]:
     """Assemble the CLI subprocess argument vector."""
-    return [
+    argv = [
         sys.executable,
         "-m",
         "phenotypic",
         *to_argv(state),
         *_slurm_argv_extension(state.slurm_args or {}),
     ]
+    for token in state.gpu_slurm_args:
+        argv.extend(["--gpu-slurm", token])
+    if state.gpu_shards != 1:
+        argv.extend(["--gpu-shards", str(state.gpu_shards)])
+    return argv
 
 
 def _read_metadata(output_dir: Path) -> dict[str, object]:

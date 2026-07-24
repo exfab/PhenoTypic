@@ -256,8 +256,12 @@ def submit_drip_feed_start(
 def _infer_output_dir(script_path: Path) -> Path:
     """Infer the run output root from a generated script path."""
     path = Path(script_path).resolve()
-    if path.parent.name == "slurm_scripts" and path.parent.parent.name == ".phenotypic":
-        return path.parent.parent.parent
+    for ancestor in path.parents:
+        if (
+            ancestor.name == "slurm_scripts"
+            and ancestor.parent.name == ".phenotypic"
+        ):
+            return ancestor.parent.parent
     return path.parent
 
 

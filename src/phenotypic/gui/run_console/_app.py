@@ -18,8 +18,11 @@ single-tool invocation does not need cross-tool state sharing.
 """
 from __future__ import annotations
 
+import atexit
 import logging
+import os
 from pathlib import Path
+from uuid import UUID
 
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
@@ -39,12 +42,46 @@ from phenotypic.gui._url_prefix import configure_url_prefix_routing
 from phenotypic.gui.run_console._callbacks import register_callbacks
 from phenotypic.gui.run_console._layout import build_run_console_layout
 from phenotypic.gui.run_console._runner import LocalRunner
+from phenotypic.gui.run_console._slurm_observer import SlurmLifecycleObserver
 from phenotypic.gui.shell._runs_registry import RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["create_app"]
+__all__ = ["SLURM_OBSERVER_EXTENSION", "create_app"]
+
+SLURM_OBSERVER_EXTENSION = "phenotypic_slurm_observer"
+
+
+def _bind_rehydrated_slurm_records(
+    observer: SlurmLifecycleObserver,
+    registry: RunRegistry,
+) -> None:
+    """Restore exact lifecycle bindings for nonterminal durable records."""
+    for record in registry.list():
+        if (
+            record.mode != "slurm"
+            or record.generation is None
+            or record.status in {"complete", "failed", "cancelled"}
+        ):
+            continue
+        lifecycle = load_slurm_lifecycle(record.output_dir)
+        if lifecycle is None:
+            continue
+        try:
+            scheduler_generation = UUID(str(lifecycle["generation"]))
+            observer.bind_generation(
+                run_id=record.run_id,
+                record_generation=record.generation,
+                scheduler_generation=scheduler_generation,
+            )
+        except (KeyError, ValueError):
+            logger.warning(
+                "Could not restore SLURM lifecycle binding for %s",
+                record.run_id,
+                exc_info=True,
+            )
 
 
 def create_app(
@@ -54,6 +91,8 @@ def create_app(
     server_url_prefix: str = DEFAULT_URL_PREFIX,
     registry: RunRegistry | None = None,
     runner: LocalRunner | None = None,
+    slurm_observer: SlurmLifecycleObserver | None = None,
+    start_slurm_observer: bool | None = None,
 ) -> dash.Dash:
     """Build the Run console Dash app.
 
@@ -72,6 +111,10 @@ def create_app(
             ALWAYS pass a shared runner so a navigation-away does not
             kill in-flight subprocesses (the hub keeps the runner alive
             even when the Run console UI is released).
+        slurm_observer: Process-wide scheduler lifecycle observer. A fresh
+            observer is created for standalone use when omitted.
+        start_slurm_observer: Whether to start the observer daemon. Defaults
+            to production-on and pytest-off.
 
     Returns:
         A configured :class:`dash.Dash` instance ready to mount under
@@ -83,6 +126,14 @@ def create_app(
 
     if runner is None:
         runner = LocalRunner()
+    if slurm_observer is None:
+        slurm_observer = SlurmLifecycleObserver(registry)
+    _bind_rehydrated_slurm_records(slurm_observer, registry)
+    if start_slurm_observer is None:
+        start_slurm_observer = "PYTEST_CURRENT_TEST" not in os.environ
+    if start_slurm_observer:
+        slurm_observer.start()
+        atexit.register(slurm_observer.stop)
 
     assets_folder = str(Path(__file__).parent / "_assets")
 
@@ -107,12 +158,14 @@ def create_app(
     # than threading it through every callback closure.
     app.server.config[CFG_RUNNER] = runner
     app.server.config[CFG_RUN_REGISTRY] = registry
+    app.server.extensions[SLURM_OBSERVER_EXTENSION] = slurm_observer
 
     register_callbacks(
         app,
         sandbox,
         registry=registry,
         runner=runner,
+        slurm_observer=slurm_observer,
         server_url_prefix=server_url_prefix,
     )
 

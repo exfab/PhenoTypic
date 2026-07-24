@@ -157,6 +157,14 @@ def test_unbound_observer_refuses_to_infer_scheduler_generation(
     tmp_path: Path,
 ) -> None:
     registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    registry.compare_and_set(
+        record.run_id,
+        record.generation,
+        status="running",
+    )
+    record = registry.get(record.run_id)
+    assert record is not None
     _write_jobs(record, {"chunk-0": ("91", "chunk")})
     scheduler = FakeScheduler({"91": "RUNNING"})
 
@@ -166,6 +174,22 @@ def test_unbound_observer_refuses_to_infer_scheduler_generation(
     assert updated is not None
     assert updated.status == "unknown"
     assert "not explicitly bound" in (updated.status_detail or "")
+    assert scheduler.queries == []
+
+
+def test_unbound_observer_does_not_race_active_submitter(
+    tmp_path: Path,
+) -> None:
+    """The submit future owns status until it can publish the exact binding."""
+    registry, record = _registered_slurm_run(tmp_path)
+    scheduler = FakeScheduler()
+
+    SlurmLifecycleObserver(registry, scheduler).observe_once()
+
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "submitting"
+    assert "awaiting explicit" in (updated.status_detail or "")
     assert scheduler.queries == []
 
 

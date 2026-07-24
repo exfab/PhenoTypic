@@ -70,6 +70,10 @@ from phenotypic.gui.run_console._form import (
 from phenotypic.gui.run_console._layout import render_recents_table
 from phenotypic.gui.run_console._recent_runs import scan_recent_runs
 from phenotypic.gui.run_console._runner import LocalRunner
+from phenotypic.gui.run_console._slurm_observer import (
+    IncrementalLogReader,
+    SlurmLifecycleObserver,
+)
 from phenotypic.gui.shell._ids import (
     SHELL_METADATA_CSV_STORE,
     SHELL_SOURCE_IMAGE_ROOT_STORE,
@@ -193,13 +197,27 @@ def _looks_like_pipeline_json(path: Path) -> bool:
     return b'"operations"' in head
 
 
+def _pipeline_uses_staged_gpu(path_value: object) -> bool:
+    """Return whether the selected pipeline requires staged GPU execution."""
+    if not isinstance(path_value, str) or not path_value:
+        return False
+    try:
+        from phenotypic._cli._cli_validation import pipeline_requires_gpu
+
+        return pipeline_requires_gpu(Path(path_value))
+    except (OSError, ValueError, TypeError):
+        return False
+
+
 # ---------------------------------------------------------------------------
 # Stream B seams — RunConsoleState + SLURM submitter.
 # ---------------------------------------------------------------------------
 
 from phenotypic.gui.run_console._slurm import (  # noqa: E402
     SlurmSubmitError,
+    SlurmSubmitPending,
     SlurmSubmitResult,
+    read_submitted_job_set,
     submit_slurm,
 )
 from phenotypic.gui.run_console._state import (  # noqa: E402
@@ -567,6 +585,7 @@ class _SlurmCompletion:
 
     result: SlurmSubmitResult | None = None
     error: str | None = None
+    pending: str | None = None
 
 
 _PENDING_SLURM: dict[tuple[str, UUID], Future[Any]] = {}
@@ -581,6 +600,7 @@ def _complete_slurm_submission(
     registry: RunRegistry,
     run_id: str,
     generation: UUID,
+    observer: SlurmLifecycleObserver,
 ) -> None:
     """Reconcile one submitter future independently of browser page state."""
     key = (run_id, generation)
@@ -591,33 +611,131 @@ def _complete_slurm_submission(
                 "SLURM submitter returned an unexpected result "
                 f"{type(result).__name__}"
             )
+    except SlurmSubmitPending as exc:
+        jobs = exc.submitted_jobs
+        try:
+            observer.bind_generation(
+                run_id=run_id,
+                record_generation=generation,
+                scheduler_generation=exc.generation,
+            )
+        except ValueError:
+            logger.exception(
+                "Could not bind recoverable SLURM submission %s", run_id
+            )
+        record = registry.get(run_id)
+        if record is None or record.generation != generation:
+            completion = None
+        elif record.status == "cancelling":
+            _cancel_bound_generation(record, exc.generation, observer)
+            completion = _SlurmCompletion(pending=str(exc))
+        else:
+            scheduler_ids = jobs.all_ids if jobs is not None else ()
+            primary = jobs.primary_id if jobs is not None else None
+            registry.compare_and_set(
+                run_id,
+                generation,
+                expected_statuses={"submitting", "unknown", "reconciling"},
+                status=(
+                    "submitting" if exc.scheduler_available else "unknown"
+                ),
+                scheduler_ids=scheduler_ids,
+                primary_scheduler_id=primary,
+                returncode=exc.returncode,
+                status_detail=str(exc),
+            )
+            completion = _SlurmCompletion(pending=str(exc))
     except Exception as exc:  # noqa: BLE001
         detail = (
             str(exc)
             if isinstance(exc, SlurmSubmitError)
             else _format_exception(exc)
         )
+        record = registry.get(run_id)
+        cancelled_before_submission = bool(
+            record is not None
+            and record.generation == generation
+            and record.status == "cancelling"
+            and isinstance(exc, SlurmSubmitError)
+        )
         updated = registry.compare_and_set(
             run_id,
             generation,
-            expected_statuses={"submitting", "reconciling"},
-            status="failed",
+            expected_statuses=(
+                {"cancelling"}
+                if cancelled_before_submission
+                else {"submitting", "reconciling", "unknown"}
+            ),
+            status=("cancelled" if cancelled_before_submission else "failed"),
+            terminal_at=(
+                datetime.now(timezone.utc)
+                if cancelled_before_submission
+                else None
+            ),
             status_detail=detail,
         )
         completion = _SlurmCompletion(error=detail) if updated else None
     else:
-        updated = registry.compare_and_set(
-            run_id,
-            generation,
-            expected_statuses={"submitting", "reconciling"},
-            status="running",
-            scheduler_ids=(result.job_id,),
-            primary_scheduler_id=result.job_id,
-            submitted_at=datetime.now(timezone.utc),
-            returncode=result.returncode,
-            status_detail=None,
+        jobs = result.submitted_jobs or read_submitted_job_set(
+            result.output_dir
         )
-        completion = _SlurmCompletion(result=result) if updated else None
+        if jobs is None:
+            detail = "SLURM submission returned no generation-bound job set"
+            updated = registry.compare_and_set(
+                run_id,
+                generation,
+                expected_statuses={"submitting", "reconciling", "unknown"},
+                status="unknown",
+                status_detail=detail,
+            )
+            completion = _SlurmCompletion(error=detail) if updated else None
+        else:
+            try:
+                observer.bind_generation(
+                    run_id=run_id,
+                    record_generation=generation,
+                    scheduler_generation=jobs.generation,
+                )
+            except ValueError as exc:
+                detail = f"Could not bind scheduler generation: {exc}"
+                updated = registry.compare_and_set(
+                    run_id,
+                    generation,
+                    expected_statuses={"submitting", "reconciling", "unknown"},
+                    status="unknown",
+                    status_detail=detail,
+                )
+                completion = (
+                    _SlurmCompletion(error=detail) if updated else None
+                )
+            else:
+                record = registry.get(run_id)
+                if (
+                    record is not None
+                    and record.generation == generation
+                    and record.status == "cancelling"
+                ):
+                    _cancel_bound_generation(record, jobs.generation, observer)
+                    completion = _SlurmCompletion(result=result)
+                else:
+                    updated = registry.compare_and_set(
+                        run_id,
+                        generation,
+                        expected_statuses={
+                            "submitting",
+                            "reconciling",
+                            "unknown",
+                        },
+                        status="queued",
+                        scheduler_ids=jobs.all_ids,
+                        primary_scheduler_id=jobs.primary_id,
+                        submitted_at=datetime.now(timezone.utc),
+                        returncode=result.returncode,
+                        status_detail=None,
+                    )
+                    completion = (
+                        _SlurmCompletion(result=result) if updated else None
+                    )
 
     with _PENDING_SLURM_LOCK:
         if _PENDING_SLURM.get(key) is future:
@@ -635,6 +753,7 @@ def _track_pending_slurm(
     future: Future[Any],
     *,
     registry: RunRegistry,
+    observer: SlurmLifecycleObserver,
 ) -> None:
     """Track a future and immediately attach its generation-matched callback."""
     key = (run_id, generation)
@@ -646,6 +765,7 @@ def _track_pending_slurm(
             registry=registry,
             run_id=run_id,
             generation=generation,
+            observer=observer,
         )
     )
 
@@ -663,6 +783,35 @@ def _has_pending_slurm() -> bool:
     """True iff at least one pending submission is registered."""
     with _PENDING_SLURM_LOCK:
         return bool(_PENDING_SLURM)
+
+
+def _cancel_pending_slurm(run_id: str, generation: UUID) -> bool:
+    """Cancel a submit future that has not started running yet."""
+    with _PENDING_SLURM_LOCK:
+        future = _PENDING_SLURM.get((run_id, generation))
+    return bool(future is not None and future.cancel())
+
+
+def _cancel_bound_generation(
+    record: RunRecord,
+    scheduler_generation: UUID,
+    observer: SlurmLifecycleObserver,
+) -> tuple[str, ...]:
+    """Fence and cancel every scheduler job while retaining ``cancelling``."""
+    from phenotypic._cli._cli_slurm_lifecycle import cancel_generation
+
+    if record.generation is None:
+        return ()
+    binding = observer.bind_generation(
+        run_id=record.run_id,
+        record_generation=record.generation,
+        scheduler_generation=scheduler_generation,
+    )
+    result = cancel_generation(
+        record.output_dir,
+        binding.scheduler_epoch,
+    )
+    return result.job_ids
 
 
 
@@ -700,6 +849,7 @@ def register_callbacks(
     *,
     registry: RunRegistry,
     runner: LocalRunner,
+    slurm_observer: SlurmLifecycleObserver,
     server_url_prefix: str = DEFAULT_URL_PREFIX,
 ) -> None:
     """Register every Run console callback on ``app``.
@@ -716,9 +866,14 @@ def register_callbacks(
             run-start, cancel, and recents-refresh callbacks.
         runner: Process-wide :class:`LocalRunner`. Owns subprocess
             lifecycle for Local runs.
+        slurm_observer: Process-wide lifecycle observer. Submission callbacks
+            bind exact scheduler epochs to GUI record generations.
         server_url_prefix: Browser-visible base prefix for shell-level
             Flask routes such as ``/runs``.
     """
+    slurm_log_readers: dict[tuple[str, UUID], IncrementalLogReader] = {}
+    slurm_log_text: dict[tuple[str, UUID], str] = {}
+    slurm_log_lock = threading.Lock()
 
     # ----------------------------------------------------------------------
     # 1. Picker buttons → open / cancel modals
@@ -1071,6 +1226,19 @@ def register_callbacks(
     )
     _register_collapse_toggle(ids.RC_COLLAPSE_SLURM, ids.RC_BTN_TOGGLE_SLURM)
 
+    @app.callback(
+        Output(ids.RC_STAGED_GPU_SECTION, "style"),
+        Input(ids.RC_STORE_PIPELINE_PATH, "data"),
+        Input(ids.RC_RADIO_MODE, "value"),
+    )
+    def show_staged_gpu_controls(
+        pipeline_path: object,
+        mode: object,
+    ) -> dict[str, str]:
+        """Show GPU-stage resources only for a SLURM GPU pipeline."""
+        visible = mode == "slurm" and _pipeline_uses_staged_gpu(pipeline_path)
+        return {"display": "block" if visible else "none"}
+
     # ----------------------------------------------------------------------
     # 7. Form-state sync — every input writes back to the form state store.
     # ----------------------------------------------------------------------
@@ -1094,6 +1262,8 @@ def register_callbacks(
         Input(ids.RC_INPUT_SLURM_CPUS, "value"),
         Input(ids.RC_INPUT_SLURM_GPUS, "value"),
         Input(ids.RC_INPUT_SLURM_EXTRA, "value"),
+        Input(ids.RC_INPUT_GPU_SLURM, "value"),
+        Input(ids.RC_INPUT_GPU_SHARDS, "value"),
         Input(SHELL_METADATA_CSV_STORE, "data"),
     )
     def sync_form_state(  # noqa: PLR0913
@@ -1114,10 +1284,12 @@ def register_callbacks(
         slurm_cpus: Optional[Any],
         slurm_gpus: Optional[Any],
         slurm_extra: Optional[str],
+        gpu_slurm: Optional[str],
+        gpu_shards: Optional[Any],
         metadata_payload: object,
     ) -> dict[str, Any]:
         """Bundle all form fields into the run-state store on any change."""
-        return _form_inputs_to_state(
+        values = (
             pipeline_path,
             input_dir,
             output_dir,
@@ -1135,9 +1307,45 @@ def register_callbacks(
             slurm_cpus,
             slurm_gpus,
             slurm_extra,
-            metadata_payload=metadata_payload,
-            sandbox=sandbox,
+            gpu_slurm,
+            gpu_shards,
+            metadata_payload,
         )
+        try:
+            state = _state_from_action_controls(values, sandbox=sandbox)
+        except ValueError:
+            # Presentation state remains permissive while the user is midway
+            # through editing. Action callbacks perform authoritative
+            # validation from the same raw controls.
+            payload = _form_inputs_to_state(
+                pipeline_path,
+                input_dir,
+                output_dir,
+                mode,
+                flags,
+                sample,
+                nrows,
+                ncols,
+                image_type,
+                workers,
+                log_level,
+                slurm_partition,
+                slurm_time,
+                slurm_mem,
+                slurm_cpus,
+                slurm_gpus,
+                slurm_extra,
+                metadata_payload=metadata_payload,
+                sandbox=sandbox,
+            )
+            payload["gpu_slurm_args"] = [
+                line.strip()
+                for line in (gpu_slurm or "").splitlines()
+                if line.strip()
+            ]
+            payload["gpu_shards"] = gpu_shards or 1
+            return payload
+        return run_state_to_json(state)
 
     # ----------------------------------------------------------------------
     # 8. Validate / Run / Cancel
@@ -1370,6 +1578,7 @@ def register_callbacks(
                 slurm_generation,
                 future,
                 registry=registry,
+                observer=slurm_observer,
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("SLURM submitter startup failed")
@@ -1415,38 +1624,106 @@ def register_callbacks(
     def click_cancel(
         n_clicks: Optional[int], run_id: Optional[str]
     ) -> Tuple[Any, ...]:
-        """Send SIGTERM to the active local run and update registry."""
+        """Fence local or scheduler work and wait for verified quiescence."""
         if not n_clicks or not run_id:
             return (no_update,) * 6
         try:
-            stopped = runner.stop(run_id)
-            cancelled_jobs: list[str] = []
             record = registry.get(run_id)
-            if record is not None:
-                from phenotypic._cli._cli_staged_orchestration import (
-                    cancel_staged_jobs,
+            if record is None or record.generation is None:
+                return (
+                    *_toast(f"No live run for {run_id}", ok=False),
+                    True,
+                    True,
+                )
+            if record.mode != "slurm":
+                stopped = runner.stop(run_id)
+                if stopped:
+                    registry.compare_and_set(
+                        run_id,
+                        record.generation,
+                        expected_statuses={"queued", "running", "unknown"},
+                        status="cancelled",
+                        terminal_at=datetime.now(timezone.utc),
+                    )
+                    return (
+                        *_toast(f"Cancelled {run_id}", ok=True),
+                        True,
+                        True,
+                    )
+                return (
+                    *_toast(f"No live run for {run_id}", ok=False),
+                    True,
+                    True,
                 )
 
-                cancelled_jobs = cancel_staged_jobs(record.output_dir)
-            if stopped or cancelled_jobs:
-                registry.update_status(run_id, "cancelled")
+            from phenotypic._cli._cli_slurm_lifecycle import (
+                load_slurm_lifecycle,
+            )
+
+            registry.compare_and_set(
+                run_id,
+                record.generation,
+                expected_statuses={
+                    "submitting",
+                    "queued",
+                    "running",
+                    "reconciling",
+                    "unknown",
+                },
+                status="cancelling",
+                status_detail="cancellation requested; awaiting scheduler quiescence",
+            )
+            lifecycle = load_slurm_lifecycle(record.output_dir)
+            scheduler_generation: UUID | None = None
+            if lifecycle is not None:
+                try:
+                    scheduler_generation = UUID(
+                        str(lifecycle.get("generation", ""))
+                    )
+                except ValueError:
+                    scheduler_generation = None
+            if scheduler_generation is not None:
+                cancelled_jobs = _cancel_bound_generation(
+                    record,
+                    scheduler_generation,
+                    slurm_observer,
+                )
                 return (
                     *_toast(
-                        f"Cancelled {run_id}"
-                        + (
-                            f" ({len(cancelled_jobs)} SLURM job(s))"
-                            if cancelled_jobs
-                            else ""
-                        ),
+                        f"Cancellation fenced for {run_id}; "
+                        f"{len(cancelled_jobs)} scheduler job(s) signalled",
+                        ok=True,
+                        header="Cancelling…",
+                    ),
+                    False,
+                    False,
+                )
+            if _cancel_pending_slurm(run_id, record.generation):
+                registry.compare_and_set(
+                    run_id,
+                    record.generation,
+                    expected_statuses={"cancelling"},
+                    status="cancelled",
+                    terminal_at=datetime.now(timezone.utc),
+                    status_detail="submission cancelled before it started",
+                )
+                return (
+                    *_toast(
+                        f"Cancelled {run_id} before submission",
                         ok=True,
                     ),
                     True,
                     True,
                 )
             return (
-                *_toast(f"No live run for {run_id}", ok=False),
-                True,
-                True,
+                *_toast(
+                    "Cancellation requested; waiting for the submitter "
+                    "to publish its scheduler epoch",
+                    ok=True,
+                    header="Cancelling…",
+                ),
+                False,
+                False,
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Cancel failed")
@@ -1469,10 +1746,13 @@ def register_callbacks(
         ),
         Input(ids.RC_INTERVAL_DASHBOARD_POLL, "n_intervals"),
         State(ids.RC_STORE_ACTIVE_REL_PATH, "data"),
+        State(ids.RC_STORE_ACTIVE_RUN_ID, "data"),
         prevent_initial_call=True,
     )
     def poll_dashboard(
-        _n: Optional[int], rel_path: Optional[str]
+        _n: Optional[int],
+        rel_path: Optional[str],
+        run_id: Optional[str],
     ) -> Tuple[Any, ...]:
         """Wait for ``dashboard.html`` to land then point the iframe at it."""
         if not rel_path:
@@ -1484,6 +1764,13 @@ def register_callbacks(
         except ValueError:
             return (no_update,) * 4
         if not target.is_file():
+            record = registry.get(run_id) if run_id else None
+            if record is not None and record.status in {
+                "complete",
+                "failed",
+                "cancelled",
+            }:
+                return no_update, no_update, no_update, True
             return (no_update,) * 4
         return (
             _dashboard_url(rel_path, url_prefix=server_url_prefix),
@@ -1510,10 +1797,34 @@ def register_callbacks(
             return "(no log yet)", "(no active run)"
         record = registry.get(run_id)
         if record is not None and record.mode == "slurm":
-            banner = (
-                f"slurm | {record.rel_path} | status={record.status}"
-            )
-            return "(SLURM lifecycle is tracked in scheduler logs.)", banner
+            if record.generation is None:
+                return "(waiting for lifecycle generation...)", (
+                    f"slurm | {record.rel_path} | status={record.status}"
+                )
+            key = (record.run_id, record.generation)
+            labelled_paths: dict[str, Path] = {}
+            for path in record.log_paths:
+                source = (
+                    "GUI submitter"
+                    if "gui" in path.parts
+                    else "SLURM"
+                )
+                labelled_paths[f"{source}: {path.name}"] = path
+            with slurm_log_lock:
+                reader = slurm_log_readers.setdefault(
+                    key, IncrementalLogReader()
+                )
+                batch = reader.read(labelled_paths)
+                if batch.text:
+                    prior = slurm_log_text.get(key, "")
+                    slurm_log_text[key] = (prior + "\n" + batch.text)[
+                        -128 * 1024 :
+                    ]
+                text = slurm_log_text.get(
+                    key, "(waiting for submission or scheduler output...)"
+                )
+            banner = f"slurm | {record.rel_path} | status={record.status}"
+            return text, banner
         lines = runner.snapshot_log(run_id, tail=200)
         text = "".join(lines) if lines else "(waiting for first output...)"
         if record is None:
@@ -1565,6 +1876,16 @@ def register_callbacks(
                 run_id,
                 new_refresh,
             )
+        if completion.pending is not None:
+            return (
+                *_toast(
+                    completion.pending,
+                    ok=True,
+                    header="Reconciling submission…",
+                ),
+                run_id,
+                new_refresh,
+            )
         result = completion.result
         if result is None:  # pragma: no cover - dataclass invariant
             return (no_update,) * 6
@@ -1580,6 +1901,20 @@ def register_callbacks(
     # ----------------------------------------------------------------------
     # 11. Recent Runs panel — refresh + row click
     # ----------------------------------------------------------------------
+
+    @app.callback(
+        Output(ids.RC_STORE_RECENTS_REFRESH, "data", allow_duplicate=True),
+        Input(ids.RC_INTERVAL_LOG, "n_intervals"),
+        State(ids.RC_STORE_RECENTS_REFRESH, "data"),
+        prevent_initial_call=True,
+    )
+    def publish_registry_revision(
+        _n: Optional[int],
+        current_revision: object,
+    ) -> Any:
+        """Publish lifecycle revisions without scanning the sandbox."""
+        revision = registry.revision
+        return revision if current_revision != revision else no_update
 
     @app.callback(
         Output(ids.RC_RECENTS_BODY, "children"),
