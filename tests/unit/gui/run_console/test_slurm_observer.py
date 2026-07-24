@@ -625,6 +625,52 @@ def test_generation_marker_manifest_and_finalizer_complete_run(
     assert registry.get(record.run_id).status == "complete"  # type: ignore[union-attr]
 
 
+def test_visible_marker_cannot_hide_failed_finalizer_window(
+    tmp_path: Path,
+) -> None:
+    """A marker written before finalizer exit cannot publish false success."""
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    _write_jobs(
+        record,
+        {
+            "chunk-0": ("603", "chunk"),
+            "finalizer": ("604", "finalizer"),
+        },
+    )
+    atomic_write_json(
+        run_completion_marker_path(record.output_dir),
+        {
+            "generation": record.generation.hex,
+            "status": "complete",
+            "finalizer_succeeded": True,
+        },
+    )
+    atomic_write_json(
+        resolve_manifest_json_path(record.output_dir),
+        {
+            "is_complete": True,
+            "failed": 0,
+            "completed": 3,
+            "total_images": 3,
+        },
+    )
+    scheduler = FakeScheduler({"603": "COMPLETED", "604": "RUNNING"})
+    observer = _bound_observer(registry, record, scheduler)
+
+    observer.observe_once()
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "running"
+
+    scheduler.states["604"] = "FAILED"
+    observer.observe_once()
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "failed"
+    assert "604=FAILED" in (updated.status_detail or "")
+
+
 def test_ordinary_marker_missing_manifest_fails_after_grace(
     tmp_path: Path,
 ) -> None:
@@ -686,6 +732,36 @@ def test_staged_missing_publication_markers_fails_after_grace(
     now[0] = 26.0
     observer.observe_once()
     assert registry.get(record.run_id).status == "failed"  # type: ignore[union-attr]
+
+
+def test_observer_prunes_superseded_terminal_generation_state(
+    tmp_path: Path,
+) -> None:
+    """A replacement registry owner evicts the prior generation next cycle."""
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    observer = _bound_observer(registry, record, FakeScheduler())
+    old_key = (record.run_id, record.generation)
+    observer._reconciling_since[old_key] = 1.0  # noqa: SLF001
+    assert observer.tracked_generation_counts == (1, 1)
+    assert registry.compare_and_set(
+        record.run_id,
+        record.generation,
+        status="failed",
+    )
+    replacement = RunRecord(
+        run_id=record.run_id,
+        generation=uuid4(),
+        mode="local",
+        output_dir=record.output_dir,
+        rel_path=record.rel_path,
+        status="running",
+    )
+    registry.register(replacement, persist=False)
+
+    observer.observe_once()
+
+    assert observer.tracked_generation_counts == (0, 0)
 
 
 def test_exact_staged_completion_precedes_inactive_fence(

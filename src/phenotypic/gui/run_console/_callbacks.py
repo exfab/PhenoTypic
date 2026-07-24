@@ -592,23 +592,41 @@ class _SlurmCompletion:
 _PENDING_SLURM: dict[tuple[str, UUID], Future[Any]] = {}
 _COMPLETED_SLURM: dict[tuple[str, UUID], _SlurmCompletion] = {}
 _MAX_SLURM_COMPLETIONS = 128
+_MAX_SLURM_LOG_GENERATIONS = 64
 _PENDING_SLURM_LOCK = threading.Lock()
 _TERMINAL_RUN_STATUSES = frozenset({"complete", "failed", "cancelled"})
 
 
 class _SlurmLogTailCache:
-    """Bound incremental readers and text to nonterminal GUI generations."""
+    """Globally bound incremental readers to current nonterminal generations."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        registry: RunRegistry | None = None,
+        *,
+        max_generations: int = _MAX_SLURM_LOG_GENERATIONS,
+    ) -> None:
+        if max_generations < 1:
+            raise ValueError("max_generations must be at least 1")
+        self._registry = registry
+        self._max_generations = max_generations
         self._readers: dict[tuple[str, UUID], IncrementalLogReader] = {}
         self._text: dict[tuple[str, UUID], str] = {}
         self._lock = threading.Lock()
 
     def read(self, record: RunRecord) -> str:
-        """Read one generation and evict its cache immediately when terminal."""
+        """Read one generation while pruning all inactive cached generations."""
         if record.generation is None:
             return "(waiting for lifecycle generation...)"
         key = (record.run_id, record.generation)
+        active_generations = self._active_registry_generations()
+        cacheable = (
+            record.status not in _TERMINAL_RUN_STATUSES
+            and (
+                active_generations is None
+                or key in active_generations
+            )
+        )
         labelled_paths = {
             (
                 f"{'GUI submitter' if 'gui' in path.parts else 'SLURM'}: "
@@ -617,7 +635,10 @@ class _SlurmLogTailCache:
             for path in record.log_paths
         }
         with self._lock:
-            reader = self._readers.setdefault(key, IncrementalLogReader())
+            self._prune_inactive_locked(active_generations)
+            reader = self._readers.pop(key, None) or IncrementalLogReader()
+            if cacheable:
+                self._readers[key] = reader
             batch = reader.read(labelled_paths)
             if batch.text:
                 prior = self._text.get(key, "")
@@ -626,10 +647,46 @@ class _SlurmLogTailCache:
                 key,
                 "(waiting for submission or scheduler output...)",
             )
-            if record.status in _TERMINAL_RUN_STATUSES:
+            if not cacheable:
                 self._readers.pop(key, None)
                 self._text.pop(key, None)
+            else:
+                self._enforce_bound_locked()
             return text
+
+    def _active_registry_generations(
+        self,
+    ) -> set[tuple[str, UUID]] | None:
+        """Return current nonterminal generations, when a registry is bound."""
+        if self._registry is None:
+            return None
+        return {
+            (record.run_id, record.generation)
+            for record in self._registry.list()
+            if (
+                record.generation is not None
+                and record.status not in _TERMINAL_RUN_STATUSES
+            )
+        }
+
+    def _prune_inactive_locked(
+        self,
+        active_generations: set[tuple[str, UUID]] | None,
+    ) -> None:
+        """Evict terminal or superseded generations across every run."""
+        if active_generations is None:
+            return
+        for key in tuple(self._readers):
+            if key not in active_generations:
+                self._readers.pop(key, None)
+                self._text.pop(key, None)
+
+    def _enforce_bound_locked(self) -> None:
+        """Evict least-recently-read generations above the global cap."""
+        while len(self._readers) > self._max_generations:
+            oldest = next(iter(self._readers))
+            self._readers.pop(oldest, None)
+            self._text.pop(oldest, None)
 
     @property
     def tracked_generations(self) -> int:
@@ -985,7 +1042,7 @@ def register_callbacks(
         server_url_prefix: Browser-visible base prefix for shell-level
             Flask routes such as ``/runs``.
     """
-    slurm_log_cache = _SlurmLogTailCache()
+    slurm_log_cache = _SlurmLogTailCache(registry)
 
     # ----------------------------------------------------------------------
     # 1. Picker buttons → open / cancel modals

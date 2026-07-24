@@ -746,6 +746,55 @@ def test_terminal_slurm_generation_evicts_log_reader_and_stops_polling(
     assert response[-1] is True
 
 
+def test_slurm_log_cache_is_globally_bounded_and_prunes_other_runs(
+    tmp_path: Path,
+) -> None:
+    """Reading one run evicts terminal and superseded generations globally."""
+    registry = RunRegistry()
+    records: list[RunRecord] = []
+    for index in range(3):
+        output_dir = tmp_path / f"out-{index}"
+        output_dir.mkdir()
+        log_path = output_dir / "worker.log"
+        log_path.write_text(f"run-{index}\n", encoding="utf-8")
+        record = RunRecord(
+            run_id=f"run-{index}",
+            generation=uuid4(),
+            mode="slurm",
+            output_dir=output_dir,
+            rel_path=output_dir.name,
+            status="running",
+            log_paths=(log_path,),
+        )
+        registry.register(record, persist=False)
+        records.append(record)
+
+    cache = _SlurmLogTailCache(registry, max_generations=2)
+    for record in records:
+        assert record.run_id in cache.read(record)
+    assert cache.tracked_generations == 2
+    assert (records[0].run_id, records[0].generation) not in cache._readers  # noqa: SLF001
+
+    records[1].status = "complete"
+    registry.register(records[1], persist=False)
+    replacement = RunRecord(
+        run_id=records[2].run_id,
+        generation=uuid4(),
+        mode="slurm",
+        output_dir=records[2].output_dir,
+        rel_path=records[2].rel_path,
+        status="running",
+        log_paths=records[2].log_paths,
+    )
+    registry.register(replacement, persist=False)
+
+    assert records[0].run_id in cache.read(records[0])
+    assert cache.tracked_generations == 1
+    assert set(cache._readers) == {  # noqa: SLF001
+        (records[0].run_id, records[0].generation)
+    }
+
+
 def test_slurm_log_callback_reads_incrementally(
     tmp_path: Path,
 ) -> None:

@@ -493,6 +493,7 @@ class SlurmLifecycleObserver:
             Number of records whose effective registry state changed.
         """
         records = self.registry.list()
+        self._prune_registry_generations(records)
         changed = 0
         for record in records:
             if run_id is not None and record.run_id != run_id:
@@ -800,6 +801,25 @@ class SlurmLifecycleObserver:
         key = (record.run_id, record.generation)
         self._bindings.pop(key, None)
         self._reconciling_since.pop(key, None)
+
+    def _prune_registry_generations(
+        self,
+        records: Sequence[RunRecord],
+    ) -> None:
+        """Drop state for generations no longer current in the registry."""
+        current = {
+            (record.run_id, record.generation)
+            for record in records
+            if record.generation is not None
+        }
+        for tracked in (self._bindings, self._reconciling_since):
+            for key in tuple(tracked):
+                if key in current:
+                    continue
+                latest = self.registry.get(key[0])
+                if latest is not None and latest.generation == key[1]:
+                    continue
+                tracked.pop(key, None)
 
     def _apply(self, record: RunRecord, observation: _Observation) -> bool:
         """CAS only when the effective state differs."""
@@ -1145,8 +1165,26 @@ def _run_marker_observation(
         )
     )
     finalizer_ids = inventory.roles.get("finalizer", ())
-    finalizer_succeeded = bool(marker.get("finalizer_succeeded")) or (
-        bool(finalizer_ids)
+    failed_finalizers = [
+        (job_id, states.get(job_id))
+        for job_id in finalizer_ids
+        if states.get(job_id) in _FAILURE_STATES
+    ]
+    if failed_finalizers:
+        detail = ", ".join(
+            f"{job_id}={state}" for job_id, state in failed_finalizers
+        )
+        return _Observation(
+            "failed",
+            (),
+            None,
+            (),
+            f"finalizer scheduler role failed after terminal publication: {detail}",
+            True,
+        )
+    finalizer_succeeded = (
+        bool(marker.get("finalizer_succeeded"))
+        and bool(finalizer_ids)
         and all(states.get(job_id) == "COMPLETED" for job_id in finalizer_ids)
     )
     if not all_jobs_terminal:
