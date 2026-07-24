@@ -389,6 +389,22 @@ class OutputRoot:
             return False
         return current == self.consumed_state_fingerprint
 
+    def require_refresh_state_current(self, *, context: str) -> None:
+        """Reject construction that would mix consumed-state generations.
+
+        Args:
+            context: Reader-facing construction phase included in the error.
+
+        Raises:
+            OutputSnapshotChangedError: If any consumed Results or Analysis
+                state differs from the descriptor captured by discovery.
+        """
+        if not self.refresh_state_is_current():
+            raise OutputSnapshotChangedError(
+                f"{context} consumed state changed after output discovery; "
+                "refresh the shared Results and Analysis snapshot."
+            )
+
     def overlay_path(self, dataset: str, stem: str) -> Path:
         """Return the absolute path of an overlay PNG.
 
@@ -593,6 +609,7 @@ def _consumed_state_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
     """Return mutable state atomically incorporated by explicit Refresh."""
     return (
         layout.mirror_parquet,
+        layout.mirror_csv,
         layout.resolved_pipeline_config_path,
         layout.curation_labels_parquet,
         layout.custom_categories_json,

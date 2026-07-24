@@ -28,7 +28,10 @@ from phenotypic._core._pipeline_parts._serializable_pipeline import (
 from phenotypic.detect import OtsuDetector
 from phenotypic.gui.analysis import _ids as analysis_ids
 from phenotypic.gui.analysis._layout import _build_load_warnings_banner
-from phenotypic.gui.analysis._recipe_state import RecipeState
+from phenotypic.gui.analysis._recipe_state import (
+    RecipeState,
+    _merge_opaque_pipeline_payload,
+)
 from phenotypic.measure import MeasureShape
 from phenotypic.sdk_ import pipeline_json_path
 
@@ -191,6 +194,187 @@ def test_explicit_live_model_replaces_opaque_model_node(tmp_path: Path) -> None:
     saved = json.loads(seed_path.read_text(encoding="utf-8"))
     assert saved["model"]["class"] == "LinearLagModel"
     assert [warning.slot for warning in state.load_warnings] == ["filter"]
+
+
+def test_name_only_edit_preserves_known_envelope_extensions_without_warnings(
+    tmp_path: Path,
+) -> None:
+    """Forward fields survive even when every live class resolves."""
+    payload = {
+        "version": "test",
+        "name": "before",
+        "desc": None,
+        "reset": False,
+        "pipe_cfgs": {},
+        "meas": {},
+        "post": {},
+        "filters": {
+            "edge": {
+                "class": "EdgeCorrector",
+                "params": {
+                    "on": "Shape_Area",
+                    "groupby": ["Metadata_Strain"],
+                },
+                "future_filter_envelope": {"revision": 2},
+            }
+        },
+        "model": None,
+        "future_top_level": {"schema": "vNext"},
+    }
+    path = pipeline_json_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    state = RecipeState.load(tmp_path)
+    assert state.load_warnings == []
+
+    state.pipeline.name = "after"
+    assert state.save() is True
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["name"] == "after"
+    assert saved["future_top_level"] == payload["future_top_level"]
+    assert saved["filters"]["edge"]["future_filter_envelope"] == {
+        "revision": 2
+    }
+
+
+def test_stable_serialized_identity_preserves_known_envelope_extensions() -> None:
+    """Owned edits retain future fields when stable IDs and classes match."""
+    original = {
+        "name": "before",
+        "filters": {
+            "edge": {
+                "class": "EdgeCorrector",
+                "params": {"on": "Size_Area"},
+                "future_filter": {"kept": True},
+            }
+        },
+        "model": {
+            "class": "LinearLagModel",
+            "params": {"on": "Size_Area", "groupby": ["strain"]},
+            "future_model": {"kept": True},
+        },
+        "qc": [
+            {
+                "instance_id": "qc-count",
+                "class": "ExpectedVsDetectedCount",
+                "enabled": True,
+                "params": {},
+                "future_qc": {"kept": True},
+            }
+        ],
+        "plots": [
+            {
+                "id": "growth",
+                "ref": {
+                    "slot": "model",
+                    "key": None,
+                    "future_ref": {"kept": True},
+                },
+                "input": {"source": "measurements.csv"},
+                "future_plot": {"kept": True},
+            }
+        ],
+        "future_top": {"kept": True},
+    }
+    current = {
+        "name": "after",
+        "filters": {
+            "edge": {
+                "class": "EdgeCorrector",
+                "params": {"on": "Shape_Circularity"},
+            }
+        },
+        "model": {
+            "class": "LinearLagModel",
+            "params": {"on": "Shape_Circularity", "groupby": ["strain"]},
+        },
+        "qc": [
+            {
+                "instance_id": "qc-count",
+                "class": "ExpectedVsDetectedCount",
+                "enabled": True,
+                "params": {"tolerance": 2},
+            }
+        ],
+        "plots": [
+            {
+                "id": "growth",
+                "ref": {"slot": "model", "key": None},
+                "input": {"source": "curated.csv"},
+            }
+        ],
+    }
+
+    merged = _merge_opaque_pipeline_payload(current, original, [])
+
+    assert merged["future_top"] == {"kept": True}
+    assert merged["filters"]["edge"]["future_filter"] == {"kept": True}
+    assert merged["model"]["future_model"] == {"kept": True}
+    assert merged["qc"][0]["future_qc"] == {"kept": True}
+    assert merged["plots"][0]["future_plot"] == {"kept": True}
+    assert merged["plots"][0]["ref"]["future_ref"] == {"kept": True}
+
+
+def test_explicit_replacement_drops_prior_nested_extensions() -> None:
+    """A different live class or plot target replaces the whole envelope."""
+    original = {
+        "filters": {
+            "edge": {
+                "class": "EdgeCorrector",
+                "params": {},
+                "future_filter": "old",
+            }
+        },
+        "model": {
+            "class": "LinearLagModel",
+            "params": {},
+            "future_model": "old",
+        },
+        "qc": [
+            {
+                "instance_id": "qc-1",
+                "class": "ExpectedVsDetectedCount",
+                "enabled": True,
+                "params": {},
+                "future_qc": "old",
+            }
+        ],
+        "plots": [
+            {
+                "id": "plot-1",
+                "ref": {"slot": "model", "key": None},
+                "future_plot": "old",
+            }
+        ],
+    }
+    current = {
+        "filters": {
+            "edge": {"class": "TukeyOutlierRemover", "params": {}}
+        },
+        "model": {"class": "LogGrowthModel", "params": {}},
+        "qc": [
+            {
+                "instance_id": "qc-1",
+                "class": "TukeyOutlierFraction",
+                "enabled": True,
+                "params": {},
+            }
+        ],
+        "plots": [
+            {
+                "id": "plot-1",
+                "ref": {"slot": "filters", "key": "edge"},
+            }
+        ],
+    }
+
+    merged = _merge_opaque_pipeline_payload(current, original, [])
+
+    assert "future_filter" not in merged["filters"]["edge"]
+    assert "future_model" not in merged["model"]
+    assert "future_qc" not in merged["qc"][0]
+    assert "future_plot" not in merged["plots"][0]
 
 
 def test_recipe_state_load_no_warnings_when_all_classes_resolve(

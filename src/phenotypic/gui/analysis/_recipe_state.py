@@ -64,6 +64,165 @@ _SERIALIZED_PIPELINE_KEYS = frozenset({
     "nrows",
     "ncols",
 })
+_ANALYZER_ENVELOPE_KEYS = frozenset({"class", "params"})
+_QC_ENVELOPE_KEYS = frozenset({"instance_id", "class", "enabled", "params"})
+_PLOT_ENVELOPE_KEYS = frozenset({"id", "ref", "inline", "input"})
+
+
+def _merge_missing_mapping_fields(
+    current: object,
+    original: object,
+) -> object:
+    """Recursively retain forward-compatible mapping fields absent today."""
+    if not isinstance(current, dict) or not isinstance(original, dict):
+        return copy.deepcopy(current)
+    merged = copy.deepcopy(current)
+    for key, raw_value in original.items():
+        if key not in merged:
+            merged[key] = copy.deepcopy(raw_value)
+        elif isinstance(merged[key], dict) and isinstance(raw_value, dict):
+            merged[key] = _merge_missing_mapping_fields(
+                merged[key],
+                raw_value,
+            )
+    return merged
+
+
+def _merge_envelope_extensions(
+    current: object,
+    original: object,
+    *,
+    owned_keys: frozenset[str],
+    same_identity: bool,
+    nested_mapping_keys: frozenset[str],
+) -> object:
+    """Retain extension fields only while the serialized node is the same."""
+    if (
+        not same_identity
+        or not isinstance(current, dict)
+        or not isinstance(original, dict)
+    ):
+        return copy.deepcopy(current)
+    merged = copy.deepcopy(current)
+    for key, raw_value in original.items():
+        if key not in owned_keys:
+            if key not in merged:
+                merged[key] = copy.deepcopy(raw_value)
+            elif isinstance(merged[key], dict) and isinstance(raw_value, dict):
+                merged[key] = _merge_missing_mapping_fields(
+                    merged[key],
+                    raw_value,
+                )
+        elif key in nested_mapping_keys and key in merged:
+            merged[key] = _merge_missing_mapping_fields(
+                merged[key],
+                raw_value,
+            )
+    return merged
+
+
+def _plot_identity(node: object) -> tuple[object, ...] | None:
+    """Return the stable serialized identity of one plot envelope."""
+    if not isinstance(node, dict):
+        return None
+    ref = node.get("ref")
+    if isinstance(ref, dict):
+        return ("ref", ref.get("slot"), ref.get("key"))
+    inline = node.get("inline")
+    if isinstance(inline, dict):
+        return ("inline", inline.get("module"), inline.get("qualname"))
+    return None
+
+
+def _merge_known_node_extensions(
+    current: dict[str, Any],
+    original: dict[str, Any],
+) -> dict[str, Any]:
+    """Merge extensions while durable serialized node identities are stable."""
+    merged = copy.deepcopy(current)
+
+    current_filters = merged.get("filters")
+    original_filters = original.get("filters")
+    if isinstance(current_filters, dict) and isinstance(original_filters, dict):
+        for name, current_node in list(current_filters.items()):
+            original_node = original_filters.get(name)
+            same_class = (
+                isinstance(current_node, dict)
+                and isinstance(original_node, dict)
+                and current_node.get("class") == original_node.get("class")
+            )
+            current_filters[name] = _merge_envelope_extensions(
+                current_node,
+                original_node,
+                owned_keys=_ANALYZER_ENVELOPE_KEYS,
+                same_identity=same_class,
+                nested_mapping_keys=frozenset({"params"}),
+            )
+
+    current_model = merged.get("model")
+    original_model = original.get("model")
+    same_model_class = (
+        isinstance(current_model, dict)
+        and isinstance(original_model, dict)
+        and current_model.get("class") == original_model.get("class")
+    )
+    if current_model is not None:
+        merged["model"] = _merge_envelope_extensions(
+            current_model,
+            original_model,
+            owned_keys=_ANALYZER_ENVELOPE_KEYS,
+            same_identity=same_model_class,
+            nested_mapping_keys=frozenset({"params"}),
+        )
+
+    current_qc = merged.get("qc")
+    original_qc = original.get("qc")
+    if isinstance(current_qc, list) and isinstance(original_qc, list):
+        original_by_id = {
+            str(node.get("instance_id")): node
+            for node in original_qc
+            if isinstance(node, dict) and "instance_id" in node
+        }
+        for index, current_node in enumerate(current_qc):
+            if not isinstance(current_node, dict):
+                continue
+            original_node = original_by_id.get(
+                str(current_node.get("instance_id"))
+            )
+            same_qc_class = (
+                isinstance(original_node, dict)
+                and current_node.get("class") == original_node.get("class")
+            )
+            current_qc[index] = _merge_envelope_extensions(
+                current_node,
+                original_node,
+                owned_keys=_QC_ENVELOPE_KEYS,
+                same_identity=same_qc_class,
+                nested_mapping_keys=frozenset({"params"}),
+            )
+
+    current_plots = merged.get("plots")
+    original_plots = original.get("plots")
+    if isinstance(current_plots, list) and isinstance(original_plots, list):
+        original_by_id = {
+            str(node.get("id")): node
+            for node in original_plots
+            if isinstance(node, dict) and "id" in node
+        }
+        for index, current_node in enumerate(current_plots):
+            if not isinstance(current_node, dict):
+                continue
+            original_node = original_by_id.get(str(current_node.get("id")))
+            current_plots[index] = _merge_envelope_extensions(
+                current_node,
+                original_node,
+                owned_keys=_PLOT_ENVELOPE_KEYS,
+                same_identity=(
+                    _plot_identity(current_node) == _plot_identity(original_node)
+                ),
+                nested_mapping_keys=frozenset({"ref", "inline", "input"}),
+            )
+    return merged
 
 
 def _merge_named_opaque_nodes(
@@ -134,11 +293,11 @@ def _merge_opaque_pipeline_payload(
     original: dict[str, Any] | None,
     warnings: List[PipelineLoadWarning],
 ) -> dict[str, Any]:
-    """Preserve every tolerantly skipped node during an unrelated save."""
-    if original is None or not warnings:
+    """Preserve opaque and forward-compatible nodes during a scoped save."""
+    if original is None:
         return current
 
-    merged = copy.deepcopy(current)
+    merged = _merge_known_node_extensions(current, original)
     opaque_filters = {w.name for w in warnings if w.slot == "filter"}
     if opaque_filters:
         merged["filters"] = _merge_named_opaque_nodes(

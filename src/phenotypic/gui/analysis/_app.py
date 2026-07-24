@@ -112,6 +112,9 @@ def create_app(
     # ``output_root.root``: for a standalone deliverables bundle ``root`` IS the
     # deliverables folder, so any helper that internally joins ``deliverables/``
     # would double-join. ``from_layout`` anchors on ``layout.deliverables_base``.
+    output_root.require_refresh_state_current(
+        context="Analysis session pre-read",
+    )
     recipe = RecipeState.from_layout(output_root.layout)
     schema = MeasurementSchema.from_layout(output_root.layout)
     app.server.config[CFG_OUTPUT_ROOT] = output_root
@@ -123,6 +126,9 @@ def create_app(
         recipe,
         url_prefix=url_prefix,
         columns_provider=schema.columns_for,
+    )
+    output_root.require_refresh_state_current(
+        context="Analysis session post-read",
     )
     register_callbacks(app)
 

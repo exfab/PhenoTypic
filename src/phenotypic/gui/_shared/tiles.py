@@ -776,6 +776,11 @@ def register_crop_route(
         # full-resolution HDF layer when ``results/`` is present, else the
         # baked overlay PNG (standalone deliverables bundle). ``None`` means
         # neither source exists -> 404.
+        if not output_root.snapshot_is_current():
+            return (
+                "conflict: processing sources changed; refresh the snapshot",
+                409,
+            )
         try:
             png_bytes = crop_colony(
                 output_root,
@@ -800,6 +805,12 @@ def register_crop_route(
             )
             return ("internal error: crop generation failed", 500)
 
+        if not output_root.snapshot_is_current():
+            return (
+                "conflict: processing sources changed during crop read; "
+                "refresh the snapshot",
+                409,
+            )
         if png_bytes is None:
             return (
                 f"not found: no image source for {dataset!r}/{stem!r}",
