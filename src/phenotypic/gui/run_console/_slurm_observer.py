@@ -15,7 +15,11 @@ from typing import Protocol
 from uuid import UUID
 
 from phenotypic._cli._cli_slurm_lifecycle import (
+    SchedulerQueryUnavailable,
+    append_lifecycle_entry,
     load_slurm_lifecycle,
+    mirror_job_to_metadata,
+    query_scheduler_comments,
     read_lifecycle_ledger,
 )
 from phenotypic._cli._cli_staged_orchestration import (
@@ -47,6 +51,8 @@ __all__ = [
     "IncrementalLogReader",
     "LogCursor",
     "SchedulerClient",
+    "SchedulerCommentQueryResult",
+    "SchedulerGenerationBinding",
     "SchedulerQueryResult",
     "SlurmCommandScheduler",
     "SlurmLifecycleObserver",
@@ -97,11 +103,37 @@ class SchedulerQueryResult:
     detail: str | None = None
 
 
+@dataclass(frozen=True)
+class SchedulerCommentQueryResult:
+    """One bounded deterministic-comment reconciliation query."""
+
+    matches: Mapping[str, tuple[str, ...]]
+    available: bool = True
+    detail: str | None = None
+
+
+@dataclass(frozen=True)
+class SchedulerGenerationBinding:
+    """Explicit binding between one GUI CAS generation and scheduler epoch."""
+
+    run_id: str
+    record_generation: UUID
+    scheduler_generation: UUID
+    scheduler_epoch: str
+
+
 class SchedulerClient(Protocol):
     """Scheduler interface accepted by :class:`SlurmLifecycleObserver`."""
 
     def query(self, job_ids: Sequence[str]) -> SchedulerQueryResult:
         """Return normalized states for the supplied master job ids."""
+
+    def find_by_comments(
+        self,
+        scheduler_epoch: str,
+        tokens: Sequence[str],
+    ) -> SchedulerCommentQueryResult:
+        """Find jobs by exact generation-scoped lifecycle comments."""
 
 
 class SlurmCommandScheduler:
@@ -178,6 +210,46 @@ class SlurmCommandScheduler:
             )
         return SchedulerQueryResult(states=states)
 
+    def find_by_comments(
+        self,
+        scheduler_epoch: str,
+        tokens: Sequence[str],
+    ) -> SchedulerCommentQueryResult:
+        """Query exact generation-scoped comments for unresolved intents."""
+        prefix = f"phenotypic:{scheduler_epoch}:"
+        try:
+            raw_matches = query_scheduler_comments(
+                prefix=prefix,
+                run_command=self._run_command,
+            )
+        except SchedulerQueryUnavailable as exc:
+            return SchedulerCommentQueryResult(
+                matches={},
+                available=False,
+                detail=str(exc),
+            )
+        wanted = set(tokens)
+        matches: dict[str, tuple[str, ...]] = {}
+        for comment, raw_ids in raw_matches.items():
+            if not comment.startswith(prefix):
+                continue
+            token = comment.removeprefix(prefix)
+            if token not in wanted:
+                continue
+            ids = tuple(
+                sorted(
+                    {
+                        job_id
+                        for raw_id in raw_ids
+                        if (job_id := _master_job_id(str(raw_id))) is not None
+                    },
+                    key=int,
+                )
+            )
+            if ids:
+                matches[token] = ids
+        return SchedulerCommentQueryResult(matches=matches)
+
 
 @dataclass(frozen=True)
 class LogCursor:
@@ -248,6 +320,7 @@ class _LifecycleInventory:
     unresolved_tokens: tuple[str, ...]
     terminal_job_ids: frozenset[str]
     roles: Mapping[str, tuple[str, ...]]
+    unresolved_rows: Mapping[str, Mapping[str, object]]
 
 
 @dataclass(frozen=True)
@@ -278,6 +351,44 @@ class SlurmLifecycleObserver:
     _reconciling_since: dict[tuple[str, UUID], float] = field(
         default_factory=dict, init=False
     )
+    _bindings: dict[tuple[str, UUID], SchedulerGenerationBinding] = field(
+        default_factory=dict, init=False
+    )
+
+    def bind_generation(
+        self,
+        *,
+        run_id: str,
+        record_generation: UUID,
+        scheduler_generation: UUID,
+    ) -> SchedulerGenerationBinding:
+        """Bind one registry generation to the exact durable scheduler epoch.
+
+        S3 must call this after submission returns either a successful job set
+        or a recoverable pending submission. The observer intentionally does
+        not infer this association from mutable metadata.
+
+        Raises:
+            ValueError: If the registry generation or lifecycle epoch differs.
+        """
+        record = self.registry.get(run_id)
+        if record is None or record.generation != record_generation:
+            raise ValueError("registry generation is absent or has been superseded")
+        lifecycle = load_slurm_lifecycle(record.output_dir)
+        lifecycle_epoch = lifecycle.get("generation") if lifecycle else None
+        lifecycle_generation = _parse_generation(lifecycle_epoch)
+        if lifecycle_generation != scheduler_generation:
+            raise ValueError(
+                "scheduler generation does not match the durable lifecycle epoch"
+            )
+        binding = SchedulerGenerationBinding(
+            run_id=run_id,
+            record_generation=record_generation,
+            scheduler_generation=scheduler_generation,
+            scheduler_epoch=str(lifecycle_epoch),
+        )
+        self._bindings[(run_id, record_generation)] = binding
+        return binding
 
     def start(self) -> None:
         """Start at most one daemon observer thread."""
@@ -340,28 +451,58 @@ class SlurmLifecycleObserver:
             self._stop_event.wait(max(0.05, self.poll_interval_seconds))
 
     def _observe_record(self, record: RunRecord) -> _Observation:
-        jobs = read_submitted_job_set(record.output_dir)
-        inventory = _lifecycle_inventory(record, jobs)
-        job_ids = tuple(
-            dict.fromkeys((*record.scheduler_ids, *inventory.job_ids))
-        )
-        primary = (
-            jobs.primary_id
-            if jobs is not None
-            else record.primary_scheduler_id
-        )
+        assert record.generation is not None
+        binding = self._bindings.get((record.run_id, record.generation))
         logs = discover_log_files(record.output_dir, record.log_paths)
+        if binding is None:
+            return _Observation(
+                "unknown",
+                record.scheduler_ids,
+                record.primary_scheduler_id,
+                logs,
+                "scheduler lifecycle generation is not explicitly bound",
+            )
+        lifecycle = load_slurm_lifecycle(record.output_dir)
+        if _parse_generation(
+            lifecycle.get("generation") if lifecycle else None
+        ) != binding.scheduler_generation:
+            return _Observation(
+                "unknown",
+                record.scheduler_ids,
+                record.primary_scheduler_id,
+                logs,
+                "bound scheduler lifecycle generation is no longer durable",
+            )
+        jobs = read_submitted_job_set(
+            record.output_dir,
+            expected_generation=binding.scheduler_generation,
+        )
+        inventory = _lifecycle_inventory(record, binding, jobs)
+        comment_result: SchedulerCommentQueryResult | None = None
+        if inventory.unresolved_tokens:
+            comment_result = _reconcile_unresolved_intents(
+                record,
+                binding,
+                inventory,
+                self.scheduler,
+            )
+            if comment_result.matches:
+                jobs = read_submitted_job_set(
+                    record.output_dir,
+                    expected_generation=binding.scheduler_generation,
+                )
+                inventory = _lifecycle_inventory(record, binding, jobs)
+        job_ids = inventory.job_ids
+        primary = jobs.primary_id if jobs is not None else None
         scheduler_result = _query_scheduler(self.scheduler, job_ids)
         normalized_states = {
             job_id: _normalize_scheduler_state(state)
             for job_id, state in scheduler_result.states.items()
         }
-        generation = _scheduler_generation(record, jobs)
-        lifecycle = load_slurm_lifecycle(record.output_dir)
         fence_matches = bool(
             lifecycle
-            and str(lifecycle.get("generation"))
-            in {str(generation), generation.hex}
+            and _parse_generation(lifecycle.get("generation"))
+            == binding.scheduler_generation
         )
         inactive = bool(
             fence_matches and lifecycle and lifecycle.get("active") is False
@@ -394,15 +535,20 @@ class SlurmLifecycleObserver:
             )
 
         staged = _staged_terminal_observation(
-            record, generation, inventory, normalized_states
+            record, binding.scheduler_generation, inventory, normalized_states
         )
         if staged is not None:
+            staged = self._apply_publication_grace(record, staged)
             return _with_identity(staged, job_ids, primary, logs)
 
         marker = _run_marker_observation(
-            record, generation, inventory, normalized_states
+            record,
+            binding.scheduler_generation,
+            inventory,
+            normalized_states,
         )
         if marker is not None:
+            marker = self._apply_publication_grace(record, marker)
             return _with_identity(marker, job_ids, primary, logs)
 
         states = tuple(
@@ -475,16 +621,31 @@ class SlurmLifecycleObserver:
                 terminal=True,
             )
         if not scheduler_result.available:
+            detail = scheduler_result.detail or "scheduler unavailable"
+            if inventory.unresolved_tokens and comment_result is not None:
+                detail = (
+                    comment_result.detail
+                    or "scheduler comment reconciliation is unavailable"
+                )
             return _Observation(
                 "unknown",
                 job_ids,
                 primary,
                 logs,
-                scheduler_result.detail or "scheduler unavailable",
+                detail,
             )
         if inventory.unresolved_tokens:
+            if comment_result is not None and not comment_result.available:
+                return _Observation(
+                    "unknown",
+                    job_ids,
+                    primary,
+                    logs,
+                    comment_result.detail
+                    or "scheduler comment reconciliation is unavailable",
+                )
             return _Observation(
-                "reconciling",
+                "submitting",
                 job_ids,
                 primary,
                 logs,
@@ -497,6 +658,27 @@ class SlurmLifecycleObserver:
             primary,
             logs,
             "scheduler returned no active or terminal state",
+        )
+
+    def _apply_publication_grace(
+        self,
+        record: RunRecord,
+        observation: _Observation,
+    ) -> _Observation:
+        """Bound durable-marker reconciliation after terminal publication."""
+        if observation.status != "reconciling":
+            self._clear_grace(record)
+            return observation
+        if self._grace_elapsed(record) < self.reconciliation_grace_seconds:
+            return observation
+        return _Observation(
+            "failed",
+            observation.scheduler_ids,
+            observation.primary_scheduler_id,
+            observation.log_paths,
+            f"{observation.detail or 'required publication evidence is absent'}; "
+            "reconciliation grace expired",
+            terminal=True,
         )
 
     def _grace_elapsed(self, record: RunRecord) -> float:
@@ -636,18 +818,17 @@ def _read_incremental_logs(
 
 
 def _lifecycle_inventory(
-    record: RunRecord, jobs: SubmittedJobSet | None
+    record: RunRecord,
+    binding: SchedulerGenerationBinding,
+    jobs: SubmittedJobSet | None,
 ) -> _LifecycleInventory:
     """Reduce the append-only ledger to latest token state."""
-    generation_values = {
-        str(record.generation),
-        record.generation.hex if record.generation is not None else "",
-    }
-    if jobs is not None:
-        generation_values.update({str(jobs.generation), jobs.generation.hex})
     latest: dict[str, dict[str, object]] = {}
     for row in read_lifecycle_ledger(record.output_dir):
-        if str(row.get("generation")) not in generation_values:
+        if (
+            _parse_generation(row.get("generation"))
+            != binding.scheduler_generation
+        ):
             continue
         token = str(row.get("token", ""))
         if token:
@@ -655,6 +836,7 @@ def _lifecycle_inventory(
     job_ids = list(jobs.all_ids if jobs is not None else ())
     terminal: set[str] = set()
     unresolved: list[str] = []
+    unresolved_rows: dict[str, Mapping[str, object]] = {}
     for token, row in latest.items():
         status = str(row.get("status", ""))
         job_id = _master_job_id(str(row.get("job_id", "")))
@@ -664,19 +846,93 @@ def _lifecycle_inventory(
                 terminal.add(job_id)
         if status in {"intent", "blocked"}:
             unresolved.append(token)
+            unresolved_rows[token] = row
     return _LifecycleInventory(
         job_ids=tuple(dict.fromkeys(job_ids)),
         unresolved_tokens=tuple(sorted(unresolved)),
         terminal_job_ids=frozenset(terminal),
         roles=jobs.roles if jobs is not None else {},
+        unresolved_rows=unresolved_rows,
     )
 
 
-def _scheduler_generation(
-    record: RunRecord, jobs: SubmittedJobSet | None
-) -> UUID:
-    """Prefer the CLI scheduler generation while retaining GUI CAS identity."""
-    return jobs.generation if jobs is not None else record.generation  # type: ignore[return-value]
+def _reconcile_unresolved_intents(
+    record: RunRecord,
+    binding: SchedulerGenerationBinding,
+    inventory: _LifecycleInventory,
+        scheduler: SchedulerClient,
+) -> SchedulerCommentQueryResult:
+    """Recover exact-comment matches without terminalizing ambiguity."""
+    result = _query_scheduler_comments(
+        scheduler,
+        binding.scheduler_epoch,
+        inventory.unresolved_tokens,
+    )
+    if not result.available:
+        return result
+    generation = binding.scheduler_epoch
+    for token in inventory.unresolved_tokens:
+        row = inventory.unresolved_rows[token]
+        role = str(row.get("role", "unknown"))
+        dependencies_raw = row.get("dependencies", ())
+        dependencies = (
+            tuple(str(item) for item in dependencies_raw)
+            if isinstance(dependencies_raw, (list, tuple))
+            else ()
+        )
+        round_raw = row.get("round", 0)
+        round_index = (
+            round_raw
+            if isinstance(round_raw, int) and not isinstance(round_raw, bool)
+            else 0
+        )
+        comment = f"phenotypic:{generation}:{token}"
+        for job_id in result.matches.get(token, ()):
+            append_lifecycle_entry(
+                record.output_dir,
+                generation=generation,
+                token=token,
+                role=role,
+                status="recovered",
+                job_id=job_id,
+                dependencies=dependencies,
+                round_index=round_index,
+                comment=comment,
+            )
+            mirror_job_to_metadata(
+                record.output_dir,
+                generation=generation,
+                token=token,
+                role=role,
+                job_id=job_id,
+            )
+    return result
+
+
+def _query_scheduler_comments(
+    scheduler: SchedulerClient,
+    scheduler_epoch: str,
+    tokens: Sequence[str],
+) -> SchedulerCommentQueryResult:
+    """Use an optional comment-query capability on scheduler test doubles."""
+    finder = getattr(scheduler, "find_by_comments", None)
+    if finder is None:
+        return SchedulerCommentQueryResult(
+            matches={},
+            available=False,
+            detail="scheduler comment reconciliation is unavailable",
+        )
+    result = finder(scheduler_epoch, tokens)
+    if isinstance(result, SchedulerCommentQueryResult):
+        return result
+    if isinstance(result, Mapping):
+        return SchedulerCommentQueryResult(
+            matches={
+                str(token): tuple(str(job_id) for job_id in job_ids)
+                for token, job_ids in result.items()
+            }
+        )
+    raise TypeError("scheduler comment query returned an unsupported result")
 
 
 def _query_scheduler(
@@ -704,7 +960,7 @@ def _staged_terminal_observation(
     if orchestration is None:
         return None
     epoch = str(orchestration.get("epoch", ""))
-    if epoch not in {str(generation), generation.hex}:
+    if _parse_generation(epoch) != generation:
         return None
     phase = str(orchestration.get("phase", "")).lower()
     if phase == "cancelled":
@@ -719,6 +975,8 @@ def _staged_terminal_observation(
             True,
         )
     if phase != "complete":
+        return None
+    if inventory.unresolved_tokens:
         return None
     if not _all_stage3_markers_exist(record.output_dir):
         return _Observation(
@@ -764,13 +1022,7 @@ def _run_marker_observation(
     if not isinstance(marker, dict):
         return None
     marker_generation = marker.get("generation", marker.get("epoch"))
-    accepted = {
-        str(record.generation),
-        record.generation.hex if record.generation is not None else "",
-        str(generation),
-        generation.hex,
-    }
-    if str(marker_generation) not in accepted:
+    if _parse_generation(marker_generation) != generation:
         return None
     status = str(marker.get("status", marker.get("result", ""))).lower()
     if status in {"failed", "failure", "error"}:
@@ -792,7 +1044,9 @@ def _run_marker_observation(
         bool(finalizer_ids)
         and all(states.get(job_id) == "COMPLETED" for job_id in finalizer_ids)
     )
-    if not all_jobs_terminal or not finalizer_succeeded:
+    if not all_jobs_terminal:
+        return None
+    if not finalizer_succeeded:
         return _Observation(
             "reconciling",
             (),
@@ -883,6 +1137,16 @@ def _master_job_id(raw: str) -> str | None:
     """Normalize array task and step ids to a numeric master id."""
     base = raw.strip().split("_", 1)[0].split(".", 1)[0]
     return base if base.isdigit() else None
+
+
+def _parse_generation(raw: object) -> UUID | None:
+    """Parse a durable UUID epoch written with or without hyphens."""
+    if not isinstance(raw, str) or not raw:
+        return None
+    try:
+        return UUID(raw)
+    except ValueError:
+        return None
 
 
 def _normalize_scheduler_state(raw: str) -> str:

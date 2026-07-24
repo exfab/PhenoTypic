@@ -29,6 +29,7 @@ from phenotypic._cli._cli_slurm_lifecycle import (
 )
 from phenotypic.gui.run_console._slurm import (
     SlurmSubmitError,
+    SlurmSubmitPending,
     SlurmSubmitResult,
     read_submitted_job_set,
     submit_slurm,
@@ -434,6 +435,45 @@ def test_timeout_recovers_incomplete_intent_from_scheduler_comment(
     jobs = read_submitted_job_set(output_dir)
     assert jobs is not None
     assert jobs.roles["chunk"] == ("9123",)
+
+
+@pytest.mark.parametrize("comments_available", [True, False])
+def test_timeout_with_unresolved_intent_remains_recoverable(
+    tmp_path: Path,
+    comments_available: bool,
+) -> None:
+    output_dir = tmp_path / "out"
+    generation = uuid4()
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation.hex, mode="ordinary"
+    )
+    append_lifecycle_entry(
+        output_dir,
+        generation=generation.hex,
+        token="chunk-0",
+        role="chunk",
+        status="intent",
+    )
+
+    def run_command(argv: list[str], **_kwargs: Any) -> Any:
+        if "-m" in argv:
+            raise subprocess.TimeoutExpired(cmd=argv, timeout=0.5)
+        if not comments_available:
+            raise subprocess.TimeoutExpired(cmd=argv, timeout=30)
+        return _completed()
+
+    with mock.patch("subprocess.run", side_effect=run_command):
+        with pytest.raises(SlurmSubmitPending) as exc:
+            submit_slurm(
+                _state_for(output_dir),
+                sandbox_root=tmp_path,
+                timeout=0.5,
+            )
+
+    assert exc.value.generation == generation
+    assert exc.value.unresolved_tokens == ("chunk-0",)
+    assert exc.value.scheduler_available is comments_available
+    assert exc.value.returncode == -1
 
 
 def test_abnormal_exit_cancels_recovered_inactive_generation(

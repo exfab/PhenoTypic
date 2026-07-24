@@ -5,14 +5,23 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Any
+from uuid import uuid4
+
+import pytest
 
 from phenotypic._cli._cli_slurm_lifecycle import (
     append_lifecycle_entry,
     initialize_slurm_lifecycle,
     lifecycle_state_path,
+    read_lifecycle_ledger,
+)
+from phenotypic._cli._cli_staged_orchestration import (
+    orchestration_state_path,
 )
 from phenotypic.gui.run_console._slurm_observer import (
     IncrementalLogReader,
+    SchedulerCommentQueryResult,
     SchedulerQueryResult,
     SlurmLifecycleObserver,
 )
@@ -33,10 +42,15 @@ class FakeScheduler:
         states: Mapping[str, str] | None = None,
         *,
         available: bool = True,
+        comment_matches: Mapping[str, tuple[str, ...]] | None = None,
+        comments_available: bool = True,
     ) -> None:
         self.states = dict(states or {})
         self.available = available
+        self.comment_matches = dict(comment_matches or {})
+        self.comments_available = comments_available
         self.queries: list[tuple[str, ...]] = []
+        self.comment_queries: list[tuple[object, tuple[str, ...]]] = []
 
     def query(self, job_ids: Sequence[str]) -> SchedulerQueryResult:
         self.queries.append(tuple(job_ids))
@@ -48,6 +62,26 @@ class FakeScheduler:
             },
             available=self.available,
             detail=None if self.available else "fake scheduler unavailable",
+        )
+
+    def find_by_comments(
+        self,
+        generation: object,
+        tokens: Sequence[str],
+    ) -> SchedulerCommentQueryResult:
+        self.comment_queries.append((generation, tuple(tokens)))
+        return SchedulerCommentQueryResult(
+            matches={
+                token: self.comment_matches[token]
+                for token in tokens
+                if token in self.comment_matches
+            },
+            available=self.comments_available,
+            detail=(
+                None
+                if self.comments_available
+                else "fake comment query unavailable"
+            ),
         )
 
 
@@ -102,12 +136,217 @@ def _write_jobs(
         )
 
 
+def _bound_observer(
+    registry: RunRegistry,
+    record: RunRecord,
+    scheduler: FakeScheduler,
+    **kwargs: Any,
+) -> SlurmLifecycleObserver:
+    """Construct an observer with the explicit lifecycle binding S3 supplies."""
+    assert record.generation is not None
+    observer = SlurmLifecycleObserver(registry, scheduler, **kwargs)
+    observer.bind_generation(
+        run_id=record.run_id,
+        record_generation=record.generation,
+        scheduler_generation=record.generation,
+    )
+    return observer
+
+
+def test_unbound_observer_refuses_to_infer_scheduler_generation(
+    tmp_path: Path,
+) -> None:
+    registry, record = _registered_slurm_run(tmp_path)
+    _write_jobs(record, {"chunk-0": ("91", "chunk")})
+    scheduler = FakeScheduler({"91": "RUNNING"})
+
+    SlurmLifecycleObserver(registry, scheduler).observe_once()
+
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "unknown"
+    assert "not explicitly bound" in (updated.status_detail or "")
+    assert scheduler.queries == []
+
+
+def test_binding_rejects_mismatched_scheduler_epoch(tmp_path: Path) -> None:
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    observer = SlurmLifecycleObserver(registry, FakeScheduler())
+
+    with pytest.raises(ValueError, match="lifecycle epoch"):
+        observer.bind_generation(
+            run_id=record.run_id,
+            record_generation=record.generation,
+            scheduler_generation=uuid4(),
+        )
+
+
+def test_marker_must_match_explicit_scheduler_generation_not_gui_generation(
+    tmp_path: Path,
+) -> None:
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    gui_generation = uuid4()
+    scheduler_generation = uuid4()
+    registry = RunRegistry()
+    record = RunRecord(
+        run_id="out",
+        generation=gui_generation,
+        mode="slurm",
+        output_dir=output_dir,
+        rel_path="out",
+        status="submitting",
+        scheduler_ids=("88",),
+        primary_scheduler_id="88",
+    )
+    registry.register(record)
+    initialize_slurm_lifecycle(
+        output_dir,
+        generation=scheduler_generation.hex,
+        mode="ordinary",
+    )
+    metadata_path = job_metadata_path(output_dir)
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(
+        metadata_path,
+        {
+            "slurm_generation": scheduler_generation.hex,
+            "slurm_job_ids": {
+                "finalizer": {
+                    "job_id": "99",
+                    "role": "finalizer",
+                    "generation": scheduler_generation.hex,
+                }
+            },
+        },
+    )
+    append_lifecycle_entry(
+        output_dir,
+        generation=scheduler_generation.hex,
+        token="finalizer",
+        role="finalizer",
+        status="submitted",
+        job_id="99",
+    )
+    atomic_write_json(
+        resolve_manifest_json_path(output_dir),
+        {
+            "is_complete": True,
+            "failed": 0,
+            "completed": 1,
+            "total_images": 1,
+        },
+    )
+    observer = SlurmLifecycleObserver(
+        registry,
+        FakeScheduler({"88": "RUNNING", "99": "COMPLETED"}),
+    )
+    observer.bind_generation(
+        run_id=record.run_id,
+        record_generation=gui_generation,
+        scheduler_generation=scheduler_generation,
+    )
+
+    atomic_write_json(
+        run_completion_marker_path(output_dir),
+        {
+            "generation": gui_generation.hex,
+            "status": "complete",
+            "finalizer_succeeded": True,
+        },
+    )
+    observer.observe_once()
+    assert registry.get(record.run_id).status == "reconciling"  # type: ignore[union-attr]
+
+    atomic_write_json(
+        run_completion_marker_path(output_dir),
+        {
+            "generation": scheduler_generation.hex,
+            "status": "complete",
+            "finalizer_succeeded": True,
+        },
+    )
+    observer.observe_once()
+    assert registry.get(record.run_id).status == "complete"  # type: ignore[union-attr]
+    scheduler = observer.scheduler
+    assert isinstance(scheduler, FakeScheduler)
+    assert scheduler.queries == [("99",), ("99",)]
+
+
+def test_observer_recovers_unresolved_intent_by_exact_comment(
+    tmp_path: Path,
+) -> None:
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    append_lifecycle_entry(
+        record.output_dir,
+        generation=record.generation.hex,
+        token="chunk-0",
+        role="chunk",
+        status="intent",
+    )
+    scheduler = FakeScheduler(
+        {"701": "PENDING"},
+        comment_matches={"chunk-0": ("701",)},
+    )
+
+    _bound_observer(registry, record, scheduler).observe_once()
+
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "queued"
+    assert updated.scheduler_ids == ("701",)
+    rows = read_lifecycle_ledger(record.output_dir)
+    assert rows[-1]["status"] == "recovered"
+    assert rows[-1]["job_id"] == "701"
+
+
+def test_empty_comment_query_retains_submitting(tmp_path: Path) -> None:
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    append_lifecycle_entry(
+        record.output_dir,
+        generation=record.generation.hex,
+        token="chunk-0",
+        role="chunk",
+        status="intent",
+    )
+
+    _bound_observer(registry, record, FakeScheduler()).observe_once()
+
+    assert registry.get(record.run_id).status == "submitting"  # type: ignore[union-attr]
+
+
+def test_unavailable_comment_query_retains_unknown(tmp_path: Path) -> None:
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    append_lifecycle_entry(
+        record.output_dir,
+        generation=record.generation.hex,
+        token="chunk-0",
+        role="chunk",
+        status="intent",
+    )
+
+    _bound_observer(
+        registry,
+        record,
+        FakeScheduler(comments_available=False),
+    ).observe_once()
+
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "unknown"
+    assert "comment query unavailable" in (updated.status_detail or "")
+
+
 def test_controller_only_submission_is_queued(tmp_path: Path) -> None:
     registry, record = _registered_slurm_run(tmp_path)
     _write_jobs(record, {"controller-initial": ("101", "controller-initial")})
     scheduler = FakeScheduler({"101": "PENDING"})
 
-    assert SlurmLifecycleObserver(registry, scheduler).observe_once() == 1
+    assert _bound_observer(registry, record, scheduler).observe_once() == 1
 
     updated = registry.get(record.run_id)
     assert updated is not None
@@ -120,8 +359,8 @@ def test_unchanged_observation_does_not_bump_registry_revision(
 ) -> None:
     registry, record = _registered_slurm_run(tmp_path)
     _write_jobs(record, {"controller-initial": ("111", "controller-initial")})
-    observer = SlurmLifecycleObserver(
-        registry, FakeScheduler({"111": "PENDING"})
+    observer = _bound_observer(
+        registry, record, FakeScheduler({"111": "PENDING"})
     )
 
     assert observer.observe_once() == 1
@@ -143,7 +382,7 @@ def test_one_completed_job_does_not_hide_concurrent_running_job(
     )
     scheduler = FakeScheduler({"201": "FAILED", "202": "RUNNING"})
 
-    SlurmLifecycleObserver(registry, scheduler).observe_once()
+    _bound_observer(registry, record, scheduler).observe_once()
 
     updated = registry.get(record.run_id)
     assert updated is not None
@@ -162,8 +401,8 @@ def test_one_failed_job_does_not_terminalize_unresolved_peer(
         },
     )
 
-    SlurmLifecycleObserver(
-        registry, FakeScheduler({"211": "FAILED"})
+    _bound_observer(
+        registry, record, FakeScheduler({"211": "FAILED"})
     ).observe_once()
 
     updated = registry.get(record.run_id)
@@ -175,8 +414,8 @@ def test_scheduler_unavailable_is_unknown_not_failed(tmp_path: Path) -> None:
     registry, record = _registered_slurm_run(tmp_path)
     _write_jobs(record, {"chunk-0": ("301", "chunk")})
 
-    SlurmLifecycleObserver(
-        registry, FakeScheduler(available=False)
+    _bound_observer(
+        registry, record, FakeScheduler(available=False)
     ).observe_once()
 
     updated = registry.get(record.run_id)
@@ -200,7 +439,7 @@ def test_cancellation_waits_for_every_recovered_id(tmp_path: Path) -> None:
     state["active"] = False
     atomic_write_json(lifecycle_state_path(record.output_dir), state)
     scheduler = FakeScheduler({"401": "CANCELLED", "402": "RUNNING"})
-    observer = SlurmLifecycleObserver(registry, scheduler)
+    observer = _bound_observer(registry, record, scheduler)
 
     observer.observe_once()
     assert registry.get(record.run_id).status == "cancelling"  # type: ignore[union-attr]
@@ -214,8 +453,9 @@ def test_completed_jobs_enter_grace_before_failed(tmp_path: Path) -> None:
     registry, record = _registered_slurm_run(tmp_path)
     _write_jobs(record, {"chunk-0": ("501", "chunk")})
     now = [10.0]
-    observer = SlurmLifecycleObserver(
+    observer = _bound_observer(
         registry,
+        record,
         FakeScheduler({"501": "COMPLETED"}),
         reconciliation_grace_seconds=5.0,
         monotonic=lambda: now[0],
@@ -259,12 +499,76 @@ def test_generation_marker_manifest_and_finalizer_complete_run(
         },
     )
 
-    SlurmLifecycleObserver(
+    _bound_observer(
         registry,
+        record,
         FakeScheduler({"601": "COMPLETED", "602": "COMPLETED"}),
     ).observe_once()
 
     assert registry.get(record.run_id).status == "complete"  # type: ignore[union-attr]
+
+
+def test_ordinary_marker_missing_manifest_fails_after_grace(
+    tmp_path: Path,
+) -> None:
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    _write_jobs(record, {"finalizer": ("611", "finalizer")})
+    atomic_write_json(
+        run_completion_marker_path(record.output_dir),
+        {
+            "generation": record.generation.hex,
+            "status": "complete",
+            "finalizer_succeeded": True,
+        },
+    )
+    now = [10.0]
+    observer = _bound_observer(
+        registry,
+        record,
+        FakeScheduler({"611": "COMPLETED"}),
+        reconciliation_grace_seconds=5.0,
+        monotonic=lambda: now[0],
+    )
+
+    observer.observe_once()
+    assert registry.get(record.run_id).status == "reconciling"  # type: ignore[union-attr]
+    now[0] = 16.0
+    observer.observe_once()
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "failed"
+    assert "grace expired" in (updated.status_detail or "")
+
+
+def test_staged_missing_publication_markers_fails_after_grace(
+    tmp_path: Path,
+) -> None:
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    orchestration_path = orchestration_state_path(record.output_dir)
+    orchestration_path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(
+        orchestration_path,
+        {
+            "epoch": record.generation.hex,
+            "phase": "complete",
+        },
+    )
+    now = [20.0]
+    observer = _bound_observer(
+        registry,
+        record,
+        FakeScheduler(),
+        reconciliation_grace_seconds=5.0,
+        monotonic=lambda: now[0],
+    )
+
+    observer.observe_once()
+    assert registry.get(record.run_id).status == "reconciling"  # type: ignore[union-attr]
+    now[0] = 26.0
+    observer.observe_once()
+    assert registry.get(record.run_id).status == "failed"  # type: ignore[union-attr]
 
 
 def test_incremental_logs_handle_multiple_sources_and_rotation(

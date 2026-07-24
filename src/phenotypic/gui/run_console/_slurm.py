@@ -33,6 +33,7 @@ from phenotypic.sdk_ import JobMetadataKey, job_metadata_path
 
 __all__ = [
     "SlurmSubmitError",
+    "SlurmSubmitPending",
     "SlurmSubmitResult",
     "SubmittedJobSet",
     "read_submitted_job_set",
@@ -63,6 +64,42 @@ _PRIMARY_ROLE_ORDER = (
 
 class SlurmSubmitError(RuntimeError):
     """Raised when submission cannot be attached to durable scheduler work."""
+
+
+class SlurmSubmitPending(SlurmSubmitError):
+    """Raised when a durable submission intent is still recoverable.
+
+    This is not terminal failure evidence. S3 must retain the generation's
+    registry record as ``submitting`` or ``unknown``, bind its scheduler
+    generation to the lifecycle observer, and let comment reconciliation
+    continue server-side.
+    """
+
+    def __init__(
+        self,
+        *,
+        output_dir: Path,
+        generation: UUID,
+        unresolved_tokens: tuple[str, ...],
+        submitted_jobs: SubmittedJobSet | None,
+        scheduler_available: bool,
+        returncode: int,
+    ) -> None:
+        availability = (
+            "scheduler query returned no matching job"
+            if scheduler_available
+            else "scheduler query is unavailable"
+        )
+        super().__init__(
+            "SLURM submission remains recoverable because durable intent(s) "
+            f"{', '.join(unresolved_tokens)} are unresolved and {availability}."
+        )
+        self.output_dir = output_dir
+        self.generation = generation
+        self.unresolved_tokens = unresolved_tokens
+        self.submitted_jobs = submitted_jobs
+        self.scheduler_available = scheduler_available
+        self.returncode = returncode
 
 
 @dataclass(frozen=True)
@@ -103,6 +140,17 @@ class _JobEvidence:
     role: str
     token: str
     source_rank: int
+
+
+@dataclass(frozen=True)
+class _SubmissionReconciliation:
+    """Durable state recovered after an ambiguous submitter exit."""
+
+    jobs: SubmittedJobSet | None
+    generation: UUID | None
+    unresolved_tokens: tuple[str, ...]
+    scheduler_available: bool
+    cancelled: bool = False
 
 
 def _slurm_argv_extension(slurm_args: dict[str, object]) -> list[str]:
@@ -371,17 +419,19 @@ def _write_submitter_logs(
 
 def _reconcile_submission(
     output_dir: Path,
-) -> SubmittedJobSet | None:
+) -> _SubmissionReconciliation:
     """Resolve metadata, ledger, and generation comments after ambiguity."""
     jobs = read_submitted_job_set(output_dir)
     state = load_slurm_lifecycle(output_dir)
     generation_raw = state.get("generation") if state else None
     generation = _uuid_from_generation(generation_raw)
     if generation is None:
-        return jobs
+        return _SubmissionReconciliation(jobs, None, (), False)
     if state is not None and state.get("active") is False:
         cancel_generation(output_dir, str(generation_raw))
-        return None
+        return _SubmissionReconciliation(
+            None, generation, (), True, cancelled=True
+        )
     rows = read_lifecycle_ledger(
         output_dir, generation=str(generation_raw)
     )
@@ -396,12 +446,17 @@ def _reconcile_submission(
         if row.get("status") in {"intent", "blocked"}
     }
     if not unresolved:
-        return jobs
+        return _SubmissionReconciliation(jobs, generation, (), True)
     prefix = f"phenotypic:{generation_raw}:"
     try:
         matches = query_scheduler_comments(prefix=prefix)
     except SchedulerQueryUnavailable:
-        return jobs
+        return _SubmissionReconciliation(
+            jobs,
+            generation,
+            tuple(sorted(unresolved)),
+            False,
+        )
     for comment, ids in matches.items():
         if not comment.startswith(prefix):
             continue
@@ -441,7 +496,29 @@ def _reconcile_submission(
                 role=role,
                 job_id=job_id,
             )
-    return read_submitted_job_set(output_dir)
+    rows = read_lifecycle_ledger(
+        output_dir, generation=str(generation_raw)
+    )
+    latest = {
+        str(row.get("token", "")): row
+        for row in rows
+        if str(row.get("token", ""))
+    }
+    remaining = tuple(
+        sorted(
+            token
+            for token, row in latest.items()
+            if row.get("status") in {"intent", "blocked"}
+        )
+    )
+    return _SubmissionReconciliation(
+        read_submitted_job_set(
+            output_dir, expected_generation=generation
+        ),
+        generation,
+        remaining,
+        True,
+    )
 
 
 def submit_slurm(
@@ -510,11 +587,25 @@ def submit_slurm(
         ) from err
 
     _write_submitter_logs(output_dir, stdout, stderr)
-    jobs = (
+    jobs = read_submitted_job_set(output_dir)
+    reconciliation = (
         _reconcile_submission(output_dir)
-        if ambiguous_error is not None
-        else read_submitted_job_set(output_dir)
+        if ambiguous_error is not None or jobs is None
+        else _SubmissionReconciliation(jobs, jobs.generation, (), True)
     )
+    jobs = reconciliation.jobs
+    if (
+        reconciliation.generation is not None
+        and reconciliation.unresolved_tokens
+    ):
+        raise SlurmSubmitPending(
+            output_dir=output_dir,
+            generation=reconciliation.generation,
+            unresolved_tokens=reconciliation.unresolved_tokens,
+            submitted_jobs=jobs,
+            scheduler_available=reconciliation.scheduler_available,
+            returncode=returncode,
+        )
     if jobs is None:
         if ambiguous_error is not None:
             raise ambiguous_error
