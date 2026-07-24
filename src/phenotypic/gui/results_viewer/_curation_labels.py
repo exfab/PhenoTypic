@@ -51,6 +51,7 @@ FINGERPRINT_TOL_PX: float = 2.0
 _NAN_FP: tuple[float, float] = (float("nan"), float("nan"))
 
 _UNSAFE_CHARS = re.compile(r"[^a-z0-9._-]+")
+_LOAD_SNAPSHOT_ATTEMPTS = 2
 
 #: (image_file, object_label) curation key.
 LabelKey = tuple[str, int]
@@ -317,6 +318,25 @@ class CurationLabels:
         Returns:
             A ready-to-mutate :class:`CurationLabels`.
         """
+        for _attempt in range(_LOAD_SNAPSHOT_ATTEMPTS):
+            before = cls._source_fingerprint(layout)
+            candidate = cls._load_once(layout, master_df)
+            after = cls._source_fingerprint(layout)
+            if before == after:
+                candidate._expected_source_fingerprint = after
+                return candidate
+        raise RuntimeError(
+            "Curation state changed repeatedly while it was loading. Retry "
+            "after the active writer finishes."
+        )
+
+    @classmethod
+    def _load_once(
+        cls,
+        layout: BundleLayout,
+        master_df: pl.DataFrame,
+    ) -> "CurationLabels":
+        """Read one candidate curation revision for fingerprint verification."""
         custom = cls._read_custom_registry(layout.custom_categories_json)
         labels: dict[LabelKey, str] = {}
         fingerprints: dict[LabelKey, tuple[float, float]] = {}
@@ -697,12 +717,18 @@ class CurationLabels:
     @property
     def _publication_lock_path(self) -> Path:
         """Return the stable interprocess lock shared by curation writers."""
-        return self.labels_path.with_suffix(".lock")
+        return self._publication_lock_path_for_layout(self._layout)
+
+    @staticmethod
+    def _publication_lock_path_for_layout(layout: BundleLayout) -> Path:
+        """Return the stable curation lock path for ``layout``."""
+        return layout.curation_labels_parquet.with_suffix(".lock")
 
     @staticmethod
     def _source_fingerprint(layout: BundleLayout) -> str:
         """Fingerprint curation inputs and every currently published partition."""
         paths = [
+            layout.master_parquet,
             layout.mirror_parquet,
             layout.mirror_csv,
             layout.curation_labels_parquet,

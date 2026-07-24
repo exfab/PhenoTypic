@@ -507,6 +507,71 @@ def test_concurrent_curation_store_loses_compare_and_swap(
     assert on_disk.get_column("Object_Label").to_list() == [1]
 
 
+def test_load_retries_publication_interleaved_with_source_reads(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Load never pairs stale in-memory labels with a newer fingerprint."""
+    writer = CurationLabels.load(_layout(tmp_path), _master())
+    real_read_registry = CurationLabels._read_custom_registry
+    published = False
+
+    def _publish_during_first_read(path: Path) -> list[str]:
+        nonlocal published
+        if not published:
+            writer.mark("plateA", 1, "debris")
+            published = True
+        return real_read_registry(path)
+
+    monkeypatch.setattr(
+        CurationLabels,
+        "_read_custom_registry",
+        staticmethod(_publish_during_first_read),
+    )
+
+    loaded = CurationLabels.load(_layout(tmp_path), _master())
+    loaded.mark("plateA", 2, "merged")
+
+    assert loaded.stale is False
+    on_disk = pl.read_parquet(tools_.curation_labels_parquet_path(tmp_path))
+    assert sorted(on_disk.get_column("Object_Label").to_list()) == [1, 2]
+
+
+def test_clean_master_replacement_blocks_dash_free_publication(
+    tmp_path: Path,
+) -> None:
+    """Headless partitions use disk clean data and fence later replacements."""
+    layout = _layout(tmp_path)
+    clean = _master()
+    layout.master_parquet.parent.mkdir(parents=True, exist_ok=True)
+    clean.write_parquet(layout.master_parquet)
+    _write_store_with_label(
+        tmp_path,
+        "plateA",
+        1,
+        "debris",
+        10.0,
+        20.0,
+    )
+    stale_passed_frame = clean.with_columns(
+        pl.lit(-1.0).alias("Size_Area")
+    )
+    store = CurationLabels.load(layout, stale_passed_frame)
+    assert store._master_df.get_column("Size_Area")[0] == 100.0
+
+    replacement = clean.with_columns(
+        (pl.col("Size_Area") + 1.0).alias("Size_Area")
+    )
+    replacement.write_parquet(layout.master_parquet)
+    labels_before = layout.curation_labels_parquet.read_bytes()
+
+    store.write_error_partitions()
+
+    assert store.stale is True
+    assert layout.curation_labels_parquet.read_bytes() == labels_before
+    assert not layout.error_category_parquet("debris").exists()
+
+
 def test_labels_survive_reload_against_curated_mirror(tmp_path: Path):
     """Re-key against the CLEAN master on disk, not the curated mirror.
 
