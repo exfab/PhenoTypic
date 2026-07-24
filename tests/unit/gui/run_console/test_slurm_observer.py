@@ -578,6 +578,7 @@ def test_completed_jobs_enter_grace_before_failed(tmp_path: Path) -> None:
     now[0] = 16.0
     observer.observe_once()
     assert registry.get(record.run_id).status == "failed"  # type: ignore[union-attr]
+    assert observer.tracked_generation_counts == (0, 0)
 
 
 def test_generation_marker_manifest_and_finalizer_complete_run(

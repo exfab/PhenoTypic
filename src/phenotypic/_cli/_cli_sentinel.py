@@ -1,11 +1,11 @@
 """SLURM sentinel job for monitoring pipeline progress.
 
 .. deprecated::
-    The standalone sentinel job has been replaced by checkpoint tasks
-    embedded in the array job scripts (``__PHENOTYPIC_MANIFEST__`` and
-    ``__PHENOTYPIC_FINALIZER__``). See :mod:`_cli_checkpoint_handler`
-    and :mod:`_cli_slurm_array_scripts`. This module is retained only
-    for in-flight runs that may still reference it.
+    The standalone sentinel job has been replaced by nonterminal checkpoint
+    tasks embedded in array scripts plus a scheduler-dependent terminal
+    finalizer. See :mod:`_cli_checkpoint_handler` and
+    :mod:`_cli_slurm_array_scripts`. This module is retained only for
+    in-flight runs that may still reference it.
 
 This Click command runs as a SLURM job, periodically rebuilding the progress
 manifest and resubmitting itself if work remains.
@@ -94,7 +94,6 @@ def sentinel_main(
     datasets_info = job_metadata[JobMetadataKey.DATASETS]
     chunk_scripts = job_metadata.get(JobMetadataKey.CHUNK_SCRIPTS, [])
     chunk_job_ids = job_metadata.get(JobMetadataKey.CHUNK_JOB_IDS, {})
-    image_task_mapping = job_metadata.get(JobMetadataKey.IMAGE_TASK_MAPPING, {})
     input_path = job_metadata.get(JobMetadataKey.INPUT_PATH)
 
     # Build {dataset_name: total_images} mapping

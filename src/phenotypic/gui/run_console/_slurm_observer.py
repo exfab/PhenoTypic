@@ -390,6 +390,26 @@ class SlurmLifecycleObserver:
         self._bindings[(run_id, record_generation)] = binding
         return binding
 
+    def proven_binding(
+        self,
+        record: RunRecord,
+    ) -> SchedulerGenerationBinding | None:
+        """Return an already-proven durable binding without reading output state."""
+        if record.generation is None or record.lifecycle_epoch is None:
+            return None
+        binding = self._bindings.get((record.run_id, record.generation))
+        if (
+            binding is None
+            or binding.scheduler_epoch != record.lifecycle_epoch
+        ):
+            return None
+        return binding
+
+    @property
+    def tracked_generation_counts(self) -> tuple[int, int]:
+        """Return retained binding and reconciliation-timer counts."""
+        return len(self._bindings), len(self._reconciling_since)
+
     def reconcile_durable_binding(self, record: RunRecord) -> bool:
         """Bind only when metadata durably proves both sides of the identity."""
         if record.generation is None or record.mode != "slurm":
@@ -477,9 +497,11 @@ class SlurmLifecycleObserver:
         for record in records:
             if run_id is not None and record.run_id != run_id:
                 continue
+            if record.status in _TERMINAL_RUN_STATUSES:
+                self._evict_generation(record)
+                continue
             if (
                 record.mode != "slurm"
-                or record.status in _TERMINAL_RUN_STATUSES
                 or record.generation is None
             ):
                 continue
@@ -496,6 +518,8 @@ class SlurmLifecycleObserver:
                 )
             if self._apply(record, observation):
                 changed += 1
+            if observation.terminal:
+                self._evict_generation(record)
         return changed
 
     def _observe_loop(self) -> None:
@@ -768,6 +792,14 @@ class SlurmLifecycleObserver:
             self._reconciling_since.pop(
                 (record.run_id, record.generation), None
             )
+
+    def _evict_generation(self, record: RunRecord) -> None:
+        """Drop all observer state for one terminal GUI generation."""
+        if record.generation is None:
+            return
+        key = (record.run_id, record.generation)
+        self._bindings.pop(key, None)
+        self._reconciling_since.pop(key, None)
 
     def _apply(self, record: RunRecord, observation: _Observation) -> bool:
         """CAS only when the effective state differs."""

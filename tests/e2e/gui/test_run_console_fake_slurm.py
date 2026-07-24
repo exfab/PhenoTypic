@@ -16,6 +16,7 @@ from playwright.sync_api import Page
 
 from phenotypic import ImagePipeline
 from phenotypic._cli._cli_slurm_lifecycle import lifecycle_state_path
+from phenotypic._cli._cli_staged_orchestration import update_job_dependency
 from phenotypic.detect import OtsuDetector
 from phenotypic.sdk_ import (
     CONFIG_SUFFIX_PIPELINE,
@@ -54,12 +55,12 @@ def save(state):
     temporary.write_text(json.dumps(state, sort_keys=True), encoding="utf-8")
     temporary.replace(state_path)
 
-def update_job_state(job_id, job_state):
+def update_job(job_id, **fields):
     with lock_path.open("a+", encoding="utf-8") as lock_file:
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
         state = load()
         if job_id in state["jobs"]:
-            state["jobs"][job_id]["state"] = job_state
+            state["jobs"][job_id].update(fields)
             save(state)
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
@@ -80,7 +81,7 @@ if args and args[0] == "__run":
             value in terminal_states - {{"COMPLETED"}}
             for value in dependency_states
         ):
-            update_job_state(job_id, "CANCELLED")
+            update_job(job_id, state="CANCELLED", completed_at=time.time())
             raise SystemExit(1)
         if dependency_kind == "afterany" and all(
             value in terminal_states for value in dependency_states
@@ -91,14 +92,18 @@ if args and args[0] == "__run":
         ):
             break
         time.sleep(0.02)
-    update_job_state(job_id, "RUNNING")
+    update_job(job_id, state="RUNNING", started_at=time.time())
     match = re.search(
         r"^#SBATCH --array=0-(\\d+)",
         script.read_text(encoding="utf-8"),
         re.MULTILINE,
     )
     last_index = int(match.group(1)) if match else 0
-    returncode = 0
+    delays = json.loads(
+        os.environ.get("PHENOTYPIC_FAKE_SLURM_TASK_DELAYS", "{{}}")
+    )
+    processes = {{}}
+    task_states = {{}}
     for task_id in range(last_index + 1):
         env = os.environ.copy()
         env.update(
@@ -108,11 +113,56 @@ if args and args[0] == "__run":
                 "SLURM_JOB_ID": job_id,
             }}
         )
-        completed = subprocess.run(["bash", str(script)], env=env, check=False)
-        if completed.returncode != 0:
-            returncode = completed.returncode
-            break
-    update_job_state(job_id, "COMPLETED" if returncode == 0 else "FAILED")
+        delay = max(0.0, float(delays.get(str(task_id), 0.0)))
+        command_args = ["bash", str(script)]
+        if delay:
+            command_args = [
+                "bash",
+                "-c",
+                f"sleep {{delay}}; exec bash \\"$1\\"",
+                "_",
+                str(script),
+            ]
+        processes[task_id] = subprocess.Popen(
+            command_args,
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        task_states[str(task_id)] = {{
+            "started_at": time.time(),
+            "state": "RUNNING",
+        }}
+    update_job(job_id, tasks=task_states)
+    returncodes = {{}}
+    while len(returncodes) < len(processes):
+        for task_id, process in processes.items():
+            if task_id in returncodes:
+                continue
+            task_returncode = process.poll()
+            if task_returncode is None:
+                continue
+            returncodes[task_id] = task_returncode
+            task_states[str(task_id)] = {{
+                **task_states[str(task_id)],
+                "completed_at": time.time(),
+                "returncode": task_returncode,
+                "state": (
+                    "COMPLETED" if task_returncode == 0 else "FAILED"
+                ),
+            }}
+            update_job(job_id, tasks=task_states)
+        time.sleep(0.01)
+    returncode = next(
+        (value for value in returncodes.values() if value != 0),
+        0,
+    )
+    update_job(
+        job_id,
+        state="COMPLETED" if returncode == 0 else "FAILED",
+        completed_at=time.time(),
+        tasks=task_states,
+    )
     raise SystemExit(returncode)
 
 if command == "sbatch":
@@ -192,6 +242,31 @@ elif command == "scancel":
         )
         save(state)
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+elif command == "scontrol":
+    if not args or args[0] != "update":
+        raise SystemExit(2)
+    job_id = next(
+        value.split("=", 1)[1]
+        for value in args
+        if value.startswith("JobId=")
+    )
+    dependency = next(
+        value.split("=", 1)[1]
+        for value in args
+        if value.startswith("Dependency=")
+    )
+    dependency_kind, dependency_ids = dependency.split(":", 1)
+    with lock_path.open("a+", encoding="utf-8") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        state = load()
+        if job_id not in state["jobs"]:
+            raise SystemExit(1)
+        state["jobs"][job_id]["dependency_kind"] = dependency_kind
+        state["jobs"][job_id]["dependencies"] = [
+            item for item in re.split(r"[:,]", dependency_ids) if item
+        ]
+        save(state)
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 """
 
 
@@ -200,7 +275,7 @@ def _write_fake_slurm_bin(root: Path, state_path: Path) -> Path:
     bin_dir = root / "fake-slurm-bin"
     bin_dir.mkdir()
     script = _FAKE_SLURM.format(interpreter=sys.executable)
-    for command in ("sbatch", "squeue", "sacct", "scancel"):
+    for command in ("sbatch", "squeue", "sacct", "scancel", "scontrol"):
         executable = bin_dir / command
         executable.write_text(script, encoding="utf-8")
         executable.chmod(0o755)
@@ -322,6 +397,9 @@ def _submit_process_export(
         PILImage.new("RGB", (32, 32), (120, 80, 40)).save(image_path)
     else:
         image_path.write_bytes(b"invalid-tiff")
+        PILImage.new("RGB", (32, 32), (80, 120, 40)).save(
+            input_dir / "slow-sibling.tiff"
+        )
     output_dir = tmp_path / "process-output"
     env = os.environ.copy()
     env.update(
@@ -333,6 +411,8 @@ def _submit_process_export(
             "PHENOTYPIC_FAKE_SLURM_STATE": str(state_path),
         }
     )
+    if not valid_image:
+        env["PHENOTYPIC_FAKE_SLURM_TASK_DELAYS"] = json.dumps({"1": 0.75})
     submitted = subprocess.run(
         [
             sys.executable,
@@ -361,17 +441,17 @@ def _submit_process_export(
     return output_dir, _wait_for_scheduler_terminal(state_path)
 
 
-def _process_finalizer_job(
+def _terminal_finalizer_job(
     scheduler_state: dict[str, object],
 ) -> tuple[str, dict[str, object]]:
-    """Return the fake scheduler row carrying the process-finalizer token."""
+    """Return the fake scheduler row carrying the terminal-finalizer token."""
     jobs = scheduler_state["jobs"]
     assert isinstance(jobs, dict)
     matches = [
         (str(job_id), job)
         for job_id, job in jobs.items()
         if isinstance(job, dict)
-        and "process-finalizer" in str(job.get("comment"))
+        and str(job.get("comment", "")).endswith(":finalizer")
     ]
     assert len(matches) == 1
     return matches[0]
@@ -499,7 +579,7 @@ def test_process_export_finalizer_waits_for_successful_chunk(
         tmp_path,
         valid_image=True,
     )
-    finalizer_id, finalizer = _process_finalizer_job(scheduler_state)
+    finalizer_id, finalizer = _terminal_finalizer_job(scheduler_state)
     jobs = scheduler_state["jobs"]
     assert isinstance(jobs, dict)
     chunk_ids = [str(job_id) for job_id in jobs if str(job_id) != finalizer_id]
@@ -518,7 +598,7 @@ def test_process_export_finalizer_runs_after_failed_chunk_without_marker(
         tmp_path,
         valid_image=False,
     )
-    finalizer_id, finalizer = _process_finalizer_job(scheduler_state)
+    finalizer_id, finalizer = _terminal_finalizer_job(scheduler_state)
     jobs = scheduler_state["jobs"]
     assert isinstance(jobs, dict)
     chunk_ids = [str(job_id) for job_id in jobs if str(job_id) != finalizer_id]
@@ -527,4 +607,40 @@ def test_process_export_finalizer_runs_after_failed_chunk_without_marker(
     assert finalizer["dependencies"] == chunk_ids
     assert finalizer["state"] == "FAILED"
     assert any(jobs[chunk_id]["state"] == "FAILED" for chunk_id in chunk_ids)
+    chunk = jobs[chunk_ids[0]]
+    assert all(
+        task["state"] in {"COMPLETED", "FAILED"}
+        for task in chunk["tasks"].values()
+    )
+    assert finalizer["started_at"] >= chunk["completed_at"]
     assert not run_completion_marker_path(output_dir).exists()
+
+
+def test_staged_dependency_retargeting_uses_fake_scontrol(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The staged controller's retarget path updates a pending fake job."""
+    state_path = tmp_path / "fake-staged-slurm-state.json"
+    bin_dir = _write_fake_slurm_bin(tmp_path, state_path)
+    state = {
+        "next_id": 4703,
+        "jobs": {
+            "4700": {"comment": "chunk", "state": "RUNNING"},
+            "4701": {"comment": "controller", "state": "PENDING"},
+            "4702": {"comment": "stage2", "state": "RUNNING"},
+        },
+    }
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+    monkeypatch.setenv(
+        "PATH",
+        os.pathsep.join((str(bin_dir), os.environ.get("PATH", ""))),
+    )
+    monkeypatch.setenv("PHENOTYPIC_FAKE_SLURM_STATE", str(state_path))
+
+    assert update_job_dependency("4701", ["4700", "4702"]) is True
+
+    updated = json.loads(state_path.read_text(encoding="utf-8"))
+    controller = updated["jobs"]["4701"]
+    assert controller["dependency_kind"] == "afterany"
+    assert controller["dependencies"] == ["4700", "4702"]

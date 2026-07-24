@@ -1,8 +1,8 @@
 """Checkpoint handler for manifest rebuilds and final aggregation.
 
-Handles ``__PHENOTYPIC_MANIFEST__`` and ``__PHENOTYPIC_FINALIZER__``
-sentinel tasks embedded in SLURM array jobs. Uses file-lock leader
-election so that only one concurrent task performs the work.
+Handles nonterminal ``__PHENOTYPIC_MANIFEST__`` array tasks and the
+scheduler-dependent terminal finalizer job. Uses file-lock leader election
+so that only one concurrent task performs the work.
 """
 
 from __future__ import annotations

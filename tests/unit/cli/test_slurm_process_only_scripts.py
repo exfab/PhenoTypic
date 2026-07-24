@@ -4,7 +4,7 @@ from phenotypic._cli._cli_directory_scanner import (
 )
 from phenotypic._cli._cli_slurm_array_scripts import (
     generate_all_array_job_scripts,
-    generate_process_finalizer_script,
+    generate_terminal_finalizer_script,
 )
 from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
 
@@ -55,7 +55,7 @@ def test_array_script_threads_process_only_and_omits_aggregation(
     # Completion is not embedded in the concurrent image array.
     assert "__PHENOTYPIC_MANIFEST__" not in blob
     assert "--checkpoint-type manifest" not in blob
-    finalizer = generate_process_finalizer_script(config, out).read_text()
+    finalizer = generate_terminal_finalizer_script(config, out).read_text()
     assert "--checkpoint-type manifest" in finalizer
     assert "--checkpoint-type finalize" not in finalizer
     # Process-only never threads the forward-run overlay flag
@@ -102,6 +102,39 @@ def test_array_script_mode_rewrite_does_not_mutate_dataset_named_full(
     ).read_text()
     assert "--dataset-name \\\n    full \\" in measure_script
     assert "--mode \\\n    measure \\" in measure_script
+
+
+def test_full_run_finalization_is_not_an_array_sibling(
+    tmp_path, simple_pipeline_json, synth_one_level_input, make_exec_config
+) -> None:
+    """Full/measure terminal publication lives in a dependent finalizer job."""
+    out = tmp_path / "out"
+    config = make_exec_config(
+        pipeline_json=simple_pipeline_json,
+        input_path=synth_one_level_input,
+        output_dir=out,
+        force_local=False,
+        slurm_args={"slurm_partition": "compute"},
+    )
+    datasets = organize_by_dataset(
+        scan_directory_structure(synth_one_level_input), out
+    )
+    scripts = generate_all_array_job_scripts(
+        datasets,
+        config,
+        out,
+        array_limit=1000,
+    )
+    array_blob = "\n".join(
+        path.read_text()
+        for dataset_scripts in scripts.values()
+        for path in dataset_scripts
+    )
+    finalizer = generate_terminal_finalizer_script(config, out).read_text()
+
+    assert "__PHENOTYPIC_FINALIZER__" not in array_blob
+    assert "--checkpoint-type finalize" not in array_blob
+    assert "--checkpoint-type finalize" in finalizer
 
 
 def test_process_only_never_embeds_concurrent_manifest_sentinel(

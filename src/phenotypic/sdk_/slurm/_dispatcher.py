@@ -63,8 +63,8 @@ def generate_dispatcher_script(
         output_dir: Base output directory containing the lifecycle state.
         generation: Exact scheduler generation for lifecycle submissions.
         chunk_index: Zero-based index of the chunk this dispatcher submits.
-        finalizer_script: Process/export finalizer submitted after the last
-            chunk becomes terminal.
+        finalizer_script: Terminal finalizer submitted after the last chunk
+            becomes terminal.
 
     Returns:
         Path to the generated dispatcher script.
@@ -145,7 +145,7 @@ def generate_dispatcher_chain(
         output_dir: Directory to write dispatcher scripts into.
         slurm_args: SLURM parameters dict (partition, etc.).
         log_dir: Directory for dispatcher log files.
-        finalizer_script: Process/export finalizer passed only to the last
+        finalizer_script: Terminal finalizer passed only to the last
             dispatcher in the chain.
 
     Returns:
@@ -208,8 +208,8 @@ def submit_drip_feed_start(
         chunk_scripts: Ordered list of chunk script paths (must be non-empty).
         dispatcher_scripts: Dispatcher scripts from
             :func:`generate_dispatcher_chain` (may be empty for single-chunk).
-        finalizer_script: Process/export finalizer submitted after the only
-            chunk when no dispatcher is required.
+        finalizer_script: Terminal finalizer submitted after the only chunk
+            when no dispatcher is required.
 
     Returns:
         Tuple of (job_ids, warning_message).  ``job_ids`` contains the
@@ -272,14 +272,14 @@ def submit_drip_feed_start(
             finalizer_job = submit_with_lifecycle(
                 output_dir,
                 generation=generation,
-                token="process-finalizer",
+                token="finalizer",
                 role="finalizer",
                 script_path=finalizer_script,
                 dependencies=(chunk0_job,),
             )
             job_ids.append(finalizer_job)
             logger.info(
-                "Submitted process finalizer: Job %s (depends on %s)",
+                "Submitted terminal finalizer: Job %s (depends on %s)",
                 finalizer_job,
                 chunk0_job,
             )
@@ -292,7 +292,7 @@ def submit_drip_feed_start(
                 "incomplete"
             )
             raise RuntimeError(
-                f"Process finalizer submission failed; {detail}: {exc}"
+                f"Terminal finalizer submission failed; {detail}: {exc}"
             ) from exc
 
     return job_ids, warning

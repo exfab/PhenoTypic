@@ -38,7 +38,7 @@ from phenotypic.sdk_.slurm import get_slurm_array_limit
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 from ._cli_slurm_array_scripts import (
     generate_all_array_job_scripts,
-    generate_process_finalizer_script,
+    generate_terminal_finalizer_script,
 )
 from ._cli_slurm_submission import submit_slurm_script_chain
 from ._cli_slurm_lifecycle import (
@@ -791,17 +791,16 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         }
         atomic_write_json(metadata_path, job_metadata)
 
-        process_finalizer_script = (
-            generate_process_finalizer_script(self.config, output_dir)
-            if self.config.process_only_layer
-            else None
+        finalizer_script = generate_terminal_finalizer_script(
+            self.config,
+            output_dir,
         )
         submission = submit_slurm_script_chain(
             flat_chunk_scripts=flat_scripts,
             output_dir=output_dir,
             slurm_args=self.config.slurm_args,
             console=console,
-            finalizer_script=process_finalizer_script,
+            finalizer_script=finalizer_script,
         )
         job_ids = submission.job_ids
         flat_scripts = submission.flat_scripts
@@ -820,7 +819,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
                 token=(
                     "dispatcher-1"
                     if has_initial_dispatcher
-                    else "process-finalizer"
+                    else "finalizer"
                 ),
                 role="dispatcher" if has_initial_dispatcher else "finalizer",
                 job_id=str(job_ids[1]),
@@ -852,11 +851,9 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
                 "(process-only: no aggregation/dashboard)\n"
             )
         else:
-            # Checkpoint, manifest, and finalizer tasks are embedded in the
-            # array job scripts — no separate sentinel job needed.
             console.print(
-                "[green]✓[/green] Checkpoint tasks embedded in array scripts "
-                "(manifest + finalizer)"
+                "[green]✓[/green] Terminal finalizer follows the last image "
+                "chunk; nonterminal checkpoints remain embedded"
             )
 
             # Generate dashboard HTML

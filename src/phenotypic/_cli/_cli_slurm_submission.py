@@ -45,8 +45,8 @@ def submit_slurm_script_chain(
         output_dir: Base CLI output directory.
         slurm_args: SLURM parameters used for dispatcher scripts.
         console: Rich console-like object for status output.
-        finalizer_script: Optional process/export manifest finalizer submitted
-            after the final chunk becomes terminal.
+        finalizer_script: Terminal publisher submitted after the final chunk
+            becomes terminal.
 
     Returns:
         Submission result with job IDs and generated script paths.
@@ -105,7 +105,7 @@ def submit_slurm_script_chain(
         )
     elif finalizer_script is not None and len(job_ids) > 1:
         console.print(
-            f"  Process finalizer: [green]Job {job_ids[1]}[/green] "
+            f"  Finalizer: [green]Job {job_ids[1]}[/green] "
             f"(depends on {job_ids[0]})"
         )
     if warning:

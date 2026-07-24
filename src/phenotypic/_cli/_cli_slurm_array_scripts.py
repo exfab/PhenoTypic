@@ -24,10 +24,6 @@ from phenotypic.sdk_.slurm import (
 _CHECKPOINT_SENTINEL = "__PHENOTYPIC_CHECKPOINT__"
 # Sentinel value inserted after each checkpoint to trigger manifest rebuild
 _MANIFEST_SENTINEL = "__PHENOTYPIC_MANIFEST__"
-# Sentinel value appended as the last entry in the final chunk to trigger finalization
-_FINALIZER_SENTINEL = "__PHENOTYPIC_FINALIZER__"
-
-
 def _set_worker_mode(cmd_parts: List[str], mode: str) -> None:
     """Set the worker mode token in a command-argument list."""
     mode_value_index = cmd_parts.index("--mode") + 1
@@ -45,8 +41,8 @@ def _build_entry_list(
         chunk_images: Image paths for this chunk.
         checkpoint_interval: Insert a sentinel every N images, or ``None``
             to skip sentinel insertion.
-        is_last_chunk: If ``True``, append a finalizer sentinel as the
-            absolute last entry so the last array task triggers finalization.
+        is_last_chunk: Retained for caller compatibility. Terminal work is
+            submitted as a separate dependent lifecycle job.
 
     Returns:
         List of absolute path strings with optional sentinel markers.
@@ -58,38 +54,32 @@ def _build_entry_list(
             if (i + 1) % checkpoint_interval == 0:
                 entries.append(_CHECKPOINT_SENTINEL)
                 entries.append(_MANIFEST_SENTINEL)
-        if is_last_chunk:
-            # Always checkpoint trailing images before finalization so
-            # _dataset_aggregated.parquet is up-to-date for the finalizer.
-            if not entries or entries[-1] != _MANIFEST_SENTINEL:
-                entries.append(_CHECKPOINT_SENTINEL)
-                entries.append(_MANIFEST_SENTINEL)
-            entries.append(_FINALIZER_SENTINEL)
         return entries
 
-    entries = [str(img_path.absolute()) for img_path in chunk_images]
-    if is_last_chunk:
-        entries.append(_CHECKPOINT_SENTINEL)
-        entries.append(_MANIFEST_SENTINEL)
-        entries.append(_FINALIZER_SENTINEL)
-    return entries
+    return [str(img_path.absolute()) for img_path in chunk_images]
 
 
 def _max_images_per_chunk(array_limit: int, checkpoint_interval: int) -> int:
     """Largest per-chunk image count whose entry list fits ``array_limit``.
 
     The bash entry list interleaves checkpoint/manifest sentinels every
-    ``checkpoint_interval`` images and may append a checkpoint+manifest+
-    finalizer triple on the last chunk. The ``--array=0-N`` directive is
-    sized from ``len(entries)`` and must satisfy ``len(entries) <=
-    MaxArraySize``. Solves ``C + 2*ceil(C/K) + 3 <= L`` for ``C``.
+    ``checkpoint_interval`` images. Terminal finalization is a separate job.
+    The ``--array=0-N`` directive is sized from ``len(entries)`` and must
+    satisfy ``len(entries) <= MaxArraySize``.
     """
-    if array_limit <= 3:
-        return max(1, array_limit)
     if checkpoint_interval is None or checkpoint_interval <= 0:
-        return max(1, array_limit - 3)
-    k = checkpoint_interval
-    return max(1, (array_limit - 3) * k // (k + 2))
+        return max(1, array_limit)
+    limit = max(1, array_limit)
+    interval = checkpoint_interval
+    low, high = 1, limit
+    while low < high:
+        candidate = (low + high + 1) // 2
+        entry_count = candidate + 2 * (candidate // interval)
+        if entry_count <= limit:
+            low = candidate
+        else:
+            high = candidate - 1
+    return low
 
 
 def _resolve_checkpoint_interval(config: ExecutionConfig) -> int:
@@ -146,8 +136,8 @@ def generate_array_job_script(
         chunk_id: Chunk number for multi-chunk datasets (default: 0)
         checkpoint_interval: If set, insert checkpoint sentinel entries
             every N images so SLURM tasks can trigger chunk aggregation
-        is_last_chunk: If ``True``, append a finalizer sentinel as the
-            last entry so the final array task triggers finalization
+        is_last_chunk: Retained for caller compatibility. Terminal work is
+            submitted as a separate dependent lifecycle job.
 
     Returns:
         Path to generated array job script
@@ -305,12 +295,6 @@ def generate_array_job_script(
         f"--checkpoint-type manifest"
     )
 
-    finalizer_cmd = (
-        f"{python_str} -m phenotypic._cli._cli_checkpoint_handler "
-        f"--output-dir {q_output_dir} "
-        f"--checkpoint-type finalize"
-    )
-
     # Process-only runs execute image work only. Their manifest finalizer is a
     # separate job submitted with ``afterany`` on the last chunk.
     if config.process_only_layer:
@@ -332,12 +316,6 @@ elif [ "$CURRENT_IMAGE" = "{_MANIFEST_SENTINEL}" ]; then
     echo ""
 
     {manifest_cmd}
-elif [ "$CURRENT_IMAGE" = "{_FINALIZER_SENTINEL}" ]; then
-    # Finalizer task: final aggregation and cleanup for the last chunk
-    echo "Running finalizer (task $SLURM_ARRAY_TASK_ID)"
-    echo ""
-
-    {finalizer_cmd}
 else
     # Normal image processing
     echo "Processing image $((SLURM_ARRAY_TASK_ID + 1))/${{#IMAGE_LIST[@]}}: $CURRENT_IMAGE"
@@ -364,7 +342,7 @@ fi"""
                 "# Build image list (0-based indexing)",
                 (
                     "# Entries may include sentinel markers for checkpoint, "
-                    "manifest, and finalizer tasks"
+                    "and manifest tasks"
                 ),
             ],
             array_name="IMAGE_LIST",
@@ -382,14 +360,20 @@ fi"""
     return script_path
 
 
-def generate_process_finalizer_script(
+def generate_terminal_finalizer_script(
     config: ExecutionConfig,
     output_dir: Path,
 ) -> Path:
-    """Write the dependent manifest publisher for process/export mode."""
-    if config.process_only_layer is None:
-        raise ValueError("process finalizer requires process_only_layer")
+    """Write the dependent terminal publisher for an ordinary SLURM run."""
     python_cmd, _ = get_python_command(for_slurm=True)
+    checkpoint_type = (
+        "manifest" if config.process_only_layer is not None else "finalize"
+    )
+    finalizer_name = (
+        "process_export_finalizer"
+        if config.process_only_layer is not None
+        else "ordinary_finalizer"
+    )
     command = " ".join(
         [
             *(shlex.quote(part) for part in python_cmd),
@@ -398,26 +382,22 @@ def generate_process_finalizer_script(
             "--output-dir",
             shlex.quote(str(output_dir.absolute())),
             "--checkpoint-type",
-            "manifest",
+            checkpoint_type,
         ]
     )
-    script_path = slurm_scripts_dir(output_dir) / "process_export_finalizer.sh"
-    log_path = (
-        logs_dir(output_dir)
-        / "slurm"
-        / "process_export_finalizer_%A_%a.log"
-    )
+    script_path = slurm_scripts_dir(output_dir) / f"{finalizer_name}.sh"
+    log_path = logs_dir(output_dir) / "slurm" / f"{finalizer_name}_%A_%a.log"
     return write_slurm_array_script(
         script_path,
         SlurmArrayScriptSpec(
-            job_name="pht-process-finalizer",
+            job_name="pht-finalizer",
             slurm_args=config.slurm_args,
             log_path=log_path,
             task_indices=[0],
             body=command,
             prelude=SLURM_THREAD_PIN_BASH,
             comments=[
-                "# Process/export manifest finalizer",
+                "# Ordinary SLURM terminal finalizer",
                 "# Submitted after the final image chunk becomes terminal",
             ],
         ),

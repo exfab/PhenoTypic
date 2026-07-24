@@ -31,6 +31,7 @@ import pytest
 import phenotypic.gui.run_console._app as app_module
 import phenotypic.gui.run_console._callbacks as callbacks_module
 from phenotypic.gui.run_console._callbacks import (
+    _SlurmLogTailCache,
     _action_control_states,
     _local_run_active,
     _state_from_action_controls,
@@ -422,6 +423,16 @@ def test_slurm_cancel_fences_exact_epoch_and_stays_cancelling(
         mode=lifecycle_mode,
     )
     observer = SlurmLifecycleObserver(registry)
+    atomic_write_json(
+        job_metadata_path(output_dir),
+        {
+            "gui_record_generation": str(record.generation),
+            "slurm_generation": str(scheduler_generation),
+            "slurm_job_ids": {},
+            "chunk_job_ids": {},
+        },
+    )
+    assert observer.reconcile_durable_binding(record) is True
     calls: list[tuple[Path, str]] = []
 
     def fake_cancel(output: Path, generation: str, **_kwargs: object) -> Any:
@@ -447,6 +458,137 @@ def test_slurm_cancel_fences_exact_epoch_and_stays_cancelling(
     assert updated.status == "cancelling"
     assert updated.terminal_at is None
     assert response[-2:] == (False, False)
+
+
+def test_cancel_before_new_epoch_never_adopts_stale_output_lifecycle(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Early Cancel waits for the submitter's exact new durable generation."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    stale_generation = uuid4()
+    initialize_slurm_lifecycle(
+        output_dir,
+        generation=stale_generation.hex,
+        mode="ordinary",
+    )
+    stale_state_path = (
+        output_dir / ".phenotypic" / "progress" / "slurm_lifecycle.json"
+    )
+    stale_state = __import__("json").loads(
+        stale_state_path.read_text(encoding="utf-8")
+    )
+    stale_state["active"] = False
+    atomic_write_json(stale_state_path, stale_state)
+    atomic_write_json(
+        job_metadata_path(output_dir),
+        {
+            "gui_record_generation": str(uuid4()),
+            "slurm_generation": stale_generation.hex,
+            "slurm_job_ids": {},
+            "chunk_job_ids": {},
+        },
+    )
+    record = registry.allocate(
+        mode="slurm",
+        output_dir=output_dir,
+        rel_path="out",
+        command_digest="new-command",
+        status="submitting",
+    )
+    assert record.generation is not None
+    observer = SlurmLifecycleObserver(registry)
+    future: Future[Any] = Future()
+    assert future.set_running_or_notify_cancel() is True
+    _track_pending_slurm(
+        record.run_id,
+        record.generation,
+        future,
+        registry=registry,
+        observer=observer,
+    )
+    calls: list[str] = []
+
+    def fake_cancel(
+        _output: Path,
+        generation: str,
+        **_kwargs: object,
+    ) -> CancellationResult:
+        calls.append(generation)
+        return CancellationResult(("9901", "9902"), (), False)
+
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_slurm_lifecycle.cancel_generation",
+        fake_cancel,
+    )
+    app = create_app(
+        sandbox,
+        registry=registry,
+        slurm_observer=observer,
+        start_slurm_observer=False,
+    )
+
+    response = _callback_by_name(app, "click_cancel")(1, record.run_id)
+
+    assert calls == []
+    assert response[-2:] == (False, False)
+    cancelling = registry.get(record.run_id)
+    assert cancelling is not None and cancelling.status == "cancelling"
+    assert cancelling.lifecycle_epoch == str(record.generation)
+    assert cancelling.lifecycle_epoch != stale_generation.hex
+
+    scheduler_generation = uuid4()
+    initialize_slurm_lifecycle(
+        output_dir,
+        generation=scheduler_generation.hex,
+        mode="ordinary",
+    )
+    atomic_write_json(
+        job_metadata_path(output_dir),
+        {
+            "gui_record_generation": str(record.generation),
+            "slurm_generation": scheduler_generation.hex,
+            "slurm_job_ids": {
+                "chunk-0": {
+                    "job_id": "9901",
+                    "role": "chunk",
+                    "generation": scheduler_generation.hex,
+                },
+                "finalizer": {
+                    "job_id": "9902",
+                    "role": "finalizer",
+                    "generation": scheduler_generation.hex,
+                },
+            },
+            "chunk_job_ids": {"0": "9901"},
+        },
+    )
+    jobs = SubmittedJobSet(
+        primary_id="9901",
+        all_ids=("9901", "9902"),
+        roles={"chunk": ("9901",), "finalizer": ("9902",)},
+        generation=scheduler_generation,
+    )
+    future.set_result(
+        SlurmSubmitResult(
+            job_id="9901",
+            output_dir=output_dir,
+            stdout="",
+            stderr="",
+            returncode=0,
+            submitted_jobs=jobs,
+        )
+    )
+
+    assert calls == [scheduler_generation.hex]
+    assert stale_generation.hex not in calls
+    bound = registry.get(record.run_id)
+    assert bound is not None
+    assert bound.status == "cancelling"
+    assert bound.lifecycle_epoch == scheduler_generation.hex
 
 
 def test_run_app_owns_one_startable_observer_lifecycle(
@@ -548,6 +690,60 @@ def test_terminal_no_dashboard_surfaces_detail_and_manual_refresh(
     assert refreshed[0].endswith("/runs/out/deliverables/dashboard.html")
     assert refreshed[1] == {"display": "block"}
     assert refreshed[4] is True
+
+
+def test_terminal_slurm_generation_evicts_log_reader_and_stops_polling(
+    tmp_path: Path,
+) -> None:
+    """Background terminal transitions bound log state and disable polling."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    log_path = output_dir / "worker.log"
+    log_path.write_text("running\n", encoding="utf-8")
+    record = registry.allocate(
+        mode="slurm",
+        output_dir=output_dir,
+        rel_path="out",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+    registry.compare_and_set(
+        record.run_id,
+        record.generation,
+        log_paths=(log_path,),
+    )
+    record = registry.get(record.run_id)
+    assert record is not None
+    cache = _SlurmLogTailCache()
+
+    assert "running" in cache.read(record)
+    assert cache.tracked_generations == 1
+
+    registry.compare_and_set(
+        record.run_id,
+        record.generation,
+        status="complete",
+    )
+    terminal = registry.get(record.run_id)
+    assert terminal is not None
+    assert "running" in cache.read(terminal)
+    assert cache.tracked_generations == 0
+
+    app = create_app(
+        sandbox,
+        registry=registry,
+        start_slurm_observer=False,
+    )
+    response = _callback_by_name(app, "resolve_pending_slurm")(
+        1,
+        record.run_id,
+        0,
+    )
+    assert len(response) == 7
+    assert response[-1] is True
 
 
 def test_slurm_log_callback_reads_incrementally(

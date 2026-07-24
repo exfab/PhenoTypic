@@ -648,7 +648,7 @@ def dispatch_continuation(
         continuation_id = submit_with_lifecycle(
             output_dir,
             generation=generation,
-            token="process-finalizer",
+            token="finalizer",
             role="finalizer",
             script_path=finalizer_script,
             dependencies=(chunk_id,),

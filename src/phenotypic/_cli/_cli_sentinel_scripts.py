@@ -1,11 +1,11 @@
 """SLURM batch script generation for the sentinel job.
 
 .. deprecated::
-    The standalone sentinel job has been replaced by checkpoint tasks
-    embedded in the array job scripts (``__PHENOTYPIC_MANIFEST__`` and
-    ``__PHENOTYPIC_FINALIZER__``). See :mod:`_cli_checkpoint_handler`
-    and :mod:`_cli_slurm_array_scripts`. This module is retained only
-    for in-flight runs that may still reference it.
+    The standalone sentinel job has been replaced by nonterminal checkpoint
+    tasks embedded in array scripts plus a scheduler-dependent terminal
+    finalizer. See :mod:`_cli_checkpoint_handler` and
+    :mod:`_cli_slurm_array_scripts`. This module is retained only for
+    in-flight runs that may still reference it.
 
 This module generates the bash script that runs the sentinel Click command
 as a self-resubmitting SLURM job.

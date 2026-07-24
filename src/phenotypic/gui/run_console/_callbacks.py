@@ -72,6 +72,7 @@ from phenotypic.gui.run_console._recent_runs import scan_recent_runs
 from phenotypic.gui.run_console._runner import LocalRunner
 from phenotypic.gui.run_console._slurm_observer import (
     IncrementalLogReader,
+    SchedulerGenerationBinding,
     SlurmLifecycleObserver,
 )
 from phenotypic.gui.shell._ids import (
@@ -592,6 +593,49 @@ _PENDING_SLURM: dict[tuple[str, UUID], Future[Any]] = {}
 _COMPLETED_SLURM: dict[tuple[str, UUID], _SlurmCompletion] = {}
 _MAX_SLURM_COMPLETIONS = 128
 _PENDING_SLURM_LOCK = threading.Lock()
+_TERMINAL_RUN_STATUSES = frozenset({"complete", "failed", "cancelled"})
+
+
+class _SlurmLogTailCache:
+    """Bound incremental readers and text to nonterminal GUI generations."""
+
+    def __init__(self) -> None:
+        self._readers: dict[tuple[str, UUID], IncrementalLogReader] = {}
+        self._text: dict[tuple[str, UUID], str] = {}
+        self._lock = threading.Lock()
+
+    def read(self, record: RunRecord) -> str:
+        """Read one generation and evict its cache immediately when terminal."""
+        if record.generation is None:
+            return "(waiting for lifecycle generation...)"
+        key = (record.run_id, record.generation)
+        labelled_paths = {
+            (
+                f"{'GUI submitter' if 'gui' in path.parts else 'SLURM'}: "
+                f"{path.name}"
+            ): path
+            for path in record.log_paths
+        }
+        with self._lock:
+            reader = self._readers.setdefault(key, IncrementalLogReader())
+            batch = reader.read(labelled_paths)
+            if batch.text:
+                prior = self._text.get(key, "")
+                self._text[key] = (prior + "\n" + batch.text)[-128 * 1024 :]
+            text = self._text.get(
+                key,
+                "(waiting for submission or scheduler output...)",
+            )
+            if record.status in _TERMINAL_RUN_STATUSES:
+                self._readers.pop(key, None)
+                self._text.pop(key, None)
+            return text
+
+    @property
+    def tracked_generations(self) -> int:
+        """Return the number of generation-scoped readers retained."""
+        with self._lock:
+            return len(self._readers)
 
 
 def _persist_scheduler_binding(
@@ -627,6 +671,35 @@ def _persist_scheduler_binding(
     )
 
 
+def _persist_and_bind_scheduler_generation(
+    *,
+    registry: RunRegistry,
+    observer: SlurmLifecycleObserver,
+    run_id: str,
+    record_generation: UUID,
+    output_dir: Path,
+    scheduler_generation: UUID,
+) -> SchedulerGenerationBinding | None:
+    """Bind in memory only after the exact durable association is persisted."""
+    if not _persist_scheduler_binding(
+        registry,
+        run_id,
+        record_generation,
+        output_dir,
+        scheduler_generation,
+    ):
+        return None
+    try:
+        return observer.bind_generation(
+            run_id=run_id,
+            record_generation=record_generation,
+            scheduler_generation=scheduler_generation,
+        )
+    except ValueError:
+        logger.exception("Could not bind scheduler generation for %s", run_id)
+        return None
+
+
 def _complete_slurm_submission(
     future: Future[Any],
     *,
@@ -646,28 +719,21 @@ def _complete_slurm_submission(
             )
     except SlurmSubmitPending as exc:
         jobs = exc.submitted_jobs
-        _persist_scheduler_binding(
-            registry,
-            run_id,
-            generation,
-            exc.output_dir,
-            exc.generation,
+        binding = _persist_and_bind_scheduler_generation(
+            registry=registry,
+            observer=observer,
+            run_id=run_id,
+            record_generation=generation,
+            output_dir=exc.output_dir,
+            scheduler_generation=exc.generation,
         )
-        try:
-            observer.bind_generation(
-                run_id=run_id,
-                record_generation=generation,
-                scheduler_generation=exc.generation,
-            )
-        except ValueError:
-            logger.exception(
-                "Could not bind recoverable SLURM submission %s", run_id
-            )
         record = registry.get(run_id)
         if record is None or record.generation != generation:
             completion = None
+        elif record.status == "cancelling" and binding is not None:
+            _cancel_bound_generation(record, binding)
+            completion = _SlurmCompletion(pending=str(exc))
         elif record.status == "cancelling":
-            _cancel_bound_generation(record, exc.generation, observer)
             completion = _SlurmCompletion(pending=str(exc))
         else:
             scheduler_ids = jobs.all_ids if jobs is not None else ()
@@ -730,25 +796,27 @@ def _complete_slurm_submission(
             )
             completion = _SlurmCompletion(error=detail) if updated else None
         else:
-            _persist_scheduler_binding(
-                registry,
-                run_id,
-                generation,
-                result.output_dir,
-                jobs.generation,
+            binding = _persist_and_bind_scheduler_generation(
+                registry=registry,
+                observer=observer,
+                run_id=run_id,
+                record_generation=generation,
+                output_dir=result.output_dir,
+                scheduler_generation=jobs.generation,
             )
-            try:
-                observer.bind_generation(
-                    run_id=run_id,
-                    record_generation=generation,
-                    scheduler_generation=jobs.generation,
+            if binding is None:
+                detail = (
+                    "Could not durably bind the GUI run to the scheduler "
+                    "generation"
                 )
-            except ValueError as exc:
-                detail = f"Could not bind scheduler generation: {exc}"
                 updated = registry.compare_and_set(
                     run_id,
                     generation,
-                    expected_statuses={"submitting", "reconciling", "unknown"},
+                    expected_statuses={
+                        "submitting",
+                        "reconciling",
+                        "unknown",
+                    },
                     status="unknown",
                     status_detail=detail,
                 )
@@ -762,7 +830,7 @@ def _complete_slurm_submission(
                     and record.generation == generation
                     and record.status == "cancelling"
                 ):
-                    _cancel_bound_generation(record, jobs.generation, observer)
+                    _cancel_bound_generation(record, binding)
                     completion = _SlurmCompletion(result=result)
                 else:
                     updated = registry.compare_and_set(
@@ -841,19 +909,18 @@ def _cancel_pending_slurm(run_id: str, generation: UUID) -> bool:
 
 def _cancel_bound_generation(
     record: RunRecord,
-    scheduler_generation: UUID,
-    observer: SlurmLifecycleObserver,
+    binding: SchedulerGenerationBinding,
 ) -> tuple[str, ...]:
     """Fence and cancel every scheduler job while retaining ``cancelling``."""
     from phenotypic._cli._cli_slurm_lifecycle import cancel_generation
 
-    if record.generation is None:
+    if (
+        record.generation is None
+        or binding.run_id != record.run_id
+        or binding.record_generation != record.generation
+        or record.lifecycle_epoch != binding.scheduler_epoch
+    ):
         return ()
-    binding = observer.bind_generation(
-        run_id=record.run_id,
-        record_generation=record.generation,
-        scheduler_generation=scheduler_generation,
-    )
     result = cancel_generation(
         record.output_dir,
         binding.scheduler_epoch,
@@ -918,9 +985,7 @@ def register_callbacks(
         server_url_prefix: Browser-visible base prefix for shell-level
             Flask routes such as ``/runs``.
     """
-    slurm_log_readers: dict[tuple[str, UUID], IncrementalLogReader] = {}
-    slurm_log_text: dict[tuple[str, UUID], str] = {}
-    slurm_log_lock = threading.Lock()
+    slurm_log_cache = _SlurmLogTailCache()
 
     # ----------------------------------------------------------------------
     # 1. Picker buttons → open / cancel modals
@@ -1706,11 +1771,7 @@ def register_callbacks(
                     True,
                 )
 
-            from phenotypic._cli._cli_slurm_lifecycle import (
-                load_slurm_lifecycle,
-            )
-
-            registry.compare_and_set(
+            marked_cancelling = registry.compare_and_set(
                 run_id,
                 record.generation,
                 expected_statuses={
@@ -1723,20 +1784,22 @@ def register_callbacks(
                 status="cancelling",
                 status_detail="cancellation requested; awaiting scheduler quiescence",
             )
-            lifecycle = load_slurm_lifecycle(record.output_dir)
-            scheduler_generation: UUID | None = None
-            if lifecycle is not None:
-                try:
-                    scheduler_generation = UUID(
-                        str(lifecycle.get("generation", ""))
-                    )
-                except ValueError:
-                    scheduler_generation = None
-            if scheduler_generation is not None:
+            if not marked_cancelling:
+                return (
+                    *_toast(f"No live run for {run_id}", ok=False),
+                    True,
+                    True,
+                )
+            record = registry.get(run_id)
+            binding = (
+                slurm_observer.proven_binding(record)
+                if record is not None
+                else None
+            )
+            if record is not None and binding is not None:
                 cancelled_jobs = _cancel_bound_generation(
                     record,
-                    scheduler_generation,
-                    slurm_observer,
+                    binding,
                 )
                 return (
                     *_toast(
@@ -1748,7 +1811,11 @@ def register_callbacks(
                     False,
                     False,
                 )
-            if _cancel_pending_slurm(run_id, record.generation):
+            if (
+                record is not None
+                and record.generation is not None
+                and _cancel_pending_slurm(run_id, record.generation)
+            ):
                 registry.compare_and_set(
                     run_id,
                     record.generation,
@@ -1865,28 +1932,7 @@ def register_callbacks(
                 return "(waiting for lifecycle generation...)", (
                     f"slurm | {record.rel_path} | status={record.status}"
                 )
-            key = (record.run_id, record.generation)
-            labelled_paths: dict[str, Path] = {}
-            for path in record.log_paths:
-                source = (
-                    "GUI submitter"
-                    if "gui" in path.parts
-                    else "SLURM"
-                )
-                labelled_paths[f"{source}: {path.name}"] = path
-            with slurm_log_lock:
-                reader = slurm_log_readers.setdefault(
-                    key, IncrementalLogReader()
-                )
-                batch = reader.read(labelled_paths)
-                if batch.text:
-                    prior = slurm_log_text.get(key, "")
-                    slurm_log_text[key] = (prior + "\n" + batch.text)[
-                        -128 * 1024 :
-                    ]
-                text = slurm_log_text.get(
-                    key, "(waiting for submission or scheduler output...)"
-                )
+            text = slurm_log_cache.read(record)
             banner = f"slurm | {record.rel_path} | status={record.status}"
             if record.status_detail:
                 banner += f" | {record.status_detail}"
@@ -1914,6 +1960,7 @@ def register_callbacks(
         Output(ids.RC_TOAST, "header", allow_duplicate=True),
         Output(ids.RC_STORE_ACTIVE_RUN_ID, "data", allow_duplicate=True),
         Output(ids.RC_STORE_RECENTS_REFRESH, "data", allow_duplicate=True),
+        Output(ids.RC_INTERVAL_LOG, "disabled", allow_duplicate=True),
         Input(ids.RC_INTERVAL_LOG, "n_intervals"),
         State(ids.RC_STORE_ACTIVE_RUN_ID, "data"),
         State(ids.RC_STORE_RECENTS_REFRESH, "data"),
@@ -1926,23 +1973,27 @@ def register_callbacks(
     ) -> Tuple[Any, ...]:
         """Surface a lifecycle result already committed by the future callback."""
         if not run_id:
-            return (no_update,) * 6
+            return (no_update,) * 7
         record = registry.get(run_id)
         if (
             record is None
             or record.mode != "slurm"
             or record.generation is None
         ):
-            return (no_update,) * 6
+            return (no_update,) * 7
+        stop_polling = record.status in _TERMINAL_RUN_STATUSES
         completion = _take_slurm_completion(run_id, record.generation)
         if completion is None:
-            return (no_update,) * 6
+            return (no_update,) * 6 + (
+                True if stop_polling else no_update,
+            )
         new_refresh = (refresh_count or 0) + 1
         if completion.error is not None:
             return (
                 *_toast(completion.error, ok=False),
                 run_id,
                 new_refresh,
+                True if stop_polling else no_update,
             )
         if completion.pending is not None:
             return (
@@ -1953,10 +2004,13 @@ def register_callbacks(
                 ),
                 run_id,
                 new_refresh,
+                True if stop_polling else no_update,
             )
         result = completion.result
         if result is None:  # pragma: no cover - dataclass invariant
-            return (no_update,) * 6
+            return (no_update,) * 6 + (
+                True if stop_polling else no_update,
+            )
         return (
             *_toast(
                 f"SLURM submitted ({result.job_id}): {record.rel_path}",
@@ -1964,6 +2018,7 @@ def register_callbacks(
             ),
             run_id,
             new_refresh,
+            True if stop_polling else no_update,
         )
 
     # ----------------------------------------------------------------------
