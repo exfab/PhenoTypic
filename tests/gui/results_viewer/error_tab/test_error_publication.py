@@ -252,9 +252,10 @@ def test_committed_recovery_cleans_transaction_backups(
     backup_dir = generation_dir / "backup"
     backup_dir.mkdir(parents=True)
     (backup_dir / "error_analysis.csv").write_bytes(b"previous")
-    (backup_dir / ".error_analysis.csv.orphan.restore").write_bytes(
-        b"interrupted restore"
-    )
+    (
+        backup_dir
+        / f".error_analysis.csv.{'d' * 32}.restore"
+    ).write_bytes(b"interrupted restore")
     targets = [
         *receipt["artifacts"],
         "error_analysis.manifest.json",
@@ -327,6 +328,73 @@ def test_missing_journal_sweeps_failed_generation_cleanup(
     assert not generations.exists()
 
 
+def test_post_commit_cleanup_interrupt_never_starts_rollback(
+    publication_state: tuple[Path, OutputRoot, CurationLabels],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A BaseException after journal removal leaves the committed generation."""
+    _output, root, labels = publication_state
+    first = _compute(root, labels)
+    publish_error_analysis(
+        root.layout,
+        first,
+        mutation_is_safe=root.mutation_snapshot_is_safe,
+    )
+    previous = _canonical_bytes(root)
+    labels.mark_many([("img-1", 17)], "debris")
+    second = _compute(root, labels)
+    original_rmtree = _publication.shutil.rmtree
+    interrupted = False
+
+    def _interrupt_generation_cleanup(
+        path: Path,
+        *,
+        ignore_errors: bool = False,
+    ) -> None:
+        nonlocal interrupted
+        path = Path(path)
+        if (
+            not interrupted
+            and path.parent.name == ".error-analysis.generations"
+            and len(path.name) == 32
+        ):
+            interrupted = True
+            raise KeyboardInterrupt
+        original_rmtree(path, ignore_errors=ignore_errors)
+
+    monkeypatch.setattr(
+        _publication.shutil,
+        "rmtree",
+        _interrupt_generation_cleanup,
+    )
+    with pytest.raises(KeyboardInterrupt):
+        publish_error_analysis(
+            root.layout,
+            second,
+            mutation_is_safe=root.mutation_snapshot_is_safe,
+        )
+
+    assert interrupted
+    assert _canonical_bytes(root) != previous
+    receipt = json.loads(
+        (
+            root.layout.deliverables_base
+            / "error_analysis.publication.json"
+        ).read_text()
+    )
+    assert receipt["generation"] == second.generation
+    assert not (
+        root.layout.deliverables_base / ".error-analysis.transaction.json"
+    ).exists()
+
+    monkeypatch.setattr(_publication.shutil, "rmtree", original_rmtree)
+    with exclusive_path_lock(error_publication_lock_path(root.layout)):
+        assert recover_error_publication(root.layout) is False
+    assert not (
+        root.layout.deliverables_base / ".error-analysis.generations"
+    ).exists()
+
+
 def test_corrupt_journal_never_sweeps_recovery_backups(
     publication_state: tuple[Path, OutputRoot, CurationLabels],
 ) -> None:
@@ -350,6 +418,81 @@ def test_corrupt_journal_never_sweeps_recovery_backups(
 
     assert journal.exists()
     assert backup_path.read_bytes() == b"previous"
+
+
+@pytest.mark.parametrize(
+    ("targets_mode", "existing", "backup_names"),
+    [
+        ("empty", [], ["error_analysis.csv"]),
+        ("exact", [], ["error_analysis.csv"]),
+        ("exact", ["error_analysis.csv"], []),
+        (
+            "exact",
+            ["error_analysis.csv"],
+            ["error_analysis.csv", "unexpected.bin"],
+        ),
+    ],
+)
+def test_valid_json_corrupt_journal_preserves_all_evidence(
+    publication_state: tuple[Path, OutputRoot, CurationLabels],
+    targets_mode: str,
+    existing: list[str],
+    backup_names: list[str],
+) -> None:
+    """Incomplete target or backup inventories never begin recovery mutation."""
+    _output, root, labels = publication_state
+    computation = _compute(root, labels)
+    publish_error_analysis(
+        root.layout,
+        computation,
+        mutation_is_safe=root.mutation_snapshot_is_safe,
+    )
+    base = root.layout.deliverables_base
+    canonical = _canonical_bytes(root)
+    receipt = json.loads(
+        (base / "error_analysis.publication.json").read_text()
+    )
+    exact_targets = [
+        *receipt["artifacts"],
+        "error_analysis.manifest.json",
+        "error_analysis.publication.json",
+    ]
+    targets = [] if targets_mode == "empty" else exact_targets
+    token = "e" * 32
+    backup_dir = (
+        base / ".error-analysis.generations" / token / "backup"
+    )
+    backup_dir.mkdir(parents=True)
+    for name in backup_names:
+        (backup_dir / name).write_bytes(f"backup-{name}".encode())
+    journal = base / ".error-analysis.transaction.json"
+    atomic_write_json(
+        journal,
+        {
+            "schema_version": 1,
+            "token": token,
+            "generation": receipt["generation"],
+            "targets": targets,
+            "existing": existing,
+        },
+    )
+    evidence = {
+        path.name: path.read_bytes()
+        for path in backup_dir.iterdir()
+        if path.is_file()
+    }
+
+    with exclusive_path_lock(error_publication_lock_path(root.layout)):
+        with pytest.raises(_publication.ErrorPublicationValidationError):
+            recover_error_publication(root.layout)
+
+    assert _canonical_bytes(root) == canonical
+    assert journal.exists()
+    assert {
+        path.name: path.read_bytes()
+        for path in backup_dir.iterdir()
+        if path.is_file()
+    } == evidence
 
 
 @pytest.mark.parametrize("interrupt_after", [1, 2])

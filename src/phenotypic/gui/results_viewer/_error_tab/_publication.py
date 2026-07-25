@@ -398,9 +398,6 @@ def publish_error_analysis(
                     raise ErrorPublicationValidationError(
                         "Published Error generation failed checksum validation."
                     )
-                (base / _JOURNAL_FILENAME).unlink(missing_ok=True)
-                shutil.rmtree(generation_dir, ignore_errors=True)
-                _remove_empty_generations_dir(base)
             except BaseException:
                 _restore_targets(base, backup_dir, targets, existing)
                 (base / _JOURNAL_FILENAME).unlink(missing_ok=True)
@@ -413,6 +410,13 @@ def publish_error_analysis(
                 shutil.rmtree(generation_dir, ignore_errors=True)
                 _remove_empty_generations_dir(base)
 
+        # The canonical receipt has committed and validated. From this point
+        # onward, cleanup must never re-enter rollback: the journal may already
+        # be absent, and a cleanup interruption is handled by the next
+        # journal-free orphan sweep under this same writer lock.
+        (base / _JOURNAL_FILENAME).unlink(missing_ok=True)
+        shutil.rmtree(generation_dir, ignore_errors=True)
+        _remove_empty_generations_dir(base)
         return _result_from_receipt(receipt, already_published=False)
 
 
@@ -468,6 +472,11 @@ def recover_error_publication(layout: "BundleLayout") -> bool:
         or len(token) != 32
         or any(character not in "0123456789abcdef" for character in token)
         or not isinstance(generation, str)
+        or len(generation) != 64
+        or any(
+            character not in "0123456789abcdef"
+            for character in generation
+        )
         or not isinstance(targets, list)
         or not all(isinstance(name, str) for name in targets)
         or not isinstance(existing, list)
@@ -476,20 +485,51 @@ def recover_error_publication(layout: "BundleLayout") -> bool:
         raise ErrorPublicationValidationError(
             "Error publication journal values are invalid."
         )
-    allowed_targets = {
+    base_targets = {
         computation_path_name("parquet"),
         computation_path_name("csv"),
         computation_path_name("html"),
-        "verified.parquet",
         _MANIFEST_FILENAME,
         _RECEIPT_FILENAME,
     }
+    allowed_target_sets = (
+        base_targets,
+        base_targets | {"verified.parquet"},
+    )
+    target_set = set(targets)
+    existing_set = set(existing)
     if (
-        not set(targets).issubset(allowed_targets)
-        or not set(existing).issubset(set(targets))
+        target_set not in allowed_target_sets
+        or len(target_set) != len(targets)
+        or len(existing_set) != len(existing)
+        or not existing_set.issubset(target_set)
     ):
         raise ErrorPublicationValidationError(
-            "Error publication journal names unsafe targets."
+            "Error publication journal does not name one exact generation."
+        )
+    generation_dir = base / _GENERATIONS_DIRNAME / token
+    backup_dir = generation_dir / "backup"
+    if not backup_dir.is_dir():
+        raise ErrorPublicationValidationError(
+            "Error publication recovery backup directory is missing."
+        )
+    actual_backups: set[str] = set()
+    for entry in backup_dir.iterdir():
+        if entry.is_file() and entry.name in target_set:
+            actual_backups.add(entry.name)
+        elif entry.is_file() and _is_restore_temporary(
+            entry.name,
+            target_set,
+        ):
+            continue
+        else:
+            raise ErrorPublicationValidationError(
+                "Error publication backup inventory contains an unexpected "
+                f"entry: {entry.name!r}."
+            )
+    if actual_backups != existing_set:
+        raise ErrorPublicationValidationError(
+            "Error publication journal does not match its durable backups."
         )
     receipt = _read_json(base / _RECEIPT_FILENAME)
     committed = (
@@ -497,7 +537,6 @@ def recover_error_publication(layout: "BundleLayout") -> bool:
         and receipt.get("generation") == generation
         and _validate_canonical_generation(base, receipt)
     )
-    generation_dir = base / _GENERATIONS_DIRNAME / token
     if not committed:
         _restore_targets(
             base,
@@ -865,6 +904,19 @@ def _restore_from_durable_backup(backup: Path, target: Path) -> None:
         _replace_file(temporary, target)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def _is_restore_temporary(name: str, targets: set[str]) -> bool:
+    """Return whether *name* is one owned interrupted-restore temporary."""
+    for target in targets:
+        prefix = f".{target}."
+        suffix = ".restore"
+        if name.startswith(prefix) and name.endswith(suffix):
+            token = name[len(prefix) : -len(suffix)]
+            return len(token) == 32 and all(
+                character in "0123456789abcdef" for character in token
+            )
+    return False
 
 
 def _replace_file(source: Path, target: Path) -> None:
