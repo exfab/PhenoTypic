@@ -243,7 +243,7 @@ def test_recompute_verified_mode_explains_legacy_qc_parquet_cutover(
 
     assert result.empty_state
     assert "qc.duckdb" in result.empty_message
-    assert "recompile" in result.empty_message.lower()
+    assert "rebuild qc" in result.empty_message.lower()
 
 
 def test_recompute_all_unlabeled_does_not_write_verified_parquet(seeded_root):
