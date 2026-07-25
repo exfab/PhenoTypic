@@ -1,113 +1,109 @@
-"""Live SLURM dispatch of the controller-driven staged GPU engine.
+"""Opt-in live SLURM acceptance for the controller-driven staged GPU engine.
 
-Runs on a real SLURM cluster: submits Controller 0 and waits for its dynamic
-Stage 1, Stage 2 continuation, Stage 3, and finalizer jobs. Uses the CPU-only ``FakeGpuDetector`` with
-``slurm_gpus_per_node=0`` (OQ4), so Stage 2 needs no GPU allocation — this
-exercises submission + the 3-stage chain + shard distribution + the sidecar
-lifecycle without GPU nodes. Gated on ``sbatch`` and marked ``slow``.
+The CPU-only ``FakeGpuDetector`` exercises dynamic controller, recovery,
+Stage 1/2/3, and finalizer roles without requesting a GPU. The shared GUI live
+harness enforces the exact reviewed SHA, protected remote paths, one small
+image, generation-scoped output, and fail-closed scheduler cleanup. Cleanup
+retains the exact case plus fd-bound evidence; the dedicated root may be moved
+to trash manually only after external scheduler verification.
 """
 
+from __future__ import annotations
+
+import json
 import os
 import shutil
-import subprocess
 import time
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
 import phenotypic
 from phenotypic import ImagePipeline
-from phenotypic.data import load_synth_yeast_plate
-from phenotypic.measure import MeasureSize
 from phenotypic._cli._cli_output_manager import OutputManager
-from phenotypic._cli._cli_staged_slurm import StagedSlurmStrategy
 from phenotypic._cli._cli_staged_orchestration import (
     read_job_ledger,
     staged_completion_path,
 )
+from phenotypic._cli._cli_staged_slurm import StagedSlurmStrategy
 from phenotypic._cli._cli_types import Dataset, ExecutionConfig
+from phenotypic.measure import MeasureSize
+from phenotypic.sdk_ import job_metadata_path
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
+from tests._support.live_slurm import (
+    cleanup_case,
+    prepared_case,
+    require_live_environment,
+    validate_retained_case_evidence,
+)
+
 
 pytestmark = [
     pytest.mark.slow,
     pytest.mark.skipif(
-        shutil.which("sbatch") is None, reason="requires a SLURM environment"
+        os.environ.get("PHENOTYPIC_RUN_LIVE_SLURM") != "1",
+        reason="set PHENOTYPIC_RUN_LIVE_SLURM=1 for real scheduler tests",
+    ),
+    pytest.mark.skipif(
+        any(
+            shutil.which(tool) is None
+            for tool in ("sbatch", "squeue", "sacct", "scancel")
+        ),
+        reason="requires sbatch, squeue, sacct, and scancel",
     ),
 ]
 
-# A real CPU partition; FakeGpuDetector needs no GPU. Defaults to the modern
-# EPYC partition (the heterogeneous ``short`` partition includes ancient
-# abu_dhabi AMD nodes whose lack of AVX SIGILLs the modern numpy/scipy wheels).
-# Override via PHENOTYPIC_TEST_SLURM_PARTITION.
-TEST_PARTITION = os.environ.get("PHENOTYPIC_TEST_SLURM_PARTITION", "epyc")
-REPO_ROOT = Path(__file__).resolve().parents[3]
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_TERMINAL_TIMEOUT_SECONDS = 10 * 60.0
 
 
 @pytest.fixture(autouse=True)
-def _register_fake_gpu_detector(monkeypatch):
-    # In-process resolution (the submitting test) + tell the fresh SLURM worker
-    # processes to preload the fake (sbatch --export=ALL propagates the env).
+def _register_fake_gpu_detector(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Register the test detector in-process and in fresh SLURM workers."""
     monkeypatch.setattr(
-        phenotypic, "FakeGpuDetector", FakeGpuDetector, raising=False
+        phenotypic,
+        "FakeGpuDetector",
+        FakeGpuDetector,
+        raising=False,
     )
     monkeypatch.setenv(
-        "PHENOTYPIC_PRELOAD_MODULES", "tests._fakes.register_fake_gpu"
+        "PHENOTYPIC_PRELOAD_MODULES",
+        "tests._fakes.register_fake_gpu",
     )
     monkeypatch.setenv(
         "PYTHONPATH",
-        f"{REPO_ROOT}{os.pathsep}{os.environ.get('PYTHONPATH', '')}",
+        f"{_REPO_ROOT}{os.pathsep}{os.environ.get('PYTHONPATH', '')}",
     )
 
 
-def _stage_images(tmp_path, n):
-    img = load_synth_yeast_plate()
-    paths = []
-    for i in range(n):
-        p = tmp_path / f"img{i}.tiff"
-        img.rgb.imsave(filepath=p)
-        paths.append(p)
-    return paths
-
-
-def _wait_for_parquets(out, stems, timeout_s):
-    deadline = time.monotonic() + timeout_s
-    meas = out / "results" / "ds" / "measurements"
-    while time.monotonic() < deadline:
-        if all((meas / f"{s}.parquet").is_file() for s in stems):
-            return True
-        time.sleep(5)
-    return False
-
-
-def _wait_for_completion_marker(out, timeout_s):
-    deadline = time.monotonic() + timeout_s
-    while time.monotonic() < deadline:
-        if staged_completion_path(out).is_file():
-            return True
-        time.sleep(5)
-    return False
-
-
-def _scancel(job_ids):
-    for jid in job_ids:
-        if jid:
-            subprocess.run(["scancel", str(jid)], check=False)
-
-
-def _staged_config(out, tmp_path, pipe_path):
+def _staged_config(
+    output_dir: Path,
+    input_dir: Path,
+    pipeline_path: Path,
+    partition: str,
+    image_name: str,
+) -> ExecutionConfig:
+    """Return a one-image, one-shard, bounded CPU-only staged profile."""
+    cpu_profile: dict[str, object] = {
+        "slurm_partition": partition,
+        "slurm_time": "00:10:00",
+        "slurm_mem": "4G",
+        "slurm_cpus_per_task": 1,
+    }
+    account = os.environ.get("PHENOTYPIC_TEST_SLURM_ACCOUNT", "").strip()
+    if account:
+        cpu_profile["slurm_account"] = account
     return ExecutionConfig(
-        pipeline_json=pipe_path,
-        input_path=tmp_path,
-        output_dir=out,
+        pipeline_json=pipeline_path,
+        input_path=input_dir,
+        output_dir=output_dir,
         image_type="Image",
         nrows=None,
         ncols=None,
         bit_depth=None,
         n_jobs=1,
-        slurm_args={
-            "slurm_partition": TEST_PARTITION,
-            "slurm_time": "00:15:00",
-        },
+        slurm_args=cpu_profile,
         force_local=False,
         wait=False,
         ext=".tiff",
@@ -119,66 +115,130 @@ def _staged_config(out, tmp_path, pipe_path):
         retry_failures=False,
         skip_validation=True,
         save_overlays=False,
-        # CPU partition for the GPU stage too: gpus_per_node=0 omits the GPU
-        # directive (OQ4), so FakeGpuDetector runs without a GPU allocation.
         gpu_slurm_args={
-            "slurm_partition": TEST_PARTITION,
+            **cpu_profile,
             "slurm_gpus_per_node": 0,
-            "slurm_time": "00:01:00",
         },
         gpu_shards=1,
-        full_dataset_inventory={"ds": [f"img{i}.tiff" for i in range(3)]},
+        full_dataset_inventory={"ds": [image_name]},
     )
 
 
-def test_live_3stage_dispatch_completes(tmp_path):
-    images = _stage_images(tmp_path, 3)
-    out = tmp_path / "out"
-    out.mkdir()
-    pipe = ImagePipeline(
-        ops=[FakeGpuDetector(threshold=0.3, delay_seconds=40.0)],
-        meas=[MeasureSize()],
-    )
-    pipe_path = out / "pipeline.json"
-    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
-    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
-    om.create_structure([Dataset("ds", images, tmp_path, out)])
+def _wait_for_staged_completion(output_dir: Path) -> None:
+    """Wait for the exact staged completion marker and one measurement."""
+    deadline = time.monotonic() + _TERMINAL_TIMEOUT_SECONDS
+    measurement_dir = output_dir / "results" / "ds" / "measurements"
+    while time.monotonic() < deadline:
+        parquets = tuple(measurement_dir.glob("*.parquet"))
+        if len(parquets) == 1 and staged_completion_path(output_dir).is_file():
+            return
+        time.sleep(2.0)
+    pytest.fail("one-image staged run did not publish within ten minutes")
 
-    strat = StagedSlurmStrategy(_staged_config(out, tmp_path, pipe_path), om)
-    strat.execute([Dataset("ds", images, tmp_path, out)], out)
-    job_ids = list(getattr(strat, "submitted_job_ids", []))
-    assert len(job_ids) == 1 and all(job_ids), "expected initial Controller 0 id"
 
-    try:
-        stems = [p.stem for p in images]
-        assert _wait_for_parquets(out, stems, timeout_s=900), (
-            "controller-driven staged run did not finish within the timeout"
-        )
-        assert _wait_for_completion_marker(out, timeout_s=180)
-        # Stage 3 deletes every sidecar on completion.
-        assert not list((out / "results" / "ds" / "objmap").glob("*.npy"))
-        ledger = read_job_ledger(out)
-        stage2_rounds = {
-            row["round"]
-            for row in ledger
-            if row.get("role") == "stage2" and row.get("status") == "submitted"
-        }
-        assert len(stage2_rounds) >= 2
-        assert (
-            len(
-                [
-                    row
-                    for row in ledger
-                    if row.get("role") == "finalizer"
-                    and row.get("status") == "submitted"
-                ]
+def test_live_one_image_staged_dispatch_completes_with_recovery_roles() -> None:
+    """One image traverses dynamic controllers and exact staged publication."""
+    root, partition, forbidden = require_live_environment()
+    with prepared_case(root, forbidden) as (
+        case_root,
+        pipeline_path,
+        output_dir,
+    ):
+        initial_ids: tuple[str, ...] = ()
+        scheduler_generation: UUID | None = None
+        try:
+            input_dir = case_root / "input"
+            images = tuple(input_dir.glob("*.tiff"))
+            assert len(images) == 1
+            image_path = images[0]
+            pipeline_path.write_text(
+                ImagePipeline(
+                    ops=[FakeGpuDetector(threshold=0.3)],
+                    meas=[MeasureSize()],
+                ).to_json(),
+                encoding="utf-8",
             )
-            == 1
-        )
-    finally:
-        ledger_ids = {
-            row.get("job_id")
-            for row in read_job_ledger(out)
-            if row.get("job_id")
-        }
-        _scancel(sorted(ledger_ids))
+            dataset = Dataset(
+                "ds",
+                [image_path],
+                input_dir,
+                output_dir,
+            )
+            output_manager = OutputManager.from_config(
+                output_dir,
+                ".tiff",
+                save_overlays=False,
+            )
+            output_manager.create_structure([dataset])
+            strategy = StagedSlurmStrategy(
+                _staged_config(
+                    output_dir,
+                    input_dir,
+                    pipeline_path,
+                    partition,
+                    image_path.name,
+                ),
+                output_manager,
+            )
+
+            strategy.execute([dataset], output_dir)
+            initial_ids = tuple(
+                str(job_id)
+                for job_id in getattr(strategy, "submitted_job_ids", ())
+            )
+            assert len(initial_ids) == 1
+            assert all(job_id.isdigit() for job_id in initial_ids)
+            metadata = json.loads(
+                job_metadata_path(output_dir).read_text(encoding="utf-8")
+            )
+            scheduler_generation = UUID(str(metadata["slurm_generation"]))
+
+            _wait_for_staged_completion(output_dir)
+
+            ledger = read_job_ledger(output_dir)
+            submitted_roles = {
+                str(row.get("role"))
+                for row in ledger
+                if row.get("status") in {"submitted", "recovered"}
+            }
+            assert {
+                "controller-initial",
+                "controller",
+                "stage1",
+                "stage2",
+                "stage3",
+                "finalizer",
+            } <= submitted_roles
+            assert any(
+                str(row.get("token", "")).startswith("controller-after-")
+                and row.get("role") == "controller"
+                and row.get("status") in {"submitted", "recovered"}
+                for row in ledger
+            )
+            completion = json.loads(
+                staged_completion_path(output_dir).read_text(encoding="utf-8")
+            )
+            assert completion["epoch"] == scheduler_generation.hex
+            assert not tuple(
+                (output_dir / "results" / "ds" / "objmap").glob("*.npy")
+            )
+            print(
+                "LIVE_STAGED_COMPLETION "
+                f"generation={scheduler_generation.hex} "
+                f"output={output_dir} "
+                f"initial={','.join(initial_ids)} "
+                f"roles={','.join(sorted(submitted_roles))}"
+            )
+        finally:
+            evidence_name = cleanup_case(
+                case_root,
+                output_dir,
+                scheduler_generation,
+                iter(initial_ids),
+                forbidden=forbidden,
+            )
+            validate_retained_case_evidence(
+                case_root,
+                evidence_name,
+                scheduler_generation=scheduler_generation,
+            )

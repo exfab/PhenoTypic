@@ -79,6 +79,36 @@ def test_slurm_array_script_accepts_canonical_duration_strings(
     assert expected in spec.render()
 
 
+def test_slurm_array_script_renders_delayed_bounded_cpu_profile(
+    tmp_path: Path,
+) -> None:
+    """The live cancellation profile holds a CPU job without requesting a GPU."""
+    from phenotypic.sdk_.slurm import SlurmArrayScriptSpec
+
+    spec = SlurmArrayScriptSpec(
+        job_name="pht-live-cancel",
+        slurm_args={
+            "slurm_partition": "short",
+            "slurm_begin": "now+2minutes",
+            "slurm_cpus_per_task": 1,
+            "slurm_mem": "4G",
+            "time": "00:10:00",
+        },
+        log_path=tmp_path / "cancel_%A_%a.log",
+        task_indices=[0],
+        body="echo held",
+    )
+
+    rendered = spec.render()
+
+    assert "#SBATCH --partition=short" in rendered
+    assert "#SBATCH --begin=now+2minutes" in rendered
+    assert "#SBATCH --cpus-per-task=1" in rendered
+    assert "#SBATCH --mem=4G" in rendered
+    assert "#SBATCH --time=00:10:00" in rendered
+    assert "#SBATCH --gpus" not in rendered
+
+
 def test_slurm_array_script_supports_custom_entry_variables(
     tmp_path: Path,
 ) -> None:

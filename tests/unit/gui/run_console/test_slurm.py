@@ -31,6 +31,7 @@ from phenotypic.gui.run_console._slurm import (
     SlurmSubmitError,
     SlurmSubmitPending,
     SlurmSubmitResult,
+    _build_subprocess_argv,
     read_submitted_job_set,
     submit_slurm,
     wait_for_job_id,
@@ -179,6 +180,47 @@ def test_submit_slurm_forwards_gpu_stage_profile_and_shards(
     ]
     shards_index = argv.index("--gpu-shards")
     assert argv[shards_index + 1] == "4"
+
+
+def test_live_cancellation_hold_profile_reaches_cli_argv(
+    tmp_path: Path,
+) -> None:
+    """The live-test hold is a bounded CPU profile, not an implicit GPU job."""
+    output_dir = tmp_path / "out"
+    state = RunConsoleState(
+        pipeline_path="/p/pipeline.json",
+        input_dir="/p/in",
+        output_dir=str(output_dir),
+        mode="slurm",
+        advanced_args={"image_type": "Image", "workers": 1},
+        slurm_args={
+            "partition": "short",
+            "time": "00:10:00",
+            "mem": "4G",
+            "cpus_per_task": 1,
+            "extra": {"slurm_begin": "now+2minutes"},
+        },
+        gpu_slurm_args=(),
+        gpu_shards=1,
+    )
+
+    argv = _build_subprocess_argv(state)
+    slurm_pairs = [
+        argv[index + 1]
+        for index, token in enumerate(argv)
+        if token == "--slurm"
+    ]
+
+    assert slurm_pairs == [
+        "partition=short",
+        "time=00:10:00",
+        "mem=4G",
+        "cpus_per_task=1",
+        "slurm_begin=now+2minutes",
+    ]
+    assert argv[argv.index("--njobs") + 1] == "1"
+    assert "--gpu-slurm" not in argv
+    assert "--gpu-shards" not in argv
 
 
 # ---------------------------------------------------------------------------
