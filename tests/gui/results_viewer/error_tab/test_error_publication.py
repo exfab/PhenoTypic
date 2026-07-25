@@ -252,6 +252,9 @@ def test_committed_recovery_cleans_transaction_backups(
     backup_dir = generation_dir / "backup"
     backup_dir.mkdir(parents=True)
     (backup_dir / "error_analysis.csv").write_bytes(b"previous")
+    (backup_dir / ".error_analysis.csv.orphan.restore").write_bytes(
+        b"interrupted restore"
+    )
     targets = [
         *receipt["artifacts"],
         "error_analysis.manifest.json",
@@ -275,6 +278,80 @@ def test_committed_recovery_cleans_transaction_backups(
     assert not (base / ".error-analysis.generations").exists()
 
 
+def test_missing_journal_sweeps_failed_generation_cleanup(
+    publication_state: tuple[Path, OutputRoot, CurationLabels],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A later recovery discovers cleanup left after the journal was removed."""
+    _output, root, labels = publication_state
+    computation = _compute(root, labels)
+    base = root.layout.deliverables_base
+    original_rmtree = _publication.shutil.rmtree
+    skipped_generation_cleanup = False
+
+    def _skip_one_generation_cleanup(
+        path: Path,
+        *,
+        ignore_errors: bool = False,
+    ) -> None:
+        nonlocal skipped_generation_cleanup
+        path = Path(path)
+        if (
+            not skipped_generation_cleanup
+            and path.parent.name == ".error-analysis.generations"
+            and len(path.name) == 32
+        ):
+            skipped_generation_cleanup = True
+            return
+        original_rmtree(path, ignore_errors=ignore_errors)
+
+    monkeypatch.setattr(
+        _publication.shutil,
+        "rmtree",
+        _skip_one_generation_cleanup,
+    )
+    publish_error_analysis(
+        root.layout,
+        computation,
+        mutation_is_safe=root.mutation_snapshot_is_safe,
+    )
+    generations = base / ".error-analysis.generations"
+    assert skipped_generation_cleanup
+    assert generations.is_dir()
+    assert not (base / ".error-analysis.transaction.json").exists()
+
+    monkeypatch.setattr(_publication.shutil, "rmtree", original_rmtree)
+    with exclusive_path_lock(error_publication_lock_path(root.layout)):
+        assert recover_error_publication(root.layout) is False
+
+    assert not generations.exists()
+
+
+def test_corrupt_journal_never_sweeps_recovery_backups(
+    publication_state: tuple[Path, OutputRoot, CurationLabels],
+) -> None:
+    """Decode failure preserves durable state for retry or manual repair."""
+    _output, root, _labels = publication_state
+    base = root.layout.deliverables_base
+    generation_dir = base / ".error-analysis.generations" / ("c" * 32)
+    backup_dir = generation_dir / "backup"
+    backup_dir.mkdir(parents=True)
+    backup_path = backup_dir / "error_analysis.csv"
+    backup_path.write_bytes(b"previous")
+    journal = base / ".error-analysis.transaction.json"
+    journal.write_text("{not-json", encoding="utf-8")
+
+    with exclusive_path_lock(error_publication_lock_path(root.layout)):
+        with pytest.raises(
+            _publication.ErrorPublicationValidationError,
+            match="cannot be decoded",
+        ):
+            recover_error_publication(root.layout)
+
+    assert journal.exists()
+    assert backup_path.read_bytes() == b"previous"
+
+
 @pytest.mark.parametrize("interrupt_after", [1, 2])
 def test_restore_is_restart_safe_after_each_replaced_target(
     tmp_path: Path,
@@ -295,6 +372,7 @@ def test_restore_is_restart_safe_after_each_replaced_target(
 
     def _interrupt_after_replace(source: Path, target: Path) -> None:
         nonlocal replacements
+        assert source.parent == backup
         os.replace(source, target)
         replacements += 1
         if replacements == interrupt_after:

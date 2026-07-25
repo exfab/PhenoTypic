@@ -436,9 +436,14 @@ def recover_error_publication(layout: "BundleLayout") -> bool:
     """
     base = layout.deliverables_base
     journal_path = base / _JOURNAL_FILENAME
+    if not journal_path.exists():
+        _sweep_orphan_generations(base)
+        return False
     payload = _read_json(journal_path)
     if payload is None:
-        return False
+        raise ErrorPublicationValidationError(
+            "Error publication journal exists but cannot be decoded."
+        )
     if not isinstance(payload, dict):
         raise ErrorPublicationValidationError(
             "Error publication journal is not a JSON object."
@@ -852,7 +857,7 @@ def _restore_targets(
 
 def _restore_from_durable_backup(backup: Path, target: Path) -> None:
     """Atomically restore one target without consuming its crash backup."""
-    temporary = target.with_name(
+    temporary = backup.with_name(
         f".{target.name}.{uuid.uuid4().hex}.restore"
     )
     try:
@@ -873,6 +878,22 @@ def _remove_empty_generations_dir(base: Path) -> None:
         (base / _GENERATIONS_DIRNAME).rmdir()
     except OSError:
         pass
+
+
+def _sweep_orphan_generations(base: Path) -> None:
+    """Remove journal-free transaction directories under the writer lock."""
+    generations = base / _GENERATIONS_DIRNAME
+    if not generations.is_dir():
+        return
+    for candidate in generations.iterdir():
+        token = candidate.name
+        if (
+            candidate.is_dir()
+            and len(token) == 32
+            and all(character in "0123456789abcdef" for character in token)
+        ):
+            shutil.rmtree(candidate, ignore_errors=True)
+    _remove_empty_generations_dir(base)
 
 
 def _result_from_receipt(
