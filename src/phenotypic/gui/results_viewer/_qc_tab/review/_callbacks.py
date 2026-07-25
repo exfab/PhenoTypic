@@ -1157,8 +1157,8 @@ def register_review_callbacks(app: dash.Dash) -> None:
         Input(rids.QC_REVIEW_MODULE_PICKER_ID, "value"),
         Input(rids.QC_REVIEW_RESORT_BTN_ID, "n_clicks"),
         Input(rids.QC_REVIEW_SHOW_FILTER_ID, "value"),
-        # A settings-edit full rebuild ticks this store after rewriting
-        # qc.duckdb, so the worklist + header re-render off the fresh DB
+        # A user-confirmed full rebuild ticks this store after publishing
+        # qc.duckdb, so the worklist and header re-render from the fresh DB
         # even when the selected module's instance_id is unchanged.
         Input(qc_tab_ids.STORE_QC_RECOMPUTE_DONE, "data"),
         State(rids.STORE_QC_SELECTED_GROUP, "data"),
@@ -2031,7 +2031,16 @@ def _register_review_progress_callbacks(app: dash.Dash) -> None:
         if triggered == rids.QC_REVIEW_MARK_REVIEWED_BTN_ID or (
             is_next and curated
         ):
-            review_state.mark_reviewed(instance_id, key_values)
+            if not _persist_review_before_transition(
+                review_state,
+                instance_id,
+                key_values,
+            ):
+                logger.warning(
+                    "Review progress changed externally; refusing to "
+                    "recompute or advance from unpersisted state."
+                )
+                return no_update, no_update
 
         # Recompute only when changes were made (spec §D.5).
         if curated:
@@ -2052,6 +2061,15 @@ def _register_review_progress_callbacks(app: dash.Dash) -> None:
             )
 
         return deltas, next_encoded
+
+
+def _persist_review_before_transition(
+    review_state: ReviewState,
+    instance_id: str,
+    key_values: tuple[Any, ...],
+) -> bool:
+    """Persist review progress before recompute or selection advance."""
+    return review_state.mark_reviewed(instance_id, key_values)
 
 
 def _group_has_removed_members(

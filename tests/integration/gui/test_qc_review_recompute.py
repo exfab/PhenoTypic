@@ -471,29 +471,34 @@ def test_qc_gallery_default_dim_alpha_is_zero(output_root) -> None:
 
 
 # ---------------------------------------------------------------------------
-# T9: durable settings-edit recompute + review-state reconciliation
+# T9: explicit settings rebuild + review-state reconciliation
 # ---------------------------------------------------------------------------
 
 
-def test_settings_edit_durably_rewrites_db(
+def test_settings_edit_waits_for_explicit_database_rebuild(
     output_root, tmp_path: Path
 ) -> None:
-    """A QC settings edit rewrites qc.duckdb so the worklist reflects it.
+    """A settings edit leaves the database unchanged until explicit rebuild.
 
     The agreeing group (img-1) passes under the default thresholds. Tighten
-    the thresholds (a settings edit) and run the durable recompute; the
-    rewritten catalog summary must report img-1 as ``fail`` (not the stale
-    ``pass``), proving the in-memory pipeline was synced from the recipe
-    before the rebuild.
+    the thresholds, verify the existing catalog remains untouched, then use
+    the guarded rebuild path and verify the rewritten summary reports
+    img-1 as ``fail``. A later curated-frame recompute must keep those new
+    settings instead of reverting to the boot-time pipeline.
     """
     from phenotypic.gui.results_viewer._qc_tab import (
         _callbacks as qc_callbacks,
+    )
+    from phenotypic.gui.results_viewer._qc_tab._rebuild import (
+        preflight_qc_rebuild,
+    )
+    from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+        _recompute_full_rebuild,
     )
     from phenotypic.gui.results_viewer._qc_tab.review import _db
 
     app = create_app(output_root)
     recipe = app.server.config[CFG_QC_RECIPE]
-    pipeline = app.server.config[CFG_QC_PIPELINE]
 
     before = _db.module_summary(output_root, _INSTANCE_ID)
     img1_before = before.filter(
@@ -513,10 +518,20 @@ def test_settings_edit_durably_rewrites_db(
         },
     )
 
+    stale = _db.module_summary(output_root, _INSTANCE_ID)
+    img1_stale = stale.filter(
+        pl.col(str(METADATA.IMAGE_NAME)) == "img-1"
+    ).get_column("status")[0]
+    assert img1_stale == "pass"
+
+    preflight = preflight_qc_rebuild(output_root.layout)
+    assert preflight.ready
     with app.server.app_context():
-        assert qc_callbacks._run_settings_edit_recompute(
-            output_root, recipe, pipeline, set()
+        rebuilt = qc_callbacks._rebuild_qc_and_refresh_pipeline(
+            output_root,
+            expected_source_fingerprint=preflight.source_fingerprint,
         )
+    assert rebuilt.applied
 
     after = _db.module_summary(output_root, _INSTANCE_ID)
     img1_after = after.filter(
@@ -524,31 +539,50 @@ def test_settings_edit_durably_rewrites_db(
     ).get_column("status")[0]
     assert img1_after == "fail"
 
+    # The idempotent success path refreshes the cache too.
+    app.server.config[CFG_QC_PIPELINE] = _build_pipeline()
+    repeat_preflight = preflight_qc_rebuild(output_root.layout)
+    with app.server.app_context():
+        repeated = qc_callbacks._rebuild_qc_and_refresh_pipeline(
+            output_root,
+            expected_source_fingerprint=repeat_preflight.source_fingerprint,
+        )
+        assert not repeated.applied
+        assert _recompute_full_rebuild(
+            output_root,
+            app.server.config[CFG_QC_PIPELINE],
+            set(),
+        )
 
-def test_settings_edit_all_disabled_empties_worklist(
+    recomputed = _db.module_summary(output_root, _INSTANCE_ID)
+    img1_recomputed = recomputed.filter(
+        pl.col(str(METADATA.IMAGE_NAME)) == "img-1"
+    ).get_column("status")[0]
+    assert img1_recomputed == "fail"
+
+
+def test_disabling_all_checks_preserves_database_and_blocks_rebuild(
     output_root, tmp_path: Path
 ) -> None:
-    """Disabling every check clears the stale qc.duckdb (empty worklist)."""
-    from phenotypic.gui.results_viewer._qc_tab import (
-        _callbacks as qc_callbacks,
+    """Disabling every check does not implicitly delete prior QC results."""
+    from phenotypic.gui.results_viewer._qc_tab._rebuild import (
+        preflight_qc_rebuild,
     )
     from phenotypic.gui.results_viewer._qc_tab.review import _db
 
     app = create_app(output_root)
     recipe = app.server.config[CFG_QC_RECIPE]
-    pipeline = app.server.config[CFG_QC_PIPELINE]
 
     assert _db.list_modules(output_root)  # seeded module present
+    database_before = output_root.layout.qc_duckdb.read_bytes()
 
-    recipe.update(_INSTANCE_ID, enabled=False)
-    with app.server.app_context():
-        assert qc_callbacks._run_settings_edit_recompute(
-            output_root, recipe, pipeline, set()
-        )
+    assert recipe.update(_INSTANCE_ID, enabled=False)
+    preflight = preflight_qc_rebuild(output_root.layout)
 
-    # The stale DB is removed → empty module list (worklist degrades empty).
-    assert not output_root.layout.qc_duckdb.exists()
-    assert _db.list_modules(output_root) == []
+    assert not preflight.ready
+    assert any("enabled QC recipe entry" in item for item in preflight.blockers)
+    assert output_root.layout.qc_duckdb.read_bytes() == database_before
+    assert _db.list_modules(output_root)
 
 
 def test_reconcile_drops_vanished_reviewed_keys(tmp_path: Path) -> None:

@@ -435,8 +435,8 @@ def build_qc_tab_body(recipe: QcRecipe) -> Component:
     return html.Div(
         [
             _build_subview_toggle(),
-            # Ticked by the settings-edit recompute callback after a full
-            # ``run_qc`` rebuild; the Review worklist subscribes to it.
+            # Ticked after a user-confirmed full ``run_qc`` rebuild; the
+            # Review worklist subscribes to it.
             dcc.Store(
                 id=ids.STORE_QC_RECOMPUTE_DONE,
                 data=0,

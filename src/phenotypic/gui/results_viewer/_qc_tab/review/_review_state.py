@@ -49,6 +49,13 @@ _MISSING_FINGERPRINT = "missing"
 class ReviewStateConflictError(RuntimeError):
     """Raised when review state changed after the current session loaded it."""
 
+
+def review_state_lock_path(path: Path) -> Path:
+    """Return the canonical lock shared by every review-state writer."""
+    state_path = Path(path)
+    return state_path.with_name(f".{state_path.name}.lock")
+
+
 #: A group key — the tuple of ``groupby`` column values identifying one
 #: QC group. Single-column checks still use a 1-tuple.
 GroupKey = tuple[object, ...]
@@ -333,7 +340,7 @@ class ReviewState:
             )
             return False
         try:
-            lock_path = self.path.with_name(f".{self.path.name}.lock")
+            lock_path = review_state_lock_path(self.path)
             with exclusive_path_lock(lock_path):
                 current = self._current_fingerprint()
                 if current != self.source_fingerprint:
@@ -358,6 +365,7 @@ __all__ = [
     "ModuleProgress",
     "ReviewState",
     "ReviewStateConflictError",
+    "review_state_lock_path",
     "encode_group_key",
     "decode_group_key",
 ]

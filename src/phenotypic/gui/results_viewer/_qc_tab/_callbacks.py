@@ -2,9 +2,9 @@
 
 Five primary callbacks plus the modal open/save/cancel flow:
 
-* :func:`_render_card_shells` — card-list render. Fires on
-  :data:`STORE_QC_RECIPE_REVISION` only. Owns the cards-container
-  ``children`` list atomically so card count tracks the recipe.
+* :func:`_render_card_shells` — card-list render. Fires on recipe revision
+  and compatibility changes. Owns the cards-container ``children`` list
+  atomically so card count and mutation controls track the recipe.
 * :func:`_refresh_qc_card_bodies` — card-body refresh. Fires on
   :data:`STORE_REMOVED_KEYS` (and ``STORE_QC_RECIPE_REVISION`` for
   ordering). Updates every card's figure, summary strip, and status
@@ -23,9 +23,9 @@ Five primary callbacks plus the modal open/save/cancel flow:
   :data:`STORE_REMOVED_KEYS`.
 
 See spec lines 842-987 for the UX and lines 893-911 for the callback
-split. QC analysis artifacts are now written to ``deliverables/qc/qc.duckdb``
-by ``run_qc`` (CLI finalize + the in-session recompute paths), not by a
-GUI export button.
+split. QC analysis artifacts are written to ``deliverables/qc/qc.duckdb``
+by ``run_qc`` during CLI finalize, explicit full rebuild, and in-session
+curation recompute paths.
 """
 
 from __future__ import annotations
@@ -70,6 +70,7 @@ from phenotypic.gui.results_viewer._qc_tab._layout import (
     _render_load_warnings,
 )
 from phenotypic.gui.results_viewer._qc_tab._rebuild import (
+    QcRebuildResult,
     preflight_qc_rebuild,
     rebuild_qc_database,
 )
@@ -445,60 +446,23 @@ def _columns_provider(source: str) -> list[str]:
         return []
 
 
-def _removed_keys_locked(filtered: Any) -> set[tuple[str, int]]:
-    """Snapshot the curation removal set under the state lock.
-
-    Reading under the lock gives the recompute a coherent
-    state-at-settings-edit rather than a set mid-mutated by a concurrent
-    curation callback.
-    """
-    if filtered is None:
-        return set()
-    with filtered._lock:
-        return set(filtered.removed_keys)
-
-
-def _run_settings_edit_recompute(
+def _rebuild_qc_and_refresh_pipeline(
     output_root: Any,
-    recipe: QcRecipe | None,
-    pipeline: Any,
-    removed: set[tuple[str, int]],
-) -> bool:
-    """Durably rebuild ``qc.duckdb`` after a QC settings edit (spec §D.8).
-
-    ``CFG_QC_PIPELINE`` is loaded once at app boot and is **not**
-    auto-updated when :meth:`QcRecipe.update` mutates ``CFG_QC_RECIPE``, so
-    this MUST sync it (``pipeline.set_qc(recipe.entries)``) before
-    rebuilding — otherwise ``run_qc`` rebuilds from stale boot-time entries
-    and the edit is invisible. After a full rebuild, review progress is
-    reconciled against the new group set so reviewed keys for vanished
-    groups are pruned.
-
-    The all-disabled edge is routed through ``run_qc`` as well. The supported
-    writer owns canonical deletion; GUI callbacks never unlink ``qc.duckdb``.
-
-    Args:
-        output_root: The active ``OutputRoot`` (``None`` → no-op).
-        recipe: The live, just-saved :class:`QcRecipe`.
-        pipeline: The boot-time ``CFG_QC_PIPELINE`` to sync + rebuild from.
-        removed: The curated ``(image_file, label)`` removal set.
-
-    Returns:
-        ``True`` when the rebuild (or the all-disabled clear) ran.
-    """
-    from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
-        _recompute_full_rebuild,
-        reconcile_review_state_after_rebuild,
+    *,
+    expected_source_fingerprint: str,
+) -> QcRebuildResult:
+    """Rebuild QC and synchronize the pipeline used by later recomputes."""
+    result = rebuild_qc_database(
+        output_root.layout,
+        expected_source_fingerprint=expected_source_fingerprint,
     )
+    from phenotypic._core._image_pipeline import ImagePipeline
 
-    if output_root is None or recipe is None or pipeline is None:
-        return False
-    pipeline.set_qc(list(recipe.entries))  # reflect the just-saved recipe
-
-    if not _recompute_full_rebuild(output_root, pipeline, removed):
-        return False
-    reconcile_review_state_after_rebuild(output_root)
-    return True
+    current_app.config[CFG_QC_PIPELINE] = ImagePipeline.from_json(
+        output_root.layout.resolved_pipeline_config_path,
+        skip_unknown_analyzers=False,
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -541,17 +505,15 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         Output(ids.QC_COMPATIBILITY_STATUS_ID, "children"),
         Output(ids.QC_ACTION_STATUS_ID, "children"),
         Output(ids.QC_MIGRATE_RECIPE_BTN_ID, "disabled"),
-        Output(ids.QC_REBUILD_DATABASE_BTN_ID, "disabled"),
         Output(
-            viewer_ids.STORE_QC_RECIPE_REVISION,
-            "data",
+            ids.QC_REBUILD_DATABASE_BTN_ID,
+            "disabled",
             allow_duplicate=True,
         ),
         Output(ids.STORE_QC_RECOMPUTE_DONE, "data", allow_duplicate=True),
         Input(ids.QC_MIGRATE_CONFIRM_ID, "submit_n_clicks"),
         Input(ids.QC_REBUILD_CONFIRM_ID, "submit_n_clicks"),
         State(ids.STORE_QC_COMPATIBILITY, "data"),
-        State(viewer_ids.STORE_QC_RECIPE_REVISION, "data"),
         State(ids.STORE_QC_RECOMPUTE_DONE, "data"),
         prevent_initial_call=True,
     )
@@ -559,9 +521,8 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         migrate_confirmations: int | None,
         rebuild_confirmations: int | None,
         compatibility_data: dict[str, object] | None,
-        revision: int | None,
         rebuild_revision: int | None,
-    ) -> tuple[Any, Any, Any, bool, bool, Any, Any]:
+    ) -> tuple[Any, Any, Any, bool, bool, Any]:
         """Run only the explicitly clicked migration or rebuild action."""
         triggered = ctx.triggered_id
         output_root = current_app.config.get(CFG_OUTPUT_ROOT)
@@ -600,7 +561,6 @@ def register_qc_callbacks(app: dash.Dash) -> None:
                     message,
                     True,
                     not rebuild_ready,
-                    (revision or 0) + 1,
                     no_update,
                 )
             if (
@@ -608,8 +568,8 @@ def register_qc_callbacks(app: dash.Dash) -> None:
                 and rebuild_confirmations
             ):
                 preflight = preflight_qc_rebuild(output_root.layout)
-                rebuild_result = rebuild_qc_database(
-                    output_root.layout,
+                rebuild_result = _rebuild_qc_and_refresh_pipeline(
+                    output_root,
                     expected_source_fingerprint=preflight.source_fingerprint,
                 )
                 payload = _compatibility_payload(_get_recipe())
@@ -624,7 +584,6 @@ def register_qc_callbacks(app: dash.Dash) -> None:
                     message,
                     True,
                     False,
-                    no_update,
                     (rebuild_revision or 0) + 1,
                 )
         except Exception as exc:  # noqa: BLE001 - explicit action status
@@ -650,7 +609,6 @@ def register_qc_callbacks(app: dash.Dash) -> None:
                 status != "migratable",
                 not rebuild_ready,
                 no_update,
-                no_update,
             )
         raise PreventUpdate
 
@@ -662,16 +620,23 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         Output(ids.QC_LOAD_WARNING_BANNER_ID, "children"),
         Output(ids.QC_LOAD_WARNING_BANNER_ID, "style"),
         Output(ids.QC_ADD_CHECK_BTN_ID, "disabled"),
+        Output(ids.QC_REBUILD_DATABASE_BTN_ID, "disabled"),
         Input(viewer_ids.STORE_QC_RECIPE_REVISION, "data"),
         Input(ids.STORE_QC_COMPATIBILITY, "data"),
     )
     def _render_card_shells(
         _revision: int | None,
         compatibility_data: dict[str, object] | None,
-    ) -> tuple[Any, Any, dict[str, str], bool]:
+    ) -> tuple[Any, Any, dict[str, str], bool, bool]:
         """Rebuild the cards-container children list on every revision tick."""
         recipe = _get_recipe()
         blocked = (compatibility_data or {}).get("status") != "compatible"
+        output_root = current_app.config.get(CFG_OUTPUT_ROOT)
+        rebuild_disabled = (
+            blocked
+            or output_root is None
+            or not preflight_qc_rebuild(output_root.layout).ready
+        )
         shells = [
             build_check_card(entry, mutations_disabled=blocked)
             for entry in recipe.entries
@@ -682,6 +647,7 @@ def register_qc_callbacks(app: dash.Dash) -> None:
             _render_load_warnings(recipe.load_warnings),
             _banner_style(recipe.load_warnings),
             blocked,
+            rebuild_disabled,
         )
 
     # -----------------------------------------------------------------
@@ -1183,33 +1149,6 @@ def register_qc_callbacks(app: dash.Dash) -> None:
             review_style,
             review_ids.QC_SUBVIEW_REVIEW if review else review_ids.QC_SUBVIEW_CONFIGURE,
         )
-
-    # -----------------------------------------------------------------
-    # Callback I: durable settings-edit recompute
-    # -----------------------------------------------------------------
-    # Fires on every recipe-revision tick (modal submit / card lifecycle
-    # action). Syncs the boot-time CFG_QC_PIPELINE from the just-saved
-    # recipe, full-rebuilds qc.duckdb, and reconciles review progress.
-    # ``allow_duplicate`` + ``prevent_initial_call`` keep it off the boot
-    # render and clear of the other STORE_QC_RECIPE_REVISION listeners.
-    @app.callback(
-        Output(ids.STORE_QC_RECOMPUTE_DONE, "data", allow_duplicate=True),
-        Input(viewer_ids.STORE_QC_RECIPE_REVISION, "data"),
-        prevent_initial_call=True,
-    )
-    def _recompute_qc_on_settings_edit(revision: int | None) -> Any:
-        """Durably rebuild qc.duckdb after a QC settings edit (spec §D.8)."""
-        _require_compatible_recipe()
-        output_root = current_app.config.get(CFG_OUTPUT_ROOT)
-        recipe = current_app.config.get(CFG_QC_RECIPE)
-        pipeline = current_app.config.get(CFG_QC_PIPELINE)
-        filtered = current_app.config.get(CFG_FILTERED_STATE)
-        removed = _removed_keys_locked(filtered)
-        if not _run_settings_edit_recompute(
-            output_root, recipe, pipeline, removed
-        ):
-            return no_update
-        return (revision or 0) + 1
 
     # Review sub-view owns its own callback bundle (worklist, detail,
     # curation, recompute, review-state). Registered here so the QC tab's

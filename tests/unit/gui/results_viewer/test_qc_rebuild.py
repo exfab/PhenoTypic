@@ -10,7 +10,7 @@ import polars as pl
 import pytest
 
 from phenotypic._core._image_pipeline import ImagePipeline
-from phenotypic.analysis import ReplicateAgreement
+from phenotypic.analysis import ExpectedVsDetectedCount, ReplicateAgreement
 from phenotypic.gui.results_viewer._qc_tab import _rebuild
 from phenotypic.gui.results_viewer._qc_tab._rebuild import (
     QcRebuildError,
@@ -23,6 +23,7 @@ from phenotypic.sdk_ import (
     qc_duckdb_path,
 )
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
+from phenotypic.sdk_._qc_recipe._runner import run_qc
 from phenotypic.schema import METADATA
 from tests._output_layout import (
     write_master,
@@ -62,6 +63,38 @@ def _seed_output(root: Path) -> BundleLayout:
     write_pipeline_json(root, pipeline)
     qc_duckdb_path(root).parent.mkdir(parents=True, exist_ok=True)
     return BundleLayout.detect(root)
+
+
+def _seed_count_output(root: Path) -> tuple[BundleLayout, Path]:
+    """Seed a file-backed count QC recipe and return its metadata path."""
+    frame = pl.DataFrame(
+        {
+            "MetadataExperiment_Dataset": ["d1"] * 2,
+            str(METADATA.IMAGE_NAME): ["a", "a"],
+            "Object_Label": [1, 2],
+        }
+    )
+    metadata = root / "layout.csv"
+    frame.select(str(METADATA.IMAGE_NAME), "Object_Label").write_csv(metadata)
+    write_master(root, frame)
+    write_measurements_mirror(root, frame)
+    pipeline = ImagePipeline(name="qc-count-rebuild")
+    pipeline.set_qc(
+        [
+            QcRecipeEntry(
+                cls=ExpectedVsDetectedCount,
+                params={
+                    "metadata": str(metadata),
+                    "groupby": [str(METADATA.IMAGE_NAME)],
+                },
+                instance_id="qc-Count-rebuild01",
+                enabled=True,
+            )
+        ]
+    )
+    write_pipeline_json(root, pipeline)
+    qc_duckdb_path(root).parent.mkdir(parents=True, exist_ok=True)
+    return BundleLayout.detect(root), metadata
 
 
 def test_rebuild_success_validates_catalog_and_is_idempotent(
@@ -175,6 +208,121 @@ def test_rebuild_refuses_active_owner_and_changed_source(tmp_path: Path) -> None
             layout,
             expected_source_fingerprint=ready.source_fingerprint,
         )
+
+
+def test_rebuild_discards_staging_when_runner_changes_source(
+    tmp_path: Path,
+) -> None:
+    """A source change during run_qc fails the final publication CAS."""
+    layout = _seed_output(tmp_path)
+    preflight = preflight_qc_rebuild(layout)
+
+    def _mutating_runner(*args, **kwargs):
+        result = run_qc(*args, **kwargs)
+        layout.mirror_parquet.write_bytes(
+            layout.mirror_parquet.read_bytes() + b"changed"
+        )
+        return result
+
+    with pytest.raises(QcRebuildError, match="changed"):
+        rebuild_qc_database(
+            layout,
+            expected_source_fingerprint=preflight.source_fingerprint,
+            runner=_mutating_runner,
+        )
+
+    assert not layout.qc_duckdb.exists()
+    assert not (layout.qc_dir / ".rebuild_receipts").exists()
+    assert not (layout.qc_dir / ".rebuild_backups").exists()
+
+
+def test_rebuild_rolls_back_when_source_changes_at_receipt_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The final receipt-boundary CAS cannot certify a stale database."""
+    layout = _seed_output(tmp_path)
+    original = b"prior generation"
+    layout.qc_duckdb.write_bytes(original)
+    preflight = preflight_qc_rebuild(layout)
+    receipt_path = _rebuild._receipt_path(
+        layout.qc_duckdb,
+        preflight.source_fingerprint,
+    )
+    receipt_path.parent.mkdir(parents=True)
+    original_receipt = b'{"legacy_receipt":"preserve"}\n'
+    receipt_path.write_bytes(original_receipt)
+    real_atomic_write_json = _rebuild.atomic_write_json
+
+    def _write_receipt_then_mutate(path, payload, **kwargs):
+        real_atomic_write_json(path, payload, **kwargs)
+        layout.mirror_parquet.write_bytes(
+            layout.mirror_parquet.read_bytes() + b"changed"
+        )
+
+    monkeypatch.setattr(
+        _rebuild,
+        "atomic_write_json",
+        _write_receipt_then_mutate,
+    )
+
+    with pytest.raises(QcRebuildError, match="receipt boundary"):
+        rebuild_qc_database(
+            layout,
+            expected_source_fingerprint=preflight.source_fingerprint,
+        )
+
+    assert layout.qc_duckdb.read_bytes() == original
+    assert receipt_path.read_bytes() == original_receipt
+    assert not (layout.qc_dir / ".rebuild_backups").exists()
+
+
+def test_file_backed_qc_dependency_participates_in_idempotence(
+    tmp_path: Path,
+) -> None:
+    """Changing metadata invalidates the rebuild receipt and updates QC."""
+    layout, metadata = _seed_count_output(tmp_path)
+    first_preflight = preflight_qc_rebuild(layout)
+    first = rebuild_qc_database(
+        layout,
+        expected_source_fingerprint=first_preflight.source_fingerprint,
+    )
+
+    pl.DataFrame(
+        {
+            str(METADATA.IMAGE_NAME): ["a", "a", "a"],
+            "Object_Label": [1, 2, 3],
+        }
+    ).write_csv(metadata)
+    second_preflight = preflight_qc_rebuild(layout)
+    assert second_preflight.source_fingerprint != first.source_fingerprint
+    second = rebuild_qc_database(
+        layout,
+        expected_source_fingerprint=second_preflight.source_fingerprint,
+    )
+
+    assert second.applied
+    with duckdb.connect(str(layout.qc_duckdb), read_only=True) as con:
+        expected = con.execute(
+            'SELECT "QC_Count_Expected" FROM "qc_count_rebuild01"'
+        ).fetchone()
+    assert expected == (3,)
+
+
+def test_missing_file_backed_qc_dependency_blocks_rebuild(
+    tmp_path: Path,
+) -> None:
+    """Preflight rejects a recipe whose enabled metadata source vanished."""
+    layout, metadata = _seed_count_output(tmp_path)
+    metadata.unlink()
+
+    preflight = preflight_qc_rebuild(layout)
+
+    assert not preflight.ready
+    assert any(
+        str(metadata) in blocker and "missing" in blocker
+        for blocker in preflight.blockers
+    )
 
 
 def test_rebuild_preserves_legacy_root_qc_topology(tmp_path: Path) -> None:

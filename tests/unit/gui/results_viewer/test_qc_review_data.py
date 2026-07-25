@@ -26,10 +26,14 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis.qc import MaxModifiedZScore
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._qc_tab.review import _callbacks, _data
+from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+    _persist_review_before_transition,
+)
 from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
     ReviewState,
     decode_group_key,
     encode_group_key,
+    review_state_lock_path,
 )
 from phenotypic.sdk_ import BundleLayout, measurements_parquet_path
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
@@ -236,9 +240,21 @@ def test_review_state_external_edit_conflict_preserves_disk(
     assert first.mark_reviewed("m", ("first",))
     external_bytes = first.path.read_bytes()
 
-    assert not second.mark_reviewed("m", ("second",))
+    assert not _persist_review_before_transition(
+        second,
+        "m",
+        ("second",),
+    )
     assert second.path.read_bytes() == external_bytes
     assert not second.is_reviewed("m", ("second",))
+
+
+def test_review_state_lock_path_is_canonical_sibling(tmp_path: Path) -> None:
+    state_path = tmp_path / "review_state.json"
+
+    assert review_state_lock_path(state_path) == (
+        tmp_path / ".review_state.json.lock"
+    )
 
 
 def test_review_state_preserves_compatible_legacy_extensions(

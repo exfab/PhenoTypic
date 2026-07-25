@@ -51,6 +51,10 @@ _CATALOG_REQUIRED_COLUMNS = {
     "status_col",
     "flag_col",
 }
+_FILE_BACKED_QC_PARAMS: dict[str, tuple[str, ...]] = {
+    "ExpectedVsDetectedCount": ("metadata",),
+    "GridOccupancy": ("metadata",),
+}
 
 
 @dataclass(frozen=True)
@@ -83,11 +87,54 @@ def _layout_for(source: Path | BundleLayout) -> BundleLayout:
     return source if isinstance(source, BundleLayout) else BundleLayout.detect(source)
 
 
+def _external_qc_input_paths(layout: BundleLayout) -> tuple[Path, ...]:
+    """Resolve every supported file-backed input consumed by QC entries."""
+    pipeline_path = layout.resolved_pipeline_config_path
+    try:
+        payload = json.loads(pipeline_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return ()
+    if not isinstance(payload, dict) or not isinstance(payload.get("qc"), list):
+        return ()
+
+    paths: list[Path] = []
+    for raw_entry in payload["qc"]:
+        if not isinstance(raw_entry, dict):
+            continue
+        if raw_entry.get("enabled", True) is False:
+            continue
+        class_name = raw_entry.get("class")
+        params = raw_entry.get("params")
+        if not isinstance(class_name, str) or not isinstance(params, dict):
+            continue
+        for param_name in _FILE_BACKED_QC_PARAMS.get(class_name, ()):
+            raw_path = params.get(param_name)
+            if isinstance(raw_path, str) and raw_path.strip():
+                paths.append(Path(raw_path).expanduser().resolve(strict=False))
+    return tuple(paths)
+
+
+def _has_enabled_qc_entry(layout: BundleLayout) -> bool:
+    """Return whether the serialized recipe enables at least one QC entry."""
+    try:
+        payload = json.loads(
+            layout.resolved_pipeline_config_path.read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    raw_qc = payload.get("qc") if isinstance(payload, dict) else None
+    return isinstance(raw_qc, list) and any(
+        isinstance(entry, dict) and entry.get("enabled", True) is not False
+        for entry in raw_qc
+    )
+
+
 def _source_paths(layout: BundleLayout) -> tuple[Path, ...]:
     paths = [
         layout.resolved_pipeline_config_path,
         layout.mirror_parquet,
     ]
+    paths.extend(_external_qc_input_paths(layout))
     if layout.output_root is not None:
         paths.append(gui_launch_owner_path(layout.output_root))
     return tuple(paths)
@@ -154,12 +201,21 @@ def preflight_qc_rebuild(source: Path | BundleLayout) -> QcRebuildPreflight:
     pipeline_path = layout.resolved_pipeline_config_path
     if not pipeline_path.is_file():
         blockers.append(f"Pipeline recipe is missing: {pipeline_path}")
+    elif compatibility.status == "compatible" and not _has_enabled_qc_entry(
+        layout
+    ):
+        blockers.append("At least one enabled QC recipe entry is required.")
 
     mirror = layout.mirror_parquet
     if not mirror.is_file() or mirror.stat().st_size == 0:
         blockers.append(
             "The complete measurements.parquet mirror is required for rebuild."
         )
+    for dependency in _external_qc_input_paths(layout):
+        if not dependency.is_file():
+            blockers.append(f"QC recipe input is missing: {dependency}")
+        elif not os.access(dependency, os.R_OK):
+            blockers.append(f"QC recipe input is unreadable: {dependency}")
 
     owner_blocker = _owner_blocker(layout)
     if owner_blocker is not None:
@@ -290,6 +346,9 @@ def rebuild_qc_database(
         )
         if existing is not None:
             return existing
+        original_receipt_bytes = (
+            receipt_path.read_bytes() if receipt_path.is_file() else None
+        )
 
         pipeline = ImagePipeline.from_json(
             layout.resolved_pipeline_config_path,
@@ -314,7 +373,15 @@ def rebuild_qc_database(
         original_bytes = target.read_bytes() if target.is_file() else None
         backup_path: Path | None = None
         published = False
+        receipt_published = False
         try:
+            if original_bytes is not None:
+                backup_path = _backup_path(
+                    target,
+                    timestamp=timestamp,
+                    source_fingerprint=current.source_fingerprint,
+                )
+                atomic_write_bytes(backup_path, original_bytes)
             runner(
                 measurements,
                 pipeline,
@@ -324,17 +391,29 @@ def rebuild_qc_database(
             _validate_database(staged_db, enabled_ids)
             database_bytes = staged_db.read_bytes()
             database_fingerprint = bytes_fingerprint(database_bytes)
-
-            if original_bytes is not None:
-                backup_path = _backup_path(
-                    target,
-                    timestamp=timestamp,
-                    source_fingerprint=current.source_fingerprint,
+            final_source = preflight_qc_rebuild(layout)
+            if (
+                not final_source.ready
+                or final_source.source_fingerprint
+                != current.source_fingerprint
+            ):
+                raise QcRebuildError(
+                    "Rebuild inputs changed while QC analysis was running; "
+                    "the staged database was discarded."
                 )
-                atomic_write_bytes(backup_path, original_bytes)
+
             atomic_write_bytes(target, database_bytes)
             published = True
             _validate_database(target, enabled_ids)
+            post_publish_source = preflight_qc_rebuild(layout)
+            if (
+                not post_publish_source.ready
+                or post_publish_source.source_fingerprint
+                != current.source_fingerprint
+            ):
+                raise QcRebuildError(
+                    "Rebuild inputs changed during database publication."
+                )
 
             receipt = {
                 "schema_version": _REBUILD_RECEIPT_VERSION,
@@ -351,6 +430,16 @@ def rebuild_qc_database(
                 ),
             }
             atomic_write_json(receipt_path, receipt, sort_keys=False)
+            receipt_published = True
+            receipt_boundary_source = preflight_qc_rebuild(layout)
+            if (
+                not receipt_boundary_source.ready
+                or receipt_boundary_source.source_fingerprint
+                != current.source_fingerprint
+            ):
+                raise QcRebuildError(
+                    "Rebuild inputs changed at the generation receipt boundary."
+                )
             return QcRebuildResult(
                 applied=True,
                 target=target,
@@ -360,6 +449,18 @@ def rebuild_qc_database(
                 backup_path=backup_path,
             )
         except Exception as exc:
+            if receipt_published:
+                try:
+                    if original_receipt_bytes is not None:
+                        atomic_write_bytes(
+                            receipt_path,
+                            original_receipt_bytes,
+                        )
+                    else:
+                        receipt_path.unlink(missing_ok=True)
+                        receipt_path.parent.rmdir()
+                except OSError:
+                    pass
             if published:
                 if original_bytes is not None:
                     atomic_write_bytes(target, original_bytes)
