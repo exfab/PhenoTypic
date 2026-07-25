@@ -59,11 +59,19 @@ from phenotypic.gui.results_viewer._filtered_state import (
     KEY_COLUMNS,
     get_curated_frame,
 )
+from phenotypic.gui.results_viewer._compatibility import (
+    migrate_output_recipe,
+    preflight_output_compatibility,
+)
 from phenotypic.gui.results_viewer._qc_tab import _ids as ids
 from phenotypic.gui.results_viewer._qc_tab._check_card import build_check_card
 from phenotypic.gui.results_viewer._qc_tab._layout import (
     _banner_style,
     _render_load_warnings,
+)
+from phenotypic.gui.results_viewer._qc_tab._rebuild import (
+    preflight_qc_rebuild,
+    rebuild_qc_database,
 )
 from phenotypic.gui.results_viewer._qc_tab.review import (
     _ids as review_ids,
@@ -381,6 +389,27 @@ def _get_recipe() -> QcRecipe:
     return recipe
 
 
+def _recipe_source(recipe: QcRecipe) -> Any:
+    """Return the exact config path read by the current recipe."""
+    return recipe.source_path or recipe.path
+
+
+def _compatibility_payload(recipe: QcRecipe) -> dict[str, object]:
+    """Serialize a fresh pure compatibility preflight."""
+    report = preflight_output_compatibility(_recipe_source(recipe))
+    return {
+        "status": report.status,
+        "source_fingerprint": report.source_fingerprint,
+        "messages": [issue.message for issue in report.issues],
+    }
+
+
+def _require_compatible_recipe() -> None:
+    """Refuse every QC mutation until explicit migration succeeds."""
+    if _compatibility_payload(_get_recipe())["status"] != "compatible":
+        raise PreventUpdate
+
+
 def _get_registry() -> OperationRegistry | None:
     """Return the operation registry, or ``None`` when unavailable.
 
@@ -445,9 +474,8 @@ def _run_settings_edit_recompute(
     reconciled against the new group set so reviewed keys for vanished
     groups are pruned.
 
-    All-disabled edge: ``run_qc`` no-ops without clearing a pre-existing
-    ``qc.duckdb`` when nothing is enabled, so this removes the stale DB
-    directly to empty the worklist.
+    The all-disabled edge is routed through ``run_qc`` as well. The supported
+    writer owns canonical deletion; GUI callbacks never unlink ``qc.duckdb``.
 
     Args:
         output_root: The active ``OutputRoot`` (``None`` → no-op).
@@ -466,19 +494,6 @@ def _run_settings_edit_recompute(
     if output_root is None or recipe is None or pipeline is None:
         return False
     pipeline.set_qc(list(recipe.entries))  # reflect the just-saved recipe
-
-    if not any(e.enabled for e in recipe.entries):
-        # run_qc no-ops (without clearing) when nothing is enabled; remove
-        # the stale DB so the worklist empties.
-        db_path = output_root.layout.qc_duckdb
-        try:
-            db_path.unlink(missing_ok=True)
-        except OSError:
-            logger.warning(
-                "Failed to clear stale qc.duckdb at %s", db_path, exc_info=True
-            )
-        reconcile_review_state_after_rebuild(output_root)
-        return True
 
     if not _recompute_full_rebuild(output_root, pipeline, removed):
         return False
@@ -503,6 +518,142 @@ def register_qc_callbacks(app: dash.Dash) -> None:
     Args:
         app: The Dash application that will own the callbacks.
     """
+    @app.callback(
+        Output(ids.QC_MIGRATE_CONFIRM_ID, "displayed"),
+        Output(ids.QC_REBUILD_CONFIRM_ID, "displayed"),
+        Input(ids.QC_MIGRATE_RECIPE_BTN_ID, "n_clicks"),
+        Input(ids.QC_REBUILD_DATABASE_BTN_ID, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def _confirm_explicit_qc_action(
+        migrate_clicks: int | None,
+        rebuild_clicks: int | None,
+    ) -> tuple[Any, Any]:
+        """Require a second explicit confirmation before either mutation."""
+        if ctx.triggered_id == ids.QC_MIGRATE_RECIPE_BTN_ID and migrate_clicks:
+            return True, no_update
+        if ctx.triggered_id == ids.QC_REBUILD_DATABASE_BTN_ID and rebuild_clicks:
+            return no_update, True
+        raise PreventUpdate
+
+    @app.callback(
+        Output(ids.STORE_QC_COMPATIBILITY, "data"),
+        Output(ids.QC_COMPATIBILITY_STATUS_ID, "children"),
+        Output(ids.QC_ACTION_STATUS_ID, "children"),
+        Output(ids.QC_MIGRATE_RECIPE_BTN_ID, "disabled"),
+        Output(ids.QC_REBUILD_DATABASE_BTN_ID, "disabled"),
+        Output(
+            viewer_ids.STORE_QC_RECIPE_REVISION,
+            "data",
+            allow_duplicate=True,
+        ),
+        Output(ids.STORE_QC_RECOMPUTE_DONE, "data", allow_duplicate=True),
+        Input(ids.QC_MIGRATE_CONFIRM_ID, "submit_n_clicks"),
+        Input(ids.QC_REBUILD_CONFIRM_ID, "submit_n_clicks"),
+        State(ids.STORE_QC_COMPATIBILITY, "data"),
+        State(viewer_ids.STORE_QC_RECIPE_REVISION, "data"),
+        State(ids.STORE_QC_RECOMPUTE_DONE, "data"),
+        prevent_initial_call=True,
+    )
+    def _run_explicit_compatibility_action(
+        migrate_confirmations: int | None,
+        rebuild_confirmations: int | None,
+        compatibility_data: dict[str, object] | None,
+        revision: int | None,
+        rebuild_revision: int | None,
+    ) -> tuple[Any, Any, Any, bool, bool, Any, Any]:
+        """Run only the explicitly clicked migration or rebuild action."""
+        triggered = ctx.triggered_id
+        output_root = current_app.config.get(CFG_OUTPUT_ROOT)
+        if output_root is None:
+            raise PreventUpdate
+        try:
+            if (
+                triggered == ids.QC_MIGRATE_CONFIRM_ID
+                and migrate_confirmations
+            ):
+                expected = str(
+                    (compatibility_data or {}).get("source_fingerprint", "")
+                )
+                migration_result = migrate_output_recipe(
+                    output_root.layout,
+                    expected_source_fingerprint=expected,
+                )
+                fresh = QcRecipe.from_layout(output_root.layout)
+                current_app.config[CFG_QC_RECIPE] = fresh
+                from phenotypic._core._image_pipeline import ImagePipeline
+
+                current_app.config[CFG_QC_PIPELINE] = ImagePipeline.from_json(
+                    output_root.layout.resolved_pipeline_config_path,
+                    skip_unknown_analyzers=False,
+                )
+                payload = _compatibility_payload(fresh)
+                rebuild_ready = preflight_qc_rebuild(output_root.layout).ready
+                message = (
+                    "Recipe migration completed with an exact backup."
+                    if migration_result.applied
+                    else "Recipe is already compatible."
+                )
+                return (
+                    payload,
+                    "QC recipe is compatible.",
+                    message,
+                    True,
+                    not rebuild_ready,
+                    (revision or 0) + 1,
+                    no_update,
+                )
+            if (
+                triggered == ids.QC_REBUILD_CONFIRM_ID
+                and rebuild_confirmations
+            ):
+                preflight = preflight_qc_rebuild(output_root.layout)
+                rebuild_result = rebuild_qc_database(
+                    output_root.layout,
+                    expected_source_fingerprint=preflight.source_fingerprint,
+                )
+                payload = _compatibility_payload(_get_recipe())
+                message = (
+                    "QC database rebuilt and validated."
+                    if rebuild_result.applied
+                    else "QC database already matches this source generation."
+                )
+                return (
+                    payload,
+                    "QC recipe is compatible.",
+                    message,
+                    True,
+                    False,
+                    no_update,
+                    (rebuild_revision or 0) + 1,
+                )
+        except Exception as exc:  # noqa: BLE001 - explicit action status
+            logger.warning("Explicit QC action failed", exc_info=True)
+            payload = _compatibility_payload(_get_recipe())
+            status = str(payload["status"])
+            rebuild_ready = (
+                preflight_qc_rebuild(output_root.layout).ready
+                if status == "compatible"
+                else False
+            )
+            messages_raw = payload.get("messages")
+            messages = messages_raw if isinstance(messages_raw, list) else []
+            label = (
+                "QC recipe is compatible."
+                if status == "compatible"
+                else " ".join(str(item) for item in messages)
+            )
+            return (
+                payload,
+                label,
+                str(exc),
+                status != "migratable",
+                not rebuild_ready,
+                no_update,
+                no_update,
+            )
+        raise PreventUpdate
+
     # -----------------------------------------------------------------
     # Callback A: card-list render
     # -----------------------------------------------------------------
@@ -510,16 +661,27 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         Output(ids.QC_CARDS_CONTAINER_ID, "children"),
         Output(ids.QC_LOAD_WARNING_BANNER_ID, "children"),
         Output(ids.QC_LOAD_WARNING_BANNER_ID, "style"),
+        Output(ids.QC_ADD_CHECK_BTN_ID, "disabled"),
         Input(viewer_ids.STORE_QC_RECIPE_REVISION, "data"),
+        Input(ids.STORE_QC_COMPATIBILITY, "data"),
     )
-    def _render_card_shells(_revision: int | None) -> tuple[Any, Any, dict[str, str]]:
+    def _render_card_shells(
+        _revision: int | None,
+        compatibility_data: dict[str, object] | None,
+    ) -> tuple[Any, Any, dict[str, str], bool]:
         """Rebuild the cards-container children list on every revision tick."""
         recipe = _get_recipe()
-        shells = [build_check_card(entry) for entry in recipe.entries if entry.enabled]
+        blocked = (compatibility_data or {}).get("status") != "compatible"
+        shells = [
+            build_check_card(entry, mutations_disabled=blocked)
+            for entry in recipe.entries
+            if entry.enabled
+        ]
         return (
             shells,
             _render_load_warnings(recipe.load_warnings),
             _banner_style(recipe.load_warnings),
+            blocked,
         )
 
     # -----------------------------------------------------------------
@@ -816,6 +978,7 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         """Persist the modal's state via :meth:`QcRecipe.add` / :meth:`update`."""
         if not n_clicks or not class_name:
             raise PreventUpdate
+        _require_compatible_recipe()
 
         registry = _get_registry()
         if registry is None:
@@ -869,7 +1032,9 @@ def register_qc_callbacks(app: dash.Dash) -> None:
                 raise PreventUpdate
         else:
             try:
-                recipe.add(info.cls, new_params)
+                added = recipe.add(info.cls, new_params)
+                if added is None:
+                    raise PreventUpdate
             except Exception as exc:  # noqa: BLE001
                 logger.warning("QC modal: add failed: %s", exc, exc_info=True)
                 raise PreventUpdate from exc
@@ -897,6 +1062,7 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         triggered = ctx.triggered_id
         if not isinstance(triggered, dict):
             raise PreventUpdate
+        _require_compatible_recipe()
         # Pattern-matching callbacks always fire once at boot with all
         # ``n_clicks`` at ``None``; skip when no actual click is recorded.
         if not any(item.get("value") for item in ctx.triggered or []):
@@ -953,6 +1119,7 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         """Push a card's flagged keys into ``STORE_REMOVED_KEYS``."""
         if not n_clicks_list or not any(n_clicks_list):
             raise PreventUpdate
+        _require_compatible_recipe()
         triggered = ctx.triggered_id
         if not isinstance(triggered, dict):
             raise PreventUpdate
@@ -1032,6 +1199,7 @@ def register_qc_callbacks(app: dash.Dash) -> None:
     )
     def _recompute_qc_on_settings_edit(revision: int | None) -> Any:
         """Durably rebuild qc.duckdb after a QC settings edit (spec §D.8)."""
+        _require_compatible_recipe()
         output_root = current_app.config.get(CFG_OUTPUT_ROOT)
         recipe = current_app.config.get(CFG_QC_RECIPE)
         pipeline = current_app.config.get(CFG_QC_PIPELINE)

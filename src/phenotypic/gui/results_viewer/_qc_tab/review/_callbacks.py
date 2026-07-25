@@ -61,6 +61,7 @@ from phenotypic.gui._config import (
     CFG_FILTERED_STATE,
     CFG_OUTPUT_ROOT,
     CFG_QC_PIPELINE,
+    CFG_QC_RECIPE,
     CFG_URL_PREFIX,
     MOUNT_HOME,
     QC_CROPS_URL_SEGMENT,
@@ -138,6 +139,20 @@ _BADGE_COLOR_BY_STATUS: dict[str, str] = {
 def _url_prefix() -> str:
     """Return the active app's mount-point prefix (``/`` standalone)."""
     return current_app.config.get(CFG_URL_PREFIX, MOUNT_HOME)
+
+
+def _qc_mutations_allowed() -> bool:
+    """Return whether the bound recipe passed a fresh compatibility preflight."""
+    from phenotypic.gui.results_viewer._compatibility import (
+        preflight_output_compatibility,
+    )
+    from phenotypic.sdk_._qc_recipe import QcRecipe
+
+    recipe = current_app.config.get(CFG_QC_RECIPE)
+    if not isinstance(recipe, QcRecipe):
+        return False
+    source = recipe.source_path or recipe.path
+    return preflight_output_compatibility(source).status == "compatible"
 
 
 def _qc_crop_url(
@@ -735,7 +750,8 @@ def _review_empty_state_children(output_root) -> Component:
                         },
                     ),
                     html.Div(
-                        "`python -m phenotypic --mode recompile --output <output>`",
+                        "`uv run python -m phenotypic --mode recompile "
+                        "--output <output>`",
                         style={
                             "color": COLOR_MUTED,
                             "fontFamily": FONT_FAMILY_MONO,
@@ -749,7 +765,8 @@ def _review_empty_state_children(output_root) -> Component:
             html.Div("No QC review queue yet.", className="fw-semibold"),
             html.Div(
                 "Configure a quality check, then re-run "
-                "`python -m phenotypic --mode recompile --output <output>` "
+                "`uv run python -m phenotypic --mode recompile "
+                "--output <output>` "
                 "(or pick a module above if a qc/ artifact already exists).",
                 style={"color": COLOR_MUTED, "fontSize": FONT_SIZE_CAPTION},
             ),
@@ -974,11 +991,10 @@ def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
         ``True`` when ``run_qc`` ran (or no-oped cleanly), ``False`` on a
         missing root / pipeline / empty recipe or a rebuild exception.
     """
-    if output_root is None or pipeline is None or not pipeline.get_qc():
+    if output_root is None or pipeline is None:
         return False
 
     from phenotypic.sdk_._qc_recipe._runner import run_qc
-
     frame = _data.build_recompute_frame(output_root, removed)
     try:
         # Write directly into the bundle's resolved qc dir so a standalone
@@ -1274,6 +1290,19 @@ def register_review_callbacks(app: dash.Dash) -> None:
         )
         if is_row_click:
             clicked_key = triggered.get("key")
+            if (
+                instance_id
+                and isinstance(clicked_key, str)
+                and clicked_key
+                and _qc_mutations_allowed()
+            ):
+                # A row click is the sole explicit selection gesture. Store
+                # last-visited here, never on the selection-store echo or
+                # initial auto-selection/tab activation.
+                _load_review_state().set_last(
+                    instance_id,
+                    decode_group_key(clicked_key),
+                )
             # A row click that *changes* the selection only needs to update
             # the store: that write re-fires this callback on the store-input
             # path, which renders the detail once. Rendering here too would
@@ -1345,9 +1374,7 @@ def register_review_callbacks(app: dash.Dash) -> None:
             selected=selected,
             category_of=category_of,
         )
-        # Record last-visited group for this module.
         review_state = _load_review_state()
-        review_state.set_last(instance_id, key_values)
         row_styles = _worklist_row_styles_for_selection(
             row_ids or [],
             selected_encoded=selected_encoded,
@@ -1630,6 +1657,8 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
         decode → ``no_update`` (the QC no-op); the QC-specific
         ``filtered is None`` guard stays here.
         """
+        if not _qc_mutations_allowed():
+            return no_update
         filtered = _filtered_state()
         if filtered is None:
             return no_update
@@ -1865,6 +1894,8 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
         selection_payload: Any,
     ):
         """Apply remove/restore to the multi-selected Review tiles, then clear."""
+        if not _qc_mutations_allowed():
+            return no_update, no_update
         triggered = callback_context.triggered_id
         filtered = _filtered_state()
         if filtered is None or triggered is None:
@@ -1912,7 +1943,7 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
         selection_payload: Any,
     ):
         """Mark the multi-selected QC tiles with the chosen category, then clear."""
-        if not category:
+        if not category or not _qc_mutations_allowed():
             return no_update, no_update, no_update
         filtered = _filtered_state()
         if filtered is None:
@@ -1977,6 +2008,8 @@ def _register_review_progress_callbacks(app: dash.Dash) -> None:
             if not order:
                 return deltas, selected_encoded
             return deltas, _previous_group(order, selected_encoded)
+        if not _qc_mutations_allowed():
+            return no_update, no_update
 
         output_root = _output_root()
         if output_root is None:

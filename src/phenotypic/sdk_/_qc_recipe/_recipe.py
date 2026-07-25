@@ -535,15 +535,22 @@ class QcRecipe:
                         loaded = json.loads(
                             read_path.read_text(encoding="utf-8")
                         )
-                        if isinstance(loaded, dict):
-                            document = loaded
                     except (json.JSONDecodeError, OSError):
                         logger.warning(
                             "Could not re-read %s before scoped qc write; "
-                            "writing a minimal qc-only document instead.",
+                            "refusing to replace the existing pipeline.",
                             read_path,
                             exc_info=True,
                         )
+                        return False
+                    if not isinstance(loaded, dict):
+                        logger.warning(
+                            "Pipeline at %s is not a JSON object; refusing "
+                            "to replace it with a minimal QC document.",
+                            read_path,
+                        )
+                        return False
+                    document = loaded
 
                 try:
                     document[_QC_KEY] = [

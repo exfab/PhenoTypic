@@ -16,6 +16,7 @@ from typing import Iterator
 from dash import html
 
 from phenotypic.gui.results_viewer._qc_tab._layout import build_qc_tab_body
+from phenotypic.gui.results_viewer._qc_tab import _ids as qc_ids
 from phenotypic.gui.results_viewer._qc_tab.review import _ids as rids
 from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
     _previous_group,
@@ -80,6 +81,28 @@ def test_qc_tab_body_mounts_toggle_and_both_subviews() -> None:
     # Both sub-view wrappers (the switch callback flips their display).
     assert rids.QC_CONFIGURE_VIEW_ID in ids
     assert rids.QC_REVIEW_VIEW_ID in ids
+    assert qc_ids.QC_MIGRATE_RECIPE_BTN_ID in ids
+    assert qc_ids.QC_REBUILD_DATABASE_BTN_ID in ids
+    assert qc_ids.QC_MIGRATE_CONFIRM_ID in ids
+    assert qc_ids.QC_REBUILD_CONFIRM_ID in ids
+
+
+def test_blocked_recipe_disables_qc_mutation_controls(tmp_path: Path) -> None:
+    """An unreadable existing recipe exposes actions but refuses config writes."""
+    pipeline = tmp_path / "pipeline.json.pht-pipe"
+    pipeline.write_text('{"qc": [broken', encoding="utf-8")
+    body = build_qc_tab_body(
+        QcRecipe._load_from_paths(pipeline, pipeline)
+    )
+    nodes = {
+        getattr(node, "id", None): node
+        for node in _walk(body)
+        if isinstance(getattr(node, "id", None), str)
+    }
+
+    assert nodes[qc_ids.QC_ADD_CHECK_BTN_ID].disabled is True
+    assert nodes[qc_ids.QC_MIGRATE_RECIPE_BTN_ID].disabled is True
+    assert nodes[qc_ids.QC_REBUILD_DATABASE_BTN_ID].disabled is True
 
 
 def test_review_view_mounts_every_callback_target() -> None:

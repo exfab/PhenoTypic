@@ -38,6 +38,13 @@ QC_ADD_CHECK_BTN_ID: str = "qc-add-check-btn"
 #: ``style.display``) is owned by the card-list-render callback so the
 #: banner re-appears if the user installs a new recipe with warnings.
 QC_LOAD_WARNING_BANNER_ID: str = "qc-load-warning-banner"
+QC_COMPATIBILITY_STATUS_ID: str = "qc-compatibility-status"
+QC_ACTION_STATUS_ID: str = "qc-action-status"
+QC_MIGRATE_RECIPE_BTN_ID: str = "qc-migrate-recipe-btn"
+QC_REBUILD_DATABASE_BTN_ID: str = "qc-rebuild-database-btn"
+QC_MIGRATE_CONFIRM_ID: str = "qc-migrate-recipe-confirm"
+QC_REBUILD_CONFIRM_ID: str = "qc-rebuild-database-confirm"
+STORE_QC_COMPATIBILITY: str = "store-qc-compatibility"
 
 
 # ---------------------------------------------------------------------------
@@ -203,6 +210,13 @@ __all__ = [
     "QC_CARDS_CONTAINER_ID",
     "QC_ADD_CHECK_BTN_ID",
     "QC_LOAD_WARNING_BANNER_ID",
+    "QC_COMPATIBILITY_STATUS_ID",
+    "QC_ACTION_STATUS_ID",
+    "QC_MIGRATE_RECIPE_BTN_ID",
+    "QC_REBUILD_DATABASE_BTN_ID",
+    "QC_MIGRATE_CONFIRM_ID",
+    "QC_REBUILD_CONFIRM_ID",
+    "STORE_QC_COMPATIBILITY",
     "QC_MODAL_ID",
     "QC_MODAL_TITLE_ID",
     "QC_MODAL_CLASS_PICKER_ID",

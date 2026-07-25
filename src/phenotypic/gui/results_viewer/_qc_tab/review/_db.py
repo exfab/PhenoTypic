@@ -37,7 +37,7 @@ _LEGACY_QC_PARQUETS = ("qc_summary.parquet", "qc_members.parquet")
 
 _LEGACY_QC_CUTOVER_MESSAGE = (
     "Legacy QC parquet artifacts were found, but this version reads QC review "
-    "data only from qc.duckdb. Recompile the output to rebuild the QC database."
+    "data only from qc.duckdb. Use the explicit Rebuild QC action above."
 )
 
 

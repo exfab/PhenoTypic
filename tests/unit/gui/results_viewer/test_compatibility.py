@@ -13,6 +13,7 @@ import pytest
 
 from phenotypic._cli import _cli_output_manager
 from phenotypic._core._image_pipeline import ImagePipeline
+from phenotypic.analysis.qc import ExpectedVsDetectedCount
 from phenotypic.gui.results_viewer import _compatibility
 from phenotypic.gui.results_viewer._compatibility import (
     CompatibilityMigrationError,
@@ -185,6 +186,28 @@ def test_unknown_entry_is_blocked_and_raw_file_is_preserved(
     assert pipeline.read_bytes() == before
     assert recipe.load_warnings == warnings_before
     assert len(report.issues) == 1
+
+
+def test_unreadable_recipe_mutation_never_writes_minimal_pipeline(
+    tmp_path: Path,
+) -> None:
+    """A corrupt existing pipeline is preserved byte-for-byte on mutation."""
+    pipeline = pipeline_json_path(tmp_path)
+    pipeline.parent.mkdir(parents=True, exist_ok=True)
+    original = b'{"qc": [broken'
+    pipeline.write_bytes(original)
+    recipe = QcRecipe.load(tmp_path)
+
+    added = recipe.add(
+        ExpectedVsDetectedCount,
+        {
+            "metadata": str(tmp_path / "missing.csv"),
+            "groupby": [str(METADATA.IMAGE_NAME)],
+        },
+    )
+
+    assert added is None
+    assert pipeline.read_bytes() == original
 
 
 def test_explicit_migration_is_backed_up_atomic_receipted_and_idempotent(

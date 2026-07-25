@@ -48,9 +48,11 @@ import re
 import threading
 import time
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from collections.abc import Iterator
 
 import duckdb
 import pandas as pd
@@ -60,6 +62,7 @@ if TYPE_CHECKING:
     from phenotypic.analysis.abc_ import QcTableSpec, QualityCheck
 
 from phenotypic.sdk_ import QC_DUCKDB, qc_duckdb_path
+from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 from ._recipe import QcRecipeEntry
 
@@ -92,6 +95,18 @@ _CATALOG_NCOLS: int = 19
 
 _WRITER_LOCKS_GUARD = threading.Lock()
 _WRITER_LOCKS: dict[Path, threading.Lock] = {}
+
+
+def qc_publication_lock_path(target: Path) -> Path:
+    """Return the canonical interprocess lock for one QC database."""
+    return Path(target).parent / ".qc-publication.lock"
+
+
+@contextmanager
+def qc_publication_lock(target: Path) -> Iterator[None]:
+    """Serialize every QC database writer across processes."""
+    with exclusive_path_lock(qc_publication_lock_path(target)):
+        yield
 
 
 @dataclass(frozen=True)
@@ -160,7 +175,7 @@ def run_qc(
         target = qc_duckdb_path(output_dir)
     target.parent.mkdir(parents=True, exist_ok=True)
 
-    with _writer_lock(target):
+    with qc_publication_lock(target), _writer_lock(target):
         entries = [e for e in pipeline.get_qc() if e.enabled]
         if not entries:
             logger.debug(

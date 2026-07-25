@@ -27,10 +27,11 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ReplicateAgreement
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
+from phenotypic.sdk_ import qc_review_state_path
 
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
-from phenotypic.schema import METADATA
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 
 # Single-threaded dev server + Dash callback chain stochastically exceeds
 # the wait budgets on GHA shared runners; correct locally. See test_qc_tab.py.
@@ -54,7 +55,7 @@ def _build_master() -> pl.DataFrame:
                 label += 1
                 rows.append(
                     {
-                        "Metadata_Dataset": "ds1",
+                        str(EXPERIMENT_METADATA.DATASET): "ds1",
                         str(METADATA.IMAGE_NAME): image,
                         "Metadata_Time": 0.0,
                         "Object_Label": label,
@@ -146,11 +147,11 @@ def _open_review(page: Page, hub_url: str) -> None:
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({path: path}),
             });
-            return r.status;
+            return {status: r.status, text: await r.text()};
         }""",
         output_rel,
     )
-    assert resp == 200, f"viewer hand-off failed: {resp}"
+    assert resp["status"] == 200, f"viewer hand-off failed: {resp}"
 
     page.goto(hub_url + "/results/")
     page.wait_for_selector("#qc-cards-container", state="attached", timeout=15_000)
@@ -185,6 +186,22 @@ def _selected_worklist_text(page: Page) -> str:
             return selected ? (selected.textContent || '').trim() : '';
         }"""
     )
+
+
+def test_review_activation_and_auto_selection_write_no_state(
+    page: Page,
+    hub_url: str,
+    fake_sandbox: Path,
+) -> None:
+    """Opening Review and its first auto-selection are source-preserving."""
+    output = fake_sandbox / "results" / _OUTPUT_NAME
+    state_path = qc_review_state_path(output)
+    assert not state_path.exists()
+
+    _open_review(page, hub_url)
+    page.wait_for_timeout(500)
+
+    assert not state_path.exists()
 
 
 def test_group_icon_navigation_previous_and_next(page: Page, hub_url: str) -> None:

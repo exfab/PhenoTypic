@@ -25,18 +25,15 @@ JSON-string of the value list (``'["plate1", "A"]'``) on the way out and
 decoded back to a tuple on the way in — this keeps multi-column group
 keys round-trippable through the on-disk store.
 
-The store is written atomically (temp file + ``os.replace``) so a crash
-mid-write never leaves a half-JSON file. Concurrency is intentionally
-light: ``review_state.json`` is single-viewer-session state, not a
-CLI↔GUI handoff like ``pipeline.json``, so there is no mtime guard.
+Full-file writes are serialized with an interprocess lock and use an exact
+content-fingerprint compare-and-swap guard. A viewer session therefore never
+overwrites progress written by another process after this state was loaded.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import os
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -45,6 +42,12 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from phenotypic.sdk_ import BundleLayout
 
 logger = logging.getLogger(__name__)
+
+_MISSING_FINGERPRINT = "missing"
+
+
+class ReviewStateConflictError(RuntimeError):
+    """Raised when review state changed after the current session loaded it."""
 
 #: A group key — the tuple of ``groupby`` column values identifying one
 #: QC group. Single-column checks still use a 1-tuple.
@@ -126,6 +129,9 @@ class ReviewState:
 
     path: Path
     modules: dict[str, ModuleProgress] = field(default_factory=dict)
+    source_fingerprint: str = _MISSING_FINGERPRINT
+    source_readable: bool = True
+    original_payload: dict[str, object] = field(default_factory=dict)
 
     @classmethod
     def load(cls, layout: "BundleLayout") -> "ReviewState":
@@ -149,7 +155,8 @@ class ReviewState:
             return cls(path=path)
 
         try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
+            source_bytes = path.read_bytes()
+            payload = json.loads(source_bytes)
         except (json.JSONDecodeError, OSError) as exc:
             logger.warning(
                 "qc/review_state.json at %s could not be read; starting with "
@@ -157,22 +164,52 @@ class ReviewState:
                 path,
                 exc,
             )
-            return cls(path=path)
+            from phenotypic.sdk_ import file_fingerprint
+
+            try:
+                fingerprint = file_fingerprint(path)
+            except OSError:
+                fingerprint = _MISSING_FINGERPRINT
+            return cls(
+                path=path,
+                source_fingerprint=fingerprint,
+                source_readable=False,
+            )
+
+        from phenotypic.sdk_ import bytes_fingerprint
+
+        fingerprint = bytes_fingerprint(source_bytes)
+        if not isinstance(payload, dict):
+            logger.warning(
+                "qc/review_state.json at %s is not a JSON object; refusing "
+                "future writes from this session.",
+                path,
+            )
+            return cls(
+                path=path,
+                source_fingerprint=fingerprint,
+                source_readable=False,
+            )
 
         modules: dict[str, ModuleProgress] = {}
-        if isinstance(payload, dict):
-            for instance_id, raw in payload.items():
-                if not isinstance(raw, dict):
-                    continue
-                reviewed = raw.get("reviewed", [])
-                last = raw.get("last")
-                modules[str(instance_id)] = ModuleProgress(
-                    reviewed={str(k) for k in reviewed}
-                    if isinstance(reviewed, list)
-                    else set(),
-                    last=str(last) if isinstance(last, str) else None,
-                )
-        return cls(path=path, modules=modules)
+        for instance_id, raw in payload.items():
+            if not isinstance(raw, dict):
+                continue
+            reviewed = raw.get("reviewed", [])
+            last = raw.get("last")
+            modules[str(instance_id)] = ModuleProgress(
+                reviewed={str(k) for k in reviewed}
+                if isinstance(reviewed, list)
+                else set(),
+                last=str(last) if isinstance(last, str) else None,
+            )
+
+        return cls(
+            path=path,
+            modules=modules,
+            source_fingerprint=fingerprint,
+            original_payload=dict(payload),
+        )
 
     def progress_for(self, instance_id: str) -> ModuleProgress:
         """Return (creating if absent) the progress record for ``instance_id``."""
@@ -190,17 +227,29 @@ class ReviewState:
         progress = self.modules.get(instance_id)
         return 0 if progress is None else len(progress.reviewed)
 
-    def mark_reviewed(self, instance_id: str, key: GroupKey) -> None:
+    def mark_reviewed(self, instance_id: str, key: GroupKey) -> bool:
         """Mark group ``key`` reviewed for the module and persist."""
         progress = self.progress_for(instance_id)
-        progress.reviewed.add(encode_group_key(key))
-        self.save()
+        encoded = encode_group_key(key)
+        was_present = encoded in progress.reviewed
+        progress.reviewed.add(encoded)
+        if self.save():
+            return True
+        if not was_present:
+            progress.reviewed.discard(encoded)
+        return False
 
-    def unmark_reviewed(self, instance_id: str, key: GroupKey) -> None:
+    def unmark_reviewed(self, instance_id: str, key: GroupKey) -> bool:
         """Drop group ``key`` from the module's reviewed set and persist."""
         progress = self.progress_for(instance_id)
-        progress.reviewed.discard(encode_group_key(key))
-        self.save()
+        encoded = encode_group_key(key)
+        was_present = encoded in progress.reviewed
+        progress.reviewed.discard(encoded)
+        if self.save():
+            return True
+        if was_present:
+            progress.reviewed.add(encoded)
+        return False
 
     def reconcile_to_summary(
         self, instance_id: str, present_keys: set[str]
@@ -227,7 +276,7 @@ class ReviewState:
                 progress.last = None
             self.save()
 
-    def set_last(self, instance_id: str, key: GroupKey | None) -> None:
+    def set_last(self, instance_id: str, key: GroupKey | None) -> bool:
         """Record the last-visited group for the module and persist.
 
         Args:
@@ -235,58 +284,80 @@ class ReviewState:
             key: The group key just opened, or ``None`` to clear.
         """
         progress = self.progress_for(instance_id)
+        previous = progress.last
         progress.last = None if key is None else encode_group_key(key)
-        self.save()
+        if self.save():
+            return True
+        progress.last = previous
+        return False
 
-    def to_payload(self) -> dict[str, dict[str, object]]:
+    def to_payload(self) -> dict[str, object]:
         """Serialize the in-memory state to the on-disk JSON shape."""
-        return {
-            instance_id: {
+        payload = dict(self.original_payload)
+        for instance_id, progress in self.modules.items():
+            existing = payload.get(instance_id)
+            module_payload = dict(existing) if isinstance(existing, dict) else {}
+            module_payload.update({
                 "reviewed": sorted(progress.reviewed),
                 "last": progress.last,
-            }
-            for instance_id, progress in self.modules.items()
-        }
+            })
+            payload[instance_id] = module_payload
+        return payload
 
-    def save(self) -> None:
+    def _current_fingerprint(self) -> str:
+        """Return the exact current generation without modifying the file."""
+        from phenotypic.sdk_ import file_fingerprint
+
+        try:
+            return file_fingerprint(self.path)
+        except FileNotFoundError:
+            return _MISSING_FINGERPRINT
+
+    def save(self) -> bool:
         """Atomically write the current state to :attr:`path`.
 
-        Writes to a sibling temp file then ``os.replace``-s it into place
-        (atomic on every supported platform). Failures are logged at
-        WARNING and swallowed — losing a review-progress write is a
-        recoverable annoyance, never a reason to crash a curation
-        callback.
+        The complete read/check/write transaction holds a sibling
+        interprocess lock. A source fingerprint mismatch or an unreadable
+        loaded source refuses the write and preserves external edits.
+
+        Returns:
+            ``True`` when persisted, otherwise ``False``.
         """
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        payload = json.dumps(self.to_payload(), indent=2)
-        tmp_path: str | None = None
-        try:
-            handle = tempfile.NamedTemporaryFile(
-                dir=self.path.parent,
-                prefix=f".{self.path.stem}_",
-                suffix=".tmp",
-                delete=False,
-            )
-            tmp_path = handle.name
-            handle.close()
-            Path(tmp_path).write_text(payload, encoding="utf-8")
-            os.replace(tmp_path, self.path)
-        except OSError:
+        from phenotypic.sdk_ import atomic_write_json, file_fingerprint
+        from phenotypic.sdk_._file_locking import exclusive_path_lock
+
+        if not self.source_readable:
             logger.warning(
-                "Failed to write qc/review_state.json at %s", self.path,
+                "Refusing to overwrite unreadable qc/review_state.json at %s",
+                self.path,
+            )
+            return False
+        try:
+            lock_path = self.path.with_name(f".{self.path.name}.lock")
+            with exclusive_path_lock(lock_path):
+                current = self._current_fingerprint()
+                if current != self.source_fingerprint:
+                    raise ReviewStateConflictError(
+                        "review_state.json changed after this session loaded it"
+                    )
+                atomic_write_json(self.path, self.to_payload(), sort_keys=False)
+                self.source_fingerprint = file_fingerprint(self.path)
+                self.original_payload = self.to_payload()
+            return True
+        except (OSError, ReviewStateConflictError):
+            logger.warning(
+                "Refused or failed to write qc/review_state.json at %s",
+                self.path,
                 exc_info=True,
             )
-            if tmp_path is not None:
-                try:
-                    os.unlink(tmp_path)
-                except OSError:
-                    pass
+            return False
 
 
 __all__ = [
     "GroupKey",
     "ModuleProgress",
     "ReviewState",
+    "ReviewStateConflictError",
     "encode_group_key",
     "decode_group_key",
 ]

@@ -49,7 +49,7 @@ def _empty_initial_figure() -> go.Figure:
     return fig
 
 
-def _title_row(entry: QcRecipeEntry) -> Component:
+def _title_row(entry: QcRecipeEntry, *, mutations_disabled: bool = False) -> Component:
     """Build the card title row.
 
     Layout (left to right): status badge, class name + short id label,
@@ -99,6 +99,7 @@ def _title_row(entry: QcRecipeEntry) -> Component:
         size="sm",
         n_clicks=0,
         className="me-1",
+        disabled=mutations_disabled,
     )
     toggle_btn = dbc.Button(
         toggle_label,
@@ -108,6 +109,7 @@ def _title_row(entry: QcRecipeEntry) -> Component:
         size="sm",
         n_clicks=0,
         className="me-1",
+        disabled=mutations_disabled,
     )
     duplicate_btn = dbc.Button(
         "Duplicate",
@@ -117,6 +119,7 @@ def _title_row(entry: QcRecipeEntry) -> Component:
         size="sm",
         n_clicks=0,
         className="me-1",
+        disabled=mutations_disabled,
     )
     delete_btn = dbc.Button(
         "Delete",
@@ -125,6 +128,7 @@ def _title_row(entry: QcRecipeEntry) -> Component:
         outline=True,
         size="sm",
         n_clicks=0,
+        disabled=mutations_disabled,
     )
 
     return html.Div(
@@ -142,7 +146,7 @@ def _title_row(entry: QcRecipeEntry) -> Component:
     )
 
 
-def _body(entry: QcRecipeEntry) -> Component:
+def _body(entry: QcRecipeEntry, *, mutations_disabled: bool = False) -> Component:
     """Build the card body holding the figure, summary strip, and action button.
 
     Args:
@@ -184,6 +188,7 @@ def _body(entry: QcRecipeEntry) -> Component:
         size="sm",
         n_clicks=0,
         className="mt-2",
+        disabled=mutations_disabled,
     )
 
     return html.Div(
@@ -192,7 +197,11 @@ def _body(entry: QcRecipeEntry) -> Component:
     )
 
 
-def build_check_card(entry: QcRecipeEntry) -> dbc.Card:
+def build_check_card(
+    entry: QcRecipeEntry,
+    *,
+    mutations_disabled: bool = False,
+) -> dbc.Card:
     """Build one card per configured :class:`QualityCheck` instance.
 
     The card is a thin shell wrapper around the figure + summary + action
@@ -212,8 +221,12 @@ def build_check_card(entry: QcRecipeEntry) -> dbc.Card:
     instance_id = entry.instance_id
     return dbc.Card(
         [
-            dbc.CardHeader(_title_row(entry)),
-            dbc.CardBody(_body(entry)),
+            dbc.CardHeader(
+                _title_row(entry, mutations_disabled=mutations_disabled)
+            ),
+            dbc.CardBody(
+                _body(entry, mutations_disabled=mutations_disabled)
+            ),
         ],
         id=ids.qc_card_root_id(instance_id),
         className="qc-card",
