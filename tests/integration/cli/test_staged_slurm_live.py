@@ -29,7 +29,7 @@ from phenotypic._cli._cli_staged_orchestration import (
 from phenotypic._cli._cli_staged_slurm import StagedSlurmStrategy
 from phenotypic._cli._cli_types import Dataset, ExecutionConfig
 from phenotypic.measure import MeasureSize
-from phenotypic.sdk_ import job_metadata_path
+from phenotypic.sdk_ import dataset_overlays_dir, job_metadata_path
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
 from tests._support.live_slurm import (
     cleanup_case,
@@ -114,7 +114,7 @@ def _staged_config(
         resume=False,
         retry_failures=False,
         skip_validation=True,
-        save_overlays=False,
+        save_overlays=True,
         gpu_slurm_args={
             **cpu_profile,
             "slurm_gpus_per_node": 0,
@@ -167,7 +167,7 @@ def test_live_one_image_staged_dispatch_completes_with_recovery_roles() -> None:
             output_manager = OutputManager.from_config(
                 output_dir,
                 ".tiff",
-                save_overlays=False,
+                save_overlays=True,
             )
             output_manager.create_structure([dataset])
             strategy = StagedSlurmStrategy(
@@ -222,6 +222,10 @@ def test_live_one_image_staged_dispatch_completes_with_recovery_roles() -> None:
             assert not tuple(
                 (output_dir / "results" / "ds" / "objmap").glob("*.npy")
             )
+            assert (
+                dataset_overlays_dir(output_dir, "ds")
+                / f"{image_path.stem}.png"
+            ).is_file()
             print(
                 "LIVE_STAGED_COMPLETION "
                 f"generation={scheduler_generation.hex} "
