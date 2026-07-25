@@ -11,10 +11,11 @@ Open the `Viewer` tab in the hub:
 
 ![Viewer tab in empty state.](../../_static/gui_images/view_results/01_viewer_empty.png)
 
-The hub viewer starts in **empty state**. The text on the page tells you
-to "pick a CLI output directory in the sidebar to load the viewer", and
-in v1 the rebuild-on-select path is not yet wired. Two ways to get a
-populated viewer:
+The hub viewer starts in **empty state**. Pick a CLI output directory in the
+sidebar and use the hand-off banner to bind it. Results and Analysis receive
+one coherent, read-only snapshot, so a failed or superseded refresh keeps the
+previous output visible rather than mixing two runs. Two other ways to get a
+populated viewer are:
 
 1. **Standalone launch** (recommended for now). Run
    `phenotypic.gui.results_viewer` directly with `--output-root` pointing
@@ -37,8 +38,7 @@ the output the [Run Locally](04_run_local.md) page produced.
 ```{note}
 The screenshots below are the **standalone** results viewer (no top bar /
 sidebar) so the page header reads "Results Viewer" instead of "PhenoTypic
-GUI". The body is identical to what the hub viewer would show once
-rebuild-on-select lands.
+GUI". The body is identical to a bound hub snapshot.
 ```
 
 ![Loaded viewer with filter pane and image selector.](../../_static/gui_images/view_results/02_viewer_loaded.png)
@@ -69,7 +69,8 @@ expect the first navigation to take a moment. Subsequent navigation
 between plates reuses the in-memory state. When the viewer is mounted
 inside the hub, the hub chrome's `Release` control (not visible in the
 standalone screenshots above) drops the in-memory state; the next
-access reloads from disk.
+access reloads from disk. Standalone viewers intentionally do not subscribe to
+hub refresh events.
 
 Process RSS may not return to the OS after release — the CPython
 allocator pools freed pages rather than returning them immediately.

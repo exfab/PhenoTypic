@@ -17,8 +17,9 @@ The analysis loop:
    adjusted p-value.
 3. **Drag the cutoff line** on the good-vs-error distribution (or type a
    value) to trade recall for specificity, watching the live readout.
-4. **Copy the filter spec** and apply it in your own post-processing, or
-   `Save analysis report` to write the HTML.
+4. **Copy the filter spec** for downstream use. Preview remains in memory;
+   click **Publish all categories** only when you want one complete,
+   transactionally receipted artifact generation.
 5. Switch the **good baseline** between `All unlabeled` and
    `Verified only` to control what the error class is being compared
    against.
@@ -35,7 +36,7 @@ The analysis loop:
   category first — see [View Results](06_view_results.md) /
   [QC review walkthrough](15_qc_review.md) for the radial-menu
   curation flow that writes those labels into
-  `qc/curation_labels.parquet`. The tutorial dataset is seeded with 12
+  `deliverables/qc/curation_labels.parquet`. The tutorial dataset is seeded with 12
   `background_noise` labels (the smallest colonies) by the capture
   script so the populated state below renders.
 
@@ -47,7 +48,7 @@ its empty state:
 
 ![Error tab in empty state before labels exist.](../../_static/gui_images/error_analysis/01_empty_state.png)
 
-With an output root whose `qc/curation_labels.parquet` carries enough
+With an output root whose `deliverables/qc/curation_labels.parquet` carries enough
 labels, the tab populates. The **category chip row** at the top lists
 every labeled category with its count; the selected chip is the focused
 category. Below it, the **ranked cutoff table** lists the measurements
@@ -78,7 +79,7 @@ against:
   fine and you have only triaged the bad ones.
 - `Verified only` — the good class is restricted to objects in
   QC-reviewed groups you have explicitly cleared (the verified-good set
-  derived from `qc/review_state.json`). Use this when "unlabeled" is not
+  derived from `deliverables/qc/review_state.json`). Use this when "unlabeled" is not
   trustworthy — i.e. when you have not yet looked at most objects — so
   the cutoff is calibrated against a baseline you actually vouched for.
   The verified-good count badge reports how many objects qualify.
@@ -100,15 +101,15 @@ against:
 - **The tab recomputes on activation, not on every label.** Marking a
   colony on the Colony or QC tab does *not* re-run the finder while you
   are on another tab (it would be wasteful). Returning to the `Error`
-  tab always recomputes from the current `qc/curation_labels.parquet`.
-- **On-disk outputs are dual-owned.** The GUI writes
-  `deliverables/error_analysis.{parquet,csv}` (focused category) and
-  `deliverables/errors/<category>.parquet` **live** as you curate; the
-  HTML report is written only on `Save analysis report`. The next CLI
-  finalize / recompile-mode run re-emits `errors/*` and `error_analysis.*`
-  (all categories) from the durable labels store, so headless output
-  matches the GUI. `deliverables/verified.parquet` is **GUI-only** — the
-  CLI never writes it.
+  tab always recomputes from the current
+  `deliverables/qc/curation_labels.parquet`.
+- **Preview is compute-only.** Activation, category selection, cutoff changes,
+  and `Verified only` do not write canonical artifacts or
+  `verified.parquet`. **Publish all categories** computes the entire category
+  vocabulary, stages the complete generation, and atomically commits the
+  manifest plus receipt. A failure leaves the preceding published generation
+  intact. CLI finalize/recompile can publish the same all-category artifact
+  family from the durable labels store.
 - **Single measurement, single cutoff.** This tab finds the best
   *one*-measurement threshold per category; multi-measurement rules are
   out of scope. Combine several copied filter specs by hand if you need

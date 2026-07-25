@@ -25,7 +25,7 @@ right pane shows the dashboard preview slot and the log tail.
 
 You can fill in the pickers two ways:
 
-**From the sidebar (hand-off).** Click `pipeline.json` in the sidebar; the
+**From the sidebar (hand-off).** Click `pipeline.json.pht-pipe` in the sidebar; the
 hand-off banner above the form activates with `Set as pipeline`. Click it —
 the picker label updates. Then click `plates/` and use `Set as input dir`,
 and finally choose a fresh output folder and use `Set as output dir`.

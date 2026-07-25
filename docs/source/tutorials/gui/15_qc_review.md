@@ -6,9 +6,9 @@ The `QC` tab in the Results Viewer has two modes, switched by a
 - **Configure** — the per-check card editor (see
   [QC curation loop](10_qc_curation_loop.md)). Adding, editing, or
   deleting a check now writes the `qc` array of the output's
-  `deliverables/pipeline.json` (a legacy `.viewer_cache/qc_recipe.json`
-  sidecar is
-  folded in once on first open).
+  `deliverables/pipeline.json.pht-pipe`. A legacy
+  `.viewer_cache/qc_recipe.json` sidecar is classified for an explicit,
+  backed-up compatibility migration; binding never rewrites it.
 - **Review** — a master–detail walkthrough that walks the
   worst-agreeing groups for one QC module, lets you curate the offending
   colonies in a tile gallery, and recomputes the module in place after
@@ -27,10 +27,11 @@ The review loop:
 
 ## Prerequisites
 
-- A finished CLI run whose `deliverables/pipeline.json` carries at least
+- A finished CLI run whose `deliverables/pipeline.json.pht-pipe` carries at least
   one QC check, so the CLI wrote `deliverables/qc/qc.duckdb`.
   Configure a check in the **Configure** sub-view, then re-run
-  `python -m phenotypic --mode recompile --output <output>` (or `--mode measure --pipeline <pipeline.json> --output <output>`) to compute
+  `python -m phenotypic --mode recompile --output <output>` (or
+  `--mode measure --pipeline <pipeline.json.pht-pipe> --output <output>`) to compute
   it. See [Run Locally](04_run_local.md).
 - The post-applied `deliverables/measurements.parquet` mirror under
   `<output>/deliverables/measurements.parquet` — the recompute reads this
@@ -44,7 +45,7 @@ output root is bound the tab shows its empty state:
 
 ![QC tab in empty state before an output is bound.](../../_static/gui_images/qc_review/01_empty_state.png)
 
-With an output root that carries a `qc/` artifact, flip the toggle to
+With an output root that carries `deliverables/qc/qc.duckdb`, flip the toggle to
 **Review**. The toolbar exposes the module picker, the `on` / `groupby`
 chips, a `Show: unreviewed / all / fail+warn` filter, and a
 `↻ Re-sort queue` button. Below it, the summary header tiles the

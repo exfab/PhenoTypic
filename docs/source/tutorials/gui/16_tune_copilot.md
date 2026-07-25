@@ -39,7 +39,7 @@ existing run (below) is still strictly read-only.
   exported from the [pipeline builder](03_build_pipeline.md).
 - A **metadata layout** CSV/Parquet inside the sandbox for the default
   `QCScorer` — one row per colony with the grouping column (e.g.
-  `Metadata_ImageName`) so the count scorer has a path-backed source that
+  `MetadataImage_ImageName`) so the count scorer has a path-backed source that
   round-trips into the spec.
 - For the Curate overlays and (when monitoring an existing run) the run
   itself, the calibration **image directory** must be reachable inside the
@@ -62,8 +62,11 @@ The search-space and scorer sections stay locked until a pipeline is
 present; the gate note confirms the selected pipeline and metadata once
 both are supplied. Pressing **Continue** writes a typed, path-backed
 authored spec under `<root>/.phenotypic-gui/presets/tune/` and advances you
-to **Run**. (You review and edit the inferred search space itself on the
-**Space** sub-tab, below.)
+to **Run**. Existing scorer/search-space/strategy/budget/storage values are
+preserved unless explicitly changed. Source, metadata, and authored-spec
+fingerprints prevent a moved or edited file from being silently reused. (You
+review and edit the inferred search space itself on the **Space** sub-tab,
+below.)
 
 ## Run — configure and launch
 
@@ -75,7 +78,8 @@ run in a terminal:
 
 ![Tune Run: launch form, live command card, and Deploy.](../../_static/gui_images/tune_copilot/01_run.png)
 
-The form is grouped:
+The form is grouped. Its command card is the exact validated argv that Deploy
+receives, including the same path-precedence choices:
 
 - **Inputs** — an in-sandbox image-source override (blank falls back to the
   shared source root) and the output directory.
@@ -121,7 +125,7 @@ at any `python -m phenotypic.tune` output directory:
 Binding only **reads** the directory — it runs `TuneRunRoot.discover` over
 the run's markers and, on success, swaps in the loaded views. A directory
 that is not a tune output (no `.pht-tune-cache/run.json`,
-`tuning_spec.json`, or `trials.parquet`) — or one outside the sandbox — is
+`tuning_spec.json.pht-tune`, or `trials.parquet`) — or one outside the sandbox — is
 refused with a clear note, never a crash. A live run resolves from its
 `run.json` marker before any deliverable lands, so an in-flight run shows
 on Monitor immediately.
@@ -135,7 +139,7 @@ each trial's pipeline applied to that plate so you can read the detection
 difference directly. Panning or zooming one overlay mirrors the other
 (linked pan/zoom); the **Difference** toggle collapses the pair into a
 single image that paints both / only-A / only-B objects. `Set as winner`
-writes the pinned trial's pipeline to `best_pipeline.json`:
+writes the pinned trial's pipeline to `best_pipeline.json.pht-pipe`:
 
 ![Tune Curate: shortlist + A/B colony overlays on a plate.](../../_static/gui_images/tune_copilot/03_curate.png)
 
@@ -145,7 +149,7 @@ writes the pinned trial's pipeline to `best_pipeline.json`:
 renders one knob-row per tuned target. Flat and presence knobs are editable
 — a range knob shows low / high / log inputs, a categorical knob shows a
 choice checklist — while nested knobs render read-only. Toggle a knob's
-`tunable` switch to include or drop it, then `Export tuning_spec.json` to
+`tunable` switch to include or drop it, then `Export tuning_spec.json.pht-tune` to
 write the edited space back (the scorer is preserved):
 
 ![Tune Space: inferred search space with editable knob rows.](../../_static/gui_images/tune_copilot/04_space.png)
@@ -172,10 +176,9 @@ terminal.)
   button is inert until Setup has a pipeline path; the pre-flight gate then
   blocks **Deploy** for impossible configurations (e.g. a `grid` over a
   continuous range).
-- **SLURM runs are submit-and-watch.** The GUI submits the fleet and reaps
-  the submitter (a clean exit moves the run from `submitting` to
-  `running`), but it does not store a job id or run `scancel`; only Local
-  runs are cancellable from the GUI in v1.
+- **Unavailable inputs are not launchable.** A source, metadata file, or
+  authored spec that no longer resolves in the sandbox makes the command
+  unavailable and disables Deploy/copy until it is reselected.
 - **Binding a run is read-only.** The run picker validates the markers and
   never writes to the run dir; the import surface stays optuna-free and the
   live study is opened lazily inside the Monitor poll only.
@@ -191,7 +194,7 @@ terminal.)
 
 - [Build a Pipeline](03_build_pipeline.md) — author the base pipeline a
   tune run searches over.
-- [Run Locally](04_run_local.md) — run the winning `best_pipeline.json`
+- [Run Locally](04_run_local.md) — run the winning `best_pipeline.json.pht-pipe`
   the co-pilot wrote over your full dataset.
 - [Analysis](08_analysis.md) — once the pipeline is tuned, compose
   filters + an endpoint model and emit `analysis.{csv,parquet}`.

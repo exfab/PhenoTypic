@@ -37,15 +37,12 @@ Open the `Viewer` tab in the hub and pick the `QC` sub-tab:
 
 ![QC tab in empty state with no checks configured.](../../_static/gui_images/qc_curation_loop/01_empty_state.png)
 
-The empty state shows a placeholder explaining that no checks are
-configured yet. The top strip carries:
-
-- `+ Add check` — opens a modal listing every concrete
-  `QualityCheck` subclass discovered by `OperationRegistry`.
-- `Export QC report` — disabled until at least one check exists;
-  emits `<output>/qc.parquet` + `<output>/qc_summary.json` keyed by
-  `QC_Check_Class` + `QC_Check_Instance_Id` so downstream notebooks
-  can pivot per check.
+The empty state shows a placeholder explaining that no checks are configured
+yet. The top strip carries `+ Add check`, which opens a modal listing every
+concrete `QualityCheck` subclass discovered by `OperationRegistry`. After
+configuration changes, **Rebuild QC database** explicitly publishes the
+validated catalog and module tables to
+`<output>/deliverables/qc/qc.duckdb`.
 
 ![QC tab body with the tab selected.](../../_static/gui_images/qc_curation_loop/02_qc_tab_selected.png)
 
@@ -75,19 +72,19 @@ severity.
 
 ## Common gotchas
 
-- **Metadata schema:** `ExpectedVsDetectedCount` reads
-  `Metadata_ImageFile` + `Object_Label` from the supplied CSV. If the
-  CSV has a different column name (e.g. legacy `ImageName`), the
-  check raises at instantiation time and the recipe records a
-  load-warning instead of breaking the boot. The warning banner at
-  the top of the QC tab lists the affected `instance_id` and the
-  underlying error.
+- **Metadata schema:** use the canonical `MetadataImage_ImageName` image key.
+  `ExpectedVsDetectedCount` uses the caller-selected `groupby` columns, which
+  must exist in both the measurements and supplied metadata layout. A missing
+  grouping column records a load warning instead of breaking viewer startup;
+  the banner lists the affected `instance_id` and underlying error.
 - **QC recipe:** every add / edit / delete writes the `qc` array in the
   pipeline config under `<output>/deliverables/` (`pipeline.json.pht-pipe`
-  on current runs). A legacy `<output>/.viewer_cache/qc_recipe.json`
-  sidecar is migrated once at viewer startup. Concurrent viewer sessions
-  on the same output dir are still unsupported; if you reopen the viewer
-  on a different machine, the recipe travels with the output directory.
+  on current runs). Legacy/incompatible payloads are classified first: any
+  migration is an explicit, backed-up, atomic action, never a startup rewrite.
+  A configuration edit waits for the explicit **Rebuild QC database** action;
+  rebuild stages and validates `deliverables/qc/qc.duckdb` and refuses an
+  active or changed source.
+  Concurrent viewer sessions on the same output dir are still unsupported.
 - **Severity legend:** check-side `severity_warn` / `severity_fail`
   thresholds default to `0.05` / `0.10`. Tune them on the per-check
   edit modal to match your QC tolerance.
