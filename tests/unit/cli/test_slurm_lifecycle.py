@@ -27,12 +27,14 @@ class FakeScheduler:
     def __init__(self) -> None:
         self.jobs: dict[str, str] = {}
         self.cancelled: set[str] = set()
+        self.sbatch_commands: list[list[str]] = []
         self.next_id = 700
         self.timeout_after_accept = False
 
     def __call__(self, command, **kwargs):
         executable = command[0]
         if executable == "sbatch":
+            self.sbatch_commands.append(list(command))
             comment = command[command.index("--comment") + 1]
             self.next_id += 1
             job_id = str(self.next_id)
@@ -75,8 +77,10 @@ def test_intent_precedes_sbatch_and_job_record(monkeypatch, tmp_path) -> None:
     )
     _metadata_skeleton(tmp_path)
     observed_statuses: list[list[str]] = []
+    observed_commands: list[list[str]] = []
 
     def fake_run(command, **kwargs):
+        observed_commands.append(list(command))
         observed_statuses.append(
             [
                 str(row["status"])
@@ -97,6 +101,16 @@ def test_intent_precedes_sbatch_and_job_record(monkeypatch, tmp_path) -> None:
 
     assert job_id == "701"
     assert observed_statuses == [["intent"]]
+    assert observed_commands == [
+        [
+            "sbatch",
+            "--parsable",
+            "--export=ALL",
+            "--comment",
+            "phenotypic:generation-1:chunk-0",
+            str(tmp_path / "chunk.sh"),
+        ]
+    ]
     assert [row["status"] for row in read_lifecycle_ledger(tmp_path)] == [
         "intent",
         "submitted",
@@ -142,12 +156,26 @@ def test_timeout_after_accept_recovers_by_generation_comment(tmp_path) -> None:
         token="chunk-0",
         role="chunk",
         script_path=tmp_path / "chunk.sh",
+        dependencies=("601", "602"),
         run_command=scheduler,
     )
 
     assert job_id == "701"
+    assert scheduler.sbatch_commands == [
+        [
+            "sbatch",
+            "--parsable",
+            "--export=ALL",
+            "--comment",
+            "phenotypic:generation-2:chunk-0",
+            "--dependency",
+            "afterany:601:602",
+            str(tmp_path / "chunk.sh"),
+        ]
+    ]
     rows = read_lifecycle_ledger(tmp_path)
     assert [row["status"] for row in rows] == ["intent", "submitted"]
+    assert rows[-1]["dependencies"] == ["601", "602"]
     metadata = json.loads(
         job_metadata_path(tmp_path).read_text(encoding="utf-8")
     )

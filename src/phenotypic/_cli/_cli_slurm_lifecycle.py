@@ -383,7 +383,13 @@ def submit_with_lifecycle(
                 comment=comment,
             )
 
-        command = ["sbatch", "--parsable", "--comment", comment]
+        command = [
+            "sbatch",
+            "--parsable",
+            "--export=ALL",
+            "--comment",
+            comment,
+        ]
         if dependencies:
             command.extend(
                 ["--dependency", f"afterany:{':'.join(dependencies)}"]
