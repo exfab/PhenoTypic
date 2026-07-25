@@ -16,6 +16,7 @@ from phenotypic.sdk_ import event_log_path, logs_dir, slurm_scripts_dir
 from phenotypic.sdk_.slurm._sbatch import (
     format_sbatch_directives as _format_sbatch_directives,
 )
+from phenotypic.sdk_.slurm import SLURM_PYTHONPATH_BOOTSTRAP_BASH
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,8 @@ def generate_image_processing_script(
 
 set -e  # Exit on error
 set -u  # Exit on undefined variable
+
+{SLURM_PYTHONPATH_BOOTSTRAP_BASH}
 
 {SLURM_THREAD_PIN_BASH}
 

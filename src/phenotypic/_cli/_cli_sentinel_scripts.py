@@ -22,6 +22,7 @@ from typing import Any, Dict
 from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_utils import get_python_command
 from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
+from phenotypic.sdk_.slurm import SLURM_PYTHONPATH_BOOTSTRAP_BASH
 
 logger = logging.getLogger(__name__)
 
@@ -85,10 +86,12 @@ def generate_sentinel_script(
 # Allow Polars to run on nodes without AVX2/BMI2/MOVBE CPU features
 export POLARS_SKIP_CPU_CHECK=1
 
+{SLURM_PYTHONPATH_BOOTSTRAP_BASH}
+
 RESUBMIT_MARKER={q_progress_dir}/sentinel_resubmitted
 trap 'if [ ! -f "$RESUBMIT_MARKER" ]; then
     echo "SIGTERM received — resubmitting sentinel from trap"
-    sbatch --parsable {q_script_path}
+    sbatch --parsable --export=ALL {q_script_path}
 fi
 exit 0' TERM
 

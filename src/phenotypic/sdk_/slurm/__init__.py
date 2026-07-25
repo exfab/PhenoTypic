@@ -22,9 +22,16 @@ from ._dispatcher import (
     generate_dispatcher_script,
     submit_drip_feed_start,
 )
+from ._environment import (
+    SLURM_PYTHONPATH_BOOTSTRAP_BASH,
+    SLURM_PYTHONPATH_ENV_VAR,
+    sbatch_submission_environment,
+)
 from ._script_rendering import SlurmArrayScriptSpec, write_slurm_array_script
 
 __all__ = [
+    "SLURM_PYTHONPATH_BOOTSTRAP_BASH",
+    "SLURM_PYTHONPATH_ENV_VAR",
     "SlurmArrayScriptSpec",
     "calculate_optimal_array_chunks",
     "estimate_concurrent_capacity",
@@ -35,6 +42,7 @@ __all__ = [
     "get_slurm_max_submit_jobs",
     "parse_job_id",
     "parse_slurm_time",
+    "sbatch_submission_environment",
     "submit_drip_feed_start",
     "submit_script",
     "validate_array_chunk",

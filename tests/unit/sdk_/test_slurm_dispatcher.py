@@ -14,6 +14,10 @@ from phenotypic.sdk_.slurm._dispatcher import (
     submit_drip_feed_start,
 )
 from phenotypic.sdk_ import slurm_scripts_dir
+from phenotypic.sdk_.slurm import (
+    SLURM_PYTHONPATH_BOOTSTRAP_BASH,
+    SLURM_PYTHONPATH_ENV_VAR,
+)
 
 pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SLURM not available on Windows")
 
@@ -141,6 +145,11 @@ class TestGenerateDispatcherScript:
         assert "phenotypic._cli._cli_slurm_lifecycle" in content
         assert f"--chunk-script {chunk_script}" in content
         assert "sbatch --parsable" not in content
+        assert SLURM_PYTHONPATH_BOOTSTRAP_BASH in content
+        assert SLURM_PYTHONPATH_ENV_VAR in content
+        assert content.index(SLURM_PYTHONPATH_BOOTSTRAP_BASH) < content.index(
+            "phenotypic._cli._cli_slurm_lifecycle"
+        )
 
     def test_script_submits_next_dispatcher(self, tmp_path, slurm_args):
         """Dispatcher passes its successor to the lifecycle entry point."""

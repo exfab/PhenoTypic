@@ -413,6 +413,7 @@ class TestSLURMSubmissionErrors:
     @patch("phenotypic.sdk_.slurm._sbatch.subprocess.run")
     def test_submit_script_parsable_output(self, mock_run):
         """Test successful submission with --parsable output."""
+        from phenotypic.sdk_.slurm import SLURM_PYTHONPATH_ENV_VAR
         from phenotypic.sdk_.slurm._sbatch import submit_script
 
         mock_run.return_value = MagicMock(
@@ -420,8 +421,20 @@ class TestSLURMSubmissionErrors:
             stdout="12345\n"
         )
 
-        job_id = submit_script(Path("script.sh"))
+        with patch.dict(
+            "os.environ",
+            {"PYTHONPATH": "/reviewed/tune/src"},
+            clear=True,
+        ):
+            job_id = submit_script(Path("script.sh"))
+
         assert job_id == "12345"
+        command = mock_run.call_args.args[0]
+        environment = mock_run.call_args.kwargs["env"]
+        assert "--export=ALL" in command
+        assert environment[SLURM_PYTHONPATH_ENV_VAR] == (
+            "/reviewed/tune/src"
+        )
 
     @patch("phenotypic.sdk_.slurm._sbatch.subprocess.run")
     def test_submit_script_parsable_with_cluster(self, mock_run):

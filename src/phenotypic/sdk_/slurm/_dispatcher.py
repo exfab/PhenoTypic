@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from .._io_constants import slurm_scripts_dir
+from ._environment import SLURM_PYTHONPATH_BOOTSTRAP_BASH
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +106,8 @@ def generate_dispatcher_script(
 #SBATCH --cpus-per-task=1
 #SBATCH --output={log_dir}/dispatch_%j.log
 #SBATCH --error={log_dir}/dispatch_%j.log
+
+{SLURM_PYTHONPATH_BOOTSTRAP_BASH}
 
 echo "Dispatcher: submitting next chunk through durable lifecycle"
 echo "Timestamp: $(date)"

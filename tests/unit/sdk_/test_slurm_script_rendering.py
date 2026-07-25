@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-import sys
+import os
 import shlex
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -52,6 +54,134 @@ def test_slurm_array_script_renders_directives_task_list_and_body(
     assert "EXIT_CODE=$?" in rendered
     assert "Exit Code: $EXIT_CODE" in rendered
     assert rendered.rstrip().endswith("exit $EXIT_CODE")
+
+
+def test_slurm_array_script_restores_namespaced_pythonpath_before_prelude(
+    tmp_path: Path,
+) -> None:
+    """Every shared batch script should restore the submitted import path."""
+    from phenotypic.sdk_.slurm import (
+        SLURM_PYTHONPATH_BOOTSTRAP_BASH,
+        SLURM_PYTHONPATH_ENV_VAR,
+        SlurmArrayScriptSpec,
+    )
+
+    spec = SlurmArrayScriptSpec(
+        job_name="pht-pythonpath",
+        slurm_args={},
+        log_path=tmp_path / "pythonpath_%A_%a.log",
+        task_indices=[0],
+        prelude='echo "prelude"',
+        body="python-worker",
+    )
+
+    rendered = spec.render()
+
+    assert SLURM_PYTHONPATH_BOOTSTRAP_BASH in rendered
+    assert SLURM_PYTHONPATH_ENV_VAR in rendered
+    assert (
+        rendered.index(SLURM_PYTHONPATH_BOOTSTRAP_BASH)
+        < rendered.index('echo "prelude"')
+        < rendered.index("python-worker")
+    )
+
+
+def test_sbatch_submission_environment_snapshots_pythonpath() -> None:
+    """Submission should preserve the exact caller path in a safe namespace."""
+    from phenotypic.sdk_.slurm import (
+        SLURM_PYTHONPATH_ENV_VAR,
+        sbatch_submission_environment,
+    )
+
+    source = {
+        "PATH": "/usr/bin",
+        "PYTHONPATH": "/reviewed/src:/reviewed/tests",
+    }
+
+    submitted = sbatch_submission_environment(source)
+
+    assert submitted == {
+        **source,
+        SLURM_PYTHONPATH_ENV_VAR: source["PYTHONPATH"],
+    }
+    assert SLURM_PYTHONPATH_ENV_VAR not in source
+
+
+@pytest.mark.parametrize("python_path", [None, ""])
+def test_sbatch_submission_environment_omits_empty_snapshot(
+    python_path: str | None,
+) -> None:
+    """Missing and empty paths should not propagate stale bootstrap state."""
+    from phenotypic.sdk_.slurm import (
+        SLURM_PYTHONPATH_ENV_VAR,
+        sbatch_submission_environment,
+    )
+
+    source = {
+        "PATH": "/usr/bin",
+        SLURM_PYTHONPATH_ENV_VAR: "/stale/path",
+    }
+    if python_path is not None:
+        source["PYTHONPATH"] = python_path
+
+    submitted = sbatch_submission_environment(source)
+
+    assert SLURM_PYTHONPATH_ENV_VAR not in submitted
+    assert submitted.get("PYTHONPATH") == python_path
+
+
+@pytest.mark.parametrize(
+    ("snapshot", "python_path", "expected"),
+    [
+        ("/reviewed/src:/reviewed/tests", None, "/reviewed/src:/reviewed/tests"),
+        (
+            "/reviewed/src:/reviewed/tests",
+            "/site/modules",
+            "/reviewed/src:/reviewed/tests:/site/modules",
+        ),
+        ("/reviewed/src", "/reviewed/src", "/reviewed/src"),
+        (
+            "/reviewed path/$NOT_EXPANDED",
+            None,
+            "/reviewed path/$NOT_EXPANDED",
+        ),
+        ("", "/site/modules", "/site/modules"),
+        (None, None, "<unset>"),
+    ],
+)
+def test_pythonpath_bootstrap_handles_present_empty_and_absent_values(
+    snapshot: str | None,
+    python_path: str | None,
+    expected: str,
+) -> None:
+    """The shell bootstrap should restore, prepend, or no-op deterministically."""
+    from phenotypic.sdk_.slurm import (
+        SLURM_PYTHONPATH_BOOTSTRAP_BASH,
+        SLURM_PYTHONPATH_ENV_VAR,
+    )
+
+    environment = {"PATH": os.environ["PATH"]}
+    if snapshot is not None:
+        environment[SLURM_PYTHONPATH_ENV_VAR] = snapshot
+    if python_path is not None:
+        environment["PYTHONPATH"] = python_path
+
+    result = subprocess.run(
+        [
+            "bash",
+            "-c",
+            (
+                f"{SLURM_PYTHONPATH_BOOTSTRAP_BASH}\n"
+                'printf "%s" "${PYTHONPATH-<unset>}"'
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+        env=environment,
+    )
+
+    assert result.stdout == expected
 
 
 @pytest.mark.parametrize(

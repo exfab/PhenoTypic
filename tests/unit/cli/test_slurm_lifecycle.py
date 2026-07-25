@@ -117,6 +117,44 @@ def test_intent_precedes_sbatch_and_job_record(monkeypatch, tmp_path) -> None:
     ]
 
 
+def test_submission_snapshots_pythonpath_for_export_all(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """The sbatch process should receive a namespaced Python path snapshot."""
+    from phenotypic.sdk_.slurm import SLURM_PYTHONPATH_ENV_VAR
+
+    generation = "generation-pythonpath"
+    initialize_slurm_lifecycle(
+        tmp_path, generation=generation, mode="ordinary"
+    )
+    monkeypatch.setenv("PYTHONPATH", "/exact/reviewed/src:/exact/reviewed/tests")
+    observed: dict[str, object] = {}
+
+    def fake_run(command, **kwargs):
+        observed["command"] = list(command)
+        observed["environment"] = kwargs["env"]
+        return subprocess.CompletedProcess(command, 0, "704\n", "")
+
+    submit_with_lifecycle(
+        tmp_path,
+        generation=generation,
+        token="chunk-0",
+        role="chunk",
+        script_path=tmp_path / "chunk.sh",
+        run_command=fake_run,
+        discover=lambda comment: None,
+    )
+
+    assert "--export=ALL" in observed["command"]
+    environment = observed["environment"]
+    assert isinstance(environment, dict)
+    assert environment["PYTHONPATH"] == (
+        "/exact/reviewed/src:/exact/reviewed/tests"
+    )
+    assert environment[SLURM_PYTHONPATH_ENV_VAR] == environment["PYTHONPATH"]
+
+
 def test_initialize_rejects_conflicting_active_generation(tmp_path) -> None:
     first = initialize_slurm_lifecycle(
         tmp_path, generation="generation-1", mode="ordinary"

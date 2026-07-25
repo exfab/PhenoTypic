@@ -12,6 +12,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from ._environment import sbatch_submission_environment
+
 logger = logging.getLogger(__name__)
 
 # SBATCH directive names managed by script generators; user overrides are ignored.
@@ -210,7 +212,7 @@ def submit_script(
         RuntimeError: If ``sbatch`` is not available, the submission
             fails, or the job ID cannot be parsed.
     """
-    cmd = ["sbatch", "--parsable"]
+    cmd = ["sbatch", "--parsable", "--export=ALL"]
 
     if dependency_job_id:
         cmd.extend(["--dependency", f"afterany:{dependency_job_id}"])
@@ -221,7 +223,12 @@ def submit_script(
 
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, check=True, timeout=30
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+            env=sbatch_submission_environment(),
         )
     except FileNotFoundError:
         raise RuntimeError(

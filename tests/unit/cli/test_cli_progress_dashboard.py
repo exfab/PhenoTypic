@@ -725,6 +725,7 @@ class TestSentinelScript:
         assert "trap " in content
         assert "SIGTERM" in content
         assert "sbatch --parsable" in content
+        assert "sbatch --parsable --export=ALL" in content
 
     @pytest.mark.skipif(sys.platform == "win32", reason="chmod not effective on Windows")
     def test_script_executable(self, tmp_dir):

@@ -133,6 +133,11 @@ persisting the returned ID.
   outside the `phenotypic` namespace; list a self-registering module here so a
   pipeline with **custom operations** deserializes on the compute node. `sbatch
   --export=ALL` propagates it. (Tests use `tests/_fakes/register_fake_gpu.py`.)
+- `PHENOTYPIC_SLURM_PYTHONPATH` — internal submission snapshot of the caller's
+  `PYTHONPATH`. Generated batch scripts restore it before invoking Python. This
+  keeps custom-operation modules and the reviewed source checkout importable on
+  clusters that filter raw `PYTHONPATH` even when `sbatch --export=ALL` is used.
+  Callers set `PYTHONPATH`; PhenoTypic owns the namespaced snapshot.
 - `PHENOTYPIC_ACCEPT_MODEL_LICENSE` — comma list of model names accepted for
   gated-weight downloads; checked by `require_license_acceptance`
   (`detect/nn/_checkpoint_manager.py`). SAM2/micro-sam are ungated and never call

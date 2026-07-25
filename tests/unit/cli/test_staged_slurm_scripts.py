@@ -20,6 +20,10 @@ from phenotypic._cli._cli_staged_orchestration import (
 )
 from phenotypic._cli._cli_types import Dataset
 from phenotypic.sdk_ import JOB_METADATA_JSON, progress_dir
+from phenotypic.sdk_.slurm import (
+    SLURM_PYTHONPATH_BOOTSTRAP_BASH,
+    SLURM_PYTHONPATH_ENV_VAR,
+)
 
 
 def _manifest(n):
@@ -109,6 +113,7 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
     s2 = scripts["stage2"].read_text(encoding="utf-8")
     s3 = scripts["stage3"][0].read_text(encoding="utf-8")
     finalizer = scripts["finalizer"].read_text(encoding="utf-8")
+    controller = scripts["controller"].read_text(encoding="utf-8")
 
     # Stage 1 & 3 on the CPU partition; Stage 2 on the GPU partition + 1 GPU
     assert "--partition=batch" in s1 and "--partition=batch" in s3
@@ -124,7 +129,15 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
     assert "--checkpoint-type finalize" in finalizer
     assert "--epoch epoch-1" in finalizer
     assert "--partition=batch" in finalizer
-    assert "_cli_staged_controller" in scripts["controller"].read_text()
+    assert "_cli_staged_controller" in controller
+    # The controller must restore the reviewed source path before it imports
+    # PhenoTypic and before its nested lifecycle submissions inherit the env.
+    for script_text in (s1, s2, s3, finalizer, controller):
+        assert SLURM_PYTHONPATH_BOOTSTRAP_BASH in script_text
+        assert SLURM_PYTHONPATH_ENV_VAR in script_text
+    assert controller.index(SLURM_PYTHONPATH_BOOTSTRAP_BASH) < controller.index(
+        "_cli_staged_controller"
+    )
 
 
 def test_stage2_script_uses_controller_not_signal_requeue(tmp_path):

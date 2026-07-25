@@ -29,8 +29,26 @@ from phenotypic.sdk_ import (
     JobMetadataKey,
     sentinel_resubmitted_path,
 )
+from phenotypic.sdk_.slurm import sbatch_submission_environment
 
 logger = logging.getLogger(__name__)
+
+
+def _submit_sentinel_script(
+    sentinel_script: Path,
+) -> subprocess.CompletedProcess[str]:
+    """Resubmit a sentinel while preserving the caller's Python import path."""
+    return subprocess.run(
+        [
+            "sbatch",
+            "--parsable",
+            "--export=ALL",
+            str(sentinel_script),
+        ],
+        capture_output=True,
+        text=True,
+        env=sbatch_submission_environment(),
+    )
 
 
 @click.command()
@@ -181,11 +199,7 @@ def sentinel_main(
     # If work remains and a sentinel script is available, resubmit
     if not is_complete and sentinel_script is not None:
         logger.info("Resubmitting sentinel via %s", sentinel_script)
-        result = subprocess.run(
-            ["sbatch", "--parsable", str(sentinel_script)],
-            capture_output=True,
-            text=True,
-        )
+        result = _submit_sentinel_script(sentinel_script)
         if result.returncode == 0:
             new_job_id = result.stdout.strip()
             logger.info("Sentinel resubmitted as SLURM job %s", new_job_id)

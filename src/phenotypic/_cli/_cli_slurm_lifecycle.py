@@ -20,6 +20,7 @@ from phenotypic.sdk_ import (
     progress_dir,
 )
 from phenotypic.sdk_._file_locking import exclusive_path_lock
+from phenotypic.sdk_.slurm import sbatch_submission_environment
 
 from ._cli_file_locking import atomic_append, atomic_read
 
@@ -408,6 +409,7 @@ def submit_with_lifecycle(
                     text=True,
                     check=True,
                     timeout=30,
+                    env=sbatch_submission_environment(),
                 )
                 job_id = result.stdout.strip().split(";", 1)[0]
                 if not job_id.isdigit():
