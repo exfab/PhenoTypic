@@ -680,7 +680,7 @@ def test_stale_results_qc_and_analysis_posts_are_rejected_before_dispatch(
         ),
         (
             analysis_session.get(),
-            analysis_ids.ANALYSIS_PIPELINE_STORE,
+            analysis_ids.ANALYSIS_PIPELINE_EVENT_STORE,
         ),
     )
     for app, component_id in probes:
@@ -729,7 +729,10 @@ def test_nonterminal_run_after_bind_blocks_current_page_mutations(
     for app, component_id in (
         (viewer_session.get(), results_ids.STORE_REMOVED_KEYS),
         (viewer_session.get(), results_ids.STORE_QC_RECIPE_REVISION),
-        (analysis_session.get(), analysis_ids.ANALYSIS_PIPELINE_STORE),
+        (
+            analysis_session.get(),
+            analysis_ids.ANALYSIS_PIPELINE_EVENT_STORE,
+        ),
     ):
         response = _callback_probe(
             app,
@@ -895,7 +898,7 @@ def test_standalone_apps_block_processing_stale_mutation_callbacks(
     for app, component_id in (
         (viewer_app, results_ids.STORE_REMOVED_KEYS),
         (viewer_app, results_ids.STORE_QC_RECIPE_REVISION),
-        (analysis_app, analysis_ids.ANALYSIS_PIPELINE_STORE),
+        (analysis_app, analysis_ids.ANALYSIS_PIPELINE_EVENT_STORE),
     ):
         response = _callback_probe(
             app,
@@ -1010,8 +1013,11 @@ def test_publish_waits_for_admitted_analysis_writer(
     monkeypatch.setattr(RecipeState, "save", _blocked_save)
     output_key = next(
         key
-        for key in old_analysis.callback_map
-        if f"{analysis_ids.ANALYSIS_MODEL_SECTION}.children" in key
+        for key, callback in old_analysis.callback_map.items()
+        if any(
+            callback_input["id"] == analysis_ids.ANALYSIS_MODEL_DROPDOWN
+            for callback_input in callback["inputs"]
+        )
     )
     writer_result: dict[str, Any] = {}
 
@@ -1020,24 +1026,18 @@ def test_publish_waits_for_admitted_analysis_writer(
             "/_dash-update-component",
             json={
                 "output": output_key,
-                "outputs": _outputs_from_key(output_key),
+                "outputs": _outputs_from_key(output_key)[0],
                 "inputs": [
-                        {
-                            "id": analysis_ids.ANALYSIS_MODEL_DROPDOWN,
-                            "property": "value",
-                            "value": "",
-                        }
-                    ],
-                    "state": [
-                        {
-                            "id": analysis_ids.ANALYSIS_PLOT_PREFS_STORE,
-                            "property": "data",
-                            "value": {},
-                        }
-                    ],
-                    "changedPropIds": [
-                        f"{analysis_ids.ANALYSIS_MODEL_DROPDOWN}.value"
-                    ],
+                    {
+                        "id": analysis_ids.ANALYSIS_MODEL_DROPDOWN,
+                        "property": "value",
+                        "value": "LogGrowthModel",
+                    }
+                ],
+                "state": [],
+                "changedPropIds": [
+                    f"{analysis_ids.ANALYSIS_MODEL_DROPDOWN}.value"
+                ],
                 BINDING_GENERATION_PAYLOAD_KEY: generation,
             },
         )

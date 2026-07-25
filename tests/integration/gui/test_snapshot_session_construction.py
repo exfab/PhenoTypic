@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import polars as pl
 import pytest
 
 from phenotypic import ImagePipeline
-from phenotypic.gui._config import CFG_OUTPUT_ROOT
+from phenotypic.gui._config import CFG_OUTPUT_ROOT, CFG_RECIPE_STATE
 from phenotypic.gui.analysis import _app as analysis_app
 from phenotypic.gui.results_viewer import _app as results_app
 from phenotypic.gui.results_viewer._output_root import (
@@ -16,6 +17,7 @@ from phenotypic.gui.results_viewer._output_root import (
     OutputSnapshotChangedError,
 )
 from phenotypic.schema import METADATA
+from phenotypic.sdk_ import pipeline_json_path
 from tests._output_layout import seed_output_dir
 
 
@@ -86,6 +88,51 @@ def test_shared_apps_accept_the_same_verified_revision(tmp_path: Path) -> None:
     assert results.server.config[CFG_OUTPUT_ROOT].snapshot == (
         analysis.server.config[CFG_OUTPUT_ROOT].snapshot
     )
+
+
+def test_analysis_construction_tolerates_known_invalid_analyzer(
+    tmp_path: Path,
+) -> None:
+    """One retired parameter cannot abort atomic Analysis construction."""
+    initial = _bound_output(tmp_path)
+    pipeline_path = pipeline_json_path(initial.root)
+    payload = json.loads(pipeline_path.read_text(encoding="utf-8"))
+    payload["filters"] = {
+        "invalid_edge": {
+            "class": "EdgeCorrector",
+            "params": {
+                "on": "Shape_Area",
+                "groupby": ["Metadata_Strain"],
+                "top_n": "not-an-int",
+                "future_nested": {"revision": 1},
+            },
+        },
+        "unknown_filter": {
+            "class": "FutureAnalyzer",
+            "params": {"future_nested": {"revision": 2}},
+        },
+    }
+    pipeline_path.write_text(
+        json.dumps(payload, indent=2),
+        encoding="utf-8",
+    )
+    output_root = OutputRoot.discover(
+        initial.root,
+        cache_root=tmp_path / "viewer-cache-rebound",
+    )
+
+    app = analysis_app.create_app(output_root=output_root)
+    recipe = app.server.config[CFG_RECIPE_STATE]
+
+    assert recipe.pipeline.get_filters() == {}
+    assert [
+        (warning.name, warning.class_name)
+        for warning in recipe.load_warnings
+    ] == [
+        ("invalid_edge", "EdgeCorrector"),
+        ("unknown_filter", "FutureAnalyzer"),
+    ]
+    assert json.loads(recipe.last_json) == payload
 
 
 @pytest.mark.parametrize(

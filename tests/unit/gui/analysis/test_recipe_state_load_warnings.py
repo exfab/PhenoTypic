@@ -121,6 +121,52 @@ def _known_pipeline_with_extensions_payload() -> dict:
     }
 
 
+def _pipeline_with_invalid_and_unknown_analyzers() -> dict:
+    """Return opaque analyzer nodes surrounding one valid filter."""
+    payload = _known_pipeline_with_extensions_payload()
+    payload["filters"] = {
+        "invalid_edge": {
+            "class": "EdgeCorrector",
+            "params": {
+                "on": "Shape_Area",
+                "groupby": ["Metadata_Strain"],
+                "top_n": "not-an-int",
+                "future_nested": {
+                    "revision": 7,
+                    "payload": ["exact", {"kept": True}],
+                },
+            },
+            "future_envelope": {"revision": 8},
+        },
+        "valid_edge": {
+            "class": "EdgeCorrector",
+            "params": {
+                "on": "Shape_Area",
+                "groupby": ["Metadata_Strain"],
+                "top_n": 2,
+            },
+        },
+        "unknown_filter": {
+            "class": "FutureAnalyzer",
+            "params": {
+                "threshold": 0.25,
+                "future_nested": {"revision": 9},
+            },
+        },
+    }
+    payload["model"] = {
+        "class": "LinearLagModel",
+        "params": {
+            "on": "Shape_Area",
+            "groupby": ["Metadata_Strain"],
+            "time_label": ["invalid", "shape"],
+        },
+        "future_model_envelope": {"revision": 10},
+    }
+    payload["plots"] = []
+    return payload
+
+
 def test_from_json_skip_mode_collects_unknown_analyzers(tmp_path: Path) -> None:
     """``from_json(skip_unknown_analyzers=True)`` returns a partial pipeline
     plus a populated warnings sink; the original JSON is untouched."""
@@ -171,6 +217,55 @@ def test_recipe_state_load_records_unknown_analyzer(tmp_path: Path) -> None:
     }
     # Disk artifact must be byte-identical: opening the page is read-only.
     assert seed_path.read_bytes() == seed_bytes_before
+
+
+def test_known_invalid_analyzers_load_as_opaque_with_deterministic_warnings(
+    tmp_path: Path,
+) -> None:
+    """Known classes with rejected params cannot abort tolerant binding."""
+    payload = _pipeline_with_invalid_and_unknown_analyzers()
+    path = pipeline_json_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    state = RecipeState.load(tmp_path)
+
+    assert list(state.pipeline.get_filters()) == ["valid_edge"]
+    assert state.pipeline.get_model() is None
+    assert [
+        (warning.slot, warning.name, warning.class_name)
+        for warning in state.load_warnings
+    ] == [
+        ("filter", "invalid_edge", "EdgeCorrector"),
+        ("filter", "unknown_filter", "FutureAnalyzer"),
+        ("model", "model", "LinearLagModel"),
+    ]
+
+
+def test_unrelated_save_preserves_invalid_and_unknown_nodes_exactly(
+    tmp_path: Path,
+) -> None:
+    """A scoped edit merges around every opaque raw analyzer envelope."""
+    payload = _pipeline_with_invalid_and_unknown_analyzers()
+    path = pipeline_json_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    state = RecipeState.load(tmp_path)
+
+    state.pipeline.name = "after"
+    assert state.save() is True
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["name"] == "after"
+    assert saved["filters"]["invalid_edge"] == (
+        payload["filters"]["invalid_edge"]
+    )
+    assert saved["filters"]["unknown_filter"] == (
+        payload["filters"]["unknown_filter"]
+    )
+    assert saved["model"] == payload["model"]
+    assert saved["filters"]["valid_edge"]["params"]["top_n"] == 2
+    assert json.loads(state.last_json) == saved
 
 
 def test_unrelated_save_preserves_unknown_nodes_in_original_slots(

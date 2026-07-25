@@ -12,6 +12,7 @@ sets it automatically).
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from typing import Iterator
 
@@ -26,6 +27,20 @@ from phenotypic.sdk_ import measurements_parquet_path, pipeline_json_path
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 from phenotypic.schema import METADATA
+
+
+_ANALYSIS_RENDERER_OUTPUT = (
+    "..analysis-post-stack.children"
+    "...analysis-filter-stack.children"
+    "...analysis-edge-stack.children"
+    "...analysis-model-section.children"
+    "...analysis-pipeline-header.children"
+    "...analysis-run-button.disabled"
+    "...analysis-model-dropdown.value"
+    "...analysis-post-add-dropdown.value"
+    "...analysis-filter-add-dropdown.value"
+    "...analysis-edge-add-dropdown.value.."
+)
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +66,7 @@ def _seed_analysis_output(sandbox: Path) -> Path:
             for rep in range(3):
                 n = 100 + 800 / (1 + (1000 - 100) / 100 * math.exp(-0.15 * t))
                 rows.append({
-                    "Metadata_Dataset": "ds1",
+                    "MetadataExperiment_Dataset": "ds1",
                     str(METADATA.IMAGE_NAME): f"{strain}_t{t}",
                     "Metadata_Strain": strain,
                     "Metadata_Time": float(t),
@@ -86,6 +101,46 @@ def analysis_sandbox(tmp_path: pytest.TempPathFactory) -> Path:
 def analysis_live_server(analysis_sandbox: Path) -> Iterator[str]:
     """Function-scoped live-server bound to the augmented sandbox."""
     yield from _start_live_server(analysis_sandbox)
+
+
+def _dash_store_data(page: Page, store_id: str) -> dict:
+    """Read one dcc.Store payload from the hydrated Dash Redux layout."""
+    return page.evaluate(
+        """(storeId) => {
+            const state = window.store.getState();
+            const path = state.paths.strs[storeId];
+            return path.reduce((value, key) => value[key], state.layout)
+                .props.data;
+        }""",
+        store_id,
+    )
+
+
+def _wait_for_dash_request_quiescence(
+    page: Page,
+    pending_request_ids: set[int],
+    *,
+    store_id: str,
+    expected_data: dict,
+    timeout_seconds: float = 5.0,
+) -> None:
+    """Wait until a store update lands and all observed Dash requests drain."""
+    deadline = time.monotonic() + timeout_seconds
+    idle_since: float | None = None
+    while time.monotonic() < deadline:
+        store_matches = _dash_store_data(page, store_id) == expected_data
+        if store_matches and not pending_request_ids:
+            if idle_since is None:
+                idle_since = time.monotonic()
+            elif time.monotonic() - idle_since >= 0.1:
+                return
+        else:
+            idle_since = None
+        page.wait_for_timeout(20)
+    raise AssertionError(
+        f"Dash did not quiesce with {store_id}={expected_data!r}; "
+        f"pending request ids: {sorted(pending_request_ids)!r}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -155,6 +210,215 @@ def test_pipeline_json_seeded_on_disk(
     assert "filters" in config
     assert "model" in config
     assert config["model"] is None
+
+
+def test_model_selection_publishes_once_and_feedback_is_noop(
+    page: Page,
+    analysis_live_server: str,
+    analysis_sandbox: Path,
+) -> None:
+    """Hydrated model selection emits one revision and no feedback save."""
+    page.goto(analysis_live_server + "/")
+    handoff = page.evaluate(
+        """async (path) => {
+            const response = await fetch('/sandbox/api/viewer/output-root', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path}),
+            });
+            return {status: response.status, body: await response.text()};
+        }""",
+        "results/CliOutputExample",
+    )
+    assert handoff["status"] == 200, handoff["body"]
+
+    page.goto(analysis_live_server + "/analysis/")
+    page.wait_for_selector("#analysis-model-dropdown", timeout=20_000)
+    page.wait_for_load_state("networkidle")
+    pipeline_path = pipeline_json_path(
+        analysis_sandbox / "results" / "CliOutputExample"
+    )
+    before_bytes = pipeline_path.read_bytes()
+    before_mtime_ns = pipeline_path.stat().st_mtime_ns
+    dash_responses: list[tuple[int, str]] = []
+
+    def _capture_dash_response(response) -> None:
+        if response.url.endswith("/_dash-update-component"):
+            body = response.text() if response.status == 200 else ""
+            dash_responses.append((response.status, body))
+
+    page.on("response", _capture_dash_response)
+    page.locator("#analysis-model-dropdown").click()
+    page.get_by_role("option", name="LinearLagModel").click()
+
+    expect(page.locator("#analysis-pipeline-header")).to_contain_text(
+        "model: LinearLagModel",
+        timeout=20_000,
+    )
+    expect(page.locator("#analysis-model-section")).to_contain_text(
+        "LinearLagModel"
+    )
+    expect(page.locator("#analysis-run-button")).to_be_enabled()
+    page.wait_for_timeout(1_000)
+    page.remove_listener("response", _capture_dash_response)
+
+    revision_payloads: list[dict] = []
+    for status, body in dash_responses:
+        if status != 200 or not body:
+            continue
+        payload = json.loads(body)
+        store_response = payload.get("response", {}).get(
+            "analysis-pipeline-event-store"
+        )
+        if store_response is not None:
+            revision_payloads.append(store_response["data"])
+
+    assert len(revision_payloads) == 1
+    assert revision_payloads[0]["revision"] == 1
+    assert any(status == 204 for status, _body in dash_responses)
+    assert pipeline_path.read_bytes() != before_bytes
+    assert pipeline_path.stat().st_mtime_ns != before_mtime_ns
+    saved = json.loads(pipeline_path.read_text(encoding="utf-8"))
+    assert saved["model"]["class"] == "LinearLagModel"
+    assert json.loads(revision_payloads[0]["pipeline_json"]) == saved
+
+
+def test_delayed_revision_event_cannot_overwrite_newer_ui(
+    page: Page,
+    analysis_live_server: str,
+    analysis_sandbox: Path,
+) -> None:
+    """A delayed rev1 event is ignored after rev2 has rendered."""
+    page.goto(analysis_live_server + "/")
+    handoff = page.evaluate(
+        """async (path) => {
+            const response = await fetch('/sandbox/api/viewer/output-root', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path}),
+            });
+            return {status: response.status, body: await response.text()};
+        }""",
+        "results/CliOutputExample",
+    )
+    assert handoff["status"] == 200, handoff["body"]
+
+    page.goto(analysis_live_server + "/analysis/")
+    page.wait_for_selector("#analysis-model-dropdown", timeout=20_000)
+    page.wait_for_load_state("networkidle")
+    dash_responses: list[tuple[int, str]] = []
+    renderer_requests: list[str] = []
+    pending_dash_request_ids: set[int] = set()
+
+    def _capture_dash_request(request) -> None:
+        if not request.url.endswith("/_dash-update-component"):
+            return
+        pending_dash_request_ids.add(id(request))
+        post_data = request.post_data_json
+        output = post_data.get("output", "") if post_data else ""
+        if output == _ANALYSIS_RENDERER_OUTPUT:
+            renderer_requests.append(output)
+
+    def _finish_dash_request(request) -> None:
+        if request.url.endswith("/_dash-update-component"):
+            pending_dash_request_ids.discard(id(request))
+
+    def _capture_dash_response(response) -> None:
+        if response.url.endswith("/_dash-update-component"):
+            body = response.text() if response.status == 200 else ""
+            dash_responses.append((response.status, body))
+
+    page.on("request", _capture_dash_request)
+    page.on("requestfinished", _finish_dash_request)
+    page.on("requestfailed", _finish_dash_request)
+    page.on("response", _capture_dash_response)
+    page.locator("#analysis-model-dropdown").click()
+    page.get_by_role("option", name="LinearLagModel").click()
+    expect(page.locator("#analysis-pipeline-header")).to_contain_text(
+        "model: LinearLagModel",
+        timeout=20_000,
+    )
+
+    page.locator("#analysis-filter-add-dropdown").click()
+    page.get_by_role("option", name="TukeyOutlierRemover").click()
+    expect(page.locator("#analysis-pipeline-header")).to_contain_text(
+        "1 filters",
+        timeout=20_000,
+    )
+    expect(page.locator("#analysis-filter-stack")).to_contain_text(
+        "TukeyOutlierRemover"
+    )
+    page.wait_for_timeout(500)
+
+    revision_events: list[dict] = []
+    for status, body in dash_responses:
+        if status != 200 or not body:
+            continue
+        payload = json.loads(body)
+        event_response = payload.get("response", {}).get(
+            "analysis-pipeline-event-store"
+        )
+        if event_response is not None:
+            revision_events.append(event_response["data"])
+    assert [event["revision"] for event in revision_events] == [1, 2]
+    _wait_for_dash_request_quiescence(
+        page,
+        pending_dash_request_ids,
+        store_id="analysis-pipeline-gate-ack-store",
+        expected_data={"revision": 2, "accepted": True},
+    )
+    renderer_request_count = len(renderer_requests)
+    applied_rev2 = _dash_store_data(
+        page,
+        "analysis-pipeline-store",
+    )
+    assert applied_rev2 == revision_events[1]
+    pipeline_path = pipeline_json_path(
+        analysis_sandbox / "results" / "CliOutputExample"
+    )
+    saved_rev2 = pipeline_path.read_bytes()
+    assert applied_rev2["pipeline_json"].encode("utf-8") == saved_rev2
+
+    page.evaluate(
+        """(event) => {
+            window.dash_clientside.set_props(
+                'analysis-pipeline-event-store',
+                {data: event},
+            );
+        }""",
+        revision_events[0],
+    )
+    _wait_for_dash_request_quiescence(
+        page,
+        pending_dash_request_ids,
+        store_id="analysis-pipeline-gate-ack-store",
+        expected_data={"revision": 1, "accepted": False},
+    )
+
+    expect(page.locator("#analysis-pipeline-header")).to_contain_text(
+        "1 filters"
+    )
+    expect(page.locator("#analysis-pipeline-header")).to_contain_text(
+        "model: LinearLagModel"
+    )
+    expect(page.locator("#analysis-filter-stack")).to_contain_text(
+        "TukeyOutlierRemover"
+    )
+    assert len(renderer_requests) == renderer_request_count
+    assert _dash_store_data(
+        page,
+        "analysis-pipeline-event-store",
+    ) == revision_events[0]
+    applied_after_delay = _dash_store_data(
+        page,
+        "analysis-pipeline-store",
+    )
+    assert applied_after_delay == revision_events[1]
+    assert applied_after_delay["pipeline_json"].encode("utf-8") == saved_rev2
+    assert pipeline_path.read_bytes() == saved_rev2
+    saved = json.loads(saved_rev2)
+    assert saved["model"]["class"] == "LinearLagModel"
+    assert len(saved["filters"]) == 1
 
 
 # Reference, only — keeps `TukeyOutlierRemover`/`LogGrowthModel` imports

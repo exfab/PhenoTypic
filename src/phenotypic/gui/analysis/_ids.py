@@ -116,9 +116,18 @@ ANALYSIS_RUN_SPINNER = "analysis-run-spinner"
 # Stores
 # ---------------------------------------------------------------------------
 
-#: ``dcc.Store`` echoing the current pipeline JSON so callbacks can avoid
-#: round-tripping disk on every dropdown change.
+#: ``dcc.Store`` carrying ``{revision, pipeline_json}`` after every recipe
+#: transaction. Its unique revision drives the single full-page reconciler
+#: even when a rejected edit reloads byte-identical JSON.
 ANALYSIS_PIPELINE_STORE = "analysis-pipeline-store"
+
+#: Mutation callbacks publish candidate revisions here. A synchronous
+#: clientside gate advances :data:`ANALYSIS_PIPELINE_STORE` monotonically.
+ANALYSIS_PIPELINE_EVENT_STORE = "analysis-pipeline-event-store"
+
+#: The clientside monotonic gate acknowledges every valid candidate revision
+#: with ``{revision, accepted}``, including stale candidates it rejects.
+ANALYSIS_PIPELINE_GATE_ACK_STORE = "analysis-pipeline-gate-ack-store"
 
 #: ``dcc.Store(storage_type="session")`` holding per-section plotting
 #: preferences (``figsize`` / ``collapsed`` / ``cmap`` / ...). Session
@@ -215,6 +224,8 @@ __all__ = [
     "ANALYSIS_RUN_STATUS",
     "ANALYSIS_RUN_SPINNER",
     "ANALYSIS_PIPELINE_STORE",
+    "ANALYSIS_PIPELINE_EVENT_STORE",
+    "ANALYSIS_PIPELINE_GATE_ACK_STORE",
     "ANALYSIS_PLOT_PREFS_STORE",
     "EMPTY_HANDOFF_BANNER",
     "EMPTY_HANDOFF_LABEL",

@@ -140,7 +140,22 @@ def build_app_layout(
             ),
             dcc.Store(
                 id=ids.ANALYSIS_PIPELINE_STORE,
-                data=recipe.last_json or recipe.pipeline.to_json() or "{}",
+                data={
+                    "revision": 0,
+                    "pipeline_json": (
+                        recipe.last_json
+                        or recipe.pipeline.to_json()
+                        or "{}"
+                    ),
+                },
+            ),
+            dcc.Store(
+                id=ids.ANALYSIS_PIPELINE_EVENT_STORE,
+                data=None,
+            ),
+            dcc.Store(
+                id=ids.ANALYSIS_PIPELINE_GATE_ACK_STORE,
+                data=None,
             ),
             dcc.Store(
                 id=ids.ANALYSIS_PLOT_PREFS_STORE,

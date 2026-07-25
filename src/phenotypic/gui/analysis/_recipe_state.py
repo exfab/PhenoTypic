@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List, Optional
 
-from pydantic import AliasChoices, AliasPath, BaseModel
+from pydantic import AliasChoices, AliasPath, BaseModel, ValidationError
 
 from phenotypic._core._pipeline_parts._serializable_pipeline import (
     PipelineLoadWarning,
@@ -70,6 +70,16 @@ _SERIALIZED_PIPELINE_KEYS = frozenset({
     "nrows",
     "ncols",
 })
+
+
+@dataclass(frozen=True)
+class RecipeRenderSnapshot:
+    """Detached recipe revision used to build one coherent GUI response."""
+
+    pipeline: "ImagePipeline"
+    last_json: str
+
+
 _ANALYZER_ENVELOPE_KEYS = frozenset({"class", "params"})
 _QC_ENVELOPE_KEYS = frozenset({"instance_id", "class", "enabled", "params"})
 _PLOT_ENVELOPE_KEYS = frozenset({"id", "ref", "inline", "input"})
@@ -195,7 +205,7 @@ def _plot_validation_node(node: object) -> object:
 
     input_payload = validation_node.get("input")
     if isinstance(input_payload, dict):
-        input_models = {
+        input_models: dict[str, type[BaseModel]] = {
             "measurements": MeasurementInput,
             "analysis": AnalysisInput,
         }
@@ -273,6 +283,94 @@ def _pipeline_validation_payload(
         validation_payload["plots"] = [
             _plot_validation_node(node) for node in plots
         ]
+    return validation_payload
+
+
+def _invalid_analyzer_warning(
+    *,
+    slot: str,
+    name: str,
+    node: object,
+) -> PipelineLoadWarning:
+    """Describe one malformed or known-but-invalid analyzer node."""
+    class_name = node.get("class") if isinstance(node, dict) else None
+    return PipelineLoadWarning(
+        slot=slot,
+        name=name,
+        class_name=(
+            class_name
+            if isinstance(class_name, str)
+            else f"<invalid {type(class_name).__name__}>"
+        ),
+    )
+
+
+def _tolerant_analyzer_payload(
+    source_payload: dict[str, Any],
+    load_warnings: List[PipelineLoadWarning],
+) -> dict[str, Any]:
+    """Drop every opaque analyzer node from the strict-loader copy.
+
+    ``ImagePipeline.from_json(skip_unknown_analyzers=True)`` already skips
+    unresolved classes, but a class that still resolves can reject retired or
+    malformed parameters with a Pydantic validation error. Validate each
+    filter/model independently here so one opaque node cannot abort the
+    otherwise-valid Results/Analysis binding. The original payload is never
+    changed and remains the save-time round-trip source of truth.
+    """
+    validation_payload = _pipeline_validation_payload(source_payload)
+
+    filters = validation_payload.get("filters")
+    if isinstance(filters, dict):
+        valid_filters: dict[str, Any] = {}
+        for name, node in filters.items():
+            try:
+                instance = SerializablePipeline._deserialize_analyzer(
+                    node,
+                    skipped=load_warnings,
+                    slot_name=name,
+                )
+            except (KeyError, TypeError, ValidationError):
+                load_warnings.append(
+                    _invalid_analyzer_warning(
+                        slot="filter",
+                        name=str(name),
+                        node=node,
+                    )
+                )
+            else:
+                if instance is not None:
+                    valid_filters[name] = node
+        validation_payload["filters"] = valid_filters
+
+    model = validation_payload.get("model")
+    if model is not None:
+        try:
+            instance = SerializablePipeline._deserialize_analyzer(
+                model,
+                skipped=load_warnings,
+                slot_name="model",
+            )
+            if instance is not None:
+                from phenotypic.analysis.abc_ import ModelFitter
+
+                if not isinstance(instance, ModelFitter):
+                    raise TypeError(
+                        "pipeline 'model' must deserialize to a ModelFitter"
+                    )
+        except (KeyError, TypeError, ValidationError):
+            load_warnings.append(
+                _invalid_analyzer_warning(
+                    slot="model",
+                    name="model",
+                    node=model,
+                )
+            )
+            validation_payload["model"] = None
+        else:
+            if instance is None:
+                validation_payload["model"] = None
+
     return validation_payload
 
 
@@ -879,7 +977,10 @@ class RecipeState:
                 raise TypeError("pipeline configuration must be a JSON object")
             source_payload = parsed_payload
             pipeline = ImagePipeline.from_json(
-                _pipeline_validation_payload(parsed_payload),
+                _tolerant_analyzer_payload(
+                    parsed_payload,
+                    load_warnings,
+                ),
                 skip_unknown_analyzers=True,
                 load_warnings=load_warnings,
             )
@@ -889,7 +990,7 @@ class RecipeState:
                 mtime = None
             if load_warnings:
                 logger.warning(
-                    "%s referenced %d unknown analyzer class(es); the "
+                    "%s referenced %d opaque analyzer node(s); the "
                     "analysis page will render a banner. Skipped: %s",
                     read_path,
                     len(load_warnings),
@@ -952,6 +1053,14 @@ class RecipeState:
             return file_fingerprint(tracked_path)
         except FileNotFoundError:
             return "missing"
+
+    def capture_render_snapshot(self) -> RecipeRenderSnapshot:
+        """Copy one internally consistent in-memory revision for GUI rendering."""
+        with self._lock:
+            return RecipeRenderSnapshot(
+                pipeline=copy.deepcopy(self.pipeline),
+                last_json=self.last_json,
+            )
 
     def capture_analysis_snapshot(
         self,
@@ -1061,6 +1170,55 @@ class RecipeState:
                 self.source_payload = merged
                 self.load_warnings = remaining_warnings
                 return True
+
+    def mutate_and_save(
+        self,
+        mutation: Callable[["ImagePipeline"], bool | None],
+    ) -> bool:
+        """Apply one pipeline mutation and publish it as a transaction.
+
+        A failed guard, source compare-and-swap check, or atomic write must not
+        leave the rejected edit in memory where a later unrelated save could
+        publish it. Reload the authoritative disk recipe on any save refusal;
+        if that recovery itself fails, restore the detached pre-edit snapshot.
+
+        Args:
+            mutation: Callback that mutates the supplied live pipeline. Return
+                ``False`` to refuse an edit whose rendered target no longer
+                exists; ``None`` or ``True`` proceeds to publication.
+
+        Returns:
+            ``True`` only when the mutation reached disk.
+
+        Raises:
+            Exception: Re-raises mutation errors after restoring the pre-edit
+                pipeline.
+        """
+        with self._lock:
+            previous_pipeline = copy.deepcopy(self.pipeline)
+            try:
+                mutation_result = mutation(self.pipeline)
+            except Exception:
+                self.pipeline = previous_pipeline
+                raise
+            if mutation_result is False:
+                self.pipeline = previous_pipeline
+                return False
+
+            if self.save():
+                return True
+
+            try:
+                self.reload()
+            except Exception:
+                logger.warning(
+                    "Could not reload %s after a rejected Analysis edit; "
+                    "restoring the pre-edit in-memory recipe.",
+                    self.path,
+                    exc_info=True,
+                )
+                self.pipeline = previous_pipeline
+            return False
 
     def reload(self) -> None:
         """Re-read the on-disk pipeline, replacing :attr:`pipeline`.

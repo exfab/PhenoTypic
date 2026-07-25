@@ -13,9 +13,14 @@ parameters from the GUI is deferred to v2 (the user can hand-edit
 from __future__ import annotations
 
 import logging
+import math
+import threading
 import time
+from collections import OrderedDict
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
 import polars as pl
 from dash import (
@@ -28,6 +33,7 @@ from dash import (
     html,
     no_update,
 )
+from dash.exceptions import PreventUpdate
 
 from phenotypic.schema import CULTURE_METADATA, GENETIC_METADATA
 from phenotypic.sdk_ import ModulePath, paths_fingerprint
@@ -53,6 +59,8 @@ if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 logger = logging.getLogger(__name__)
+
+_RECONCILIATION_CACHE_SIZE = 64
 
 
 # v1 placeholder defaults — users tune by editing pipeline.json until
@@ -98,6 +106,9 @@ def register_callbacks(app: "dash.Dash") -> None:
       sync with the on-disk measurements file.
     """
     server = app.server
+    reconciliation_lock = threading.Lock()
+    reconciliation_revision = 0
+    reconciliation_snapshots: OrderedDict[int, Any] = OrderedDict()
 
     def _columns_provider(source: str) -> list:
         """Resolve a ColumnSource to columns from the live schema cache."""
@@ -106,114 +117,33 @@ def register_callbacks(app: "dash.Dash") -> None:
             return []
         return schema.columns_for(source)
 
-    @app.callback(
-        Output(ids.ANALYSIS_POST_STACK, "children"),
-        Output(ids.ANALYSIS_PIPELINE_HEADER, "children"),
-        Output(ids.ANALYSIS_PIPELINE_STORE, "data", allow_duplicate=True),
-        Input(ids.ANALYSIS_POST_ADD_DROPDOWN, "value"),
-        prevent_initial_call=True,
-    )
-    def _add_post(class_name: str | None):
-        if not class_name:
-            return no_update, no_update, no_update
-        recipe = server.config[CFG_RECIPE_STATE]
-        instance = _instantiate("post", class_name)
-        if instance is None:
-            return no_update, no_update, no_update
-        post_dict = recipe.pipeline.get_post()
-        post_dict[_unique_key(post_dict, class_name)] = instance
-        recipe.pipeline.set_post(post_dict)
-        recipe.save()
-        return (
-            build_section_stack(
-                ids.ANALYSIS_POST_STACK, "post", recipe,
-                columns_provider=_columns_provider,
-            ),
-            _pipeline_summary(recipe),
-            recipe.last_json,
+    def _stack(
+        recipe: Any,
+        kind: ids.SectionKind,
+        *,
+        plot_prefs: dict | None = None,
+    ) -> Any:
+        """Build one authoritative analyzer stack after a transaction."""
+        stack_ids = {
+            "post": ids.ANALYSIS_POST_STACK,
+            "filter": ids.ANALYSIS_FILTER_STACK,
+            "edge": ids.ANALYSIS_EDGE_STACK,
+        }
+        return build_section_stack(
+            stack_ids[kind],
+            kind,
+            recipe,
+            columns_provider=_columns_provider,
+            plot_prefs=plot_prefs,
         )
 
-    @app.callback(
-        Output(ids.ANALYSIS_FILTER_STACK, "children"),
-        Output(ids.ANALYSIS_PIPELINE_HEADER, "children", allow_duplicate=True),
-        Output(ids.ANALYSIS_PIPELINE_STORE, "data", allow_duplicate=True),
-        Input(ids.ANALYSIS_FILTER_ADD_DROPDOWN, "value"),
-        State(ids.ANALYSIS_PLOT_PREFS_STORE, "data"),
-        prevent_initial_call=True,
-    )
-    def _add_filter(class_name: str | None, plot_prefs: dict | None):
-        if not class_name:
-            return no_update, no_update, no_update
-        recipe = server.config[CFG_RECIPE_STATE]
-        instance = _instantiate("filter", class_name)
-        if instance is None:
-            return no_update, no_update, no_update
-        filters_dict = recipe.pipeline.get_filters()
-        filters_dict[_unique_key(filters_dict, class_name)] = instance
-        recipe.pipeline.set_filters(filters_dict)
-        recipe.save()
-        return (
-            build_section_stack(
-                ids.ANALYSIS_FILTER_STACK, "filter", recipe,
-                columns_provider=_columns_provider,
-                plot_prefs=plot_prefs,
-            ),
-            _pipeline_summary(recipe),
-            recipe.last_json,
-        )
+    def _model_outputs(
+        recipe: Any,
+        plot_prefs: dict | None,
+    ) -> tuple[Any, Any, bool, str]:
+        """Return a complete authoritative model callback response."""
+        from phenotypic.gui.analysis._layout import _build_model_section
 
-    @app.callback(
-        Output(ids.ANALYSIS_EDGE_STACK, "children"),
-        Output(ids.ANALYSIS_PIPELINE_HEADER, "children", allow_duplicate=True),
-        Output(ids.ANALYSIS_PIPELINE_STORE, "data", allow_duplicate=True),
-        Input(ids.ANALYSIS_EDGE_ADD_DROPDOWN, "value"),
-        State(ids.ANALYSIS_PLOT_PREFS_STORE, "data"),
-        prevent_initial_call=True,
-    )
-    def _add_edge(class_name: str | None, plot_prefs: dict | None):
-        if not class_name:
-            return no_update, no_update, no_update
-        recipe = server.config[CFG_RECIPE_STATE]
-        instance = _instantiate("edge", class_name)
-        if instance is None:
-            return no_update, no_update, no_update
-        filters_dict = recipe.pipeline.get_filters()
-        filters_dict[_unique_key(filters_dict, class_name)] = instance
-        recipe.pipeline.set_filters(filters_dict)
-        recipe.save()
-        return (
-            build_section_stack(
-                ids.ANALYSIS_EDGE_STACK, "edge", recipe,
-                columns_provider=_columns_provider,
-                plot_prefs=plot_prefs,
-            ),
-            _pipeline_summary(recipe),
-            recipe.last_json,
-        )
-
-    @app.callback(
-        Output(ids.ANALYSIS_MODEL_SECTION, "children"),
-        Output(ids.ANALYSIS_PIPELINE_HEADER, "children", allow_duplicate=True),
-        Output(ids.ANALYSIS_RUN_BUTTON, "disabled"),
-        Output(ids.ANALYSIS_PIPELINE_STORE, "data", allow_duplicate=True),
-        Input(ids.ANALYSIS_MODEL_DROPDOWN, "value"),
-        State(ids.ANALYSIS_PLOT_PREFS_STORE, "data"),
-        prevent_initial_call=True,
-    )
-    def _set_model(class_name: str, plot_prefs: dict | None):
-        recipe = server.config[CFG_RECIPE_STATE]
-        if class_name == "":
-            recipe.pipeline.set_model(None)
-        else:
-            instance = _instantiate("model", class_name)
-            if instance is None:
-                return no_update, no_update, no_update, no_update
-            recipe.pipeline.set_model(instance)
-        recipe.save()
-
-        from phenotypic.gui.analysis._layout import (
-            _build_model_section,  # type: ignore[attr-defined]
-        )
         model = recipe.pipeline.get_model()
         section = (
             _build_model_section(
@@ -228,79 +158,249 @@ def register_callbacks(app: "dash.Dash") -> None:
             section,
             _pipeline_summary(recipe),
             model is None,
-            recipe.last_json,
+            type(model).__name__ if model is not None else "",
         )
 
-    @app.callback(
-        Output(ids.ANALYSIS_POST_STACK, "children", allow_duplicate=True),
-        Output(ids.ANALYSIS_FILTER_STACK, "children", allow_duplicate=True),
-        Output(ids.ANALYSIS_EDGE_STACK, "children", allow_duplicate=True),
-        Output(ids.ANALYSIS_PIPELINE_HEADER, "children", allow_duplicate=True),
-        Output(ids.ANALYSIS_PIPELINE_STORE, "data", allow_duplicate=True),
-        # ``ALL`` is Dash's pattern-matching wildcard; the strict Literal/int
-        # signature on ``section_remove_button_id`` doesn't model it.
-        Input(ids.section_remove_button_id(ALL, ALL), "n_clicks"),  # type: ignore[arg-type]
+    def _reconciliation_payload(recipe: Any) -> dict[str, Any]:
+        """Return an ordered trigger carrying one atomic recipe revision."""
+        nonlocal reconciliation_revision
+        with reconciliation_lock:
+            snapshot = recipe.capture_render_snapshot()
+            reconciliation_revision += 1
+            revision = reconciliation_revision
+            reconciliation_snapshots[revision] = snapshot
+            while len(reconciliation_snapshots) > _RECONCILIATION_CACHE_SIZE:
+                reconciliation_snapshots.popitem(last=False)
+            return {
+                "revision": revision,
+                "pipeline_json": snapshot.last_json,
+            }
+
+    app.clientside_callback(
+        """
+        function(event, current) {
+            const noUpdate = window.dash_clientside.no_update;
+            const valid = (payload) => (
+                payload !== null
+                && typeof payload === "object"
+                && Number.isInteger(payload.revision)
+                && typeof payload.pipeline_json === "string"
+            );
+            if (!valid(event)) {
+                return [noUpdate, noUpdate];
+            }
+            const accepted = (
+                valid(current) && event.revision > current.revision
+            );
+            return [
+                accepted ? event : noUpdate,
+                {revision: event.revision, accepted: accepted},
+            ];
+        }
+        """,
+        Output(ids.ANALYSIS_PIPELINE_STORE, "data"),
+        Output(ids.ANALYSIS_PIPELINE_GATE_ACK_STORE, "data"),
+        Input(ids.ANALYSIS_PIPELINE_EVENT_STORE, "data"),
         State(ids.ANALYSIS_PIPELINE_STORE, "data"),
+        prevent_initial_call=True,
+    )
+
+    @app.callback(
+        Output(ids.ANALYSIS_POST_STACK, "children"),
+        Output(ids.ANALYSIS_FILTER_STACK, "children"),
+        Output(ids.ANALYSIS_EDGE_STACK, "children"),
+        Output(ids.ANALYSIS_MODEL_SECTION, "children"),
+        Output(ids.ANALYSIS_PIPELINE_HEADER, "children"),
+        Output(ids.ANALYSIS_RUN_BUTTON, "disabled"),
+        Output(ids.ANALYSIS_MODEL_DROPDOWN, "value"),
+        Output(ids.ANALYSIS_POST_ADD_DROPDOWN, "value"),
+        Output(ids.ANALYSIS_FILTER_ADD_DROPDOWN, "value"),
+        Output(ids.ANALYSIS_EDGE_ADD_DROPDOWN, "value"),
+        Input(ids.ANALYSIS_PIPELINE_STORE, "data"),
         State(ids.ANALYSIS_PLOT_PREFS_STORE, "data"),
         prevent_initial_call=True,
     )
-    def _remove_section(n_clicks_list, _store, plot_prefs):
+    def _reconcile_recipe_page(
+        reconciliation: dict[str, Any],
+        plot_prefs: dict | None,
+    ) -> tuple[Any, ...]:
+        """Render all recipe controls from one detached, ordered snapshot."""
+        if not isinstance(reconciliation, dict):
+            raise PreventUpdate
+        revision = reconciliation.get("revision")
+        pipeline_json = reconciliation.get("pipeline_json")
+        if not isinstance(revision, int) or not isinstance(pipeline_json, str):
+            raise PreventUpdate
+        with reconciliation_lock:
+            if revision != reconciliation_revision:
+                raise PreventUpdate
+            snapshot = reconciliation_snapshots.get(revision)
+            if snapshot is None or snapshot.last_json != pipeline_json:
+                raise PreventUpdate
+            reconciliation_snapshots.move_to_end(revision)
+            model_section, header, run_disabled, model_value = _model_outputs(
+                snapshot,
+                plot_prefs,
+            )
+            return (
+                _stack(snapshot, "post"),
+                _stack(snapshot, "filter", plot_prefs=plot_prefs),
+                _stack(snapshot, "edge", plot_prefs=plot_prefs),
+                model_section,
+                header,
+                run_disabled,
+                model_value,
+                None,
+                None,
+                None,
+            )
+
+    @app.callback(
+        Output(ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True),
+        Input(ids.ANALYSIS_POST_ADD_DROPDOWN, "value"),
+        prevent_initial_call=True,
+    )
+    def _add_post(class_name: str | None):
+        if not class_name:
+            return no_update
+        recipe = server.config[CFG_RECIPE_STATE]
+        instance = _instantiate("post", class_name)
+        if instance is None:
+            return _reconciliation_payload(recipe)
+
+        def _append_post(pipeline: Any) -> None:
+            post_dict = pipeline.get_post()
+            post_dict[_unique_key(post_dict, class_name)] = instance
+            pipeline.set_post(post_dict)
+
+        recipe.mutate_and_save(_append_post)
+        return _reconciliation_payload(recipe)
+
+    @app.callback(
+        Output(ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True),
+        Input(ids.ANALYSIS_FILTER_ADD_DROPDOWN, "value"),
+        prevent_initial_call=True,
+    )
+    def _add_filter(class_name: str | None):
+        if not class_name:
+            return no_update
+        recipe = server.config[CFG_RECIPE_STATE]
+        instance = _instantiate("filter", class_name)
+        if instance is None:
+            return _reconciliation_payload(recipe)
+
+        def _append_filter(pipeline: Any) -> None:
+            filters_dict = pipeline.get_filters()
+            filters_dict[_unique_key(filters_dict, class_name)] = instance
+            pipeline.set_filters(filters_dict)
+
+        recipe.mutate_and_save(_append_filter)
+        return _reconciliation_payload(recipe)
+
+    @app.callback(
+        Output(ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True),
+        Input(ids.ANALYSIS_EDGE_ADD_DROPDOWN, "value"),
+        prevent_initial_call=True,
+    )
+    def _add_edge(class_name: str | None):
+        if not class_name:
+            return no_update
+        recipe = server.config[CFG_RECIPE_STATE]
+        instance = _instantiate("edge", class_name)
+        if instance is None:
+            return _reconciliation_payload(recipe)
+
+        def _append_edge(pipeline: Any) -> None:
+            filters_dict = pipeline.get_filters()
+            filters_dict[_unique_key(filters_dict, class_name)] = instance
+            pipeline.set_filters(filters_dict)
+
+        recipe.mutate_and_save(_append_edge)
+        return _reconciliation_payload(recipe)
+
+    @app.callback(
+        Output(ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True),
+        Input(ids.ANALYSIS_MODEL_DROPDOWN, "value"),
+        prevent_initial_call=True,
+    )
+    def _set_model(class_name: str):
+        recipe = server.config[CFG_RECIPE_STATE]
+        current_model = recipe.pipeline.get_model()
+        authoritative_class = (
+            type(current_model).__name__ if current_model is not None else ""
+        )
+        if class_name == authoritative_class:
+            return no_update
+        if class_name == "":
+            instance = None
+        else:
+            instance = _instantiate("model", class_name)
+            if instance is None:
+                return _reconciliation_payload(recipe)
+        recipe.mutate_and_save(lambda pipeline: pipeline.set_model(instance))
+        return _reconciliation_payload(recipe)
+
+    @app.callback(
+        Output(ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True),
+        # ``ALL`` is Dash's pattern-matching wildcard; the strict Literal/int
+        # signature on ``section_remove_button_id`` doesn't model it.
+        Input(ids.section_remove_button_id(ALL, ALL), "n_clicks"),  # type: ignore[arg-type]
+        prevent_initial_call=True,
+    )
+    def _remove_section(n_clicks_list):
         # Pattern-matching callback fires on *every* button (including
         # zero-click initial state). Filter to the actually-triggered
         # button via callback_context.
         ctx = callback_context
         if not ctx.triggered:
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update
         triggered = ctx.triggered[0]
         if not triggered["value"]:
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update
         triggered_id = ctx.triggered_id
         if not isinstance(triggered_id, dict):
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update
 
         kind = triggered_id["kind"]
         index = triggered_id["index"]
 
         recipe = server.config[CFG_RECIPE_STATE]
         if kind == "post":
-            post_dict = recipe.pipeline.get_post()
-            items = list(post_dict.items())
+            items = list(recipe.pipeline.get_post().items())
             if not (0 <= index < len(items)):
-                return no_update, no_update, no_update, no_update, no_update
-            items.pop(index)
-            recipe.pipeline.set_post(dict(items))
+                return _reconciliation_payload(recipe)
+            key = items[index][0]
+
+            def _remove_post(pipeline: Any) -> bool | None:
+                post_dict = pipeline.get_post()
+                if key not in post_dict:
+                    return False
+                post_dict.pop(key)
+                pipeline.set_post(post_dict)
+                return None
+
+            mutation = _remove_post
         elif kind in ("filter", "edge"):
             from phenotypic.gui.analysis._layout import filter_items_for_kind
 
             sub = filter_items_for_kind(recipe.pipeline, kind)
             if not (0 <= index < len(sub)):
-                return no_update, no_update, no_update, no_update, no_update
+                return _reconciliation_payload(recipe)
             key = sub[index][0]
-            full = recipe.pipeline.get_filters()
-            del full[key]
-            recipe.pipeline.set_filters(full)
-        else:
-            return no_update, no_update, no_update, no_update, no_update
-        recipe.save()
 
-        return (
-            build_section_stack(
-                ids.ANALYSIS_POST_STACK, "post", recipe,
-                columns_provider=_columns_provider,
-            ),
-            build_section_stack(
-                ids.ANALYSIS_FILTER_STACK, "filter", recipe,
-                columns_provider=_columns_provider,
-                plot_prefs=plot_prefs,
-            ),
-            build_section_stack(
-                ids.ANALYSIS_EDGE_STACK, "edge", recipe,
-                columns_provider=_columns_provider,
-                plot_prefs=plot_prefs,
-            ),
-            _pipeline_summary(recipe),
-            recipe.last_json,
-        )
+            def _remove_filter(pipeline: Any) -> bool | None:
+                full = pipeline.get_filters()
+                if key not in full:
+                    return False
+                full.pop(key)
+                pipeline.set_filters(full)
+                return None
+
+            mutation = _remove_filter
+        else:
+            return _reconciliation_payload(recipe)
+        recipe.mutate_and_save(mutation)
+        return _reconciliation_payload(recipe)
 
     # ----- Per-section param edit ----- #
     # One mega fan-in callback over every param-* widget kind (mirrors the
@@ -309,12 +409,7 @@ def register_callbacks(app: "dash.Dash") -> None:
     # node-uuid prefixes that may share the same widget types) fall
     # through as no-ops.
     @app.callback(
-        Output(ids.ANALYSIS_POST_STACK, "children", allow_duplicate=True),
-        Output(ids.ANALYSIS_FILTER_STACK, "children", allow_duplicate=True),
-        Output(ids.ANALYSIS_EDGE_STACK, "children", allow_duplicate=True),
-        Output(ids.ANALYSIS_MODEL_SECTION, "children", allow_duplicate=True),
-        Output(ids.ANALYSIS_PIPELINE_HEADER, "children", allow_duplicate=True),
-        Output(ids.ANALYSIS_PIPELINE_STORE, "data", allow_duplicate=True),
+        Output(ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True),
         Input({"type": "param-bool", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-num", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-str", "prefix": ALL, "name": ALL}, "value"),
@@ -326,69 +421,21 @@ def register_callbacks(app: "dash.Dash") -> None:
         Input({"type": "param-column-scalar", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-column-multi", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-column-mode", "prefix": ALL, "name": ALL}, "value"),
-        State(ids.ANALYSIS_PLOT_PREFS_STORE, "data"),
         prevent_initial_call=True,
     )
     def _on_param_edit(*_values: Any):
-        # Dash appends State values after all Inputs — the prefs store is
-        # the sole trailing State, so it is always the last positional.
-        plot_prefs = _values[-1] if _values else None
         ctx = callback_context
         if not ctx.triggered_id or not isinstance(ctx.triggered_id, dict):
-            return no_update, no_update, no_update, no_update, no_update, no_update
+            return no_update
         prefix = ctx.triggered_id.get("prefix", "")
         if not isinstance(prefix, str) or not prefix.startswith("analysis-"):
-            return no_update, no_update, no_update, no_update, no_update, no_update
+            return no_update
 
         recipe = server.config[CFG_RECIPE_STATE]
-        applied, kind = _apply_param_edit(recipe, ctx)
-        if not applied:
-            return no_update, no_update, no_update, no_update, no_update, no_update
-
-        # Only rebuild the touched stack — the others are unchanged
-        # so we send ``no_update`` and avoid wasted Dash component diffs.
-        post_out: Any = no_update
-        filter_out: Any = no_update
-        edge_out: Any = no_update
-        model_out: Any = no_update
-        if kind == "post":
-            post_out = build_section_stack(
-                ids.ANALYSIS_POST_STACK, "post", recipe,
-                columns_provider=_columns_provider,
-            )
-        elif kind == "filter":
-            filter_out = build_section_stack(
-                ids.ANALYSIS_FILTER_STACK, "filter", recipe,
-                columns_provider=_columns_provider,
-                plot_prefs=plot_prefs,
-            )
-        elif kind == "edge":
-            edge_out = build_section_stack(
-                ids.ANALYSIS_EDGE_STACK, "edge", recipe,
-                columns_provider=_columns_provider,
-                plot_prefs=plot_prefs,
-            )
-        elif kind == "model":
-            from phenotypic.gui.analysis._layout import _build_model_section
-
-            model = recipe.pipeline.get_model()
-            model_out = (
-                _build_model_section(
-                    model,
-                    columns_provider=_columns_provider,
-                    plot_prefs=plot_prefs,
-                )
-                if model is not None
-                else html.Span("No model configured.", style={"color": COLOR_MUTED})
-            )
-        return (
-            post_out,
-            filter_out,
-            edge_out,
-            model_out,
-            _pipeline_summary(recipe),
-            recipe.last_json,
-        )
+        _applied, _kind, semantic_noop = _apply_param_edit(recipe, ctx)
+        if semantic_noop:
+            raise PreventUpdate
+        return _reconciliation_payload(recipe)
 
     @app.callback(
         Output(ids.ANALYSIS_RUN_STATUS, "children"),
@@ -505,7 +552,10 @@ def _preview_error(message: str) -> Any:
     )
 
 
-def _apply_param_edit(recipe: Any, ctx: Any) -> tuple[bool, str | None]:
+def _apply_param_edit(
+    recipe: Any,
+    ctx: Any,
+) -> tuple[bool, str | None, bool]:
     """Resolve a triggered param widget back into a recipe mutation.
 
     Decodes ``ctx.triggered_id["prefix"]`` (``"analysis-{kind}-{index}"``)
@@ -517,10 +567,11 @@ def _apply_param_edit(recipe: Any, ctx: Any) -> tuple[bool, str | None]:
     that :func:`parse_widget_value` understands.
 
     Returns:
-        ``(applied, kind)`` where ``applied`` is ``True`` only when the
-        edit was saved. ``kind`` is the section kind that changed
-        (``"post"`` / ``"filter"`` / ``"edge"`` / ``"model"``) so the caller
-        can rebuild only the touched stack; ``None`` when nothing applied.
+        ``(applied, kind, semantic_noop)`` where ``applied`` is ``True`` only
+        when the edit was saved. ``kind`` is the section kind that changed
+        (``"post"`` / ``"filter"`` / ``"edge"`` / ``"model"``), or ``None``
+        when no target was resolved. ``semantic_noop`` is ``True`` only when
+        a programmatic form rebuild submitted the analyzer's current value.
     """
     from phenotypic.gui._operation_registry import get_registry
     from phenotypic.gui._param_forms import parse_widget_value
@@ -530,104 +581,194 @@ def _apply_param_edit(recipe: Any, ctx: Any) -> tuple[bool, str | None]:
     name = triggered.get("name")
     widget_type = triggered.get("type")
     if not isinstance(prefix, str) or not isinstance(name, str):
-        return False, None
+        return False, None, False
 
     # ``analysis-{kind}-{index}``
     parts = prefix.split("-", 2)
     if len(parts) != 3 or parts[0] != "analysis":
-        return False, None
+        return False, None, False
     kind = parts[1]
     try:
         index = int(parts[2])
     except ValueError:
-        return False, None
+        return False, None, False
 
-    pipeline = recipe.pipeline
-    if kind == "post":
-        section_dict = pipeline.get_post()
-        items = list(section_dict.items())
-    elif kind in ("filter", "edge"):
-        from phenotypic.gui.analysis._layout import filter_items_for_kind
+    if kind not in ("post", "filter", "edge", "model"):
+        return False, None, False
 
-        section_dict = pipeline.get_filters()
-        items = filter_items_for_kind(pipeline, kind)
-    elif kind == "model":
-        model = pipeline.get_model()
-        if model is None:
-            return False, None
-        section_dict = None
-        items = [(type(model).__name__, model)]
-        index = 0
-    else:
-        return False, None
+    semantic_noop = False
 
-    if not (0 <= index < len(items)):
-        return False, None
-    section_key, current_instance = items[index]
-
-    info = get_registry().get(type(current_instance).__name__)
-    if info is None:
-        return False, None
-    p = info.parameters.get(name)
-    if p is None:
-        return False, None
-
-    # Multi-component widgets (multi-union, column-with-alt) spread state
-    # across two ids; pack both values so ``parse_widget_value`` can
-    # dispatch on the resulting tuple.
     def _pair(type_a: str, type_b: str) -> tuple[Any, Any]:
         return (
             ctx.inputs.get(_pattern_input_key(name, prefix, type_a)),
             ctx.inputs.get(_pattern_input_key(name, prefix, type_b)),
         )
 
-    if widget_type in ("param-multi-tag", "param-multi-value"):
-        raw: Any = _pair("param-multi-tag", "param-multi-value")
-    elif (
-        widget_type in ("param-column-scalar", "param-column-mode")
-        and p.column_ref is not None
-        and p.column_ref.with_alt
-    ):
-        # Scalar column-with-alt only. ``param-column-multi`` is
-        # intentionally absent: v1 has no ``ColumnRefList | None`` param,
-        # and ``_column_or_alt_widget`` raises ``NotImplementedError`` for
-        # ``spec.multi=True``. Adding multi+alt requires updating both
-        # sites in lockstep.
-        raw = _pair("param-column-mode", "param-column-scalar")
-    else:
-        raw = ctx.triggered[0]["value"] if ctx.triggered else None
+    def _replace_instance(live_pipeline: Any) -> bool | None:
+        nonlocal semantic_noop
+        if kind == "post":
+            items = list(live_pipeline.get_post().items())
+        elif kind in ("filter", "edge"):
+            from phenotypic.gui.analysis._layout import filter_items_for_kind
 
-    coerced = parse_widget_value(raw, p)
+            items = filter_items_for_kind(live_pipeline, kind)
+        else:
+            model = live_pipeline.get_model()
+            if model is None:
+                return False
+            items = [(type(model).__name__, model)]
 
-    new_kwargs = {
-        k: v for k, v in vars(current_instance).items() if not k.startswith("_")
-    }
-    new_kwargs[name] = coerced
+        live_index = 0 if kind == "model" else index
+        if not (0 <= live_index < len(items)):
+            return False
+        section_key, current_instance = items[live_index]
+        info = get_registry().get(type(current_instance).__name__)
+        if info is None:
+            return False
+        param = info.parameters.get(name)
+        if param is None:
+            return False
 
-    sig = _filter_kwargs_to_signature(type(current_instance), new_kwargs)
-    try:
-        new_instance = type(current_instance)(**sig)
-    except Exception:  # noqa: BLE001
-        logger.warning(
-            "Could not rebuild %s with new param %s=%r",
-            type(current_instance).__name__,
-            name,
-            coerced,
-            exc_info=True,
+        # Multi-component widgets (multi-union, column-with-alt) spread state
+        # across two ids; pack both values so ``parse_widget_value`` can
+        # dispatch on the resulting tuple.
+        if widget_type in ("param-multi-tag", "param-multi-value"):
+            raw: Any = _pair("param-multi-tag", "param-multi-value")
+        elif (
+            widget_type in ("param-column-scalar", "param-column-mode")
+            and param.column_ref is not None
+            and param.column_ref.with_alt
+        ):
+            # Scalar column-with-alt only. ``param-column-multi`` is
+            # intentionally absent: v1 has no ``ColumnRefList | None`` param,
+            # and ``_column_or_alt_widget`` raises ``NotImplementedError`` for
+            # ``spec.multi=True``. Adding multi+alt requires updating both
+            # sites in lockstep.
+            raw = _pair("param-column-mode", "param-column-scalar")
+        else:
+            raw = ctx.triggered[0]["value"] if ctx.triggered else None
+
+        try:
+            coerced = parse_widget_value(raw, param)
+            new_kwargs = {
+                key: value
+                for key, value in vars(current_instance).items()
+                if not key.startswith("_")
+            }
+            new_kwargs[name] = coerced
+            signature = _filter_kwargs_to_signature(
+                type(current_instance),
+                new_kwargs,
+            )
+            new_instance = type(current_instance)(**signature)
+        except Exception:  # noqa: BLE001
+            logger.warning(
+                "Could not rebuild %s with new param %s=%r",
+                type(current_instance).__name__,
+                name,
+                raw,
+                exc_info=True,
+            )
+            return False
+
+        if _semantic_values_equal(
+            getattr(new_instance, name),
+            getattr(current_instance, name),
+        ):
+            semantic_noop = True
+            return False
+
+        if kind == "post":
+            live_section = live_pipeline.get_post()
+            live_section[section_key] = new_instance
+            live_pipeline.set_post(live_section)
+        elif kind in ("filter", "edge"):
+            live_section = live_pipeline.get_filters()
+            live_section[section_key] = new_instance
+            live_pipeline.set_filters(live_section)
+        else:
+            live_pipeline.set_model(new_instance)
+        return None
+
+    return recipe.mutate_and_save(_replace_instance), kind, semantic_noop
+
+
+def _semantic_values_equal(left: Any, right: Any) -> bool:
+    """Compare normalized values recursively, treating paired NaNs as equal."""
+    if left is right:
+        return True
+    if isinstance(left, Mapping) or isinstance(right, Mapping):
+        if not isinstance(left, Mapping) or not isinstance(right, Mapping):
+            return False
+        if left.keys() != right.keys():
+            return False
+        return all(
+            _semantic_values_equal(left[key], right[key])
+            for key in left
         )
-        return False, None
-
-    if kind == "post":
-        section_dict[section_key] = new_instance  # type: ignore[index]
-        pipeline.set_post(section_dict)  # type: ignore[arg-type]
-    elif kind in ("filter", "edge"):
-        section_dict[section_key] = new_instance  # type: ignore[index]
-        pipeline.set_filters(section_dict)  # type: ignore[arg-type]
-    else:
-        pipeline.set_model(new_instance)
-
-    recipe.save()
-    return True, kind
+    if isinstance(left, np.ndarray) or isinstance(right, np.ndarray):
+        try:
+            return bool(
+                np.array_equal(
+                    np.asarray(left),
+                    np.asarray(right),
+                    equal_nan=True,
+                )
+            )
+        except (TypeError, ValueError):
+            try:
+                return _semantic_values_equal(
+                    np.asarray(left).tolist(),
+                    np.asarray(right).tolist(),
+                )
+            except Exception:  # noqa: BLE001
+                return False
+    if (
+        isinstance(left, Sequence)
+        and not isinstance(left, (str, bytes, bytearray))
+    ) or (
+        isinstance(right, Sequence)
+        and not isinstance(right, (str, bytes, bytearray))
+    ):
+        if (
+            not isinstance(left, Sequence)
+            or isinstance(left, (str, bytes, bytearray))
+            or not isinstance(right, Sequence)
+            or isinstance(right, (str, bytes, bytearray))
+            or len(left) != len(right)
+        ):
+            return False
+        return all(
+            _semantic_values_equal(left_value, right_value)
+            for left_value, right_value in zip(left, right)
+        )
+    try:
+        if math.isnan(left) and math.isnan(right):
+            return True
+    except (TypeError, ValueError):
+        pass
+    equals = getattr(left, "equals", None)
+    if callable(equals):
+        try:
+            return bool(equals(right))
+        except Exception:  # noqa: BLE001
+            return False
+    try:
+        result = left == right
+    except Exception:  # noqa: BLE001
+        return False
+    if isinstance(result, bool):
+        return result
+    all_values = getattr(result, "all", None)
+    if not callable(all_values):
+        return False
+    try:
+        reduced = all_values()
+        if hasattr(reduced, "all"):
+            reduced = reduced.all()
+        return bool(reduced)
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def _pattern_input_key(name: str, prefix: str, type_: str) -> str:

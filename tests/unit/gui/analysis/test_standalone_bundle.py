@@ -14,7 +14,9 @@ is caught (an empty fallback recipe / empty column list).
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 
@@ -23,6 +25,7 @@ from phenotypic.analysis import LogGrowthModel
 from phenotypic.detect import OtsuDetector
 from phenotypic.gui._config import CFG_MEASUREMENT_SCHEMA, CFG_RECIPE_STATE
 from phenotypic.gui._schema_cache import MeasurementSchema
+from phenotypic.gui.analysis import _ids
 from phenotypic.gui.analysis._app import create_app
 from phenotypic.gui.analysis._callbacks import _run_inline
 from phenotypic.gui.analysis._recipe_state import RecipeState
@@ -31,6 +34,17 @@ from phenotypic.measure import MeasureShape
 from phenotypic.sdk_ import PIPELINE_JSON, BundleLayout
 from phenotypic.sdk_._io_constants import _LEGACY_PIPELINE_JSON
 from phenotypic.schema import METADATA
+
+
+def _walk(component: Any) -> Iterator[Any]:
+    """Yield every component in a Dash layout tree."""
+    yield component
+    children = getattr(component, "children", None)
+    if isinstance(children, (list, tuple)):
+        for child in children:
+            yield from _walk(child)
+    elif children is not None:
+        yield from _walk(children)
 
 
 def _seed_standalone_bundle(base: Path, *, pipeline_filename: str | None) -> None:
@@ -143,6 +157,28 @@ def test_create_app_standalone_bundle_loads_recipe_and_schema(
     ]
     schema = app.server.config[CFG_MEASUREMENT_SCHEMA]
     assert "Shape_Area" in schema.columns_for("measurements")
+
+
+def test_analysis_layout_includes_pipeline_gate_ack_store(
+    tmp_path: Path,
+) -> None:
+    """The hydrated layout exposes the monotonic gate acknowledgment."""
+    base = tmp_path / "my_export"
+    _seed_standalone_bundle(base, pipeline_filename=PIPELINE_JSON)
+    root = OutputRoot.discover(
+        base,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
+
+    app = create_app(output_root=root)
+    ack_store = next(
+        component
+        for component in _walk(app.layout)
+        if getattr(component, "id", None)
+        == _ids.ANALYSIS_PIPELINE_GATE_ACK_STORE
+    )
+
+    assert ack_store.data is None
 
 
 def test_create_app_recipe_save_blocks_changed_processing_generation(
