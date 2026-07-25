@@ -30,7 +30,7 @@ from dash import (
 )
 
 from phenotypic.schema import CULTURE_METADATA, GENETIC_METADATA
-from phenotypic.sdk_ import ModulePath
+from phenotypic.sdk_ import ModulePath, paths_fingerprint
 
 from phenotypic.gui._config import (
     CFG_MEASUREMENT_SCHEMA,
@@ -50,7 +50,7 @@ from phenotypic.gui.analysis._render import render_plot
 if TYPE_CHECKING:
     import dash
 
-    from phenotypic.sdk_ import BundleLayout
+    from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 logger = logging.getLogger(__name__)
 
@@ -404,7 +404,7 @@ def register_callbacks(app: "dash.Dash") -> None:
             return html.Span(
                 "No model configured.", style={"color": OI_VERMILION_TEXT}
             )
-        return _run_inline(recipe, output_root.layout)
+        return _run_inline(recipe, output_root)
 
     # ----- Plotting-preference store ----- #
     # Plotting widgets carry pattern-matching ids; any edit merges its
@@ -672,7 +672,7 @@ def _filter_kwargs_to_signature(cls: type, kwargs: dict[str, Any]) -> dict[str, 
     return out
 
 
-def _run_inline(recipe: Any, layout: "BundleLayout") -> Any:
+def _run_inline(recipe: Any, output_root: "OutputRoot") -> Any:
     """Read measurements.parquet, run analyze, atomic-write outputs.
 
     Resolves both the read (the post-applied mirror) and the named analysis
@@ -682,6 +682,7 @@ def _run_inline(recipe: Any, layout: "BundleLayout") -> Any:
     """
     from phenotypic._cli._cli_output_manager import _emit_analysis_outputs
 
+    layout = output_root.layout
     measurements = layout.mirror_parquet
     if not measurements.exists():
         return html.Span(
@@ -689,20 +690,47 @@ def _run_inline(recipe: Any, layout: "BundleLayout") -> Any:
             style={"color": OI_VERMILION_TEXT},
         )
 
+    if not output_root.mutation_snapshot_is_safe():
+        return html.Span(
+            "Analysis publication blocked: the output is active or changed "
+            "on disk. Refresh the shared snapshot.",
+            style={"color": OI_VERMILION_TEXT},
+        )
+    recipe_snapshot = recipe.capture_analysis_snapshot()
+    if recipe_snapshot is None:
+        return html.Span(
+            "Analysis publication blocked: pipeline configuration changed "
+            "on disk. Refresh the shared snapshot.",
+            style={"color": OI_VERMILION_TEXT},
+        )
+    analysis_pipeline, recipe_revision = recipe_snapshot
+    source_fingerprint = paths_fingerprint(
+        (measurements,),
+        root=layout.deliverables_base,
+    )
     start = time.time()
     try:
         master_pl = pl.read_parquet(measurements)
     except Exception as exc:  # noqa: BLE001
         return html.Span(f"Read failed: {exc}", style={"color": OI_VERMILION_TEXT})
 
-    output_root = (
+    output_dir = (
         layout.output_root if layout.output_root is not None else layout.deliverables_base
     )
     result = _emit_analysis_outputs(
-        output_root,
+        output_dir,
         master_pl,
-        recipe.pipeline,
+        analysis_pipeline,
         deliverables_base=layout.deliverables_base,
+        publication_guard=lambda: (
+            output_root.mutation_snapshot_is_safe()
+            and recipe.source_revision_is_current(recipe_revision)
+            and paths_fingerprint(
+                (measurements,),
+                root=layout.deliverables_base,
+            )
+            == source_fingerprint
+        ),
     )
     duration = time.time() - start
 

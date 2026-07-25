@@ -59,6 +59,23 @@ def _rewrite_master(output_root: OutputRoot) -> None:
     replacement.replace(master_path)
 
 
+def _source_tree(root: Path) -> tuple[tuple[str, ...], dict[str, bytes]]:
+    """Return exact directory inventory and regular-file contents."""
+    directories = tuple(
+        sorted(
+            path.relative_to(root).as_posix()
+            for path in root.rglob("*")
+            if path.is_dir()
+        )
+    )
+    files = {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+    return directories, files
+
+
 def test_shared_apps_accept_the_same_verified_revision(tmp_path: Path) -> None:
     """Clean construction keeps Results and Analysis on one descriptor."""
     output_root = _bound_output(tmp_path)
@@ -69,6 +86,23 @@ def test_shared_apps_accept_the_same_verified_revision(tmp_path: Path) -> None:
     assert results.server.config[CFG_OUTPUT_ROOT].snapshot == (
         analysis.server.config[CFG_OUTPUT_ROOT].snapshot
     )
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [results_app.create_app, analysis_app.create_app],
+)
+def test_bound_app_construction_preserves_source_tree(
+    tmp_path: Path,
+    factory,
+) -> None:
+    """Results/Error and Analysis layout construction are strictly read-only."""
+    output_root = _bound_output(tmp_path)
+    before = _source_tree(output_root.root)
+
+    factory(output_root=output_root)
+
+    assert _source_tree(output_root.root) == before
 
 
 @pytest.mark.parametrize(

@@ -13,15 +13,18 @@ is caught (an empty fallback recipe / empty column list).
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import polars as pl
 
 from phenotypic import ImagePipeline
+from phenotypic.analysis import LogGrowthModel
 from phenotypic.detect import OtsuDetector
 from phenotypic.gui._config import CFG_MEASUREMENT_SCHEMA, CFG_RECIPE_STATE
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui.analysis._app import create_app
+from phenotypic.gui.analysis._callbacks import _run_inline
 from phenotypic.gui.analysis._recipe_state import RecipeState
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.measure import MeasureShape
@@ -140,3 +143,73 @@ def test_create_app_standalone_bundle_loads_recipe_and_schema(
     ]
     schema = app.server.config[CFG_MEASUREMENT_SCHEMA]
     assert "Shape_Area" in schema.columns_for("measurements")
+
+
+def test_create_app_recipe_save_blocks_changed_processing_generation(
+    tmp_path: Path,
+) -> None:
+    """The app-installed recipe guard rechecks processing under save lock."""
+    base = tmp_path / "my_export"
+    _seed_standalone_bundle(base, pipeline_filename=PIPELINE_JSON)
+    root = OutputRoot.discover(
+        base,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
+    app = create_app(output_root=root)
+    recipe = app.server.config[CFG_RECIPE_STATE]
+    original = recipe.path.read_bytes()
+    replacement = pl.read_parquet(root.layout.master_parquet).with_columns(
+        (pl.col("Shape_Area") + 1).alias("Shape_Area")
+    )
+    replacement.write_parquet(root.layout.master_parquet)
+    recipe.pipeline.name = "stale-edit"
+
+    assert recipe.save() is False
+    assert recipe.path.read_bytes() == original
+
+
+def test_run_inline_blocks_external_recipe_replacement_with_preserved_mtime(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """A content-changed recipe cannot publish from the stale in-memory model."""
+    import phenotypic._cli._cli_output_manager as output_manager
+
+    base = tmp_path / "my_export"
+    _seed_standalone_bundle(base, pipeline_filename=PIPELINE_JSON)
+    root = OutputRoot.discover(
+        base,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
+    app = create_app(output_root=root)
+    recipe = app.server.config[CFG_RECIPE_STATE]
+    recipe.pipeline.set_model(
+        LogGrowthModel(
+            on="Shape_Area",
+            groupby=["MetadataExperiment_Dataset"],
+            time_label="Object_Label",
+            n_jobs=1,
+        )
+    )
+    original_mtime = recipe.path.stat().st_mtime_ns
+    replacement = ImagePipeline(name="external-recipe").to_json() or ""
+    recipe.path.write_text(replacement, encoding="utf-8")
+    os.utime(recipe.path, ns=(original_mtime, original_mtime))
+
+    called = False
+
+    def _unexpected_emit(*_args, **_kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("stale recipe reached publication")
+
+    monkeypatch.setattr(
+        output_manager,
+        "_emit_analysis_outputs",
+        _unexpected_emit,
+    )
+
+    status = _run_inline(recipe, root)
+
+    assert called is False
+    assert "pipeline configuration changed" in str(status.children)

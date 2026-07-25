@@ -15,30 +15,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import pandas as pd
 import polars as pl
 
-from phenotypic.analysis import ErrorCutoffFinder, render_error_analysis_report
-from phenotypic.analysis._error_cutoffs import RESULT_COLUMNS, _RESULT_DTYPES
 from phenotypic.sdk_ import (
     BundleLayout,
-    PARQUET_WRITE_OPTIONS,
-    atomic_write_text,
-    atomic_write_with_writer,
     curation_labels_parquet_path,
     deliverables_dir,
-    error_analysis_csv_path,
-    error_analysis_html_path,
-    error_analysis_parquet_path,
 )
 
 if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-
-#: Columns of the persisted ``error_analysis.{parquet,csv}`` (the leading
-#: ``category`` tag plus the category-free ``ErrorCutoffFinder`` result columns).
-_PERSIST_COLUMNS: tuple[str, ...] = ("category", *RESULT_COLUMNS)
-
 
 def reemit_error_deliverables(
     output_dir: Path, master_df: pl.DataFrame
@@ -81,66 +67,35 @@ def reemit_error_deliverables(
 def _write_error_analysis(
     output_dir: Path, store: "CurationLabels", master_df: pl.DataFrame
 ) -> None:
-    """Run :class:`ErrorCutoffFinder` per category; write ``error_analysis.*``.
+    """Compute and transactionally publish every configured category.
 
     The good baseline is the all-unlabeled set (``filtered_df`` drops every
-    labeled row); the error set per category is the master rows carrying that
-    category. The parquet/csv carry a leading ``category`` column; the HTML is
-    one report with a section per category (decision 5).
+    labeled row). The pure computation and checksummed, rollback-capable
+    generation publisher are shared with the GUI's explicit action.
     """
     good_pdf = store.filtered_df(master_df).to_pandas()  # all-unlabeled good
-    finder = ErrorCutoffFinder()
-    frames: list[pd.DataFrame] = []
-    reports: dict[str, pd.DataFrame] = {}
-    for category in sorted(set(store.labels.values())):
-        error_keys = [k for k, c in store.labels.items() if c == category]
-        error_pdf = _rows_for_keys(master_df, error_keys)
-        res = finder.analyze(good_pdf, error_pdf)
-        reports[category] = res
-        if not res.empty:
-            tagged = res.copy()
-            tagged.insert(0, "category", category)
-            frames.append(tagged[list(_PERSIST_COLUMNS)])
-
-    combined = (
-        pd.concat(frames, ignore_index=True) if frames else _empty_combined()
+    layout = BundleLayout(
+        deliverables_base=deliverables_dir(output_dir),
+        output_root=output_dir,
     )
-    combined_pl = pl.from_pandas(combined)
-    atomic_write_with_writer(
-        error_analysis_parquet_path(output_dir),
-        lambda path: combined_pl.write_parquet(path, **PARQUET_WRITE_OPTIONS),
+    from phenotypic.gui.results_viewer._error_tab._publication import (
+        capture_error_source_fingerprints,
+        compute_all_category_analysis,
+        publish_error_analysis,
     )
-    atomic_write_with_writer(
-        error_analysis_csv_path(output_dir),
-        combined_pl.write_csv,
+    computation = compute_all_category_analysis(
+        master_df,
+        labels=dict(store.labels),
+        categories=tuple(store.categories()),
+        good_pdf=good_pdf,
+        good_mode="all_unlabeled",
+        source_fingerprints=capture_error_source_fingerprints(layout),
     )
-    atomic_write_text(
-        error_analysis_html_path(output_dir),
-        render_error_analysis_report(reports),
+    publish_error_analysis(
+        layout,
+        computation,
+        # The CLI is the active authoritative owner of this output. Source
+        # fingerprints and the shared Error lock still serialize it against
+        # a stale GUI publisher.
+        mutation_is_safe=lambda: True,
     )
-
-
-def _empty_combined() -> pd.DataFrame:
-    """Typed 0-row ``error_analysis`` frame (empty + populated schemas agree).
-
-    Mirrors the engine's own ``_empty_result`` discipline so a labels-but-no-
-    separation run writes a frame whose ``auc``/``cutoff``/... stay numeric
-    instead of inferring ``object`` (L3).
-    """
-    dtypes = {"category": "object", **_RESULT_DTYPES}
-    return pd.DataFrame(
-        {c: pd.Series(dtype=dtypes[c]) for c in _PERSIST_COLUMNS}
-    )
-
-
-def _rows_for_keys(
-    master_df: pl.DataFrame, keys: list[tuple[str, int]]
-) -> pd.DataFrame:
-    """Return the master rows whose ``(image_file, object_label)`` is in ``keys``.
-
-    Mirrors ``CurationLabels._join_on_keys(..., "semi")`` and converts to pandas
-    at the engine boundary (``ErrorCutoffFinder.analyze`` is pandas-typed).
-    """
-    from phenotypic.gui.results_viewer._curation_labels import _join_on_keys
-
-    return _join_on_keys(master_df, keys, "semi").to_pandas()

@@ -4,7 +4,7 @@ Top-level shape (vertical stack):
 
 1. Control strip — category-chip container, good-baseline toggle
    (All unlabeled / Verified only), verified-good count badge, and the
-   "Save analysis report" button.
+   explicit "Publish all categories" button. Preview controls are read-only.
 2. Stale banner — hidden until the recompute callback surfaces a
    re-key/stale state.
 3. Content block (``ERROR_CONTENT_ID``) — the ranked cutoff
@@ -62,12 +62,11 @@ def _build_control_strip() -> Component:
         className="error-verified-badge",
         style={"display": "none"},
     )
-    save_button = dbc.Button(
-        "Save analysis report",
-        id=ids.ERROR_SAVE_REPORT_BTN_ID,
-        color="secondary",
+    publish_button = dbc.Button(
+        "Publish all categories",
+        id=ids.ERROR_PUBLISH_BTN_ID,
+        color="primary",
         size="sm",
-        outline=True,
         n_clicks=0,
     )
     chips = html.Div(
@@ -104,7 +103,16 @@ def _build_control_strip() -> Component:
                     ),
                     good_mode_toggle,
                     verified_badge,
-                    html.Div(save_button, style={"marginLeft": "auto"}),
+                    html.Div(
+                        [
+                            html.Span(
+                                "Preview controls are read-only. ",
+                                className="text-muted small me-2",
+                            ),
+                            publish_button,
+                        ],
+                        style={"marginLeft": "auto"},
+                    ),
                 ],
                 className="error-baseline-row",
             ),
@@ -268,12 +276,12 @@ def _build_empty_state_card() -> Component:
     )
 
 
-def _build_save_toast() -> Component:
-    """Build the (hidden) save-confirmation toast."""
+def _build_publish_toast() -> Component:
+    """Build the hidden explicit-publication status toast."""
     return dbc.Toast(
-        "Saved error_analysis.html to deliverables/.",
-        id=ids.ERROR_SAVE_TOAST_ID,
-        header="Report saved",
+        "",
+        id=ids.ERROR_PUBLISH_TOAST_ID,
+        header="All categories published",
         icon="success",
         duration=4000,
         is_open=False,
@@ -325,7 +333,7 @@ def build_error_tab_body(
             _build_stale_banner(),
             _build_content_block(),
             _build_empty_state_card(),
-            _build_save_toast(),
+            _build_publish_toast(),
         ],
         className="error-tab-root",
         style={

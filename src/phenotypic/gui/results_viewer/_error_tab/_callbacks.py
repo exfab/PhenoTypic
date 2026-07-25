@@ -11,7 +11,12 @@ though ``STORE_REMOVED_KEYS`` is byte-identical for a relabel. The off-tab
 mark (a real perf win) while still satisfying §8's live intent on tab
 activation.
 
-The load-bearing body lives in the module-level :func:`_recompute` helper
+The load-bearing preview body lives in the module-level :func:`_recompute`
+helper and is strictly compute-only. Canonical artifacts are written only by
+the explicit all-category publication callback through
+:mod:`._publication`.
+
+The module-level helper
 (Dash callback bugs only fire on ``/_dash-update-component``, so the body
 is extracted for direct unit testing); the registered callbacks are thin
 adapters around it.
@@ -20,16 +25,13 @@ adapters around it.
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 import dash
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import polars as pl
 from dash import Input, Output, State, ctx, html, no_update
 from dash.exceptions import PreventUpdate
 
@@ -37,9 +39,7 @@ from phenotypic.analysis import (
     ErrorCutoffFinder,
     filter_spec_json,
     filter_spec_query,
-    render_error_analysis_html,
 )
-from phenotypic.analysis._error_cutoffs import RESULT_COLUMNS
 from phenotypic.gui._design import category_color
 from phenotypic.gui.results_viewer import _ids as viewer_ids
 from phenotypic.gui.results_viewer._curation_labels import OTHER_CATEGORY
@@ -56,17 +56,17 @@ from phenotypic.gui.results_viewer._error_tab._data import (
 from phenotypic.gui.results_viewer._error_tab._figure import (
     build_distribution_figure,
 )
+from phenotypic.gui.results_viewer._error_tab._publication import (
+    ErrorPublicationConflict,
+    compute_gui_error_publication,
+    publish_error_analysis,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
     from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 logger = logging.getLogger(__name__)
-
-#: ``error_analysis.parquet`` column order: the engine's category-free
-#: result columns prefixed with a leading ``category`` (R3) so the on-disk
-#: shape matches Phase 5's all-category emit.
-_PERSIST_COLUMNS: tuple[str, ...] = ("category", *RESULT_COLUMNS)
 
 #: Pattern-matching id ``type`` for the per-category chip buttons. Single-sourced
 #: so :func:`_chip_id` and the category-select callback's trigger check agree.
@@ -147,13 +147,12 @@ def _recompute(
     category: str | None,
     good_mode: str,
 ) -> RecomputeResult:
-    """Run the cutoff finder for one category and persist the result.
+    """Run the cutoff finder for one category as an in-memory preview.
 
     Reads ``filtered_state.labels`` under the lock, builds the good/error
-    frames in the chosen mode, runs :class:`ErrorCutoffFinder`, and — when
-    there is enough data — persists ``error_analysis.{parquet,csv}`` for
-    the focused category (R3) and, in verified mode, ``verified.parquet``
-    (R4, only when the good frame is non-degenerate).
+    frames in the chosen mode, and runs :class:`ErrorCutoffFinder`. It never
+    writes canonical artifacts, including for tab activation, first render,
+    category focus, or verified-baseline preview.
 
     Args:
         output_root: The active output root.
@@ -237,16 +236,6 @@ def _recompute(
         "error_values": error_values.tolist(),
     }
 
-    # Don't publish deliverables derived from a stale cached master: once the
-    # curation store is stale (a concurrent CLI measure/recompile-mode run rewrote
-    # measurements.parquet), the in-memory frames may no longer match disk, and
-    # finalize will re-emit error_analysis.* authoritatively anyway. The table /
-    # figure still render in-session; we just skip the on-disk write.
-    if not filtered_state.stale:
-        _persist(output_root, category, res)
-        if good_mode == "verified":
-            _persist_verified(output_root, good_pdf)
-
     return RecomputeResult(
         category=category,
         empty_state=False,
@@ -280,38 +269,6 @@ def _table_columns(res: pd.DataFrame) -> list[dict[str, Any]]:
             spec["format"] = {"specifier": ".4g"}
         columns.append(spec)
     return columns
-
-
-def _persist(
-    output_root: "OutputRoot", category: str, res: pd.DataFrame
-) -> None:
-    """Write ``error_analysis.{parquet,csv}`` for the focused category (R3).
-
-    Prepends a leading ``category`` column so the on-disk shape matches
-    Phase 5's all-category concatenation. The GUI writes the focused
-    category's rows (transient, last-viewed-in-session); Phase 5 finalize
-    owns the authoritative all-category emit.
-    """
-    out = res.copy()
-    out.insert(0, "category", category)
-    out = out[list(_PERSIST_COLUMNS)]
-    layout = output_root.layout
-    _atomic_write_parquet(out, layout.error_analysis_parquet)
-    _atomic_write_csv(out, layout.error_analysis_csv)
-
-
-def _persist_verified(
-    output_root: "OutputRoot", good_pdf: pd.DataFrame
-) -> None:
-    """Write ``verified.parquet`` from the verified-good frame (R4).
-
-    Only called from the non-degenerate verified branch (the caller has
-    already confirmed ``enough_data``), so an empty ``verified.parquet`` is
-    never written.
-    """
-    if good_pdf.empty:
-        return
-    _atomic_write_parquet(good_pdf, output_root.layout.verified_parquet)
 
 
 def _render_chips(
@@ -431,27 +388,6 @@ def _stale_banner_text(filtered_state: "CurationLabels") -> tuple[bool, str]:
     if not messages:
         return False, ""
     return True, " ".join(messages)
-
-
-# ---------------------------------------------------------------------------
-# Atomic writers (local equivalents of the curation store's, R4)
-# ---------------------------------------------------------------------------
-
-
-def _atomic_write_parquet(df: pd.DataFrame, path: Path) -> None:
-    """Write a parquet via a sibling temp file + ``os.replace`` (atomic)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    pl.from_pandas(df).write_parquet(tmp)
-    os.replace(tmp, path)
-
-
-def _atomic_write_csv(df: pd.DataFrame, path: Path) -> None:
-    """Write a CSV via a sibling temp file + ``os.replace`` (atomic)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    pl.from_pandas(df).write_csv(tmp)
-    os.replace(tmp, path)
 
 
 # ---------------------------------------------------------------------------
@@ -602,34 +538,55 @@ def register_error_callbacks(
         return readout, cutoff, spec
 
     @app.callback(
-        Output(ids.ERROR_SAVE_TOAST_ID, "is_open"),
-        Input(ids.ERROR_SAVE_REPORT_BTN_ID, "n_clicks"),
-        State(ids.STORE_ERROR_FOCUS_ID, "data"),
+        Output(ids.ERROR_PUBLISH_TOAST_ID, "children"),
+        Output(ids.ERROR_PUBLISH_TOAST_ID, "header"),
+        Output(ids.ERROR_PUBLISH_TOAST_ID, "icon"),
+        Output(ids.ERROR_PUBLISH_TOAST_ID, "is_open"),
+        Input(ids.ERROR_PUBLISH_BTN_ID, "n_clicks"),
         State(ids.ERROR_GOOD_MODE_TOGGLE_ID, "value"),
         prevent_initial_call=True,
     )
-    def _save_report(
+    def _publish_all_categories(
         n_clicks: int | None,
-        focus: dict[str, Any] | None,
         good_mode: str | None,
-    ) -> bool:
-        if not n_clicks or not focus or "category" not in focus:
+    ) -> tuple[str, str, str, bool]:
+        if not n_clicks:
             raise PreventUpdate
-        category = str(focus["category"])
-        with filtered_state._lock:
-            labels = dict(filtered_state.labels)
-        good_pdf, error_pdf = build_good_error_frames(
-            output_root,
-            labels,
-            category,
-            cast(GoodMode, good_mode or "all_unlabeled"),
+        mode = cast(GoodMode, good_mode or "all_unlabeled")
+        try:
+            computation = compute_gui_error_publication(
+                output_root,
+                filtered_state=filtered_state,
+                good_mode=mode,
+            )
+            published = publish_error_analysis(
+                output_root.layout,
+                computation,
+                mutation_is_safe=output_root.mutation_snapshot_is_safe,
+            )
+        except ErrorPublicationConflict as exc:
+            return str(exc), "Publication blocked", "danger", True
+        except Exception as exc:  # noqa: BLE001 - surfaced without partial state
+            logger.warning("Error publication failed", exc_info=True)
+            return (
+                f"No generation was published: {exc}",
+                "Publication failed",
+                "danger",
+                True,
+            )
+        action = (
+            "Already current"
+            if published.already_published
+            else "Published"
         )
-        res = ErrorCutoffFinder().analyze(good_pdf, error_pdf)
-        html_str = render_error_analysis_html(category, res)
-        path = output_root.layout.error_analysis_html
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(html_str, encoding="utf-8")
-        return True
+        message = (
+            f"{action} generation {published.generation[:12]} for "
+            f"{published.category_count} configured categories "
+            f"({published.populated_category_count} with ranked rows), "
+            f"{published.row_count} total rows, and "
+            f"{len(published.artifact_names)} checksummed artifacts."
+        )
+        return message, "All categories published", "success", True
 
 
 __all__ = ["register_error_callbacks", "RecomputeResult"]

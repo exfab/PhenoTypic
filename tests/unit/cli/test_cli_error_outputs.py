@@ -10,7 +10,9 @@ labeled category. It is a no-op without a durable labels store and never writes
 
 from __future__ import annotations
 
+import subprocess
 import sys
+import textwrap
 from pathlib import Path
 
 import numpy as np
@@ -166,3 +168,48 @@ def test_idempotent_and_prunes_stale_category(tmp_path: Path) -> None:
     assert tools_.error_category_parquet_path(tmp_path, "background_noise").exists()
     ea = pl.read_parquet(tools_.error_analysis_parquet_path(tmp_path))
     assert set(ea.get_column("category").to_list()) == {"background_noise"}
+
+
+def test_headless_error_services_do_not_import_dash() -> None:
+    """CLI finalization imports shared Error services without GUI extras."""
+    script = textwrap.dedent(
+        """
+        import importlib.abc
+        import importlib.util
+        import sys
+
+        real_find_spec = importlib.util.find_spec
+        def find_spec_without_dash(name, *args, **kwargs):
+            if name == "dash" or name.startswith("dash."):
+                return None
+            return real_find_spec(name, *args, **kwargs)
+        importlib.util.find_spec = find_spec_without_dash
+
+        class BlockDash(importlib.abc.MetaPathFinder):
+            def find_spec(self, fullname, path=None, target=None):
+                if fullname == "dash" or fullname.startswith("dash."):
+                    raise ImportError("Dash intentionally unavailable")
+                return None
+
+        sys.meta_path.insert(0, BlockDash())
+        import phenotypic._cli._cli_error_outputs
+        from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+        from phenotypic.gui.results_viewer._error_tab._publication import (
+            compute_all_category_analysis,
+        )
+
+        assert CurationLabels is not None
+        assert compute_all_category_analysis is not None
+        assert not any(
+            name == "dash" or name.startswith("dash.")
+            for name in sys.modules
+        )
+        """
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr

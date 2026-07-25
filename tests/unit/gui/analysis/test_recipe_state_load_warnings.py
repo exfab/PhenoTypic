@@ -199,6 +199,25 @@ def test_unrelated_save_preserves_unknown_nodes_in_original_slots(
     assert json.loads(state.last_json) == saved
 
 
+def test_unsafe_processing_guard_blocks_save_without_losing_opaque_source(
+    tmp_path: Path,
+) -> None:
+    """Active/stale bindings cannot publish a tolerant-load subset."""
+    seed_path = _write_pipeline_with_unknown_classes(tmp_path)
+    original = seed_path.read_bytes()
+    state = RecipeState.load(tmp_path)
+    state.publication_guard = lambda: False
+    state.pipeline.name = "must-not-publish"
+
+    assert state.save() is False
+    assert seed_path.read_bytes() == original
+    assert state.source_payload is not None
+    assert state.source_payload["filters"]["stale_filter"]["class"] == (
+        "LegacyZScoreFilter"
+    )
+    assert state.source_payload["model"]["class"] == "LinearLagModelModel"
+
+
 def test_known_filter_edit_keeps_opaque_sibling_exactly(
     tmp_path: Path,
 ) -> None:

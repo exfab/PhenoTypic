@@ -167,6 +167,7 @@ def create_app(
         return configure_url_prefix_routing(app, url_prefix)
 
     recipe = RecipeState.from_layout(output_root.layout)
+    recipe.publication_guard = output_root.mutation_snapshot_is_safe
     schema = MeasurementSchema.from_layout(output_root.layout)
     app.server.config[CFG_RECIPE_STATE] = recipe
     app.server.config[CFG_MEASUREMENT_SCHEMA] = schema

@@ -28,6 +28,7 @@ import copy
 import json
 import logging
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List, Optional
@@ -41,6 +42,8 @@ from phenotypic._core._pipeline_parts._serializable_pipeline import (
 from phenotypic.sdk_ import (
     DIR_DELIVERABLES,
     atomic_write_text,
+    bytes_fingerprint,
+    file_fingerprint,
     pipeline_json_path,
     pipeline_publication_lock,
     resolve_pipeline_config_path,
@@ -749,6 +752,10 @@ class RecipeState:
     path: Path
     pipeline: "ImagePipeline"
     seed_mtime_ns: Optional[int] = None
+    #: Exact content fingerprint of the resolved configuration read into
+    #: :attr:`pipeline`. Unlike mtime alone, this detects a replacement whose
+    #: timestamp was preserved.
+    seed_source_fingerprint: str | None = None
     source_path: Optional[Path] = None
     #: JSON string from the most recent successful :meth:`save`. Callbacks
     #: read this for the ``ANALYSIS_PIPELINE_STORE`` payload instead of
@@ -771,6 +778,12 @@ class RecipeState:
     #: standalone bundle (``root`` IS the deliverables folder) never
     #: double-joins ``deliverables/`` on a staleness refresh.
     layout: Optional["BundleLayout"] = None
+    #: Optional binding/processing/active-owner guard installed by the GUI.
+    #: It is rechecked inside the shared pipeline publication lock.
+    publication_guard: Callable[[], bool] | None = field(
+        default=None,
+        repr=False,
+    )
     _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     @classmethod
@@ -890,6 +903,11 @@ class RecipeState:
             path=pipeline_path,
             pipeline=pipeline,
             seed_mtime_ns=mtime,
+            seed_source_fingerprint=(
+                bytes_fingerprint(source_text.encode("utf-8"))
+                if source_payload is not None
+                else None
+            ),
             source_path=read_path if read_path != pipeline_path else None,
             last_json=source_text,
             load_warnings=load_warnings,
@@ -907,15 +925,60 @@ class RecipeState:
         cleared so we don't overwrite a fresh seed with a stale recipe.
         """
         if self.seed_mtime_ns is None:
-            # No on-disk file yet — nothing to be stale against.
-            return False
+            if self.seed_source_fingerprint is None:
+                return self._tracked_path().exists()
+            return (
+                self._current_source_fingerprint()
+                != self.seed_source_fingerprint
+            )
         tracked_path = self._tracked_path()
         try:
             current = tracked_path.stat().st_mtime_ns
         except FileNotFoundError:
             # File deleted out from under us; treat as stale.
             return True
-        return current != self.seed_mtime_ns
+        if current != self.seed_mtime_ns:
+            return True
+        if self.seed_source_fingerprint is None:
+            return False
+        return self._current_source_fingerprint() != self.seed_source_fingerprint
+
+    def _current_source_fingerprint(self) -> str:
+        """Return the exact revision of the currently tracked config path."""
+        tracked_path = self._tracked_path()
+        if not tracked_path.exists():
+            return "missing"
+        try:
+            return file_fingerprint(tracked_path)
+        except FileNotFoundError:
+            return "missing"
+
+    def capture_analysis_snapshot(
+        self,
+    ) -> tuple["ImagePipeline", str] | None:
+        """Copy the in-memory pipeline and its disk revision atomically.
+
+        Returns:
+            A detached pipeline plus exact source revision, or ``None`` when
+            the recipe changed externally before the snapshot.
+        """
+        with self._lock:
+            with pipeline_publication_lock(self.path):
+                if self.is_stale():
+                    return None
+                return (
+                    copy.deepcopy(self.pipeline),
+                    self._current_source_fingerprint(),
+                )
+
+    def source_revision_is_current(self, expected: str) -> bool:
+        """Return whether *expected* still names the bound recipe revision."""
+        with self._lock:
+            with pipeline_publication_lock(self.path):
+                return (
+                    not self.is_stale()
+                    and self._current_source_fingerprint() == expected
+                )
 
     def _tracked_path(self) -> Path:
         """Return the path whose mtime should be compared against the seed."""
@@ -944,6 +1007,16 @@ class RecipeState:
         """
         with self._lock:
             with pipeline_publication_lock(self.path):
+                if (
+                    self.publication_guard is not None
+                    and not self.publication_guard()
+                ):
+                    logger.warning(
+                        "Refusing to overwrite %s because the bound output "
+                        "is active or its processing generation changed.",
+                        self.path,
+                    )
+                    return False
                 if self.is_stale():
                     logger.warning(
                         "Refusing to overwrite %s — mtime changed since "
@@ -982,6 +1055,7 @@ class RecipeState:
                     return False
 
                 self.seed_mtime_ns = self.path.stat().st_mtime_ns
+                self.seed_source_fingerprint = self._current_source_fingerprint()
                 self.source_path = None
                 self.last_json = payload
                 self.source_payload = merged
@@ -1003,6 +1077,7 @@ class RecipeState:
                 fresh = type(self).load(self._output_root())
             self.pipeline = fresh.pipeline
             self.seed_mtime_ns = fresh.seed_mtime_ns
+            self.seed_source_fingerprint = fresh.seed_source_fingerprint
             self.source_path = fresh.source_path
             self.load_warnings = fresh.load_warnings
             self.last_json = fresh.last_json

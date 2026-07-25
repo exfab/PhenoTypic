@@ -193,6 +193,117 @@ class TestEmitAnalysisOutputs:
         assert not named_analysis_csv_path(base, "LogGrowthModel").exists()
         assert not named_analysis_parquet_path(base, "LogGrowthModel").exists()
 
+    def test_publication_guard_blocks_before_artifact_mutation(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """GUI snapshot/owner guard is rechecked inside the artifact lock."""
+        master = _synthetic_growth_master()
+        pipeline = ImagePipeline(
+            model=LogGrowthModel(
+                on="Shape_Area",
+                groupby=["Metadata_Strain"],
+                time_label="Metadata_Time",
+                n_jobs=1,
+            ),
+        )
+
+        result = _emit_analysis_outputs(
+            tmp_path,
+            master,
+            pipeline,
+            publication_guard=lambda: False,
+        )
+
+        base = deliverables_dir(tmp_path)
+        assert result is None
+        assert not named_analysis_csv_path(base, "LogGrowthModel").exists()
+        assert not named_analysis_parquet_path(base, "LogGrowthModel").exists()
+        assert not analysis_manifest_path(base).exists()
+
+    def test_publication_guard_change_before_replace_rolls_back(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A source change after staging leaves no partial generation."""
+        master = _synthetic_growth_master()
+        pipeline = ImagePipeline(
+            model=LogGrowthModel(
+                on="Shape_Area",
+                groupby=["Metadata_Strain"],
+                time_label="Metadata_Time",
+                n_jobs=1,
+            ),
+        )
+        checks = 0
+
+        def _guard() -> bool:
+            nonlocal checks
+            checks += 1
+            return checks == 1
+
+        result = _emit_analysis_outputs(
+            tmp_path,
+            master,
+            pipeline,
+            publication_guard=_guard,
+        )
+
+        base = deliverables_dir(tmp_path)
+        assert result is None
+        assert not named_analysis_csv_path(base, "LogGrowthModel").exists()
+        assert not named_analysis_parquet_path(base, "LogGrowthModel").exists()
+        assert not analysis_manifest_path(base).exists()
+
+    def test_publication_guard_change_after_manifest_rolls_back(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A commit-boundary source change restores artifacts and manifest."""
+        master = _synthetic_growth_master()
+        pipeline = ImagePipeline(
+            model=LogGrowthModel(
+                on="Shape_Area",
+                groupby=["Metadata_Strain"],
+                time_label="Metadata_Time",
+                n_jobs=1,
+            ),
+        )
+        assert _emit_analysis_outputs(tmp_path, master, pipeline) is not None
+        base = deliverables_dir(tmp_path)
+        csv_path = named_analysis_csv_path(base, "LogGrowthModel")
+        parquet_path = named_analysis_parquet_path(base, "LogGrowthModel")
+        manifest_path = analysis_manifest_path(base)
+        previous = (
+            csv_path.read_bytes(),
+            parquet_path.read_bytes(),
+            manifest_path.read_bytes(),
+        )
+        changed = master.with_columns(
+            (pl.col("Shape_Area") * 1.5).alias("Shape_Area")
+        )
+        checks = 0
+
+        def _guard() -> bool:
+            nonlocal checks
+            checks += 1
+            return checks < 3
+
+        result = _emit_analysis_outputs(
+            tmp_path,
+            changed,
+            pipeline,
+            publication_guard=_guard,
+        )
+
+        assert checks == 3
+        assert result is None
+        assert (
+            csv_path.read_bytes(),
+            parquet_path.read_bytes(),
+            manifest_path.read_bytes(),
+        ) == previous
+
     def test_manifest_failure_restores_previous_artifact_generation(
         self, tmp_path: Path, monkeypatch
     ) -> None:

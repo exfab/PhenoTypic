@@ -44,6 +44,7 @@ from ._cli_parquet_agg import SOURCE_PATH_COLUMN, aggregate_parquet_files
 from phenotypic.schema import EXPERIMENT_METADATA, METADATA, METADATA_MATCH
 from phenotypic.util import split_measurements
 from phenotypic.sdk_ import (
+    analysis_manifest_path,
     DIR_RESULTS,
     DIR_MEASUREMENTS,
     DIR_HDF,
@@ -466,6 +467,7 @@ def _emit_analysis_outputs(
     pipeline: "ImagePipeline",
     *,
     deliverables_base: Optional[Path] = None,
+    publication_guard: Optional[Callable[[], bool]] = None,
 ) -> Optional["AnalysisResult"]:
     """Run ``pipeline.analyze`` and publish class-named analysis artifacts.
 
@@ -492,6 +494,10 @@ def _emit_analysis_outputs(
             The GUI analysis sub-app passes ``layout.deliverables_base`` here so a
             standalone deliverables bundle (where the viewer ``root`` IS the
             deliverables folder) does not double-join ``deliverables/``.
+        publication_guard: Optional GUI compare-and-set guard rechecked inside
+            the artifact lock after computation, immediately before canonical
+            replacement, and after the manifest commit boundary. CLI callers
+            omit it.
 
     Returns:
         Runtime result retaining the exact analyzed table and producer on
@@ -516,10 +522,12 @@ def _emit_analysis_outputs(
         return None
 
     from phenotypic.plotting import (
+        AnalysisManifest,
         AnalysisManifestEntry,
         AnalysisResult,
         file_sha256,
         publish_analysis_manifest_entry,
+        read_analysis_manifest,
         recover_analysis_publication,
         write_analysis_publication_journal,
     )
@@ -532,6 +540,7 @@ def _emit_analysis_outputs(
     )
     from phenotypic.plotting._analysis_artifacts import (
         _analysis_publication_paths,
+        write_analysis_manifest,
     )
     from phenotypic.sdk_._file_locking import exclusive_path_lock
 
@@ -540,12 +549,20 @@ def _emit_analysis_outputs(
     )
     paths = transaction.canonical
     with exclusive_path_lock(transaction.lock):
+        if not _analysis_publication_guard_allows(publication_guard):
+            logger.warning(
+                "Analysis publication blocked because its source snapshot "
+                "or active-owner state changed during computation."
+            )
+            return None
         staged_csv = transaction.staged_csv
         staged_parquet = transaction.staged_parquet
         backup_csv = transaction.backup_csv
         backup_parquet = transaction.backup_parquet
         try:
             recover_analysis_publication(base)
+            previous_manifest = read_analysis_manifest(base)
+            previous_manifest_existed = analysis_manifest_path(base).exists()
             fit_pl.write_csv(staged_csv)
             fit_pl.write_parquet(staged_parquet, **PARQUET_WRITE_OPTIONS)
             entry = AnalysisManifestEntry(
@@ -565,6 +582,13 @@ def _emit_analysis_outputs(
                 old_parquet_exists=paths.parquet.exists(),
                 entry=entry,
             )
+            if not _analysis_publication_guard_allows(publication_guard):
+                logger.warning(
+                    "Analysis publication blocked because its source snapshot "
+                    "or active-owner state changed before replacement."
+                )
+                recover_analysis_publication(base)
+                return None
             if paths.csv.exists():
                 os.replace(paths.csv, backup_csv)
             if paths.parquet.exists():
@@ -572,6 +596,39 @@ def _emit_analysis_outputs(
             os.replace(staged_csv, paths.csv)
             os.replace(staged_parquet, paths.parquet)
             publish_analysis_manifest_entry(base, analysis_id, entry)
+            if not _analysis_publication_guard_allows(publication_guard):
+                logger.warning(
+                    "Analysis publication blocked because its source snapshot "
+                    "or active-owner state changed at the commit boundary."
+                )
+                with exclusive_path_lock(base / ".analysis-manifest.lock"):
+                    current_manifest = read_analysis_manifest(base)
+                    if (
+                        current_manifest is None
+                        or current_manifest.analyses.get(analysis_id) != entry
+                    ):
+                        raise RuntimeError(
+                            "analysis manifest changed before guarded rollback"
+                        )
+                    restored_analyses = dict(current_manifest.analyses)
+                    previous_entry = (
+                        previous_manifest.analyses.get(analysis_id)
+                        if previous_manifest is not None
+                        else None
+                    )
+                    if previous_entry is None:
+                        restored_analyses.pop(analysis_id, None)
+                    else:
+                        restored_analyses[analysis_id] = previous_entry
+                    if not previous_manifest_existed and not restored_analyses:
+                        analysis_manifest_path(base).unlink(missing_ok=True)
+                    else:
+                        write_analysis_manifest(
+                            base,
+                            AnalysisManifest(analyses=restored_analyses),
+                        )
+                recover_analysis_publication(base)
+                return None
             recover_analysis_publication(base)
         except Exception:
             try:
@@ -606,6 +663,22 @@ def _emit_analysis_outputs(
         artifacts=paths,
         manifest_entry=entry,
     )
+
+
+def _analysis_publication_guard_allows(
+    publication_guard: Optional[Callable[[], bool]],
+) -> bool:
+    """Treat a failing GUI compare-and-set guard as a publication conflict."""
+    if publication_guard is None:
+        return True
+    try:
+        return publication_guard()
+    except Exception:
+        logger.warning(
+            "Analysis publication guard failed; blocking publication.",
+            exc_info=True,
+        )
+        return False
 
 
 def _apply_post_to_master(
@@ -1028,13 +1101,16 @@ def _reset_qc_review_state(output_dir: Path) -> None:
         output_dir: Run output root.
     """
     from phenotypic.sdk_ import qc_review_state_path
+    from phenotypic.sdk_._file_locking import exclusive_path_lock
 
     state_path = qc_review_state_path(output_dir)
-    if not state_path.exists():
-        return
     try:
-        state_path.unlink()
-        logger.debug("Reset QC review state at %s", state_path)
+        lock_path = state_path.with_name(f".{state_path.name}.lock")
+        with exclusive_path_lock(lock_path):
+            if not state_path.exists():
+                return
+            state_path.unlink()
+            logger.debug("Reset QC review state at %s", state_path)
     except OSError:
         logger.warning(
             "Failed to reset QC review state at %s", state_path, exc_info=True

@@ -135,20 +135,28 @@ def test_register_error_callbacks_registers_without_raising(seeded_root):
 # ---------------------------------------------------------------------------
 
 
-def test_recompute_ranks_size_area_top_and_persists(seeded_root):
+def _tree_snapshot(root: Path) -> dict[str, bytes]:
+    """Return the exact regular-file tree below ``root``."""
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+
+
+def test_recompute_ranks_size_area_top_without_publishing(seeded_root):
     filtered = _label_errors(seeded_root.root, seeded_root.master_df, 10)
+    before = _tree_snapshot(seeded_root.root)
     result = _callbacks._recompute(
         seeded_root, filtered, "debris", "all_unlabeled"
     )
     assert not result.empty_state
     # Size_Area separates cleanly; it must be the top-ranked measurement.
     assert result.table_data[0]["measurement"] == "Size_Area"
-    # error_analysis.parquet was written with a leading category column (R3).
+    # Activation/preview is compute-only.
     path = error_analysis_parquet_path(seeded_root.root)
-    assert path.is_file()
-    written = pl.read_parquet(path)
-    assert written.columns[0] == "category"
-    assert set(written.get_column("category").to_list()) == {"debris"}
+    assert not path.exists()
+    assert _tree_snapshot(seeded_root.root) == before
 
 
 def test_recompute_empty_state_when_insufficient(seeded_root):
@@ -198,7 +206,7 @@ def _write_qc_one_group(
     state.mark_reviewed(instance_id, ("A",))
 
 
-def test_recompute_verified_mode_writes_verified_parquet(seeded_root):
+def test_recompute_verified_mode_does_not_write_verified_parquet(seeded_root):
     # Label the 10 small-area objects as errors; the 10 large-area objects
     # (labels 11..20) are the good pool and all reviewed in one QC group.
     filtered = _label_errors(seeded_root.root, seeded_root.master_df, 10)
@@ -206,6 +214,7 @@ def test_recompute_verified_mode_writes_verified_parquet(seeded_root):
         seeded_root.root, seeded_root.master_df, list(range(11, 21))
     )
 
+    before = _tree_snapshot(seeded_root.root)
     all_unlabeled = _callbacks._recompute(
         seeded_root, filtered, "debris", "all_unlabeled"
     )
@@ -216,8 +225,9 @@ def test_recompute_verified_mode_writes_verified_parquet(seeded_root):
     # Verified good is the reviewed-and-unlabeled set (10), a subset of the
     # all-unlabeled good pool (10 here, since exactly those are unlabeled).
     assert verified.good_n <= all_unlabeled.good_n
-    # verified.parquet written only in the non-degenerate verified branch (R4).
-    assert verified_parquet_path(seeded_root.root).is_file()
+    # Verified is a preview mode until the explicit all-category action.
+    assert not verified_parquet_path(seeded_root.root).exists()
+    assert _tree_snapshot(seeded_root.root) == before
 
 
 def test_recompute_verified_mode_explains_legacy_qc_parquet_cutover(
@@ -240,3 +250,30 @@ def test_recompute_all_unlabeled_does_not_write_verified_parquet(seeded_root):
     filtered = _label_errors(seeded_root.root, seeded_root.master_df, 10)
     _callbacks._recompute(seeded_root, filtered, "debris", "all_unlabeled")
     assert not verified_parquet_path(seeded_root.root).is_file()
+
+
+def test_category_focus_preview_does_not_change_source_tree(seeded_root):
+    """Focusing each labeled category remains read-only."""
+    filtered = _label_errors(seeded_root.root, seeded_root.master_df, 10)
+    filtered.mark_many(
+        [("img1", label) for label in range(11, 19)],
+        "merged",
+    )
+    before = _tree_snapshot(seeded_root.root)
+
+    debris = _callbacks._recompute(
+        seeded_root,
+        filtered,
+        "debris",
+        "all_unlabeled",
+    )
+    merged = _callbacks._recompute(
+        seeded_root,
+        filtered,
+        "merged",
+        "all_unlabeled",
+    )
+
+    assert debris.category == "debris"
+    assert merged.category == "merged"
+    assert _tree_snapshot(seeded_root.root) == before
