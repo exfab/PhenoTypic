@@ -8,7 +8,6 @@ controller rather than by signal handling inside this process.
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 from typing import Sequence
 
@@ -22,6 +21,7 @@ from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import split_pipeline_at_gpu
+from ._cli_preload import preload_custom_operation_modules
 from ._cli_sidecar import sidecar_exists
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
@@ -284,16 +284,6 @@ def run_stage3_step(
         )
 
 
-def _preload_custom_op_modules() -> None:
-    """Import modules named in ``PHENOTYPIC_PRELOAD_MODULES``."""
-    import importlib
-
-    for module in os.environ.get("PHENOTYPIC_PRELOAD_MODULES", "").split(","):
-        module = module.strip()
-        if module:
-            importlib.import_module(module)
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     """Dispatch one SLURM array task to its staged worker."""
     parser = argparse.ArgumentParser(prog="phenotypic-staged-slurm-worker")
@@ -311,7 +301,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--overlay-alpha", type=float, default=0.3)
     args = parser.parse_args(argv)
 
-    _preload_custom_op_modules()
+    preload_custom_operation_modules()
     manifest = load_staged_manifest(args.manifest)
     image_type: ImageTypeName = (
         "GridImage" if args.image_type == "GridImage" else "Image"

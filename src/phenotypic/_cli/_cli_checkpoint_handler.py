@@ -18,6 +18,7 @@ from typing import Optional, cast
 import click
 
 from ._cli_file_locking import FileLockTimeout, file_lock
+from ._cli_preload import preload_custom_operation_modules
 from ._cli_utils import load_job_metadata
 from phenotypic.sdk_ import (
     PROCESSING_EVENTS_LOG,
@@ -420,6 +421,8 @@ def _publish_staged_report_and_readme(
     output_dir: Path, job_metadata: dict, epoch: str
 ) -> None:
     """Publish the report and README as part of the sole remote finalizer."""
+    preload_custom_operation_modules()
+
     from phenotypic import ImagePipeline
 
     from ._cli_readme_generator import READMEGenerator

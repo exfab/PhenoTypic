@@ -127,12 +127,14 @@ persisting the returned ID.
 
 ## Environment variables (important for future work)
 
-- `PHENOTYPIC_PRELOAD_MODULES` — comma list of modules a SLURM **worker** imports
-  on startup (`_cli_staged_slurm_worker.py:_preload_custom_op_modules`) before
-  `ImagePipeline.from_json`. A fresh worker process can't see op classes defined
-  outside the `phenotypic` namespace; list a self-registering module here so a
-  pipeline with **custom operations** deserializes on the compute node. `sbatch
-  --export=ALL` propagates it. (Tests use `tests/_fakes/register_fake_gpu.py`.)
+- `PHENOTYPIC_PRELOAD_MODULES` — comma list of modules staged SLURM **workers and
+  the finalizer** import before `ImagePipeline.from_json`
+  (`_cli_preload.py:preload_custom_operation_modules`). Fresh remote processes
+  can't see op classes defined outside the `phenotypic` namespace; list a
+  self-registering module here so a pipeline with **custom operations**
+  deserializes on compute nodes and during final publication. `sbatch
+  --export=ALL` propagates it. (Tests use
+  `tests/_fakes/register_fake_gpu.py`.)
 - `PHENOTYPIC_SLURM_PYTHONPATH` — internal submission snapshot of the caller's
   `PYTHONPATH`. Generated batch scripts restore it before invoking Python. This
   keeps custom-operation modules and the reviewed source checkout importable on
