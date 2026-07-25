@@ -581,6 +581,11 @@ class RunRegistry:
                     slurm_job_id=slurm_job_id,
                     status_detail=(
                         "historical output has no GUI launch generation"
+                        if status in _TERMINAL_STATUSES
+                        else (
+                            "historical output has no observable "
+                            "nonterminal owner"
+                        )
                     ),
                 )
             else:
@@ -627,10 +632,22 @@ class RunRegistry:
         output directory would also be skipped — that's an accepted
         limitation of the conventional dotfile-as-hidden semantic.
         """
-        stack: list[tuple[Path, int]] = [(sandbox.root, 0)]
+        root = sandbox.root
+        root_caps = classify(root)
+        root_owner_is_valid = (
+            self._read_owner_record(root, ".") is not None
+            if _owner_record_path(root).is_file()
+            else False
+        )
+        root_is_output = (
+            root_owner_is_valid
+            or root_caps.is_cli_output
+            or root_caps.is_process_only_output
+        )
+        stack: list[tuple[Path, int, bool]] = [(root, 0, root_is_output)]
         seen_output_dirs: set[Path] = set()
         while stack:
-            current, depth = stack.pop()
+            current, depth, inside_output = stack.pop()
             if depth > max_depth:
                 continue
             try:
@@ -644,10 +661,30 @@ class RunRegistry:
             for child in children:
                 if not child.is_dir():
                     continue
+                if (
+                    inside_output
+                    and child.name.startswith("_legacy_")
+                    and child.name.endswith("_backup")
+                ):
+                    # Pre-canonical migration code used private directories
+                    # such as ``_legacy_metadata_backup`` to preserve copied
+                    # output layouts. Only reserve that convention inside a
+                    # recognized run; it remains a valid user path elsewhere.
+                    continue
                 caps = classify(child)
                 output_dir: Path | None = None
+                owner_is_valid = False
                 if _owner_record_path(child).is_file():
                     output_dir = child
+                    try:
+                        child_rel = str(child.relative_to(sandbox.root))
+                    except ValueError:
+                        child_rel = ""
+                    if child_rel:
+                        owner_is_valid = (
+                            self._read_owner_record(child, child_rel)
+                            is not None
+                        )
                 elif caps.is_cli_output:
                     output_dir = self._canonical_cli_output_dir(child)
                 elif caps.is_process_only_output:
@@ -658,9 +695,19 @@ class RunRegistry:
                     if key not in seen_output_dirs:
                         seen_output_dirs.add(key)
                         yield output_dir
-                # Recurse regardless — a CLI output may itself contain
-                # nested ones in unusual sandboxes (unlikely but cheap).
-                stack.append((child, depth + 1))
+                # Recurse regardless. Nested outputs are uncommon but remain
+                # a supported compatibility layout, and an invalid owner file
+                # must not hide valid descendants.
+                stack.append(
+                    (
+                        child,
+                        depth + 1,
+                        inside_output
+                        or owner_is_valid
+                        or caps.is_cli_output
+                        or caps.is_process_only_output,
+                    )
+                )
 
     @staticmethod
     def _canonical_cli_output_dir(path: Path) -> Path:
@@ -696,17 +743,27 @@ class RunRegistry:
         execution_mode = manifest.get(
             DashboardManifestKey.EXECUTION_MODE, "unknown"
         )
-        is_complete = bool(manifest.get(DashboardManifestKey.IS_COMPLETE))
+        has_completion_flag = DashboardManifestKey.IS_COMPLETE in manifest
+        is_complete = (
+            manifest.get(DashboardManifestKey.IS_COMPLETE) is True
+        )
         failed = int(manifest.get(DashboardManifestKey.FAILED, 0) or 0)
         completed = int(manifest.get(DashboardManifestKey.COMPLETED, 0) or 0)
         total = int(manifest.get(DashboardManifestKey.TOTAL_IMAGES, 0) or 0)
 
         if is_complete:
             status: RunStatus = "complete" if failed == 0 else "failed"
-        elif total > 0 and (completed + failed) >= total:
+        elif (
+            not has_completion_flag
+            and total > 0
+            and (completed + failed) >= total
+        ):
             status = "complete" if failed == 0 else "failed"
         else:
-            status = "running"
+            # A legacy manifest records progress, not current liveness.
+            # Without a durable GUI owner, local process handle, or scheduler
+            # observation it cannot support a ``running`` claim after restart.
+            status = "unknown"
 
         mode: RunMode
         if execution_mode == "slurm":

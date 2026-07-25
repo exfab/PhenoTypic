@@ -943,7 +943,7 @@ def test_rehydrate_picks_up_cli_outputs(tmp_path: Path) -> None:
     n = reg.rehydrate_from_sandbox(sandbox)
     assert n == 2
     statuses = {r.run_id: r.status for r in reg.list()}
-    assert statuses == {"run_a": "complete", "run_b": "running"}
+    assert statuses == {"run_a": "complete", "run_b": "unknown"}
 
 
 def test_rehydrate_marks_failed_when_failed_gt_zero(tmp_path: Path) -> None:
@@ -1092,6 +1092,70 @@ def test_rehydrate_legacy_manifest_does_not_invent_generation(
     record = restored.get("legacy")
     assert record is not None
     assert record.generation is None
+    assert record.status == "complete"
+
+
+def test_rehydrate_incomplete_legacy_manifest_does_not_invent_liveness(
+    tmp_path: Path,
+) -> None:
+    _make_cli_output(
+        tmp_path,
+        "legacy",
+        is_complete=False,
+        completed=3,
+        total=10,
+    )
+    restored = RunRegistry()
+    restored.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+
+    record = restored.get("legacy")
+    assert record is not None
+    assert record.generation is None
+    assert record.status == "unknown"
+    assert record.mode == "local"
+    assert "no observable nonterminal owner" in (
+        record.status_detail or ""
+    )
+
+
+def test_explicit_incomplete_manifest_counts_are_not_terminal(
+    tmp_path: Path,
+) -> None:
+    _make_cli_output(
+        tmp_path,
+        "legacy",
+        is_complete=False,
+        completed=10,
+        total=10,
+    )
+    restored = RunRegistry()
+    restored.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+
+    record = restored.get("legacy")
+    assert record is not None
+    assert record.status == "unknown"
+
+
+def test_missing_completion_flag_preserves_legacy_count_fallback(
+    tmp_path: Path,
+) -> None:
+    output = _make_cli_output(
+        tmp_path,
+        "legacy",
+        is_complete=False,
+        completed=10,
+        total=10,
+    )
+    manifest_path = output / "progress" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    del manifest["is_complete"]
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    restored = RunRegistry()
+    restored.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+
+    record = restored.get("legacy")
+    assert record is not None
     assert record.status == "complete"
 
 

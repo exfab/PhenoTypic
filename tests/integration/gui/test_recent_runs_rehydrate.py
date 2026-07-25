@@ -86,7 +86,7 @@ def test_scan_rows_carry_status_and_mode(tmp_path: Path) -> None:
     rows = {r.rel_path: r for r in scan_recent_runs(sandbox)}
     assert rows["rs"].status == "failed"
     assert rows["rs"].mode == "local"
-    assert rows["rl"].status == "running"
+    assert rows["rl"].status == "unknown"
     assert rows["rl"].mode == "slurm"
 
 
@@ -182,3 +182,54 @@ def test_rehydrate_respects_max_depth(tmp_path: Path) -> None:
     # depth=4 reaches it.
     rows_deep = scan_recent_runs(sandbox, max_depth=4)
     assert any(r.rel_path.endswith("deep") for r in rows_deep)
+
+
+def test_scan_ignores_private_legacy_backup_but_keeps_nested_run(
+    tmp_path: Path,
+) -> None:
+    """Private compatibility backups are not independent runs."""
+    outer = _make_run(tmp_path, "run")
+    _make_run(outer, "_legacy_metadata_backup")
+    _make_run(outer, "nested_run")
+    _make_run(tmp_path, "_legacy_experiment_backup")
+
+    rows = scan_recent_runs(SandboxRoot.from_path(tmp_path), max_depth=4)
+
+    assert {row.rel_path for row in rows} == {
+        "_legacy_experiment_backup",
+        "run",
+        "run/nested_run",
+    }
+
+
+def test_scan_descends_below_invalid_owner_record(tmp_path: Path) -> None:
+    """A corrupt owner artifact must not hide valid descendant runs."""
+    container = tmp_path / "container"
+    owner = (
+        container
+        / ".phenotypic"
+        / "progress"
+        / "gui_launch_owner.json"
+    )
+    owner.parent.mkdir(parents=True)
+    owner.write_text("{broken", encoding="utf-8")
+    _make_run(container, "_legacy_experiment_backup")
+
+    rows = scan_recent_runs(SandboxRoot.from_path(tmp_path), max_depth=4)
+
+    assert any(
+        row.rel_path == "container/_legacy_experiment_backup"
+        for row in rows
+    )
+
+
+def test_scan_prunes_private_backup_when_sandbox_root_is_output(
+    tmp_path: Path,
+) -> None:
+    """The sandbox root participates in output ancestry classification."""
+    output = _make_run(tmp_path, "run")
+    _make_run(output, "_legacy_metadata_backup")
+
+    rows = scan_recent_runs(SandboxRoot.from_path(output), max_depth=4)
+
+    assert [row.rel_path for row in rows] == ["."]
