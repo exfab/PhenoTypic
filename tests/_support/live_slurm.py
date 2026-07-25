@@ -330,8 +330,9 @@ def write_one_small_image(input_dir: Path) -> Path:
     """Write exactly one deterministic 96 x 96 RGB colony image."""
     rows, cols = np.ogrid[:96, :96]
     colony = (rows - 48) ** 2 + (cols - 48) ** 2 <= 20**2
-    rgb = np.full((96, 96, 3), 228, dtype=np.uint8)
-    rgb[colony] = (38, 72, 41)
+    rgb = np.empty((96, 96, 3), dtype=np.uint8)
+    rgb[:] = (38, 72, 41)
+    rgb[colony] = (228, 228, 228)
     image_path = input_dir / "single-small-colony.tiff"
     Image(arr=rgb, name=image_path.stem).rgb.imsave(filepath=image_path)
     return image_path

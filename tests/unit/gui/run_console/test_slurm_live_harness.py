@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from phenotypic import Image, ImagePipeline
 from phenotypic._cli._cli_slurm_lifecycle import (
     append_lifecycle_entry,
     initialize_slurm_lifecycle,
@@ -895,6 +896,31 @@ def test_partial_setup_failure_is_retained_with_forbidden_evidence(
     payload = json.loads(evidence.read_text(encoding="utf-8"))
     assert payload["status"] == "retained-pre-submit-failure"
     assert payload["forbidden_paths"][0]["path"] == str(protected)
+
+
+def test_prepared_case_pipeline_detects_and_measures_one_colony(
+    tmp_path: Path,
+) -> None:
+    """The live fixture must produce real work for the generated pipeline."""
+    with live.prepared_case(tmp_path, ()) as (
+        case_root,
+        pipeline_path,
+        _output_dir,
+    ):
+        (image_path,) = (case_root / "input").glob("*.tiff")
+        pipeline = ImagePipeline.from_json(
+            pipeline_path.read_text(encoding="utf-8"),
+        )
+        detected = pipeline.apply(Image.imread(str(image_path)))
+        measurements = pipeline.measure(
+            detected,
+            include_metadata=False,
+            apply_post=False,
+        )
+
+    assert detected.num_objects == 1
+    assert len(measurements) == 1
+    assert measurements["Size_Area"].iloc[0] > 0
 
 
 def test_cleanup_retains_case_when_queue_quiescence_is_unavailable(
