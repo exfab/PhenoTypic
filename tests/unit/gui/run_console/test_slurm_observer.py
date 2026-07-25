@@ -625,6 +625,237 @@ def test_generation_marker_manifest_and_finalizer_complete_run(
     assert registry.get(record.run_id).status == "complete"  # type: ignore[union-attr]
 
 
+def test_inactive_fence_with_published_ordinary_run_reconciles_finalizer(
+    tmp_path: Path,
+) -> None:
+    """Publication before finalizer exit is not mistaken for cancellation."""
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    _write_jobs(
+        record,
+        {
+            "chunk-0": ("613", "chunk"),
+            "finalizer": ("614", "finalizer"),
+        },
+    )
+    atomic_write_json(
+        run_completion_marker_path(record.output_dir),
+        {
+            "generation": record.generation.hex,
+            "status": "complete",
+            "finalizer_succeeded": True,
+        },
+    )
+    atomic_write_json(
+        resolve_manifest_json_path(record.output_dir),
+        {
+            "is_complete": True,
+            "failed": 0,
+            "completed": 1,
+            "total_images": 1,
+        },
+    )
+    lifecycle = json.loads(
+        lifecycle_state_path(record.output_dir).read_text(encoding="utf-8")
+    )
+    lifecycle["active"] = False
+    atomic_write_json(lifecycle_state_path(record.output_dir), lifecycle)
+    scheduler = FakeScheduler({"613": "COMPLETED", "614": "RUNNING"})
+    now = [10.0]
+    observer = _bound_observer(
+        registry,
+        record,
+        scheduler,
+        reconciliation_grace_seconds=5.0,
+        monotonic=lambda: now[0],
+    )
+
+    observer.observe_once()
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "reconciling"
+    assert "awaiting terminal jobs and finalizer" in (
+        updated.status_detail or ""
+    )
+
+    now[0] = 20.0
+    observer.observe_once()
+    assert registry.get(record.run_id).status == "reconciling"  # type: ignore[union-attr]
+
+    scheduler.states["614"] = "COMPLETED"
+    observer.observe_once()
+    assert registry.get(record.run_id).status == "complete"  # type: ignore[union-attr]
+
+
+def test_explicit_cancellation_precedes_visible_publication(
+    tmp_path: Path,
+) -> None:
+    """A user cancellation remains authoritative during publication races."""
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    _write_jobs(
+        record,
+        {
+            "chunk-0": ("615", "chunk"),
+            "finalizer": ("616", "finalizer"),
+        },
+    )
+    atomic_write_json(
+        run_completion_marker_path(record.output_dir),
+        {
+            "generation": record.generation.hex,
+            "status": "complete",
+            "finalizer_succeeded": True,
+        },
+    )
+    atomic_write_json(
+        resolve_manifest_json_path(record.output_dir),
+        {
+            "is_complete": True,
+            "failed": 0,
+            "completed": 1,
+            "total_images": 1,
+        },
+    )
+    lifecycle = json.loads(
+        lifecycle_state_path(record.output_dir).read_text(encoding="utf-8")
+    )
+    lifecycle["active"] = False
+    atomic_write_json(lifecycle_state_path(record.output_dir), lifecycle)
+    assert registry.compare_and_set(
+        record.run_id,
+        record.generation,
+        status="cancelling",
+    )
+
+    _bound_observer(
+        registry,
+        record,
+        FakeScheduler({"615": "COMPLETED", "616": "RUNNING"}),
+    ).observe_once()
+
+    assert registry.get(record.run_id).status == "cancelling"  # type: ignore[union-attr]
+
+
+def test_explicit_cancellation_survives_active_lifecycle_window(
+    tmp_path: Path,
+) -> None:
+    """The observer cannot overwrite cancellation before fence deactivation."""
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    _write_jobs(record, {"chunk-0": ("617", "chunk")})
+    assert registry.compare_and_set(
+        record.run_id,
+        record.generation,
+        status="cancelling",
+    )
+
+    _bound_observer(
+        registry,
+        record,
+        FakeScheduler({"617": "RUNNING"}),
+    ).observe_once()
+
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "cancelling"
+    assert "awaiting inactive fence" in (updated.status_detail or "")
+
+
+def test_missing_finalizer_scheduler_row_does_not_expire_grace(
+    tmp_path: Path,
+) -> None:
+    """Absent accounting evidence remains reconciliation, not timeout failure."""
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    _write_jobs(
+        record,
+        {
+            "chunk-0": ("618", "chunk"),
+            "finalizer": ("619", "finalizer"),
+        },
+    )
+    atomic_write_json(
+        run_completion_marker_path(record.output_dir),
+        {
+            "generation": record.generation.hex,
+            "status": "complete",
+            "finalizer_succeeded": True,
+        },
+    )
+    atomic_write_json(
+        resolve_manifest_json_path(record.output_dir),
+        {
+            "is_complete": True,
+            "failed": 0,
+            "completed": 1,
+            "total_images": 1,
+        },
+    )
+    lifecycle = json.loads(
+        lifecycle_state_path(record.output_dir).read_text(encoding="utf-8")
+    )
+    lifecycle["active"] = False
+    atomic_write_json(lifecycle_state_path(record.output_dir), lifecycle)
+    scheduler = FakeScheduler({"618": "COMPLETED"})
+    now = [10.0]
+    observer = _bound_observer(
+        registry,
+        record,
+        scheduler,
+        reconciliation_grace_seconds=5.0,
+        monotonic=lambda: now[0],
+    )
+
+    observer.observe_once()
+    now[0] = 20.0
+    observer.observe_once()
+    assert registry.get(record.run_id).status == "reconciling"  # type: ignore[union-attr]
+
+    scheduler.states["619"] = "COMPLETED"
+    observer.observe_once()
+    assert registry.get(record.run_id).status == "complete"  # type: ignore[union-attr]
+
+
+def test_inactive_fence_does_not_hide_failed_ordinary_finalizer(
+    tmp_path: Path,
+) -> None:
+    """Exact finalizer failure outranks an ambiguous inactive lifecycle fence."""
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    _write_jobs(
+        record,
+        {
+            "chunk-0": ("620", "chunk"),
+            "finalizer": ("621", "finalizer"),
+        },
+    )
+    atomic_write_json(
+        run_completion_marker_path(record.output_dir),
+        {
+            "generation": record.generation.hex,
+            "status": "complete",
+            "finalizer_succeeded": True,
+        },
+    )
+    lifecycle = json.loads(
+        lifecycle_state_path(record.output_dir).read_text(encoding="utf-8")
+    )
+    lifecycle["active"] = False
+    atomic_write_json(lifecycle_state_path(record.output_dir), lifecycle)
+
+    _bound_observer(
+        registry,
+        record,
+        FakeScheduler({"620": "COMPLETED", "621": "FAILED"}),
+    ).observe_once()
+
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "failed"
+    assert "621=FAILED" in (updated.status_detail or "")
+
+
 def test_visible_marker_cannot_hide_failed_finalizer_window(
     tmp_path: Path,
 ) -> None:
@@ -661,7 +892,7 @@ def test_visible_marker_cannot_hide_failed_finalizer_window(
     observer.observe_once()
     updated = registry.get(record.run_id)
     assert updated is not None
-    assert updated.status == "running"
+    assert updated.status == "reconciling"
 
     scheduler.states["604"] = "FAILED"
     observer.observe_once()
@@ -812,6 +1043,117 @@ def test_exact_staged_completion_precedes_inactive_fence(
         updated.status_detail
         == "staged orchestration and publication completed"
     )
+
+
+def test_inactive_fence_with_staged_publication_reconciles_finalizer(
+    tmp_path: Path,
+) -> None:
+    """Staged publication waits for the scheduler without false cancellation."""
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    _write_jobs(
+        record,
+        {
+            "stage3-0": ("801", "stage3"),
+            "finalizer": ("802", "finalizer"),
+        },
+    )
+    metadata = json.loads(
+        job_metadata_path(record.output_dir).read_text(encoding="utf-8")
+    )
+    metadata["datasets"] = {
+        "plate": {"total": 1, "images": ["image.tif"]},
+    }
+    atomic_write_json(job_metadata_path(record.output_dir), metadata)
+    atomic_write_json(
+        orchestration_state_path(record.output_dir),
+        {
+            "epoch": record.generation.hex,
+            "phase": "complete",
+        },
+    )
+    write_stage3_completion_marker(
+        record.output_dir,
+        "plate",
+        "image.tif",
+        "image",
+    )
+    atomic_write_json(
+        staged_completion_path(record.output_dir),
+        {"epoch": record.generation.hex},
+    )
+    lifecycle = json.loads(
+        lifecycle_state_path(record.output_dir).read_text(encoding="utf-8")
+    )
+    lifecycle["active"] = False
+    atomic_write_json(lifecycle_state_path(record.output_dir), lifecycle)
+    scheduler = FakeScheduler({"801": "COMPLETED", "802": "RUNNING"})
+    observer = _bound_observer(registry, record, scheduler)
+
+    observer.observe_once()
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "reconciling"
+    assert "staged publication is visible" in (updated.status_detail or "")
+
+    scheduler.states["802"] = "COMPLETED"
+    observer.observe_once()
+    assert registry.get(record.run_id).status == "complete"  # type: ignore[union-attr]
+
+
+def test_inactive_fence_does_not_hide_failed_staged_finalizer(
+    tmp_path: Path,
+) -> None:
+    """Exact staged finalizer failure outranks an inactive lifecycle fence."""
+    registry, record = _registered_slurm_run(tmp_path)
+    assert record.generation is not None
+    _write_jobs(
+        record,
+        {
+            "stage3-0": ("803", "stage3"),
+            "finalizer": ("804", "finalizer"),
+        },
+    )
+    metadata = json.loads(
+        job_metadata_path(record.output_dir).read_text(encoding="utf-8")
+    )
+    metadata["datasets"] = {
+        "plate": {"total": 1, "images": ["image.tif"]},
+    }
+    atomic_write_json(job_metadata_path(record.output_dir), metadata)
+    atomic_write_json(
+        orchestration_state_path(record.output_dir),
+        {
+            "epoch": record.generation.hex,
+            "phase": "complete",
+        },
+    )
+    write_stage3_completion_marker(
+        record.output_dir,
+        "plate",
+        "image.tif",
+        "image",
+    )
+    atomic_write_json(
+        staged_completion_path(record.output_dir),
+        {"epoch": record.generation.hex},
+    )
+    lifecycle = json.loads(
+        lifecycle_state_path(record.output_dir).read_text(encoding="utf-8")
+    )
+    lifecycle["active"] = False
+    atomic_write_json(lifecycle_state_path(record.output_dir), lifecycle)
+
+    _bound_observer(
+        registry,
+        record,
+        FakeScheduler({"803": "COMPLETED", "804": "FAILED"}),
+    ).observe_once()
+
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "failed"
+    assert "804=FAILED" in (updated.status_detail or "")
 
 
 def test_incremental_logs_handle_multiple_sources_and_rotation(

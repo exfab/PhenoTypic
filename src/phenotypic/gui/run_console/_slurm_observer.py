@@ -611,17 +611,49 @@ class SlurmLifecycleObserver:
         staged = _staged_terminal_observation(
             record, binding.scheduler_generation, inventory, normalized_states
         )
-        if staged is not None and staged.status == "complete":
-            staged = self._apply_publication_grace(record, staged)
-            return _with_identity(staged, job_ids, primary, logs)
         marker = _run_marker_observation(
             record,
             binding.scheduler_generation,
             inventory,
             normalized_states,
         )
-        if marker is not None and marker.status == "complete":
-            marker = self._apply_publication_grace(record, marker)
+        if record.status == "cancelling":
+            if inactive and all_confirmed_inactive:
+                return _Observation(
+                    "cancelled",
+                    job_ids,
+                    primary,
+                    logs,
+                    "cancellation fence is inactive and all jobs are inactive",
+                    terminal=True,
+                )
+            return _Observation(
+                "cancelling",
+                job_ids,
+                primary,
+                logs,
+                "cancellation requested; awaiting inactive fence and "
+                "scheduler quiescence",
+            )
+        for terminal_evidence in (staged, marker):
+            if (
+                terminal_evidence is not None
+                and terminal_evidence.status == "failed"
+            ):
+                return _with_identity(
+                    terminal_evidence, job_ids, primary, logs
+                )
+        if staged is not None and staged.status in {"complete", "reconciling"}:
+            if staged.status == "reconciling" and not all_confirmed_inactive:
+                self._clear_grace(record)
+            else:
+                staged = self._apply_publication_grace(record, staged)
+            return _with_identity(staged, job_ids, primary, logs)
+        if marker is not None and marker.status in {"complete", "reconciling"}:
+            if marker.status == "reconciling" and not all_confirmed_inactive:
+                self._clear_grace(record)
+            else:
+                marker = self._apply_publication_grace(record, marker)
             return _with_identity(marker, job_ids, primary, logs)
         if inactive:
             if all_confirmed_inactive:
@@ -1119,6 +1151,43 @@ def _staged_terminal_observation(
             (),
             "staged orchestration completed; awaiting matching completion marker",
         )
+    finalizer_ids = inventory.roles.get("finalizer", ())
+    failed_finalizers = [
+        (job_id, states.get(job_id))
+        for job_id in finalizer_ids
+        if states.get(job_id) in _FAILURE_STATES
+    ]
+    if failed_finalizers:
+        detail = ", ".join(
+            f"{job_id}={state}" for job_id, state in failed_finalizers
+        )
+        return _Observation(
+            "failed",
+            (),
+            None,
+            (),
+            f"staged finalizer failed after publication: {detail}",
+            True,
+        )
+    all_jobs_terminal = (
+        not inventory.unresolved_tokens
+        and all(
+            job_id in inventory.terminal_job_ids
+            or states.get(job_id) in _TERMINAL_SCHEDULER_STATES
+            for job_id in inventory.job_ids
+        )
+    )
+    finalizer_succeeded = not finalizer_ids or all(
+        states.get(job_id) == "COMPLETED" for job_id in finalizer_ids
+    )
+    if not all_jobs_terminal or not finalizer_succeeded:
+        return _Observation(
+            "reconciling",
+            (),
+            None,
+            (),
+            "staged publication is visible; awaiting terminal jobs and finalizer",
+        )
     return _Observation(
         "complete",
         (),
@@ -1188,7 +1257,13 @@ def _run_marker_observation(
         and all(states.get(job_id) == "COMPLETED" for job_id in finalizer_ids)
     )
     if not all_jobs_terminal:
-        return None
+        return _Observation(
+            "reconciling",
+            (),
+            None,
+            (),
+            "terminal marker is visible; awaiting terminal jobs and finalizer",
+        )
     if not finalizer_succeeded:
         return _Observation(
             "reconciling",
