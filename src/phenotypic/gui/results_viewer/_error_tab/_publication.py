@@ -399,6 +399,8 @@ def publish_error_analysis(
                         "Published Error generation failed checksum validation."
                     )
                 (base / _JOURNAL_FILENAME).unlink(missing_ok=True)
+                shutil.rmtree(generation_dir, ignore_errors=True)
+                _remove_empty_generations_dir(base)
             except BaseException:
                 _restore_targets(base, backup_dir, targets, existing)
                 (base / _JOURNAL_FILENAME).unlink(missing_ok=True)
@@ -498,10 +500,10 @@ def recover_error_publication(layout: "BundleLayout") -> bool:
             tuple(targets),
             set(existing),
         )
-        shutil.rmtree(generation_dir, ignore_errors=True)
-        _remove_empty_generations_dir(base)
     shutil.rmtree(generation_dir / "staged", ignore_errors=True)
     journal_path.unlink(missing_ok=True)
+    shutil.rmtree(generation_dir, ignore_errors=True)
+    _remove_empty_generations_dir(base)
     return True
 
 
@@ -843,9 +845,21 @@ def _restore_targets(
                 raise ErrorPublicationValidationError(
                     f"Cannot restore prior Error artifact {name!r}."
                 )
-            _replace_file(backup, target)
+            _restore_from_durable_backup(backup, target)
         else:
             target.unlink(missing_ok=True)
+
+
+def _restore_from_durable_backup(backup: Path, target: Path) -> None:
+    """Atomically restore one target without consuming its crash backup."""
+    temporary = target.with_name(
+        f".{target.name}.{uuid.uuid4().hex}.restore"
+    )
+    try:
+        shutil.copy2(backup, temporary)
+        _replace_file(temporary, target)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _replace_file(source: Path, target: Path) -> None:

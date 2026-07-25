@@ -29,6 +29,7 @@ from phenotypic.gui.results_viewer._error_tab._publication import (
     compute_gui_error_publication,
     error_publication_lock_path,
     publish_error_analysis,
+    recover_error_publication,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import ErrorCategory, METADATA
@@ -152,6 +153,9 @@ def test_publish_all_categories_records_empty_categories(
         "error_analysis.csv",
         "error_analysis.html",
     }
+    assert not (
+        root.layout.deliverables_base / ".error-analysis.generations"
+    ).exists()
 
 
 def test_publish_refuses_fingerprint_conflict_without_targets(
@@ -223,6 +227,94 @@ def test_mid_publication_failure_restores_previous_generation(
         )
 
     assert _canonical_bytes(root) == previous
+    assert not (
+        root.layout.deliverables_base / ".error-analysis.generations"
+    ).exists()
+
+
+def test_committed_recovery_cleans_transaction_backups(
+    publication_state: tuple[Path, OutputRoot, CurationLabels],
+) -> None:
+    """Restart cleanup drops backups only after a valid receipt committed."""
+    _output, root, labels = publication_state
+    computation = _compute(root, labels)
+    publish_error_analysis(
+        root.layout,
+        computation,
+        mutation_is_safe=root.mutation_snapshot_is_safe,
+    )
+    base = root.layout.deliverables_base
+    receipt = json.loads(
+        (base / "error_analysis.publication.json").read_text()
+    )
+    token = "b" * 32
+    generation_dir = base / ".error-analysis.generations" / token
+    backup_dir = generation_dir / "backup"
+    backup_dir.mkdir(parents=True)
+    (backup_dir / "error_analysis.csv").write_bytes(b"previous")
+    targets = [
+        *receipt["artifacts"],
+        "error_analysis.manifest.json",
+        "error_analysis.publication.json",
+    ]
+    atomic_write_json(
+        base / ".error-analysis.transaction.json",
+        {
+            "schema_version": 1,
+            "token": token,
+            "generation": receipt["generation"],
+            "targets": targets,
+            "existing": ["error_analysis.csv"],
+        },
+    )
+
+    with exclusive_path_lock(error_publication_lock_path(root.layout)):
+        assert recover_error_publication(root.layout) is True
+
+    assert not (base / ".error-analysis.transaction.json").exists()
+    assert not (base / ".error-analysis.generations").exists()
+
+
+@pytest.mark.parametrize("interrupt_after", [1, 2])
+def test_restore_is_restart_safe_after_each_replaced_target(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    interrupt_after: int,
+) -> None:
+    """Durable backups survive an interruption after every restore step."""
+    base = tmp_path / "deliverables"
+    backup = base / ".error-analysis.generations" / ("a" * 32) / "backup"
+    backup.mkdir(parents=True)
+    targets = ("one", "two", "originally-absent")
+    existing = {"one", "two"}
+    for name in existing:
+        (base / name).write_bytes(f"new-{name}".encode())
+        (backup / name).write_bytes(f"old-{name}".encode())
+    (base / "originally-absent").write_bytes(b"new-absent")
+    replacements = 0
+
+    def _interrupt_after_replace(source: Path, target: Path) -> None:
+        nonlocal replacements
+        os.replace(source, target)
+        replacements += 1
+        if replacements == interrupt_after:
+            raise OSError("simulated process interruption")
+
+    monkeypatch.setattr(
+        _publication,
+        "_replace_file",
+        _interrupt_after_replace,
+    )
+    with pytest.raises(OSError, match="simulated"):
+        _publication._restore_targets(base, backup, targets, existing)
+
+    assert all((backup / name).is_file() for name in existing)
+    monkeypatch.setattr(_publication, "_replace_file", os.replace)
+    _publication._restore_targets(base, backup, targets, existing)
+
+    assert (base / "one").read_bytes() == b"old-one"
+    assert (base / "two").read_bytes() == b"old-two"
+    assert not (base / "originally-absent").exists()
 
 
 def test_retry_is_idempotent(
