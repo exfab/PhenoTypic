@@ -1,19 +1,18 @@
 """Browser-driven E2E tests for the results-viewer QC tab.
 
-Twelve tests covering every shipping QC affordance enumerated in the
+Eleven tests cover the shipping QC affordances enumerated in the
 spec at ``docs/superpowers/specs/2026-05-12-qc-analysis-and-gui-design.md``
-lines 1211-1221, plus one edge-case (Export button disabled when no
-checks). Each test docstring summarises the row in FEATURES.md that
-references the function name.
+lines 1211-1221. Each test docstring summarises the row in FEATURES.md
+that references the function name.
 
 The tests share a function-scoped sandbox helper that:
 
 1. Builds the standard E2E sandbox layout.
 2. Replaces the empty placeholder ``master_measurements.parquet`` with
    a real polars frame carrying the columns the QC machinery needs
-   (``Metadata_ImageName``, ``Metadata_Dataset``, ``Object_Label``,
-   ``Size_Area``, ``Grid_RowNum``, ``Grid_ColNum``, ``Metadata_Time``).
-3. Pre-seeds the ``qc`` array of ``<output>/deliverables/pipeline.json``
+   (canonical image/dataset metadata, ``Object_Label``,
+   ``Size_Area``, ``Grid_RowNum``, ``Grid_ColNum``, and canonical time metadata).
+3. Pre-seeds the ``qc`` array of the canonical typed pipeline config
    directly (the pipeline-backed recipe source the viewer reads via
    ``phenotypic.sdk_._qc_recipe.QcRecipe``), so tests exercise the same
    source of truth the CLI writes — not the retired
@@ -34,9 +33,9 @@ import polars as pl
 import pytest
 from playwright.sync_api import Page, expect
 
+from phenotypic.schema import CULTURE_METADATA, EXPERIMENT_METADATA, METADATA
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
-from phenotypic.schema import METADATA
 
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
@@ -63,6 +62,8 @@ _OUTPUT_NAME = "CliOutputExample"
 _NUM_ROWS = 2
 _NUM_COLS = 3
 _IMAGES = ("plate_001.tif", "plate_002.tif")
+_DATASET_COLUMN = str(EXPERIMENT_METADATA.DATASET)
+_TIME_COLUMN = str(CULTURE_METADATA.TIME)
 
 
 def _build_real_master_df() -> pl.DataFrame:
@@ -70,7 +71,7 @@ def _build_real_master_df() -> pl.DataFrame:
 
     Rows are one-per-well across two images of a 2x3 grid. ``Size_Area``
     increases linearly so ReplicateAgreement can compute a meaningful
-    SE. ``Metadata_Time`` is set to a single value so the time slider
+    SE. The canonical time column is set to a single value so the time slider
     stays hidden by default (Heatmap tests that need the time slider
     override this fixture).
     """
@@ -82,9 +83,9 @@ def _build_real_master_df() -> pl.DataFrame:
                 label += 1
                 rows.append(
                     {
-                        "Metadata_Dataset": "ds1",
+                        _DATASET_COLUMN: "ds1",
                         str(METADATA.IMAGE_NAME): image,
-                        "Metadata_Time": 0.0,
+                        _TIME_COLUMN: 0.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,
@@ -110,14 +111,14 @@ def _seed_real_output(sandbox: Path) -> Path:
 
 
 def _seed_qc_recipe(output_dir: Path, payload: dict | str) -> Path:
-    """Seed the QC recipe into ``deliverables/pipeline.json``'s ``qc`` array.
+    """Seed the QC recipe into the canonical typed config's ``qc`` array.
 
     The results-viewer QC tab is pipeline-backed: cards come from the
-    ``qc`` array of ``pipeline.json`` (read via
+    pipeline config's ``qc`` array (read via
     ``phenotypic.sdk_._qc_recipe.QcRecipe``), not the retired
     ``.viewer_cache/qc_recipe.json`` sidecar. This mirrors a minimal
     CLI-written pipeline config — exactly the ``{"qc": [...]}`` document
-    the production scoped writer creates when no pipeline.json yet exists.
+    the production scoped writer creates when no typed config exists.
 
     Args:
         output_dir: The CLI output directory (the parent that owns
@@ -127,7 +128,7 @@ def _seed_qc_recipe(output_dir: Path, payload: dict | str) -> Path:
             string written verbatim (the corrupt-JSON edge case).
 
     Returns:
-        The absolute path of ``deliverables/pipeline.json``.
+        The absolute path of the canonical ``.json.pht-pipe`` config.
     """
     from phenotypic.sdk_ import pipeline_json_path
 
@@ -229,7 +230,7 @@ def fake_sandbox(tmp_path: Path) -> Path:
 
     Overrides the module-scoped ``fake_sandbox`` so each QC tab test
     gets a clean output directory it can mutate freely (writing the QC
-    recipe into ``pipeline.json``, curation state, etc.).
+    recipe into the typed pipeline config, curation state, etc.).
     """
     sandbox = _build_sandbox(tmp_path)
     _seed_real_output(sandbox)
@@ -273,7 +274,7 @@ def _se_entry(
     fail_threshold: float = 0.20,
     enabled: bool = True,
 ) -> dict:
-    """Build one ReplicateAgreement entry suitable for ``qc_recipe.json``."""
+    """Build one ReplicateAgreement entry for the pipeline config's QC array."""
     return {
         "instance_id": instance_id,
         "class": "ReplicateAgreement",
@@ -281,7 +282,7 @@ def _se_entry(
         "params": {
             "on": on,
             "groupby": list(groupby),
-            "time_label": "Metadata_Time",
+            "time_label": _TIME_COLUMN,
             "warn_threshold": warn_threshold,
             "fail_threshold": fail_threshold,
             "min_replicates": 2,
@@ -323,7 +324,7 @@ def _write_count_metadata(output_dir: Path) -> Path:
 
 
 def _read_recipe(output_dir: Path) -> dict:
-    """Read the ``qc`` array from ``pipeline.json`` in the legacy shape.
+    """Read the typed pipeline config's ``qc`` array in a legacy test shape.
 
     Returns ``{"checks": [...]}`` so assertions that index ``["checks"]``
     keep working against the pipeline-backed source of truth.
@@ -411,7 +412,7 @@ def test_add_count_check_with_metadata_path(
     tag widget it silently dropped, which made Save a no-op for the Count /
     Occupancy checks. Filling the layout path + a ``groupby`` column and
     clicking Save must append a card AND write the entry (with its
-    ``metadata`` path) into ``pipeline.json``'s ``qc`` array.
+    ``metadata`` path) into the typed pipeline config's ``qc`` array.
 
     Unlike ``test_add_check_modal`` (which adds a metadata-less
     ``ReplicateAgreement``), this drives the exact widget the bug hid in.
@@ -477,7 +478,7 @@ def test_add_count_check_with_metadata_path(
     page.click("#qc-add-check-submit")
     expect(page.locator('[id*="qc-card-root"]')).to_have_count(1, timeout=10_000)
 
-    # ...and the qc array in pipeline.json carries the Count entry, with the
+    # ...and the typed pipeline config carries the Count entry in its qc array,
     # layout persisted under the unified ``metadata`` key (recipe.add writes
     # synchronously before the revision bump that rendered the card; poll a
     # few ticks to absorb any filesystem lag).
@@ -493,7 +494,7 @@ def test_add_count_check_with_metadata_path(
         page.wait_for_timeout(200)
 
     assert count_entries, (
-        "ExpectedVsDetectedCount was not persisted to pipeline.json's qc "
+        "ExpectedVsDetectedCount was not persisted to the pipeline config's qc "
         "array — the modal Save dropped the metadata-backed check"
     )
     params = count_entries[0]["params"]
@@ -1012,16 +1013,26 @@ def test_load_warning_banner(
     output_rel: str,
     output_dir: Path,
 ) -> None:
-    """A corrupt ``qc_recipe.json`` produces a visible load-warning banner.
+    """An unresolvable QC entry produces a visible load-warning banner.
 
-    Spec line 1221. Writes intentionally-malformed JSON before the
-    viewer boot; ``QcRecipe.load`` surfaces an ``__file__`` warning and
-    the layout factory mounts the banner with ``display: block``.
+    Spec line 1221. A syntactically valid pipeline carrying a removed or renamed
+    check class passes output compatibility preflight. ``QcRecipe.load`` drops
+    that entry, surfaces a per-entry warning, and the layout factory mounts the
+    banner with ``display: block``.
     """
     _seed_qc_recipe(
         output_dir,
-        # Truncated JSON — fails json.loads.
-        '{"version": 1, "checks": [{"instance_id": "qc-SE-broken",',
+        {
+            "version": 1,
+            "checks": [
+                {
+                    "instance_id": "qc-Missing-broken",
+                    "class": "MissingQualityCheck",
+                    "enabled": True,
+                    "params": {},
+                }
+            ],
+        },
     )
     _hand_off_viewer(page, hub_url, output_rel)
     _navigate_to_qc_tab(page, hub_url)
@@ -1035,9 +1046,8 @@ def test_load_warning_banner(
     assert display != "none", (
         f"Banner expected visible (display != none); got display={display!r}"
     )
-    # The banner body should mention "invalid JSON" or the synthetic
-    # ``__file__`` instance id from QcRecipeLoadWarning.
+    # The warning identifies both the entry and its unavailable class.
     text = page.locator(banner_selector).text_content() or ""
-    assert "invalid JSON" in text or "__file__" in text, (
-        f"Banner text missing the corrupt-JSON cue: {text!r}"
+    assert "qc-Missing-broken" in text and "MissingQualityCheck" in text, (
+        f"Banner text missing the unresolved-entry cue: {text!r}"
     )

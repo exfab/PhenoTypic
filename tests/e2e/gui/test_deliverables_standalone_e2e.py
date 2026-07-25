@@ -35,6 +35,7 @@ from playwright.sync_api import Page, expect
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ReplicateAgreement
+from phenotypic.schema import CULTURE_METADATA, EXPERIMENT_METADATA, METADATA
 from phenotypic.sdk_ import curation_labels_parquet_path
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
@@ -44,7 +45,6 @@ from tests._output_layout import (
     write_pipeline_json,
 )
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
-from phenotypic.schema import METADATA
 
 # Single-threaded Werkzeug dev server + Dash callback-chain timing flakes on
 # GHA shared runners (skipped on CI via ``-m "not ci_flaky"``); the SUT is
@@ -57,6 +57,8 @@ _DATASET = "ds1"
 _IMAGES = ("plate_001.tif", "plate_002.tif")
 _NROWS, _NCOLS = 3, 4
 _INSTANCE_ID = "qc-SE-standalone01"
+_DATASET_COLUMN = str(EXPERIMENT_METADATA.DATASET)
+_TIME_COLUMN = str(CULTURE_METADATA.TIME)
 
 
 def _build_master() -> pl.DataFrame:
@@ -69,9 +71,9 @@ def _build_master() -> pl.DataFrame:
                 label += 1
                 rows.append(
                     {
-                        "Metadata_Dataset": _DATASET,
+                        _DATASET_COLUMN: _DATASET,
                         str(METADATA.IMAGE_NAME): image,
-                        "Metadata_Time": 0.0,
+                        _TIME_COLUMN: 0.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,

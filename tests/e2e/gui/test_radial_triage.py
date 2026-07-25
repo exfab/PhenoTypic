@@ -23,10 +23,10 @@ import pytest
 from PIL import Image as PILImage
 from playwright.sync_api import Page, expect
 
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 from phenotypic.sdk_ import error_category_parquet_path
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
-from phenotypic.schema import METADATA
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
 # gui-e2e workflow (see tests/CLAUDE.md). The single test here drives a
@@ -42,6 +42,7 @@ _DATASET = "ds1"
 _IMAGES = ("plate_001.tif", "plate_002.tif")
 _NUM_ROWS = 2
 _NUM_COLS = 2
+_DATASET_COLUMN = str(EXPERIMENT_METADATA.DATASET)
 
 
 def _build_master_df() -> pl.DataFrame:
@@ -58,7 +59,7 @@ def _build_master_df() -> pl.DataFrame:
                 label += 1
                 rows.append(
                     {
-                        "Metadata_Dataset": _DATASET,
+                        _DATASET_COLUMN: _DATASET,
                         str(METADATA.IMAGE_NAME): image,
                         "Object_Label": label,
                         "Grid_RowNum": r,

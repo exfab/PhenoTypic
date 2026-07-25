@@ -9,8 +9,8 @@ row in FEATURES.md that references the function name.
 
 The tests share a function-scoped sandbox helper that builds a real
 ``master_measurements.parquet`` with grid columns (``Grid_RowNum`` /
-``Grid_ColNum``), ``Metadata_ImageName``, ``Metadata_Time``, and a
-representative measurement column. Specific tests override the fixture
+``Grid_ColNum``), canonical image/time metadata, and a representative
+measurement column. Specific tests override the fixture
 shape when they need a different frame (e.g. no grid columns for the
 empty-state test, or multi-row-per-cell for the aggregator semantics
 test).
@@ -29,9 +29,11 @@ import polars as pl
 import pytest
 from playwright.sync_api import Page
 
+from phenotypic.gui._design import OI_VERMILION
+from phenotypic.schema import CULTURE_METADATA, EXPERIMENT_METADATA, METADATA
+from phenotypic.sdk_ import pipeline_json_path
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
-from phenotypic.schema import METADATA
 
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
@@ -53,6 +55,8 @@ pytestmark = pytest.mark.ci_flaky
 _OUTPUT_NAME = "CliOutputExample"
 
 _IMAGES = ("plate_001.tif", "plate_002.tif")
+_DATASET_COLUMN = str(EXPERIMENT_METADATA.DATASET)
+_TIME_COLUMN = str(CULTURE_METADATA.TIME)
 _TINY_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
 )
@@ -73,9 +77,9 @@ def _default_master_df() -> pl.DataFrame:
                 label += 1
                 rows.append(
                     {
-                        "Metadata_Dataset": "ds1",
+                        _DATASET_COLUMN: "ds1",
                         str(METADATA.IMAGE_NAME): image,
-                        "Metadata_Time": 0.0,
+                        _TIME_COLUMN: 0.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,
@@ -109,14 +113,16 @@ def _seed_master_df_in_output(sandbox: Path, df: pl.DataFrame) -> Path:
 
 
 def _seed_qc_recipe(output_dir: Path, payload: dict | str) -> Path:
-    """Write a ``qc_recipe.json`` to the output dir's viewer cache."""
-    cache = output_dir / ".viewer_cache"
-    cache.mkdir(parents=True, exist_ok=True)
-    target = cache / "qc_recipe.json"
+    """Seed the canonical typed pipeline config with the viewer's QC recipe."""
+    target = pipeline_json_path(output_dir)
+    target.parent.mkdir(parents=True, exist_ok=True)
     if isinstance(payload, str):
         target.write_text(payload, encoding="utf-8")
     else:
-        target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        target.write_text(
+            json.dumps({"qc": payload.get("checks", [])}, indent=2),
+            encoding="utf-8",
+        )
     return target
 
 
@@ -203,7 +209,7 @@ def _se_entry(
         "params": {
             "on": on,
             "groupby": list(groupby),
-            "time_label": "Metadata_Time",
+            "time_label": _TIME_COLUMN,
             "warn_threshold": warn_threshold,
             "fail_threshold": fail_threshold,
             "min_replicates": 2,
@@ -348,6 +354,21 @@ def _click_first_card_nav(page: Page, direction: str) -> None:
     button.click()
 
 
+def _wait_for_first_card_picker_options(page: Page) -> None:
+    """Wait until the first Plate card picker exposes both seeded images."""
+    picker = page.locator(
+        '[id*="\\"type\\":\\"card-picker\\""].dash-dropdown'
+    ).first
+    picker.wait_for(state="attached", timeout=10_000)
+    picker.focus()
+    page.keyboard.press("Enter")
+    page.wait_for_function(
+        "() => document.querySelectorAll('[role=\"listbox\"] [role=\"option\"]').length >= 2",
+        timeout=10_000,
+    )
+    page.keyboard.press("Escape")
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -365,6 +386,7 @@ def test_plate_card_image_icon_navigation(
         'button[id*="\\"type\\":\\"card-picker-next\\""]:not([disabled])',
         timeout=15_000,
     )
+    _wait_for_first_card_picker_options(page)
 
     assert _first_card_picker_value(page) is None
     _click_first_card_nav(page, "next")
@@ -473,7 +495,7 @@ def test_aggregator_semantics(
     """Switching ``mean`` -> ``max`` changes a cell's aggregated value.
 
     Spec line 1223. We rewrite the master frame so two rows share
-    ``(Grid_RowNum=2, Grid_ColNum=3, Metadata_Time=4)`` with different
+    ``(Grid_RowNum=2, Grid_ColNum=3, time=4)`` with different
     ``Size_Area`` values. Mean and max should disagree.
     """
     # Two rows sharing a bin so the aggregator's choice matters.
@@ -485,9 +507,9 @@ def test_aggregator_semantics(
                 label += 1
                 rows.append(
                     {
-                        "Metadata_Dataset": "ds1",
+                        _DATASET_COLUMN: "ds1",
                         str(METADATA.IMAGE_NAME): image,
-                        "Metadata_Time": 4.0,
+                        _TIME_COLUMN: 4.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,
@@ -499,9 +521,9 @@ def test_aggregator_semantics(
     label += 1
     rows.append(
         {
-            "Metadata_Dataset": "ds1",
+            _DATASET_COLUMN: "ds1",
             str(METADATA.IMAGE_NAME): _IMAGES[0],
-            "Metadata_Time": 4.0,
+            _TIME_COLUMN: 4.0,
             "Object_Label": label,
             "Grid_RowNum": 2,
             "Grid_ColNum": 3,
@@ -515,7 +537,7 @@ def test_aggregator_semantics(
     _navigate_to_heatmap_tab(page, hub_url)
     page.wait_for_selector("#heatmap-aggregator-picker", timeout=10_000)
 
-    # The color-picker defaults to ``Metadata_Dataset`` (first option),
+    # The color-picker defaults to the canonical dataset column (first option),
     # which is a string column that won't aggregate. Switch to
     # ``Size_Area`` so the heatmap holds numeric cells.
     _dash_dropdown_pick(page, "heatmap-color-picker", "Size_Area")
@@ -653,7 +675,13 @@ def test_colony_tile_size_icon_stepper(
 
     page.locator("#colony-tile-size-plus").click()
     page.wait_for_function(
-        "() => document.querySelector('#colony-tile-size-readout').textContent === '166 px'",
+        "() => {"
+        "  const readout = document.querySelector('#colony-tile-size-readout');"
+        "  const tile = document.querySelector('.colony-cell-img');"
+        "  return readout && tile"
+        "    && readout.textContent === '166 px'"
+        "    && tile.getBoundingClientRect().width === 166;"
+        "}",
         timeout=10_000,
     )
     larger_width = page.evaluate(
@@ -663,7 +691,13 @@ def test_colony_tile_size_icon_stepper(
 
     page.locator("#colony-tile-size-minus").click()
     page.wait_for_function(
-        "() => document.querySelector('#colony-tile-size-readout').textContent === '150 px'",
+        "() => {"
+        "  const readout = document.querySelector('#colony-tile-size-readout');"
+        "  const tile = document.querySelector('.colony-cell-img');"
+        "  return readout && tile"
+        "    && readout.textContent === '150 px'"
+        "    && tile.getBoundingClientRect().width === 150;"
+        "}",
         timeout=10_000,
     )
     restored_width = page.evaluate(
@@ -675,7 +709,7 @@ def test_colony_tile_size_icon_stepper(
 @pytest.mark.parametrize(
     "df_factory,visible_expected,caption_expected",
     [
-        # Single-tp hidden: all rows share a single Metadata_Time.
+        # Single-tp hidden: all rows share a single canonical time value.
         pytest.param(
             _default_master_df,
             False,
@@ -687,9 +721,9 @@ def test_colony_tile_size_icon_stepper(
             lambda: pl.DataFrame(
                 [
                     {
-                        "Metadata_Dataset": "ds1",
-                        str(METADATA.IMAGE_NAME): _IMAGES[0],
-                        "Metadata_Time": t,
+                            _DATASET_COLUMN: "ds1",
+                            str(METADATA.IMAGE_NAME): _IMAGES[0],
+                            _TIME_COLUMN: t,
                         "Object_Label": idx,
                         "Grid_RowNum": 1,
                         "Grid_ColNum": 1,
@@ -734,7 +768,7 @@ def test_time_slider_visibility(
         assert display == "none", f"Time slider should be hidden; got {display!r}"
 
     # When the slider is visible, the non-numeric caption should match
-    # the expected payload (empty for fully-numeric Metadata_Time
+    # the expected payload (empty for a fully numeric time column
     # values; populated when some rows fail coercion).
     caption = (
         page.locator("#heatmap-time-non-numeric-caption").text_content() or ""
@@ -857,9 +891,9 @@ def test_removed_cells_visually_distinct(
         """
     )
     assert scatter_color is not None, "Scatter overlay trace missing"
-    # COLOR_MUTED is `#8892a4` per gui/_design.py — accept any hex case.
-    assert scatter_color.lower() == "#8892a4", (
-        f"Removed-cell marker color expected COLOR_MUTED (#8892a4); "
+    # Removed/excluded cells use the shared vermilion failure color.
+    assert scatter_color.lower() == OI_VERMILION.lower(), (
+        f"Removed-cell marker color expected OI_VERMILION ({OI_VERMILION}); "
         f"got {scatter_color!r}"
     )
 
@@ -870,9 +904,9 @@ def _no_grid_df_factory() -> pl.DataFrame:
     return pl.DataFrame(
         [
             {
-                "Metadata_Dataset": "ds1",
+                _DATASET_COLUMN: "ds1",
                 str(METADATA.IMAGE_NAME): _IMAGES[0],
-                "Metadata_Time": 0.0,
+                _TIME_COLUMN: 0.0,
                 "Object_Label": idx,
                 "Size_Area": 100.0 + idx,
             }
