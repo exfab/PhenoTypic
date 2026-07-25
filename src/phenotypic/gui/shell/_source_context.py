@@ -21,7 +21,11 @@ from pathlib import Path
 from typing import Literal, TypeAlias, TypedDict
 
 from phenotypic.gui.shell._classifier import classify
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.gui.shell._sandbox import (
+    SandboxRoot,
+    _is_safe_relative_path,
+    _v1_selection_matches_sandbox,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -313,28 +317,6 @@ def _resolve_current_source_path(
         path=resolved,
         payload_version=payload_version,
     )
-
-
-def _is_safe_relative_path(value: object) -> bool:
-    if not isinstance(value, str) or not value:
-        return False
-    path = Path(value)
-    return not path.is_absolute() and ".." not in path.parts
-
-
-def _v1_selection_matches_sandbox(
-    sandbox: SandboxRoot,
-    *,
-    raw_path: str,
-    relative_path: str,
-) -> bool:
-    """Require V1 absolute and relative fields to name the exact same path."""
-    try:
-        absolute = Path(raw_path).expanduser().resolve(strict=False)
-        relative = sandbox.resolve(relative_path)
-    except (OSError, RuntimeError, ValueError):
-        return False
-    return absolute == relative
 
 
 def _legacy_source_label(payload: object) -> str:

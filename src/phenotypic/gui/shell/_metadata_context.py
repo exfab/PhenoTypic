@@ -14,7 +14,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal, TypeAlias, TypedDict
 
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.gui.shell._sandbox import (
+    SandboxRoot,
+    _is_safe_relative_path,
+    _v1_selection_matches_sandbox,
+)
 from phenotypic.gui.shell._source_context import sandbox_fingerprint
 from phenotypic.schema import METADATA
 
@@ -373,27 +377,6 @@ def _resolve_candidate_csv(sandbox: SandboxRoot, path: Path | str) -> Path | Non
         logger.warning("metadata CSV resolved outside sandbox: %s", resolved)
         return None
     return resolved
-
-
-def _is_safe_relative_path(value: object) -> bool:
-    if not isinstance(value, str) or not value:
-        return False
-    path = Path(value)
-    return not path.is_absolute() and ".." not in path.parts
-
-
-def _v1_selection_matches_sandbox(
-    sandbox: SandboxRoot,
-    *,
-    raw_path: str,
-    relative_path: str,
-) -> bool:
-    try:
-        absolute = Path(raw_path).expanduser().resolve(strict=False)
-        relative = sandbox.resolve(relative_path)
-    except (OSError, RuntimeError, ValueError):
-        return False
-    return absolute == relative
 
 
 def _legacy_metadata_csv_label(payload: object) -> str:

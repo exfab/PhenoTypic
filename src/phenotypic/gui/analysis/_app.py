@@ -45,6 +45,7 @@ from phenotypic.gui._design import (
     inject_design_tokens,
 )
 from phenotypic.gui._shared import register_shared_static
+from phenotypic.gui._snapshot_status import snapshot_refresh_status
 from phenotypic.gui._url_prefix import (
     configure_url_prefix_routing,
     dash_index_string_with_app_prefix,
@@ -217,35 +218,10 @@ def _register_snapshot_refresh_callbacks(
         Input(analysis_ids.ANALYSIS_SNAPSHOT_INTERVAL, "n_intervals"),
     )
     def _snapshot_status(_n_intervals: int) -> tuple[str, str, bool]:
-        if not refresh_supported:
-            if output_root.active_run_is_currently_running():
-                return (
-                    "Active run detected · restart app after it finishes",
-                    "warning",
-                    True,
-                )
-            if output_root.snapshot.active_run:
-                return "Run finished · restart standalone app", "info", True
-            current = (
-                output_root.snapshot_is_current()
-                and output_root.refresh_state_is_current()
-            )
-            if current:
-                return "Current · restart app to refresh", "success", True
-            return "Changed on disk · restart standalone app", "danger", True
-        if output_root.active_run_is_currently_running():
-            if output_root.snapshot.active_run:
-                return "Active run snapshot", "warning", True
-            return "Active run detected · refresh snapshot", "warning", False
-        if output_root.snapshot.active_run:
-            return "Run finished · refresh snapshot", "info", False
-        current = (
-            output_root.snapshot_is_current()
-            and output_root.refresh_state_is_current()
+        return snapshot_refresh_status(
+            output_root,
+            refresh_supported=refresh_supported,
         )
-        if current:
-            return "Current", "success", False
-        return "Changed on disk", "danger", False
 
     if not refresh_supported:
         return

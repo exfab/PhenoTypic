@@ -167,6 +167,11 @@ def install_binding_generation_guard(
     app.server.config[CFG_BINDING_GENERATION] = generation
     request_fence = fence if fence is not None else BindingRequestFence()
 
+    def _leave_request_fence_if_entered() -> None:
+        if getattr(g, _FENCE_G_KEY, False):
+            setattr(g, _FENCE_G_KEY, False)
+            request_fence.leave()
+
     @app.server.before_request
     def _reject_stale_binding_callback() -> Any:
         if request.path.rstrip("/") != _DASH_CALLBACK_PATH:
@@ -209,13 +214,9 @@ def install_binding_generation_guard(
 
     @app.server.after_request
     def _leave_binding_callback(response: Any) -> Any:
-        if getattr(g, _FENCE_G_KEY, False):
-            setattr(g, _FENCE_G_KEY, False)
-            request_fence.leave()
+        _leave_request_fence_if_entered()
         return response
 
     @app.server.teardown_request
     def _leave_failed_binding_callback(_error: BaseException | None) -> None:
-        if getattr(g, _FENCE_G_KEY, False):
-            setattr(g, _FENCE_G_KEY, False)
-            request_fence.leave()
+        _leave_request_fence_if_entered()

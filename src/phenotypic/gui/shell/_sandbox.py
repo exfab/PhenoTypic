@@ -25,6 +25,29 @@ from typing import Iterator
 __all__ = ["SandboxRoot"]
 
 
+def _is_safe_relative_path(value: object) -> bool:
+    """Return whether *value* is a non-empty traversal-free relative path."""
+    if not isinstance(value, str) or not value:
+        return False
+    path = Path(value)
+    return not path.is_absolute() and ".." not in path.parts
+
+
+def _v1_selection_matches_sandbox(
+    sandbox: "SandboxRoot",
+    *,
+    raw_path: str,
+    relative_path: str,
+) -> bool:
+    """Require V1 absolute and relative fields to name the exact same path."""
+    try:
+        absolute = Path(raw_path).expanduser().resolve(strict=False)
+        relative = sandbox.resolve(relative_path)
+    except (OSError, RuntimeError, ValueError):
+        return False
+    return absolute == relative
+
+
 @dataclass(frozen=True)
 class SandboxRoot:
     """Frozen-at-launch sandbox containment primitive.

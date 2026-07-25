@@ -16,7 +16,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypeGuard
 
 import pandas as pd
 import polars as pl
@@ -57,6 +57,15 @@ _SOURCE_NAMES: tuple[str, ...] = (
     "qc_database",
     "review_state",
 )
+
+
+def _is_lower_hex(value: object, *, length: int) -> TypeGuard[str]:
+    """Return whether *value* is exact-length lower-case hexadecimal text."""
+    return (
+        isinstance(value, str)
+        and len(value) == length
+        and all(character in "0123456789abcdef" for character in value)
+    )
 
 
 class ErrorPublicationConflict(RuntimeError):
@@ -468,15 +477,8 @@ def recover_error_publication(layout: "BundleLayout") -> bool:
     targets = payload.get("targets")
     existing = payload.get("existing")
     if (
-        not isinstance(token, str)
-        or len(token) != 32
-        or any(character not in "0123456789abcdef" for character in token)
-        or not isinstance(generation, str)
-        or len(generation) != 64
-        or any(
-            character not in "0123456789abcdef"
-            for character in generation
-        )
+        not _is_lower_hex(token, length=32)
+        or not _is_lower_hex(generation, length=64)
         or not isinstance(targets, list)
         or not all(isinstance(name, str) for name in targets)
         or not isinstance(existing, list)
@@ -714,9 +716,7 @@ def _validate_canonical_generation(
         receipt_fields != expected_receipt_fields
         or receipt.get("schema_version") != 1
         or good_mode not in ("all_unlabeled", "verified")
-        or not isinstance(generation, str)
-        or len(generation) != 64
-        or any(character not in "0123456789abcdef" for character in generation)
+        or not _is_lower_hex(generation, length=64)
         or not isinstance(sources, dict)
         or set(sources) != set(_SOURCE_NAMES)
         or not all(
@@ -913,9 +913,7 @@ def _is_restore_temporary(name: str, targets: set[str]) -> bool:
         suffix = ".restore"
         if name.startswith(prefix) and name.endswith(suffix):
             token = name[len(prefix) : -len(suffix)]
-            return len(token) == 32 and all(
-                character in "0123456789abcdef" for character in token
-            )
+            return _is_lower_hex(token, length=32)
     return False
 
 
@@ -941,8 +939,7 @@ def _sweep_orphan_generations(base: Path) -> None:
         token = candidate.name
         if (
             candidate.is_dir()
-            and len(token) == 32
-            and all(character in "0123456789abcdef" for character in token)
+            and _is_lower_hex(token, length=32)
         ):
             shutil.rmtree(candidate, ignore_errors=True)
     _remove_empty_generations_dir(base)
