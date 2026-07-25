@@ -519,7 +519,7 @@ def recover_error_publication(layout: "BundleLayout") -> bool:
             actual_backups.add(entry.name)
         elif entry.is_file() and _is_restore_temporary(
             entry.name,
-            target_set,
+            existing_set,
         ):
             continue
         else:

@@ -425,6 +425,11 @@ def test_corrupt_journal_never_sweeps_recovery_backups(
     [
         ("empty", [], ["error_analysis.csv"]),
         ("exact", [], ["error_analysis.csv"]),
+        (
+            "exact",
+            [],
+            [f".error_analysis.csv.{'f' * 32}.restore"],
+        ),
         ("exact", ["error_analysis.csv"], []),
         (
             "exact",
