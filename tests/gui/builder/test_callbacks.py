@@ -16,6 +16,7 @@ from phenotypic.gui.builder import _ids as ids
 from phenotypic.gui.builder._callbacks import (
     _dispatch_state_update,
     _pipeline_revision,
+    _preview_status_presentation,
 )
 from phenotypic.gui.builder._app import create_app
 from phenotypic.gui.builder._state import (
@@ -68,6 +69,28 @@ def test_pipeline_revision_changes_for_parameter_edit() -> None:
     edited["root"]["nodes"][0]["params"]["sigma"] = 2.0
 
     assert _pipeline_revision(edited) != _pipeline_revision(state)
+
+
+def test_preview_error_becomes_stale_after_semantic_edit() -> None:
+    """An error from an older pipeline revision cannot remain authoritative."""
+
+    state = _seed_state()
+    status = {
+        "state": "error",
+        "message": "ValueError: invalid sigma",
+        "pipeline_revision": _pipeline_revision(state),
+    }
+    assert _preview_status_presentation(status, state) == (
+        "ValueError: invalid sigma",
+        "small text-danger mt-2",
+    )
+
+    edited = deepcopy(state)
+    edited["root"]["nodes"][0]["params"]["sigma"] = 2.0
+    assert _preview_status_presentation(status, edited) == (
+        "Preview stale - run again",
+        "small text-warning mt-2",
+    )
 
 
 def test_render_views_returns_breadcrumb_children_not_nested_nav() -> None:
