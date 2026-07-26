@@ -1438,6 +1438,29 @@ def _linear_param_info(
     return info.parameters.get(param)
 
 
+def _linear_replacement_param_info(
+    scope_dict: Dict[str, Any],
+    target: LinearTarget,
+) -> Optional[Any]:
+    """Return parameter metadata when a replacement target has exact shape."""
+
+    if target.block_id is None or target.param is None:
+        return None
+    consumer = _linear_block(scope_dict, target.block_id)
+    if consumer is None:
+        return None
+    param_info = _linear_param_info(consumer, target.param)
+    if param_info is None:
+        return None
+    is_list = bool(getattr(param_info, "is_list", False))
+    if is_list:
+        if target.kind != "parameter_slot" or target.slot is None:
+            return None
+    elif target.kind != "parameter" or target.slot is not None:
+        return None
+    return param_info
+
+
 def _linear_class_can_fill_param(class_name: str, param_info: Any) -> bool:
     """Return whether ``class_name`` can be used as a parameter value."""
 
@@ -2291,6 +2314,14 @@ def _dispatch_state_update(
             )
             out["pending_aux_replacement"] = None
             return out
+        if _linear_replacement_param_info(linear_scope, target) is None:
+            _queue_toast(
+                out,
+                "Replacement target shape is invalid. Select Replace again.",
+                kind="warning",
+            )
+            out["pending_aux_replacement"] = None
+            return out
         current_sources = {
             edge.get("source_block_id")
             for edge in _linear_edges_for_param(
@@ -2332,7 +2363,6 @@ def _dispatch_state_update(
         _seed_input_image_dict(linear_scope)
         pending_replacement = out.get("pending_aux_replacement")
         if isinstance(pending_replacement, dict):
-            out["pending_aux_replacement"] = None
             target = target_from_dict(
                 pending_replacement.get("target", {}),
                 scope_path,
@@ -2349,9 +2379,23 @@ def _dispatch_state_update(
                 or target.block_id is None
                 or target.param is None
             ):
+                out["pending_aux_replacement"] = None
                 _queue_toast(
                     out,
                     "Replacement target is stale. Select Replace again.",
+                    kind="warning",
+                )
+                _linear_reset_target_to_continuation(out, scope_path)
+                return out
+            param_info = _linear_replacement_param_info(
+                linear_scope,
+                target,
+            )
+            if param_info is None:
+                out["pending_aux_replacement"] = None
+                _queue_toast(
+                    out,
+                    "Replacement target shape changed. Select Replace again.",
                     kind="warning",
                 )
                 _linear_reset_target_to_continuation(out, scope_path)
@@ -2366,6 +2410,7 @@ def _dispatch_state_update(
                 )
             }
             if current_sources != {expected_source}:
+                out["pending_aux_replacement"] = None
                 _queue_toast(
                     out,
                     "Replacement target changed. Select Replace again.",
@@ -2373,6 +2418,14 @@ def _dispatch_state_update(
                 )
                 _linear_reset_target_to_continuation(out, scope_path)
                 return out
+            if not _linear_class_can_fill_param(class_name, param_info):
+                _queue_toast(
+                    out,
+                    "Selected target does not accept that operation.",
+                    kind="warning",
+                )
+                return out
+            out["pending_aux_replacement"] = None
             replacement_id = _linear_fill_parameter(
                 out,
                 linear_scope,
