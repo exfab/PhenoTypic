@@ -30,6 +30,32 @@ def __getattr__(name: str) -> Any:
         )
 
         return launch_results_viewer
+    if name in {
+        "OutputDiscoveryCancellation",
+        "OutputDiscoveryCancelledError",
+        "OutputDiscoveryProgress",
+    }:
+        from phenotypic.gui.results_viewer import _discovery_contracts
+
+        return getattr(_discovery_contracts, name)
+    if name == "OutputConsistencyReport":
+        from phenotypic.gui.results_viewer._output_consistency import (
+            OutputConsistencyReport,
+        )
+
+        return OutputConsistencyReport
+    if name == "OutputRoot":
+        from phenotypic.gui.results_viewer._output_root import OutputRoot
+
+        return OutputRoot
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-__all__ = ["create_app", "launch_results_viewer"]
+__all__ = [
+    "OutputConsistencyReport",
+    "OutputDiscoveryCancellation",
+    "OutputDiscoveryCancelledError",
+    "OutputDiscoveryProgress",
+    "OutputRoot",
+    "create_app",
+    "launch_results_viewer",
+]

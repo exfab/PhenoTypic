@@ -8,12 +8,13 @@ small set of helpers used by the rest of the viewer package.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
 import sys
-from collections.abc import Mapping
-from dataclasses import dataclass
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -27,13 +28,27 @@ from phenotypic.gui.results_viewer._filtered_state import (
     KEY_DATASET,
     KEY_IMAGE_FILE,
 )
+from phenotypic.gui.results_viewer._discovery_contracts import (
+    OutputDiscoveryCancellation,
+    OutputDiscoveryProgress,
+    OutputDiscoveryProgressCallback,
+    report_discovery_progress,
+)
+from phenotypic.gui.results_viewer._output_consistency import (
+    OutputConsistencyReport,
+    inspect_output_consistency,
+)
+from phenotypic.gui.results_viewer._processing_inventory import (
+    ProcessingInventory,
+    inventory_is_current,
+    load_or_scan_processing_inventory,
+)
 from phenotypic.gui.shell._runs_registry import run_status_is_nonterminal
 from phenotypic.sdk_ import (
     DIR_OVERLAYS,
     BundleLayout,
     gui_launch_owner_path,
     is_metadata_header,
-    paths_fingerprint,
     source_cache_key,
 )
 
@@ -62,9 +77,11 @@ class OutputSnapshotChangedError(RuntimeError):
 class OutputSnapshotDescriptor:
     """Fingerprints that define one coherent Results binding.
 
-    ``processing_fingerprint`` covers immutable processing products used to
-    render image content. It is the cache identity and the only fingerprint
-    that can invalidate an already-bound tile request.
+    ``processing_fingerprint`` covers the path, type, size, mtime, and ctime
+    inventory of immutable processing products used to render image content.
+    It is the cache identity and the only fingerprint that can invalidate an
+    already-bound tile request. Coherent terminal products are assumed not to
+    be modified while preserving all of those metadata fields.
 
     ``consumed_state_fingerprint`` covers mutable state read while constructing
     the Results and Analysis sessions: the measurements mirror, pipeline
@@ -79,12 +96,15 @@ class OutputSnapshotDescriptor:
         captured_at: UTC time at which both fingerprints were verified.
         active_run: Whether a nonterminal GUI launch owner existed when the
             descriptor was captured.
+        processing_inventory_cache_hit: Whether discovery reused a verified
+            persistent processing inventory.
     """
 
     processing_fingerprint: str
     consumed_state_fingerprint: str
     captured_at: datetime
     active_run: bool
+    processing_inventory_cache_hit: bool = False
 
 
 @dataclass(frozen=True)
@@ -123,6 +143,10 @@ class OutputRoot:
             an explicit request.
         snapshot: Stable-processing and refresh-consumed fingerprints captured
             around the complete discovery read.
+        consistency: Pure completion-evidence classification. Contradictory,
+            active, and incomplete outputs remain discoverable but read-only.
+        processing_inventory: Verified path/type/size/mtime snapshot backing
+            ``processing_fingerprint``.
         pipeline_summary: One-line label parsed from
             ``<root>/deliverables/pipeline.json`` (typically the
             pipeline ``name``) or ``None`` if the file is absent or
@@ -136,6 +160,8 @@ class OutputRoot:
     column_value_sets: Mapping[str, list[str]]
     cache_dir: Path
     snapshot: OutputSnapshotDescriptor
+    consistency: OutputConsistencyReport
+    processing_inventory: ProcessingInventory
     pipeline_summary: str | None
     #: Snapshot of ``(dataset, stem)`` pairs that have an overlay PNG on
     #: disk at discovery time. Used as an O(1) replacement for the
@@ -149,6 +175,8 @@ class OutputRoot:
         root: Path,
         *,
         cache_root: Path,
+        cancellation: OutputDiscoveryCancellation | None = None,
+        progress_callback: OutputDiscoveryProgressCallback | None = None,
     ) -> OutputRoot:
         """Classify the on-disk topology and assemble an ``OutputRoot``.
 
@@ -170,6 +198,8 @@ class OutputRoot:
                 normally ``sandbox_viewer_cache_root(sandbox.root)``. The
                 directory is not created during discovery and must not be
                 inside the selected output.
+            cancellation: Optional thread-safe cooperative cancellation handle.
+            progress_callback: Optional callback receiving phase updates.
 
         Returns:
             A populated, frozen ``OutputRoot``.
@@ -184,13 +214,46 @@ class OutputRoot:
             OutputSnapshotChangedError: If two complete discovery attempts
                 both observe source files changing between pre/post checks.
         """
+        cancel = cancellation or OutputDiscoveryCancellation()
+        cancel.raise_if_cancelled()
+        report_discovery_progress(
+            progress_callback,
+            phase="classifying",
+            detail="Classifying output topology and completion evidence.",
+        )
         layout = BundleLayout.detect(Path(root))
+        source_root = (
+            layout.deliverables_base
+            if layout.output_root is None
+            else layout.output_root
+        )
+        # Validate the external owner before any persistent cache write.
+        _external_cache_dir(
+            source_root,
+            source_fingerprint="validation",
+            cache_root=cache_root,
+        )
+        consistency = inspect_output_consistency(layout)
         last_change: OutputSnapshotChangedError | None = None
         for attempt in range(_SNAPSHOT_READ_ATTEMPTS):
+            cancel.raise_if_cancelled()
+            attempt_callback = _progress_callback_for_attempt(
+                progress_callback,
+                attempt=attempt + 1,
+            )
+            if attempt > 0:
+                report_discovery_progress(
+                    attempt_callback,
+                    phase="classifying",
+                    detail="Retrying after the output changed during discovery.",
+                )
             try:
                 return cls._discover_snapshot(
                     layout,
                     cache_root=cache_root,
+                    consistency=consistency,
+                    cancellation=cancel,
+                    progress_callback=attempt_callback,
                 )
             except OutputSnapshotChangedError as exc:
                 last_change = exc
@@ -204,6 +267,7 @@ class OutputRoot:
                 logger.info(
                     "Output changed during discovery; retrying one complete read."
                 )
+                consistency = inspect_output_consistency(layout)
         raise AssertionError("snapshot retry loop did not return or raise")
 
     @classmethod
@@ -212,6 +276,9 @@ class OutputRoot:
         layout: BundleLayout,
         *,
         cache_root: Path,
+        consistency: OutputConsistencyReport,
+        cancellation: OutputDiscoveryCancellation,
+        progress_callback: OutputDiscoveryProgressCallback | None,
     ) -> OutputRoot:
         """Read and verify one complete source snapshot."""
         source_root = (
@@ -219,14 +286,26 @@ class OutputRoot:
             if layout.output_root is None
             else layout.output_root
         )
+        cancellation.raise_if_cancelled()
         try:
-            source_fingerprint, consumed_state_fingerprint = (
-                _snapshot_fingerprints(layout, source_root=source_root)
+            consumed_state_fingerprint = _consumed_state_fingerprint(
+                layout,
+                source_root=source_root,
+                cancellation=cancellation,
             )
         except OSError as exc:
             raise OutputSnapshotChangedError(
                 "Output changed while the pre-read fingerprint was captured."
             ) from exc
+        inventory = load_or_scan_processing_inventory(
+            layout,
+            source_root=source_root,
+            cache_root=cache_root,
+            consistency=consistency,
+            cancellation=cancellation,
+            progress=progress_callback,
+        )
+        source_fingerprint = inventory.fingerprint
 
         master_path = layout.master_parquet
         if not master_path.is_file():
@@ -243,6 +322,12 @@ class OutputRoot:
         # curated mirror removes — read so curation re-keying + the Error tab
         # keep labels resolvable across a viewer reload. Falls back to master
         # mid-run / on legacy outputs without the mirror.
+        report_discovery_progress(
+            progress_callback,
+            phase="measurements",
+            detail="Loading clean and post-applied measurements.",
+        )
+        cancellation.raise_if_cancelled()
         clean_master_df = pl.read_parquet(master_path)
 
         mirror_path = layout.mirror_parquet
@@ -292,19 +377,39 @@ class OutputRoot:
                 datasets,
             )
 
+        report_discovery_progress(
+            progress_callback,
+            phase="indexing",
+            detail="Building filter and overlay indexes.",
+        )
+        cancellation.raise_if_cancelled()
         column_value_sets = _build_column_value_sets(master_df)
 
         pipeline_summary = _read_pipeline_summary(layout.pipeline_config_path)
         overlay_index = _scan_overlay_index(layout, datasets_with_overlays)
+        report_discovery_progress(
+            progress_callback,
+            phase="verifying",
+            detail="Verifying one coherent output revision.",
+            cache_hit=inventory.cache_hit,
+        )
+        cancellation.raise_if_cancelled()
         try:
-            verified_fingerprint, verified_consumed_state = (
-                _snapshot_fingerprints(layout, source_root=source_root)
+            verified_consumed_state = _consumed_state_fingerprint(
+                layout,
+                source_root=source_root,
+                cancellation=cancellation,
             )
         except OSError as exc:
             raise OutputSnapshotChangedError(
                 "Output changed while the post-read fingerprint was captured."
             ) from exc
-        if verified_fingerprint != source_fingerprint:
+        if not inventory_is_current(
+            inventory,
+            source_root=source_root,
+            cancellation=cancellation,
+            progress=progress_callback,
+        ):
             raise OutputSnapshotChangedError(
                 "Output changed during discovery; refresh after the writer settles."
             )
@@ -312,19 +417,28 @@ class OutputRoot:
             raise OutputSnapshotChangedError(
                 "Viewer state changed during discovery; refresh after the writer settles."
             )
+        verified_consistency = inspect_output_consistency(layout)
+        if verified_consistency.evidence_fingerprint != (
+            consistency.evidence_fingerprint
+        ):
+            raise OutputSnapshotChangedError(
+                "Completion evidence changed during discovery; refresh after "
+                "the writer settles."
+            )
         cache_dir = _external_cache_dir(
             source_root,
-            source_fingerprint=verified_fingerprint,
+            source_fingerprint=source_fingerprint,
             cache_root=cache_root,
         )
         snapshot = OutputSnapshotDescriptor(
-            processing_fingerprint=verified_fingerprint,
+            processing_fingerprint=source_fingerprint,
             consumed_state_fingerprint=verified_consumed_state,
             captured_at=datetime.now(timezone.utc),
-            active_run=_active_run_snapshot(layout),
+            active_run=consistency.has_active_owner,
+            processing_inventory_cache_hit=inventory.cache_hit,
         )
 
-        return cls(
+        output = cls(
             root=source_root,
             layout=layout,
             master_df=master_df,
@@ -332,9 +446,18 @@ class OutputRoot:
             column_value_sets=column_value_sets,
             cache_dir=cache_dir,
             snapshot=snapshot,
+            consistency=consistency,
+            processing_inventory=inventory,
             pipeline_summary=pipeline_summary,
             overlay_index=overlay_index,
         )
+        report_discovery_progress(
+            progress_callback,
+            phase="complete",
+            detail="Output discovery complete.",
+            cache_hit=inventory.cache_hit,
+        )
+        return output
 
     @property
     def has_results(self) -> bool:
@@ -376,20 +499,22 @@ class OutputRoot:
         responses within the same session.
         """
         try:
-            current = paths_fingerprint(
-                _processing_snapshot_paths(self.layout),
-                root=self.root,
+            return inventory_is_current(
+                self.processing_inventory,
+                source_root=self.root,
+                cancellation=OutputDiscoveryCancellation(),
+                progress=None,
             )
         except OSError:
             return False
-        return current == self.source_fingerprint
 
     def refresh_state_is_current(self) -> bool:
         """Return whether an explicit Refresh would consume the same state."""
         try:
-            current = paths_fingerprint(
-                _consumed_state_snapshot_paths(self.layout),
-                root=self.root,
+            current = _consumed_state_fingerprint(
+                self.layout,
+                source_root=self.root,
+                cancellation=OutputDiscoveryCancellation(),
             )
         except OSError:
             return False
@@ -400,10 +525,15 @@ class OutputRoot:
         return _active_run_snapshot(self.layout)
 
     def mutation_snapshot_is_safe(self) -> bool:
-        """Return whether mutations still target this processing generation.
+        """Return whether this processing generation is stable and inactive.
 
         GUI-owned consumed state can advance within a session. Its individual
         writers retain their own mtime/fingerprint CAS guards.
+
+        This is not a complete mutation authorization predicate. Wave O4 must
+        additionally require ``not output_root.consistency.is_read_only`` at
+        every mutation seam. Keeping the predicates separate lets O2 bind and
+        display contradictory outputs without authorizing writes.
         """
         return (
             not self.active_run_is_currently_running()
@@ -518,6 +648,21 @@ class OutputRoot:
         return _all_parse_as_float(self.column_value_sets.get(column, []))
 
 
+def _progress_callback_for_attempt(
+    callback: OutputDiscoveryProgressCallback | None,
+    *,
+    attempt: int,
+) -> OutputDiscoveryProgressCallback | None:
+    """Stamp nested discovery progress with its stable-read attempt."""
+    if callback is None:
+        return None
+
+    def _report(update: OutputDiscoveryProgress) -> None:
+        callback(replace(update, attempt=attempt))
+
+    return _report
+
+
 def _external_cache_dir(
     source_root: Path,
     *,
@@ -577,22 +722,58 @@ def user_viewer_cache_root() -> Path:
     return base / "phenotypic" / "gui" / _EXTERNAL_VIEWER_CACHE_SUBDIR
 
 
-def _snapshot_fingerprints(
+def _consumed_state_fingerprint(
     layout: BundleLayout,
     *,
     source_root: Path,
-) -> tuple[str, str]:
-    """Capture stable-processing and refresh-consumed fingerprints."""
-    return (
-        paths_fingerprint(
-            _processing_snapshot_paths(layout),
-            root=source_root,
-        ),
-        paths_fingerprint(
-            _consumed_state_snapshot_paths(layout),
-            root=source_root,
-        ),
+    cancellation: OutputDiscoveryCancellation,
+) -> str:
+    """Capture mutable consumed state freshly with cooperative cancellation."""
+    return _cancellable_paths_fingerprint(
+        _consumed_state_snapshot_paths(layout),
+        root=source_root,
+        cancellation=cancellation,
     )
+
+
+def _cancellable_paths_fingerprint(
+    paths: Iterable[Path],
+    *,
+    root: Path,
+    cancellation: OutputDiscoveryCancellation,
+) -> str:
+    """Fingerprint named entries while checking cancellation between chunks."""
+    anchor = Path(root).resolve()
+    named_paths: list[tuple[str, Path]] = []
+    for raw_path in paths:
+        cancellation.raise_if_cancelled()
+        path = Path(raw_path)
+        resolved = path.resolve(strict=False)
+        try:
+            name = resolved.relative_to(anchor).as_posix()
+        except ValueError:
+            name = resolved.as_posix()
+        named_paths.append((name, path))
+
+    digest = hashlib.sha256()
+    for name, path in sorted(named_paths, key=lambda item: item[0]):
+        cancellation.raise_if_cancelled()
+        encoded_name = name.encode("utf-8")
+        digest.update(len(encoded_name).to_bytes(8, "big"))
+        digest.update(encoded_name)
+        if path.is_dir():
+            digest.update(b"\x02")
+            continue
+        if not path.is_file():
+            digest.update(b"\x00")
+            continue
+        digest.update(b"\x01")
+        digest.update(path.stat().st_size.to_bytes(8, "big"))
+        with path.open("rb") as handle:
+            while chunk := handle.read(1024 * 1024):
+                cancellation.raise_if_cancelled()
+                digest.update(chunk)
+    return f"sha256:{digest.hexdigest()}"
 
 
 def _active_run_snapshot(layout: BundleLayout) -> bool:

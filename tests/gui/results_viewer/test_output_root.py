@@ -329,26 +329,57 @@ def test_discover_retries_complete_read_after_snapshot_change(
     """A pre/post mismatch retries from the first source read."""
     _make_minimal_output(tmp_path)
     overlay = tmp_path / "deliverables" / "overlays" / "d1" / "a.png"
-    real_fingerprint = _output_root.paths_fingerprint
+    real_is_current = _output_root.inventory_is_current
     calls = 0
 
-    def _mutate_after_first_fingerprint(paths, *, root=None):
+    def _mutate_before_first_verification(
+        inventory,
+        *,
+        source_root,
+        cancellation,
+        progress,
+    ):
         nonlocal calls
-        result = real_fingerprint(paths, root=root)
         calls += 1
         if calls == 1:
             overlay.write_bytes(b"new-revision")
-        return result
+        return real_is_current(
+            inventory,
+            source_root=source_root,
+            cancellation=cancellation,
+            progress=progress,
+        )
 
     monkeypatch.setattr(
         _output_root,
-        "paths_fingerprint",
-        _mutate_after_first_fingerprint,
+        "inventory_is_current",
+        _mutate_before_first_verification,
     )
 
-    output = _discover(tmp_path)
+    updates = []
+    output = OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+        progress_callback=updates.append,
+    )
 
-    assert calls == 8
+    assert calls == 2
+    assert {update.attempt for update in updates} == {1, 2}
+    phase_rank = {
+        "classifying": 0,
+        "inventory": 1,
+        "measurements": 2,
+        "indexing": 3,
+        "verifying": 4,
+        "complete": 5,
+    }
+    for attempt in (1, 2):
+        ranks = [
+            phase_rank[update.phase]
+            for update in updates
+            if update.attempt == attempt
+        ]
+        assert ranks == sorted(ranks)
     assert output.snapshot_is_current() is True
 
 
@@ -404,26 +435,35 @@ def test_discover_retries_when_consumed_state_changes_during_read(
     )
     review_state.parent.mkdir(parents=True)
     review_state.write_text('{"revision": 1}', encoding="utf-8")
-    real_fingerprint = _output_root.paths_fingerprint
+    real_fingerprint = _output_root._cancellable_paths_fingerprint
     calls = 0
 
-    def _mutate_after_first_consumed_fingerprint(paths, *, root=None):
+    def _mutate_after_first_consumed_fingerprint(
+        paths,
+        *,
+        root,
+        cancellation,
+    ):
         nonlocal calls
-        result = real_fingerprint(paths, root=root)
+        result = real_fingerprint(
+            paths,
+            root=root,
+            cancellation=cancellation,
+        )
         calls += 1
-        if calls == 2:
+        if calls == 1:
             review_state.write_text('{"revision": 2}', encoding="utf-8")
         return result
 
     monkeypatch.setattr(
         _output_root,
-        "paths_fingerprint",
+        "_cancellable_paths_fingerprint",
         _mutate_after_first_consumed_fingerprint,
     )
 
     output = _discover(tmp_path)
 
-    assert calls == 8
+    assert calls == 4
     assert output.snapshot_is_current() is True
     assert output.refresh_state_is_current() is True
 
@@ -435,20 +475,30 @@ def test_discover_refuses_continuously_changing_snapshot(
     """Two unstable pre/post reads fail instead of binding mixed generations."""
     _make_minimal_output(tmp_path)
     overlay = tmp_path / "deliverables" / "overlays" / "d1" / "a.png"
-    real_fingerprint = _output_root.paths_fingerprint
+    real_is_current = _output_root.inventory_is_current
     revision = 0
 
-    def _mutate_after_every_fingerprint(paths, *, root=None):
+    def _mutate_before_every_verification(
+        inventory,
+        *,
+        source_root,
+        cancellation,
+        progress,
+    ):
         nonlocal revision
-        result = real_fingerprint(paths, root=root)
         revision += 1
         overlay.write_bytes(f"revision-{revision}".encode())
-        return result
+        return real_is_current(
+            inventory,
+            source_root=source_root,
+            cancellation=cancellation,
+            progress=progress,
+        )
 
     monkeypatch.setattr(
         _output_root,
-        "paths_fingerprint",
-        _mutate_after_every_fingerprint,
+        "inventory_is_current",
+        _mutate_before_every_verification,
     )
 
     with pytest.raises(OutputSnapshotChangedError):
