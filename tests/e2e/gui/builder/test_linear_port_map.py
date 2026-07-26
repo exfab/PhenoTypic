@@ -387,6 +387,35 @@ def test_new_pipeline_side_target_drills_and_breadcrumb_returns(
     expect(page.locator(".linear-side-value-label")).to_have_text("ImagePipeline")
 
 
+def test_scalar_aux_replace_keeps_operation_off_main_spine(
+    page: Page,
+    hub_url: str,
+) -> None:
+    """Replace consumes the exact scalar side target across a palette click."""
+
+    _open_builder(page, hub_url)
+    _click_palette_button(page, "FilamentousFungiDetector")
+    page.locator("#btn-inspector-slideover-toggle").click()
+    page.locator(
+        'button.linear-side-param-port[aria-label="Fill inoculum_detector"]'
+    ).click()
+    page.get_by_role("button", name="OtsuDetector", exact=True).click()
+    expect(page.locator(".linear-side-value-label")).to_have_text("OtsuDetector")
+    assert _linear_node_titles(page) == [
+        "InputImage",
+        "FilamentousFungiDetector",
+    ]
+
+    page.get_by_role("button", name="Replace", exact=True).click()
+    page.get_by_role("button", name="MeanDetector", exact=True).click()
+
+    expect(page.locator(".linear-side-value-label")).to_have_text("MeanDetector")
+    assert _linear_node_titles(page) == [
+        "InputImage",
+        "FilamentousFungiDetector",
+    ]
+
+
 def test_retired_drag_and_wire_stores_are_inert(page: Page, hub_url: str) -> None:
     """Old drag/drop and wire stores remain mounted but do not mutate state."""
 

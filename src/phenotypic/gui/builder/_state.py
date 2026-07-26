@@ -237,6 +237,8 @@ class _DagBuilderState:
         pending_delete_block_id: Set by ``block_delete_request`` for
             non-empty containers; drives the confirm-delete modal's
             visibility.  Cleared on Confirm/Cancel.
+        pending_aux_replacement: Exact revision-bound parameter target
+            awaiting the next palette choice after the user selects Replace.
         toast_queue: FIFO queue of toast payloads (one visible at a
             time, 3000ms auto-dismiss).  Each entry is a free-form dict
             shaped by the callback that enqueued it; the Dash callback
@@ -252,6 +254,7 @@ class _DagBuilderState:
     )
     open_port_menu: Optional[Dict[str, Any]] = None
     pending_delete_block_id: Optional[str] = None
+    pending_aux_replacement: Optional[Dict[str, Any]] = None
     toast_queue: List[Dict[str, Any]] = field(default_factory=list)
 
 
@@ -1553,6 +1556,11 @@ def state_to_json(state: Any) -> Dict[str, Any]:
             ),
             "open_port_menu": getattr(state, "open_port_menu", None),
             "pending_delete_block_id": state.pending_delete_block_id,
+            "pending_aux_replacement": getattr(
+                state,
+                "pending_aux_replacement",
+                None,
+            ),
             "toast_queue": list(state.toast_queue),
         }
     if hasattr(state, "selected_node_id"):
@@ -1652,6 +1660,7 @@ def _state_from_json_dag(data: Dict[str, Any]) -> _DagBuilderState:
         selected_targets_by_scope=dict(data.get("selected_targets_by_scope") or {}),
         open_port_menu=data.get("open_port_menu"),
         pending_delete_block_id=data.get("pending_delete_block_id"),
+        pending_aux_replacement=data.get("pending_aux_replacement"),
         toast_queue=list(data.get("toast_queue") or []),
     )
     _heal_dag_scope_tree(state.root)

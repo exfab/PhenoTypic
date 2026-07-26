@@ -2063,6 +2063,7 @@ DispatchKind: TypeAlias = Literal[
     "target_select",
     "target_menu_close",
     "linear_palette_add",
+    "linear_aux_replace_begin",
     "linear_delete_node_request",
     "linear_delete_node_confirm",
     "linear_node_move",
@@ -2253,6 +2254,7 @@ def _dispatch_state_update(
             if isinstance(segment, str)
         ]
         target = target_from_dict(payload.get("target", payload), breadcrumb_list)
+        out["pending_aux_replacement"] = None
         _linear_set_target(
             out,
             target,
@@ -2262,6 +2264,57 @@ def _dispatch_state_update(
 
     if kind == "target_menu_close":
         out["open_port_menu"] = None
+        return out
+
+    if kind == "linear_aux_replace_begin":
+        if _linear_reject_unsupported_edit(out):
+            return out
+        scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        target = target_from_dict(payload.get("target", payload), scope_path)
+        expected_source = payload.get("source_block_id")
+        nonce = payload.get("nonce")
+        if (
+            target.kind not in {"parameter", "parameter_slot"}
+            or target.block_id is None
+            or target.param is None
+            or not isinstance(expected_source, str)
+            or not expected_source
+            or not isinstance(nonce, str)
+            or not nonce
+        ):
+            _queue_toast(
+                out,
+                "Replacement target is unavailable. Select Replace again.",
+                kind="warning",
+            )
+            out["pending_aux_replacement"] = None
+            return out
+        current_sources = {
+            edge.get("source_block_id")
+            for edge in _linear_edges_for_param(
+                linear_scope,
+                target.block_id,
+                target.param,
+                target.slot if target.kind == "parameter_slot" else None,
+            )
+        }
+        if current_sources != {expected_source}:
+            _queue_toast(
+                out,
+                "Replacement target changed. Select Replace again.",
+                kind="warning",
+            )
+            out["pending_aux_replacement"] = None
+            return out
+        _linear_set_target(out, target, open_menu=False)
+        out["pending_aux_replacement"] = {
+            "target": target_to_dict(target),
+            "source_block_id": expected_source,
+            "pipeline_revision": _pipeline_revision(out),
+            "nonce": nonce,
+        }
         return out
 
     if kind == "linear_palette_add":
@@ -2277,6 +2330,58 @@ def _dispatch_state_update(
         if linear_scope is None:
             return out
         _seed_input_image_dict(linear_scope)
+        pending_replacement = out.get("pending_aux_replacement")
+        if isinstance(pending_replacement, dict):
+            out["pending_aux_replacement"] = None
+            target = target_from_dict(
+                pending_replacement.get("target", {}),
+                scope_path,
+            )
+            expected_source = pending_replacement.get("source_block_id")
+            attempted_revision = pending_replacement.get("pipeline_revision")
+            nonce = pending_replacement.get("nonce")
+            if (
+                not isinstance(expected_source, str)
+                or not isinstance(nonce, str)
+                or not nonce
+                or attempted_revision != _pipeline_revision(out)
+                or target.scope_path != scope_path
+                or target.block_id is None
+                or target.param is None
+            ):
+                _queue_toast(
+                    out,
+                    "Replacement target is stale. Select Replace again.",
+                    kind="warning",
+                )
+                _linear_reset_target_to_continuation(out, scope_path)
+                return out
+            current_sources = {
+                edge.get("source_block_id")
+                for edge in _linear_edges_for_param(
+                    linear_scope,
+                    target.block_id,
+                    target.param,
+                    target.slot if target.kind == "parameter_slot" else None,
+                )
+            }
+            if current_sources != {expected_source}:
+                _queue_toast(
+                    out,
+                    "Replacement target changed. Select Replace again.",
+                    kind="warning",
+                )
+                _linear_reset_target_to_continuation(out, scope_path)
+                return out
+            replacement_id = _linear_fill_parameter(
+                out,
+                linear_scope,
+                target,
+                class_name,
+            )
+            if replacement_id is None:
+                _linear_reset_target_to_continuation(out, scope_path)
+            return out
         target = _linear_selected_target(out)
         if target.kind in {"continuation", "image_output", "image_input"}:
             _linear_insert_spine_block(out, linear_scope, target, class_name)
@@ -3895,11 +4000,16 @@ def register_callbacks(app: dash.Dash) -> None:
                     if action == "replace":
                         new_state_dict = _dispatch_state_update(
                             state_data,
-                            "target_select",
+                            "linear_aux_replace_begin",
                             {
-                                "kind": "target_select",
+                                "kind": "linear_aux_replace_begin",
                                 "target": target_payload,
-                                "open_menu": False,
+                                "source_block_id": (
+                                    _linear_source_block_id_from_action_id(
+                                        triggered
+                                    )
+                                ),
+                                "nonce": uuid.uuid4().hex,
                             },
                         )
                     elif action == "clear":
