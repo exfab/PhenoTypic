@@ -5461,6 +5461,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_INTERMEDIATE_KEYS, "data", allow_duplicate=True),
         Output(ids.STORE_PREVIEW_SNAPSHOT, "data", allow_duplicate=True),
+        Output(ids.STORE_PREVIEW_STATUS, "data", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5493,16 +5494,22 @@ def register_callbacks(app: dash.Dash) -> None:
         """Run ``Preview here`` for a linear map prefix only."""
 
         if not isinstance(ctx.triggered_id, dict):
-            return (no_update,) * 6
+            return (no_update,) * 7
         triggered = ctx.triggered_id
         if triggered.get("type") != ids.LINEAR_NODE_ACTION:
-            return (no_update,) * 6
+            return (no_update,) * 7
         if triggered.get("action") != "preview_here":
-            return (no_update,) * 6
+            return (no_update,) * 7
         if not ctx.triggered or not ctx.triggered[0].get("value"):
-            return (no_update,) * 6
+            return (no_update,) * 7
         if state_data is None:
-            return no_update, no_update, *_toast("No state to preview", ok=False)
+            message = "No state to preview"
+            return (
+                no_update,
+                no_update,
+                {"state": "error", "message": message},
+                *_toast(message, ok=False),
+            )
         if not session_id:
             session_id = uuid.uuid4().hex
 
@@ -5518,9 +5525,12 @@ def register_callbacks(app: dash.Dash) -> None:
             )
             state = state_from_json(state_data)
             if not hasattr(state, "selected_block_id"):
-                return no_update, no_update, *_toast(
-                    "Preview here is only available in the linear builder.",
-                    ok=False,
+                message = "Preview here is only available in the linear builder."
+                return (
+                    no_update,
+                    no_update,
+                    {"state": "error", "message": message},
+                    *_toast(message, ok=False),
                 )
             target = target_from_dict(
                 _linear_preview_target_payload_from_id(triggered),
@@ -5544,29 +5554,45 @@ def register_callbacks(app: dash.Dash) -> None:
                 staging=staging,
             )
             if generation is None:
-                return (no_update,) * 6
+                message = "Preview was superseded before publication."
+                return (
+                    no_update,
+                    no_update,
+                    {"state": "error", "message": message},
+                    *_toast(message, ok=False),
+                )
 
             duration = time.time() - t0
             keys = cache.known_intermediate_keys(session_id)
+            message = f"Prefix preview complete in {duration:.2f}s"
             return (
                 keys,
                 {
                     "pipeline_revision": pipeline_revision,
                     "preview_generation": generation,
                 },
-                *_toast(f"Prefix preview ran in {duration:.2f}s", ok=True),
+                {
+                    "state": "complete",
+                    "message": message,
+                    "pipeline_revision": pipeline_revision,
+                    "preview_generation": generation,
+                },
+                *_toast(message, ok=True),
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Prefix preview failed")
+            message = _format_exception(exc)
             return (
                 no_update,
                 no_update,
-                *_toast(_format_exception(exc), ok=False),
+                {"state": "error", "message": message},
+                *_toast(message, ok=False),
             )
 
     @app.callback(
         Output(ids.STORE_INTERMEDIATE_KEYS, "data"),
         Output(ids.STORE_PREVIEW_SNAPSHOT, "data"),
+        Output(ids.STORE_PREVIEW_STATUS, "data", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5597,15 +5623,23 @@ def register_callbacks(app: dash.Dash) -> None:
         """
 
         if not n_clicks or state_data is None:
-            return no_update, no_update, *_toast("No state to preview", ok=False)
+            message = "No state to preview"
+            return (
+                no_update,
+                no_update,
+                {"state": "error", "message": message},
+                *_toast(message, ok=False),
+            )
 
         # Run preview gating — spec §5.6.
         errors = _filter_blocking_issues(state_data)
         if errors:
+            toast = _gate_toast_for_issue("run preview", errors[0])
             return (
                 no_update,
                 no_update,
-                *_gate_toast_for_issue("run preview", errors[0]),
+                {"state": "error", "message": str(toast[1])},
+                *toast,
             )
 
         if not session_id:
@@ -5647,26 +5681,91 @@ def register_callbacks(app: dash.Dash) -> None:
                 staging=staging,
             )
             if generation is None:
-                return (no_update,) * 6
+                message = "Preview was superseded before publication."
+                return (
+                    no_update,
+                    no_update,
+                    {"state": "error", "message": message},
+                    *_toast(message, ok=False),
+                )
 
             duration = time.time() - t0
             keys = cache.known_intermediate_keys(session_id)
+            message = f"Preview complete in {duration:.2f}s"
             return (
                 keys,
                 {
                     "pipeline_revision": pipeline_revision,
                     "preview_generation": generation,
                 },
-                *_toast(f"Preview ran in {duration:.2f}s", ok=True),
+                {
+                    "state": "complete",
+                    "message": message,
+                    "pipeline_revision": pipeline_revision,
+                    "preview_generation": generation,
+                },
+                *_toast(message, ok=True),
             )
 
         except Exception as exc:  # noqa: BLE001
             logger.exception("Run preview failed")
+            message = _format_exception(exc)
             return (
                 no_update,
                 no_update,
-                *_toast(_format_exception(exc), ok=False),
+                {"state": "error", "message": message},
+                *_toast(message, ok=False),
             )
+
+    app.clientside_callback(
+        """
+        function(nClicks) {
+            if (!nClicks) return window.dash_clientside.no_update;
+            return {
+                state: "running",
+                message: "Preview running\u2026"
+            };
+        }
+        """,
+        Output(ids.STORE_PREVIEW_STATUS, "data", allow_duplicate=True),
+        Input(ids.BTN_RUN_PREVIEW, "n_clicks"),
+        prevent_initial_call=True,
+    )
+
+    @app.callback(
+        Output(ids.PREVIEW_STATUS, "children"),
+        Output(ids.PREVIEW_STATUS, "className"),
+        Input(ids.STORE_PREVIEW_STATUS, "data"),
+        Input(ids.STORE_BUILDER_STATE, "data"),
+    )
+    def render_preview_status(
+        status_data: Optional[Dict[str, Any]],
+        state_data: Optional[Dict[str, Any]],
+    ) -> Tuple[str, str]:
+        """Render a persistent preview lifecycle message.
+
+        The published status is interpreted against the current semantic
+        pipeline revision so a successful generation becomes visibly stale
+        as soon as an operation changes.
+        """
+
+        payload = status_data if isinstance(status_data, dict) else {}
+        state = str(payload.get("state", "idle"))
+        message = str(payload.get("message", "Preview not run"))
+        if state == "complete" and isinstance(state_data, dict):
+            published_revision = payload.get("pipeline_revision")
+            if (
+                isinstance(published_revision, str)
+                and published_revision != _pipeline_revision(state_data)
+            ):
+                return "Preview stale - run again", "small text-warning mt-2"
+
+        class_by_state = {
+            "running": "small text-primary mt-2",
+            "complete": "small text-success mt-2",
+            "error": "small text-danger mt-2",
+        }
+        return message, class_by_state.get(state, "small text-muted mt-2")
 
     # ----------------------------------------------------------------------
     # 4. Inspector preview rendering

@@ -41,6 +41,10 @@ STORE_INTERMEDIATE_KEYS = "store-intermediate-keys"
 #: ``{"pipeline_revision": str, "preview_generation": int}``.
 STORE_PREVIEW_SNAPSHOT = "store-preview-snapshot"
 
+#: Preview lifecycle payload shown independently of transient toast feedback:
+#: ``{"state": "idle|running|complete|error", "message": str, ...}``.
+STORE_PREVIEW_STATUS = "store-preview-status"
+
 # ---------------------------------------------------------------------------
 # DAG-redesign ids (spec §6)
 # ---------------------------------------------------------------------------
@@ -665,6 +669,9 @@ FOOTER_CONTAINER = "footer"
 #: Triggers ``apply_with_intermediates`` against the current pipeline.
 BTN_RUN_PREVIEW = "btn-run-preview"
 
+#: Always-mounted, polite live region describing preview lifecycle state.
+PREVIEW_STATUS = "preview-status"
+
 #: Writes ``pipeline.to_json()`` to the path in INPUT_SAVE_PATH.
 BTN_SAVE = "btn-save"
 
@@ -1044,6 +1051,7 @@ __all__ = [
     "STORE_SESSION_ID",
     "STORE_INTERMEDIATE_KEYS",
     "STORE_PREVIEW_SNAPSHOT",
+    "STORE_PREVIEW_STATUS",
     "BREADCRUMB_CONTAINER",
     "PALETTE_CONTAINER",
     "CANVAS_CYTOSCAPE",
@@ -1055,6 +1063,7 @@ __all__ = [
     "INSPECTOR_DOC_COLLAPSE",
     "FOOTER_CONTAINER",
     "BTN_RUN_PREVIEW",
+    "PREVIEW_STATUS",
     "BTN_SAVE",
     "BTN_LOAD",
     "BTN_NEW_PIPELINE_NODE",

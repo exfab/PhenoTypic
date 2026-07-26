@@ -63,6 +63,10 @@ def test_preview_mount_survives_reselection_and_marks_param_edit_stale(
     _open_builder(page, hub_url)
     _click_palette_button(page, "GaussianBlur")
     page.locator("#btn-run-preview").click()
+    expect(page.locator("#preview-status")).to_contain_text(
+        "Preview complete",
+        timeout=20_000,
+    )
     expect(page.locator("#inspector-preview img")).to_have_count(
         1,
         timeout=20_000,
@@ -94,11 +98,18 @@ def test_preview_mount_survives_reselection_and_marks_param_edit_stale(
     expect(page.locator("#inspector-preview")).to_have_text(
         "Preview stale - run again"
     )
+    expect(page.locator("#preview-status")).to_have_text(
+        "Preview stale - run again"
+    )
     assert page.evaluate(
         "() => window.__previewMount === document.querySelector('#inspector-preview')"
     )
 
     page.locator("#btn-run-preview").click()
+    expect(page.locator("#preview-status")).to_contain_text(
+        "Preview complete",
+        timeout=20_000,
+    )
     expect(page.locator("#inspector-preview img")).to_have_count(
         1,
         timeout=20_000,

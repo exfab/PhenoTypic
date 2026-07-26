@@ -4146,6 +4146,13 @@ def build_footer(image_root: Optional[Path]) -> dbc.Card:
                             html.H6("Grid", className="mb-2"),
                             grid_inputs,
                             run_button,
+                            html.Div(
+                                "Preview not run",
+                                id=ids.PREVIEW_STATUS,
+                                className="small text-muted mt-2",
+                                role="status",
+                                **{"aria-live": "polite"},
+                            ),
                         ],
                         md=4,
                     ),
@@ -4443,6 +4450,13 @@ def build_app_layout(
             dcc.Store(
                 id=ids.STORE_PREVIEW_SNAPSHOT,
                 data=None,
+            ),
+            dcc.Store(
+                id=ids.STORE_PREVIEW_STATUS,
+                data={
+                    "state": "idle",
+                    "message": "Preview not run",
+                },
             ),
             # Sink for clientside canvas-control callbacks (zoom in/out, fit).
             dcc.Store(
