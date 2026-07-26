@@ -48,6 +48,7 @@ from phenotypic.gui.shell._metadata_context import (
     read_metadata_csv_table,
     read_metadata_row_for_image_stem,
     resolve_metadata_csv,
+    resolve_metadata_image_identity,
 )
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._source_context import resolve_source_image_root
@@ -68,6 +69,7 @@ CsvMetadataPanelState = Literal[
     "unset",
     "unavailable",
     "missing_image_name",
+    "ambiguous_image_name",
     "no_match",
     "matched",
 ]
@@ -163,6 +165,11 @@ def render_csv_metadata_panel(model: CsvMetadataPanelModel) -> Any:
     if model.state == "missing_image_name":
         return html.Div(
             "Metadata CSV has no image-name column",
+            className="text-warning",
+        )
+    if model.state == "ambiguous_image_name":
+        return html.Div(
+            "Metadata CSV has conflicting image-name columns",
             className="text-warning",
         )
     if model.state == "no_match":
@@ -298,6 +305,17 @@ def pattern_preview_rows(
 def _csv_column_options(columns: Sequence[str]) -> list[dict[str, str]]:
     """Dropdown options for the CSV column / image-name dropdowns."""
     return [{"label": column, "value": column} for column in columns]
+
+
+def csv_column_options_and_image_default(
+    columns: Sequence[str],
+    rows: Sequence[dict[str, str]],
+) -> tuple[list[dict[str, str]], str | None]:
+    """Return Timeline CSV options and a compatible image-column default."""
+    options = _csv_column_options(columns)
+    identity = resolve_metadata_image_identity(columns, rows)
+    default = identity.column if identity.state == "resolved" else None
+    return options, default
 
 
 def strip_popout_nonce(value: str) -> str:
@@ -539,18 +557,22 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         Output(ids.BROWSE_TL_ROW_CSV_COL, "options"),
         Output(ids.BROWSE_TL_TIME_CSV_COL, "options"),
         Output(ids.BROWSE_TL_CSV_IMAGE_COL, "options"),
+        Output(ids.BROWSE_TL_CSV_IMAGE_COL, "value"),
         Input(SHELL_METADATA_CSV_STORE, "data"),
     )
     def _populate_csv_columns(metadata_payload: object):
         path = resolve_metadata_csv(sandbox, metadata_payload)
         if path is None:
-            return [], [], []
+            return [], [], [], None
         try:
-            columns, _rows = read_metadata_csv_table(path)
-        except OSError:
-            return [], [], []
-        options = _csv_column_options(columns)
-        return options, options, options
+            columns, rows = read_metadata_csv_table(path)
+        except (OSError, UnicodeError):
+            return [], [], [], None
+        options, image_default = csv_column_options_and_image_default(
+            columns,
+            rows,
+        )
+        return options, options, options, image_default
 
     @app.callback(
         Output(ids.BROWSE_TL_PATTERN_PREVIEW, "children"),

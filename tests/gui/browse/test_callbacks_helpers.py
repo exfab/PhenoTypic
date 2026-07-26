@@ -138,6 +138,55 @@ def test_csv_metadata_panel_renders_multiple_rows_with_count():
     assert "A02" in text
 
 
+def test_csv_metadata_panel_reports_conflicting_identity_columns():
+    panel = cb.render_csv_metadata_panel(
+        cb.CsvMetadataPanelModel(
+            state="ambiguous_image_name",
+            image_stem="plate_a",
+            rows=[],
+        )
+    )
+
+    assert "conflicting image-name columns" in str(panel)
+
+
+def test_timeline_image_column_defaults_to_recognized_legacy_header():
+    columns = ["Treatment", "Metadata_ImageFileName", "Time"]
+    rows = [
+        {
+            "Treatment": "control",
+            "Metadata_ImageFileName": "plate_a.tif",
+            "Time": "0",
+        }
+    ]
+
+    options, default = cb.csv_column_options_and_image_default(columns, rows)
+
+    assert options == [
+        {"label": "Treatment", "value": "Treatment"},
+        {
+            "label": "Metadata_ImageFileName",
+            "value": "Metadata_ImageFileName",
+        },
+        {"label": "Time", "value": "Time"},
+    ]
+    assert default == "Metadata_ImageFileName"
+
+
+def test_timeline_image_column_has_no_default_for_ambiguous_aliases():
+    columns = ["Metadata_ImageName", "Metadata_ImageFileName"]
+    rows = [
+        {
+            "Metadata_ImageName": "plate_a",
+            "Metadata_ImageFileName": "plate_b.tif",
+        }
+    ]
+
+    _options, default = cb.csv_column_options_and_image_default(columns, rows)
+
+    assert default is None
+
+
 def test_csv_metadata_panel_table_is_bounded_and_horizontally_scrollable():
     panel = cb.render_csv_metadata_panel(
         cb.CsvMetadataPanelModel(

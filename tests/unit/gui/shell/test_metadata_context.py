@@ -94,6 +94,96 @@ def test_metadata_payload_reports_duplicate_image_names(tmp_path: Path) -> None:
     assert payload["unique_image_names"] is False
 
 
+def test_metadata_image_identity_supports_current_and_legacy_headers() -> None:
+    from phenotypic.gui.shell._metadata_context import (
+        resolve_metadata_image_identity,
+    )
+
+    columns = [
+        str(METADATA.IMAGE_NAME),
+        "Metadata_ImageName",
+        "Metadata_ImageFileName",
+        "ImageName",
+    ]
+    rows = [
+        {
+            str(METADATA.IMAGE_NAME): "plates/plate_a.tif",
+            "Metadata_ImageName": "plate_a",
+            "Metadata_ImageFileName": r"C:\images\plate_a.tiff",
+            "ImageName": "plate_a.png",
+        }
+    ]
+
+    identity = resolve_metadata_image_identity(columns, rows)
+
+    assert identity.state == "resolved"
+    assert identity.column == str(METADATA.IMAGE_NAME)
+    assert identity.recognized_columns == tuple(columns)
+    assert identity.normalized_values == ("plate_a",)
+
+
+def test_metadata_image_identity_prefers_populated_legacy_column() -> None:
+    from phenotypic.gui.shell._metadata_context import (
+        resolve_metadata_image_identity,
+    )
+
+    columns = [str(METADATA.IMAGE_NAME), "Metadata_ImageFileName"]
+    rows = [
+        {
+            str(METADATA.IMAGE_NAME): "",
+            "Metadata_ImageFileName": "plate_a.tif",
+        },
+        {
+            str(METADATA.IMAGE_NAME): "",
+            "Metadata_ImageFileName": "plate_b.tif",
+        },
+    ]
+
+    identity = resolve_metadata_image_identity(columns, rows)
+
+    assert identity.state == "resolved"
+    assert identity.column == "Metadata_ImageFileName"
+    assert identity.normalized_values == ("plate_a", "plate_b")
+
+
+def test_metadata_image_identity_is_ambiguous_when_aliases_disagree() -> None:
+    from phenotypic.gui.shell._metadata_context import (
+        resolve_metadata_image_identity,
+    )
+
+    columns = ["Metadata_ImageName", "Metadata_ImageFileName"]
+    rows = [
+        {
+            "Metadata_ImageName": "plate_a",
+            "Metadata_ImageFileName": "plate_b.tif",
+        }
+    ]
+
+    identity = resolve_metadata_image_identity(columns, rows)
+
+    assert identity.state == "ambiguous"
+    assert identity.column is None
+    assert identity.normalized_values == ()
+
+
+def test_metadata_payload_recognizes_legacy_image_filename(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
+
+    csv_path = _write_csv(
+        tmp_path / "layout.csv",
+        "Metadata_ImageFileName,Treatment\nplate_a.tif,control\n",
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+
+    payload = metadata_payload_from_path(sandbox, csv_path)
+
+    assert payload is not None
+    assert payload["has_image_name"] is True
+    assert payload["unique_image_names"] is True
+
+
 def test_resolve_metadata_csv_rejects_malformed_payloads(
     tmp_path: Path,
 ) -> None:
@@ -187,12 +277,14 @@ def test_v2_metadata_reports_unavailable_after_csv_is_removed(
     csv_path = _write_csv(tmp_path / "layout.csv", "A,B\n1,2\n")
     sandbox = SandboxRoot.from_path(tmp_path)
     payload = metadata_payload_from_path(sandbox, csv_path)
+    descriptor = dict(payload or {})
     csv_path.unlink()
 
     resolution = resolve_metadata_csv_state(sandbox, payload)
 
     assert resolution.state == "unavailable"
     assert resolution.path is None
+    assert payload == descriptor
     assert (
         metadata_csv_label(payload, sandbox=sandbox)
         == "Previous metadata unavailable in this sandbox"
@@ -343,6 +435,55 @@ def test_read_metadata_row_returns_all_matching_colony_rows(
         {"Colony": "A01", "Treatment": "control"},
         {"Colony": "A02", "Treatment": "stress"},
     ]
+
+
+def test_read_metadata_row_matches_legacy_filename_and_strips_extension(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.shell._metadata_context import (
+        metadata_payload_from_path,
+        read_metadata_row_for_image_stem,
+    )
+
+    csv_path = _write_csv(
+        tmp_path / "layout.csv",
+        "Metadata_ImageFileName,Treatment\nplate_a.tiff,control\n",
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payload = metadata_payload_from_path(sandbox, csv_path)
+
+    result = read_metadata_row_for_image_stem(
+        sandbox,
+        payload,
+        "plate_a.png",
+    )
+
+    assert result.state == "matched"
+    assert result.rows == [{"Treatment": "control"}]
+
+
+def test_read_metadata_row_rejects_conflicting_recognized_columns(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.shell._metadata_context import (
+        metadata_payload_from_path,
+        read_metadata_row_for_image_stem,
+    )
+
+    csv_path = _write_csv(
+        tmp_path / "layout.csv",
+        (
+            "Metadata_ImageName,Metadata_ImageFileName,Treatment\n"
+            "plate_a,plate_b.tif,control\n"
+        ),
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payload = metadata_payload_from_path(sandbox, csv_path)
+
+    result = read_metadata_row_for_image_stem(sandbox, payload, "plate_a")
+
+    assert result.state == "ambiguous_image_name"
+    assert result.rows == []
 
 
 def test_read_metadata_csv_table_returns_columns_and_rows(tmp_path: Path) -> None:

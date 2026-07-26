@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import csv
 import logging
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Literal, TypeAlias, TypedDict
 
 from phenotypic.gui.shell._sandbox import (
@@ -40,9 +41,24 @@ MetadataLookupState: TypeAlias = Literal[
     "unset",
     "unavailable",
     "missing_image_name",
+    "ambiguous_image_name",
     "no_match",
     "matched",
 ]
+MetadataImageIdentityState: TypeAlias = Literal[
+    "missing",
+    "resolved",
+    "ambiguous",
+]
+
+# Ordered from the current public schema header through supported historical
+# spellings. This is the sole compatibility list for Browse metadata identity.
+METADATA_IMAGE_IDENTITY_COLUMNS = (
+    str(METADATA.IMAGE_NAME),
+    "Metadata_ImageName",
+    "Metadata_ImageFileName",
+    "ImageName",
+)
 
 
 class MetadataCsvValidation(TypedDict):
@@ -105,6 +121,85 @@ class MetadataLookupResult:
         return len(self.rows)
 
 
+@dataclass(frozen=True)
+class MetadataImageIdentity:
+    """Pure resolution of image identity across recognized metadata columns.
+
+    ``normalized_values`` has one entry per input row. Populated aliases may
+    differ only by filename extension or parent path. If two populated aliases
+    on the same row normalize to different stems, the whole table is
+    ambiguous and no column or values are authoritative.
+    """
+
+    state: MetadataImageIdentityState
+    column: str | None
+    recognized_columns: tuple[str, ...]
+    normalized_values: tuple[str | None, ...]
+
+
+def normalize_metadata_image_identity(value: object) -> str | None:
+    """Return a stripped filename stem for one metadata identity value.
+
+    Both POSIX and Windows separators are accepted because CSV files may have
+    been authored on a different platform from the GUI host.
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return PurePosixPath(text.replace("\\", "/")).stem or None
+
+
+def resolve_metadata_image_identity(
+    columns: Sequence[str],
+    rows: Sequence[Mapping[str, object]],
+) -> MetadataImageIdentity:
+    """Resolve one compatible image identity across metadata schema aliases.
+
+    Args:
+        columns: CSV columns in source order.
+        rows: CSV rows whose values may use current or legacy image headers.
+
+    Returns:
+        A resolved column plus row-aligned normalized stems, ``missing`` when
+        no recognized column exists, or ``ambiguous`` when populated
+        recognized columns disagree on any row.
+    """
+    available = set(columns)
+    recognized = tuple(
+        column
+        for column in METADATA_IMAGE_IDENTITY_COLUMNS
+        if column in available
+    )
+    if not recognized:
+        return MetadataImageIdentity("missing", None, (), ())
+
+    normalized_rows: list[str | None] = []
+    coverage = {column: 0 for column in recognized}
+    for row in rows:
+        values: list[str] = []
+        for column in recognized:
+            normalized = normalize_metadata_image_identity(row.get(column))
+            if normalized is None:
+                continue
+            coverage[column] += 1
+            values.append(normalized)
+        if len(set(values)) > 1:
+            return MetadataImageIdentity("ambiguous", None, recognized, ())
+        normalized_rows.append(values[0] if values else None)
+
+    # ``max`` is stable, so the canonical compatibility order breaks equal
+    # coverage ties while avoiding a sparsely populated current-schema alias.
+    column = max(recognized, key=coverage.__getitem__)
+    return MetadataImageIdentity(
+        "resolved",
+        column,
+        recognized,
+        tuple(normalized_rows),
+    )
+
+
 def metadata_payload_from_path(
     sandbox: SandboxRoot,
     path: Path | str,
@@ -134,12 +229,11 @@ def metadata_payload_from_path(
         logger.warning("metadata CSV resolved outside sandbox: %s", resolved)
         return None
 
+    identity = resolve_metadata_image_identity(columns, rows)
     image_values = [
-        row.get(METADATA.IMAGE_NAME, "")
-        for row in rows
-        if row.get(METADATA.IMAGE_NAME, "") != ""
+        value for value in identity.normalized_values if value is not None
     ]
-    has_image_name = METADATA.IMAGE_NAME in columns
+    has_image_name = identity.state == "resolved"
     relative_path = "." if rel_path == "" else rel_path
     payload: MetadataCsvPayload = {
         "version": METADATA_CSV_PAYLOAD_VERSION,
@@ -247,20 +341,28 @@ def read_metadata_row_for_image_stem(
     if path is None:
         return MetadataLookupResult("unavailable", image_stem, [])
     try:
-        rows = _read_rows(path)
+        columns, rows = read_metadata_csv_table(path)
     except (csv.Error, OSError, UnicodeError):
         return MetadataLookupResult("unavailable", image_stem, [])
-    if not rows or METADATA.IMAGE_NAME not in rows[0]:
+    identity = resolve_metadata_image_identity(columns, rows)
+    if identity.state == "missing":
         return MetadataLookupResult("missing_image_name", image_stem, [])
+    if identity.state == "ambiguous":
+        return MetadataLookupResult("ambiguous_image_name", image_stem, [])
 
-    matches = [row for row in rows if row.get(METADATA.IMAGE_NAME, "") == image_stem]
+    normalized_stem = normalize_metadata_image_identity(image_stem)
+    matches = [
+        row
+        for row, row_stem in zip(rows, identity.normalized_values, strict=True)
+        if row_stem == normalized_stem
+    ]
     if not matches:
         return MetadataLookupResult("no_match", image_stem, [])
     display_rows = [
         {
             str(key): str(value)
             for key, value in row.items()
-            if key != METADATA.IMAGE_NAME
+            if key not in METADATA_IMAGE_IDENTITY_COLUMNS
         }
         for row in matches
     ]
@@ -430,16 +532,21 @@ def read_metadata_csv_table(path: Path) -> tuple[list[str], list[dict[str, str]]
 
 __all__ = [
     "METADATA_CSV_PAYLOAD_VERSION",
+    "METADATA_IMAGE_IDENTITY_COLUMNS",
     "MetadataCsvPayload",
     "MetadataCsvResolution",
+    "MetadataImageIdentity",
+    "MetadataImageIdentityState",
     "MetadataLookupResult",
     "MetadataLookupState",
     "MetadataResolutionState",
     "metadata_csv_label",
     "metadata_csv_title",
     "metadata_payload_from_path",
+    "normalize_metadata_image_identity",
     "read_metadata_csv_table",
     "read_metadata_row_for_image_stem",
+    "resolve_metadata_image_identity",
     "resolve_metadata_csv",
     "resolve_metadata_csv_state",
 ]

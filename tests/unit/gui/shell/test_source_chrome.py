@@ -235,6 +235,46 @@ def test_metadata_picker_registers_store_writer(tmp_path: Path) -> None:
     )
 
 
+def test_shell_shared_store_writers_are_explicit_selection_actions_only(
+    tmp_path: Path,
+) -> None:
+    import dash
+
+    from phenotypic.gui.shell._ids import (
+        SHELL_METADATA_CSV_CONFIRM,
+        SHELL_METADATA_CSV_STORE,
+        SHELL_SETTINGS_INPUT_FOLDER_CLEAR,
+        SHELL_SETTINGS_METADATA_CSV_CLEAR,
+        SHELL_SIDEBAR_SELECTION_STORE,
+        SHELL_SOURCE_IMAGE_ROOT_CONFIRM,
+        SHELL_SOURCE_IMAGE_ROOT_STORE,
+        SHELL_TAB_HOME,
+    )
+
+    sandbox = SandboxRoot.from_path(tmp_path)
+    app = dash.Dash(__name__)
+    app.layout = dcc.Markdown("body")
+    wrap_in_chrome(app, active_tab=SHELL_TAB_HOME, sandbox=sandbox)
+
+    def _writer_inputs(store_id: str) -> set[str]:
+        inputs: set[str] = set()
+        for callback_id, meta in app.callback_map.items():
+            if f"{store_id}.data" not in callback_id:
+                continue
+            inputs.update(item["id"] for item in meta["inputs"])
+        return inputs
+
+    assert _writer_inputs(SHELL_SOURCE_IMAGE_ROOT_STORE) == {
+        SHELL_SETTINGS_INPUT_FOLDER_CLEAR,
+        SHELL_SOURCE_IMAGE_ROOT_CONFIRM,
+        SHELL_SIDEBAR_SELECTION_STORE,
+    }
+    assert _writer_inputs(SHELL_METADATA_CSV_STORE) == {
+        SHELL_SETTINGS_METADATA_CSV_CLEAR,
+        SHELL_METADATA_CSV_CONFIRM,
+    }
+
+
 def test_shared_refresh_revision_invalidates_labels_and_open_pickers(
     tmp_path: Path,
 ) -> None:

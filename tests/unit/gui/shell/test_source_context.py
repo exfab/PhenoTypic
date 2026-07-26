@@ -227,12 +227,14 @@ def test_v2_source_reports_unavailable_after_directory_is_removed(
     source_dir.mkdir()
     sandbox = SandboxRoot.from_path(tmp_path)
     payload = source_payload_from_path(sandbox, source_dir, source="manual")
+    descriptor = dict(payload or {})
     source_dir.rmdir()
 
     resolution = resolve_source_image_root_state(sandbox, payload)
 
     assert resolution.state == "unavailable"
     assert resolution.path is None
+    assert payload == descriptor
     assert (
         source_label(payload, sandbox=sandbox)
         == "Previous source unavailable in this sandbox"
