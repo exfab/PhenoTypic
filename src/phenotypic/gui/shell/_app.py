@@ -42,6 +42,7 @@ from phenotypic.gui._config import (
     CFG_ANALYSIS_SESSION,
     CFG_RESULTS_BINDING_STATE,
     CFG_RESULTS_BINDING_COORDINATOR,
+    CFG_RESULTS_BINDING_JOBS,
     CFG_RUN_REGISTRY,
     CFG_RUNNER,
     CFG_VIEWER_SESSION,
@@ -73,6 +74,11 @@ from phenotypic.gui.shell._layout import wrap_in_chrome
 from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui.shell._routes import register_sandbox_api
 from phenotypic.gui.shell._binding import BindingCoordinator
+from phenotypic.gui.shell._binding_jobs import (
+    ResultsBindJobContext,
+    ResultsBindJobFailure,
+    ResultsBindJobManager,
+)
 from phenotypic.gui.shell._runs_blueprint import register as register_runs
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._session import (
@@ -139,6 +145,7 @@ def _build_shell_dash_app(
     viewer_state: "dict[str, Any] | None" = None,
     extra_release_sessions: "tuple[ToolSession[Any], ...] | None" = None,
     bind_output: "Callable[[Path | None], Any] | None" = None,
+    binding_jobs: "ResultsBindJobManager | None" = None,
 ) -> dash.Dash:
     """Build the shell's home Dash (chrome + home pane + Flask blueprints).
 
@@ -183,6 +190,8 @@ def _build_shell_dash_app(
         viewer_state=viewer_state,
         extra_release_sessions=extra_release_sessions,
         bind_output=bind_output,
+        binding_jobs=binding_jobs,
+        browser_url_prefix=url_prefix,
     )
     register_runs(app.server, sandbox, viewer_session=viewer_session)
     register_shared_static(app.server)
@@ -246,6 +255,7 @@ def compose_hub(
     )
     from phenotypic.gui.results_viewer._output_root import (
         OutputRoot,
+        OutputSnapshotChangedError,
         sandbox_viewer_cache_root,
     )
 
@@ -347,20 +357,19 @@ def compose_hub(
         teardown=_teardown_analysis,
     )
 
-    def _bind_output(target: Path | None) -> OutputRoot:
-        """Build and atomically publish one Results/Analysis revision."""
-        ticket = binding_coordinator.issue_request()
-        with binding_coordinator.serialized():
-            binding_coordinator.require_latest(ticket)
-            selected = target
-            if selected is None:
-                selected = viewer_state.get("bound_path")
-            if not isinstance(selected, Path):
-                raise ValueError("no output is currently bound")
-
+    def _bind_output(context: ResultsBindJobContext) -> dict[str, Any]:
+        """Build candidates off-lock and publish one fenced revision."""
+        selected = context.target
+        try:
             candidate_root = OutputRoot.discover(
                 selected,
                 cache_root=sandbox_viewer_cache_root(sandbox.root),
+                cancellation=context.cancellation,
+                progress_callback=context.report_discovery,
+            )
+            context.set_phase(
+                "building_results",
+                "Building the Results session candidate.",
             )
             binding_generation = str(uuid4())
             candidate_fence = BindingRequestFence()
@@ -369,55 +378,100 @@ def compose_hub(
                 binding_generation,
                 candidate_fence,
             )
+            context.set_phase(
+                "building_analysis",
+                "Building the Analysis session candidate.",
+            )
             candidate_analysis = _make_analysis(
                 candidate_root,
                 binding_generation,
                 candidate_fence,
             )
+            context.set_phase(
+                "publishing",
+                "Publishing the shared Results and Analysis revision.",
+            )
+        except (FileNotFoundError, ValueError) as exc:
+            raise ResultsBindJobFailure("invalid", str(exc)) from exc
+        except OutputSnapshotChangedError as exc:
+            raise ResultsBindJobFailure("stale", str(exc)) from exc
 
-            def _commit_binding() -> None:
-                # Runs with both ToolSession locks held. This closes the final
-                # candidate-build-to-publish gap and acts as the request CAS.
-                def _publish_latest() -> None:
-                    candidate_root.require_session_snapshot_current(
-                        context="Shared Results/Analysis publish",
+        def _commit_binding() -> None:
+            # Runs with both ToolSession locks held. This closes the final
+            # candidate-build-to-publish gap and acts as the request CAS.
+            def _publish_latest() -> None:
+                # commit_if_latest holds the coordinator's request lock.
+                # Check the lock-free cancellation event here rather than
+                # re-entering the job-manager lock in the inverse order.
+                context.cancellation.raise_if_cancelled()
+                candidate_root.require_session_snapshot_current(
+                    context="Shared Results/Analysis publish",
+                )
+                context.cancellation.raise_if_cancelled()
+                viewer_state.update(
+                    {
+                        "bound_path": selected,
+                        "output_root": candidate_root,
+                        "snapshot": candidate_root.snapshot,
+                        "status": "current",
+                        "error": None,
+                        "binding_generation": binding_generation,
+                        "binding_fence": candidate_fence,
+                    }
+                )
+
+            binding_coordinator.commit_if_latest(
+                context.ticket,
+                _publish_latest,
+            )
+
+        # Discovery and both candidate constructors above intentionally run
+        # outside this short publication lock. Only callback draining and the
+        # paired session/state CAS are serialized.
+        try:
+            context.require_active()
+            with binding_coordinator.serialized():
+                context.require_active()
+                binding_coordinator.require_latest(context.ticket)
+                old_fence = viewer_state["binding_fence"]
+                if not isinstance(old_fence, BindingRequestFence):
+                    raise RuntimeError(
+                        "bound output request fence is unavailable"
                     )
-                    viewer_state.update(
-                        {
-                            "bound_path": selected,
-                            "output_root": candidate_root,
-                            "snapshot": candidate_root.snapshot,
-                            "status": "current",
-                            "error": None,
-                            "binding_generation": binding_generation,
-                            "binding_fence": candidate_fence,
-                        }
+                try:
+                    old_fence.close_and_wait(
+                        timeout_seconds=binding_drain_timeout_seconds,
                     )
+                    swap_tool_session_states(
+                        (
+                            (viewer_session, candidate_viewer),
+                            (analysis_session, candidate_analysis),
+                        ),
+                        commit=_commit_binding,
+                    )
+                except Exception:
+                    old_fence.reopen()
+                    raise
+        except OutputSnapshotChangedError as exc:
+            raise ResultsBindJobFailure("stale", str(exc)) from exc
+        snapshot = candidate_root.snapshot
+        return {
+            "abs_path": str(candidate_root.root),
+            "binding_generation": binding_generation,
+            "snapshot": {
+                "processing_fingerprint": snapshot.processing_fingerprint,
+                "consumed_state_fingerprint": (
+                    snapshot.consumed_state_fingerprint
+                ),
+                "captured_at": snapshot.captured_at.isoformat(),
+                "active_run": snapshot.active_run,
+            },
+        }
 
-                binding_coordinator.commit_if_latest(
-                    ticket,
-                    _publish_latest,
-                )
-
-            old_fence = viewer_state["binding_fence"]
-            if not isinstance(old_fence, BindingRequestFence):
-                raise RuntimeError("bound output request fence is unavailable")
-            binding_coordinator.require_latest(ticket)
-            try:
-                old_fence.close_and_wait(
-                    timeout_seconds=binding_drain_timeout_seconds,
-                )
-                swap_tool_session_states(
-                    (
-                        (viewer_session, candidate_viewer),
-                        (analysis_session, candidate_analysis),
-                    ),
-                    commit=_commit_binding,
-                )
-            except Exception:
-                old_fence.reopen()
-                raise
-            return candidate_root
+    binding_jobs = ResultsBindJobManager(
+        _bind_output,
+        issue_ticket=binding_coordinator.issue_request,
+    )
 
     # 2. Shell Dash (registers the API + runs blueprints with the
     #    viewer-session touch hook + atomic Results/Analysis binder).
@@ -428,7 +482,7 @@ def compose_hub(
         viewer_session=viewer_session,
         viewer_state=viewer_state,
         extra_release_sessions=(analysis_session,),
-        bind_output=_bind_output,
+        binding_jobs=binding_jobs,
     )
     shell_app.server.config[CFG_VIEWER_SESSION] = viewer_session
     shell_app.server.config[CFG_ANALYSIS_SESSION] = analysis_session
@@ -436,6 +490,7 @@ def compose_hub(
     shell_app.server.config[CFG_RESULTS_BINDING_COORDINATOR] = (
         binding_coordinator
     )
+    shell_app.server.config[CFG_RESULTS_BINDING_JOBS] = binding_jobs
 
     # 3. Builder Dash (eager — single-process registry build).
     _tick("builder")

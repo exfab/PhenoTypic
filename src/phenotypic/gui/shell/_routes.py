@@ -51,7 +51,12 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from flask import Blueprint, abort, jsonify, request
 
-from phenotypic.gui._config import SANDBOX_API_PREFIX
+from phenotypic.gui._config import (
+    MOUNT_HOME,
+    SANDBOX_API_PREFIX,
+    SANDBOX_API_VIEWER_OUTPUT_ROOT,
+    join_url_prefix,
+)
 from phenotypic.gui.shell._classifier import Capabilities, classify
 from phenotypic.gui.shell._binding import BindingSupersededError
 
@@ -59,6 +64,7 @@ if TYPE_CHECKING:
     from flask import Flask
 
     from phenotypic.gui.shell._sandbox import SandboxRoot
+    from phenotypic.gui.shell._binding_jobs import ResultsBindJobManager
     from phenotypic.gui.shell._session import ToolSession
 
 logger = logging.getLogger(__name__)
@@ -120,6 +126,8 @@ def build_sandbox_api(
     viewer_state: "dict[str, Any] | None" = None,
     extra_release_sessions: "tuple[ToolSession[object], ...] | None" = None,
     bind_output: "Callable[[Path | None], Any] | None" = None,
+    binding_jobs: "ResultsBindJobManager | None" = None,
+    browser_url_prefix: str = MOUNT_HOME,
     name: str = "phenotypic_sandbox_api",
     url_prefix: str = SANDBOX_API_PREFIX,
 ) -> Blueprint:
@@ -142,6 +150,11 @@ def build_sandbox_api(
             ``None`` target means explicit refresh of the currently bound
             path. When omitted, the legacy release-and-lazy-rebuild adapter
             remains available for isolated route users.
+        binding_jobs: Optional production asynchronous binding manager. When
+            supplied, POST returns a polling job instead of holding the HTTP
+            request through discovery and candidate construction.
+        browser_url_prefix: Browser-visible reverse-proxy prefix prepended to
+            returned polling and cancellation paths.
         name: Blueprint name. Defaults to ``"phenotypic_sandbox_api"``.
         url_prefix: Defaults to ``"/sandbox/api"``.
 
@@ -257,10 +270,10 @@ def build_sandbox_api(
         The fallback adapter retained for isolated route users performs the
         former release-and-lazy-rebuild hand-off.
 
-        Returns the selected absolute path and shared snapshot descriptor on
-        success. Invalid selections return 400, concurrent source changes
-        return 409 ``stale``, and candidate-construction failures return 500
-        ``unavailable`` without replacing either live session.
+        Production returns 202 immediately with ``job_id``, ``poll_path``,
+        ``cancel_path``, and normalized ``abs_path``. GET polls phase/progress
+        to a terminal state; DELETE cooperatively cancels. Failures are
+        represented on the terminal job and never replace either live session.
         """
         if viewer_state is None or viewer_session is None:
             return (
@@ -292,6 +305,37 @@ def build_sandbox_api(
             OutputSnapshotChangedError,
             sandbox_viewer_cache_root,
         )
+
+        if binding_jobs is not None:
+            selected = target
+            if selected is None:
+                selected = viewer_state.get("bound_path")
+            if not isinstance(selected, Path):
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "error": "no output is currently bound",
+                        }
+                    ),
+                    400,
+                )
+            try:
+                submission = binding_jobs.submit(selected)
+            except RuntimeError as exc:
+                return (
+                    jsonify({"status": "unavailable", "error": str(exc)}),
+                    503,
+                )
+            payload = _binding_job_payload(
+                submission.job,
+                deduplicated=submission.deduplicated,
+                browser_url_prefix=browser_url_prefix,
+            )
+            response = jsonify(payload)
+            response.status_code = 202
+            response.headers["Location"] = payload["poll_path"]
+            return response
 
         try:
             if bind_output is not None:
@@ -362,6 +406,43 @@ def build_sandbox_api(
             }
         )
 
+    @bp.route(
+        "/viewer/output-root/jobs/<job_id>",
+        methods=["GET", "DELETE"],
+    )
+    def viewer_output_root_job_endpoint(job_id: str) -> Any:
+        """Poll or cooperatively cancel one asynchronous binding job."""
+        if binding_jobs is None:
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "error": "asynchronous viewer hand-off disabled",
+                    }
+                ),
+                501,
+            )
+        if request.method == "DELETE":
+            snapshot = binding_jobs.cancel(job_id)
+        else:
+            snapshot = binding_jobs.get(job_id)
+        if snapshot is None:
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "error": "binding job not found",
+                    }
+                ),
+                404,
+            )
+        return jsonify(
+            _binding_job_payload(
+                snapshot,
+                browser_url_prefix=browser_url_prefix,
+            )
+        )
+
     return bp
 
 
@@ -373,6 +454,8 @@ def register_sandbox_api(
     viewer_state: "dict[str, Any] | None" = None,
     extra_release_sessions: "tuple[ToolSession[object], ...] | None" = None,
     bind_output: "Callable[[Path | None], Any] | None" = None,
+    binding_jobs: "ResultsBindJobManager | None" = None,
+    browser_url_prefix: str = MOUNT_HOME,
 ) -> Blueprint:
     """Build and register the sandbox-API blueprint on ``server``."""
     bp = build_sandbox_api(
@@ -381,6 +464,8 @@ def register_sandbox_api(
         viewer_state=viewer_state,
         extra_release_sessions=extra_release_sessions,
         bind_output=bind_output,
+        binding_jobs=binding_jobs,
+        browser_url_prefix=browser_url_prefix,
     )
     server.register_blueprint(bp)
     logger.debug(
@@ -389,3 +474,31 @@ def register_sandbox_api(
         sandbox.root,
     )
     return bp
+
+
+def _binding_job_payload(
+    snapshot: Any,
+    *,
+    deduplicated: bool | None = None,
+    browser_url_prefix: str = MOUNT_HOME,
+) -> dict[str, Any]:
+    """Return a normalized polling payload with backward-compatible fields."""
+    job = snapshot.as_dict()
+    job_id = snapshot.job_id
+    poll_path = (
+        f"{join_url_prefix(browser_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT)}"
+        f"/jobs/{job_id}"
+    )
+    payload: dict[str, Any] = {
+        "status": snapshot.status,
+        "job_id": job_id,
+        "abs_path": str(snapshot.target),
+        "job": job,
+        "poll_path": poll_path,
+        "cancel_path": poll_path,
+    }
+    if deduplicated is not None:
+        payload["deduplicated"] = deduplicated
+    if snapshot.result is not None:
+        payload.update(dict(snapshot.result))
+    return payload

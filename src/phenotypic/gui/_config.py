@@ -105,6 +105,7 @@ __all__ = [
     "CFG_ANALYSIS_SESSION",
     "CFG_RESULTS_BINDING_STATE",
     "CFG_RESULTS_BINDING_COORDINATOR",
+    "CFG_RESULTS_BINDING_JOBS",
     "CFG_BINDING_GENERATION",
     # Sandbox subdirectories
     "SANDBOX_GUI_DIRNAME",
@@ -325,6 +326,9 @@ CFG_RESULTS_BINDING_STATE: str = "pheno_results_binding_state"
 #: Shell-owned binding coordinator used to serialize and generation-fence
 #: Results/Analysis selection and Refresh requests.
 CFG_RESULTS_BINDING_COORDINATOR: str = "pheno_results_binding_coordinator"
+
+#: Bounded process-local asynchronous Results binding job manager.
+CFG_RESULTS_BINDING_JOBS: str = "pheno_results_binding_jobs"
 
 #: Immutable per-bind UUID embedded in a bound Results or Analysis page.
 CFG_BINDING_GENERATION: str = "pheno_binding_generation"

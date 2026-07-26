@@ -14,7 +14,7 @@ class BindingSupersededError(RuntimeError):
 
 
 class BindingCoordinator:
-    """Issue monotonic tickets and serialize selection through publication."""
+    """Issue monotonic tickets and serialize the short publication section."""
 
     def __init__(self) -> None:
         self._request_lock = threading.Lock()
@@ -58,6 +58,6 @@ class BindingCoordinator:
 
     @contextmanager
     def serialized(self) -> Iterator[None]:
-        """Hold the binder-wide lock through selection, build, and publish."""
+        """Hold the binder-wide publication lock."""
         with self._publish_lock:
             yield
