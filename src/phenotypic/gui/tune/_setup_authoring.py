@@ -15,7 +15,11 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.gui._config import tune_presets_dir
 from phenotypic.gui.shell._metadata_context import resolve_metadata_csv
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.gui.shell._sandbox import (
+    SandboxRoot,
+    _is_safe_relative_path,
+    _v1_selection_matches_sandbox,
+)
 from phenotypic.gui.shell._source_context import sandbox_fingerprint
 from phenotypic.gui.tune._space import apply_space_edits, space_to_spec
 from phenotypic.schema import METADATA
@@ -31,6 +35,7 @@ from phenotypic.tune.score import QCScorer
 SetupPathKind = Literal["pipeline", "metadata"]
 SetupPathSource = Literal["typed", "picker", "shared", "unset"]
 
+SETUP_DRAFT_VERSION = 1
 _SAFE_STEM = re.compile(r"[^A-Za-z0-9_.-]+")
 _METADATA_SUFFIXES = frozenset({".csv", ".parquet"})
 _PIPELINE_SUFFIXES = PIPELINE_CONFIG_SUFFIXES | frozenset({CONFIG_SUFFIX_TUNING})
@@ -64,6 +69,48 @@ class SetupPathResolution:
         }
 
 
+def setup_path_resolution_from_store(
+    value: object,
+    *,
+    sandbox: SandboxRoot | None = None,
+    kind: SetupPathKind | None = None,
+) -> SetupPathResolution:
+    """Parse a path-resolution store, optionally rechecking its sandbox path."""
+    if not isinstance(value, dict):
+        return SetupPathResolution(None, "unset")
+    path = value.get("path")
+    source = value.get("source")
+    issues = value.get("issues")
+    if (
+        (path is not None and not isinstance(path, str))
+        or source not in {"typed", "picker", "shared", "unset"}
+        or not isinstance(issues, list)
+    ):
+        return SetupPathResolution(
+            None,
+            "unset",
+            ("Setup path state is invalid; select the file again.",),
+        )
+    resolution = SetupPathResolution(
+        Path(path) if path else None,
+        source,
+        tuple(str(issue) for issue in issues),
+    )
+    if sandbox is None or kind is None or resolution.path is None:
+        return resolution
+    checked = _candidate_path(
+        sandbox,
+        str(resolution.path),
+        kind=kind,
+        source=resolution.source,
+    )
+    return SetupPathResolution(
+        checked.path,
+        checked.source,
+        tuple(dict.fromkeys((*resolution.issues, *checked.issues))),
+    )
+
+
 @dataclass(frozen=True)
 class SetupAuthoringResult:
     """In-memory authored spec or its complete validation issue list."""
@@ -76,6 +123,57 @@ class SetupAuthoringResult:
     def is_valid(self) -> bool:
         """Whether the full authored spec validated."""
         return self.spec is not None and not self.issues
+
+
+@dataclass(frozen=True)
+class SetupDraft:
+    """One revisioned, validated interpretation of all Setup controls.
+
+    The browser store is transport only. ``revision`` binds the resolved paths,
+    current source bytes, search-space edits, scorer choice, validation issues,
+    and validated spec JSON. Every action parses this same payload instead of
+    independently re-resolving raw controls.
+    """
+
+    revision: str
+    source_revision: str
+    pipeline_path: str | None
+    pipeline_source: SetupPathSource
+    metadata_path: str | None
+    metadata_source: SetupPathSource
+    replace_scorer: bool
+    source_is_spec: bool
+    edits: dict[str, dict[str, object]]
+    source_fingerprint: str
+    metadata_fingerprint: str
+    scorer_name: str | None
+    issues: tuple[str, ...]
+    spec_json: str | None
+
+    @property
+    def is_valid(self) -> bool:
+        """Whether this draft contains a fully validated tuning spec."""
+        return self.spec_json is not None and not self.issues
+
+    def to_store(self) -> dict[str, object]:
+        """Return the canonical JSON-serializable Dash-store payload."""
+        return {
+            "version": SETUP_DRAFT_VERSION,
+            "revision": self.revision,
+            "source_revision": self.source_revision,
+            "pipeline_path": self.pipeline_path,
+            "pipeline_source": self.pipeline_source,
+            "metadata_path": self.metadata_path,
+            "metadata_source": self.metadata_source,
+            "replace_scorer": self.replace_scorer,
+            "source_is_spec": self.source_is_spec,
+            "edits": self.edits,
+            "source_fingerprint": self.source_fingerprint,
+            "metadata_fingerprint": self.metadata_fingerprint,
+            "scorer_name": self.scorer_name,
+            "issues": list(self.issues),
+            "spec_json": self.spec_json,
+        }
 
 
 def _safe_stem(path: Path) -> str:
@@ -123,6 +221,131 @@ def authored_content_fingerprint(path: Path) -> str:
         return ""
 
 
+def _canonical_edits(
+    edits: Mapping[str, Mapping[str, object]] | None,
+) -> dict[str, dict[str, object]]:
+    """Return a detached, JSON-safe edit mapping in deterministic key order."""
+    encoded = json.dumps(
+        edits or {},
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
+    decoded = json.loads(encoded)
+    if not isinstance(decoded, dict):
+        return {}
+    return {
+        str(key): dict(value)
+        for key, value in sorted(decoded.items())
+        if isinstance(value, dict)
+    }
+
+
+def _content_revision(payload: Mapping[str, object]) -> str:
+    """Return a deterministic SHA-256 revision for JSON-safe content."""
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _setup_source_revision(
+    *,
+    pipeline_path: str | None,
+    pipeline_source: SetupPathSource,
+    source_fingerprint: str,
+) -> str:
+    """Return the revision controlling source-dependent editor rendering."""
+    return _content_revision(
+        {
+            "pipeline_path": pipeline_path,
+            "pipeline_source": pipeline_source,
+            "source_fingerprint": source_fingerprint,
+        }
+    )
+
+
+def setup_draft_from_store(value: object) -> SetupDraft | None:
+    """Parse and integrity-check a serialized :class:`SetupDraft`."""
+    if not isinstance(value, dict) or value.get("version") != SETUP_DRAFT_VERSION:
+        return None
+    pipeline_path = value.get("pipeline_path")
+    metadata_path = value.get("metadata_path")
+    pipeline_source = value.get("pipeline_source")
+    metadata_source = value.get("metadata_source")
+    revision = value.get("revision")
+    source_revision = value.get("source_revision")
+    source_fingerprint = value.get("source_fingerprint")
+    metadata_fingerprint = value.get("metadata_fingerprint")
+    scorer_name = value.get("scorer_name")
+    spec_json = value.get("spec_json")
+    issues = value.get("issues")
+    edits = value.get("edits")
+    if (
+        (pipeline_path is not None and not isinstance(pipeline_path, str))
+        or (metadata_path is not None and not isinstance(metadata_path, str))
+        or pipeline_source not in {"typed", "picker", "shared", "unset"}
+        or metadata_source not in {"typed", "picker", "shared", "unset"}
+        or not isinstance(revision, str)
+        or not isinstance(source_revision, str)
+        or not isinstance(source_fingerprint, str)
+        or not isinstance(metadata_fingerprint, str)
+        or (scorer_name is not None and not isinstance(scorer_name, str))
+        or (spec_json is not None and not isinstance(spec_json, str))
+        or not isinstance(issues, list)
+        or not isinstance(edits, dict)
+        or type(value.get("replace_scorer")) is not bool
+        or type(value.get("source_is_spec")) is not bool
+    ):
+        return None
+    canonical_edits = _canonical_edits(edits)
+    normalized_issues = tuple(str(issue) for issue in issues)
+    expected_source_revision = _setup_source_revision(
+        pipeline_path=pipeline_path,
+        pipeline_source=pipeline_source,
+        source_fingerprint=source_fingerprint,
+    )
+    payload = {
+        "source_revision": expected_source_revision,
+        "pipeline_path": pipeline_path,
+        "pipeline_source": pipeline_source,
+        "metadata_path": metadata_path,
+        "metadata_source": metadata_source,
+        "replace_scorer": value["replace_scorer"],
+        "source_is_spec": value["source_is_spec"],
+        "edits": canonical_edits,
+        "source_fingerprint": source_fingerprint,
+        "metadata_fingerprint": metadata_fingerprint,
+        "scorer_name": scorer_name,
+        "issues": normalized_issues,
+        "spec_json": spec_json,
+    }
+    if (
+        source_revision != expected_source_revision
+        or revision != _content_revision(payload)
+    ):
+        return None
+    return SetupDraft(
+        revision=revision,
+        source_revision=source_revision,
+        pipeline_path=pipeline_path,
+        pipeline_source=pipeline_source,
+        metadata_path=metadata_path,
+        metadata_source=metadata_source,
+        replace_scorer=value["replace_scorer"],
+        source_is_spec=value["source_is_spec"],
+        edits=canonical_edits,
+        source_fingerprint=source_fingerprint,
+        metadata_fingerprint=metadata_fingerprint,
+        scorer_name=scorer_name,
+        issues=normalized_issues,
+        spec_json=spec_json,
+    )
+
+
 def load_pipeline_or_spec(path: Path) -> ImagePipeline | TuningSpec:
     """Load a selected pipeline or existing tuning spec from disk."""
     text = path.read_text(encoding="utf-8")
@@ -161,17 +384,40 @@ def resolve_picker_payload(
     *,
     kind: SetupPathKind,
 ) -> Path | None:
-    """Resolve a current-session picker payload against the current sandbox."""
+    """Resolve a selected V1/V2 descriptor against the current sandbox.
+
+    V2 is fingerprint-bound. V1 remains readable only when its absolute and
+    sandbox-relative mirrors still identify the same current-sandbox file.
+    """
     if not isinstance(payload, dict):
         return None
-    if (
-        payload.get("version") != 2
-        or payload.get("kind") != kind
-        or payload.get("sandbox_fingerprint") != sandbox_fingerprint(sandbox)
-    ):
-        return None
-    relative = payload.get("relative_path")
-    if not isinstance(relative, str) or not relative:
+    version = payload.get("version")
+    if version == 2:
+        if (
+            payload.get("kind") != kind
+            or payload.get("sandbox_fingerprint")
+            != sandbox_fingerprint(sandbox)
+        ):
+            return None
+        relative = payload.get("relative_path")
+        if not isinstance(relative, str) or not _is_safe_relative_path(relative):
+            return None
+    elif version == 1:
+        raw_path = payload.get("abs_path", payload.get("path"))
+        relative = payload.get("rel_path", payload.get("relative_path"))
+        if (
+            not isinstance(raw_path, str)
+            or not raw_path
+            or not isinstance(relative, str)
+            or not _is_safe_relative_path(relative)
+            or not _v1_selection_matches_sandbox(
+                sandbox,
+                raw_path=raw_path,
+                relative_path=relative,
+            )
+        ):
+            return None
+    else:
         return None
     candidate = setup_path_payload(sandbox, relative, kind=kind)
     return (
@@ -235,6 +481,24 @@ def resolve_setup_path(
         shared = resolve_picker_payload(sandbox, shared_payload, kind="pipeline")
         if shared is not None:
             return SetupPathResolution(shared, "shared")
+        legacy_candidates: list[str] = []
+        if isinstance(shared_payload, str):
+            legacy_candidates.append(shared_payload)
+        elif isinstance(shared_payload, dict) and shared_payload.get("version") is None:
+            for key in ("relative_path", "rel_path", "path", "abs_path"):
+                candidate = shared_payload.get(key)
+                if isinstance(candidate, str) and candidate:
+                    legacy_candidates.append(candidate)
+                    break
+        for candidate in legacy_candidates:
+            resolution = _candidate_path(
+                sandbox,
+                candidate,
+                kind="pipeline",
+                source="shared",
+            )
+            if not resolution.issues:
+                return resolution
 
     return SetupPathResolution(None, "unset")
 
@@ -350,6 +614,118 @@ def build_authored_setup_spec(
     return SetupAuthoringResult(validated, source_is_spec, ())
 
 
+def build_setup_draft(
+    *,
+    pipeline: SetupPathResolution,
+    metadata: SetupPathResolution,
+    edits: Mapping[str, Mapping[str, object]] | None = None,
+    replace_scorer: bool = False,
+) -> SetupDraft:
+    """Build the sole revisioned Setup state from resolved controls.
+
+    Args:
+        pipeline: Precedence-resolved pipeline or tuning-spec path.
+        metadata: Precedence-resolved optional metadata path.
+        edits: Raw search-space editor values keyed by knob.
+        replace_scorer: Whether an existing scorer should be explicitly replaced.
+
+    Returns:
+        A self-consistent draft carrying the validated spec JSON or all issues.
+    """
+    canonical_edits = _canonical_edits(edits)
+    pipeline_path = str(pipeline.path) if pipeline.path is not None else None
+    metadata_path = str(metadata.path) if metadata.path is not None else None
+    source_fingerprint = path_content_fingerprint(pipeline.path)
+    metadata_fingerprint = path_content_fingerprint(metadata.path)
+    issues = [*pipeline.issues, *metadata.issues]
+    source_is_spec = False
+    scorer_name: str | None = None
+    spec_json: str | None = None
+    if pipeline.path is None:
+        if not issues:
+            issues.append("Choose a pipeline or existing tuning spec.")
+    elif not pipeline.issues:
+        result = build_authored_setup_spec(
+            pipeline_or_spec_path=pipeline.path,
+            metadata_path=metadata.path,
+            edits=canonical_edits,
+            replace_scorer=replace_scorer,
+        )
+        source_is_spec = result.source_is_spec
+        issues.extend(result.issues)
+        if result.is_valid and result.spec is not None and not issues:
+            scorer_name = type(result.spec.scorer).__name__
+            spec_json = result.spec.model_dump_json(indent=2)
+
+    source_revision = _setup_source_revision(
+        pipeline_path=pipeline_path,
+        pipeline_source=pipeline.source,
+        source_fingerprint=source_fingerprint,
+    )
+    normalized_issues = tuple(dict.fromkeys(issues))
+    revision_payload = {
+        "source_revision": source_revision,
+        "pipeline_path": pipeline_path,
+        "pipeline_source": pipeline.source,
+        "metadata_path": metadata_path,
+        "metadata_source": metadata.source,
+        "replace_scorer": replace_scorer,
+        "source_is_spec": source_is_spec,
+        "edits": canonical_edits,
+        "source_fingerprint": source_fingerprint,
+        "metadata_fingerprint": metadata_fingerprint,
+        "scorer_name": scorer_name,
+        "issues": normalized_issues,
+        "spec_json": spec_json,
+    }
+    return SetupDraft(
+        revision=_content_revision(revision_payload),
+        source_revision=source_revision,
+        pipeline_path=pipeline_path,
+        pipeline_source=pipeline.source,
+        metadata_path=metadata_path,
+        metadata_source=metadata.source,
+        replace_scorer=replace_scorer,
+        source_is_spec=source_is_spec,
+        edits=canonical_edits,
+        source_fingerprint=source_fingerprint,
+        metadata_fingerprint=metadata_fingerprint,
+        scorer_name=scorer_name,
+        issues=normalized_issues,
+        spec_json=spec_json,
+    )
+
+
+def write_setup_draft(*, sandbox_root: Path, draft: SetupDraft) -> Path:
+    """Atomically write the exact validated spec represented by ``draft``.
+
+    The source and optional metadata fingerprints are rechecked immediately
+    before writing so Continue cannot publish a draft whose files changed after
+    validation.
+    """
+    if not draft.is_valid or draft.spec_json is None or draft.pipeline_path is None:
+        raise ValueError("\n".join(draft.issues) or "Setup draft is invalid.")
+    sandbox = SandboxRoot.from_path(sandbox_root)
+    source_path = sandbox.resolve(draft.pipeline_path)
+    metadata_path = (
+        sandbox.resolve(draft.metadata_path) if draft.metadata_path else None
+    )
+    if path_content_fingerprint(source_path) != draft.source_fingerprint:
+        raise ValueError("Pipeline/spec changed after Setup validation.")
+    if path_content_fingerprint(metadata_path) != draft.metadata_fingerprint:
+        raise ValueError("Metadata changed after Setup validation.")
+    validated = TuningSpec.model_validate_json(draft.spec_json)
+    authored_content = validated.model_dump_json(indent=2)
+    target = authored_setup_spec_path(
+        sandbox_root=sandbox_root,
+        source_path=source_path,
+        metadata_path=metadata_path,
+        authored_content=authored_content,
+    )
+    atomic_write_text(target, authored_content)
+    return target
+
+
 def write_authored_setup_spec(
     *,
     sandbox_root: Path,
@@ -385,16 +761,22 @@ def write_authored_setup_spec(
 
 
 __all__ = [
+    "SETUP_DRAFT_VERSION",
     "SetupAuthoringResult",
+    "SetupDraft",
     "SetupPathPayload",
     "SetupPathResolution",
     "authored_content_fingerprint",
     "authored_setup_spec_path",
     "build_authored_setup_spec",
+    "build_setup_draft",
     "load_pipeline_or_spec",
     "path_content_fingerprint",
     "resolve_picker_payload",
     "resolve_setup_path",
+    "setup_draft_from_store",
+    "setup_path_resolution_from_store",
     "setup_path_payload",
     "write_authored_setup_spec",
+    "write_setup_draft",
 ]

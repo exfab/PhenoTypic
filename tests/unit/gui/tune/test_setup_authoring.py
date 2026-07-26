@@ -8,11 +8,16 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.tune._setup_authoring import (
+    SetupPathResolution,
     authored_content_fingerprint,
     build_authored_setup_spec,
+    build_setup_draft,
     resolve_setup_path,
+    setup_draft_from_store,
     setup_path_payload,
+    setup_path_resolution_from_store,
     write_authored_setup_spec,
+    write_setup_draft,
 )
 from phenotypic.tune import (
     Evaluator,
@@ -238,6 +243,111 @@ def test_setup_path_precedence_and_same_path_reselection(tmp_path: Path):
     )
     assert stale_resolution.path is None
     assert stale_resolution.source == "unset"
+
+
+def test_setup_path_keeps_selected_v1_and_v2_shared_descriptors_compatible(
+    tmp_path: Path,
+) -> None:
+    sandbox = SandboxRoot.from_path(tmp_path)
+    pipeline = tmp_path / "selected.json.pht-pipe"
+    pipeline.write_text(ImagePipeline(ops=[]).to_json(), encoding="utf-8")
+    v1 = {
+        "version": 1,
+        "path": str(pipeline),
+        "relative_path": pipeline.name,
+    }
+    v2 = setup_path_payload(sandbox, pipeline, kind="pipeline")
+
+    for descriptor in (v1, v2):
+        resolution = resolve_setup_path(
+            sandbox=sandbox,
+            kind="pipeline",
+            typed_path="",
+            picker_payload=None,
+            shared_payload=descriptor,
+        )
+        assert resolution.path == pipeline
+        assert resolution.source == "shared"
+
+
+def test_setup_path_store_is_rechecked_against_the_sandbox(
+    tmp_path: Path,
+) -> None:
+    sandbox = SandboxRoot.from_path(tmp_path)
+    escaped = setup_path_resolution_from_store(
+        {
+            "path": str(tmp_path.parent / "outside.json.pht-pipe"),
+            "source": "typed",
+            "issues": [],
+        },
+        sandbox=sandbox,
+        kind="pipeline",
+    )
+
+    assert escaped.path is None
+    assert any("escapes" in issue for issue in escaped.issues)
+
+
+def test_setup_draft_is_the_revisioned_validated_write_authority(
+    tmp_path: Path,
+) -> None:
+    pipeline_path = tmp_path / "pipeline.json.pht-pipe"
+    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    pipeline_path.write_text(pipeline.to_json(), encoding="utf-8")
+    metadata_path = _metadata(tmp_path / "layout.csv")
+    first_knob = infer_search_space(pipeline).knobs[0]
+    base = build_setup_draft(
+        pipeline=SetupPathResolution(pipeline_path, "typed"),
+        metadata=SetupPathResolution(metadata_path, "typed"),
+    )
+    edited = build_setup_draft(
+        pipeline=SetupPathResolution(pipeline_path, "typed"),
+        metadata=SetupPathResolution(metadata_path, "typed"),
+        edits={
+            first_knob.key: {
+                "low": 1.5,
+                "high": 3.5,
+                "tunable": True,
+            }
+        },
+    )
+
+    restored = setup_draft_from_store(edited.to_store())
+    assert restored == edited
+    assert base.is_valid is True
+    assert edited.is_valid is True
+    assert base.revision != edited.revision
+    assert base.source_revision == edited.source_revision
+
+    written = write_setup_draft(sandbox_root=tmp_path, draft=edited)
+    reloaded = TuningSpec.model_validate_json(written.read_text(encoding="utf-8"))
+    edited_knob = next(
+        knob for knob in reloaded.search_space.knobs if knob.key == first_knob.key
+    )
+    assert edited_knob.domain.low == 1.5
+    assert edited_knob.domain.high == 3.5
+
+
+def test_setup_draft_write_rejects_source_changed_after_validation(
+    tmp_path: Path,
+) -> None:
+    pipeline_path = tmp_path / "pipeline.json.pht-pipe"
+    pipeline_path.write_text(
+        ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]).to_json(),
+        encoding="utf-8",
+    )
+    metadata_path = _metadata(tmp_path / "layout.csv")
+    draft = build_setup_draft(
+        pipeline=SetupPathResolution(pipeline_path, "typed"),
+        metadata=SetupPathResolution(metadata_path, "typed"),
+    )
+    pipeline_path.write_text(
+        ImagePipeline(ops=[GaussianBlur(sigma=4.0), OtsuDetector()]).to_json(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="changed after Setup validation"):
+        write_setup_draft(sandbox_root=tmp_path, draft=draft)
 
 
 def test_authored_targets_and_descriptors_bind_content_not_only_stem(

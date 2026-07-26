@@ -149,6 +149,11 @@ def test_setup_gate_callback_enables_run_destination():
         and "tune-dest-run.disabled" in callback_id
     )
     assert "tune-dest-run.disabled" in callback_id
+    inputs = app.callback_map[callback_id]["inputs"]
+    assert [entry["id"] for entry in inputs] == [
+        ids.TUNE_SETUP_DRAFT_STORE,
+        ids.TUNE_SETUP_AUTHORED_SPEC_STORE,
+    ]
 
 
 def test_run_callbacks_consume_authored_spec_store():
@@ -169,6 +174,28 @@ def test_run_callbacks_consume_authored_spec_store():
         ]
     )
     assert ids.TUNE_SETUP_AUTHORED_SPEC_STORE in encoded
+    assert ids.TUNE_SETUP_DRAFT_STORE in encoded
+    assert ids.TUNE_SETUP_PIPELINE_STORE not in encoded
+    assert ids.TUNE_SETUP_METADATA_STORE not in encoded
+    assert ids.TUNE_SETUP_SIGNATURE_STORE not in encoded
+
+
+def test_continue_consumes_only_the_revisioned_setup_draft():
+    app = create_app(root=None, url_prefix="/tune/")
+    callback = next(
+        meta
+        for callback_id, meta in app.callback_map.items()
+        if f"{ids.TUNE_SETUP_AUTHORED_SPEC_STORE}.data" in callback_id
+        and f"{ids.TUNE_SETUP_GATE}.children" in callback_id
+    )
+
+    state_ids = [entry["id"] for entry in callback["state"]]
+    assert state_ids == [ids.TUNE_SETUP_DRAFT_STORE]
+    encoded = json.dumps(
+        {"inputs": callback["inputs"], "state": callback["state"]}
+    )
+    assert ids.TUNE_SETUP_PIPELINE_INPUT not in encoded
+    assert ids.TUNE_SETUP_METADATA_INPUT not in encoded
 
 
 def test_authored_spec_descriptor_invalidates_when_setup_inputs_change():

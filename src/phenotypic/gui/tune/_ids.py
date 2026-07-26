@@ -109,6 +109,8 @@ TUNE_SETUP_PIPELINE_STORE = "tune-setup-pipeline-store"
 TUNE_SETUP_METADATA_STORE = "tune-setup-metadata-store"
 TUNE_SETUP_PIPELINE_PICKER_STORE = "tune-setup-pipeline-picker-store"
 TUNE_SETUP_METADATA_PICKER_STORE = "tune-setup-metadata-picker-store"
+TUNE_SETUP_DRAFT_STORE = "tune-setup-draft-store"
+TUNE_SETUP_RENDER_REVISION_STORE = "tune-setup-render-revision-store"
 TUNE_SETUP_AUTHORED_SPEC_STORE = "tune-setup-authored-spec-store"
 TUNE_SETUP_SIGNATURE_STORE = "tune-setup-signature-store"
 TUNE_SETUP_PIPELINE_INPUT = "tune-setup-pipeline-input"
@@ -130,6 +132,7 @@ TUNE_SETUP_METADATA_ENTRY = "tune-setup-metadata-entry"
 TUNE_SETUP_GATE = "tune-setup-gate"
 TUNE_SETUP_SEARCH_SPACE = "tune-setup-search-space"
 TUNE_SETUP_SCORER = "tune-setup-scorer"
+TUNE_SETUP_SCORER_NOTE = "tune-setup-scorer-note"
 TUNE_SETUP_REPLACE_SCORER = "tune-setup-replace-scorer"
 TUNE_SETUP_SPACE_KNOB_ROW = "tune-setup-space-knob-row"
 TUNE_SETUP_SPACE_LOW = "tune-setup-space-low"
@@ -404,6 +407,8 @@ __all__ = [
     "TUNE_SETUP_METADATA_STORE",
     "TUNE_SETUP_PIPELINE_PICKER_STORE",
     "TUNE_SETUP_METADATA_PICKER_STORE",
+    "TUNE_SETUP_DRAFT_STORE",
+    "TUNE_SETUP_RENDER_REVISION_STORE",
     "TUNE_SETUP_AUTHORED_SPEC_STORE",
     "TUNE_SETUP_SIGNATURE_STORE",
     "TUNE_SETUP_PIPELINE_INPUT",
@@ -425,6 +430,7 @@ __all__ = [
     "TUNE_SETUP_GATE",
     "TUNE_SETUP_SEARCH_SPACE",
     "TUNE_SETUP_SCORER",
+    "TUNE_SETUP_SCORER_NOTE",
     "TUNE_SETUP_REPLACE_SCORER",
     "TUNE_SETUP_SPACE_KNOB_ROW",
     "TUNE_SETUP_SPACE_LOW",

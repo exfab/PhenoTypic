@@ -91,6 +91,8 @@ def build_layout(
         dcc.Store(id=ids.TUNE_SETUP_METADATA_STORE, data=None),
         dcc.Store(id=ids.TUNE_SETUP_PIPELINE_PICKER_STORE, data=None),
         dcc.Store(id=ids.TUNE_SETUP_METADATA_PICKER_STORE, data=None),
+        dcc.Store(id=ids.TUNE_SETUP_DRAFT_STORE, data=None),
+        dcc.Store(id=ids.TUNE_SETUP_RENDER_REVISION_STORE, data=None),
         dcc.Store(id=ids.TUNE_SETUP_AUTHORED_SPEC_STORE, data=None),
         dcc.Store(id=ids.TUNE_SETUP_SIGNATURE_STORE, data=None),
         dcc.Store(id=ids.TUNE_RUN_ACTIVE_RECORD_STORE, data=None),
@@ -228,7 +230,10 @@ def build_setup_view(
             html.Div(
                 [
                     html.H3("Scorer"),
-                    html.Div("Locked until pipeline is chosen."),
+                    html.Div(
+                        "Locked until pipeline is chosen.",
+                        id=ids.TUNE_SETUP_SCORER_NOTE,
+                    ),
                     dcc.Checklist(
                         id=ids.TUNE_SETUP_REPLACE_SCORER,
                         options=[

@@ -194,7 +194,12 @@ def test_setup_authors_spec_and_navigates_to_run(
     page.wait_for_selector("#tune-setup-pipeline-input", timeout=20_000)
 
     page.fill("#tune-setup-pipeline-input", "pipeline.json.pht-pipe")
-    page.press("#tune-setup-pipeline-input", "Enter")
+    # Debounced typed paths must load on blur as well as Enter.
+    page.locator("#tune-setup-metadata-input").click()
+    expect(page.locator("#tune-setup-pipeline-source")).to_contain_text(
+        "Pipeline (typed):",
+        timeout=20_000,
+    )
     page.fill("#tune-setup-metadata-input", "layout.csv")
     page.press("#tune-setup-metadata-input", "Enter")
 
@@ -204,6 +209,10 @@ def test_setup_authors_spec_and_navigates_to_run(
     )
     continue_button = page.locator("#tune-setup-continue")
     expect(continue_button).to_be_enabled(timeout=20_000)
+    expect(page.locator("#tune-setup-gate")).to_contain_text(
+        "Setup is valid",
+        timeout=20_000,
+    )
     continue_button.click()
 
     page.wait_for_selector(
