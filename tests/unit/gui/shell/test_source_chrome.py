@@ -1,6 +1,7 @@
 """Unit guards for source-image-root chrome components."""
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 from urllib.parse import unquote
@@ -235,7 +236,7 @@ def test_metadata_picker_registers_store_writer(tmp_path: Path) -> None:
     )
 
 
-def test_shell_shared_store_writers_are_explicit_selection_actions_only(
+def test_shell_callback_map_shared_store_writers_are_explicit_actions_only(
     tmp_path: Path,
 ) -> None:
     import dash
@@ -272,6 +273,98 @@ def test_shell_shared_store_writers_are_explicit_selection_actions_only(
     assert _writer_inputs(SHELL_METADATA_CSV_STORE) == {
         SHELL_SETTINGS_METADATA_CSV_CLEAR,
         SHELL_METADATA_CSV_CONFIRM,
+    }
+
+
+def test_repository_shared_store_writer_inventory_is_explicit() -> None:
+    """Audit every production ``Output`` declaration for shared-store writes.
+
+    The Run and Tune entries are deliberately enumerated as deferred generic
+    writers. This test must be updated when R0/T1 remove them; it does not
+    mistake the Shell callback map for global shared-store authority.
+    """
+    source_root = Path(__file__).parents[4] / "src" / "phenotypic" / "gui"
+    target_names = {
+        "SHELL_SOURCE_IMAGE_ROOT_STORE",
+        "SHELL_METADATA_CSV_STORE",
+    }
+    inventory: set[tuple[str, str, str]] = set()
+
+    for path in source_root.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+
+        class _OutputVisitor(ast.NodeVisitor):
+            def __init__(self) -> None:
+                self.function_name = "<module>"
+
+            def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+                previous = self.function_name
+                self.function_name = node.name
+                self.generic_visit(node)
+                self.function_name = previous
+
+            visit_AsyncFunctionDef = visit_FunctionDef
+
+            def visit_Call(self, node: ast.Call) -> None:
+                if (
+                    isinstance(node.func, ast.Name)
+                    and node.func.id == "Output"
+                    and node.args
+                    and isinstance(node.args[0], ast.Name)
+                    and node.args[0].id in target_names
+                ):
+                    inventory.add(
+                        (
+                            path.relative_to(source_root).as_posix(),
+                            self.function_name,
+                            node.args[0].id,
+                        )
+                    )
+                self.generic_visit(node)
+
+        _OutputVisitor().visit(tree)
+
+    assert inventory == {
+        (
+            "shell/_callbacks.py",
+            "_clear_source_root",
+            "SHELL_SOURCE_IMAGE_ROOT_STORE",
+        ),
+        (
+            "shell/_callbacks.py",
+            "_confirm_source_picker",
+            "SHELL_SOURCE_IMAGE_ROOT_STORE",
+        ),
+        (
+            "shell/_callbacks.py",
+            "_source_from_sidebar_selection",
+            "SHELL_SOURCE_IMAGE_ROOT_STORE",
+        ),
+        (
+            "shell/_callbacks.py",
+            "_clear_metadata_csv",
+            "SHELL_METADATA_CSV_STORE",
+        ),
+        (
+            "shell/_callbacks.py",
+            "_confirm_metadata_picker",
+            "SHELL_METADATA_CSV_STORE",
+        ),
+        (
+            "run_console/_callbacks.py",
+            "_action_control_outputs",
+            "SHELL_METADATA_CSV_STORE",
+        ),
+        (
+            "run_console/_callbacks.py",
+            "_mirror_input_dir_to_shared_source",
+            "SHELL_SOURCE_IMAGE_ROOT_STORE",
+        ),
+        (
+            "tune/_callbacks.py",
+            "_mirror_tune_image_source_to_shared",
+            "SHELL_SOURCE_IMAGE_ROOT_STORE",
+        ),
     }
 
 

@@ -146,6 +146,54 @@ def test_metadata_image_identity_prefers_populated_legacy_column() -> None:
     assert identity.normalized_values == ("plate_a", "plate_b")
 
 
+def test_metadata_image_identity_rejects_complementary_sparse_aliases() -> None:
+    from phenotypic.gui.shell._metadata_context import (
+        resolve_metadata_image_identity,
+    )
+
+    columns = [str(METADATA.IMAGE_NAME), "Metadata_ImageFileName"]
+    rows = [
+        {
+            str(METADATA.IMAGE_NAME): "plate_a",
+            "Metadata_ImageFileName": "",
+        },
+        {
+            str(METADATA.IMAGE_NAME): "",
+            "Metadata_ImageFileName": "plate_b.tif",
+        },
+    ]
+
+    identity = resolve_metadata_image_identity(columns, rows)
+
+    assert identity.state == "ambiguous"
+    assert identity.column is None
+    assert identity.normalized_values == ()
+
+
+def test_metadata_image_identity_accepts_one_complete_agreeing_alias() -> None:
+    from phenotypic.gui.shell._metadata_context import (
+        resolve_metadata_image_identity,
+    )
+
+    columns = [str(METADATA.IMAGE_NAME), "Metadata_ImageFileName"]
+    rows = [
+        {
+            str(METADATA.IMAGE_NAME): "plate_a",
+            "Metadata_ImageFileName": "plate_a.tif",
+        },
+        {
+            str(METADATA.IMAGE_NAME): "",
+            "Metadata_ImageFileName": "plate_b.tif",
+        },
+    ]
+
+    identity = resolve_metadata_image_identity(columns, rows)
+
+    assert identity.state == "resolved"
+    assert identity.column == "Metadata_ImageFileName"
+    assert identity.normalized_values == ("plate_a", "plate_b")
+
+
 def test_metadata_image_identity_is_ambiguous_when_aliases_disagree() -> None:
     from phenotypic.gui.shell._metadata_context import (
         resolve_metadata_image_identity,
@@ -455,10 +503,34 @@ def test_read_metadata_row_matches_legacy_filename_and_strips_extension(
     result = read_metadata_row_for_image_stem(
         sandbox,
         payload,
-        "plate_a.png",
+        "plate_a",
     )
 
     assert result.state == "matched"
+    assert result.rows == [{"Treatment": "control"}]
+
+
+def test_read_metadata_row_preserves_dotted_stem(tmp_path: Path) -> None:
+    from phenotypic.gui.shell._metadata_context import (
+        metadata_payload_from_path,
+        read_metadata_row_for_image_stem,
+    )
+
+    csv_path = _write_csv(
+        tmp_path / "layout.csv",
+        "Metadata_ImageFileName,Treatment\nplate.01.tiff,control\n",
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payload = metadata_payload_from_path(sandbox, csv_path)
+
+    result = read_metadata_row_for_image_stem(
+        sandbox,
+        payload,
+        "plate.01",
+    )
+
+    assert result.state == "matched"
+    assert result.image_stem == "plate.01"
     assert result.rows == [{"Treatment": "control"}]
 
 

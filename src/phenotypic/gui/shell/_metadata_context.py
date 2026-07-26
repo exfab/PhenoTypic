@@ -138,10 +138,14 @@ class MetadataImageIdentity:
 
 
 def normalize_metadata_image_identity(value: object) -> str | None:
-    """Return a stripped filename stem for one metadata identity value.
+    """Return a stem for one metadata filename or path value.
 
-    Both POSIX and Windows separators are accepted because CSV files may have
-    been authored on a different platform from the GUI host.
+    This resolver is for raw values read from recognized CSV columns, where a
+    value may be a filename or path. Both POSIX and Windows separators are
+    accepted because CSV files may have been authored on a different platform
+    from the GUI host. Callers that already hold a stem must not pass it here,
+    because a dotted stem such as ``plate.01`` is not distinguishable from a
+    filename extension.
     """
     if value is None:
         return None
@@ -175,28 +179,44 @@ def resolve_metadata_image_identity(
     if not recognized:
         return MetadataImageIdentity("missing", None, (), ())
 
-    normalized_rows: list[str | None] = []
-    coverage = {column: 0 for column in recognized}
+    normalized_by_column: dict[str, list[str | None]] = {
+        column: [] for column in recognized
+    }
+    populated_rows = 0
     for row in rows:
         values: list[str] = []
         for column in recognized:
             normalized = normalize_metadata_image_identity(row.get(column))
+            normalized_by_column[column].append(normalized)
             if normalized is None:
                 continue
-            coverage[column] += 1
             values.append(normalized)
         if len(set(values)) > 1:
             return MetadataImageIdentity("ambiguous", None, recognized, ())
-        normalized_rows.append(values[0] if values else None)
+        populated_rows += bool(values)
 
-    # ``max`` is stable, so the canonical compatibility order breaks equal
-    # coverage ties while avoiding a sparsely populated current-schema alias.
-    column = max(recognized, key=coverage.__getitem__)
+    complete_columns = [
+        column
+        for column in recognized
+        if sum(
+            value is not None
+            for value in normalized_by_column[column]
+        )
+        == populated_rows
+    ]
+    if not complete_columns:
+        # Complementary sparse aliases have no safe physical Timeline join
+        # column even when their non-empty values never overlap.
+        return MetadataImageIdentity("ambiguous", None, recognized, ())
+
+    # Compatibility order breaks ties when multiple physical columns have
+    # complete coverage and agree everywhere they overlap.
+    column = complete_columns[0]
     return MetadataImageIdentity(
         "resolved",
         column,
         recognized,
-        tuple(normalized_rows),
+        tuple(normalized_by_column[column]),
     )
 
 
@@ -334,7 +354,12 @@ def read_metadata_row_for_image_stem(
     payload: object,
     image_stem: str,
 ) -> MetadataLookupResult:
-    """Look up metadata values for ``image_stem`` in the selected CSV."""
+    """Look up metadata values for an already-normalized image stem.
+
+    ``image_stem`` must be the exact filename stem, not a filename or path.
+    In particular, dotted stems such as ``plate.01`` are compared verbatim and
+    are never normalized a second time.
+    """
     if payload is None:
         return MetadataLookupResult("unset", image_stem, [])
     path = resolve_metadata_csv(sandbox, payload)
@@ -350,11 +375,11 @@ def read_metadata_row_for_image_stem(
     if identity.state == "ambiguous":
         return MetadataLookupResult("ambiguous_image_name", image_stem, [])
 
-    normalized_stem = normalize_metadata_image_identity(image_stem)
+    target_stem = image_stem.strip()
     matches = [
         row
         for row, row_stem in zip(rows, identity.normalized_values, strict=True)
-        if row_stem == normalized_stem
+        if row_stem == target_stem
     ]
     if not matches:
         return MetadataLookupResult("no_match", image_stem, [])
