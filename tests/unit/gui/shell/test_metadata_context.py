@@ -107,10 +107,10 @@ def test_metadata_image_identity_supports_current_and_legacy_headers() -> None:
     ]
     rows = [
         {
-            str(METADATA.IMAGE_NAME): "plates/plate_a.tif",
+            str(METADATA.IMAGE_NAME): "plate_a",
             "Metadata_ImageName": "plate_a",
             "Metadata_ImageFileName": r"C:\images\plate_a.tiff",
-            "ImageName": "plate_a.png",
+            "ImageName": "plate_a",
         }
     ]
 
@@ -120,6 +120,27 @@ def test_metadata_image_identity_supports_current_and_legacy_headers() -> None:
     assert identity.column == str(METADATA.IMAGE_NAME)
     assert identity.recognized_columns == tuple(columns)
     assert identity.normalized_values == ("plate_a",)
+
+
+def test_metadata_image_identity_preserves_canonical_dotted_stem() -> None:
+    from phenotypic.gui.shell._metadata_context import (
+        resolve_metadata_image_identity,
+    )
+
+    canonical = str(METADATA.IMAGE_NAME)
+    columns = [canonical, "Metadata_ImageFileName"]
+    rows = [
+        {
+            canonical: "  plate.01  ",
+            "Metadata_ImageFileName": "images/plate.01.tiff",
+        }
+    ]
+
+    identity = resolve_metadata_image_identity(columns, rows)
+
+    assert identity.state == "resolved"
+    assert identity.column == canonical
+    assert identity.normalized_values == ("plate.01",)
 
 
 def test_metadata_image_identity_prefers_populated_legacy_column() -> None:
@@ -519,6 +540,32 @@ def test_read_metadata_row_preserves_dotted_stem(tmp_path: Path) -> None:
     csv_path = _write_csv(
         tmp_path / "layout.csv",
         "Metadata_ImageFileName,Treatment\nplate.01.tiff,control\n",
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payload = metadata_payload_from_path(sandbox, csv_path)
+
+    result = read_metadata_row_for_image_stem(
+        sandbox,
+        payload,
+        "plate.01",
+    )
+
+    assert result.state == "matched"
+    assert result.image_stem == "plate.01"
+    assert result.rows == [{"Treatment": "control"}]
+
+
+def test_read_metadata_row_matches_canonical_dotted_stem(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.shell._metadata_context import (
+        metadata_payload_from_path,
+        read_metadata_row_for_image_stem,
+    )
+
+    csv_path = _write_csv(
+        tmp_path / "layout.csv",
+        f"{METADATA.IMAGE_NAME},Treatment\nplate.01,control\n",
     )
     sandbox = SandboxRoot.from_path(tmp_path)
     payload = metadata_payload_from_path(sandbox, csv_path)

@@ -137,22 +137,38 @@ class MetadataImageIdentity:
     normalized_values: tuple[str | None, ...]
 
 
-def normalize_metadata_image_identity(value: object) -> str | None:
-    """Return a stem for one metadata filename or path value.
+def normalize_metadata_image_identity(
+    column: str,
+    value: object,
+) -> str | None:
+    """Normalize one identity according to its recognized column semantics.
 
-    This resolver is for raw values read from recognized CSV columns, where a
-    value may be a filename or path. Both POSIX and Windows separators are
-    accepted because CSV files may have been authored on a different platform
-    from the GUI host. Callers that already hold a stem must not pass it here,
-    because a dotted stem such as ``plate.01`` is not distinguishable from a
-    filename extension.
+    Canonical and legacy ``ImageName`` columns are stem-valued, so their
+    stripped text is preserved exactly, including dots such as ``plate.01``.
+    ``Metadata_ImageFileName`` is filename/path-valued; only that alias strips
+    parent path and suffix. POSIX and Windows separators are accepted for the
+    filename alias because CSV files may be authored on another platform.
+
+    Args:
+        column: One member of :data:`METADATA_IMAGE_IDENTITY_COLUMNS`.
+        value: Raw CSV value from ``column``.
+
+    Returns:
+        The normalized stem identity, or ``None`` for an empty value.
+
+    Raises:
+        ValueError: If ``column`` is not a recognized image identity column.
     """
+    if column not in METADATA_IMAGE_IDENTITY_COLUMNS:
+        raise ValueError(f"unrecognized metadata image identity column: {column}")
     if value is None:
         return None
     text = str(value).strip()
     if not text:
         return None
-    return PurePosixPath(text.replace("\\", "/")).stem or None
+    if column == "Metadata_ImageFileName":
+        return PurePosixPath(text.replace("\\", "/")).stem or None
+    return text
 
 
 def resolve_metadata_image_identity(
@@ -186,7 +202,10 @@ def resolve_metadata_image_identity(
     for row in rows:
         values: list[str] = []
         for column in recognized:
-            normalized = normalize_metadata_image_identity(row.get(column))
+            normalized = normalize_metadata_image_identity(
+                column,
+                row.get(column),
+            )
             normalized_by_column[column].append(normalized)
             if normalized is None:
                 continue
