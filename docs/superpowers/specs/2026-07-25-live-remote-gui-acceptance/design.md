@@ -4,7 +4,7 @@
 **Target:** `https://4qbp9pqt-8050.usw3.devtunnels.ms/`  
 **Cluster:** `cluster.hpcc.ucr.edu`  
 **Project root:** `/rhome/anguy344/bigdata_exfab/ucr_029_e_d_Maresca`  
-**Results mutation fixture:** `data/results/2026-07-16-test-gui`
+**Results read-only acceptance fixture:** `data/results/2026-07-16-test-gui`
 
 ## 1. Purpose
 
@@ -53,8 +53,9 @@ complete.
 
 ### 3.2 Allowed writes
 
-- Results/QC/Error/Analysis mutations are allowed only inside
-  `data/results/2026-07-16-test-gui`.
+- Results/QC/Error/Analysis mutations are conditionally allowed only inside
+  `data/results/2026-07-16-test-gui`, after A04 establishes coherent
+  completion evidence. A04 failed in this run, so the copy remains read-only.
 - Run and Tune jobs use a unique acceptance namespace confirmed during the
   preflight, with one-image or otherwise minimal input.
 - GUI-owned presets, external viewer caches, logs, and generation records may
@@ -85,11 +86,13 @@ The preflight must fill in this table before browser mutations begin.
 | CPU pipeline | `gui_e2e_acceptance/b7879e1e2deeff681cd085445a9391aa510ce657/cases/gui-v1-live-44208909b63f4442b36ff5d261f09546/pipeline.json.pht-pipe` | 419-byte `OtsuDetector` + `MeasureSize` pipeline | `[x]` |
 | Minimal staged pipeline | `gui_e2e_acceptance/a51f9620feae229b6c78a7cd697cb41833b4a809/cases/gui-v1-live-b40dfad3ce15407a96ca1d1a071e67ba/pipeline.json.pht-pipe` | 667-byte test-owned `FakeGpuDetector` + `MeasureSize` pipeline; requires preload below | `[x]` |
 | Minimal staged image | `gui_e2e_acceptance/a51f9620feae229b6c78a7cd697cb41833b4a809/cases/gui-v1-live-b40dfad3ce15407a96ca1d1a071e67ba/input/single-small-colony.tiff` | One-image staged fixture | `[x]` |
-| Staged preload | `PHENOTYPIC_PRELOAD_MODULES=tests._fakes.register_fake_gpu` | Test module importable by GUI and workers | `[ ]` |
+| Staged preload | `PHENOTYPIC_PRELOAD_MODULES=tests._fakes.register_fake_gpu` | Test module importable by GUI and workers | `[-]` unverified in the live allocation |
 | Production GPU pipeline | `config/UCR_029_E_D_Maresca_v12.json.pht-pipe` | SAM2/staged; do not use except for read-only inspection | `[x]` |
-| Tune spec/layout | To be chosen after revision gate | Canonical typed spec and metadata | `[ ]` |
-| Run output namespace | `gui_e2e_acceptance/9e646c16078bf969/live-20260725-<uuid>/` | New, unique, outside production results | `[x]` |
-| Active protected job | SLURM `26725257`, interactive allocation on `gpu12` | Never cancel or replace | `[x]` |
+| Browse multi-image source | `data/subset/subset_only/outlier` | Eight distinct non-production TIFF images | `[x]` |
+| Browse metadata | `metadata/UCR_029_E_D-Metadata_subset.csv` | Contains `Metadata_ImageFileName` and legacy `Metadata_ImageName`, but neither literal `ImageName` nor current `MetadataImage_ImageName`; Timeline-valid only | `[x]` |
+| Tune spec/layout | Verified minimal CPU pipeline above; Setup never produced a spec | Canonical typed spec and metadata | `[-]` blocked by F-010 |
+| Run output namespace | `gui_e2e_acceptance/ab547d29f/live-20260726-codex/` | New, unique, outside production results | `[x]` |
+| Active protected job | SLURM `26749027`, interactive allocation on `gpu12` | Never cancel or replace | `[x]` |
 | Protected code workdir | `/bigdata/exfab/anguy344/PhenoTypic` | GUI checkout and active allocation workdir | `[x]` |
 | Protected production run | `data/results/2026-07-16` and every other production result | Never mutate or resume | `[x]` |
 
@@ -97,14 +100,14 @@ The preflight must fill in this table before browser mutations begin.
 
 ### A. Preflight and deployment identity
 
-- [!] **A01** Confirm the remote checkout contains final commit
-  `9e646c16078bf969d80227a8bb624381ee437e3b`.
-- [-] **A02** Confirm the GUI process serves the updated Run controls and
+- [x] **A01** Confirm the remote checkout contains final commit
+  `ab547d29fbca082f3d801196cf952eaf562535f9`.
+- [x] **A02** Confirm the GUI process serves the updated Run controls and
   canonical typed-file extensions.
 - [x] **A03** Record active SLURM jobs, their output roots, and protected
-  generations before testing. `squeue` showed exactly one job: interactive GUI
-  allocation `26725257` on `gpu12`; no batch or array processing job was
-  active.
+  generations before testing. Fresh `squeue` showed exactly one job:
+  interactive GUI allocation `26749027` on `gpu12`; no batch or array
+  processing job was active.
 - [!] **A04** Validate the completed-run copy layout, permissions, manifest,
   measurements mirror, pipeline recipe, overlays, QC state, and completion
   evidence.
@@ -113,156 +116,168 @@ The preflight must fill in this table before browser mutations begin.
 - [-] **A06** Restart the controlled GUI with
   `PHENOTYPIC_PRELOAD_MODULES=tests._fakes.register_fake_gpu`, confirm the
   module imports in the GUI/worker environment, and prove the minimal staged
-  pipeline deserializes before G08.
+  pipeline deserializes before G08. The checkout contains the module, but the
+  live allocation environment cannot be inspected externally and no startup
+  file establishes the variable.
 
 ### B. Shell, Home, and file explorer
 
-- [ ] **B01** Home loads with shell chrome, grouped Pipeline/Results
+- [x] **B01** Home loads with shell chrome, grouped Pipeline/Results
   navigation, RSS readout, sandbox label, and capability counts.
-- [ ] **B02** Help and Settings open and close without layout or callback
+- [x] **B02** Help and Settings open and close without layout or callback
   errors.
-- [ ] **B03** Input-folder picker writes a valid shared V2 source payload;
+- [x] **B03** Input-folder picker writes a valid shared V2 source payload;
   Clear removes browser authority without deleting files.
-- [ ] **B04** Metadata picker accepts the intended CSV and rejects
+- [x] **B04** Metadata picker accepts the intended CSV and rejects
   non-CSV/out-of-sandbox paths.
-- [ ] **B05** Sidebar expands/collapses lazily and shows accurate
+- [x] **B05** Sidebar expands/collapses lazily and shows accurate
   `img`/`cfg`/`out`/bundle badges.
-- [ ] **B06** Hidden and external-symlink toggles change visibility without
+- [x] **B06** Hidden and external-symlink toggles change visibility without
   escaping the sandbox.
-- [ ] **B07** Refresh updates badges, open pickers, source labels, and page
+- [!] **B07** Refresh updates badges, open pickers, source labels, and page
   inputs through one shared revision.
-- [ ] **B08** Sidebar handoff offers only context-valid actions and does not
+- [x] **B08** Sidebar handoff offers only context-valid actions and does not
   treat stale labels as selected paths.
-- [ ] **B09** Recent Runs excludes private legacy backups and reports
+- [!] **B09** Recent Runs excludes private legacy backups and reports
   incomplete generation-less historical outputs as `unknown`, not `running`.
-- [ ] **B10** Navigation among all mounted apps preserves active-group styling
+- [x] **B10** Navigation among all mounted apps preserves active-group styling
   and does not produce duplicate IDs or blank mounts.
 
 ### C. Browse workflows
 
-- [ ] **C01** Selecting the minimal image directory populates dataset and image
+- [x] **C01** Selecting the minimal image directory populates dataset and image
   controls and loads the first image.
-- [ ] **C02** Previous/next controls clamp correctly; image dimensions, size,
+- [x] **C02** Previous/next controls clamp correctly; image dimensions, size,
   and available metadata render.
-- [ ] **C03** Deep zoom, pan, home, and full-page controls work without a CDN.
-- [ ] **C04** Compare mode mounts the selected images, enforces its cap, and
+- [x] **C03** Deep zoom, pan, home, and full-page controls work without a CDN.
+- [x] **C04** Compare mode mounts the selected images, enforces its cap, and
   propagates linked pan/zoom.
-- [ ] **C05** Timeline mode exercises at least one folder/pattern row source
+- [!] **C05** Timeline mode exercises at least one folder/pattern row source
   and one CSV-backed row source when metadata exists, including placeholder or
   advanced-regex preview and join/warning feedback.
-- [ ] **C06** Timeline time-source selection exercises EXIF/folder/pattern/CSV
+- [x] **C06** Timeline time-source selection exercises EXIF/folder/pattern/CSV
   options that are available, then builds a matrix, focuses the first
   populated cell, navigates by arrows/buttons, and keeps a bounded mounted
   window.
-- [ ] **C07** Timeline tile-size controls and row-header comparison work.
-- [ ] **C08** Timeline hover/Enter opens and reopens the deep-zoom popout.
-- [ ] **C09** Returning to Browse after shared Refresh retains a valid source
+- [x] **C07** Timeline tile-size controls and row-header comparison work.
+- [!] **C08** Timeline hover/Enter opens and reopens the deep-zoom popout.
+- [!] **C09** Returning to Browse after shared Refresh retains a valid source
   or clearly reports it unavailable.
 
 ### D. Builder workflows
 
-- [ ] **D01** Builder loads the canonical pipeline through the picker and
+- [x] **D01** Builder loads the canonical pipeline through the picker and
   preserves the typed extension.
-- [ ] **D02** Synthetic and real-image source paths both render a usable input
+- [x] **D02** Synthetic and real-image source paths both render a usable input
   node; point-picker selection round-trips when offered.
-- [ ] **D03** Palette insertion builds a linear chain; zoom, fit, selection,
+- [!] **D03** Palette insertion builds a linear chain; zoom, fit, selection,
   inspector, and documentation controls work.
-- [ ] **D04** Scalar operation-valued aux targets accept, replace, clear, and
+- [!] **D04** Scalar operation-valued aux targets accept, replace, clear, and
   drill into compatible operations.
-- [ ] **D05** Embedded pipeline aux creation, breadcrumb drill-in, nested
+- [x] **D05** Embedded pipeline aux creation, breadcrumb drill-in, nested
   editing, and drill-out work.
-- [ ] **D06** Required-side-value and whole-pipeline validation states identify
+- [!] **D06** Required-side-value and whole-pipeline validation states identify
   the correct operation without destructive repair.
-- [ ] **D07** Run Preview publishes a complete generation and keeps the preview
+- [!] **D07** Run Preview publishes a complete generation and keeps the preview
   DOM mounted across reselection.
-- [ ] **D08** Editing a parameter marks the old preview stale; rerun replaces
+- [-] **D08** Editing a parameter marks the old preview stale; rerun replaces
   it atomically with the new revision.
-- [ ] **D09** Save writes a canonical `.json.pht-pipe`; Load round-trips the
+- [-] **D09** Save writes a canonical `.json.pht-pipe`; Load round-trips the
   saved pipeline without shared-instance aliasing.
 - [ ] **D10** Unsupported nonlinear/development DAG input fails closed with a
   recovery explanation instead of silent data loss.
 
+The canonical D09 save passed, but the saved file was not reloaded; the
+round-trip and aliasing requirement remains unverified.
+
 ### E. Tune co-pilot
 
-- [ ] **E01** Setup loads a pipeline or existing `.json.pht-tune` spec and
+- [!] **E01** Setup loads a pipeline or existing `.json.pht-tune` spec and
   preserves existing strategy, budget, storage, scorer, and extensions.
-- [ ] **E02** Search-space editors expose supported domains, preserve typed
+- [-] **E02** Search-space editors expose supported domains, preserve typed
   values, and block invalid/no-knob configurations.
-- [ ] **E03** Metadata-backed scorer replacement is explicit; credentials are
+- [-] **E03** Metadata-backed scorer replacement is explicit; credentials are
   not rendered into browser-visible state or commands.
-- [ ] **E04** Continue writes an atomic canonical spec and switches to Run.
-- [ ] **E05** Run source/output/strategy/budget/storage/compute/evaluation
+- [-] **E04** Continue writes an atomic canonical spec and switches to Run.
+- [-] **E05** Run source/output/strategy/budget/storage/compute/evaluation
   controls produce one valid launch command.
-- [ ] **E06** Copied command text and Deploy argv are identical after shell
+- [-] **E06** Copied command text and Deploy argv are identical after shell
   parsing/redaction rules.
-- [ ] **E07** A minimal Local Tune deployment reaches terminal state and
+- [-] **E07** A minimal Local Tune deployment reaches terminal state and
   produces a bindable Tune output.
-- [ ] **E08** Monitor polls progress, binds through the read-only run picker,
+- [-] **E08** Monitor polls progress, binds through the read-only run picker,
   and exercises Local-only cancel behavior or its precise non-local fallback.
-- [ ] **E08a** Curate shortlists and pins A/B trials, renders linked overlays
+- [-] **E08a** Curate shortlists and pins A/B trials, renders linked overlays
   and difference view, propagates pan/zoom, and selects a winner.
-- [ ] **E08b** Space toggles tunable knobs, edits supported domains, exports a
+- [-] **E08b** Space toggles tunable knobs, edits supported domains, exports a
   canonical next spec, and Launch refreshes to a valid command using it.
-- [ ] **E09** Best-pipeline export writes a canonical pipeline without
+- [-] **E09** Best-pipeline export writes a canonical pipeline without
   modifying the source spec.
-- [ ] **E10** SLURM Tune mode either completes a minimal test-owned deployment
+- [-] **E10** SLURM Tune mode either completes a minimal test-owned deployment
   or is marked blocked with precise scheduler/UI evidence.
+
+E02 editors and the E03 scorer panel rendered, but invalid-domain behavior,
+credential handling, replacement, and persistence could not be exercised
+because F-010 kept Continue disabled.
 
 ### F. Run Console, Local, and Validate
 
-- [ ] **F01** Pipeline/input/output pickers accept only sandbox-valid paths and
+- [!] **F01** Pipeline/input/output pickers accept only sandbox-valid paths and
   show canonical typed files.
-- [ ] **F02** Rapid Local/SLURM mode changes use the final visible controls, not
+- [!] **F02** Rapid Local/SLURM mode changes use the final visible controls, not
   stale derived state.
-- [ ] **F03** Dry-run, Resume, metadata, canonical image extensions, and
+- [!] **F03** Dry-run, Resume, metadata, canonical image extensions, and
   advanced fields appear in the generated request exactly once.
 - [ ] **F04** Save/Load preset round-trips all CPU, GPU, staged, and SLURM
   controls.
-- [ ] **F05** Validate records before launch, streams logs, reaches a terminal
+- [x] **F05** Validate records before launch, streams logs, reaches a terminal
   registry state, and publishes no run output.
-- [ ] **F06** Minimal Local run records a unique generation before spawn,
+- [x] **F06** Minimal Local run records a unique generation before spawn,
   streams incremental logs, and reaches completion only with matching
   publication evidence.
-- [ ] **F07** Local cancellation affects only the test generation and reaches a
+- [-] **F07** Local cancellation affects only the test generation and reaches a
   terminal state after the process is inactive.
-- [ ] **F08** Recent Runs refreshes by registry revision; row selection points
+- [-] **F08** Recent Runs refreshes by registry revision; row selection points
   the dashboard iframe at the correct output.
-- [ ] **F09** Fresh-output ownership rejects accidental reuse; Resume is
+- [!] **F09** Fresh-output ownership rejects accidental reuse; Resume is
   explicit and generation-checked.
 - [ ] **F10** A pre-seeded process-mode output is classified and shown in
   Recent Runs without inventing a full-run dashboard.
 
 ### G. Run Console and live SLURM
 
-- [ ] **G01** SLURM form accepts minutes, `HH:MM:SS`, and `D-HH:MM:SS`, while
+- [-] **G01** SLURM form accepts minutes, `HH:MM:SS`, and `D-HH:MM:SS`, while
   rejecting malformed durations and an empty profile.
-- [ ] **G02** Ordinary one-image submission persists intent before `sbatch`,
+- [-] **G02** Ordinary one-image submission persists intent before `sbatch`,
   records array/finalizer roles, and shows queued/running/reconciling states.
-- [ ] **G03** Scheduler logs stream incrementally and polling remains bounded.
-- [ ] **G04** Ordinary completion requires every ledgered job, finalizer
+- [-] **G03** Scheduler logs stream incrementally and polling remains bounded.
+- [-] **G04** Ordinary completion requires every ledgered job, finalizer
   success, generation marker, and complete manifest.
-- [ ] **G05** Test-owned ordinary cancellation fences submission, cancels every
+- [-] **G05** Test-owned ordinary cancellation fences submission, cancels every
   recovered ID, and remains `cancelling` until quiescent.
-- [ ] **G06** GUI restart/Refresh rehydrates a nonterminal test generation from
+- [-] **G06** GUI restart/Refresh rehydrates a nonterminal test generation from
   durable owner, intent, role ledger, and scheduler state.
-- [ ] **G07** Scheduler-unavailable behavior becomes `unknown`, never a false
+- [-] **G07** Scheduler-unavailable behavior becomes `unknown`, never a false
   terminal or running state.
-- [ ] **G08** Staged GPU one-image submission records controller, recovery,
+- [-] **G08** Staged GPU one-image submission records controller, recovery,
   CPU-stage, GPU-stage, continuation, and finalizer roles as applicable.
-- [ ] **G09** Staged completion requires orchestration completion, per-image
+- [-] **G09** Staged completion requires orchestration completion, per-image
   Stage-3 evidence, matching epoch, and cleanup of transient sidecars.
-- [ ] **G10** Staged cancellation deactivates the epoch before `scancel` and
+- [-] **G10** Staged cancellation deactivates the epoch before `scancel` and
   leaves no test-owned continuation active.
-- [ ] **G11** No job or output belonging to the protected active run changes
+- [x] **G11** No job or output belonging to the protected active run changes
   throughout G01-G10.
+
+Only the `HH:MM:SS` value `00:05:00` was entered for G01. The other accepted
+forms and rejection cases remain blocked because F-014 prevents validation.
 
 ### H. Results binding and read-only views
 
-All H items are currently blocked by A01. H01-H10 read-only behavior may be
-tested after the revision gate; mutation-dependent interpretations remain
-blocked by A04 until the fixture is authoritative.
+Read-only binding was attempted after A01 passed. Mutation-dependent
+interpretations remain blocked by A04 until the fixture is authoritative;
+all post-bind read-only workflows are blocked by F-015.
 
-- [-] **H01** Binding `data/results/2026-07-16-test-gui` validates the layout
+- [!] **H01** Binding `data/results/2026-07-16-test-gui` validates the layout
   and atomically updates Results and Analysis to one snapshot.
 - [-] **H02** Binding, tab activation, first tile, Refresh, and compatibility
   preflight do not write under the bound output.
@@ -283,9 +298,13 @@ blocked by A04 until the fixture is authoritative.
 - [-] **H10** An active/nonterminal owner makes every Results and Analysis
   mutation fail closed.
 
+The H02 immutability portion passed: key pre/post hashes and modification times
+were unchanged. Tab, tile, Refresh, and compatibility-preflight portions never
+became reachable.
+
 ### I. QC configuration, migration, rebuild, and review
 
-All I items are blocked by A01 and A04. Do not mutate the inconsistent copy.
+All I items are blocked by A04 and F-015. Do not mutate the inconsistent copy.
 
 - [-] **I01** Compatibility preflight classifies the copied recipe as
   compatible, migratable, or blocked with exact reasons and fingerprints.
@@ -305,7 +324,7 @@ All I items are blocked by A01 and A04. Do not mutate the inconsistent copy.
 
 ### J. Error analysis and transactional publication
 
-All J items are blocked by A01 and A04. Do not publish into the inconsistent
+All J items are blocked by A04 and F-015. Do not publish into the inconsistent
 copy.
 
 - [-] **J01** Opening Error and switching categories is compute-only and leaves
@@ -321,7 +340,7 @@ copy.
 
 ### K. Analysis authoring and publication
 
-All K items are blocked by A01 and A04. Do not save or publish into the
+All K items are blocked by A04 and F-015. Do not save or publish into the
 inconsistent copy.
 
 - [-] **K01** Analysis opens on the same Results snapshot and displays pipeline
@@ -339,32 +358,40 @@ inconsistent copy.
 
 ### L. Final cross-app and filesystem verification
 
-- [ ] **L01** V1 payloads remain readable, but a sandbox relocation or
+- [!] **L01** V1 payloads remain readable, but a sandbox relocation or
   fingerprint mismatch makes both stored V1/V2 source and metadata descriptors
   unavailable and non-authoritative until explicit reselection; reselection
   writes V2 path/fingerprint payloads.
-- [ ] **L02** Shared source, metadata, output binding, and Refresh propagate
+- [!] **L02** Shared source, metadata, output binding, and Refresh propagate
   consistently across Browse, Builder, Tune, Run, Results, and Analysis.
-- [ ] **L03** Pipeline, Tune, and image-extension displays use canonical
+- [x] **L03** Pipeline, Tune, and image-extension displays use canonical
   extensions everywhere.
-- [ ] **L04** Copy/deploy command parity holds for Run and Tune.
-- [ ] **L05** Bound source trees remain unchanged by read-only interactions;
+- [-] **L04** Copy/deploy command parity holds for Run and Tune.
+- [x] **L05** Bound source trees remain unchanged by read-only interactions;
   only approved test outputs and explicit copied-results mutations change.
-- [ ] **L06** Every submitted test job is terminal and no test-owned scheduler
+- [x] **L06** Every submitted test job is terminal and no test-owned scheduler
   continuation remains.
-- [ ] **L07** Active production jobs and outputs match their preflight state
+- [x] **L07** Active production jobs and outputs match their preflight state
   except for changes produced by their own pre-existing processing.
-- [ ] **L08** Record every major issue below with reproduction, affected path,
+- [!] **L08** Record every major issue below with reproduction, affected path,
   evidence, severity, and recommended fix.
+
+L06 passes only as an isolation invariant: no test scheduler job was submitted,
+so there is no test-owned continuation. Scheduler lifecycle behavior remains
+blocked by F-014.
+
+L08 remains partial because the live browser evidence did not expose the
+registry generation UUID for F-012 through F-014. The affected output paths
+and all other available evidence are recorded below.
 
 ## 6. Findings
 
-### F-001: Remote GUI is not running the requested final revision
+### F-001: Resolved initial remote revision mismatch
 
-**Severity:** P0 acceptance blocker  
+**Severity:** Resolved P0 acceptance blocker
 **Checklist:** A01, A02, and every browser test after preflight
 
-Read-only SSH inspection found:
+Pre-restart read-only SSH inspection found:
 
 - remote checkout: `/bigdata/exfab/anguy344/PhenoTypic`;
 - remote branch: `debug-gui`, clean and tracking `origin/debug-gui`;
@@ -378,10 +405,12 @@ The remote `git pull` succeeded only against the older published branch. It
 could not retrieve the unpushed implementation commits. Browser acceptance
 must not proceed because failures would test the wrong program.
 
-**Required resolution:** publish the intended branch revision, fast-forward the
-remote checkout, and restart the GUI process in a controlled way without
-cancelling allocation `26725257`. The controlled restart must also satisfy A06
-for staged acceptance. Then rerun A01, A02, and A06 before any other item.
+**Resolution:** `debug-gui` was published and the user restarted the GUI.
+Fresh read-only SSH inspection on 2026-07-26 found both local and remote clean
+at `ab547d29fbca082f3d801196cf952eaf562535f9`, which contains the required
+implementation. The sole active job is now interactive GUI allocation
+`26749027`. A01 and A02 pass. A06 remains independently blocked because the
+live process environment does not expose whether the fake-GPU preload was set.
 
 ### F-002: The copied Results fixture has contradictory completion evidence
 
@@ -410,9 +439,268 @@ should expose the conflict and fail closed. QC, Error, and Analysis mutation
 tests need either an authoritative repair through supported GUI actions or a
 separate coherent completed-run copy. The copied run must never be resumed.
 
+### F-003: Shared Refresh changes an explicitly selected source to its parent
+
+**Severity:** P1 stale-path authority failure
+**Checklist:** B07, C09, L01, L02
+
+The Shell input picker explicitly selected
+`data/gui_e2e_test_inputs` and showed `source: gui_e2e_test_inputs`. Clicking
+the one shared Refresh button changed the settings label to `source: data`
+without a user selection. Browse then had no valid dataset option and did not
+show the previously selected image.
+
+The source was manually reselected afterward. Refresh must preserve the exact
+V2 path/fingerprint descriptor or mark it unavailable; silently authorizing the
+parent directory is incorrect.
+
+### F-004: Browse Timeline retains controls and preview data from the old source
+
+**Severity:** P1 cross-source state-coherence failure
+**Checklist:** C05, C09, L02
+
+After changing the source from the one-image `gui_e2e_test_inputs` folder to
+the eight-image `data/subset/subset_only/outlier` folder:
+
+- the single-image picker updated to the first outlier TIFF;
+- Timeline initially continued to render the old `slurm_smoke.png` matrix;
+- toggling Single then Timeline rebuilt the matrix with the eight TIFFs;
+- the filename-pattern input and preview table still displayed
+  `slurm_{plate}.png` and `slurm_smoke`, even after switching both axes and the
+  join key to CSV columns from the new metadata.
+
+The active matrix eventually used the new source, but stale authoring/preview
+state remained visible and authoritative-looking. Source revision changes must
+invalidate all dependent Timeline state atomically.
+
+### F-005: Compare overlay exposes encoded internal path tokens as titles
+
+**Severity:** P2 presentation and path-identity issue
+**Checklist:** C04
+
+Selecting two populated Timeline cells and opening Compare produced two linked
+deep-zoom viewers whose zoom state propagated correctly. Their visible titles,
+however, were long base64-encoded path tokens such as an encoding of
+`data/subset/subset_only/outlier/<image>.tif`, rather than image filenames or
+human-readable relative paths.
+
+The encoded transport token should remain internal. The overlay should display
+the resolved filename while preserving the token only in callback state.
+
+### F-006: Timeline deep-zoom popout cannot be opened
+
+**Severity:** P1 advertised workflow failure
+**Checklist:** C08
+
+With a populated CSV-backed 6×6 Timeline matrix:
+
+- the grid contained exactly one focused cell and six mounted popout controls;
+- clicking a visible/populated cell, clicking its `.timeline-cell-popout`
+  target, and pressing Enter after focus did not open a modal;
+- neither the expected popout modal nor a deep-zoom canvas appeared.
+
+Compare mode can open deep zoom, so image serving is functional. The per-cell
+popout event path itself appears disconnected or inaccessible.
+
+### F-007: Browse has two incompatible image-name metadata contracts
+
+**Severity:** P1 stale-schema compatibility failure
+**Checklist:** C02, C05, L01, L02
+
+Direct SSH inspection confirmed that
+`metadata/UCR_029_E_D-Metadata_subset.csv` contains
+`Metadata_ImageFileName` and `Metadata_ImageName`, but not the current
+`MetadataImage_ImageName` header. The CSV-backed Timeline is valid when its
+image join is explicitly set to `Metadata_ImageFileName`: all eight selected
+image stems are represented, and Timeline strips the extension before joining.
+
+The ordinary single-image metadata panel uses a different strict resolver and
+rejects `Metadata_ImageFileName`, legacy `Metadata_ImageName`, and literal
+`ImageName`; it requires exactly `MetadataImage_ImageName`. The same selected
+CSV therefore works in Timeline while the ordinary panel reports that it has
+no image-name column. One compatibility resolver and migration warning should
+serve both paths.
+
+### F-008: Builder preview, selection, and zoom controls are disconnected
+
+**Severity:** P1 core-authoring workflow failure
+**Checklist:** D03, D06-D08
+
+The canonical nine-operation pipeline and both synthetic and real-image
+sources loaded. Palette insertion and nested-pipeline drill-in/drill-out also
+worked. However:
+
+- selecting existing nodes did not populate the inspector;
+- zoom in, zoom out, and fit left the canvas transform unchanged;
+- repeated Run Preview actions on the small real image produced neither a
+  preview generation nor validation/error feedback after more than ten
+  seconds.
+
+Because no preview generation can be published, stale-preview invalidation
+cannot be acceptance-tested.
+
+### F-009: Builder scalar aux replacement appends a top-level operation
+
+**Severity:** P1 destructive authoring misroute
+**Checklist:** D04
+
+Filling `FilamentousFungiDetector.inoculum_detector` with `OtsuDetector`
+worked. Choosing Replace and then `MeanDetector` removed the visible aux value
+but appended `MeanDetector` as a new top-level pipeline node instead of
+replacing the scalar side value. The target identity is lost across the
+replacement callback.
+
+### F-010: Tune Setup populates editors but keeps Continue permanently gated
+
+**Severity:** P1 end-to-end Tune blocker
+**Checklist:** E01, E04-E10
+
+Selecting either the Builder-saved canonical pipeline or the verified minimal
+CPU fixture updated the source label and populated operation parameter editors.
+The scorer panel also rendered. At the same time the Setup gate continued to
+say `Choose a pipeline or existing tuning spec`, and Continue remained
+disabled. Typed absolute paths also did not load on Enter/blur. All downstream
+Tune tabs and deployment tests are blocked by this contradictory Setup state.
+
+### F-011: Run output picker ignores a typed new path and selects project root
+
+**Severity:** P0 unsafe-output selection failure
+**Checklist:** F01, F09, L02, L05
+
+Entering the new sandbox-relative acceptance path
+`gui_e2e_acceptance/ab547d29f/live-20260726-codex/local-01` and confirming
+changed the visible Run output to `.`. Retrying with the full absolute path,
+explicitly blurring the field, waiting for state settlement, and confirming
+again also selected `.`.
+
+No run was launched while `.` was selected. The exact isolated directory was
+created out-of-band under the acceptance namespace and then selected by
+directory navigation. Typed non-existent output paths must resolve to the
+entered canonical target, or fail closed; silently substituting the project
+root is unsafe.
+
+### F-012: A completed Run leaves Cancel enabled
+
+**Severity:** P1 lifecycle-control failure
+**Checklist:** F06, F07
+
+The one-image local run at
+`gui_e2e_acceptance/ab547d29f/live-20260726-codex/local-01` reached
+`status=complete`, wrote matching processing state, manifest, deliverables,
+and a 100% completion summary. Run re-enabled, but Cancel remained enabled
+after terminal publication and a further callback settlement interval. A
+terminal generation must not expose an actionable cancellation control.
+
+### F-013: Shared metadata silently corrupts an unrelated Run aggregation
+
+**Severity:** P1 cross-app state/visibility failure
+**Checklist:** F03, L02, L05
+
+The one-image output
+`gui_e2e_acceptance/ab547d29f/live-20260726-codex/local-01` showed pipeline,
+input, output, mode, Dry-run, Resume, and collapsed advanced controls, but no
+visible metadata selection. The previously selected 669-row
+`metadata/UCR_029_E_D-Metadata_subset.csv` was nevertheless injected into the
+run. Its grid keys did not describe the one-image fixture:
+
+- the one measured row was dropped from the metadata inner join;
+- 669 unmatched metadata rows were retained in the editable measurements
+  mirror with `QC_MetadataOnly=true`;
+- the log reported duplicate metadata join keys.
+
+Shared metadata may be intentional, but Run must display and confirm the exact
+metadata descriptor, its compatibility, and the resulting request. It must not
+silently apply stale cross-app metadata to a scientifically unrelated source.
+
+### F-014: Fresh live SLURM-mode Validate and Run actions are silent no-ops
+
+**Severity:** P0 live-execution blocker
+**Checklist:** F02, G02-G10
+
+After a full page reload cleared the stale Local generation identity described
+in F-012, the test explicitly reselected:
+
+- the verified minimal CPU pipeline;
+- the one-image input directory;
+- the pre-created isolated
+  `/rhome/anguy344/bigdata_exfab/ucr_029_e_d_Maresca/gui_e2e_acceptance/ab547d29f/live-20260726-codex/slurm-01`
+  output;
+- SLURM mode with `partition=short`, `time=00:05:00`, `memory=2G`,
+  one CPU, and zero CPU-stage GPUs.
+
+Both buttons remained enabled, focused when activated, and were the topmost
+hit-test targets. Neither action produced a status, log, error, registry row,
+submission intent, or file. The isolated output stayed empty. No scheduler job
+was submitted, so ordinary and staged lifecycle acceptance is blocked at the
+Run callback seam.
+
+The exact trigger remains unresolved. Focused local callback tests passed, so
+the evidence establishes a live browser/Dash action-seam failure rather than a
+specific scheduler-submitter defect. Implementation must first reproduce the
+same-page action sequence with callback-network and page-error capture.
+
+### F-015: Large Results binding exceeds the proxy timeout with no progress
+
+**Severity:** P1 production-scale viewer blocker
+**Checklist:** H01-H10, K01-K07
+
+On a fresh `/results/` page, the copied run was selected from the sidebar and
+classified as a CLI output. The enabled `↩ Open in viewer` action was invoked
+exactly once. The empty page showed no pending state while the server
+synchronously discovered and fingerprinted the approximately 475 GB output
+and built both Results and Analysis candidates. RSS rose from roughly 648 MB
+to 686 MB.
+
+After about 95 seconds the inline handoff error became `HTTP 504`. A 30-second
+grace period and reload still showed `No output selected`; no atomic bind had
+published. Pre/post SHA-256 hashes for the manifest, pipeline, measurements
+mirror, and master measurements were identical, and no file under the copy had
+a new modification time.
+
+The completed one-image Local acceptance output was then selected to exercise
+the viewer on a tiny fixture. That bind also returned `HTTP 504` after the same
+timeout. Because binding is serialized, this is consistent with the earlier
+large discovery continuing to hold or queue behind the publish lock even after
+its client request timed out. The evidence suggests a timed-out bind may deny
+service to subsequent otherwise-small viewer binds.
+
+The bind needs an asynchronous job/progress contract, bounded or cached
+discovery, idempotent ticket reuse, and a request path that cannot be killed by
+the web proxy timeout. Until then the requested production-scale Results,
+Analysis, QC, Error, and mutation-blocking UI states cannot be exercised.
+
+### F-016: Recent Runs exposes a root-level legacy backup as a run
+
+**Severity:** P2 stale-artifact discovery issue
+**Checklist:** B09
+
+Recent Runs includes
+`data/results/2026-05-13_objectlabel-backup` with mode and status both
+`unknown`. Read-only SSH inspection shows it is a June 2026 backup tree with
+duplicated root-level and `deliverables/` measurement artifacts and no current
+generation identity. Reporting its state as `unknown` is correct, but surfacing
+an explicitly backup-named tree as a runnable recent output conflicts with the
+private-backup exclusion requirement and adds a misleading target to both Run
+and Results discovery.
+
 ## 7. Completion summary
 
-Preflight stopped after A05 because A01 is a P0 version-identity failure. No
-browser mutation, Results write, job submission, cancellation, or cleanup
-action was performed. Active allocation `26725257` and all production outputs
-were left untouched.
+The checklist records 43 passes, 20 observed failures, 60 blocked or partial
+items, and 5 not-started items.
+
+Testing concluded with evidence for deployment identity, Shell/Browse,
+partial Builder and Tune Setup behavior, Local Validate/lifecycle behavior,
+the pre-submission SLURM form, and Results binding. Unexecuted or unreachable
+criteria remain explicitly `[-]` or `[ ]` in the checklist.
+
+One isolated acceptance output was written under
+`gui_e2e_acceptance/ab547d29f/live-20260726-codex/local-01`. Its process
+lifecycle completed successfully for F06, but F-013 made its scientific
+aggregation invalid by silently applying unrelated shared metadata. The separate
+`slurm-01` directory remained empty because SLURM Validate and Run were silent
+no-ops; no scheduler job was submitted or cancelled.
+
+No production output was modified. Interactive allocation `26749027` remains
+the sole active job. The copied Results bind failed with `HTTP 504` while
+leaving its key artifacts byte-identical; Analysis and all bound-view
+workflows remain blocked behind that bind.
