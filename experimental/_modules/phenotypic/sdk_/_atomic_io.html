@@ -629,7 +629,12 @@
 <span class="p">}</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_atomic_replace</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_atomic_replace</span><span class="p">(</span>
+    <span class="n">target</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">pre_replace</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Write ``data`` to a same-dir temp file, fsync, then replace ``target``.</span>
 
 <span class="sd">    The shared core of :func:`atomic_write_text` and :func:`atomic_write_bytes`:</span>
@@ -642,6 +647,9 @@
 <span class="sd">    Args:</span>
 <span class="sd">        target: The final destination path.</span>
 <span class="sd">        data: The exact bytes to write.</span>
+<span class="sd">        pre_replace: Optional callback invoked after the temporary file is</span>
+<span class="sd">            flushed and synced, immediately before it replaces ``target``.</span>
+<span class="sd">            An exception aborts publication and removes the temporary file.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        OSError: Propagated from the write/replace after the temp file is</span>
@@ -664,6 +672,8 @@
             <span class="n">os</span><span class="o">.</span><span class="n">fsync</span><span class="p">(</span><span class="n">handle</span><span class="o">.</span><span class="n">fileno</span><span class="p">())</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="n">handle</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">pre_replace</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pre_replace</span><span class="p">()</span>
         <span class="n">os</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">tmp_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -679,12 +689,17 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">atomic_write_with_writer</span><span class="p">(</span>
     <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
     <span class="n">writer</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">pre_replace</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Atomically write ``path`` using a callback that receives a temp path.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        path: Final destination path.</span>
 <span class="sd">        writer: Callable that writes complete output to a temporary path string.</span>
+<span class="sd">        pre_replace: Optional callback invoked after the temporary file is</span>
+<span class="sd">            synced, immediately before it replaces ``path``. An exception</span>
+<span class="sd">            aborts publication and removes the temporary file.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        OSError: Propagated from the writer or rename after temp cleanup.</span>
@@ -704,6 +719,8 @@
         <span class="n">writer</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">)</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">,</span> <span class="s2">&quot;r+b&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
             <span class="n">os</span><span class="o">.</span><span class="n">fsync</span><span class="p">(</span><span class="n">fh</span><span class="o">.</span><span class="n">fileno</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">pre_replace</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pre_replace</span><span class="p">()</span>
         <span class="n">os</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">tmp_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -718,7 +735,11 @@
 <div class="viewcode-block" id="atomic_write_text">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.atomic_write_text.html#phenotypic.sdk_.atomic_write_text">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">atomic_write_text</span><span class="p">(</span>
-    <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">encoding</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;utf-8&quot;</span>
+    <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">encoding</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;utf-8&quot;</span><span class="p">,</span>
+    <span class="n">pre_replace</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Atomically write ``text`` to ``path`` (temp sibling + ``os.replace``).</span>
 
@@ -731,17 +752,27 @@
 <span class="sd">        path: The destination file path.</span>
 <span class="sd">        text: The full text payload to write.</span>
 <span class="sd">        encoding: The text encoding (default ``&quot;utf-8&quot;``).</span>
+<span class="sd">        pre_replace: Optional callback invoked immediately before publication.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        OSError: If the write or rename fails (the temp file is removed first).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">_atomic_replace</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="n">text</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">encoding</span><span class="p">))</span></div>
+    <span class="n">_atomic_replace</span><span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">),</span>
+        <span class="n">text</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">encoding</span><span class="p">),</span>
+        <span class="n">pre_replace</span><span class="o">=</span><span class="n">pre_replace</span><span class="p">,</span>
+    <span class="p">)</span></div>
 
 
 
 <div class="viewcode-block" id="atomic_write_bytes">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.atomic_write_bytes.html#phenotypic.sdk_.atomic_write_bytes">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">atomic_write_bytes</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span> <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">atomic_write_bytes</span><span class="p">(</span>
+    <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+    <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">pre_replace</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Atomically write ``data`` to ``path`` (temp sibling + ``os.replace``).</span>
 
 <span class="sd">    The bytes counterpart of :func:`atomic_write_text` for binary payloads</span>
@@ -751,11 +782,12 @@
 <span class="sd">    Args:</span>
 <span class="sd">        path: The destination file path.</span>
 <span class="sd">        data: The full binary payload to write.</span>
+<span class="sd">        pre_replace: Optional callback invoked immediately before publication.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        OSError: If the write or rename fails (the temp file is removed first).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">_atomic_replace</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">data</span><span class="p">))</span></div>
+    <span class="n">_atomic_replace</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">pre_replace</span><span class="o">=</span><span class="n">pre_replace</span><span class="p">)</span></div>
 
 
 
@@ -768,6 +800,7 @@
     <span class="n">indent</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
     <span class="n">sort_keys</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">ensure_ascii</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">pre_replace</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Atomically write a JSON payload with deterministic formatting.</span>
 
@@ -777,6 +810,7 @@
 <span class="sd">        indent: Indentation passed to :func:`json.dumps`.</span>
 <span class="sd">        sort_keys: Whether mapping keys are sorted for deterministic output.</span>
 <span class="sd">        ensure_ascii: Whether non-ASCII characters are escaped.</span>
+<span class="sd">        pre_replace: Optional callback invoked immediately before publication.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">atomic_write_text</span><span class="p">(</span>
         <span class="n">path</span><span class="p">,</span>
@@ -787,6 +821,7 @@
             <span class="n">ensure_ascii</span><span class="o">=</span><span class="n">ensure_ascii</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">pre_replace</span><span class="o">=</span><span class="n">pre_replace</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 

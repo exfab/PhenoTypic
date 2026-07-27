@@ -665,9 +665,9 @@
 <li><p><strong>Configure</strong> — the per-check card editor (see
 <a class="reference internal" href="10_qc_curation_loop.html"><span class="std std-doc">QC curation loop</span></a>). Adding, editing, or
 deleting a check now writes the <code class="docutils literal notranslate"><span class="pre">qc</span></code> array of the output’s
-<code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json</span></code> (a legacy <code class="docutils literal notranslate"><span class="pre">.viewer_cache/qc_recipe.json</span></code>
-sidecar is
-folded in once on first open).</p></li>
+<code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json.pht-pipe</span></code>. A legacy
+<code class="docutils literal notranslate"><span class="pre">.viewer_cache/qc_recipe.json</span></code> sidecar is classified for an explicit,
+backed-up compatibility migration; binding never rewrites it.</p></li>
 <li><p><strong>Review</strong> — a master–detail walkthrough that walks the
 worst-agreeing groups for one QC module, lets you curate the offending
 colonies in a tile gallery, and recomputes the module in place after
@@ -687,10 +687,11 @@ place with a <code class="docutils literal notranslate"><span class="pre">before
 <section id="prerequisites">
 <h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p>A finished CLI run whose <code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json</span></code> carries at least
+<li><p>A finished CLI run whose <code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json.pht-pipe</span></code> carries at least
 one QC check, so the CLI wrote <code class="docutils literal notranslate"><span class="pre">deliverables/qc/qc.duckdb</span></code>.
 Configure a check in the <strong>Configure</strong> sub-view, then re-run
-<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--mode</span> <span class="pre">recompile</span> <span class="pre">--output</span> <span class="pre">&lt;output&gt;</span></code> (or <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">measure</span> <span class="pre">--pipeline</span> <span class="pre">&lt;pipeline.json&gt;</span> <span class="pre">--output</span> <span class="pre">&lt;output&gt;</span></code>) to compute
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--mode</span> <span class="pre">recompile</span> <span class="pre">--output</span> <span class="pre">&lt;output&gt;</span></code> (or
+<code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">measure</span> <span class="pre">--pipeline</span> <span class="pre">&lt;pipeline.json.pht-pipe&gt;</span> <span class="pre">--output</span> <span class="pre">&lt;output&gt;</span></code>) to compute
 it. See <a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a>.</p></li>
 <li><p>The post-applied <code class="docutils literal notranslate"><span class="pre">deliverables/measurements.parquet</span></code> mirror under
 <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/measurements.parquet</span></code> — the recompute reads this
@@ -703,7 +704,7 @@ anti-joins your removals, so the in-session metric matches the CLI’s.</p></li>
 <p>Open the <code class="docutils literal notranslate"><span class="pre">Viewer</span></code> tab in the hub and pick the <code class="docutils literal notranslate"><span class="pre">QC</span></code> sub-tab. Before an
 output root is bound the tab shows its empty state:</p>
 <p><img alt="QC tab in empty state before an output is bound." src="../../_images/01_empty_state1.png" /></p>
-<p>With an output root that carries a <code class="docutils literal notranslate"><span class="pre">qc/</span></code> artifact, flip the toggle to
+<p>With an output root that carries <code class="docutils literal notranslate"><span class="pre">deliverables/qc/qc.duckdb</span></code>, flip the toggle to
 <strong>Review</strong>. The toolbar exposes the module picker, the <code class="docutils literal notranslate"><span class="pre">on</span></code> / <code class="docutils literal notranslate"><span class="pre">groupby</span></code>
 chips, a <code class="docutils literal notranslate"><span class="pre">Show:</span> <span class="pre">unreviewed</span> <span class="pre">/</span> <span class="pre">all</span> <span class="pre">/</span> <span class="pre">fail+warn</span></code> filter, and a
 <code class="docutils literal notranslate"><span class="pre">↻</span> <span class="pre">Re-sort</span> <span class="pre">queue</span></code> button. Below it, the summary header tiles the

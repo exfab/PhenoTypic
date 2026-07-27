@@ -29,13 +29,16 @@ phenotypic.sdk\_.DashboardManifestKey
       ~DashboardManifestKey.ANALYSIS_DATA_VERSION
       ~DashboardManifestKey.COMPLETED
       ~DashboardManifestKey.DATASETS
+      ~DashboardManifestKey.EVENT_DIAGNOSTICS
       ~DashboardManifestKey.EXECUTION_MODE
       ~DashboardManifestKey.FAILED
       ~DashboardManifestKey.FAILURE_CATEGORIES
+      ~DashboardManifestKey.GUI_RECORD_GENERATION
       ~DashboardManifestKey.INPUT_PATH
       ~DashboardManifestKey.IS_COMPLETE
       ~DashboardManifestKey.LAST_UPDATED
       ~DashboardManifestKey.PENDING
+      ~DashboardManifestKey.PROCESSING_GENERATION
       ~DashboardManifestKey.SLURM_INFO
       ~DashboardManifestKey.STARTED
       ~DashboardManifestKey.START_TIME

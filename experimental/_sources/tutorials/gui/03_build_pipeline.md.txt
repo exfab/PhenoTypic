@@ -66,4 +66,12 @@ The on-disk JSON is the same public `ImagePipeline` format used by the command
 line tools. The builder-only target selection, open menus, and zoom level are UI
 state only and are not written into pipeline JSON.
 
+## Preview state
+
+Choose `Preview here` from an image-producing port to run the selected prefix.
+The preview surface stays mounted while work starts and reports **Running**,
+**Complete**, **Error**, or **Stale**. Editing the pipeline or starting a newer
+preview retires the older request, so it cannot publish a partial image or
+overwrite the newer result.
+
 Next: [Run Locally](04_run_local.md).

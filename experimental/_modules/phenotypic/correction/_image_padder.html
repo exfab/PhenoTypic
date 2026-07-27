@@ -578,6 +578,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../correction.html" class="nav-link">phenotypic.correction</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.correction._image_padder</span></li>
   </ul>
 </nav>
@@ -629,9 +632,9 @@
 <span class="p">]</span>
 
 
-<div class="viewcode-block" id="ImagePadder">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.correction.ImagePadder.html#phenotypic.correction.ImagePadder">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ImagePadder</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
+<div class="viewcode-block" id="PadImage">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.correction.PadImage.html#phenotypic.correction.PadImage">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PadImage</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Extend image dimensions by adding pixels to any combination of edges.</span>
 
 <span class="sd">    Pads the image on the left, right, top, and/or bottom using a</span>
@@ -654,7 +657,7 @@
 <span class="sd">          boundary artefacts on tight image borders.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`ImageCropper` when the goal is to reduce image dimensions</span>
+<span class="sd">        - :class:`CropImage` when the goal is to reduce image dimensions</span>
 <span class="sd">          rather than extend them.</span>
 <span class="sd">        - :class:`GridAligner` for correcting plate rotation, which is</span>
 <span class="sd">          typically paired with padding to protect corner colonies.</span>
@@ -707,7 +710,7 @@
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="s2">&quot;right&quot;</span><span class="p">,</span> <span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_reject_negative_margin</span><span class="p">(</span>
-            <span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">info</span><span class="p">:</span> <span class="n">ValidationInfo</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">info</span><span class="p">:</span> <span class="n">ValidationInfo</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject a negative padding margin, preserving the legacy message.</span>
 
@@ -729,7 +732,7 @@
 <span class="sd">            Tuple of ((top, bottom), (left, right)) for np.pad.</span>
 
 <span class="sd">        Examples:</span>
-<span class="sd">            &gt;&gt;&gt; padder = ImagePadder(left=10, right=20, top=30, bottom=40)</span>
+<span class="sd">            &gt;&gt;&gt; padder = PadImage(left=10, right=20, top=30, bottom=40)</span>
 <span class="sd">            &gt;&gt;&gt; padder._get_pad_width_2d()</span>
 <span class="sd">            ((30, 40), (10, 20))</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -740,7 +743,9 @@
 
         <span class="k">return</span> <span class="p">((</span><span class="n">top</span><span class="p">,</span> <span class="n">bottom</span><span class="p">),</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">))</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_get_pad_width_3d</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_pad_width_3d</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate pad_width tuple for 3D arrays (RGB).</span>
 
 <span class="sd">        Returns pad_width for RGB arrays where spatial dimensions (height, width) are</span>
@@ -751,7 +756,7 @@
 <span class="sd">            The third dimension (channels) has (0, 0) padding.</span>
 
 <span class="sd">        Examples:</span>
-<span class="sd">            &gt;&gt;&gt; padder = ImagePadder(left=10, right=20, top=30, bottom=40)</span>
+<span class="sd">            &gt;&gt;&gt; padder = PadImage(left=10, right=20, top=30, bottom=40)</span>
 <span class="sd">            &gt;&gt;&gt; padder._get_pad_width_3d()</span>
 <span class="sd">            ((30, 40), (10, 20), (0, 0))</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -787,9 +792,9 @@
 <span class="sd">            Basic padding of a loaded image:</span>
 
 <span class="sd">            &gt;&gt;&gt; from phenotypic import Image</span>
-<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import ImagePadder</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import PadImage</span>
 <span class="sd">            &gt;&gt;&gt; image = Image.imread(&#39;plate.jpg&#39;)  # doctest: +SKIP</span>
-<span class="sd">            &gt;&gt;&gt; padder = ImagePadder(left=50, right=50, top=50, bottom=50)</span>
+<span class="sd">            &gt;&gt;&gt; padder = PadImage(left=50, right=50, top=50, bottom=50)</span>
 <span class="sd">            &gt;&gt;&gt; # Returns new padded Image; original is unchanged</span>
 <span class="sd">            &gt;&gt;&gt; padded = padder.apply(image)  # doctest: +SKIP</span>
 <span class="sd">            &gt;&gt;&gt; print(f&quot;Original shape: {image.shape}&quot;)  # doctest: +SKIP</span>
@@ -798,11 +803,11 @@
 <span class="sd">            Padding a GridImage preserves grid settings:</span>
 
 <span class="sd">            &gt;&gt;&gt; from phenotypic import GridImage</span>
-<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import ImagePadder</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import PadImage</span>
 <span class="sd">            &gt;&gt;&gt; # Load plate image</span>
 <span class="sd">            &gt;&gt;&gt; grid_img = GridImage(&#39;plate.tiff&#39;, nrows=8, ncols=12)  # doctest: +SKIP</span>
 <span class="sd">            &gt;&gt;&gt; # Add safety margin</span>
-<span class="sd">            &gt;&gt;&gt; padder = ImagePadder(left=50, right=50, top=50, bottom=50)</span>
+<span class="sd">            &gt;&gt;&gt; padder = PadImage(left=50, right=50, top=50, bottom=50)</span>
 <span class="sd">            &gt;&gt;&gt; padded = padder.apply(grid_img)  # doctest: +SKIP</span>
 <span class="sd">            &gt;&gt;&gt; # GridImage type and settings preserved</span>
 <span class="sd">            &gt;&gt;&gt; assert isinstance(padded, GridImage)  # doctest: +SKIP</span>
@@ -815,8 +820,8 @@
 
         <span class="c1"># Prepare kwargs for np.pad</span>
         <span class="n">pad_kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;constant&#39;</span><span class="p">:</span>
-            <span class="n">pad_kwargs</span><span class="p">[</span><span class="s1">&#39;constant_values&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">constant_value</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;constant&quot;</span><span class="p">:</span>
+            <span class="n">pad_kwargs</span><span class="p">[</span><span class="s2">&quot;constant_values&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">constant_value</span>
 
         <span class="c1"># Pad RGB if it exists (3D array, spatial dims only)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">isempty</span><span class="p">():</span>
@@ -824,7 +829,7 @@
                 <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">rgb</span><span class="p">,</span>
                 <span class="n">pad_width</span><span class="o">=</span><span class="n">pad_width_3d</span><span class="p">,</span>
                 <span class="n">mode</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">,</span>
-                <span class="o">**</span><span class="n">pad_kwargs</span>
+                <span class="o">**</span><span class="n">pad_kwargs</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="c1"># Pad gray (2D array)</span>
@@ -832,7 +837,7 @@
             <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">gray</span><span class="p">,</span>
             <span class="n">pad_width</span><span class="o">=</span><span class="n">pad_width_2d</span><span class="p">,</span>
             <span class="n">mode</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">,</span>
-            <span class="o">**</span><span class="n">pad_kwargs</span>
+            <span class="o">**</span><span class="n">pad_kwargs</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># Pad detect_mat (2D array)</span>
@@ -840,7 +845,7 @@
             <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">,</span>
             <span class="n">pad_width</span><span class="o">=</span><span class="n">pad_width_2d</span><span class="p">,</span>
             <span class="n">mode</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">,</span>
-            <span class="o">**</span><span class="n">pad_kwargs</span>
+            <span class="o">**</span><span class="n">pad_kwargs</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># CRITICAL: Pad objmap with constant mode and value 0 ALWAYS</span>
@@ -849,8 +854,8 @@
         <span class="n">padded_objmap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span>
             <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span><span class="o">.</span><span class="n">toarray</span><span class="p">(),</span>
             <span class="n">pad_width</span><span class="o">=</span><span class="n">pad_width_2d</span><span class="p">,</span>
-            <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;constant&#39;</span><span class="p">,</span>
-            <span class="n">constant_values</span><span class="o">=</span><span class="mi">0</span>
+            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;constant&quot;</span><span class="p">,</span>
+            <span class="n">constant_values</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="c1"># Convert back to sparse and update</span>
         <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span> <span class="o">=</span> <span class="n">csr_matrix</span><span class="p">(</span><span class="n">padded_objmap</span><span class="p">)</span>

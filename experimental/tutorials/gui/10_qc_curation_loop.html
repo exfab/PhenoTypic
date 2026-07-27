@@ -695,16 +695,12 @@ doublets.</p></li>
 <h2>Walkthrough<a class="headerlink" href="#walkthrough" title="Link to this heading">#</a></h2>
 <p>Open the <code class="docutils literal notranslate"><span class="pre">Viewer</span></code> tab in the hub and pick the <code class="docutils literal notranslate"><span class="pre">QC</span></code> sub-tab:</p>
 <p><img alt="QC tab in empty state with no checks configured." src="../../_images/01_empty_state.png" /></p>
-<p>The empty state shows a placeholder explaining that no checks are
-configured yet. The top strip carries:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">Add</span> <span class="pre">check</span></code> — opens a modal listing every concrete
-<code class="docutils literal notranslate"><span class="pre">QualityCheck</span></code> subclass discovered by <code class="docutils literal notranslate"><span class="pre">OperationRegistry</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Export</span> <span class="pre">QC</span> <span class="pre">report</span></code> — disabled until at least one check exists;
-emits <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/qc.parquet</span></code> + <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/qc_summary.json</span></code> keyed by
-<code class="docutils literal notranslate"><span class="pre">QC_Check_Class</span></code> + <code class="docutils literal notranslate"><span class="pre">QC_Check_Instance_Id</span></code> so downstream notebooks
-can pivot per check.</p></li>
-</ul>
+<p>The empty state shows a placeholder explaining that no checks are configured
+yet. The top strip carries <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">Add</span> <span class="pre">check</span></code>, which opens a modal listing every
+concrete <code class="docutils literal notranslate"><span class="pre">QualityCheck</span></code> subclass discovered by <code class="docutils literal notranslate"><span class="pre">OperationRegistry</span></code>. After
+configuration changes, <strong>Rebuild QC database</strong> explicitly publishes the
+validated catalog and module tables to
+<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/qc/qc.duckdb</span></code>.</p>
 <p><img alt="QC tab body with the tab selected." src="../../_images/02_qc_tab_selected.png" /></p>
 <p>Click <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">Add</span> <span class="pre">check</span></code>. The modal opens with a class dropdown plus an
 inline param form that adapts to the chosen check’s constructor
@@ -731,19 +727,19 @@ severity.</p>
 <section id="common-gotchas">
 <h2>Common gotchas<a class="headerlink" href="#common-gotchas" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><strong>Metadata schema:</strong> <code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount</span></code> reads
-<code class="docutils literal notranslate"><span class="pre">Metadata_ImageFile</span></code> + <code class="docutils literal notranslate"><span class="pre">Object_Label</span></code> from the supplied CSV. If the
-CSV has a different column name (e.g. legacy <code class="docutils literal notranslate"><span class="pre">ImageName</span></code>), the
-check raises at instantiation time and the recipe records a
-load-warning instead of breaking the boot. The warning banner at
-the top of the QC tab lists the affected <code class="docutils literal notranslate"><span class="pre">instance_id</span></code> and the
-underlying error.</p></li>
+<li><p><strong>Metadata schema:</strong> use the canonical <code class="docutils literal notranslate"><span class="pre">MetadataImage_ImageName</span></code> image key.
+<code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount</span></code> uses the caller-selected <code class="docutils literal notranslate"><span class="pre">groupby</span></code> columns, which
+must exist in both the measurements and supplied metadata layout. A missing
+grouping column records a load warning instead of breaking viewer startup;
+the banner lists the affected <code class="docutils literal notranslate"><span class="pre">instance_id</span></code> and underlying error.</p></li>
 <li><p><strong>QC recipe:</strong> every add / edit / delete writes the <code class="docutils literal notranslate"><span class="pre">qc</span></code> array in the
 pipeline config under <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/</span></code> (<code class="docutils literal notranslate"><span class="pre">pipeline.json.pht-pipe</span></code>
-on current runs). A legacy <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.viewer_cache/qc_recipe.json</span></code>
-sidecar is migrated once at viewer startup. Concurrent viewer sessions
-on the same output dir are still unsupported; if you reopen the viewer
-on a different machine, the recipe travels with the output directory.</p></li>
+on current runs). Legacy/incompatible payloads are classified first: any
+migration is an explicit, backed-up, atomic action, never a startup rewrite.
+A configuration edit waits for the explicit <strong>Rebuild QC database</strong> action;
+rebuild stages and validates <code class="docutils literal notranslate"><span class="pre">deliverables/qc/qc.duckdb</span></code> and refuses an
+active or changed source.
+Concurrent viewer sessions on the same output dir are still unsupported.</p></li>
 <li><p><strong>Severity legend:</strong> check-side <code class="docutils literal notranslate"><span class="pre">severity_warn</span></code> / <code class="docutils literal notranslate"><span class="pre">severity_fail</span></code>
 thresholds default to <code class="docutils literal notranslate"><span class="pre">0.05</span></code> / <code class="docutils literal notranslate"><span class="pre">0.10</span></code>. Tune them on the per-check
 edit modal to match your QC tolerance.</p></li>

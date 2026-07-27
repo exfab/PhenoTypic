@@ -1,0 +1,6 @@
+phenotypic.sdk\_.migration\_backup\_path
+========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: migration_backup_path

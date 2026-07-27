@@ -1,0 +1,6 @@
+phenotypic.sdk\_.pipeline\_publication\_lock
+============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: pipeline_publication_lock

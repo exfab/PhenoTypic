@@ -615,7 +615,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">skimage.morphology</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">morphology</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect._grid_peak_common</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">_round_odd</span> <span class="k">as</span> <span class="n">_grid_peak_round_odd</span><span class="p">,</span>
-    <span class="n">grid_peak_threshold_mask</span><span class="p">,</span>
+    <span class="n">_grid_peak_threshold_mask</span><span class="p">,</span>
 <span class="p">)</span>
 
 
@@ -772,7 +772,7 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">remove_noise</span><span class="p">:</span>
             <span class="n">objmask</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">opening</span><span class="p">(</span>
-                    <span class="n">objmask</span><span class="p">,</span> <span class="n">footprint</span><span class="o">=</span><span class="n">morphology</span><span class="o">.</span><span class="n">diamond</span><span class="p">(</span><span class="n">radius</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_radius</span><span class="p">)</span>
+                <span class="n">objmask</span><span class="p">,</span> <span class="n">footprint</span><span class="o">=</span><span class="n">morphology</span><span class="o">.</span><span class="n">diamond</span><span class="p">(</span><span class="n">radius</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_radius</span><span class="p">)</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;noise removal&quot;</span><span class="p">)</span>
 
@@ -780,9 +780,10 @@
         <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">objmask</span>
 
         <span class="n">labeled</span><span class="p">,</span> <span class="n">num_features</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">label</span><span class="p">(</span>
-                <span class="n">objmask</span><span class="p">,</span> <span class="n">structure</span><span class="o">=</span><span class="n">ndimage</span><span class="o">.</span><span class="n">generate_binary_structure</span><span class="p">(</span>
-                        <span class="n">rank</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-                        <span class="n">connectivity</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">objmask</span><span class="p">,</span>
+            <span class="n">structure</span><span class="o">=</span><span class="n">ndimage</span><span class="o">.</span><span class="n">generate_binary_structure</span><span class="p">(</span>
+                <span class="n">rank</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">connectivity</span><span class="o">=</span><span class="mi">2</span>
+            <span class="p">),</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;labeling (</span><span class="si">{</span><span class="n">num_features</span><span class="si">}</span><span class="s2"> features)&quot;</span><span class="p">)</span>
 
@@ -799,20 +800,20 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;inferred grid shape: </span><span class="si">{</span><span class="n">nrows</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">ncols</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
             <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimate_edges</span><span class="p">(</span>
-                    <span class="n">objmask</span><span class="p">,</span>
-                    <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-                    <span class="n">n_bins</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span>
-                    <span class="n">smoothing_sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">smoothing_sigma</span><span class="p">,</span>
-                    <span class="n">min_peak_distance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_peak_distance</span><span class="p">,</span>
-                    <span class="n">peak_prominence</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">peak_prominence</span><span class="p">,</span>
+                <span class="n">objmask</span><span class="p">,</span>
+                <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">n_bins</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span>
+                <span class="n">smoothing_sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">smoothing_sigma</span><span class="p">,</span>
+                <span class="n">min_peak_distance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_peak_distance</span><span class="p">,</span>
+                <span class="n">peak_prominence</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">peak_prominence</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimate_edges</span><span class="p">(</span>
-                    <span class="n">objmask</span><span class="p">,</span>
-                    <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                    <span class="n">n_bins</span><span class="o">=</span><span class="n">ncols</span><span class="p">,</span>
-                    <span class="n">smoothing_sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">smoothing_sigma</span><span class="p">,</span>
-                    <span class="n">min_peak_distance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_peak_distance</span><span class="p">,</span>
-                    <span class="n">peak_prominence</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">peak_prominence</span><span class="p">,</span>
+                <span class="n">objmask</span><span class="p">,</span>
+                <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">n_bins</span><span class="o">=</span><span class="n">ncols</span><span class="p">,</span>
+                <span class="n">smoothing_sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">smoothing_sigma</span><span class="p">,</span>
+                <span class="n">min_peak_distance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_peak_distance</span><span class="p">,</span>
+                <span class="n">peak_prominence</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">peak_prominence</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;edge estimation&quot;</span><span class="p">)</span>
 
@@ -827,8 +828,13 @@
 
         <span class="c1"># Assign colonies to grid cells using selection strategy</span>
         <span class="n">objmap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assign_grid_objects</span><span class="p">(</span>
-                <span class="n">labeled</span><span class="p">,</span> <span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_mode</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">,</span>
-                <span class="n">intensity</span><span class="o">=</span><span class="n">enh_matrix</span><span class="p">,</span> <span class="n">split_merged</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">split_merged</span><span class="p">,</span>
+            <span class="n">labeled</span><span class="p">,</span>
+            <span class="n">row_edges</span><span class="p">,</span>
+            <span class="n">col_edges</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">selection_mode</span><span class="p">,</span>
+            <span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">,</span>
+            <span class="n">intensity</span><span class="o">=</span><span class="n">enh_matrix</span><span class="p">,</span>
+            <span class="n">split_merged</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">split_merged</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># Fallback if no regions were labeled (e.g., grid inference failed)</span>
@@ -842,16 +848,16 @@
 
         <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>  <span class="c1"># Force garbage collection</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span>
-                <span class="s2">&quot;final cleanup&quot;</span><span class="p">,</span> <span class="n">include_process</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">include_tracemalloc</span><span class="o">=</span><span class="kc">True</span>
+            <span class="s2">&quot;final cleanup&quot;</span><span class="p">,</span> <span class="n">include_process</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">include_tracemalloc</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">image</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_thresholding</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-            <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Threshold the image to create a binary mask of foreground colonies.</span>
@@ -875,7 +881,7 @@
 <span class="sd">        Raises:</span>
 <span class="sd">            ValueError: If an invalid thresholding method is specified.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">grid_peak_threshold_mask</span><span class="p">(</span>
+        <span class="k">return</span> <span class="n">_grid_peak_threshold_mask</span><span class="p">(</span>
             <span class="n">matrix</span><span class="p">,</span>
             <span class="n">thresh_method</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">thresh_method</span><span class="p">,</span>
             <span class="n">subtract_background</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">subtract_background</span><span class="p">,</span>

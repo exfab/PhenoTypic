@@ -649,13 +649,13 @@
                   
   <section id="How-To:-Crop-and-Pad-Images-for-Batch-Consistency">
 <h1>How To: Crop and Pad Images for Batch Consistency<a class="headerlink" href="#How-To:-Crop-and-Pad-Images-for-Batch-Consistency" title="Link to this heading">#</a></h1>
-<p>Use <code class="docutils literal notranslate"><span class="pre">ImageCropper</span></code> to remove scanner borders and <code class="docutils literal notranslate"><span class="pre">ImagePadder</span></code> to make images a uniform size for batch processing.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">CropImage</span></code> to remove scanner borders and <code class="docutils literal notranslate"><span class="pre">PadImage</span></code> to make images a uniform size for batch processing.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_yeast_plate_full</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.correction</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCropper</span><span class="p">,</span> <span class="n">ImagePadder</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.correction</span><span class="w"> </span><span class="kn">import</span> <span class="n">CropImage</span><span class="p">,</span> <span class="n">PadImage</span>
 </pre></div>
 </div>
 </div>
@@ -700,7 +700,7 @@ Original size: (4012, 6016, 3)
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cropper</span> <span class="o">=</span> <span class="n">ImageCropper</span><span class="p">(</span><span class="n">top</span><span class="o">=</span><span class="mi">450</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mi">450</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="mi">450</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mi">450</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cropper</span> <span class="o">=</span> <span class="n">CropImage</span><span class="p">(</span><span class="n">top</span><span class="o">=</span><span class="mi">450</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mi">450</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="mi">450</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mi">450</span><span class="p">)</span>
 <span class="n">cropped</span> <span class="o">=</span> <span class="n">cropper</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cropped size: </span><span class="si">{</span><span class="n">cropped</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="n">cropped</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
@@ -739,8 +739,8 @@ Cropped size: (3112, 5116, 3)
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">padder</span> <span class="o">=</span> <span class="n">ImagePadder</span><span class="p">(</span><span class="n">top</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;constant&quot;</span><span class="p">,</span>
-                     <span class="n">constant_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">padder</span> <span class="o">=</span> <span class="n">PadImage</span><span class="p">(</span><span class="n">top</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;constant&quot;</span><span class="p">,</span>
+                  <span class="n">constant_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 <span class="n">padded</span> <span class="o">=</span> <span class="n">padder</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">cropped</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Padded size: </span><span class="si">{</span><span class="n">padded</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="n">padded</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
@@ -771,7 +771,7 @@ Padded size: (3152, 5156, 3)
 <img alt="../../_images/how_to_notebooks_crop_and_pad_6_2.png" src="../../_images/how_to_notebooks_crop_and_pad_6_2.png" />
 </div>
 </div>
-<p>Both operations can be included in an <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> for batch processing. Place <code class="docutils literal notranslate"><span class="pre">ImageCropper</span></code> first, then <code class="docutils literal notranslate"><span class="pre">ImagePadder</span></code>, before any detection steps.</p>
+<p>Both operations can be included in an <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> for batch processing. Place <code class="docutils literal notranslate"><span class="pre">CropImage</span></code> first, then <code class="docutils literal notranslate"><span class="pre">PadImage</span></code>, before any detection steps.</p>
 </section>
 </section>
 

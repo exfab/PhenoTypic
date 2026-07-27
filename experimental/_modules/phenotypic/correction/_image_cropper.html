@@ -578,6 +578,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../correction.html" class="nav-link">phenotypic.correction</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.correction._image_cropper</span></li>
   </ul>
 </nav>
@@ -610,9 +613,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
-<div class="viewcode-block" id="ImageCropper">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.correction.ImageCropper.html#phenotypic.correction.ImageCropper">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ImageCropper</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
+<div class="viewcode-block" id="CropImage">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.correction.CropImage.html#phenotypic.correction.CropImage">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CropImage</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove pixels from image edges by specifying per-edge crop margins.</span>
 
 <span class="sd">    Crops all image components (rgb, gray, detect_mat, objmask, objmap)</span>
@@ -634,7 +637,7 @@
 <span class="sd">          analysis.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`ImagePadder` for extending image dimensions rather than</span>
+<span class="sd">        - :class:`PadImage` for extending image dimensions rather than</span>
 <span class="sd">          reducing them.</span>
 <span class="sd">        - :class:`RemoveBorderObjects` when the goal is to exclude</span>
 <span class="sd">          edge-touching colonies from analysis without altering image</span>
@@ -679,7 +682,7 @@
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="s2">&quot;right&quot;</span><span class="p">,</span> <span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_reject_negative_margin</span><span class="p">(</span>
-            <span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">info</span><span class="p">:</span> <span class="n">ValidationInfo</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">info</span><span class="p">:</span> <span class="n">ValidationInfo</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject a negative crop margin, preserving the legacy message.</span>
 
@@ -718,9 +721,9 @@
 <span class="sd">            Basic cropping of a loaded image:</span>
 
 <span class="sd">            &gt;&gt;&gt; from phenotypic import Image</span>
-<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import ImageCropper</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import CropImage</span>
 <span class="sd">            &gt;&gt;&gt; image = Image.imread(&#39;plate.jpg&#39;)  # doctest: +SKIP</span>
-<span class="sd">            &gt;&gt;&gt; cropper = ImageCropper(top=50, bottom=50, left=40, right=40)</span>
+<span class="sd">            &gt;&gt;&gt; cropper = CropImage(top=50, bottom=50, left=40, right=40)</span>
 <span class="sd">            &gt;&gt;&gt; # Returns new cropped Image; original is unchanged</span>
 <span class="sd">            &gt;&gt;&gt; cropped = cropper.apply(image)  # doctest: +SKIP</span>
 <span class="sd">            &gt;&gt;&gt; print(f&quot;Original shape: {image.shape}&quot;)  # doctest: +SKIP</span>
@@ -729,11 +732,11 @@
 <span class="sd">            Cropping a GridImage preserves grid settings:</span>
 
 <span class="sd">            &gt;&gt;&gt; from phenotypic import GridImage</span>
-<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import ImageCropper</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import CropImage</span>
 <span class="sd">            &gt;&gt;&gt; # Load plate image with scanner border</span>
 <span class="sd">            &gt;&gt;&gt; grid_img = GridImage(&#39;plate_with_border.tiff&#39;, nrows=8, ncols=12)  # doctest: +SKIP</span>
 <span class="sd">            &gt;&gt;&gt; # Remove scanner border</span>
-<span class="sd">            &gt;&gt;&gt; cropper = ImageCropper(left=50, right=50, top=50, bottom=50)</span>
+<span class="sd">            &gt;&gt;&gt; cropper = CropImage(left=50, right=50, top=50, bottom=50)</span>
 <span class="sd">            &gt;&gt;&gt; cropped = cropper.apply(grid_img)  # doctest: +SKIP</span>
 <span class="sd">            &gt;&gt;&gt; # GridImage type and settings preserved</span>
 <span class="sd">            &gt;&gt;&gt; assert isinstance(cropped, GridImage)  # doctest: +SKIP</span>
@@ -757,14 +760,14 @@
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span>
             <span class="c1"># Convert the cropped Image to GridImage with preserved settings</span>
             <span class="n">cropped</span> <span class="o">=</span> <span class="n">GridImage</span><span class="p">(</span>
-                    <span class="n">arr</span><span class="o">=</span><span class="n">cropped</span><span class="p">,</span>  <span class="c1"># Pass the Image instance</span>
-                    <span class="n">name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>  <span class="c1"># Preserve original image&#39;s name</span>
-                    <span class="n">grid_finder</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">grid_finder</span><span class="p">,</span>  <span class="c1"># Preserve grid_finder instance</span>
-                    <span class="n">nrows</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
-                    <span class="n">ncols</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span>
-                    <span class="n">bit_depth</span><span class="o">=</span><span class="n">cropped</span><span class="o">.</span><span class="n">bit_depth</span><span class="p">,</span>
-                    <span class="n">illuminant</span><span class="o">=</span><span class="n">cropped</span><span class="o">.</span><span class="n">illuminant</span><span class="p">,</span>
-                    <span class="n">gamma</span><span class="o">=</span><span class="n">cropped</span><span class="o">.</span><span class="n">gamma</span><span class="p">,</span>
+                <span class="n">arr</span><span class="o">=</span><span class="n">cropped</span><span class="p">,</span>  <span class="c1"># Pass the Image instance</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>  <span class="c1"># Preserve original image&#39;s name</span>
+                <span class="n">grid_finder</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">grid_finder</span><span class="p">,</span>  <span class="c1"># Preserve grid_finder instance</span>
+                <span class="n">nrows</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                <span class="n">ncols</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span>
+                <span class="n">bit_depth</span><span class="o">=</span><span class="n">cropped</span><span class="o">.</span><span class="n">bit_depth</span><span class="p">,</span>
+                <span class="n">illuminant</span><span class="o">=</span><span class="n">cropped</span><span class="o">.</span><span class="n">illuminant</span><span class="p">,</span>
+                <span class="n">gamma</span><span class="o">=</span><span class="n">cropped</span><span class="o">.</span><span class="n">gamma</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cpy_new_arrs</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">cropped</span><span class="p">)</span>
@@ -777,8 +780,9 @@
         <span class="k">return</span> <span class="n">result</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_cpy_new_arrs</span><span class="p">(</span><span class="n">img</span><span class="p">:</span> <span class="n">Image</span> <span class="o">|</span> <span class="n">GridImage</span><span class="p">,</span>
-                      <span class="n">new_img</span><span class="p">:</span> <span class="n">Image</span> <span class="o">|</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span> <span class="o">|</span> <span class="n">GridImage</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_cpy_new_arrs</span><span class="p">(</span>
+        <span class="n">img</span><span class="p">:</span> <span class="n">Image</span> <span class="o">|</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">new_img</span><span class="p">:</span> <span class="n">Image</span> <span class="o">|</span> <span class="n">GridImage</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span> <span class="o">|</span> <span class="n">GridImage</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Copies the array data over. This is needed due to needing to make changes to</span>
 <span class="sd">        the image in-place.&quot;&quot;&quot;</span>
         <span class="n">img</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span><span class="n">new_img</span><span class="p">)</span>
@@ -822,10 +826,10 @@
 <span class="sd">            Understanding slice indices from crop parameters:</span>
 
 <span class="sd">            &gt;&gt;&gt; from phenotypic import Image</span>
-<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import ImageCropper</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import CropImage</span>
 <span class="sd">            &gt;&gt;&gt; # Example: 1000x1200 image, crop 50 from all edges</span>
 <span class="sd">            &gt;&gt;&gt; image = Image.imread(&#39;large_plate.tiff&#39;)  # doctest: +SKIP</span>
-<span class="sd">            &gt;&gt;&gt; cropper = ImageCropper(top=50, bottom=50, left=50, right=50)</span>
+<span class="sd">            &gt;&gt;&gt; cropper = CropImage(top=50, bottom=50, left=50, right=50)</span>
 <span class="sd">            &gt;&gt;&gt; # Internal calculation:</span>
 <span class="sd">            &gt;&gt;&gt; # height=1000, width=1200</span>
 <span class="sd">            &gt;&gt;&gt; # top_idx = 0 + 50 = 50</span>
@@ -844,14 +848,16 @@
         <span class="n">bottom_idx</span> <span class="o">=</span> <span class="n">height</span> <span class="o">-</span> <span class="n">bottom</span>
         <span class="k">if</span> <span class="n">top</span> <span class="o">&gt;</span> <span class="n">bottom_idx</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;top index (</span><span class="si">{</span><span class="n">top</span><span class="si">}</span><span class="s2">) cannot be &gt; bottom index (</span><span class="si">{</span><span class="n">bottom_idx</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
+                <span class="sa">f</span><span class="s2">&quot;top index (</span><span class="si">{</span><span class="n">top</span><span class="si">}</span><span class="s2">) cannot be &gt; bottom index (</span><span class="si">{</span><span class="n">bottom_idx</span><span class="si">}</span><span class="s2">).&quot;</span>
+            <span class="p">)</span>
 
         <span class="n">left</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">left</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">left</span>
         <span class="n">right</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">right</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">right</span>
         <span class="n">right_idx</span> <span class="o">=</span> <span class="n">width</span> <span class="o">-</span> <span class="n">right</span>
         <span class="k">if</span> <span class="n">left</span> <span class="o">&gt;</span> <span class="n">right_idx</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;left index (</span><span class="si">{</span><span class="n">left</span><span class="si">}</span><span class="s2">) cannot be &gt; right index (</span><span class="si">{</span><span class="n">right_idx</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
+                <span class="sa">f</span><span class="s2">&quot;left index (</span><span class="si">{</span><span class="n">left</span><span class="si">}</span><span class="s2">) cannot be &gt; right index (</span><span class="si">{</span><span class="n">right_idx</span><span class="si">}</span><span class="s2">).&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">top</span><span class="p">,</span> <span class="n">bottom_idx</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">right_idx</span></div>
 

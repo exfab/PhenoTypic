@@ -662,7 +662,7 @@
 <p>The <code class="docutils literal notranslate"><span class="pre">Analysis</span></code> tab composes the <code class="docutils literal notranslate"><span class="pre">phenotypic.analysis</span></code> chain — filters
 plus an endpoint model — over the curated measurements produced by a
 CLI run. Recipes are persisted as fields on the pipeline itself
-(<code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json</span></code>, next to
+(<code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json.pht-pipe</span></code>, next to
 <code class="docutils literal notranslate"><span class="pre">deliverables/master_measurements.parquet</span></code>), so the same
 chain re-runs deterministically from the CLI when you run recompile mode.</p>
 <section id="hub-mount-empty-state">
@@ -704,14 +704,16 @@ generated from the analyzer’s constructor signature. Bools become
 switches, numerics become number inputs, <code class="docutils literal notranslate"><span class="pre">Literal[...]</span></code> becomes a
 dropdown, and multi-type unions (e.g. <code class="docutils literal notranslate"><span class="pre">LinearLagModel.s0_prior</span></code>)
 render as a small type-tag dropdown plus an adaptive value input.
-Edits save to <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/pipeline.json</span></code> automatically.</p></li>
+Edits save to <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/pipeline.json.pht-pipe</span></code> automatically.</p></li>
 <li><p><strong>Run analysis</strong>: click <code class="docutils literal notranslate"><span class="pre">Run</span> <span class="pre">analysis</span></code>. The sub-app reads
 <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/measurements.parquet</span></code> (the curated mirror), runs
 the chain via <code class="docutils literal notranslate"><span class="pre">pipeline.analyze(...)</span></code>, and writes
 <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/&lt;AnalysisClass&gt;.csv</span></code> and
 <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/&lt;AnalysisClass&gt;.parquet</span></code>, with
 <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/analysis_manifest.json</span></code> recording the available
-analysis tables for downstream consumers.</p></li>
+analysis tables for downstream consumers. Publication is atomic and checks
+that the bound output, processing generation, source measurements, and
+pipeline revision are still current before replacing artifacts.</p></li>
 </ul>
 </section>
 <section id="loaded-state">
@@ -724,8 +726,10 @@ sections rendered as editable cards:</p>
 analyzer’s constructor signature. Bools become switches, numerics
 become number inputs, <code class="docutils literal notranslate"><span class="pre">Literal[...]</span></code> becomes a dropdown, and
 <code class="docutils literal notranslate"><span class="pre">list[T]</span></code> / <code class="docutils literal notranslate"><span class="pre">tuple[T,</span> <span class="pre">...]</span></code> become comma-separated text inputs.
-Editing any value persists to <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/pipeline.json</span></code>
-automatically:</p>
+Editing any value persists to <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/pipeline.json.pht-pipe</span></code>
+automatically. Unknown or forward-compatible analyzer nodes remain load
+warnings and are preserved unchanged when you edit a supported neighboring
+section:</p>
 <p><img alt="Filter section with editable parameter form." src="../../_images/03_filter_section_with_form.png" /></p>
 <p>The model section showcases the more advanced widget kinds: the
 <code class="docutils literal notranslate"><span class="pre">agg_func</span></code> field is a multi-type union (<code class="docutils literal notranslate"><span class="pre">bool</span> <span class="pre">|</span> <span class="pre">float</span> <span class="pre">|</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code>) rendered as a type-tag dropdown plus an adaptive value input;
@@ -737,10 +741,10 @@ kwargs when on:</p>
 <section id="cli-parity">
 <h2>CLI parity<a class="headerlink" href="#cli-parity" title="Link to this heading">#</a></h2>
 <p>Every section you author from the GUI is persisted to
-<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/pipeline.json</span></code>. A subsequent
+<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/pipeline.json.pht-pipe</span></code>. A subsequent
 <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--mode</span> <span class="pre">recompile</span> <span class="pre">--output</span> <span class="pre">&lt;output&gt;</span></code> run reads that file and emits
 the same <code class="docutils literal notranslate"><span class="pre">deliverables/analysis.{csv,parquet}</span></code> without booting the GUI —
-so <code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json</span></code> is the single reproducibility surface.</p>
+so <code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json.pht-pipe</span></code> is the single reproducibility surface.</p>
 </section>
 <section id="where-to-next">
 <h2>Where to next<a class="headerlink" href="#where-to-next" title="Link to this heading">#</a></h2>

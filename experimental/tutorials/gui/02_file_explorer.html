@@ -685,7 +685,7 @@ time.</p>
 <td><p>Show symlinks whose targets fall outside the sandbox root. Off by default — symlinks-to-elsewhere are a security hazard for the GUI’s path-resolution.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Refresh</span></code> button</p></td>
-<td><p>Flush the classifier’s LRU cache. Use this after dropping new files into a directory or moving a CLI output around.</p></td>
+<td><p>Flush the classifier’s LRU cache and publish one new source revision. Use this after dropping new files into a directory or moving a CLI output around. Any open Browse or Timeline state derived from the prior source is retired, rather than silently showing a stale image.</p></td>
 </tr>
 </tbody>
 </table>

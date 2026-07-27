@@ -578,6 +578,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../correction.html" class="nav-link">phenotypic.correction</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.correction._grid_aligner</span></li>
   </ul>
 </nav>
@@ -633,9 +636,9 @@
 <span class="sd">          assignment accurate.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`ImagePadder` for adding safety margins before rotation so</span>
+<span class="sd">        - :class:`PadImage` for adding safety margins before rotation so</span>
 <span class="sd">          corner colonies are not clipped by the rotation fill.</span>
-<span class="sd">        - :class:`ImageCropper` to remove the fill border introduced after</span>
+<span class="sd">        - :class:`CropImage` to remove the fill border introduced after</span>
 <span class="sd">          alignment.</span>
 <span class="sd">        - :class:`RefineBySineFit` when the grid periodicity itself needs</span>
 <span class="sd">          correction rather than a global rotation.</span>
@@ -698,9 +701,11 @@
         <span class="n">grid_info</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
 
         <span class="c1"># Collect aligned X positions of the vertices</span>
-        <span class="n">grouped</span> <span class="o">=</span> <span class="p">(</span><span class="n">grid_info</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">x_group</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">x_val</span><span class="p">]</span>
-                   <span class="o">.</span><span class="n">agg</span><span class="p">([</span><span class="s2">&quot;min&quot;</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">])</span>
-                   <span class="o">.</span><span class="n">to_numpy</span><span class="p">())</span>
+        <span class="n">grouped</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">grid_info</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">x_group</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">x_val</span><span class="p">]</span>
+            <span class="o">.</span><span class="n">agg</span><span class="p">([</span><span class="s2">&quot;min&quot;</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">])</span>
+            <span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="p">)</span>
 
         <span class="c1"># Collect the X position of the vertices</span>
         <span class="n">x_min</span> <span class="o">=</span> <span class="n">grouped</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
@@ -722,20 +727,20 @@
         <span class="c1"># An array containing the x &amp; y coordinates of the upper ray endpoint</span>
         <span class="n">xy_upper_ray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">x_max</span><span class="p">,</span> <span class="n">y_1</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
 
-        <span class="c1"># Function to find the euclidead distance between two points within </span>
+        <span class="c1"># Function to find the euclidead distance between two points within</span>
         <span class="c1"># two xy arrays stacked column-wise</span>
 
         <span class="c1"># Get the size of each hypotenuse</span>
         <span class="n">hyp_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">apply_along_axis</span><span class="p">(</span>
-                <span class="n">func1d</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_find_hyp_dist</span><span class="p">,</span>
-                <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                <span class="n">arr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">xy_vertices</span><span class="p">,</span> <span class="n">xy_upper_ray</span><span class="p">]),</span>
+            <span class="n">func1d</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_find_hyp_dist</span><span class="p">,</span>
+            <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">arr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">xy_vertices</span><span class="p">,</span> <span class="n">xy_upper_ray</span><span class="p">]),</span>
         <span class="p">)</span>
 
         <span class="n">adj_dist</span> <span class="o">=</span> <span class="n">x_max</span> <span class="o">-</span> <span class="n">x_min</span>
 
         <span class="n">adj_over_hyp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span>
-                <span class="n">adj_dist</span><span class="p">,</span> <span class="n">hyp_dist</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="p">(</span><span class="n">hyp_dist</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">adj_dist</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">adj_dist</span><span class="p">,</span> <span class="n">hyp_dist</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="p">(</span><span class="n">hyp_dist</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">adj_dist</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
         <span class="p">)</span>
 
         <span class="c1"># Find the angle of rotation from horizon in degrees</span>
@@ -743,13 +748,15 @@
 
         <span class="c1"># Adds the correct orientation to the angle</span>
         <span class="n">theta_sign</span> <span class="o">=</span> <span class="n">y_0</span> <span class="o">-</span> <span class="n">y_1</span>
-        <span class="n">theta</span> <span class="o">=</span> <span class="n">theta</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">theta_sign</span><span class="p">,</span> <span class="nb">abs</span><span class="p">(</span><span class="n">theta_sign</span><span class="p">),</span> <span class="n">where</span><span class="o">=</span><span class="n">theta_sign</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">theta</span> <span class="o">*</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">theta_sign</span><span class="p">,</span> <span class="nb">abs</span><span class="p">(</span><span class="n">theta_sign</span><span class="p">),</span> <span class="n">where</span><span class="o">=</span><span class="n">theta_sign</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="p">)</span>
 
         <span class="n">largest_angle</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
         <span class="n">optimal_angle</span> <span class="o">=</span> <span class="n">minimize_scalar</span><span class="p">(</span>
-                <span class="n">fun</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_find_angle_of_rot</span><span class="p">,</span>
-                <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="n">largest_angle</span><span class="p">,</span> <span class="n">largest_angle</span><span class="p">),</span>
-                <span class="n">args</span><span class="o">=</span><span class="n">theta</span>
+            <span class="n">fun</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_find_angle_of_rot</span><span class="p">,</span>
+            <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="n">largest_angle</span><span class="p">,</span> <span class="n">largest_angle</span><span class="p">),</span>
+            <span class="n">args</span><span class="o">=</span><span class="n">theta</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="n">image</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="n">angle_of_rotation</span><span class="o">=</span><span class="n">optimal_angle</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">)</span>
@@ -757,7 +764,7 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_find_angle_of_rot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">theta</span><span class="p">):</span>
         <span class="n">new_theta</span> <span class="o">=</span> <span class="n">theta</span> <span class="o">+</span> <span class="n">X</span>
-        <span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">new_theta</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">new_theta</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">err</span>
 
     <span class="nd">@staticmethod</span>

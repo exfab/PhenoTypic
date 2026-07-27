@@ -24,6 +24,8 @@ phenotypic.sdk\_.slurm
       get_slurm_array_limit
       get_slurm_max_submit_jobs
       parse_job_id
+      parse_slurm_time
+      sbatch_submission_environment
       submit_drip_feed_start
       submit_script
       validate_array_chunk

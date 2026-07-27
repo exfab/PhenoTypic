@@ -55,7 +55,7 @@ On a real grid-aware run, the top strip shows four controls:
   value. Hidden when only one timepoint exists, when the column is
   absent, or when coercion to numeric yields all-NaN.
 
-![Color picker dropdown open showing the union of measurement and QC severity columns.](../../_static/gui_images/heatmap_exploration/02_color_picker_open.png)
+![Color picker dropdown open showing the available measurement columns. Outputs with QC data also add QC-derived choices.](../../_static/gui_images/heatmap_exploration/02_color_picker_open.png)
 
 The heatmap renders below the strip. Hover labels carry
 `(row, col) — value — ImageFile — Object_Label`. Curated cells —

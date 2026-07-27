@@ -187,17 +187,17 @@ an Image instance and returns a modified Image instance."
 Use microbiology terminology consistently. Avoid generic image processing jargon
 when a domain-specific term exists.
 
-| Use | Instead of |
-|-----|------------|
-| colony | blob, object, region |
-| inoculum | seed point, starting blob |
-| plate | image (when referring to the physical plate) |
-| well | grid cell, section (when referring to physical wells) |
-| grid section | cell, tile (when referring to the computational grid partition) |
-| hyphae / mycelium | filaments, branches (when biologically accurate) |
-| detect_mat | detection matrix, enhanced grayscale |
-| objmask | binary mask, foreground mask |
-| objmap | label map, labeled array |
+| Use               | Instead of                                                      |
+|-------------------|-----------------------------------------------------------------|
+| colony            | blob, object, region                                            |
+| inoculum          | seed point, starting blob                                       |
+| plate             | image (when referring to the physical plate)                    |
+| well              | grid cell, section (when referring to physical wells)           |
+| grid section      | cell, tile (when referring to the computational grid partition) |
+| hyphae / mycelium | filaments, branches (when biologically accurate)                |
+| detect_mat        | detection matrix, enhanced grayscale                            |
+| objmask           | binary mask, foreground mask                                    |
+| objmap            | label map, labeled array                                        |
 
 When a term has both a biological and computational meaning (e.g., "colony" vs.
 "connected component"), use the biological term in tutorials and how-to guides,
@@ -226,12 +226,12 @@ All tutorials and visual how-to guides use the **bundled real plate images**
 located in `src/phenotypic/data/SnP_images/`. There are two organisms, each with
 a cropped and a full-plate variant:
 
-| Image | File | Use when |
-|-------|------|----------|
-| Rhodotorula yeast (cropped) | `RhodotorulaYeastCropped.png` | Default for most tutorials and how-tos. Round colonies, standard 96-well grid, clean background. |
-| Neurospora filamentous fungi (cropped) | `NeurosporaFilamentousFungiCropped.png` | Filamentous fungi tutorials and how-tos. Irregular hyphal morphology, spreading growth. |
-| Rhodotorula yeast (full plate) | `RhodotorulaYeastFullPlate.png` | Operations that need the full uncropped plate: cropping, padding, vignetting correction, color correction. Includes a color checker. |
-| Neurospora filamentous fungi (full plate) | `NeurosporaFilamentousFungiFullPlate.png` | Full plate variant for fungi-specific correction workflows. Includes a color checker. |
+| Image                                     | File                                      | Use when                                                                                                                             |
+|-------------------------------------------|-------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| Rhodotorula yeast (cropped)               | `RhodotorulaYeastCropped.png`             | Default for most tutorials and how-tos. Round colonies, standard 96-well grid, clean background.                                     |
+| Neurospora filamentous fungi (cropped)    | `NeurosporaFilamentousFungiCropped.png`   | Filamentous fungi tutorials and how-tos. Irregular hyphal morphology, spreading growth.                                              |
+| Rhodotorula yeast (full plate)            | `RhodotorulaYeastFullPlate.png`           | Operations that need the full uncropped plate: cropping, padding, vignetting correction, color correction. Includes a color checker. |
+| Neurospora filamentous fungi (full plate) | `NeurosporaFilamentousFungiFullPlate.png` | Full plate variant for fungi-specific correction workflows. Includes a color checker.                                                |
 
 **When to use which variant:**
 
@@ -239,8 +239,8 @@ a cropped and a full-plate variant:
   measurement, pipeline building, and grid plate tutorials.
 - **Full plate images** include the plate border, scanner margins, and a
   **color checker** (for `ColorCorrector` / `ColorCheckerProfile`). Use these
-  for tutorials and how-tos that demonstrate cropping (`ImageCropper`), padding
-  (`ImagePadder`), vignetting correction (`VignetteCorrector`), or color
+  for tutorials and how-tos that demonstrate cropping (`CropImage`), padding
+  (`PadImage`), vignetting correction (`VignetteCorrector`), or color
   correction.
 
 For docstring smoke tests (in the test suite, not in docstrings), use
@@ -286,7 +286,8 @@ Every tutorial and how-to notebook follows this cell pattern:
 Link between documentation sections to help readers navigate.
 
 - **Tutorials** link forward to related how-to guides: "For more on contrast
-  enhancement, see [How to enhance low-contrast images](../how_to/notebooks/enhance_low_contrast)."
+  enhancement,
+  see [How to enhance low-contrast images](../how_to/notebooks/enhance_low_contrast)."
 - **How-to guides** link to Explanation pages for theory and to API Reference for
   parameter details.
 - **Explanation pages** link to relevant how-to guides for practical application.

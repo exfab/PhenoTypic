@@ -887,8 +887,8 @@ a cropped and a full-plate variant:</p>
 measurement, pipeline building, and grid plate tutorials.</p></li>
 <li><p><strong>Full plate images</strong> include the plate border, scanner margins, and a
 <strong>color checker</strong> (for <code class="docutils literal notranslate"><span class="pre">ColorCorrector</span></code> / <code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile</span></code>). Use these
-for tutorials and how-tos that demonstrate cropping (<code class="docutils literal notranslate"><span class="pre">ImageCropper</span></code>), padding
-(<code class="docutils literal notranslate"><span class="pre">ImagePadder</span></code>), vignetting correction (<code class="docutils literal notranslate"><span class="pre">VignetteCorrector</span></code>), or color
+for tutorials and how-tos that demonstrate cropping (<code class="docutils literal notranslate"><span class="pre">CropImage</span></code>), padding
+(<code class="docutils literal notranslate"><span class="pre">PadImage</span></code>), vignetting correction (<code class="docutils literal notranslate"><span class="pre">VignetteCorrector</span></code>), or color
 correction.</p></li>
 </ul>
 <p>For docstring smoke tests (in the test suite, not in docstrings), use
@@ -932,7 +932,8 @@ for static diagrams.</p>
 <p>Link between documentation sections to help readers navigate.</p>
 <ul class="simple">
 <li><p><strong>Tutorials</strong> link forward to related how-to guides: “For more on contrast
-enhancement, see <a class="reference internal" href="../how_to/notebooks/enhance_low_contrast.html"><span class="doc std std-doc">How to enhance low-contrast images</span></a>.”</p></li>
+enhancement,
+see <a class="reference internal" href="../how_to/notebooks/enhance_low_contrast.html"><span class="doc std std-doc">How to enhance low-contrast images</span></a>.”</p></li>
 <li><p><strong>How-to guides</strong> link to Explanation pages for theory and to API Reference for
 parameter details.</p></li>
 <li><p><strong>Explanation pages</strong> link to relevant how-to guides for practical application.</p></li>

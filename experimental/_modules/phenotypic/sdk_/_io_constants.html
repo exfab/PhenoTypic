@@ -667,6 +667,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
@@ -754,6 +755,192 @@
         <span class="n">typed_tail</span> <span class="o">=</span> <span class="n">suffix</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="n">LEGACY_JSON_SUFFIX</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">text</span><span class="si">}{</span><span class="n">typed_tail</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">text</span><span class="si">}{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="bytes_fingerprint">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.bytes_fingerprint.html#phenotypic.sdk_.bytes_fingerprint">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">bytes_fingerprint</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a versioned SHA-256 fingerprint for exact bytes.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data: Bytes to fingerprint.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A ``&quot;sha256:&lt;hex&gt;&quot;`` content fingerprint.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;sha256:</span><span class="si">{</span><span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="file_fingerprint">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.file_fingerprint.html#phenotypic.sdk_.file_fingerprint">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">file_fingerprint</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a versioned SHA-256 fingerprint for one file&#39;s contents.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        path: Existing regular file to fingerprint.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A ``&quot;sha256:&lt;hex&gt;&quot;`` content fingerprint.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="nb">iter</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">),</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+            <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;sha256:</span><span class="si">{</span><span class="n">digest</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="paths_fingerprint">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.paths_fingerprint.html#phenotypic.sdk_.paths_fingerprint">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">paths_fingerprint</span><span class="p">(</span><span class="n">paths</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fingerprint an ordered set of named filesystem entries without writes.</span>
+
+<span class="sd">    Files include their exact contents, directories include their normalized</span>
+<span class="sd">    names, and missing entries are represented explicitly. Sorting by name</span>
+<span class="sd">    makes the result independent of caller enumeration order.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        paths: Files to include.</span>
+<span class="sd">        root: Optional anchor used to normalize names.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A deterministic ``&quot;sha256:&lt;hex&gt;&quot;`` fingerprint.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">anchor</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="k">if</span> <span class="n">root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">named_paths</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">raw_path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">raw_path</span><span class="p">)</span>
+        <span class="n">resolved</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">anchor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">resolved</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">anchor</span><span class="p">)</span><span class="o">.</span><span class="n">as_posix</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">resolved</span><span class="o">.</span><span class="n">as_posix</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">resolved</span><span class="o">.</span><span class="n">as_posix</span><span class="p">()</span>
+        <span class="n">named_paths</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">))</span>
+
+    <span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">named_paths</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">encoded_name</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">encoded_name</span><span class="p">)</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">))</span>
+        <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">encoded_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x02</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x00</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x01</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">))</span>
+        <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="nb">iter</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">),</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+                <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;sha256:</span><span class="si">{</span><span class="n">digest</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="source_cache_key">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.source_cache_key.html#phenotypic.sdk_.source_cache_key">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">source_cache_key</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">fingerprint</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return an opaque cache key bound to canonical source and content.&quot;&quot;&quot;</span>
+    <span class="n">identity</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Path</span><span class="p">(</span><span class="n">source</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="si">}</span><span class="se">\0</span><span class="si">{</span><span class="n">fingerprint</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">identity</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">32</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="migration_backup_dir">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.migration_backup_dir.html#phenotypic.sdk_.migration_backup_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">migration_backup_dir</span><span class="p">(</span><span class="n">config_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the dedicated sibling backup directory for a configuration.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;.migration_backups&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="pipeline_publication_lock_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.pipeline_publication_lock_path.html#phenotypic.sdk_.pipeline_publication_lock_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pipeline_publication_lock_path</span><span class="p">(</span><span class="n">config_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the shared interprocess lock path for pipeline publication.</span>
+
+<span class="sd">    Every production writer of a canonical output pipeline must acquire this</span>
+<span class="sd">    lock before checking a source generation or replacing the file. The lock</span>
+<span class="sd">    is intentionally about publication, not one particular migration, so CLI,</span>
+<span class="sd">    QC, Analysis, and compatibility writers serialize against each other.</span>
+
+<span class="sd">    Legacy ``pipeline.json`` and canonical ``pipeline.json.pht-pipe`` paths</span>
+<span class="sd">    intentionally map to the same output-level identity. This prevents a V1</span>
+<span class="sd">    reader/writer and a V2 writer from bypassing one another merely because</span>
+<span class="sd">    they selected different compatibility filenames.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="p">{</span><span class="n">PIPELINE_JSON</span><span class="p">,</span> <span class="n">_LEGACY_PIPELINE_JSON</span><span class="p">}:</span>
+        <span class="k">return</span> <span class="n">config</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;.pipeline-config.migration.lock&quot;</span>
+    <span class="k">return</span> <span class="n">config</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;.</span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.migration.lock&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="migration_lock_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.migration_lock_path.html#phenotypic.sdk_.migration_lock_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">migration_lock_path</span><span class="p">(</span><span class="n">config_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the shared pipeline publication lock used by migrations.</span>
+
+<span class="sd">    This compatibility alias preserves the original SDK name while ensuring</span>
+<span class="sd">    migrations coordinate with every ordinary canonical pipeline writer.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">pipeline_publication_lock_path</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="migration_backup_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.migration_backup_path.html#phenotypic.sdk_.migration_backup_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">migration_backup_path</span><span class="p">(</span>
+    <span class="n">config_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">source_fingerprint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a timestamped, fingerprinted backup path.&quot;&quot;&quot;</span>
+    <span class="n">digest</span> <span class="o">=</span> <span class="n">source_fingerprint</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">&quot;sha256:&quot;</span><span class="p">)[:</span><span class="mi">12</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">migration_backup_dir</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Path</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">digest</span><span class="si">}</span><span class="s2">.bak&quot;</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="migration_receipt_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.migration_receipt_path.html#phenotypic.sdk_.migration_receipt_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">migration_receipt_path</span><span class="p">(</span>
+    <span class="n">config_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">resulting_fingerprint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the durable receipt path for one migrated generation.&quot;&quot;&quot;</span>
+    <span class="n">digest</span> <span class="o">=</span> <span class="n">resulting_fingerprint</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">&quot;sha256:&quot;</span><span class="p">)[:</span><span class="mi">12</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">migration_backup_dir</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Path</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">digest</span><span class="si">}</span><span class="s2">.migration.json&quot;</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="generation_staging_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.generation_staging_path.html#phenotypic.sdk_.generation_staging_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generation_staging_path</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">generation</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a sibling staging path for an explicit publication generation.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``generation`` is not a safe path component.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="ow">not</span> <span class="n">generation</span>
+        <span class="ow">or</span> <span class="n">generation</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="s2">&quot;..&quot;</span><span class="p">}</span>
+        <span class="ow">or</span> <span class="s2">&quot;/&quot;</span> <span class="ow">in</span> <span class="n">generation</span>
+        <span class="ow">or</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="n">generation</span>
+    <span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;generation must be a nonempty path component&quot;</span><span class="p">)</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">target</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;.</span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">generation</span><span class="si">}</span><span class="s2">.generation&quot;</span><span class="p">)</span></div>
 
 
 
@@ -1020,6 +1207,17 @@
 <span class="c1">#: documented in :class:`JobMetadataKey`.</span>
 <span class="n">JOB_METADATA_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;job_metadata.json&quot;</span>
 
+<span class="c1">#: GUI launch-generation ownership record written before execution starts.</span>
+<span class="n">GUI_LAUNCH_OWNER_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;gui_launch_owner.json&quot;</span>
+
+<span class="c1">#: Private child-process environment binding for a GUI launch generation.</span>
+<span class="n">GUI_RECORD_GENERATION_ENV_VAR</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">&quot;PHENOTYPIC_GUI_RECORD_GENERATION&quot;</span>
+<span class="p">)</span>
+
+<span class="c1">#: Generation- and mode-bearing terminal publication marker.</span>
+<span class="n">RUN_COMPLETION_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;run_completion.json&quot;</span>
+
 <span class="c1">#: Append-only JSONL of per-image failures. Each row carries a</span>
 <span class="c1">#: :data:`phenotypic.sdk_.typing_.FailureSource` tag.</span>
 <span class="n">FAILURES_JSONL</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;failures.jsonl&quot;</span>
@@ -1053,6 +1251,13 @@
 <span class="c1">#: Per-run stdout capture written by the run console&#39;s local runner.</span>
 <span class="n">STDOUT_LOG</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;stdout.log&quot;</span>
 
+<span class="c1">#: Reserved directory created inside an output root by the GUI runner.</span>
+<span class="n">RUN_LOG_DIRNAME</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.gui_log&quot;</span>
+
+<span class="c1">#: Complete allowlist of files permitted inside :data:`RUN_LOG_DIRNAME` when</span>
+<span class="c1">#: the CLI decides whether an output is otherwise fresh.</span>
+<span class="n">GUI_LOG_FILENAMES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="n">STDOUT_LOG</span><span class="p">})</span>
+
 <span class="c1">#: Generated standalone analysis HTML emitted alongside the dashboard.</span>
 <span class="n">ANALYSIS_HTML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis.html&quot;</span>
 
@@ -1074,7 +1279,7 @@
 <span class="n">CHUNK_LOCK</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.chunk_lock&quot;</span>
 
 <span class="c1">#: Recompile task manifest JSON (one per recompile invocation; lives at</span>
-<span class="c1">#: ``&lt;output&gt;/progress/recompile/task_manifest.json``). Lists every per-image</span>
+<span class="c1">#: ``&lt;output&gt;/.phenotypic/progress/recompile/task_manifest.json``). Lists every per-image</span>
 <span class="c1">#: shard the recompile worker is responsible for; consumed by</span>
 <span class="c1">#: ``_cli_recompile_worker._main``.</span>
 <span class="n">RECOMPILE_TASK_MANIFEST_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;task_manifest.json&quot;</span>
@@ -1087,7 +1292,9 @@
 <span class="c1">#: ``&lt;output&gt;/results/`` — per-dataset subdirectories live below here.</span>
 <span class="n">DIR_RESULTS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;results&quot;</span>
 
-<span class="c1">#: ``&lt;output&gt;/progress/`` — sidecar JSON / JSONL state for in-flight runs.</span>
+<span class="c1">#: ``progress`` — directory-name segment for sidecar state under</span>
+<span class="c1">#: ``&lt;output&gt;/.phenotypic/progress/``. Legacy readers may resolve a root-level</span>
+<span class="c1">#: ``&lt;output&gt;/progress/`` directory.</span>
 <span class="n">DIR_PROGRESS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;progress&quot;</span>
 
 <span class="c1">#: Per-dataset measurements subdirectory: ``&lt;output&gt;/results/&lt;ds&gt;/measurements/``.</span>
@@ -2120,15 +2327,31 @@
 <div class="viewcode-block" id="job_metadata_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.job_metadata_path.html#phenotypic.sdk_.job_metadata_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">job_metadata_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/job_metadata.json``.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/progress/job_metadata.json``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">JOB_METADATA_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="gui_launch_owner_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.gui_launch_owner_path.html#phenotypic.sdk_.gui_launch_owner_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">gui_launch_owner_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical GUI launch-generation owner record path.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">GUI_LAUNCH_OWNER_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="run_completion_marker_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.run_completion_marker_path.html#phenotypic.sdk_.run_completion_marker_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_completion_marker_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical generation-bearing completion marker path.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">RUN_COMPLETION_JSON</span></div>
 
 
 
 <div class="viewcode-block" id="failures_jsonl_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.failures_jsonl_path.html#phenotypic.sdk_.failures_jsonl_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">failures_jsonl_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/failures.jsonl``.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/progress/failures.jsonl``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">FAILURES_JSONL</span></div>
 
 
@@ -2136,7 +2359,7 @@
 <div class="viewcode-block" id="manifest_json_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.manifest_json_path.html#phenotypic.sdk_.manifest_json_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">manifest_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/manifest.json`` (dashboard manifest).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/progress/manifest.json``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">MANIFEST_JSON</span></div>
 
 
@@ -2144,7 +2367,7 @@
 <div class="viewcode-block" id="chunk_manifest_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.chunk_manifest_path.html#phenotypic.sdk_.chunk_manifest_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">chunk_manifest_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/chunk_manifest.json``.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/progress/chunk_manifest.json``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">CHUNK_MANIFEST_JSON</span></div>
 
 
@@ -2152,7 +2375,7 @@
 <div class="viewcode-block" id="chunk_state_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.chunk_state_path.html#phenotypic.sdk_.chunk_state_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">chunk_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/chunk_state.json``.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/progress/chunk_state.json``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">CHUNK_STATE_JSON</span></div>
 
 
@@ -2428,7 +2651,7 @@
 <span class="sd">    before calling this helper.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        job_meta: Parsed ``progress/job_metadata.json`` content, or</span>
+<span class="sd">        job_meta: Parsed ``.phenotypic/progress/job_metadata.json`` content, or</span>
 <span class="sd">            :data:`None` when the file is absent.</span>
 
 <span class="sd">    Returns:</span>
@@ -2451,7 +2674,7 @@
 <div class="viewcode-block" id="JobMetadataKey">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.JobMetadataKey.html#phenotypic.sdk_.JobMetadataKey">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">JobMetadataKey</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/progress/job_metadata.json``.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/.phenotypic/progress/job_metadata.json``.</span>
 
 <span class="sd">    Writers (CLI execution strategies) and readers (recompile worker,</span>
 <span class="sd">    sentinel, checkpoint handler, GUI runs registry) must reference</span>
@@ -2474,6 +2697,11 @@
     <span class="n">INCLUDE_DATASET_COLUMN</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;include_dataset_column&quot;</span>
     <span class="n">IMAGE_TASK_MAPPING</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;image_task_mapping&quot;</span>
     <span class="n">ORCHESTRATION_EPOCH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;orchestration_epoch&quot;</span>
+    <span class="c1">#: GUI owner-record generation that initiated this scheduler launch.</span>
+    <span class="c1">#: Together with ``slurm_generation`` this is the durable restart-safe</span>
+    <span class="c1">#: binding between GUI identity and the CLI lifecycle epoch.</span>
+    <span class="n">GUI_RECORD_GENERATION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;gui_record_generation&quot;</span>
+    <span class="n">PROCESSING_GENERATION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;processing_generation&quot;</span>
     <span class="n">PIPELINE_PATH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pipeline_path&quot;</span>
     <span class="n">IMAGE_TYPE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;image_type&quot;</span>
     <span class="n">NROWS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;nrows&quot;</span>
@@ -2484,7 +2712,7 @@
 <div class="viewcode-block" id="DashboardManifestKey">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.DashboardManifestKey.html#phenotypic.sdk_.DashboardManifestKey">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DashboardManifestKey</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/progress/manifest.json`` (dashboard manifest).</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/.phenotypic/progress/manifest.json``.</span>
 
 <span class="sd">    The manifest is built by :func:`_cli._dashboard._manifest_builder.build_manifest`</span>
 <span class="sd">    and consumed by both the dashboard JS and the GUI run-console&#39;s runs</span>
@@ -2503,6 +2731,11 @@
     <span class="n">SUCCESS_RATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;success_rate&quot;</span>
     <span class="n">IS_COMPLETE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;is_complete&quot;</span>
     <span class="n">START_TIME</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;start_time&quot;</span>
+    <span class="c1">#: Exact GUI generation that published this canonical local manifest.</span>
+    <span class="c1">#: Omitted from non-GUI and scheduler manifests for compatibility.</span>
+    <span class="n">GUI_RECORD_GENERATION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;gui_record_generation&quot;</span>
+    <span class="n">PROCESSING_GENERATION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;processing_generation&quot;</span>
+    <span class="n">EVENT_DIAGNOSTICS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;event_diagnostics&quot;</span>
     <span class="n">INPUT_PATH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;input_path&quot;</span>
     <span class="n">DATASETS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;datasets&quot;</span>
     <span class="n">FAILURE_CATEGORIES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;failure_categories&quot;</span>
@@ -2532,7 +2765,7 @@
 <div class="viewcode-block" id="ChunkStateKey">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.ChunkStateKey.html#phenotypic.sdk_.ChunkStateKey">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ChunkStateKey</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/progress/chunk_state.json``.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/.phenotypic/progress/chunk_state.json``.&quot;&quot;&quot;</span>
 
     <span class="n">CHUNKED_FILES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunked_files&quot;</span>
     <span class="n">NEXT_CHUNK_ID</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;next_chunk_id&quot;</span></div>
@@ -2542,7 +2775,7 @@
 <div class="viewcode-block" id="ProcessingStateKey">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.ProcessingStateKey.html#phenotypic.sdk_.ProcessingStateKey">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProcessingStateKey</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/processing_state.json`` (resume-state file).</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/.phenotypic/processing_state.json``.</span>
 
 <span class="sd">    Distinct from :class:`JobMetadataKey` even where string values overlap</span>
 <span class="sd">    (e.g. ``EXECUTION_MODE``, ``INPUT_PATH``) — these describe the</span>
@@ -2574,7 +2807,7 @@
 <div class="viewcode-block" id="ChunkManifestKey">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.ChunkManifestKey.html#phenotypic.sdk_.ChunkManifestKey">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ChunkManifestKey</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/progress/chunk_manifest.json``.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/.phenotypic/progress/chunk_manifest.json``.&quot;&quot;&quot;</span>
 
     <span class="n">CHUNKS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunks&quot;</span>
     <span class="n">ROWS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;rows&quot;</span>

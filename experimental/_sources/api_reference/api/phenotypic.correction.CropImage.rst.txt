@@ -1,0 +1,66 @@
+phenotypic.correction.CropImage
+===============================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: CropImage
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CropImage.__init__
+      ~CropImage.apply
+      ~CropImage.construct
+      ~CropImage.copy
+      ~CropImage.dict
+      ~CropImage.from_json
+      ~CropImage.from_orm
+      ~CropImage.json
+      ~CropImage.model_construct
+      ~CropImage.model_copy
+      ~CropImage.model_dump
+      ~CropImage.model_dump_json
+      ~CropImage.model_json_schema
+      ~CropImage.model_parametrized_name
+      ~CropImage.model_post_init
+      ~CropImage.model_rebuild
+      ~CropImage.model_validate
+      ~CropImage.model_validate_json
+      ~CropImage.model_validate_strings
+      ~CropImage.parse_file
+      ~CropImage.parse_obj
+      ~CropImage.parse_raw
+      ~CropImage.schema
+      ~CropImage.schema_json
+      ~CropImage.to_json
+      ~CropImage.update_forward_refs
+      ~CropImage.validate
+      ~CropImage.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CropImage.model_computed_fields
+      ~CropImage.model_config
+      ~CropImage.model_extra
+      ~CropImage.model_fields
+      ~CropImage.model_fields_set
+      ~CropImage.left
+      ~CropImage.right
+      ~CropImage.top
+      ~CropImage.bottom
+   
+   

@@ -619,9 +619,9 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_image_loader</span><span class="p">(</span>
-        <span class="n">filepath</span><span class="p">,</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span> <span class="s2">&quot;filepath&quot;</span><span class="p">],</span>
-        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="n">filepath</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span> <span class="s2">&quot;filepath&quot;</span><span class="p">],</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span>
 
@@ -641,7 +641,7 @@
 <div class="viewcode-block" id="load_plate_12hr">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.data.load_plate_12hr.html#phenotypic.data.load_plate_12hr">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_plate_12hr</span><span class="p">(</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns a plate image of a K. Marxianus colony 96 array plate at 12 hrs&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_image_loader</span><span class="p">(</span><span class="n">__current_file_dir</span> <span class="o">/</span> <span class="s2">&quot;StandardDay1.jpg&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span></div>
@@ -651,7 +651,7 @@
 <div class="viewcode-block" id="load_plate_72hr">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.data.load_plate_72hr.html#phenotypic.data.load_plate_72hr">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_plate_72hr</span><span class="p">(</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a image of a k. marxianus colony 96 array plate at 72 hrs&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_image_loader</span><span class="p">(</span><span class="n">__current_file_dir</span> <span class="o">/</span> <span class="s2">&quot;StandardDay6.jpg&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span></div>
@@ -661,7 +661,7 @@
 <div class="viewcode-block" id="load_early_colony">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.data.load_early_colony.html#phenotypic.data.load_early_colony">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_early_colony</span><span class="p">(</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns a colony image array of K. Marxianus at 12 hrs&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_image_loader</span><span class="p">(</span><span class="n">__current_file_dir</span> <span class="o">/</span> <span class="s2">&quot;early_colony.png&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span></div>
@@ -671,7 +671,7 @@
 <div class="viewcode-block" id="load_faint_early_colony">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.data.load_faint_early_colony.html#phenotypic.data.load_faint_early_colony">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_faint_early_colony</span><span class="p">(</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns a faint colony image array of K. Marxianus at 12 hrs&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_image_loader</span><span class="p">(</span><span class="n">__current_file_dir</span> <span class="o">/</span> <span class="s2">&quot;early_colony_faint.png&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span></div>
@@ -681,7 +681,7 @@
 <div class="viewcode-block" id="load_colony">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.data.load_colony.html#phenotypic.data.load_colony">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_colony</span><span class="p">(</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns a colony image array of K. Marxianus at 72 hrs&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_image_loader</span><span class="p">(</span><span class="n">__current_file_dir</span> <span class="o">/</span> <span class="s2">&quot;later_colony.png&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span></div>
@@ -711,7 +711,7 @@
 <div class="viewcode-block" id="load_yeast_plate">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.data.load_yeast_plate.html#phenotypic.data.load_yeast_plate">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_yeast_plate</span><span class="p">(</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load an image Neurospora filamentous fungi 96-well plate image cropped to the center.</span>
 
@@ -726,17 +726,17 @@
 <span class="sd">        The plate image in the requested format.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_image_loader</span><span class="p">(</span>
-            <span class="n">__current_file_dir</span> <span class="o">/</span> <span class="s2">&quot;snp-imager-samples/&quot;</span>
-                                 <span class="s2">&quot;RhodotorulaYeastCenterCrop.png&quot;</span><span class="p">,</span>
-            <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span>
-            <span class="n">nrows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-            <span class="n">ncols</span><span class="o">=</span><span class="mi">4</span>
+        <span class="n">__current_file_dir</span> <span class="o">/</span> <span class="s2">&quot;snp-imager-samples/&quot;</span>
+        <span class="s2">&quot;RhodotorulaYeastCenterCrop.png&quot;</span><span class="p">,</span>
+        <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span>
+        <span class="n">nrows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">ncols</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">load_yeast_plate_large</span><span class="p">(</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a cropped Rhodotorula yeast 96-well plate image.</span>
 
@@ -751,15 +751,13 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        The plate image in the requested format.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">_image_loader</span><span class="p">(</span>
-            <span class="n">fetch_snp</span><span class="p">(</span><span class="s2">&quot;RhodotorulaYeastCropped.png&quot;</span><span class="p">),</span> <span class="n">mode</span>
-    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">_image_loader</span><span class="p">(</span><span class="n">fetch_snp</span><span class="p">(</span><span class="s2">&quot;RhodotorulaYeastCropped.png&quot;</span><span class="p">),</span> <span class="n">mode</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="load_fungi_plate">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.data.load_fungi_plate.html#phenotypic.data.load_fungi_plate">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_fungi_plate</span><span class="p">(</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load an image Neurospora filamentous fungi 96-well plate image cropped to the center.</span>
 
@@ -774,17 +772,17 @@
 <span class="sd">        The plate image in the requested format.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_image_loader</span><span class="p">(</span>
-            <span class="n">__current_file_dir</span> <span class="o">/</span> <span class="s2">&quot;snp-imager-samples/&quot;</span>
-                                 <span class="s2">&quot;NeurosporaFilamentousFungiCenterCrop.png&quot;</span><span class="p">,</span>
-            <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span>
-            <span class="n">nrows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-            <span class="n">ncols</span><span class="o">=</span><span class="mi">4</span>
+        <span class="n">__current_file_dir</span> <span class="o">/</span> <span class="s2">&quot;snp-imager-samples/&quot;</span>
+        <span class="s2">&quot;NeurosporaFilamentousFungiCenterCrop.png&quot;</span><span class="p">,</span>
+        <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span>
+        <span class="n">nrows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">ncols</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">load_fungi_plate_large</span><span class="p">(</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a cropped Neurospora filamentous fungi 96-well plate image.</span>
 
@@ -799,23 +797,23 @@
 <span class="sd">        The plate image in the requested format.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_image_loader</span><span class="p">(</span>
-            <span class="n">fetch_snp</span><span class="p">(</span><span class="s2">&quot;NeurosporaFilamentousFungiCropped.png&quot;</span><span class="p">),</span>
-            <span class="n">mode</span><span class="p">,</span>
-            <span class="n">nrows</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
-            <span class="n">ncols</span><span class="o">=</span><span class="mi">10</span>
+        <span class="n">fetch_snp</span><span class="p">(</span><span class="s2">&quot;NeurosporaFilamentousFungiCropped.png&quot;</span><span class="p">),</span>
+        <span class="n">mode</span><span class="p">,</span>
+        <span class="n">nrows</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+        <span class="n">ncols</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
     <span class="p">)</span>
 
 
 <div class="viewcode-block" id="load_yeast_plate_full">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.data.load_yeast_plate_full.html#phenotypic.data.load_yeast_plate_full">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_yeast_plate_full</span><span class="p">(</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a full (uncropped) Rhodotorula yeast plate image with color checker.</span>
 
 <span class="sd">    Returns the full plate image including scanner margins and a color checker</span>
 <span class="sd">    target. Use for tutorials and how-to guides that demonstrate cropping</span>
-<span class="sd">    (``ImageCropper``), padding (``ImagePadder``), vignetting correction</span>
+<span class="sd">    (``CropImage``), padding (``PadImage``), vignetting correction</span>
 <span class="sd">    (``VignetteCorrector``), or color correction (``ColorCorrector``).</span>
 
 <span class="sd">    Args:</span>
@@ -824,16 +822,14 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        The full plate image in the requested format.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">_image_loader</span><span class="p">(</span>
-            <span class="n">fetch_snp</span><span class="p">(</span><span class="s2">&quot;RhodotorulaYeastFullPlate.png&quot;</span><span class="p">),</span> <span class="n">mode</span>
-    <span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">_image_loader</span><span class="p">(</span><span class="n">fetch_snp</span><span class="p">(</span><span class="s2">&quot;RhodotorulaYeastFullPlate.png&quot;</span><span class="p">),</span> <span class="n">mode</span><span class="p">)</span></div>
 
 
 
 <div class="viewcode-block" id="load_fungi_plate_full">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.data.load_fungi_plate_full.html#phenotypic.data.load_fungi_plate_full">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_fungi_plate_full</span><span class="p">(</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a full (uncropped) Neurospora filamentous fungi plate image with color checker.</span>
 
@@ -847,9 +843,10 @@
 <span class="sd">        The full plate image in the requested format.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_image_loader</span><span class="p">(</span>
-            <span class="n">fetch_snp</span><span class="p">(</span><span class="s2">&quot;NeurosporaFilamentousFungiFullPlate.png&quot;</span><span class="p">),</span>
-            <span class="n">mode</span><span class="p">,</span>
-            <span class="n">nrows</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">10</span>
+        <span class="n">fetch_snp</span><span class="p">(</span><span class="s2">&quot;NeurosporaFilamentousFungiFullPlate.png&quot;</span><span class="p">),</span>
+        <span class="n">mode</span><span class="p">,</span>
+        <span class="n">nrows</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+        <span class="n">ncols</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 </pre></div>

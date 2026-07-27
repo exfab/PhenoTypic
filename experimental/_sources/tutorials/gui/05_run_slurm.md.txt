@@ -3,7 +3,7 @@
 The same Run console form submits to SLURM when you toggle `Mode` from
 `Local` to `SLURM`. The hub shells out to the existing
 `phenotypic._cli._cli_slurm_submission` pathway — the same code path used
-by `phenotypic --pipeline pipeline.json --input input/ -o output/
+by `phenotypic --pipeline pipeline.json.pht-pipe --input input/ -o output/
 --slurm partition=general --slurm time=240`.
 
 ## Switch to SLURM mode
@@ -24,36 +24,57 @@ with the typed common fields:
 
 ## Submit
 
-Clicking `Run` while SLURM mode is active does **not** spawn a local
-subprocess. Instead it hands the form values to a background thread that
-calls `phenotypic … --slurm key=value …` against your SLURM cluster.
-The hub waits for the submission to finish (typically <1 s for small
-arrays), then registers the returned array primary job id with the run
-registry. The Recent Runs panel surfaces the row as
-`Mode: slurm-<job-id>` with status pulled from the manifest as the array
-chunks finish.
+Clicking `Run` starts a short local submitter that calls `phenotypic …
+--slurm key=value …` against your cluster. The run registry allocates a
+durable generation before submission. Recent Runs then follows
+generation-bound scheduler, controller, and finalizer evidence through
+`queued`, `reconciling`, running, terminal, and `cancelling` states. This
+works for ordinary arrays and staged GPU controller lifecycles without
+confusing an older attempt with a new one.
 
 ```{warning}
-This page captures the form **filled out**, not a successful submission.
+This page captures a fully selected pipeline, input, and output plus form-valid
+SLURM fields. The capture does not launch a dry-run generation or submit to a
+scheduler.
 Submitting requires `sbatch` on `PATH` and a real SLURM cluster — neither
 exists on the workstation that captured these screenshots. To verify your
-form values translate to the right CLI invocation, switch back to
-`Local` mode and click `Validate (dry-run)`: the dry-run prints the argv
-the hub would pass to `phenotypic`. Once you're satisfied, switch back
-to `SLURM` and click `Run`.
+form values translate to the right CLI invocation, click
+`Validate (dry-run)`: the dry-run validates the selected paths and prints the
+argv the hub would pass to `phenotypic`. Once you're satisfied, click `Run`.
 ```
 
 ## What SLURM submission writes
 
-A successful submission writes:
+A successful submission writes lifecycle evidence under the output directory.
+The submit script uses `sbatch --export=ALL`. PhenoTypic also snapshots the
+caller's `PYTHONPATH` internally as `PHENOTYPIC_SLURM_PYTHONPATH`; generated
+ordinary, staged, and recovery scripts restore that snapshot before starting
+Python on clusters that filter `PYTHONPATH`. Users set `PYTHONPATH` normally and
+do not set the internal variable themselves.
 
-- `<output_dir>/progress/job_metadata.json` with the array primary job id
+An explicit GUI cancellation remains authoritative until it settles, even if
+publication becomes visible. When there was no explicit cancellation, an
+ordinary run whose scheduler fence is inactive but whose successful publication
+is visible reconciles through the finalizer and is never autonomously reported
+as cancelled.
+
+Key artifacts are:
+
+- `<output_dir>/.phenotypic/progress/job_metadata.json` with the array primary job id
   and per-chunk job ids. The hub reads this file to surface the
   `slurm-<id>` row in Recent Runs — it does **not** parse Rich-formatted
   stdout (locale and terminal-width fragile).
-- `<output_dir>/deliverables/dashboard.html` (written by the CLI
-  submission flow), so the iframe panel can point at the dashboard before
-  any chunk completes.
+- `<output_dir>/deliverables/dashboard.html`, published by the normal or
+  staged finalizer once the run is complete.
+
+## Operational restart guidance
+
+Restarting the GUI does not cancel submitted work. On startup it rehydrates
+durable output records and reattaches only when it can prove the matching
+generation. If a restart occurs during submission, wait for scheduler metadata
+and use Refresh rather than launching the same output again. Keep
+`.phenotypic/progress/` and staged-controller ledgers intact when redeploying
+the hub.
 
 For deeper SLURM operational detail (chunk sizing, recompile-on-resume,
 per-chunk cgroups), see [SLURM Pipelines](../../how_to/pages/slurm_pipelines.md).

@@ -152,7 +152,7 @@ Downloadable Notebooks
     .. grid-item-card:: How To: Crop and Pad Images for Batch Consistency
         :shadow: md
 
-        Use `ImageCropper` to remove scanner borders and `ImagePadder` to make images a uniform size for batch processing.
+        Use `CropImage` to remove scanner borders and `PadImage` to make images a uniform size for batch processing.
 
         +++
         :download:`Download notebook <how_to/notebooks/crop_and_pad.ipynb>`

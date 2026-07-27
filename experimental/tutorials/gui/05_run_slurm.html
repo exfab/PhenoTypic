@@ -662,7 +662,7 @@
 <p>The same Run console form submits to SLURM when you toggle <code class="docutils literal notranslate"><span class="pre">Mode</span></code> from
 <code class="docutils literal notranslate"><span class="pre">Local</span></code> to <code class="docutils literal notranslate"><span class="pre">SLURM</span></code>. The hub shells out to the existing
 <code class="docutils literal notranslate"><span class="pre">phenotypic._cli._cli_slurm_submission</span></code> pathway — the same code path used
-by <code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">--pipeline</span> <span class="pre">pipeline.json</span> <span class="pre">--input</span> <span class="pre">input/</span> <span class="pre">-o</span> <span class="pre">output/</span> <span class="pre">--slurm</span> <span class="pre">partition=general</span> <span class="pre">--slurm</span> <span class="pre">time=240</span></code>.</p>
+by <code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">--pipeline</span> <span class="pre">pipeline.json.pht-pipe</span> <span class="pre">--input</span> <span class="pre">input/</span> <span class="pre">-o</span> <span class="pre">output/</span> <span class="pre">--slurm</span> <span class="pre">partition=general</span> <span class="pre">--slurm</span> <span class="pre">time=240</span></code>.</p>
 <section id="switch-to-slurm-mode">
 <h2>Switch to SLURM mode<a class="headerlink" href="#switch-to-slurm-mode" title="Link to this heading">#</a></h2>
 <p>Click the <code class="docutils literal notranslate"><span class="pre">SLURM</span></code> radio in the form. The <code class="docutils literal notranslate"><span class="pre">SLURM</span> <span class="pre">config</span></code> collapse opens
@@ -706,37 +706,55 @@ with the typed common fields:</p>
 </section>
 <section id="submit">
 <h2>Submit<a class="headerlink" href="#submit" title="Link to this heading">#</a></h2>
-<p>Clicking <code class="docutils literal notranslate"><span class="pre">Run</span></code> while SLURM mode is active does <strong>not</strong> spawn a local
-subprocess. Instead it hands the form values to a background thread that
-calls <code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">…</span> <span class="pre">--slurm</span> <span class="pre">key=value</span> <span class="pre">…</span></code> against your SLURM cluster.
-The hub waits for the submission to finish (typically &lt;1 s for small
-arrays), then registers the returned array primary job id with the run
-registry. The Recent Runs panel surfaces the row as
-<code class="docutils literal notranslate"><span class="pre">Mode:</span> <span class="pre">slurm-&lt;job-id&gt;</span></code> with status pulled from the manifest as the array
-chunks finish.</p>
+<p>Clicking <code class="docutils literal notranslate"><span class="pre">Run</span></code> starts a short local submitter that calls <code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">…</span> <span class="pre">--slurm</span> <span class="pre">key=value</span> <span class="pre">…</span></code> against your cluster. The run registry allocates a
+durable generation before submission. Recent Runs then follows
+generation-bound scheduler, controller, and finalizer evidence through
+<code class="docutils literal notranslate"><span class="pre">queued</span></code>, <code class="docutils literal notranslate"><span class="pre">reconciling</span></code>, running, terminal, and <code class="docutils literal notranslate"><span class="pre">cancelling</span></code> states. This
+works for ordinary arrays and staged GPU controller lifecycles without
+confusing an older attempt with a new one.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>This page captures the form <strong>filled out</strong>, not a successful submission.
+<p>This page captures a fully selected pipeline, input, and output plus form-valid
+SLURM fields. The capture does not launch a dry-run generation or submit to a
+scheduler.
 Submitting requires <code class="docutils literal notranslate"><span class="pre">sbatch</span></code> on <code class="docutils literal notranslate"><span class="pre">PATH</span></code> and a real SLURM cluster — neither
 exists on the workstation that captured these screenshots. To verify your
-form values translate to the right CLI invocation, switch back to
-<code class="docutils literal notranslate"><span class="pre">Local</span></code> mode and click <code class="docutils literal notranslate"><span class="pre">Validate</span> <span class="pre">(dry-run)</span></code>: the dry-run prints the argv
-the hub would pass to <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code>. Once you’re satisfied, switch back
-to <code class="docutils literal notranslate"><span class="pre">SLURM</span></code> and click <code class="docutils literal notranslate"><span class="pre">Run</span></code>.</p>
+form values translate to the right CLI invocation, click
+<code class="docutils literal notranslate"><span class="pre">Validate</span> <span class="pre">(dry-run)</span></code>: the dry-run validates the selected paths and prints the
+argv the hub would pass to <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code>. Once you’re satisfied, click <code class="docutils literal notranslate"><span class="pre">Run</span></code>.</p>
 </div>
 </section>
 <section id="what-slurm-submission-writes">
 <h2>What SLURM submission writes<a class="headerlink" href="#what-slurm-submission-writes" title="Link to this heading">#</a></h2>
-<p>A successful submission writes:</p>
+<p>A successful submission writes lifecycle evidence under the output directory.
+The submit script uses <code class="docutils literal notranslate"><span class="pre">sbatch</span> <span class="pre">--export=ALL</span></code>. PhenoTypic also snapshots the
+caller’s <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> internally as <code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_SLURM_PYTHONPATH</span></code>; generated
+ordinary, staged, and recovery scripts restore that snapshot before starting
+Python on clusters that filter <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code>. Users set <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> normally and
+do not set the internal variable themselves.</p>
+<p>An explicit GUI cancellation remains authoritative until it settles, even if
+publication becomes visible. When there was no explicit cancellation, an
+ordinary run whose scheduler fence is inactive but whose successful publication
+is visible reconciles through the finalizer and is never autonomously reported
+as cancelled.</p>
+<p>Key artifacts are:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/progress/job_metadata.json</span></code> with the array primary job id
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/.phenotypic/progress/job_metadata.json</span></code> with the array primary job id
 and per-chunk job ids. The hub reads this file to surface the
 <code class="docutils literal notranslate"><span class="pre">slurm-&lt;id&gt;</span></code> row in Recent Runs — it does <strong>not</strong> parse Rich-formatted
 stdout (locale and terminal-width fragile).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/deliverables/dashboard.html</span></code> (written by the CLI
-submission flow), so the iframe panel can point at the dashboard before
-any chunk completes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/deliverables/dashboard.html</span></code>, published by the normal or
+staged finalizer once the run is complete.</p></li>
 </ul>
+</section>
+<section id="operational-restart-guidance">
+<h2>Operational restart guidance<a class="headerlink" href="#operational-restart-guidance" title="Link to this heading">#</a></h2>
+<p>Restarting the GUI does not cancel submitted work. On startup it rehydrates
+durable output records and reattaches only when it can prove the matching
+generation. If a restart occurs during submission, wait for scheduler metadata
+and use Refresh rather than launching the same output again. Keep
+<code class="docutils literal notranslate"><span class="pre">.phenotypic/progress/</span></code> and staged-controller ledgers intact when redeploying
+the hub.</p>
 <p>For deeper SLURM operational detail (chunk sizing, recompile-on-resume,
 per-chunk cgroups), see <a class="reference internal" href="../../how_to/pages/slurm_pipelines.html"><span class="std std-doc">SLURM Pipelines</span></a>.</p>
 <p>Next: <a class="reference internal" href="06_view_results.html"><span class="std std-doc">View Results</span></a>.</p>
@@ -769,6 +787,7 @@ per-chunk cgroups), see <a class="reference internal" href="../../how_to/pages/s
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#switch-to-slurm-mode">Switch to SLURM mode</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#submit">Submit</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-slurm-submission-writes">What SLURM submission writes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#operational-restart-guidance">Operational restart guidance</a></li>
 </ul>
   </nav></div>
 

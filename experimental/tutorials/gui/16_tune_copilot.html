@@ -697,7 +697,7 @@ sandbox</strong> (the <code class="docutils literal notranslate"><span class="pr
 exported from the <a class="reference internal" href="03_build_pipeline.html"><span class="std std-doc">pipeline builder</span></a>.</p></li>
 <li><p>A <strong>metadata layout</strong> CSV/Parquet inside the sandbox for the default
 <code class="docutils literal notranslate"><span class="pre">QCScorer</span></code> — one row per colony with the grouping column (e.g.
-<code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code>) so the count scorer has a path-backed source that
+<code class="docutils literal notranslate"><span class="pre">MetadataImage_ImageName</span></code>) so the count scorer has a path-backed source that
 round-trips into the spec.</p></li>
 <li><p>For the Curate overlays and (when monitoring an existing run) the run
 itself, the calibration <strong>image directory</strong> must be reachable inside the
@@ -717,10 +717,15 @@ also supplied — so a GUI-authored spec is always launchable:</p>
 <p><img alt="Tune Setup: pipeline + metadata inputs unlock Continue." src="../../_images/00_setup.png" /></p>
 <p>The search-space and scorer sections stay locked until a pipeline is
 present; the gate note confirms the selected pipeline and metadata once
-both are supplied. Pressing <strong>Continue</strong> writes a typed, path-backed
-authored spec under <code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/.phenotypic-gui/presets/tune/</span></code> and advances you
-to <strong>Run</strong>. (You review and edit the inferred search space itself on the
-<strong>Space</strong> sub-tab, below.)</p>
+both are supplied. One revisioned Setup draft supplies the rendered fields,
+validation, Continue, spec write, copyable command, and Deploy request.
+Pressing <strong>Continue</strong> writes a typed, path-backed authored spec under
+<code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/.phenotypic-gui/presets/tune/</span></code> and advances you
+to <strong>Run</strong>. Existing scorer/search-space/strategy/budget/storage values are
+preserved unless explicitly changed. Source, metadata, and authored-spec
+fingerprints prevent a moved or edited file from being silently reused. (You
+review and edit the inferred search space itself on the <strong>Space</strong> sub-tab,
+below.)</p>
 </section>
 <section id="run-configure-and-launch">
 <h2>Run — configure and launch<a class="headerlink" href="#run-configure-and-launch" title="Link to this heading">#</a></h2>
@@ -730,7 +735,8 @@ form. A live command card under the form mirrors every field into the real
 names you would type by hand — so what you Deploy is exactly what you would
 run in a terminal:</p>
 <p><img alt="Tune Run: launch form, live command card, and Deploy." src="../../_images/01_run.png" /></p>
-<p>The form is grouped:</p>
+<p>The form is grouped. Its command card is the exact validated argv that Deploy
+receives, including the same path-precedence choices:</p>
 <ul class="simple">
 <li><p><strong>Inputs</strong> — an in-sandbox image-source override (blank falls back to the
 shared source root) and the output directory.</p></li>
@@ -750,8 +756,10 @@ or track a SLURM job id.</p>
 <section id="monitor-watch-the-study">
 <h2>Monitor — watch the study<a class="headerlink" href="#monitor-watch-the-study" title="Link to this heading">#</a></h2>
 <p>The <strong>Monitor</strong> destination opens the live read over the study. A
-run-switcher lists every registered Local/SLURM run; the active run drives
-the figures. A Local run shows its stdout tail and a <strong>Cancel Local</strong>
+run-switcher lists every registered Local/SLURM run. Selecting one retains its
+exact run ID and generation, so a stale Monitor page cannot read, reap, or stop
+a newer run that reused the same output identity. The active run drives the
+figures. A Local run shows its stdout tail and a <strong>Cancel Local</strong>
 button (wrapped in a confirm prompt); SLURM runs show fleet status and are
 not killed from the GUI in v1. The objective curve plots the raw per-trial
 scores plus the monotone running-best trace, the importance bars rank the
@@ -772,7 +780,7 @@ at any <code class="docutils literal notranslate"><span class="pre">python</span
 <p>Binding only <strong>reads</strong> the directory — it runs <code class="docutils literal notranslate"><span class="pre">TuneRunRoot.discover</span></code> over
 the run’s markers and, on success, swaps in the loaded views. A directory
 that is not a tune output (no <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/run.json</span></code>,
-<code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code>, or <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code>) — or one outside the sandbox — is
+<code class="docutils literal notranslate"><span class="pre">tuning_spec.json.pht-tune</span></code>, or <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code>) — or one outside the sandbox — is
 refused with a clear note, never a crash. A live run resolves from its
 <code class="docutils literal notranslate"><span class="pre">run.json</span></code> marker before any deliverable lands, so an in-flight run shows
 on Monitor immediately.</p>
@@ -787,7 +795,7 @@ each trial’s pipeline applied to that plate so you can read the detection
 difference directly. Panning or zooming one overlay mirrors the other
 (linked pan/zoom); the <strong>Difference</strong> toggle collapses the pair into a
 single image that paints both / only-A / only-B objects. <code class="docutils literal notranslate"><span class="pre">Set</span> <span class="pre">as</span> <span class="pre">winner</span></code>
-writes the pinned trial’s pipeline to <code class="docutils literal notranslate"><span class="pre">best_pipeline.json</span></code>:</p>
+writes the pinned trial’s pipeline to <code class="docutils literal notranslate"><span class="pre">best_pipeline.json.pht-pipe</span></code>:</p>
 <p><img alt="Tune Curate: shortlist + A/B colony overlays on a plate." src="../../_images/03_curate.png" /></p>
 </section>
 <section id="space-review-and-edit-the-search-space">
@@ -796,7 +804,7 @@ writes the pinned trial’s pipeline to <code class="docutils literal notranslat
 renders one knob-row per tuned target. Flat and presence knobs are editable
 — a range knob shows low / high / log inputs, a categorical knob shows a
 choice checklist — while nested knobs render read-only. Toggle a knob’s
-<code class="docutils literal notranslate"><span class="pre">tunable</span></code> switch to include or drop it, then <code class="docutils literal notranslate"><span class="pre">Export</span> <span class="pre">tuning_spec.json</span></code> to
+<code class="docutils literal notranslate"><span class="pre">tunable</span></code> switch to include or drop it, then <code class="docutils literal notranslate"><span class="pre">Export</span> <span class="pre">tuning_spec.json.pht-tune</span></code> to
 write the edited space back (the scorer is preserved):</p>
 <p><img alt="Tune Space: inferred search space with editable knob rows." src="../../_images/04_space.png" /></p>
 </section>
@@ -822,10 +830,9 @@ scorer would not be launchable.</p></li>
 button is inert until Setup has a pipeline path; the pre-flight gate then
 blocks <strong>Deploy</strong> for impossible configurations (e.g. a <code class="docutils literal notranslate"><span class="pre">grid</span></code> over a
 continuous range).</p></li>
-<li><p><strong>SLURM runs are submit-and-watch.</strong> The GUI submits the fleet and reaps
-the submitter (a clean exit moves the run from <code class="docutils literal notranslate"><span class="pre">submitting</span></code> to
-<code class="docutils literal notranslate"><span class="pre">running</span></code>), but it does not store a job id or run <code class="docutils literal notranslate"><span class="pre">scancel</span></code>; only Local
-runs are cancellable from the GUI in v1.</p></li>
+<li><p><strong>Unavailable inputs are not launchable.</strong> A source, metadata file, or
+authored spec that no longer resolves in the sandbox makes the command
+unavailable and disables Deploy/copy until it is reselected.</p></li>
 <li><p><strong>Binding a run is read-only.</strong> The run picker validates the markers and
 never writes to the run dir; the import surface stays optuna-free and the
 live study is opened lazily inside the Monitor poll only.</p></li>
@@ -843,7 +850,7 @@ front card on Monitor.</p></li>
 <ul class="simple">
 <li><p><a class="reference internal" href="03_build_pipeline.html"><span class="std std-doc">Build a Pipeline</span></a> — author the base pipeline a
 tune run searches over.</p></li>
-<li><p><a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a> — run the winning <code class="docutils literal notranslate"><span class="pre">best_pipeline.json</span></code>
+<li><p><a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a> — run the winning <code class="docutils literal notranslate"><span class="pre">best_pipeline.json.pht-pipe</span></code>
 the co-pilot wrote over your full dataset.</p></li>
 <li><p><a class="reference internal" href="08_analysis.html"><span class="std std-doc">Analysis</span></a> — once the pipeline is tuned, compose
 filters + an endpoint model and emit <code class="docutils literal notranslate"><span class="pre">analysis.{csv,parquet}</span></code>.</p></li>

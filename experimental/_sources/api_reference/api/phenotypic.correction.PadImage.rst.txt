@@ -1,0 +1,68 @@
+phenotypic.correction.PadImage
+==============================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: PadImage
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~PadImage.__init__
+      ~PadImage.apply
+      ~PadImage.construct
+      ~PadImage.copy
+      ~PadImage.dict
+      ~PadImage.from_json
+      ~PadImage.from_orm
+      ~PadImage.json
+      ~PadImage.model_construct
+      ~PadImage.model_copy
+      ~PadImage.model_dump
+      ~PadImage.model_dump_json
+      ~PadImage.model_json_schema
+      ~PadImage.model_parametrized_name
+      ~PadImage.model_post_init
+      ~PadImage.model_rebuild
+      ~PadImage.model_validate
+      ~PadImage.model_validate_json
+      ~PadImage.model_validate_strings
+      ~PadImage.parse_file
+      ~PadImage.parse_obj
+      ~PadImage.parse_raw
+      ~PadImage.schema
+      ~PadImage.schema_json
+      ~PadImage.to_json
+      ~PadImage.update_forward_refs
+      ~PadImage.validate
+      ~PadImage.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PadImage.model_computed_fields
+      ~PadImage.model_config
+      ~PadImage.model_extra
+      ~PadImage.model_fields
+      ~PadImage.model_fields_set
+      ~PadImage.left
+      ~PadImage.right
+      ~PadImage.top
+      ~PadImage.bottom
+      ~PadImage.mode
+      ~PadImage.constant_value
+   
+   

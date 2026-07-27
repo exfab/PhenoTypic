@@ -608,10 +608,13 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._io_constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">slurm_scripts_dir</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._environment</span><span class="w"> </span><span class="kn">import</span> <span class="n">SLURM_PYTHONPATH_BOOTSTRAP_BASH</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -639,12 +642,17 @@
     <span class="n">output_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">slurm_args</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
     <span class="n">log_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">generation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">chunk_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">finalizer_script</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a dispatcher script that submits the next chunk and dispatcher.</span>
 
 <span class="sd">    The dispatcher requests minimal resources (1 CPU, 100M, 5 min) and</span>
-<span class="sd">    runs two ``sbatch`` commands: one for the next processing chunk, and</span>
-<span class="sd">    one for the next dispatcher (with ``--dependency`` on the chunk).</span>
+<span class="sd">    invokes the Python lifecycle entry point. That entry point durably submits</span>
+<span class="sd">    the next processing chunk and optional dependent dispatcher.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        next_chunk_script: Path to the next array job chunk script.</span>
@@ -653,20 +661,42 @@
 <span class="sd">        output_path: Where to write the generated dispatcher script.</span>
 <span class="sd">        slurm_args: SLURM parameters dict (used to extract partition).</span>
 <span class="sd">        log_dir: Directory for dispatcher log files.</span>
+<span class="sd">        output_dir: Base output directory containing the lifecycle state.</span>
+<span class="sd">        generation: Exact scheduler generation for lifecycle submissions.</span>
+<span class="sd">        chunk_index: Zero-based index of the chunk this dispatcher submits.</span>
+<span class="sd">        finalizer_script: Terminal finalizer submitted after the last chunk</span>
+<span class="sd">            becomes terminal.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Path to the generated dispatcher script.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">partition</span> <span class="o">=</span> <span class="n">_extract_partition</span><span class="p">(</span><span class="n">slurm_args</span><span class="p">)</span>
 
-    <span class="c1"># Build the next-dispatcher block (empty for last chunk)</span>
+    <span class="n">lifecycle_output</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="ow">or</span> <span class="n">_infer_output_dir</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
+    <span class="n">lifecycle_generation</span> <span class="o">=</span> <span class="n">generation</span> <span class="ow">or</span> <span class="n">_ensure_generation</span><span class="p">(</span><span class="n">lifecycle_output</span><span class="p">)</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span>
+        <span class="s2">&quot;-m&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;phenotypic._cli._cli_slurm_lifecycle&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--output&quot;</span><span class="p">,</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">lifecycle_output</span><span class="p">),</span>
+        <span class="s2">&quot;--generation&quot;</span><span class="p">,</span>
+        <span class="n">lifecycle_generation</span><span class="p">,</span>
+        <span class="s2">&quot;--chunk-index&quot;</span><span class="p">,</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">chunk_index</span><span class="p">),</span>
+        <span class="s2">&quot;--chunk-script&quot;</span><span class="p">,</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">next_chunk_script</span><span class="p">),</span>
+    <span class="p">]</span>
     <span class="k">if</span> <span class="n">next_dispatcher_script</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">next_dispatcher_block</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s1">&#39;DISPATCH_JOB=$(sbatch --parsable --dependency=afterany:$CHUNK_JOB </span><span class="si">{</span><span class="n">next_dispatcher_script</span><span class="si">}</span><span class="s1">)</span><span class="se">\n</span><span class="s1">&#39;</span>
-            <span class="sa">f</span><span class="s1">&#39;echo &quot;Submitted next dispatcher: $DISPATCH_JOB (depends on $CHUNK_JOB)&quot;&#39;</span>
-        <span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">next_dispatcher_block</span> <span class="o">=</span> <span class="s1">&#39;echo &quot;Last chunk — no further dispatcher needed&quot;&#39;</span>
+        <span class="n">command</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;--dispatcher-script&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">next_dispatcher_script</span><span class="p">)])</span>
+    <span class="k">elif</span> <span class="n">finalizer_script</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">command</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;--finalizer-script&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">finalizer_script</span><span class="p">)])</span>
+    <span class="n">quoted_command</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">part</span><span class="p">)</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">command</span><span class="p">)</span>
+    <span class="n">final_dispatcher_message</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;echo &quot;Last chunk: no further dispatcher needed&quot;&#39;</span>
+        <span class="k">if</span> <span class="n">next_dispatcher_script</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+    <span class="p">)</span>
 
     <span class="n">script_content</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;#!/bin/bash</span>
 <span class="s2">#SBATCH --job-name=dispatch</span>
@@ -677,18 +707,18 @@
 <span class="s2">#SBATCH --output=</span><span class="si">{</span><span class="n">log_dir</span><span class="si">}</span><span class="s2">/dispatch_%j.log</span>
 <span class="s2">#SBATCH --error=</span><span class="si">{</span><span class="n">log_dir</span><span class="si">}</span><span class="s2">/dispatch_%j.log</span>
 
-<span class="s2">echo &quot;Dispatcher: submitting next chunk&quot;</span>
+<span class="si">{</span><span class="n">SLURM_PYTHONPATH_BOOTSTRAP_BASH</span><span class="si">}</span>
+
+<span class="s2">echo &quot;Dispatcher: submitting next chunk through durable lifecycle&quot;</span>
 <span class="s2">echo &quot;Timestamp: $(date)&quot;</span>
 
-<span class="s2">CHUNK_JOB=$(sbatch --parsable </span><span class="si">{</span><span class="n">next_chunk_script</span><span class="si">}</span><span class="s2">)</span>
-<span class="s2">if [ $? -ne 0 ] || [ -z &quot;$CHUNK_JOB&quot; ]; then</span>
-<span class="s2">    echo &quot;ERROR: Failed to submit next chunk: </span><span class="si">{</span><span class="n">next_chunk_script</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="si">{</span><span class="n">quoted_command</span><span class="si">}</span>
+<span class="s2">if [ $? -ne 0 ]; then</span>
+<span class="s2">    echo &quot;ERROR: Lifecycle submission failed for chunk </span><span class="si">{</span><span class="n">chunk_index</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="s2">    exit 1</span>
 <span class="s2">fi</span>
-<span class="s2">echo &quot;Submitted chunk job: $CHUNK_JOB&quot;</span>
 
-<span class="s2"># Submit next dispatcher (if not last chunk)</span>
-<span class="si">{</span><span class="n">next_dispatcher_block</span><span class="si">}</span>
+<span class="si">{</span><span class="n">final_dispatcher_message</span><span class="si">}</span>
 
 <span class="s2">echo &quot;Dispatch complete&quot;</span>
 <span class="s2">&quot;&quot;&quot;</span>
@@ -708,6 +738,7 @@
     <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">slurm_args</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
     <span class="n">log_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">finalizer_script</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate dispatcher scripts for a chain of chunk scripts.</span>
 
@@ -720,6 +751,8 @@
 <span class="sd">        output_dir: Directory to write dispatcher scripts into.</span>
 <span class="sd">        slurm_args: SLURM parameters dict (partition, etc.).</span>
 <span class="sd">        log_dir: Directory for dispatcher log files.</span>
+<span class="sd">        finalizer_script: Terminal finalizer passed only to the last</span>
+<span class="sd">            dispatcher in the chain.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        List of dispatcher script paths (one fewer than ``chunk_scripts``,</span>
@@ -729,6 +762,7 @@
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunk_scripts</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">[]</span>
 
+    <span class="n">generation</span> <span class="o">=</span> <span class="n">_ensure_generation</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
     <span class="n">log_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">script_dir</span> <span class="o">=</span> <span class="n">slurm_scripts_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
     <span class="n">script_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -756,6 +790,12 @@
             <span class="n">output_path</span><span class="o">=</span><span class="n">dispatcher_path</span><span class="p">,</span>
             <span class="n">slurm_args</span><span class="o">=</span><span class="n">slurm_args</span><span class="p">,</span>
             <span class="n">log_dir</span><span class="o">=</span><span class="n">log_dir</span><span class="p">,</span>
+            <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+            <span class="n">chunk_index</span><span class="o">=</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="n">finalizer_script</span><span class="o">=</span><span class="p">(</span>
+                <span class="n">finalizer_script</span> <span class="k">if</span> <span class="n">next_dispatcher</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">),</span>
         <span class="p">)</span>
         <span class="n">dispatcher_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dispatcher_path</span><span class="p">)</span>
 
@@ -768,6 +808,8 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">submit_drip_feed_start</span><span class="p">(</span>
     <span class="n">chunk_scripts</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
     <span class="n">dispatcher_scripts</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">finalizer_script</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Submit the first chunk and first dispatcher to start a drip-feed chain.</span>
 
@@ -775,6 +817,8 @@
 <span class="sd">        chunk_scripts: Ordered list of chunk script paths (must be non-empty).</span>
 <span class="sd">        dispatcher_scripts: Dispatcher scripts from</span>
 <span class="sd">            :func:`generate_dispatcher_chain` (may be empty for single-chunk).</span>
+<span class="sd">        finalizer_script: Terminal finalizer submitted after the only chunk</span>
+<span class="sd">            when no dispatcher is required.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Tuple of (job_ids, warning_message).  ``job_ids`` contains the</span>
@@ -785,20 +829,35 @@
 <span class="sd">    Raises:</span>
 <span class="sd">        RuntimeError: If the first chunk submission fails.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">._sbatch</span><span class="w"> </span><span class="kn">import</span> <span class="n">submit_script</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_slurm_lifecycle</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">cancel_generation</span><span class="p">,</span>
+        <span class="n">submit_with_lifecycle</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="n">job_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">warning</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">output_dir</span> <span class="o">=</span> <span class="n">_infer_output_dir</span><span class="p">(</span><span class="n">chunk_scripts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">generation</span> <span class="o">=</span> <span class="n">_ensure_generation</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
 
-    <span class="n">chunk0_job</span> <span class="o">=</span> <span class="n">submit_script</span><span class="p">(</span><span class="n">chunk_scripts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">chunk0_job</span> <span class="o">=</span> <span class="n">submit_with_lifecycle</span><span class="p">(</span>
+        <span class="n">output_dir</span><span class="p">,</span>
+        <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+        <span class="n">token</span><span class="o">=</span><span class="s2">&quot;chunk-0&quot;</span><span class="p">,</span>
+        <span class="n">role</span><span class="o">=</span><span class="s2">&quot;chunk&quot;</span><span class="p">,</span>
+        <span class="n">script_path</span><span class="o">=</span><span class="n">chunk_scripts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+    <span class="p">)</span>
     <span class="n">job_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chunk0_job</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Submitted chunk 0: Job </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">chunk0_job</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">dispatcher_scripts</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">dispatch0_job</span> <span class="o">=</span> <span class="n">submit_script</span><span class="p">(</span>
-                <span class="n">dispatcher_scripts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-                <span class="n">dependency_job_id</span><span class="o">=</span><span class="n">chunk0_job</span><span class="p">,</span>
+            <span class="n">dispatch0_job</span> <span class="o">=</span> <span class="n">submit_with_lifecycle</span><span class="p">(</span>
+                <span class="n">output_dir</span><span class="p">,</span>
+                <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+                <span class="n">token</span><span class="o">=</span><span class="s2">&quot;dispatcher-1&quot;</span><span class="p">,</span>
+                <span class="n">role</span><span class="o">=</span><span class="s2">&quot;dispatcher&quot;</span><span class="p">,</span>
+                <span class="n">script_path</span><span class="o">=</span><span class="n">dispatcher_scripts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">dependencies</span><span class="o">=</span><span class="p">(</span><span class="n">chunk0_job</span><span class="p">,),</span>
             <span class="p">)</span>
             <span class="n">job_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dispatch0_job</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
@@ -806,18 +865,80 @@
                 <span class="n">dispatch0_job</span><span class="p">,</span>
                 <span class="n">chunk0_job</span><span class="p">,</span>
             <span class="p">)</span>
-        <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="n">warning</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Dispatcher submission failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;Only chunk 0 was submitted. To resume the chain &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;manually, run:</span><span class="se">\n</span><span class="s2">&quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;  sbatch --dependency=afterany:</span><span class="si">{</span><span class="n">chunk0_job</span><span class="si">}</span><span class="s2"> &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">dispatcher_scripts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">cancellation</span> <span class="o">=</span> <span class="n">cancel_generation</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">generation</span><span class="p">)</span>
+            <span class="n">detail</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;the launch was fenced and all discovered jobs were cancelled&quot;</span>
+                <span class="k">if</span> <span class="n">cancellation</span><span class="o">.</span><span class="n">quiescent</span>
+                <span class="k">else</span> <span class="s2">&quot;the launch was fenced but scheduler reconciliation remains &quot;</span>
+                <span class="s2">&quot;incomplete&quot;</span>
             <span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">warning</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Initial dispatcher submission failed; </span><span class="si">{</span><span class="n">detail</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">elif</span> <span class="n">finalizer_script</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">finalizer_job</span> <span class="o">=</span> <span class="n">submit_with_lifecycle</span><span class="p">(</span>
+                <span class="n">output_dir</span><span class="p">,</span>
+                <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span>
+                <span class="n">token</span><span class="o">=</span><span class="s2">&quot;finalizer&quot;</span><span class="p">,</span>
+                <span class="n">role</span><span class="o">=</span><span class="s2">&quot;finalizer&quot;</span><span class="p">,</span>
+                <span class="n">script_path</span><span class="o">=</span><span class="n">finalizer_script</span><span class="p">,</span>
+                <span class="n">dependencies</span><span class="o">=</span><span class="p">(</span><span class="n">chunk0_job</span><span class="p">,),</span>
+            <span class="p">)</span>
+            <span class="n">job_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">finalizer_job</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;Submitted terminal finalizer: Job </span><span class="si">%s</span><span class="s2"> (depends on </span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span>
+                <span class="n">finalizer_job</span><span class="p">,</span>
+                <span class="n">chunk0_job</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">cancellation</span> <span class="o">=</span> <span class="n">cancel_generation</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">generation</span><span class="p">)</span>
+            <span class="n">detail</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;the launch was fenced and all discovered jobs were cancelled&quot;</span>
+                <span class="k">if</span> <span class="n">cancellation</span><span class="o">.</span><span class="n">quiescent</span>
+                <span class="k">else</span> <span class="s2">&quot;the launch was fenced but scheduler reconciliation remains &quot;</span>
+                <span class="s2">&quot;incomplete&quot;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Terminal finalizer submission failed; </span><span class="si">{</span><span class="n">detail</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
 
     <span class="k">return</span> <span class="n">job_ids</span><span class="p">,</span> <span class="n">warning</span></div>
 
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_infer_output_dir</span><span class="p">(</span><span class="n">script_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Infer the run output root from a generated script path.&quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">script_path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">ancestor</span> <span class="ow">in</span> <span class="n">path</span><span class="o">.</span><span class="n">parents</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">ancestor</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;slurm_scripts&quot;</span>
+            <span class="ow">and</span> <span class="n">ancestor</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;.phenotypic&quot;</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="n">ancestor</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+    <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">parent</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ensure_generation</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the active generation, creating one for non-CLI SDK callers.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_slurm_lifecycle</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">generation_is_active</span><span class="p">,</span>
+        <span class="n">initialize_slurm_lifecycle</span><span class="p">,</span>
+        <span class="n">load_slurm_lifecycle</span><span class="p">,</span>
+        <span class="n">new_slurm_generation</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">state</span> <span class="o">=</span> <span class="n">load_slurm_lifecycle</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">generation</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;generation&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">generation_is_active</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">generation</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">generation</span>
+    <span class="n">generation</span> <span class="o">=</span> <span class="n">new_slurm_generation</span><span class="p">()</span>
+    <span class="n">initialize_slurm_lifecycle</span><span class="p">(</span>
+        <span class="n">output_dir</span><span class="p">,</span> <span class="n">generation</span><span class="o">=</span><span class="n">generation</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;ordinary&quot;</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">generation</span>
 </pre></div>
 
                 </article>

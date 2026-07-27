@@ -30,6 +30,7 @@ phenotypic.sdk\_.JobMetadataKey
       ~JobMetadataKey.CHUNK_SCRIPTS
       ~JobMetadataKey.DATASETS
       ~JobMetadataKey.EXECUTION_MODE
+      ~JobMetadataKey.GUI_RECORD_GENERATION
       ~JobMetadataKey.IMAGE_TASK_MAPPING
       ~JobMetadataKey.IMAGE_TYPE
       ~JobMetadataKey.INCLUDE_DATASET_COLUMN
@@ -40,6 +41,7 @@ phenotypic.sdk\_.JobMetadataKey
       ~JobMetadataKey.NROWS
       ~JobMetadataKey.ORCHESTRATION_EPOCH
       ~JobMetadataKey.PIPELINE_PATH
+      ~JobMetadataKey.PROCESSING_GENERATION
       ~JobMetadataKey.SLURM_JOB_IDS
       ~JobMetadataKey.START_TIME
    

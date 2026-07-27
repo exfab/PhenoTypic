@@ -20,7 +20,7 @@ The sidebar header carries three controls:
 |---------|--------|
 | `Hidden files` toggle | Show entries whose names start with `.`. Off by default. |
 | `External symlinks` toggle | Show symlinks whose targets fall outside the sandbox root. Off by default — symlinks-to-elsewhere are a security hazard for the GUI's path-resolution. |
-| `Refresh` button | Flush the classifier's LRU cache. Use this after dropping new files into a directory or moving a CLI output around. |
+| `Refresh` button | Flush the classifier's LRU cache and publish one new source revision. Use this after dropping new files into a directory or moving a CLI output around. Any open Browse or Timeline state derived from the prior source is retired, rather than silently showing a stale image. |
 
 ## Capability badges
 

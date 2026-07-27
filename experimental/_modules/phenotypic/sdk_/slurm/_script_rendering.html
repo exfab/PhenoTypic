@@ -606,6 +606,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">._environment</span><span class="w"> </span><span class="kn">import</span> <span class="n">SLURM_PYTHONPATH_BOOTSTRAP_BASH</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._sbatch</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_sbatch_directives</span>
 
 
@@ -693,6 +694,8 @@
 <span class="si">{</span><span class="n">comment_block</span><span class="si">}</span>
 <span class="s2">set -e</span>
 <span class="s2">set -u</span>
+
+<span class="si">{</span><span class="n">SLURM_PYTHONPATH_BOOTSTRAP_BASH</span><span class="si">}</span>
 
 <span class="si">{</span><span class="n">prelude_block</span><span class="si">}</span>
 

@@ -36,6 +36,7 @@
       analysis_scatter_json_path
       best_pipeline_path
       best_params_path
+      bytes_fingerprint
       chunk_lock_path
       chunk_manifest_path
       chunk_parquet_filename
@@ -63,7 +64,10 @@
       event_log_path
       ensure_typed_json_suffix
       failures_jsonl_path
+      file_fingerprint
       generalization_path
+      generation_staging_path
+      gui_launch_owner_path
       has_config_suffix
       job_metadata_path
       load_image_from_hdf
@@ -75,6 +79,10 @@
       measurements_by_feature_dir
       measurements_csv_path
       measurements_parquet_path
+      migration_backup_dir
+      migration_backup_path
+      migration_lock_path
+      migration_receipt_path
       named_analysis_csv_path
       named_analysis_parquet_path
       named_analysis_paths
@@ -92,6 +100,9 @@
       phenotypic_cache_dir
       phenotypic_cache_pipeline_json_path
       pipeline_json_path
+      pipeline_publication_lock
+      pipeline_publication_lock_path
+      paths_fingerprint
       processing_report_html_path
       processing_state_path
       progress_dir
@@ -115,9 +126,11 @@
       resolve_study_db_path
       resolve_tuning_spec_path
       results_dir
+      run_completion_marker_path
       sentinel_resubmitted_path
       shard_parquet_filename
       slurm_scripts_dir
+      source_cache_key
       task_status_filename
       task_status_path
       trials_parquet_path

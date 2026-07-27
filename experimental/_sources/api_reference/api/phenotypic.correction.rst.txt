@@ -27,8 +27,8 @@
       ColorDenoise
       DenoiseBlockMatch
       GridAligner
-      ImageCropper
-      ImagePadder
+      CropImage
+      PadImage
       BayesShrinkCorrector
       VisuShrinkCorrector
    

@@ -675,8 +675,9 @@ they discriminate the category, with <code class="docutils literal notranslate">
 adjusted p-value.</p></li>
 <li><p><strong>Drag the cutoff line</strong> on the good-vs-error distribution (or type a
 value) to trade recall for specificity, watching the live readout.</p></li>
-<li><p><strong>Copy the filter spec</strong> and apply it in your own post-processing, or
-<code class="docutils literal notranslate"><span class="pre">Save</span> <span class="pre">analysis</span> <span class="pre">report</span></code> to write the HTML.</p></li>
+<li><p><strong>Copy the filter spec</strong> for downstream use. Preview remains in memory;
+click <strong>Publish all categories</strong> only when you want one complete,
+transactionally receipted artifact generation.</p></li>
 <li><p>Switch the <strong>good baseline</strong> between <code class="docutils literal notranslate"><span class="pre">All</span> <span class="pre">unlabeled</span></code> and
 <code class="docutils literal notranslate"><span class="pre">Verified</span> <span class="pre">only</span></code> to control what the error class is being compared
 against.</p></li>
@@ -694,7 +695,7 @@ refuses to rank an underpowered category. Triage detections into a
 category first — see <a class="reference internal" href="06_view_results.html"><span class="std std-doc">View Results</span></a> /
 <a class="reference internal" href="15_qc_review.html"><span class="std std-doc">QC review walkthrough</span></a> for the radial-menu
 curation flow that writes those labels into
-<code class="docutils literal notranslate"><span class="pre">qc/curation_labels.parquet</span></code>. The tutorial dataset is seeded with 12
+<code class="docutils literal notranslate"><span class="pre">deliverables/qc/curation_labels.parquet</span></code>. The tutorial dataset is seeded with 12
 <code class="docutils literal notranslate"><span class="pre">background_noise</span></code> labels (the smallest colonies) by the capture
 script so the populated state below renders.</p></li>
 </ul>
@@ -705,7 +706,7 @@ script so the populated state below renders.</p></li>
 output root is bound — or before any error labels exist — the tab shows
 its empty state:</p>
 <p><img alt="Error tab in empty state before labels exist." src="../../_images/01_empty_state2.png" /></p>
-<p>With an output root whose <code class="docutils literal notranslate"><span class="pre">qc/curation_labels.parquet</span></code> carries enough
+<p>With an output root whose <code class="docutils literal notranslate"><span class="pre">deliverables/qc/curation_labels.parquet</span></code> carries enough
 labels, the tab populates. The <strong>category chip row</strong> at the top lists
 every labeled category with its count; the selected chip is the focused
 category. Below it, the <strong>ranked cutoff table</strong> lists the measurements
@@ -732,7 +733,7 @@ treated as good. This is the right baseline when most detections are
 fine and you have only triaged the bad ones.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Verified</span> <span class="pre">only</span></code> — the good class is restricted to objects in
 QC-reviewed groups you have explicitly cleared (the verified-good set
-derived from <code class="docutils literal notranslate"><span class="pre">qc/review_state.json</span></code>). Use this when “unlabeled” is not
+derived from <code class="docutils literal notranslate"><span class="pre">deliverables/qc/review_state.json</span></code>). Use this when “unlabeled” is not
 trustworthy — i.e. when you have not yet looked at most objects — so
 the cutoff is calibrated against a baseline you actually vouched for.
 The verified-good count badge reports how many objects qualify.</p></li>
@@ -755,15 +756,15 @@ verified baseline.</p></li>
 <li><p><strong>The tab recomputes on activation, not on every label.</strong> Marking a
 colony on the Colony or QC tab does <em>not</em> re-run the finder while you
 are on another tab (it would be wasteful). Returning to the <code class="docutils literal notranslate"><span class="pre">Error</span></code>
-tab always recomputes from the current <code class="docutils literal notranslate"><span class="pre">qc/curation_labels.parquet</span></code>.</p></li>
-<li><p><strong>On-disk outputs are dual-owned.</strong> The GUI writes
-<code class="docutils literal notranslate"><span class="pre">deliverables/error_analysis.{parquet,csv}</span></code> (focused category) and
-<code class="docutils literal notranslate"><span class="pre">deliverables/errors/&lt;category&gt;.parquet</span></code> <strong>live</strong> as you curate; the
-HTML report is written only on <code class="docutils literal notranslate"><span class="pre">Save</span> <span class="pre">analysis</span> <span class="pre">report</span></code>. The next CLI
-finalize / recompile-mode run re-emits <code class="docutils literal notranslate"><span class="pre">errors/*</span></code> and <code class="docutils literal notranslate"><span class="pre">error_analysis.*</span></code>
-(all categories) from the durable labels store, so headless output
-matches the GUI. <code class="docutils literal notranslate"><span class="pre">deliverables/verified.parquet</span></code> is <strong>GUI-only</strong> — the
-CLI never writes it.</p></li>
+tab always recomputes from the current
+<code class="docutils literal notranslate"><span class="pre">deliverables/qc/curation_labels.parquet</span></code>.</p></li>
+<li><p><strong>Preview is compute-only.</strong> Activation, category selection, cutoff changes,
+and <code class="docutils literal notranslate"><span class="pre">Verified</span> <span class="pre">only</span></code> do not write canonical artifacts or
+<code class="docutils literal notranslate"><span class="pre">verified.parquet</span></code>. <strong>Publish all categories</strong> computes the entire category
+vocabulary, stages the complete generation, and atomically commits the
+manifest plus receipt. A failure leaves the preceding published generation
+intact. CLI finalize/recompile can publish the same all-category artifact
+family from the durable labels store.</p></li>
 <li><p><strong>Single measurement, single cutoff.</strong> This tab finds the best
 <em>one</em>-measurement threshold per category; multi-measurement rules are
 out of scope. Combine several copied filter specs by hand if you need

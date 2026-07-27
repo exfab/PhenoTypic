@@ -734,6 +734,14 @@ parameter docstring.</p>
 <p>The on-disk JSON is the same public <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> format used by the command
 line tools. The builder-only target selection, open menus, and zoom level are UI
 state only and are not written into pipeline JSON.</p>
+</section>
+<section id="preview-state">
+<h2>Preview state<a class="headerlink" href="#preview-state" title="Link to this heading">#</a></h2>
+<p>Choose <code class="docutils literal notranslate"><span class="pre">Preview</span> <span class="pre">here</span></code> from an image-producing port to run the selected prefix.
+The preview surface stays mounted while work starts and reports <strong>Running</strong>,
+<strong>Complete</strong>, <strong>Error</strong>, or <strong>Stale</strong>. Editing the pipeline or starting a newer
+preview retires the older request, so it cannot publish a partial image or
+overwrite the newer result.</p>
 <p>Next: <a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a>.</p>
 </section>
 </section>
@@ -764,6 +772,7 @@ state only and are not written into pipeline JSON.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#open-the-builder">Open the builder</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#compose-a-small-pipeline">Compose a small pipeline</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ports-and-menus">Ports and menus</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#preview-state">Preview state</a></li>
 </ul>
   </nav></div>
 
