@@ -367,9 +367,17 @@ def test_plate_card_image_icon_navigation(
     hub_url: str,
     output_rel: str,
 ) -> None:
-    """Plate card image navigation uses icon-only previous/next buttons."""
+    """Plate card navigation survives reload and uses icon-only buttons."""
     _hand_off_viewer(page, hub_url, output_rel)
-    page.goto(hub_url + "/results/")
+
+    # Binding navigates to Results. Verify the initial card first, then reload
+    # the same browser session. The session-backed card list must rebuild the
+    # new DOM instead of being mistaken for an already-rendered server state.
+    _wait_for_first_card_picker_options(page)
+    assert page.locator(
+        '[id*="\\"type\\":\\"card-picker\\""].dash-dropdown'
+    ).count() == 1
+    page.reload()
     _wait_for_first_card_picker_options(page)
     page.wait_for_selector(
         'button[id*="\\"type\\":\\"card-picker-next\\""]:not([disabled])',

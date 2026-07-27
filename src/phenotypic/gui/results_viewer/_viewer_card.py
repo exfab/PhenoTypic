@@ -707,26 +707,30 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         CFG_FILTERED_STATE
     )
 
-    # Diff the incoming card-id list against the previously-rendered
-    # one and emit a ``dash.Patch`` so existing cards (and their OSD
-    # viewers) survive sibling add/remove. The previously-rendered list
-    # lives in the closure: this is correct under Dash's single-process
-    # dev server (the only deployment shipped here); multi-worker
-    # deployments would need to lift the state into a Store.
-    rendered_ids: list[str] = []
-
+    # Diff the desired card list against the card IDs rendered in the
+    # requesting browser. The client-specific State keeps reloads and
+    # concurrent sessions independent while Patch preserves existing OSD
+    # viewers during sibling add/remove operations.
     @app.callback(
         Output(CARDS_CONTAINER_ID, "children"),
         Input(STORE_CARD_LIST, "data"),
+        State({"type": "card", "index": ALL}, "id"),
     )
-    def _render_cards(card_ids: list[str] | None) -> Any:
+    def _render_cards(
+        card_ids: list[str] | None,
+        rendered_card_ids: list[dict[str, Any]] | None,
+    ) -> Any:
         target = [cid for cid in (card_ids or []) if cid]
+        rendered_ids = [
+            str(rendered_id["index"])
+            for rendered_id in (rendered_card_ids or [])
+            if isinstance(rendered_id, dict) and rendered_id.get("index")
+        ]
 
         # First-time render: build the container from scratch.
         if not rendered_ids:
             if not target:
                 return []
-            rendered_ids[:] = list(target)
             return [
                 layout(
                     cid,
@@ -758,7 +762,6 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
                         mutations_disabled=output_mutations_disabled(output_root),
                     )
                 )
-        rendered_ids[:] = list(target)
         return patch
 
     # 2. Append a fresh card on every "+ Add card" click.
