@@ -15,7 +15,10 @@ from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui.builder import _ids as ids
 from phenotypic.gui.builder._callbacks import (
     _dispatch_state_update,
+    _new_preview_request,
     _pipeline_revision,
+    _preview_result_event,
+    _preview_result_is_current,
     _preview_status_presentation,
 )
 from phenotypic.gui.builder._app import create_app
@@ -91,6 +94,100 @@ def test_preview_error_becomes_stale_after_semantic_edit() -> None:
         "Preview stale - run again",
         "small text-warning mt-2",
     )
+
+
+def test_preview_running_is_revision_bound_and_replaces_old_terminal() -> None:
+    """A launch is immediately authoritative only for its exact revision."""
+
+    state = _seed_state()
+    request, running = _new_preview_request(
+        kind="full",
+        state_data=state,
+        session_id="session-1",
+        image_path=None,
+        nrows=None,
+        ncols=None,
+    )
+
+    assert running == {
+        "state": "running",
+        "message": "Preview running…",
+        "request_id": request["request_id"],
+        "session_id": "session-1",
+        "pipeline_revision": _pipeline_revision(state),
+    }
+    assert _preview_status_presentation(running, state) == (
+        "Preview running…",
+        "small text-primary mt-2",
+    )
+
+    edited = deepcopy(state)
+    edited["root"]["nodes"][0]["params"]["sigma"] = 2.0
+    assert _preview_status_presentation(running, edited) == (
+        "Preview stale - run again",
+        "small text-warning mt-2",
+    )
+
+
+def test_preview_terminal_publication_rejects_superseded_request() -> None:
+    """An old terminal event cannot replace a newer running generation."""
+
+    state = _seed_state()
+    old_request, _old_running = _new_preview_request(
+        kind="full",
+        state_data=state,
+        session_id="session-1",
+        image_path=None,
+        nrows=None,
+        ncols=None,
+    )
+    newer_request, _new_running = _new_preview_request(
+        kind="full",
+        state_data=state,
+        session_id="session-1",
+        image_path=None,
+        nrows=None,
+        ncols=None,
+    )
+    old_result = _preview_result_event(
+        old_request,
+        state="complete",
+        message="Preview complete",
+        intermediate_keys=["aaa"],
+        preview_snapshot={
+            "pipeline_revision": old_request["pipeline_revision"],
+            "preview_generation": 1,
+        },
+    )
+
+    assert _preview_result_is_current(old_result, old_request)
+    assert not _preview_result_is_current(old_result, newer_request)
+
+
+def test_preview_complete_result_requires_exact_generation_descriptor() -> None:
+    """A malformed or cross-revision snapshot fails closed at publication."""
+
+    state = _seed_state()
+    request, _running = _new_preview_request(
+        kind="full",
+        state_data=state,
+        session_id="session-1",
+        image_path=None,
+        nrows=None,
+        ncols=None,
+    )
+    malformed = _preview_result_event(
+        request,
+        state="complete",
+        message="Preview complete",
+        intermediate_keys=["aaa"],
+        preview_snapshot={
+            "pipeline_revision": "different-revision",
+            "preview_generation": True,
+        },
+    )
+
+    assert not _preview_result_is_current(malformed, request)
 
 
 def test_render_views_returns_breadcrumb_children_not_nested_nav() -> None:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import threading
+
 from playwright.sync_api import Page, expect
 
 from tests.e2e.gui.builder.conftest import (
@@ -62,11 +64,33 @@ def test_preview_mount_survives_reselection_and_marks_param_edit_stale(
 
     _open_builder(page, hub_url)
     _click_palette_button(page, "GaussianBlur")
+    page.evaluate(
+        """() => {
+            const status = document.querySelector("#preview-status");
+            if (!status) throw new Error("preview status is not mounted");
+            window.__previewStatusHistory = [status.textContent];
+            new MutationObserver(() => {
+                window.__previewStatusHistory.push(status.textContent);
+            }).observe(status, {
+                childList: true,
+                characterData: true,
+                subtree: true,
+            });
+        }"""
+    )
     page.locator("#btn-run-preview").click()
     expect(page.locator("#preview-status")).to_contain_text(
         "Preview complete",
         timeout=20_000,
     )
+    lifecycle = page.evaluate("() => window.__previewStatusHistory")
+    running_index = next(
+        i for i, message in enumerate(lifecycle) if "Preview running" in message
+    )
+    complete_index = next(
+        i for i, message in enumerate(lifecycle) if "Preview complete" in message
+    )
+    assert running_index < complete_index
     expect(page.locator("#inspector-preview img")).to_have_count(
         1,
         timeout=20_000,
@@ -114,6 +138,82 @@ def test_preview_mount_survives_reselection_and_marks_param_edit_stale(
         1,
         timeout=20_000,
     )
+
+
+def test_preview_running_renders_before_blocked_compute(
+    page: Page, hub_url: str
+) -> None:
+    """The launch response reaches the DOM before preview computation starts."""
+
+    compute_request_seen = threading.Event()
+
+    def abort_compute(route, request) -> None:  # noqa: ANN001
+        payload = request.post_data_json
+        if (
+            isinstance(payload, dict)
+            and payload.get("output") == "store-preview-result.data"
+        ):
+            compute_request_seen.set()
+            route.abort()
+            return
+        route.continue_()
+
+    page.route("**/_dash-update-component", abort_compute)
+    _open_builder(page, hub_url)
+    _click_palette_button(page, "GaussianBlur")
+    page.locator("#btn-run-preview").click()
+
+    expect(page.locator("#preview-status")).to_have_text(
+        "Preview running…",
+        timeout=10_000,
+    )
+    assert compute_request_seen.is_set()
+    expect(page.locator("#btn-run-preview")).to_have_text("Preview running…")
+
+
+def test_preview_running_transitions_to_error(
+    page: Page, hub_url: str
+) -> None:
+    """A failed computation retains its visible running-to-error lifecycle."""
+
+    _open_builder(page, hub_url)
+    _click_palette_button(page, "GaussianBlur")
+    page.evaluate(
+        """() => {
+            const status = document.querySelector("#preview-status");
+            if (!status) throw new Error("preview status is not mounted");
+            window.__previewStatusHistory = [status.textContent];
+            new MutationObserver(() => {
+                window.__previewStatusHistory.push(status.textContent);
+            }).observe(status, {
+                childList: true,
+                characterData: true,
+                subtree: true,
+            });
+            window.dash_clientside.set_props(
+                "store-image-path",
+                {data: "/definitely/missing/phenotypic-preview.tiff"}
+            );
+        }"""
+    )
+    page.locator("#btn-run-preview").click()
+
+    expect(page.locator("#preview-status")).to_have_class(
+        "small text-danger mt-2",
+        timeout=20_000,
+    )
+    lifecycle = page.evaluate("() => window.__previewStatusHistory")
+    running_index = next(
+        i for i, message in enumerate(lifecycle) if "Preview running" in message
+    )
+    error_index = next(
+        i
+        for i, message in enumerate(lifecycle)
+        if message
+        and "Preview running" not in message
+        and i > running_index
+    )
+    assert running_index < error_index
 
 
 def test_linear_map_source_and_connectors_align(page: Page, hub_url: str) -> None:

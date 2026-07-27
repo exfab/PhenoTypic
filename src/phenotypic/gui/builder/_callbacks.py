@@ -3622,7 +3622,7 @@ def _preview_status_presentation(
     payload = status_data if isinstance(status_data, dict) else {}
     state = str(payload.get("state", "idle"))
     message = str(payload.get("message", "Preview not run"))
-    if state in {"complete", "error"} and isinstance(state_data, dict):
+    if state in {"running", "complete", "error"} and isinstance(state_data, dict):
         attempted_revision = payload.get("pipeline_revision")
         if (
             isinstance(attempted_revision, str)
@@ -3631,10 +3631,129 @@ def _preview_status_presentation(
             return "Preview stale - run again", "small text-warning mt-2"
 
     class_by_state = {
+        "running": "small text-primary mt-2",
         "complete": "small text-success mt-2",
         "error": "small text-danger mt-2",
     }
     return message, class_by_state.get(state, "small text-muted mt-2")
+
+
+def _new_preview_request(
+    *,
+    kind: Literal["full", "prefix"],
+    state_data: Dict[str, Any],
+    session_id: Optional[str],
+    image_path: Optional[str],
+    nrows: Optional[Any],
+    ncols: Optional[Any],
+    target: Optional[Dict[str, Any]] = None,
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Build one revision-bound preview request and its running status.
+
+    The request is first published by a short callback.  Expensive preview
+    work is downstream of that publication, so the browser cannot continue to
+    present an older complete/error state as current while computation runs.
+    """
+
+    pipeline_revision = _pipeline_revision(state_data)
+    request_id = uuid.uuid4().hex
+    resolved_session_id = session_id or uuid.uuid4().hex
+    request = {
+        "schema_version": 1,
+        "request_id": request_id,
+        "session_id": resolved_session_id,
+        "pipeline_revision": pipeline_revision,
+        "kind": kind,
+        "state_data": state_data,
+        "image_path": image_path,
+        "nrows": nrows,
+        "ncols": ncols,
+        "target": target,
+    }
+    label = "Prefix preview" if kind == "prefix" else "Preview"
+    status = {
+        "state": "running",
+        "message": f"{label} running…",
+        "request_id": request_id,
+        "session_id": resolved_session_id,
+        "pipeline_revision": pipeline_revision,
+    }
+    return request, status
+
+
+def _preview_request_identity(
+    payload: object,
+) -> Optional[Tuple[str, str, str]]:
+    """Return an exact ``(request, session, revision)`` identity or ``None``."""
+
+    if not isinstance(payload, dict):
+        return None
+    values = (
+        payload.get("request_id"),
+        payload.get("session_id"),
+        payload.get("pipeline_revision"),
+    )
+    if not all(isinstance(value, str) and value for value in values):
+        return None
+    return values  # type: ignore[return-value]
+
+
+def _preview_result_is_current(
+    result_data: object,
+    request_data: object,
+) -> bool:
+    """Return whether a terminal result belongs to the browser's request."""
+
+    result_identity = _preview_request_identity(result_data)
+    request_identity = _preview_request_identity(request_data)
+    if result_identity is None or result_identity != request_identity:
+        return False
+    if not isinstance(result_data, dict):
+        return False
+    state = result_data.get("state")
+    if state == "error":
+        return True
+    if state != "complete":
+        return False
+    snapshot = result_data.get("preview_snapshot")
+    if not isinstance(snapshot, dict):
+        return False
+    generation = snapshot.get("preview_generation")
+    revision = snapshot.get("pipeline_revision")
+    keys = result_data.get("intermediate_keys")
+    return (
+        revision == result_identity[2]
+        and type(generation) is int
+        and generation > 0
+        and isinstance(keys, list)
+        and all(isinstance(key, str) for key in keys)
+    )
+
+
+def _preview_result_event(
+    request_data: Dict[str, Any],
+    *,
+    state: Literal["complete", "error"],
+    message: str,
+    intermediate_keys: Optional[List[str]] = None,
+    preview_snapshot: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Build a detached preview result carrying the request's exact identity."""
+
+    identity = _preview_request_identity(request_data)
+    if identity is None:
+        raise ValueError("preview request identity is invalid")
+    request_id, session_id, pipeline_revision = identity
+    return {
+        "schema_version": 1,
+        "request_id": request_id,
+        "session_id": session_id,
+        "pipeline_revision": pipeline_revision,
+        "state": state,
+        "message": message,
+        "intermediate_keys": intermediate_keys,
+        "preview_snapshot": preview_snapshot,
+    }
 
 
 def _render_tree_body(
@@ -5646,13 +5765,8 @@ def register_callbacks(app: dash.Dash) -> None:
     # ----------------------------------------------------------------------
 
     @app.callback(
-        Output(ids.STORE_INTERMEDIATE_KEYS, "data", allow_duplicate=True),
-        Output(ids.STORE_PREVIEW_SNAPSHOT, "data", allow_duplicate=True),
+        Output(ids.STORE_PREVIEW_REQUEST, "data", allow_duplicate=True),
         Output(ids.STORE_PREVIEW_STATUS, "data", allow_duplicate=True),
-        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
-        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
-        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
-        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
         Input(
             {
                 "type": ids.LINEAR_NODE_ACTION,
@@ -5677,30 +5791,100 @@ def register_callbacks(app: dash.Dash) -> None:
         image_path: Optional[str],
         nrows: Optional[Any],
         ncols: Optional[Any],
-    ) -> Tuple[Any, ...]:
-        """Run ``Preview here`` for a linear map prefix only."""
+    ) -> Tuple[Any, Any]:
+        """Publish a prefix request and authoritative running state."""
 
         if not isinstance(ctx.triggered_id, dict):
-            return (no_update,) * 7
+            return no_update, no_update
         triggered = ctx.triggered_id
         if triggered.get("type") != ids.LINEAR_NODE_ACTION:
-            return (no_update,) * 7
+            return no_update, no_update
         if triggered.get("action") != "preview_here":
-            return (no_update,) * 7
+            return no_update, no_update
         if not ctx.triggered or not ctx.triggered[0].get("value"):
-            return (no_update,) * 7
+            return no_update, no_update
         if state_data is None:
             message = "No state to preview"
-            return (
-                no_update,
-                no_update,
-                {"state": "error", "message": message},
-                *_toast(message, ok=False),
-            )
-        if not session_id:
-            session_id = uuid.uuid4().hex
+            return no_update, {"state": "error", "message": message}
+        return _new_preview_request(
+            kind="prefix",
+            state_data=state_data,
+            session_id=session_id,
+            image_path=image_path,
+            nrows=nrows,
+            ncols=ncols,
+            target=_linear_preview_target_payload_from_id(triggered),
+        )
 
-        pipeline_revision = _pipeline_revision(state_data)
+    @app.callback(
+        Output(ids.STORE_PREVIEW_REQUEST, "data", allow_duplicate=True),
+        Output(ids.STORE_PREVIEW_STATUS, "data", allow_duplicate=True),
+        Input(ids.BTN_RUN_PREVIEW, "n_clicks"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        State(ids.STORE_SESSION_ID, "data"),
+        State(STORE_IMAGE_PATH, "data"),
+        State(ids.INPUT_NROWS, "value"),
+        State(ids.INPUT_NCOLS, "value"),
+        prevent_initial_call=True,
+    )
+    def launch_preview(
+        n_clicks: Optional[int],
+        state_data: Dict[str, Any],
+        session_id: Optional[str],
+        image_path: Optional[str],
+        nrows: Optional[Any],
+        ncols: Optional[Any],
+    ) -> Tuple[Any, Any]:
+        """Publish a full preview request and authoritative running state."""
+
+        if not n_clicks or state_data is None:
+            message = "No state to preview"
+            return no_update, {"state": "error", "message": message}
+        return _new_preview_request(
+            kind="full",
+            state_data=state_data,
+            session_id=session_id,
+            image_path=image_path,
+            nrows=nrows,
+            ncols=ncols,
+        )
+
+    @app.callback(
+        Output(ids.STORE_PREVIEW_RESULT, "data"),
+        Input(ids.STORE_PREVIEW_REQUEST, "data"),
+        prevent_initial_call=True,
+    )
+    def compute_preview(request_data: object) -> Any:
+        """Compute one request into a detached, identity-bearing result."""
+
+        identity = _preview_request_identity(request_data)
+        if identity is None or not isinstance(request_data, dict):
+            return no_update
+        _request_id, session_id, pipeline_revision = identity
+        state_data = request_data.get("state_data")
+        kind = request_data.get("kind")
+        if (
+            request_data.get("schema_version") != 1
+            or kind not in {"full", "prefix"}
+            or not isinstance(state_data, dict)
+            or _pipeline_revision(state_data) != pipeline_revision
+        ):
+            return _preview_result_event(
+                request_data,
+                state="error",
+                message="Preview request failed integrity validation.",
+            )
+
+        if kind == "full":
+            errors = _filter_blocking_issues(state_data)
+            if errors:
+                toast = _gate_toast_for_issue("run preview", errors[0])
+                return _preview_result_event(
+                    request_data,
+                    state="error",
+                    message=str(toast[1]),
+                )
+
         try:
             from phenotypic.abc_ import GridOperation
 
@@ -5711,32 +5895,45 @@ def register_callbacks(app: dash.Dash) -> None:
                 pipeline_revision,
             )
             state = state_from_json(state_data)
-            if not hasattr(state, "selected_block_id"):
-                message = "Preview here is only available in the linear builder."
-                return (
-                    no_update,
-                    no_update,
-                    {
-                        "state": "error",
-                        "message": message,
-                        "pipeline_revision": pipeline_revision,
-                    },
-                    *_toast(message, ok=False),
-                )
-            target = target_from_dict(
-                _linear_preview_target_payload_from_id(triggered),
-                state.breadcrumb,
-            )
-            prefix_state = _linear_prefix_state_for_preview(state, target)
-            pipeline = to_pipeline_dag(prefix_state)
+            preview_state = state
+            if kind == "prefix":
+                if not hasattr(state, "selected_block_id"):
+                    return _preview_result_event(
+                        request_data,
+                        state="error",
+                        message=(
+                            "Preview here is only available in the linear builder."
+                        ),
+                    )
+                raw_target = request_data.get("target")
+                if not isinstance(raw_target, dict):
+                    return _preview_result_event(
+                        request_data,
+                        state="error",
+                        message="Prefix preview target is invalid.",
+                    )
+                target = target_from_dict(raw_target, state.breadcrumb)
+                preview_state = _linear_prefix_state_for_preview(state, target)
+                pipeline = to_pipeline_dag(preview_state)
+            elif hasattr(state, "selected_block_id"):
+                pipeline = to_pipeline_dag(state)
+            else:
+                pipeline = to_pipeline(state.root)
             uses_grid = _pipeline_uses_grid(pipeline, GridOperation)
 
-            image = _load_preview_image(image_path, uses_grid, nrows, ncols)
+            image_path = request_data.get("image_path")
+            image = _load_preview_image(
+                image_path if isinstance(image_path, str) else None,
+                uses_grid,
+                request_data.get("nrows"),
+                request_data.get("ncols"),
+            )
+
             cache.set_image(session_id, image, str(image_path) if image_path else None)
 
             result = pipeline.apply_with_intermediates(image)
             generation = _bake_preview_cache(
-                prefix_state,
+                preview_state,
                 pipeline,
                 result,
                 session_id,
@@ -5745,47 +5942,35 @@ def register_callbacks(app: dash.Dash) -> None:
                 staging=staging,
             )
             if generation is None:
-                message = "Preview was superseded before publication."
-                return (
-                    no_update,
-                    no_update,
-                    {
-                        "state": "error",
-                        "message": message,
-                        "pipeline_revision": pipeline_revision,
-                    },
-                    *_toast(message, ok=False),
+                return _preview_result_event(
+                    request_data,
+                    state="error",
+                    message="Preview was superseded before publication.",
                 )
 
             duration = time.time() - t0
             keys = cache.known_intermediate_keys(session_id)
-            message = f"Prefix preview complete in {duration:.2f}s"
-            return (
-                keys,
-                {
-                    "pipeline_revision": pipeline_revision,
-                    "preview_generation": generation,
-                },
-                {
-                    "state": "complete",
-                    "message": message,
-                    "pipeline_revision": pipeline_revision,
-                    "preview_generation": generation,
-                },
-                *_toast(message, ok=True),
+            prefix = "Prefix preview" if kind == "prefix" else "Preview"
+            message = f"{prefix} complete in {duration:.2f}s"
+            snapshot = {
+                "pipeline_revision": pipeline_revision,
+                "preview_generation": generation,
+            }
+            return _preview_result_event(
+                request_data,
+                state="complete",
+                message=message,
+                intermediate_keys=keys,
+                preview_snapshot=snapshot,
             )
+
         except Exception as exc:  # noqa: BLE001
-            logger.exception("Prefix preview failed")
+            logger.exception("%s preview failed", kind.title())
             message = _format_exception(exc)
-            return (
-                no_update,
-                no_update,
-                {
-                    "state": "error",
-                    "message": message,
-                    "pipeline_revision": pipeline_revision,
-                },
-                *_toast(message, ok=False),
+            return _preview_result_event(
+                request_data,
+                state="error",
+                message=message,
             )
 
     @app.callback(
@@ -5796,144 +5981,42 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
-        Input(ids.BTN_RUN_PREVIEW, "n_clicks"),
-        State(ids.STORE_BUILDER_STATE, "data"),
-        State(ids.STORE_SESSION_ID, "data"),
-        State(STORE_IMAGE_PATH, "data"),
-        State(ids.INPUT_NROWS, "value"),
-        State(ids.INPUT_NCOLS, "value"),
-        running=[
-            (
-                Output(ids.BTN_RUN_PREVIEW, "children"),
-                "Preview running…",
-                "Run preview",
-            )
-        ],
+        Input(ids.STORE_PREVIEW_RESULT, "data"),
+        State(ids.STORE_PREVIEW_REQUEST, "data"),
         prevent_initial_call=True,
     )
-    def run_preview(
-        n_clicks: Optional[int],
-        state_data: Dict[str, Any],
-        session_id: Optional[str],
-        image_path: Optional[str],
-        nrows: Optional[Any],
-        ncols: Optional[Any],
+    def publish_preview_result(
+        result_data: object,
+        request_data: object,
     ) -> Tuple[Any, ...]:
-        """Build the pipeline, run preview, cache intermediates.
+        """Atomically publish only the latest browser-requested result."""
 
-        Spec §5.6 gate: before doing any work, filter validation
-        issues to ``severity == "error"`` and short-circuit with a
-        validation toast when any blocking error is present.  Advisory
-        hints (``severity == "advisory"``) NEVER block — they decorate
-        the canvas and badge but the user can still preview.
-        """
-
-        if not n_clicks or state_data is None:
-            message = "No state to preview"
-            return (
-                no_update,
-                no_update,
-                {"state": "error", "message": message},
-                *_toast(message, ok=False),
-            )
-
-        pipeline_revision = _pipeline_revision(state_data)
-        # Run preview gating — spec §5.6.
-        errors = _filter_blocking_issues(state_data)
-        if errors:
-            toast = _gate_toast_for_issue("run preview", errors[0])
-            return (
-                no_update,
-                no_update,
-                {
-                    "state": "error",
-                    "message": str(toast[1]),
-                    "pipeline_revision": pipeline_revision,
-                },
-                *toast,
-            )
-
-        if not session_id:
-            session_id = uuid.uuid4().hex
-
-        try:
-            from phenotypic.abc_ import GridOperation
-
-            t0 = time.time()
-            cache = get_cache()
-            staging = cache.begin_preview_generation(
-                session_id,
-                pipeline_revision,
-            )
-            state = state_from_json(state_data)
-            # Duck-type the schema: DAG state needs the DAG converter
-            # (which walks ``state.root.blocks`` + ``edges`` topologically);
-            # the legacy converter walks ``state.root.nodes`` and would
-            # AttributeError on a ``_DagBuilderScope``.
-            if hasattr(state, "selected_block_id"):
-                pipeline = to_pipeline_dag(state)
-            else:
-                pipeline = to_pipeline(state.root)
-            uses_grid = _pipeline_uses_grid(pipeline, GridOperation)
-
-            image = _load_preview_image(image_path, uses_grid, nrows, ncols)
-
-            cache.set_image(session_id, image, str(image_path) if image_path else None)
-
-            result = pipeline.apply_with_intermediates(image)
-            generation = _bake_preview_cache(
-                state,
-                pipeline,
-                result,
-                session_id,
-                cache,
-                pipeline_revision=pipeline_revision,
-                staging=staging,
-            )
-            if generation is None:
-                message = "Preview was superseded before publication."
-                return (
-                    no_update,
-                    no_update,
-                    {
-                        "state": "error",
-                        "message": message,
-                        "pipeline_revision": pipeline_revision,
-                    },
-                    *_toast(message, ok=False),
-                )
-
-            duration = time.time() - t0
-            keys = cache.known_intermediate_keys(session_id)
-            message = f"Preview complete in {duration:.2f}s"
-            return (
-                keys,
-                {
-                    "pipeline_revision": pipeline_revision,
-                    "preview_generation": generation,
-                },
-                {
-                    "state": "complete",
-                    "message": message,
-                    "pipeline_revision": pipeline_revision,
-                    "preview_generation": generation,
-                },
-                *_toast(message, ok=True),
-            )
-
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("Run preview failed")
-            message = _format_exception(exc)
-            return (
-                no_update,
-                no_update,
-                {
-                    "state": "error",
-                    "message": message,
-                    "pipeline_revision": pipeline_revision,
-                },
-                *_toast(message, ok=False),
-            )
+        if not _preview_result_is_current(result_data, request_data):
+            return (no_update,) * 7
+        assert isinstance(result_data, dict)
+        state = str(result_data["state"])
+        message = str(result_data.get("message", "Preview failed"))
+        snapshot = result_data.get("preview_snapshot")
+        raw_keys = result_data.get("intermediate_keys")
+        keys: Any = raw_keys if isinstance(raw_keys, list) else no_update
+        published_snapshot: Any = (
+            snapshot if isinstance(snapshot, dict) else no_update
+        )
+        status = {
+            "state": state,
+            "message": message,
+            "request_id": result_data["request_id"],
+            "session_id": result_data["session_id"],
+            "pipeline_revision": result_data["pipeline_revision"],
+        }
+        if state == "complete" and isinstance(snapshot, dict):
+            status["preview_generation"] = snapshot.get("preview_generation")
+        return (
+            keys,
+            published_snapshot,
+            status,
+            *_toast(message, ok=state == "complete"),
+        )
 
     @app.callback(
         Output(ids.PREVIEW_STATUS, "children"),
@@ -5953,6 +6036,17 @@ def register_callbacks(app: dash.Dash) -> None:
         """
 
         return _preview_status_presentation(status_data, state_data)
+
+    @app.callback(
+        Output(ids.BTN_RUN_PREVIEW, "children"),
+        Input(ids.STORE_PREVIEW_STATUS, "data"),
+    )
+    def render_preview_button(status_data: object) -> str:
+        """Reflect the authoritative preview lifecycle on the launch button."""
+
+        if isinstance(status_data, dict) and status_data.get("state") == "running":
+            return "Preview running…"
+        return "Run preview"
 
     # ----------------------------------------------------------------------
     # 4. Inspector preview rendering

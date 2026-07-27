@@ -45,6 +45,16 @@ STORE_PREVIEW_SNAPSHOT = "store-preview-snapshot"
 #: ``{"state": "idle|running|complete|error", "message": str, ...}``.
 STORE_PREVIEW_STATUS = "store-preview-status"
 
+#: Latest server-issued preview request.  The expensive preview callback reads
+#: this only after the launch callback has published the matching ``running``
+#: status to the browser.
+STORE_PREVIEW_REQUEST = "store-preview-request"
+
+#: Detached result event from preview computation.  A short publication
+#: callback accepts it only when its request identity still matches
+#: :data:`STORE_PREVIEW_REQUEST`.
+STORE_PREVIEW_RESULT = "store-preview-result"
+
 # ---------------------------------------------------------------------------
 # DAG-redesign ids (spec §6)
 # ---------------------------------------------------------------------------

@@ -4458,6 +4458,14 @@ def build_app_layout(
                     "message": "Preview not run",
                 },
             ),
+            dcc.Store(
+                id=ids.STORE_PREVIEW_REQUEST,
+                data=None,
+            ),
+            dcc.Store(
+                id=ids.STORE_PREVIEW_RESULT,
+                data=None,
+            ),
             # Sink for clientside canvas-control callbacks (zoom in/out, fit).
             dcc.Store(
                 id=ids.STORE_CANVAS_CONTROL,
