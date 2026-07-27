@@ -292,14 +292,34 @@ class LocalRunner:
         with self._lock:
             return list(self._handles.keys())
 
-    def is_running(self, run_id: str) -> bool:
+    def is_running(
+        self,
+        run_id: str,
+        *,
+        generation: UUID | None = None,
+    ) -> bool:
+        """Return whether the exact retained generation is still running."""
         handle = self.get(run_id)
         if handle is None:
             return False
+        if generation is not None and handle.generation != generation:
+            return False
         return handle.process.poll() is None
 
-    def stop(self, run_id: str, *, grace_seconds: float = _TERM_GRACE_SECONDS) -> bool:
+    def stop(
+        self,
+        run_id: str,
+        *,
+        generation: UUID | None = None,
+        grace_seconds: float = _TERM_GRACE_SECONDS,
+    ) -> bool:
         """Send SIGTERM, wait ``grace_seconds``, escalate to SIGKILL.
+
+        Args:
+            run_id: Stable registry identity.
+            generation: Optional exact generation fence. A mismatched retained
+                handle is left untouched.
+            grace_seconds: Seconds to wait before escalating to SIGKILL.
 
         Note:
             This method **does not** update the :class:`RunRegistry`. The
@@ -316,6 +336,8 @@ class LocalRunner:
         """
         handle = self.get(run_id)
         if handle is None:
+            return False
+        if generation is not None and handle.generation != generation:
             return False
         proc = handle.process
         if proc.poll() is not None:
@@ -347,11 +369,18 @@ class LocalRunner:
                 )
         return True
 
-    def snapshot_log(self, run_id: str, *, tail: int | None = None) -> list[str]:
+    def snapshot_log(
+        self,
+        run_id: str,
+        *,
+        generation: UUID | None = None,
+        tail: int | None = None,
+    ) -> list[str]:
         """Return a snapshot of the in-memory log buffer for ``run_id``.
 
         Args:
             run_id: Registry key.
+            generation: Optional exact generation fence.
             tail: If non-None, return at most this many trailing lines.
 
         Returns:
@@ -360,6 +389,8 @@ class LocalRunner:
         """
         handle = self.get(run_id)
         if handle is None:
+            return []
+        if generation is not None and handle.generation != generation:
             return []
         with handle.buffer_lock:
             lines = list(handle.buffer)

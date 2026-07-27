@@ -21,6 +21,7 @@ from __future__ import annotations
 import atexit
 import logging
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 import dash
@@ -41,6 +42,7 @@ from phenotypic.gui._url_prefix import configure_url_prefix_routing
 from phenotypic.gui.run_console._callbacks import register_callbacks
 from phenotypic.gui.run_console._layout import build_run_console_layout
 from phenotypic.gui.run_console._runner import LocalRunner
+from phenotypic.gui.run_console._slurm import SlurmSubmitResult, submit_slurm
 from phenotypic.gui.run_console._slurm_observer import SlurmLifecycleObserver
 from phenotypic.gui.shell._runs_registry import RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
@@ -69,6 +71,7 @@ def create_app(
     registry: RunRegistry | None = None,
     runner: LocalRunner | None = None,
     slurm_observer: SlurmLifecycleObserver | None = None,
+    slurm_submitter: Callable[..., SlurmSubmitResult] = submit_slurm,
     start_slurm_observer: bool | None = None,
 ) -> dash.Dash:
     """Build the Run console Dash app.
@@ -90,6 +93,8 @@ def create_app(
             even when the Run console UI is released).
         slurm_observer: Process-wide scheduler lifecycle observer. A fresh
             observer is created for standalone use when omitted.
+        slurm_submitter: Submission dependency. Tests may inject a callable
+            that never invokes scheduler commands.
         start_slurm_observer: Whether to start the observer daemon. Defaults
             to production-on and pytest-off.
 
@@ -143,6 +148,7 @@ def create_app(
         registry=registry,
         runner=runner,
         slurm_observer=slurm_observer,
+        slurm_submitter=slurm_submitter,
         server_url_prefix=server_url_prefix,
     )
 

@@ -1,9 +1,9 @@
 """Run console Dash callbacks.
 
 Wires the Run console's UI affordances into the LocalRunner / SLURM
-submitter / RunRegistry plumbing. One callback per logical effect — fan-in
-via ``ctx.triggered_id`` is used only for the dir-tree pattern-matching
-inputs and for the action-button row that needs to feed multiple outputs.
+submitter / RunRegistry plumbing. Validate and Run intentionally fan into one
+generation-allocating callback; all later lifecycle callbacks consume the
+resulting run-id + generation receipt.
 
 Wired effects (per ``GUI_SPEC_V1.md`` section 5):
 
@@ -53,6 +53,7 @@ from phenotypic.gui._config import (
     DEFAULT_URL_PREFIX,
     DELIVERABLES_DIRNAME,
     IMAGE_EXTS,
+    RUN_ACTION_CALLBACK_TIMEOUT_MS,
     RUNS_BLUEPRINT_PREFIX,
     SANDBOX_GUI_DIRNAME,
     SANDBOX_PRESETS_SUBDIR,
@@ -483,6 +484,58 @@ def _resolved_output_identity(
     return output_dir, str(output_dir.relative_to(sandbox.root))
 
 
+def _run_receipt(record: RunRecord) -> dict[str, str]:
+    """Return the browser receipt for one durable registry generation."""
+    if record.generation is None:
+        raise ValueError("a launch receipt requires a durable generation")
+    return {
+        "run_id": record.run_id,
+        "generation": str(record.generation),
+        "rel_path": record.rel_path,
+        "mode": record.mode,
+    }
+
+
+def _record_for_receipt(
+    registry: RunRegistry,
+    payload: object,
+) -> RunRecord | None:
+    """Resolve ``payload`` only when both run id and generation still match."""
+    if not isinstance(payload, dict):
+        return None
+    run_id = payload.get("run_id")
+    raw_generation = payload.get("generation")
+    if not isinstance(run_id, str):
+        return None
+    try:
+        generation = UUID(str(raw_generation))
+    except (TypeError, ValueError):
+        return None
+    record = registry.get(run_id)
+    if record is None or record.generation != generation:
+        return None
+    return record
+
+
+def _action_result(
+    action: str,
+    click: int,
+    *,
+    message: str,
+    record: RunRecord | None = None,
+) -> dict[str, Any]:
+    """Build a click-correlated server acknowledgement for the watchdog."""
+    result: dict[str, Any] = {
+        "action": action,
+        "click": click,
+        "outcome": "accepted" if record is not None else "error",
+        "message": message,
+    }
+    if record is not None:
+        result["receipt"] = _run_receipt(record)
+    return result
+
+
 def _require_slurm_request(state: RunConsoleState) -> None:
     """Reject any request that could reach the submitter without SLURM flags."""
     if state.mode != "slurm":
@@ -626,7 +679,7 @@ def _local_run_active(runner: LocalRunner, registry: RunRegistry) -> bool:
     for record in registry.list():
         if record.mode != "local":
             continue
-        if runner.is_running(record.run_id):
+        if runner.is_running(record.run_id, generation=record.generation):
             return True
     return False
 
@@ -1090,6 +1143,7 @@ def register_callbacks(
     registry: RunRegistry,
     runner: LocalRunner,
     slurm_observer: SlurmLifecycleObserver,
+    slurm_submitter: Callable[..., SlurmSubmitResult] = submit_slurm,
     server_url_prefix: str = DEFAULT_URL_PREFIX,
 ) -> None:
     """Register every Run console callback on ``app``.
@@ -1108,10 +1162,89 @@ def register_callbacks(
             lifecycle for Local runs.
         slurm_observer: Process-wide lifecycle observer. Submission callbacks
             bind exact scheduler epochs to GUI record generations.
+        slurm_submitter: Submission dependency. Production uses
+            :func:`submit_slurm`; browser tests inject a no-scheduler seam.
         server_url_prefix: Browser-visible base prefix for shell-level
             Flask routes such as ``/runs``.
     """
     slurm_log_cache = _SlurmLogTailCache(registry)
+
+    app.clientside_callback(
+        """
+        function(validateClicks, runClicks) {
+            const context = window.dash_clientside.callback_context;
+            const trigger = context.triggered_id;
+            const action = trigger === "rc-btn-validate" ? "validate"
+                : trigger === "rc-btn-run" ? "run" : null;
+            if (!action) {
+                return window.dash_clientside.no_update;
+            }
+            const click = action === "validate" ? validateClicks : runClicks;
+            if (!click) {
+                return window.dash_clientside.no_update;
+            }
+            return {
+                action: action,
+                click: click,
+                started_at_ms: Date.now()
+            };
+        }
+        """,
+        Output(ids.RC_STORE_ACTION_ATTEMPT, "data"),
+        Input(ids.RC_BTN_VALIDATE, "n_clicks"),
+        Input(ids.RC_BTN_RUN, "n_clicks"),
+        prevent_initial_call=True,
+    )
+
+    app.clientside_callback(
+        f"""
+        function(attempt, result, _tick) {{
+            const base = "run-console-action-feedback";
+            if (!attempt || !attempt.action || !attempt.click) {{
+                return ["No action requested.", base, {{display: "none"}}];
+            }}
+            const matched = result
+                && result.action === attempt.action
+                && result.click === attempt.click;
+            if (matched && result.outcome === "accepted" && result.receipt) {{
+                const receipt = result.receipt;
+                return [
+                    `${{attempt.action}} accepted | run_id=${{receipt.run_id}}`
+                    + ` | generation=${{receipt.generation}}`,
+                    base + " run-console-action-feedback--ok",
+                    {{display: "block"}}
+                ];
+            }}
+            if (matched) {{
+                return [
+                    `${{attempt.action}} error | ${{result.message}}`,
+                    base + " run-console-action-feedback--error",
+                    {{display: "block"}}
+                ];
+            }}
+            if (Date.now() - Number(attempt.started_at_ms || 0)
+                    >= {RUN_ACTION_CALLBACK_TIMEOUT_MS}) {{
+                return [
+                    `${{attempt.action}} error | callback request failed before`
+                    + " a durable generation was confirmed; retry the action.",
+                    base + " run-console-action-feedback--error",
+                    {{display: "block"}}
+                ];
+            }}
+            return [
+                `${{attempt.action}} request pending…`,
+                base + " run-console-action-feedback--pending",
+                {{display: "block"}}
+            ];
+        }}
+        """,
+        Output(ids.RC_ACTION_FEEDBACK, "children"),
+        Output(ids.RC_ACTION_FEEDBACK, "className"),
+        Output(ids.RC_ACTION_FEEDBACK, "style"),
+        Input(ids.RC_STORE_ACTION_ATTEMPT, "data"),
+        Input(ids.RC_STORE_ACTION_RESULT, "data"),
+        Input(ids.RC_INTERVAL_ACTION_WATCHDOG, "n_intervals"),
+    )
 
     # ----------------------------------------------------------------------
     # 1. Picker buttons → open / cancel modals
@@ -1594,96 +1727,8 @@ def register_callbacks(
         Output(ids.RC_TOAST, "header", allow_duplicate=True),
         Output(ids.RC_STORE_ACTIVE_RUN_ID, "data", allow_duplicate=True),
         Output(ids.RC_STORE_ACTIVE_REL_PATH, "data", allow_duplicate=True),
-        Output(ids.RC_INTERVAL_LOG, "disabled", allow_duplicate=True),
-        Input(ids.RC_BTN_VALIDATE, "n_clicks"),
-        *_action_control_states(),
-        prevent_initial_call=True,
-    )
-    def click_validate(
-        n_clicks: Optional[int], *control_values: Any
-    ) -> Tuple[Any, ...]:
-        """Run the pipeline with ``--dry-run`` for validation.
-
-        Clears ``RC_STORE_ACTIVE_REL_PATH`` so the dashboard-poll callback
-        does not try to fetch a stale dashboard.html from a previous run
-        while validation is in flight (validate runs do not produce a
-        dashboard).
-        """
-        if not n_clicks:
-            return (no_update,) * 7
-        record: RunRecord | None = None
-        try:
-            state = _state_from_action_controls(
-                tuple(control_values), sandbox=sandbox
-            )
-            state.dry_run = True
-            argv = _local_argv_for(state)
-            output_dir, rel_path = _resolved_output_identity(
-                state, sandbox=sandbox
-            )
-            record = registry.allocate(
-                mode="validate",
-                output_dir=output_dir,
-                rel_path=rel_path,
-                command_digest=_command_digest(state),
-                status="queued",
-            )
-            generation = record.generation
-            if generation is None:  # pragma: no cover - allocate guarantees it
-                raise RuntimeError("allocated validation has no generation")
-
-            def _observe_validation_exit(_handle: Any, returncode: int) -> None:
-                registry.observe_local_exit(
-                    record.run_id,
-                    generation,
-                    returncode,
-                )
-
-            handle = runner.start(
-                record.run_id,
-                argv,
-                output_dir=output_dir,
-                generation=generation,
-                on_exit=_observe_validation_exit,
-            )
-            registry.compare_and_set(
-                record.run_id,
-                generation,
-                expected_statuses={"queued"},
-                status="running",
-                pid=handle.process.pid,
-                log_paths=(handle.stdout_log_path,),
-            )
-            return (
-                *_toast("Validation (dry-run) started", ok=True),
-                record.run_id,
-                None,  # Clear active rel_path so dashboard poll stays idle.
-                False,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("Validate failed")
-            if record is not None and record.generation is not None:
-                registry.compare_and_set(
-                    record.run_id,
-                    record.generation,
-                    expected_statuses={"queued", "running"},
-                    status="failed",
-                    status_detail=_format_exception(exc),
-                )
-            return (
-                *_toast(_format_exception(exc), ok=False),
-                no_update,
-                no_update,
-                no_update,
-            )
-
-    @app.callback(
-        Output(ids.RC_TOAST, "is_open", allow_duplicate=True),
-        Output(ids.RC_TOAST, "children", allow_duplicate=True),
-        Output(ids.RC_TOAST, "icon", allow_duplicate=True),
-        Output(ids.RC_TOAST, "header", allow_duplicate=True),
-        Output(ids.RC_STORE_ACTIVE_RUN_ID, "data", allow_duplicate=True),
-        Output(ids.RC_STORE_ACTIVE_REL_PATH, "data", allow_duplicate=True),
+        Output(ids.RC_STORE_ACTIVE_RUN_RECEIPT, "data", allow_duplicate=True),
+        Output(ids.RC_STORE_ACTION_RESULT, "data"),
         Output(ids.RC_INTERVAL_LOG, "disabled", allow_duplicate=True),
         Output(
             ids.RC_INTERVAL_DASHBOARD_POLL, "disabled", allow_duplicate=True
@@ -1691,20 +1736,42 @@ def register_callbacks(
         Output(
             ids.RC_INTERVAL_DASHBOARD_POLL, "n_intervals", allow_duplicate=True
         ),
-        Output(ids.RC_BTN_CANCEL, "disabled", allow_duplicate=True),
         Output(ids.RC_STORE_RECENTS_REFRESH, "data", allow_duplicate=True),
+        Input(ids.RC_BTN_VALIDATE, "n_clicks"),
         Input(ids.RC_BTN_RUN, "n_clicks"),
         *_action_control_states(),
         State(ids.RC_STORE_RECENTS_REFRESH, "data"),
         prevent_initial_call=True,
     )
-    def click_run(
-        n_clicks: Optional[int],
+    def click_action(
+        validate_clicks: Optional[int],
+        run_clicks: Optional[int],
         *args: Any,
     ) -> Tuple[Any, ...]:
-        """Spawn a Local or SLURM run from the controls visible at click time."""
-        if not n_clicks:
-            return (no_update,) * 11
+        """Handle Validate and Run through one generation-recording seam."""
+        try:
+            triggered = ctx.triggered_id
+        except dash.exceptions.MissingCallbackContextException:
+            triggered = None
+        if triggered == ids.RC_BTN_VALIDATE:
+            action = "validate"
+            click = int(validate_clicks or 0)
+        elif triggered == ids.RC_BTN_RUN:
+            action = "run"
+            click = int(run_clicks or 0)
+        elif run_clicks and not validate_clicks:
+            # Direct callback invocation in integration tests has no Dash
+            # callback context. This fallback is not used by browser traffic.
+            action = "run"
+            click = int(run_clicks)
+        elif validate_clicks and not run_clicks:
+            action = "validate"
+            click = int(validate_clicks)
+        else:
+            return (no_update,) * 12
+        if not click:
+            return (no_update,) * 12
+
         control_values = tuple(args[:-1])
         refresh_count = args[-1] if args else None
         try:
@@ -1715,23 +1782,136 @@ def register_callbacks(
                 state, sandbox=sandbox
             )
         except Exception as exc:  # noqa: BLE001
+            detail = _format_exception(exc)
             return (
-                *_toast(_format_exception(exc), ok=False),
-                *((no_update,) * 7),
+                *_toast(detail, ok=False),
+                no_update,
+                no_update,
+                no_update,
+                _action_result(action, click, message=detail),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
             )
 
         new_refresh = (refresh_count or 0) + 1
+        record: RunRecord | None = None
+
+        if action == "validate":
+            try:
+                state.dry_run = True
+                argv = _local_argv_for(state)
+                record = registry.allocate(
+                    mode="validate",
+                    output_dir=output_dir,
+                    rel_path=rel_path,
+                    command_digest=_command_digest(state),
+                    status="queued",
+                )
+                generation = record.generation
+                if generation is None:  # pragma: no cover
+                    raise RuntimeError(
+                        "allocated validation has no generation"
+                    )
+                validation_run_id = record.run_id
+
+                def _observe_validation_exit(
+                    _handle: Any,
+                    returncode: int,
+                ) -> None:
+                    registry.observe_local_exit(
+                        validation_run_id,
+                        generation,
+                        returncode,
+                    )
+
+                handle = runner.start(
+                    record.run_id,
+                    argv,
+                    output_dir=output_dir,
+                    generation=generation,
+                    on_exit=_observe_validation_exit,
+                )
+                registry.compare_and_set(
+                    record.run_id,
+                    generation,
+                    expected_statuses={"queued"},
+                    status="running",
+                    pid=handle.process.pid,
+                    log_paths=(handle.stdout_log_path,),
+                )
+                message = "Validation (dry-run) started"
+                return (
+                    *_toast(message, ok=True),
+                    record.run_id,
+                    None,
+                    _run_receipt(record),
+                    _action_result(
+                        action,
+                        click,
+                        message=message,
+                        record=record,
+                    ),
+                    False,
+                    True,
+                    0,
+                    new_refresh,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("Validate failed")
+                detail = _format_exception(exc)
+                if record is not None and record.generation is not None:
+                    registry.compare_and_set(
+                        record.run_id,
+                        record.generation,
+                        expected_statuses={"queued", "running"},
+                        status="failed",
+                        status_detail=detail,
+                    )
+                    failed = registry.get(record.run_id) or record
+                    return (
+                        *_toast(detail, ok=False),
+                        record.run_id,
+                        None,
+                        _run_receipt(record),
+                        _action_result(
+                            action,
+                            click,
+                            message=detail,
+                            record=failed,
+                        ),
+                        False,
+                        True,
+                        0,
+                        new_refresh,
+                    )
+                return (
+                    *_toast(detail, ok=False),
+                    no_update,
+                    no_update,
+                    no_update,
+                    _action_result(action, click, message=detail),
+                    no_update,
+                    no_update,
+                    no_update,
+                    no_update,
+                )
 
         if state.mode == "local":
             if _local_run_active(runner, registry):
+                detail = "A local run is already active; Cancel it first."
                 return (
-                    *_toast(
-                        "A local run is already active -- Cancel it first.",
-                        ok=False,
-                    ),
-                    *((no_update,) * 7),
+                    *_toast(detail, ok=False),
+                    no_update,
+                    no_update,
+                    no_update,
+                    _action_result(action, click, message=detail),
+                    no_update,
+                    no_update,
+                    no_update,
+                    no_update,
                 )
-            record: RunRecord | None = None
             try:
                 argv = _local_argv_for(state)
                 record = registry.allocate(
@@ -1768,29 +1948,61 @@ def register_callbacks(
                     pid=handle.process.pid,
                     log_paths=(handle.stdout_log_path,),
                 )
+                message = f"Local run started: {rel_path}"
                 return (
-                    *_toast(f"Local run started: {rel_path}", ok=True),
+                    *_toast(message, ok=True),
                     run_id,
                     rel_path,
+                    _run_receipt(record),
+                    _action_result(
+                        action,
+                        click,
+                        message=message,
+                        record=record,
+                    ),
                     False,
                     False,
                     0,
-                    False,
                     new_refresh,
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Local run start failed")
+                detail = _format_exception(exc)
                 if record is not None and record.generation is not None:
                     registry.compare_and_set(
                         record.run_id,
                         record.generation,
                         expected_statuses={"queued", "running"},
                         status="failed",
-                        status_detail=_format_exception(exc),
+                        status_detail=detail,
+                    )
+                    failed = registry.get(record.run_id) or record
+                    return (
+                        *_toast(detail, ok=False),
+                        record.run_id,
+                        rel_path,
+                        _run_receipt(record),
+                        _action_result(
+                            action,
+                            click,
+                            message=detail,
+                            record=failed,
+                        ),
+                        False,
+                        True,
+                        0,
+                        new_refresh,
                     )
                 return (
-                    *_toast(_format_exception(exc), ok=False),
-                    *((no_update,) * 7),
+                    *_toast(detail, ok=False),
+                    no_update,
+                    no_update,
+                    no_update,
+                    _action_result(action, click, message=detail),
+                    no_update,
+                    no_update,
+                    no_update,
+                    no_update,
                 )
 
         record = None
@@ -1807,7 +2019,7 @@ def register_callbacks(
             if slurm_generation is None:  # pragma: no cover
                 raise RuntimeError("allocated SLURM run has no generation")
             future = _SLURM_EXECUTOR.submit(
-                submit_slurm,
+                slurm_submitter,
                 state,
                 sandbox_root=sandbox.root,
                 record_generation=slurm_generation,
@@ -1821,31 +2033,63 @@ def register_callbacks(
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("SLURM submitter startup failed")
+            detail = _format_exception(exc)
             if record is not None and record.generation is not None:
                 registry.compare_and_set(
                     record.run_id,
                     record.generation,
                     expected_statuses={"submitting"},
                     status="failed",
-                    status_detail=_format_exception(exc),
+                    status_detail=detail,
+                )
+                failed = registry.get(record.run_id) or record
+                return (
+                    *_toast(detail, ok=False),
+                    record.run_id,
+                    rel_path,
+                    _run_receipt(record),
+                    _action_result(
+                        action,
+                        click,
+                        message=detail,
+                        record=failed,
+                    ),
+                    False,
+                    True,
+                    0,
+                    new_refresh,
                 )
             return (
-                *_toast(_format_exception(exc), ok=False),
-                *((no_update,) * 7),
+                *_toast(detail, ok=False),
+                no_update,
+                no_update,
+                no_update,
+                _action_result(action, click, message=detail),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
             )
 
+        message = f"SLURM submitting: {rel_path}"
         return (
             *_toast(
-                f"SLURM submitting: {rel_path}",
+                message,
                 ok=True,
                 header="Submitting…",
             ),
             record.run_id,
             rel_path,
+            _run_receipt(record),
+            _action_result(
+                action,
+                click,
+                message=message,
+                record=record,
+            ),
             False,
             True,
             0,
-            False,
             new_refresh,
         )
 
@@ -1854,28 +2098,45 @@ def register_callbacks(
         Output(ids.RC_TOAST, "children", allow_duplicate=True),
         Output(ids.RC_TOAST, "icon", allow_duplicate=True),
         Output(ids.RC_TOAST, "header", allow_duplicate=True),
-        Output(ids.RC_BTN_CANCEL, "disabled", allow_duplicate=True),
-        Output(ids.RC_INTERVAL_LOG, "disabled", allow_duplicate=True),
+        Output(ids.RC_STORE_RECENTS_REFRESH, "data", allow_duplicate=True),
         Input(ids.RC_BTN_CANCEL, "n_clicks"),
-        State(ids.RC_STORE_ACTIVE_RUN_ID, "data"),
+        State(ids.RC_STORE_ACTIVE_RUN_RECEIPT, "data"),
+        State(ids.RC_STORE_RECENTS_REFRESH, "data"),
         prevent_initial_call=True,
     )
     def click_cancel(
-        n_clicks: Optional[int], run_id: Optional[str]
+        n_clicks: Optional[int],
+        receipt_payload: object,
+        refresh_count: Optional[int],
     ) -> Tuple[Any, ...]:
         """Fence local or scheduler work and wait for verified quiescence."""
-        if not n_clicks or not run_id:
-            return (no_update,) * 6
+        if not n_clicks:
+            return (no_update,) * 5
         try:
-            record = registry.get(run_id)
+            record = _record_for_receipt(registry, receipt_payload)
             if record is None or record.generation is None:
                 return (
-                    *_toast(f"No live run for {run_id}", ok=False),
-                    True,
-                    True,
+                    *_toast(
+                        "The selected run generation is no longer current",
+                        ok=False,
+                    ),
+                    no_update,
+                )
+            run_id = record.run_id
+            new_refresh = (refresh_count or 0) + 1
+            if record.status in _TERMINAL_RUN_STATUSES:
+                return (
+                    *_toast(
+                        f"{run_id} is already {record.status}",
+                        ok=False,
+                    ),
+                    no_update,
                 )
             if record.mode != "slurm":
-                stopped = runner.stop(run_id)
+                stopped = runner.stop(
+                    run_id,
+                    generation=record.generation,
+                )
                 if stopped:
                     registry.compare_and_set(
                         run_id,
@@ -1886,13 +2147,11 @@ def register_callbacks(
                     )
                     return (
                         *_toast(f"Cancelled {run_id}", ok=True),
-                        True,
-                        True,
+                        new_refresh,
                     )
                 return (
                     *_toast(f"No live run for {run_id}", ok=False),
-                    True,
-                    True,
+                    no_update,
                 )
 
             marked_cancelling = registry.compare_and_set(
@@ -1911,8 +2170,7 @@ def register_callbacks(
             if not marked_cancelling:
                 return (
                     *_toast(f"No live run for {run_id}", ok=False),
-                    True,
-                    True,
+                    no_update,
                 )
             record = registry.get(run_id)
             binding = (
@@ -1932,8 +2190,7 @@ def register_callbacks(
                         ok=True,
                         header="Cancelling…",
                     ),
-                    False,
-                    False,
+                    new_refresh,
                 )
             if (
                 record is not None
@@ -1953,8 +2210,7 @@ def register_callbacks(
                         f"Cancelled {run_id} before submission",
                         ok=True,
                     ),
-                    True,
-                    True,
+                    new_refresh,
                 )
             return (
                 *_toast(
@@ -1963,16 +2219,31 @@ def register_callbacks(
                     ok=True,
                     header="Cancelling…",
                 ),
-                False,
-                False,
+                new_refresh,
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Cancel failed")
             return (
                 *_toast(_format_exception(exc), ok=False),
                 no_update,
-                no_update,
             )
+
+    @app.callback(
+        Output(ids.RC_BTN_CANCEL, "disabled"),
+        Input(ids.RC_INTERVAL_LOG, "n_intervals"),
+        Input(ids.RC_STORE_ACTIVE_RUN_RECEIPT, "data"),
+    )
+    def update_cancel_disabled(
+        _n: Optional[int],
+        receipt_payload: object,
+    ) -> bool:
+        """Disable Cancel unless the exact displayed generation is live."""
+        record = _record_for_receipt(registry, receipt_payload)
+        return (
+            record is None
+            or record.generation is None
+            or record.status in _TERMINAL_RUN_STATUSES
+        )
 
     # ----------------------------------------------------------------------
     # 9. Dashboard polling — toggle iframe src once dashboard.html exists.
@@ -1989,17 +2260,20 @@ def register_callbacks(
         Input(ids.RC_INTERVAL_DASHBOARD_POLL, "n_intervals"),
         Input(ids.RC_BTN_REFRESH_DASHBOARD, "n_clicks"),
         State(ids.RC_STORE_ACTIVE_REL_PATH, "data"),
-        State(ids.RC_STORE_ACTIVE_RUN_ID, "data"),
+        State(ids.RC_STORE_ACTIVE_RUN_RECEIPT, "data"),
         prevent_initial_call=True,
     )
     def poll_dashboard(
         _n: Optional[int],
         _refresh_clicks: Optional[int],
         rel_path: Optional[str],
-        run_id: Optional[str],
+        receipt_payload: object,
     ) -> Tuple[Any, ...]:
         """Wait for ``dashboard.html`` to land then point the iframe at it."""
         if not rel_path:
+            return (no_update,) * 5
+        record = _record_for_receipt(registry, receipt_payload)
+        if record is None or record.rel_path != rel_path:
             return (no_update,) * 5
         try:
             target = sandbox.resolve(
@@ -2008,12 +2282,7 @@ def register_callbacks(
         except ValueError:
             return (no_update,) * 5
         if not target.is_file():
-            record = registry.get(run_id) if run_id else None
-            if record is not None and record.status in {
-                "complete",
-                "failed",
-                "cancelled",
-            }:
+            if record.status in _TERMINAL_RUN_STATUSES:
                 detail = record.status_detail or "No dashboard was published."
                 return (
                     no_update,
@@ -2042,35 +2311,48 @@ def register_callbacks(
         Output(ids.RC_LOG_TAIL, "children"),
         Output(ids.RC_STATUS_BANNER, "children"),
         Input(ids.RC_INTERVAL_LOG, "n_intervals"),
-        State(ids.RC_STORE_ACTIVE_RUN_ID, "data"),
+        State(ids.RC_STORE_ACTIVE_RUN_RECEIPT, "data"),
     )
     def update_log_tail(
-        _n: Optional[int], run_id: Optional[str]
+        _n: Optional[int], receipt_payload: object
     ) -> Tuple[Any, str]:
         """Render the last N log lines + a status banner string."""
-        if not run_id:
+        if not receipt_payload:
             return "(no log yet)", "(no active run)"
-        record = registry.get(run_id)
-        if record is not None and record.mode == "slurm":
-            if record.generation is None:
-                return "(waiting for lifecycle generation...)", (
-                    f"slurm | {record.rel_path} | status={record.status}"
-                )
+        record = _record_for_receipt(registry, receipt_payload)
+        if record is None or record.generation is None:
+            return (
+                "(generation is no longer current)",
+                "(selected generation is no longer current)",
+            )
+        run_id = record.run_id
+        generation_label = str(record.generation)
+        if record.mode == "slurm":
             text = slurm_log_cache.read(record)
-            banner = f"slurm | {record.rel_path} | status={record.status}"
+            banner = (
+                f"slurm | {record.rel_path} | "
+                f"generation={generation_label} | status={record.status}"
+            )
             if record.status_detail:
                 banner += f" | {record.status_detail}"
             return text, banner
-        lines = runner.snapshot_log(run_id, tail=200)
+        lines = runner.snapshot_log(
+            run_id,
+            generation=record.generation,
+            tail=200,
+        )
         text = "".join(lines) if lines else "(waiting for first output...)"
-        if record is None:
-            banner = f"run_id={run_id} (not in registry)"
-        else:
-            running = runner.is_running(run_id)
-            status = "running" if running else record.status
-            banner = f"{record.mode} | {record.rel_path} | status={status}"
-            if record.status_detail:
-                banner += f" | {record.status_detail}"
+        running = runner.is_running(
+            run_id,
+            generation=record.generation,
+        )
+        status = "running" if running else record.status
+        banner = (
+            f"{record.mode} | {record.rel_path} | "
+            f"generation={generation_label} | status={status}"
+        )
+        if record.status_detail:
+            banner += f" | {record.status_detail}"
         return text, banner
 
     # ----------------------------------------------------------------------
@@ -2082,42 +2364,36 @@ def register_callbacks(
         Output(ids.RC_TOAST, "children", allow_duplicate=True),
         Output(ids.RC_TOAST, "icon", allow_duplicate=True),
         Output(ids.RC_TOAST, "header", allow_duplicate=True),
-        Output(ids.RC_STORE_ACTIVE_RUN_ID, "data", allow_duplicate=True),
         Output(ids.RC_STORE_RECENTS_REFRESH, "data", allow_duplicate=True),
-        Output(ids.RC_INTERVAL_LOG, "disabled", allow_duplicate=True),
         Input(ids.RC_INTERVAL_LOG, "n_intervals"),
-        State(ids.RC_STORE_ACTIVE_RUN_ID, "data"),
+        State(ids.RC_STORE_ACTIVE_RUN_RECEIPT, "data"),
         State(ids.RC_STORE_RECENTS_REFRESH, "data"),
         prevent_initial_call=True,
     )
     def resolve_pending_slurm(
         _n: Optional[int],
-        run_id: Optional[str],
+        receipt_payload: object,
         refresh_count: Optional[int],
     ) -> Tuple[Any, ...]:
         """Surface a lifecycle result already committed by the future callback."""
-        if not run_id:
-            return (no_update,) * 7
-        record = registry.get(run_id)
+        record = _record_for_receipt(registry, receipt_payload)
         if (
             record is None
             or record.mode != "slurm"
             or record.generation is None
         ):
-            return (no_update,) * 7
-        stop_polling = record.status in _TERMINAL_RUN_STATUSES
-        completion = _take_slurm_completion(run_id, record.generation)
+            return (no_update,) * 5
+        completion = _take_slurm_completion(
+            record.run_id,
+            record.generation,
+        )
         if completion is None:
-            return (no_update,) * 6 + (
-                True if stop_polling else no_update,
-            )
+            return (no_update,) * 5
         new_refresh = (refresh_count or 0) + 1
         if completion.error is not None:
             return (
                 *_toast(completion.error, ok=False),
-                run_id,
                 new_refresh,
-                True if stop_polling else no_update,
             )
         if completion.pending is not None:
             return (
@@ -2126,23 +2402,17 @@ def register_callbacks(
                     ok=True,
                     header="Reconciling submission…",
                 ),
-                run_id,
                 new_refresh,
-                True if stop_polling else no_update,
             )
         result = completion.result
         if result is None:  # pragma: no cover - dataclass invariant
-            return (no_update,) * 6 + (
-                True if stop_polling else no_update,
-            )
+            return (no_update,) * 5
         return (
             *_toast(
                 f"SLURM submitted ({result.job_id}): {record.rel_path}",
                 ok=True,
             ),
-            run_id,
             new_refresh,
-            True if stop_polling else no_update,
         )
 
     # ----------------------------------------------------------------------

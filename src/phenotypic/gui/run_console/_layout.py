@@ -80,6 +80,14 @@ def _iframe_panel() -> html.Div:
         className="run-console-status-banner",
         children="(no active run)",
     )
+    action_feedback = html.Div(
+        id=ids.RC_ACTION_FEEDBACK,
+        className="run-console-action-feedback",
+        children="No action requested.",
+        role="status",
+        style={"display": "none"},
+        **{"aria-live": "polite"},  # type: ignore[arg-type]
+    )
     refresh_button = dbc.Button(
         "Refresh",
         id=ids.RC_BTN_REFRESH_DASHBOARD,
@@ -90,7 +98,7 @@ def _iframe_panel() -> html.Div:
     )
 
     return html.Div(
-        [status_banner, refresh_button, placeholder, iframe],
+        [action_feedback, status_banner, refresh_button, placeholder, iframe],
         id=ids.RC_IFRAME_PANEL,
         className="run-console-iframe-panel",
     )
@@ -115,6 +123,12 @@ def _log_tail() -> html.Div:
                 id=ids.RC_INTERVAL_DASHBOARD_POLL,
                 interval=2000,
                 disabled=True,
+                max_intervals=-1,
+            ),
+            dcc.Interval(
+                id=ids.RC_INTERVAL_ACTION_WATCHDOG,
+                interval=500,
+                disabled=False,
                 max_intervals=-1,
             ),
         ],
@@ -218,7 +232,10 @@ def _stores() -> html.Div:
         [
             dcc.Store(id=ids.RC_STORE_FORM_STATE, data={}),
             dcc.Store(id=ids.RC_STORE_ACTIVE_RUN_ID, data=None),
+            dcc.Store(id=ids.RC_STORE_ACTIVE_RUN_RECEIPT, data=None),
             dcc.Store(id=ids.RC_STORE_ACTIVE_REL_PATH, data=None),
+            dcc.Store(id=ids.RC_STORE_ACTION_ATTEMPT, data=None),
+            dcc.Store(id=ids.RC_STORE_ACTION_RESULT, data=None),
             dcc.Store(id=ids.RC_STORE_PIPELINE_PATH, data=None),
             dcc.Store(id=ids.RC_STORE_INPUT_DIR, data=None),
             dcc.Store(id=ids.RC_STORE_OUTPUT_DIR, data=None),

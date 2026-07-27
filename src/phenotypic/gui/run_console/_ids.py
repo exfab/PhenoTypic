@@ -44,6 +44,7 @@ RC_RECENTS_BODY = "rc-recents-body"
 
 #: Status banner below the iframe (mode + run-id + status).
 RC_STATUS_BANNER = "rc-status-banner"
+RC_ACTION_FEEDBACK = "rc-action-feedback"
 
 
 # ---------------------------------------------------------------------------
@@ -56,8 +57,19 @@ RC_STORE_FORM_STATE = "rc-store-form-state"
 #: Holds the active run id (string) so the log-tail interval can target it.
 RC_STORE_ACTIVE_RUN_ID = "rc-store-active-run-id"
 
+#: Holds the active run id + durable generation receipt used to fence every
+#: status, log, dashboard, and cancellation update.
+RC_STORE_ACTIVE_RUN_RECEIPT = "rc-store-active-run-receipt"
+
 #: Holds the active run's ``rel_path`` so the iframe ``src`` can be set.
 RC_STORE_ACTIVE_REL_PATH = "rc-store-active-rel-path"
+
+#: Browser-side record of the newest Validate/Run click. The action watchdog
+#: compares it with the server result so a failed callback request is visible.
+RC_STORE_ACTION_ATTEMPT = "rc-store-action-attempt"
+
+#: Server acknowledgement for the newest Validate/Run click.
+RC_STORE_ACTION_RESULT = "rc-store-action-result"
 
 #: Holds the selected pipeline JSON path (or ``None``).
 RC_STORE_PIPELINE_PATH = "rc-store-pipeline-path"
@@ -217,6 +229,7 @@ RC_HANDOFF_DISMISS = "rc-handoff-dismiss"
 RC_TOAST = "rc-toast"
 RC_INTERVAL_LOG = "rc-interval-log"
 RC_INTERVAL_DASHBOARD_POLL = "rc-interval-dashboard-poll"
+RC_INTERVAL_ACTION_WATCHDOG = "rc-interval-action-watchdog"
 
 
 # ---------------------------------------------------------------------------
@@ -260,9 +273,13 @@ __all__ = [
     "RC_RECENTS",
     "RC_RECENTS_BODY",
     "RC_STATUS_BANNER",
+    "RC_ACTION_FEEDBACK",
     "RC_STORE_FORM_STATE",
     "RC_STORE_ACTIVE_RUN_ID",
+    "RC_STORE_ACTIVE_RUN_RECEIPT",
     "RC_STORE_ACTIVE_REL_PATH",
+    "RC_STORE_ACTION_ATTEMPT",
+    "RC_STORE_ACTION_RESULT",
     "RC_STORE_PIPELINE_PATH",
     "RC_STORE_INPUT_DIR",
     "RC_STORE_OUTPUT_DIR",
@@ -326,6 +343,7 @@ __all__ = [
     "RC_TOAST",
     "RC_INTERVAL_LOG",
     "RC_INTERVAL_DASHBOARD_POLL",
+    "RC_INTERVAL_ACTION_WATCHDOG",
     "RC_DIR_ENTRY_TYPE_PIPELINE_JSON",
     "RC_DIR_ENTRY_TYPE_INPUT_DIR",
     "RC_DIR_ENTRY_TYPE_OUTPUT_DIR",

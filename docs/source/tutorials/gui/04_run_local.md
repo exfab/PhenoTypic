@@ -46,6 +46,11 @@ exits without writing any output. The log tail shows the dry-run output.
 Use this whenever you're not sure the form values match what the CLI
 expects — the dry-run takes seconds, a bad real run can waste minutes.
 
+Validate and Run share one action path. Each accepted click displays the
+durable run ID and generation UUID before launch. If the browser cannot obtain
+the callback acknowledgement, the pending notice becomes a visible retryable
+error instead of silently doing nothing.
+
 ## Run
 
 Clicking `Run` spawns `python -m phenotypic --mode full <args>` (no `--dry-run`).
@@ -60,6 +65,10 @@ While the subprocess is alive:
 - Only one local run can be active at a time; the `Run` button stays
   disabled until the current run exits or you click `Cancel` (which
   sends SIGTERM, then SIGKILL after a 10-second grace period).
+
+Every status, log, dashboard, and Cancel update is matched to the displayed
+run ID and generation. Cancel disables when that generation becomes terminal;
+its final status and log tail remain visible.
 
 ## Recent Runs
 

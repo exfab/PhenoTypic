@@ -27,6 +27,7 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
+from dash import no_update
 
 import phenotypic.gui.run_console._app as app_module
 import phenotypic.gui.run_console._callbacks as callbacks_module
@@ -34,6 +35,7 @@ from phenotypic.gui.run_console._callbacks import (
     _SlurmLogTailCache,
     _action_control_states,
     _local_run_active,
+    _run_receipt,
     _state_from_action_controls,
     _track_pending_slurm,
 )
@@ -115,9 +117,10 @@ def registry() -> RunRegistry:
 def _callback_by_name(app: Any, name: str) -> Any:
     """Return one unwrapped Dash callback by its Python function name."""
     return next(
-        spec["callback"].__wrapped__
+        callback.__wrapped__
         for spec in app.callback_map.values()
-        if spec["callback"].__wrapped__.__name__ == name
+        if (callback := spec.get("callback")) is not None
+        and callback.__wrapped__.__name__ == name
     )
 
 
@@ -478,14 +481,18 @@ def test_slurm_cancel_fences_exact_epoch_and_stays_cancelling(
         start_slurm_observer=False,
     )
 
-    response = _callback_by_name(app, "click_cancel")(1, record.run_id)
+    response = _callback_by_name(app, "click_cancel")(
+        1,
+        _run_receipt(record),
+        0,
+    )
 
     assert calls == [(output_dir, str(scheduler_generation))]
     updated = registry.get(record.run_id)
     assert updated is not None
     assert updated.status == "cancelling"
     assert updated.terminal_at is None
-    assert response[-2:] == (False, False)
+    assert response[-1] == 1
 
 
 def test_cancel_before_new_epoch_never_adopts_stale_output_lifecycle(
@@ -559,10 +566,14 @@ def test_cancel_before_new_epoch_never_adopts_stale_output_lifecycle(
         start_slurm_observer=False,
     )
 
-    response = _callback_by_name(app, "click_cancel")(1, record.run_id)
+    response = _callback_by_name(app, "click_cancel")(
+        1,
+        _run_receipt(record),
+        0,
+    )
 
     assert calls == []
-    assert response[-2:] == (False, False)
+    assert response[-1] == 1
     cancelling = registry.get(record.run_id)
     assert cancelling is not None and cancelling.status == "cancelling"
     assert cancelling.lifecycle_epoch == str(record.generation)
@@ -617,6 +628,107 @@ def test_cancel_before_new_epoch_never_adopts_stale_output_lifecycle(
     assert bound is not None
     assert bound.status == "cancelling"
     assert bound.lifecycle_epoch == scheduler_generation.hex
+
+
+def test_stale_cancel_receipt_cannot_stop_replacement_generation(
+    tmp_path: Path,
+) -> None:
+    """A stale browser receipt cannot stop a newer run with the same run id."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    runner = LocalRunner()
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    predecessor = registry.allocate(
+        mode="local",
+        output_dir=output_dir,
+        rel_path="out",
+        command_digest="first",
+        status="complete",
+    )
+    stale_receipt = _run_receipt(predecessor)
+    replacement = registry.allocate(
+        mode="local",
+        output_dir=output_dir,
+        rel_path="out",
+        command_digest="second",
+        status="queued",
+    )
+    assert replacement.generation is not None
+    handle = runner.start(
+        replacement.run_id,
+        [sys.executable, "-c", "import time; time.sleep(30)"],
+        output_dir=output_dir,
+        generation=replacement.generation,
+    )
+    registry.compare_and_set(
+        replacement.run_id,
+        replacement.generation,
+        expected_statuses={"queued"},
+        status="running",
+        pid=handle.process.pid,
+    )
+    app = create_app(
+        sandbox,
+        registry=registry,
+        runner=runner,
+        start_slurm_observer=False,
+    )
+
+    try:
+        response = _callback_by_name(app, "click_cancel")(
+            1,
+            stale_receipt,
+            0,
+        )
+
+        assert "no longer current" in response[1]
+        assert runner.is_running(
+            replacement.run_id,
+            generation=replacement.generation,
+        )
+        current = registry.get(replacement.run_id)
+        assert current is not None and current.status == "running"
+    finally:
+        runner.stop(
+            replacement.run_id,
+            generation=replacement.generation,
+            grace_seconds=0.1,
+        )
+
+
+def test_cancel_disabled_tracks_exact_generation_terminal_state(
+    tmp_path: Path,
+) -> None:
+    """Terminal publication disables Cancel without clearing the receipt."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    record = registry.allocate(
+        mode="local",
+        output_dir=output_dir,
+        rel_path="out",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+    receipt = _run_receipt(record)
+    app = create_app(
+        sandbox,
+        registry=registry,
+        start_slurm_observer=False,
+    )
+    callback = _callback_by_name(app, "update_cancel_disabled")
+
+    assert callback(0, receipt) is False
+    registry.compare_and_set(
+        record.run_id,
+        record.generation,
+        expected_statuses={"running"},
+        status="complete",
+    )
+    assert callback(1, receipt) is True
 
 
 def test_run_app_owns_one_startable_observer_lifecycle(
@@ -704,7 +816,8 @@ def test_terminal_no_dashboard_surfaces_detail_and_manual_refresh(
     app = create_app(sandbox, registry=registry)
     callback = _callback_by_name(app, "poll_dashboard")
 
-    missing = callback(1, 0, "out", record.run_id)
+    receipt = _run_receipt(record)
+    missing = callback(1, 0, "out", receipt)
 
     assert missing[1] == {"display": "none"}
     assert "finalizer exited" in missing[3]
@@ -713,17 +826,17 @@ def test_terminal_no_dashboard_surfaces_detail_and_manual_refresh(
     dashboard = output_dir / "deliverables" / "dashboard.html"
     dashboard.parent.mkdir(parents=True)
     dashboard.write_text("<html></html>", encoding="utf-8")
-    refreshed = callback(1, 1, "out", record.run_id)
+    refreshed = callback(1, 1, "out", receipt)
 
     assert refreshed[0].endswith("/runs/out/deliverables/dashboard.html")
     assert refreshed[1] == {"display": "block"}
     assert refreshed[4] is True
 
 
-def test_terminal_slurm_generation_evicts_log_reader_and_stops_polling(
+def test_terminal_slurm_generation_evicts_reader_and_retains_polling(
     tmp_path: Path,
 ) -> None:
-    """Background terminal transitions bound log state and disable polling."""
+    """Terminal transitions evict readers while the UI keeps its receipt."""
     sandbox = SandboxRoot.from_path(tmp_path)
     registry = RunRegistry()
     output_dir = tmp_path / "out"
@@ -767,11 +880,10 @@ def test_terminal_slurm_generation_evicts_log_reader_and_stops_polling(
     )
     response = _callback_by_name(app, "resolve_pending_slurm")(
         1,
-        record.run_id,
+        _run_receipt(record),
         0,
     )
-    assert len(response) == 7
-    assert response[-1] is True
+    assert response == (no_update,) * 5
 
 
 def test_slurm_log_cache_is_globally_bounded_and_prunes_other_runs(
@@ -850,10 +962,11 @@ def test_slurm_log_callback_reads_incrementally(
     app = create_app(sandbox, registry=registry)
     callback = _callback_by_name(app, "update_log_tail")
 
-    first, _banner = callback(1, record.run_id)
+    receipt = _run_receipt(record)
+    first, _banner = callback(1, receipt)
     with log_path.open("a", encoding="utf-8") as handle:
         handle.write("beta\n")
-    second, _banner = callback(2, record.run_id)
+    second, _banner = callback(2, receipt)
 
     assert "alpha" in first
     assert second.count("alpha") == 1
@@ -907,7 +1020,8 @@ def test_action_callbacks_capture_raw_controls_not_aggregate_store(
         callback = next(
             spec
             for spec in app.callback_map.values()
-            if spec["inputs"] and spec["inputs"][0]["id"] == action_id
+            if spec.get("callback") is not None
+            if any(item["id"] == action_id for item in spec["inputs"])
         )
         state_ids = [item["id"] for item in callback["state"]]
         assert "rc-store-form-state" not in state_ids
@@ -981,11 +1095,7 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
         if spec["inputs"]
         and spec["inputs"][0]["id"] == "rc-dropdown-load-preset"
     )
-    run_callback = next(
-        spec["callback"].__wrapped__
-        for spec in app.callback_map.values()
-        if spec["inputs"] and spec["inputs"][0]["id"] == "rc-btn-run"
-    )
+    run_callback = _callback_by_name(app, "click_action")
 
     save_response = save_callback(1, "full-slurm", *controls)
     assert save_response[1] == "Saved preset full-slurm"
@@ -1030,7 +1140,7 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
         (*loaded_controls[:19], metadata_payload),
         metadata_choice="include",
     )
-    run_response = run_callback(1, *reauthorized, 0)
+    run_response = run_callback(0, 1, *reauthorized, 0)
 
     assert "SLURM submitting" in run_response[1]
     assert len(captured_states) == 1
@@ -1172,9 +1282,9 @@ def test_run_action_shows_stale_output_confirmation_error(
     )
     stale_controls = list(controls)
     stale_controls[2] = str(tmp_path / "changed-after-confirm")
-    callback = _callback_by_name(app, "click_run")
+    callback = _callback_by_name(app, "click_action")
 
-    response = callback(1, *stale_controls, 0)
+    response = callback(0, 1, *stale_controls, 0)
 
     assert "stale" in response[1]
     assert registry.list() == []
@@ -1219,9 +1329,9 @@ def test_validate_action_shows_changed_source_fingerprint_error(
         ),
     )
     image.write_bytes(b"changed-source")
-    callback = _callback_by_name(app, "click_validate")
+    callback = _callback_by_name(app, "click_action")
 
-    response = callback(1, *controls)
+    response = callback(1, 0, *controls, 0)
 
     assert "changed after preflight" in response[1]
     assert registry.list() == []
@@ -1268,13 +1378,9 @@ def test_empty_slurm_profile_never_invokes_submitter(
         "submit",
         lambda *args, **kwargs: pytest.fail("submitter was invoked"),
     )
-    callback = next(
-        spec["callback"].__wrapped__
-        for spec in app.callback_map.values()
-        if spec["inputs"] and spec["inputs"][0]["id"] == "rc-btn-run"
-    )
+    callback = _callback_by_name(app, "click_action")
 
-    response = callback(1, *controls, 0)
+    response = callback(0, 1, *controls, 0)
 
     assert "nonempty CPU SLURM profile" in response[1]
     assert registry.list() == []
@@ -1316,13 +1422,9 @@ def test_immediate_local_exit_terminalizes_allocated_generation(
         1,
         None,
     ))
-    callback = next(
-        spec["callback"].__wrapped__
-        for spec in app.callback_map.values()
-        if spec["inputs"] and spec["inputs"][0]["id"] == "rc-btn-run"
-    )
+    callback = _callback_by_name(app, "click_action")
 
-    response = callback(1, *controls, 0)
+    response = callback(0, 1, *controls, 0)
     run_id = response[4]
     deadline = time.monotonic() + 10.0
     while time.monotonic() < deadline:
@@ -1385,13 +1487,9 @@ def test_local_record_is_durable_before_spawn_failure(
         raise OSError("Popen failed")
 
     monkeypatch.setattr(runner, "start", fail_after_claim)
-    callback = next(
-        spec["callback"].__wrapped__
-        for spec in app.callback_map.values()
-        if spec["inputs"] and spec["inputs"][0]["id"] == "rc-btn-run"
-    )
+    callback = _callback_by_name(app, "click_action")
 
-    callback(1, *controls, 0)
+    callback(0, 1, *controls, 0)
 
     failed = registry.get("output")
     assert failed is not None

@@ -189,6 +189,35 @@ def test_stop_returns_false_if_run_id_unknown(runner: LocalRunner) -> None:
     assert runner.stop("missing") is False
 
 
+def test_stop_and_log_reads_reject_wrong_generation(
+    runner: LocalRunner,
+    tmp_path: Path,
+) -> None:
+    """Lifecycle operations cannot cross a same-run-id generation fence."""
+    generation = uuid4()
+    handle = runner.start(
+        "fenced",
+        [sys.executable, "-c", "import time; print('ready'); time.sleep(30)"],
+        output_dir=tmp_path,
+        generation=generation,
+    )
+    stale_generation = uuid4()
+    try:
+        assert runner.stop("fenced", generation=stale_generation) is False
+        assert runner.is_running("fenced", generation=stale_generation) is False
+        assert runner.snapshot_log(
+            "fenced",
+            generation=stale_generation,
+        ) == []
+        assert handle.process.poll() is None
+    finally:
+        runner.stop(
+            "fenced",
+            generation=generation,
+            grace_seconds=0.1,
+        )
+
+
 def test_log_directory_failure_releases_reservation(
     runner: LocalRunner,
     tmp_path: Path,
