@@ -178,6 +178,30 @@ def test_pure_consistency_classification_covers_all_states() -> None:
     )
 
 
+def test_active_owner_tolerates_nonterminal_manifest_event_lag() -> None:
+    report = classify_output_consistency(
+        OutputCompletionEvidence(
+            standalone_bundle=False,
+            owner_present=True,
+            owner_status="running",
+            manifest_present=True,
+            manifest_is_complete=False,
+            manifest_completed=1,
+            manifest_failed=0,
+            manifest_total=2,
+            processing_state_present=True,
+            processing_event_log_present=True,
+            processing_total=2,
+            processing_completed=2,
+            processing_failed=0,
+            processing_unfinished=0,
+        )
+    )
+
+    assert report.state == "active"
+    assert report.reasons == ("a nonterminal GUI owner is active",)
+
+
 def test_o2_discovery_contracts_are_publicly_importable() -> None:
     assert PublicCancellation is OutputDiscoveryCancellation
     assert PublicProgress is OutputDiscoveryProgress
@@ -260,6 +284,39 @@ def test_terminal_event_log_supersedes_stale_processing_snapshot(
         for path in source.rglob("*")
         if path.is_file()
     } == selected_before
+
+
+def test_unreadable_processing_event_log_stays_read_only(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "output"
+    _seed_output(source)
+    _publish_coherent_manifest(source)
+    state_path = processing_state_path(source)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                ProcessingStateKey.DATASETS: {
+                    "plate": {
+                        ProcessingStateKey.INITIAL_IMAGES: ["a", "b"],
+                        ProcessingStateKey.COMPLETED: [],
+                        ProcessingStateKey.FAILED: [],
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    corrupt_log_path = event_log_path(source)
+    corrupt_log_path.write_bytes(b"\xff")
+
+    report = inspect_output_consistency(BundleLayout.detect(source))
+
+    assert report.state == "incomplete"
+    assert report.evidence.processing_event_log_present is True
+    assert report.evidence.processing_event_log_readable is False
+    assert "processing event log is unreadable" in report.reasons
 
 
 def test_mutable_state_is_always_fresh_while_processing_cache_reuses(

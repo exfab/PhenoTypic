@@ -198,6 +198,9 @@ def classify_output_consistency(
             "completion marker conflicts with incomplete or failed manifest"
         )
 
+    compare_terminal_processing_evidence = (
+        not owner_active or manifest_success or terminal_marker
+    )
     if evidence.processing_state_readable and evidence.processing_total is not None:
         state_total = evidence.processing_total
         state_completed = evidence.processing_completed
@@ -211,13 +214,18 @@ def classify_output_consistency(
                 "processing-state completed plus failed counts exceed inventory "
                 f"({state_completed}+{state_failed}>{state_total})"
             )
-        if manifest_counts_valid and evidence.manifest_total != state_total:
+        if (
+            compare_terminal_processing_evidence
+            and manifest_counts_valid
+            and evidence.manifest_total != state_total
+        ):
             contradictions.append(
                 "manifest total conflicts with processing inventory "
                 f"({evidence.manifest_total}!={state_total})"
             )
         if (
-            manifest_counts_valid
+            compare_terminal_processing_evidence
+            and manifest_counts_valid
             and state_completed is not None
             and evidence.manifest_completed != state_completed
         ):
@@ -306,9 +314,13 @@ def inspect_output_consistency(layout: BundleLayout) -> OutputConsistencyReport:
         event_log_path
     )
 
-    processing_counts = _processing_counts(
-        processing_payload,
-        processing_events=processing_events,
+    processing_counts = (
+        _processing_counts(
+            processing_payload,
+            processing_events=processing_events,
+        )
+        if event_log_readable
+        else (None, None, None, None)
     )
     staged_valid = _staged_marker_is_valid(
         staged_payload,
@@ -443,7 +455,7 @@ def _read_processing_events(
         return None, True
     try:
         aggregated = aggregate_state_from_events(path)
-    except (OSError, RuntimeError):
+    except (OSError, UnicodeDecodeError, RuntimeError):
         return None, False
     return (
         {
