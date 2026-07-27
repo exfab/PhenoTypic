@@ -48,9 +48,11 @@ BROWSE_TL_STORE_TILE_SIZE = "browse-tl-store-tile-size"
 BROWSE_TL_STORE_WARNINGS = "browse-tl-store-warnings"
 BROWSE_TL_WARNINGS_ALERT = "browse-tl-warnings-alert"  # surfaces CSV-join warnings
 BROWSE_TL_POPOUT_MODAL = "browse-tl-popout-modal"
+BROWSE_TL_POPOUT_TITLE = "browse-tl-popout-title"
 BROWSE_TL_POPOUT_OSD = "browse-tl-popout-osd"
 BROWSE_TL_POPOUT_STORE = "browse-tl-popout-store"     # {token,label} for the pop-out
-BROWSE_TL_POPOUT_INPUT = "browse-tl-popout-input"     # hidden dcc.Input; JS→Dash bridge for ⤢ clicks
+BROWSE_TL_POPOUT_EVENT = "browse-tl-popout-event"     # revision-bound JS→Dash event
+BROWSE_TL_SOURCE_REVISION = "browse-tl-source-revision"
 
 # --- Compare strip (Phase 4) ---------------------------------------------
 # "Compare selected" button: a timeline.js DOM target (no Dash callback). The
@@ -101,8 +103,10 @@ __all__ = [
     "BROWSE_TL_STORE_WARNINGS",
     "BROWSE_TL_WARNINGS_ALERT",
     "BROWSE_TL_POPOUT_MODAL",
+    "BROWSE_TL_POPOUT_TITLE",
     "BROWSE_TL_POPOUT_OSD",
     "BROWSE_TL_POPOUT_STORE",
-    "BROWSE_TL_POPOUT_INPUT",
+    "BROWSE_TL_POPOUT_EVENT",
+    "BROWSE_TL_SOURCE_REVISION",
     "BROWSE_TL_COMPARE_BTN",
 ]

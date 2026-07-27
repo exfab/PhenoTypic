@@ -1,13 +1,21 @@
 """Pure helpers behind the Browse Timeline callbacks."""
 from __future__ import annotations
 
+from pathlib import Path
+
 from phenotypic.gui.browse._callbacks import (
     pattern_preview_rows,
     render_timeline_grid,
+    resolve_popout_event,
+    source_reset_values,
     strip_popout_nonce,
+    timeline_revision_token,
     timeline_thumb_url,
     warnings_alert_state,
 )
+from phenotypic.gui.browse._source_render import encode_token
+from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.gui.shell._source_context import source_payload_from_path
 
 
 def test_thumb_url_targets_browse_thumb_segment_with_bucket() -> None:
@@ -65,3 +73,103 @@ def test_strip_popout_nonce_recovers_token() -> None:
     assert strip_popout_nonce(token) == token
     # Two clicks on the SAME cell differ as raw values but strip to one token.
     assert strip_popout_nonce(token + "#1") == strip_popout_nonce(token + "#2")
+
+
+def test_timeline_revision_changes_with_source_metadata_or_grid_inputs() -> None:
+    base = timeline_revision_token(
+        {"relative_path": "source-a"},
+        {"relative_path": "metadata.csv"},
+        "folder",
+    )
+    assert base == timeline_revision_token(
+        {"relative_path": "source-a"},
+        {"relative_path": "metadata.csv"},
+        "folder",
+    )
+    assert base != timeline_revision_token(
+        {"relative_path": "source-b"},
+        {"relative_path": "metadata.csv"},
+        "folder",
+    )
+    assert base != timeline_revision_token(
+        {"relative_path": "source-a"},
+        {"relative_path": "other.csv"},
+        "folder",
+    )
+    assert base != timeline_revision_token(
+        {"relative_path": "source-a"},
+        {"relative_path": "metadata.csv"},
+        "pattern",
+    )
+
+
+def test_source_reset_transaction_clears_all_timeline_dependent_state() -> None:
+    reset = source_reset_values(
+        {"relative_path": "source-b", "selected_at": "revision-2"}
+    )
+
+    assert reset[0:8] == (
+        "folder",
+        "exif",
+        None,
+        None,
+        None,
+        "",
+        [],
+        reset[7],
+    )
+    assert "Enter a pattern to preview matches." in str(reset[7])
+    assert reset[8].endswith(" px")
+    assert isinstance(reset[9], int)
+    assert "Loading current source" in str(reset[10])
+    assert reset[11] == []
+    assert isinstance(reset[12], str) and reset[12].endswith(":reset")
+    assert isinstance(reset[13], str) and reset[13]
+    assert reset[14:] == (False, None, "", None)
+
+
+def test_popout_event_is_revision_bound_and_current_source_contained(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    image = source / "plate.png"
+    image.write_bytes(b"image")
+    outside = tmp_path / "outside.png"
+    outside.write_bytes(b"outside")
+    sandbox = SandboxRoot.from_path(tmp_path)
+    source_payload = source_payload_from_path(
+        sandbox,
+        source,
+        source="manual",
+    )
+    assert source_payload is not None
+
+    valid = resolve_popout_event(
+        sandbox,
+        {"token": encode_token("source/plate.png"), "revision": "grid-2"},
+        grid_revision="grid-2",
+        source_payload=source_payload,
+    )
+    assert valid == {
+        "token": encode_token("source/plate.png"),
+        "label": "source/plate.png",
+    }
+    assert (
+        resolve_popout_event(
+            sandbox,
+            {"token": encode_token("source/plate.png"), "revision": "grid-1"},
+            grid_revision="grid-2",
+            source_payload=source_payload,
+        )
+        is None
+    )
+    assert (
+        resolve_popout_event(
+            sandbox,
+            {"token": encode_token("outside.png"), "revision": "grid-2"},
+            grid_revision="grid-2",
+            source_payload=source_payload,
+        )
+        is None
+    )

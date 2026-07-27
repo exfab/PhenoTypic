@@ -12,8 +12,14 @@ bounded-window + off-screen-pre-mount assertions meaningful.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from playwright.sync_api import expect
+
+from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
+from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.gui.shell._source_context import source_payload_from_path
 
 # Tight DOM-poll budget on a fresh Werkzeug server: stochastically slow on GHA.
 pytestmark = pytest.mark.ci_flaky
@@ -334,9 +340,8 @@ def test_reattach_observer_rebinds_on_wholesale_grid_swap(live_browse_timeline) 
 # --- M5: same-cell pop-out re-open ------------------------------------------
 def test_same_cell_popout_reopens_after_close(live_browse_timeline) -> None:
     # Closing the dbc modal leaves the server is_open stale; clicking the SAME
-    # tile must reopen it. timeline.js appends a per-click `#<nonce>` so the
-    # bridge dcc.Input value CHANGES on every click (Dash onChange only fires on
-    # a change), and the server strips the nonce before decoding (M5).
+    # tile must reopen it. browse.js adds a monotonic sequence to each
+    # revision-bound event-store write, so the Dash input changes every time.
     page = live_browse_timeline
     sel = '.timeline-cell[data-src][data-row="t0"][data-col-index="1"]'
     page.wait_for_selector(sel)
@@ -362,6 +367,177 @@ def test_same_cell_popout_reopens_after_close(live_browse_timeline) -> None:
         " return !m || !m.classList.contains('show'); }",
         timeout=10000,
     )
-    # 3) Click the SAME cell again — the nonce makes the bridge value change so
-    #    the server callback re-fires and the modal reopens.
+    # 3) Click the SAME cell again. The sequence makes the event-store value
+    #    change, so the server callback re-fires and the modal reopens.
     _open_via_cell()
+
+
+def test_source_revision_clears_stale_timeline_and_rebinds_actions(
+    live_browse_timeline,
+    fake_sandbox: Path,
+) -> None:
+    """Reproduce F-004–F-006 without a page navigation.
+
+    Author stale pattern/axis state and open Compare on ``plate1``, then publish
+    a new shared source revision for ``plate2``. The reset must retire every old
+    value in one response, and delegated popout/Compare actions must work on the
+    newly rendered grid without exposing encoded refs.
+    """
+    from PIL import Image as PILImage
+
+    page = live_browse_timeline
+    plate2 = fake_sandbox / "plate2"
+    for folder in ("new-t0", "new-t1"):
+        directory = plate2 / folder
+        directory.mkdir(parents=True, exist_ok=True)
+        for filename in ("newA.png", "newB.png"):
+            PILImage.new("RGB", (300, 200), (120, 60, 30)).save(
+                directory / filename
+            )
+
+    source_payload = source_payload_from_path(
+        SandboxRoot.from_path(fake_sandbox),
+        plate2,
+        source="manual",
+    )
+    assert source_payload is not None
+    metadata_path = fake_sandbox / "plate2.csv"
+    metadata_path.write_text(
+        "Metadata_ImageFileName,Group,Time\n"
+        "newA.png,control,0\n"
+        "newB.png,stress,1\n",
+        encoding="utf-8",
+    )
+    metadata_payload = metadata_payload_from_path(
+        SandboxRoot.from_path(fake_sandbox),
+        metadata_path,
+    )
+    assert metadata_payload is not None
+
+    # Make old-source authoring visibly stale and open a Compare overlay whose
+    # selection must be retired with that source revision.
+    page.evaluate(
+        """() => {
+            window.dash_clientside.set_props(
+                'browse-tl-row-source', {value: 'pattern'});
+            window.dash_clientside.set_props(
+                'browse-tl-time-source', {value: 'folder'});
+            window.dash_clientside.set_props(
+                'browse-tl-pattern-input', {value: '(?P<plate>.+)'});
+            window.dash_clientside.set_props(
+                'browse-tl-pattern-advanced', {value: ['advanced']});
+        }"""
+    )
+    page.wait_for_function(
+        "() => document.getElementById('browse-tl-pattern-input').value"
+        " === '(?P<plate>.+)'"
+    )
+    page.wait_for_selector(".timeline-cell[data-src][data-ref]")
+    old_cells = page.query_selector_all(".timeline-cell[data-src][data-ref]")
+    assert len(old_cells) >= 2
+    for cell in old_cells[:2]:
+        cell.click(modifiers=["Shift"])
+    page.click("#browse-tl-compare-btn")
+    page.wait_for_selector("#timeline-compare-modal")
+
+    # Change the shared source in place, exactly where the old implementation
+    # retained its matrix, pattern preview, selection, and event bindings.
+    page.evaluate(
+        """
+        payload => window.dash_clientside.set_props(
+            'shell-source-image-root-store',
+            {data: payload}
+        )
+        """,
+        source_payload,
+    )
+
+    page.wait_for_function(
+        "() => document.getElementById('browse-tl-pattern-input').value === ''"
+    )
+    expect(page.locator("#browse-tl-row-source")).to_contain_text("Folder")
+    expect(page.locator("#browse-tl-time-source")).to_contain_text(
+        "EXIF capture time"
+    )
+    expect(page.locator("#browse-tl-pattern-preview")).to_contain_text(
+        "Enter a pattern to preview matches."
+    )
+    page.wait_for_selector(
+        '.timeline-cell[data-src][data-row="new-t0"][data-ref]',
+        timeout=10_000,
+    )
+    assert page.query_selector("#timeline-compare-modal") is None
+    assert page.query_selector_all(".timeline-cell--selected") == []
+
+    # A metadata revision rebuilds the grid again. The next delegated event is
+    # bound to that replacement generation, not the retired source-only one.
+    source_grid_revision = page.locator("#browse-tl-grid").get_attribute(
+        "data-grid-revision"
+    )
+    page.evaluate(
+        """
+        payload => window.dash_clientside.set_props(
+            'shell-metadata-csv-store',
+            {data: payload}
+        )
+        """,
+        metadata_payload,
+    )
+    page.wait_for_function(
+        """
+        previous => {
+            const grid = document.getElementById('browse-tl-grid');
+            return grid && grid.getAttribute('data-grid-revision') !== previous;
+        }
+        """,
+        arg=source_grid_revision,
+    )
+
+    # Hover-click uses the revision-stamped Dash event after the source/grid
+    # and metadata revisions. Its title is a readable sandbox-relative path.
+    new_cell_selector = (
+        '.timeline-cell[data-src][data-row="new-t0"][data-col-index="0"]'
+    )
+    new_cell = page.query_selector(new_cell_selector)
+    assert new_cell is not None
+    new_cell.hover()
+    page.click(f"{new_cell_selector} .timeline-cell-popout")
+    page.wait_for_function(
+        "() => { const d = document.getElementById('browse-tl-popout-modal');"
+        " const m = d && d.closest('.modal');"
+        " return m && m.classList.contains('show'); }",
+        timeout=10_000,
+    )
+    expect(page.locator("#browse-tl-popout-title")).to_contain_text(
+        "plate2/new-t0/newA.png"
+    )
+    page.click("#browse-tl-popout-modal .btn-close")
+
+    # Enter goes through the same delegated event store after the remount.
+    page.click(".browse-tl-viewport")
+    page.keyboard.press("Enter")
+    page.wait_for_function(
+        "() => { const d = document.getElementById('browse-tl-popout-modal');"
+        " const m = d && d.closest('.modal');"
+        " return m && m.classList.contains('show'); }",
+        timeout=10_000,
+    )
+    page.click("#browse-tl-popout-modal .btn-close")
+
+    # Compare also rebinds after the same revision and decodes internal tokens
+    # before rendering visible titles.
+    new_cells = page.query_selector_all(
+        '.timeline-cell[data-src][data-row="new-t0"][data-ref]'
+    )
+    assert len(new_cells) == 2
+    for cell in new_cells:
+        cell.click(modifiers=["Shift"])
+    page.click("#browse-tl-compare-btn")
+    page.wait_for_selector("#timeline-compare-modal .timeline-compare-cell-title")
+    titles = page.locator(
+        "#timeline-compare-modal .timeline-compare-cell-title"
+    ).all_text_contents()
+    assert titles == [
+        "plate2/new-t0/newA.png",
+        "plate2/new-t0/newB.png",
+    ]

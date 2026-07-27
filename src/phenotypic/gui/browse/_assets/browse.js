@@ -130,4 +130,157 @@
     ns.applyPopoutImage = function (payload) {
         return _mountOSD("browse-tl-popout-osd", payload);
     };
+
+    // Browse-only Timeline event adapter. The shared timeline controller is
+    // also used by Results, but Browse's source can change in place. Delegate
+    // on document so a Dash remount cannot retire the listener, and publish
+    // through Dash's supported set_props API rather than mutating a
+    // React-controlled hidden input.
+    const TL_GRID_ID = "browse-tl-grid";
+    const TL_POPOUT_EVENT_ID = "browse-tl-popout-event";
+    let timelineEventSequence = 0;
+
+    function browseGrid() {
+        return document.getElementById(TL_GRID_ID);
+    }
+
+    function publishPopout(cell) {
+        const grid = browseGrid();
+        const token = cell && cell.getAttribute("data-ref");
+        const revision = grid && grid.getAttribute("data-grid-revision");
+        const dc = window.dash_clientside;
+        if (!grid || !grid.contains(cell) || !token || !revision
+            || !dc || typeof dc.set_props !== "function") {
+            return false;
+        }
+        timelineEventSequence += 1;
+        dc.set_props(TL_POPOUT_EVENT_ID, {
+            data: {
+                token: token,
+                revision: revision,
+                sequence: timelineEventSequence,
+            },
+        });
+        return true;
+    }
+
+    function decodeBrowseRef(ref) {
+        try {
+            let encoded = String(ref).replace(/-/g, "+").replace(/_/g, "/");
+            encoded += "=".repeat((4 - encoded.length % 4) % 4);
+            const binary = window.atob(encoded);
+            const bytes = Uint8Array.from(binary, function (ch) {
+                return ch.charCodeAt(0);
+            });
+            if (window.TextDecoder) {
+                return new window.TextDecoder("utf-8", { fatal: true }).decode(bytes);
+            }
+            let escaped = "";
+            bytes.forEach(function (byte) {
+                escaped += "%" + byte.toString(16).padStart(2, "0");
+            });
+            return decodeURIComponent(escaped);
+        } catch (e) {
+            return String(ref);
+        }
+    }
+
+    function browseTimelineDziUrl(ref) {
+        return appPrefix + "tiles/" + encodeURIComponent(String(ref)) + ".dzi";
+    }
+
+    function compareCap(grid) {
+        const parsed = parseInt(grid.getAttribute("data-compare-cap"), 10);
+        return Number.isFinite(parsed) ? parsed : 12;
+    }
+
+    function selectedRefs(grid) {
+        return Array.from(
+            grid.querySelectorAll(".timeline-cell.timeline-cell--selected[data-ref]")
+        ).sort(function (left, right) {
+            const leftRow = parseInt(left.getAttribute("data-row-index"), 10) || 0;
+            const rightRow = parseInt(right.getAttribute("data-row-index"), 10) || 0;
+            if (leftRow !== rightRow) { return leftRow - rightRow; }
+            return (parseInt(left.getAttribute("data-col-index"), 10) || 0)
+                - (parseInt(right.getAttribute("data-col-index"), 10) || 0);
+        }).map(function (cell) { return cell.getAttribute("data-ref"); });
+    }
+
+    function rowRefs(grid, rowValue) {
+        return Array.from(
+            grid.querySelectorAll(".timeline-cell[data-src][data-row][data-ref]")
+        ).filter(function (cell) {
+            return cell.getAttribute("data-row") === rowValue;
+        }).map(function (cell) { return cell.getAttribute("data-ref"); });
+    }
+
+    function openBrowseCompare(grid, refs) {
+        const timeline = window.__phenotypicTimeline;
+        if (!timeline || !timeline.openCompareStrip || !refs.length) { return; }
+        timeline.openCompareStrip(refs, {
+            dziUrlBuilder: browseTimelineDziUrl,
+            titleFor: decodeBrowseRef,
+            cap: compareCap(grid),
+        });
+    }
+
+    // Capture phase wins before the shared controller's per-node bubble
+    // listeners. That keeps encoded transport refs out of visible titles while
+    // leaving the shared Results controller byte-identical and untouched.
+    document.addEventListener("click", function (ev) {
+        const target = ev.target;
+        if (!target || !target.closest) { return; }
+        const grid = browseGrid();
+        if (!grid) { return; }
+
+        const popout = target.closest(".timeline-cell-popout");
+        if (popout) {
+            const cell = popout.closest(".timeline-cell[data-ref]");
+            if (cell && grid.contains(cell) && publishPopout(cell)) {
+                ev.preventDefault();
+                ev.stopImmediatePropagation();
+            }
+            return;
+        }
+
+        const compareButton = target.closest("#browse-tl-compare-btn");
+        if (compareButton) {
+            openBrowseCompare(grid, selectedRefs(grid));
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
+            return;
+        }
+
+        const rowHeader = target.closest(".timeline-axis-label--y[data-row]");
+        if (rowHeader && grid.contains(rowHeader)) {
+            openBrowseCompare(grid, rowRefs(grid, rowHeader.getAttribute("data-row")));
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
+        }
+    }, true);
+
+    document.addEventListener("keydown", function (ev) {
+        if (ev.key !== "Enter" && ev.key !== " ") { return; }
+        const grid = browseGrid();
+        const viewport = grid && grid.closest(".browse-tl-viewport");
+        if (!grid || !viewport || !viewport.contains(document.activeElement)) { return; }
+        const focused = grid.querySelector(".timeline-cell--focused[data-ref]");
+        if (focused && publishPopout(focused)) {
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
+        }
+    }, true);
+
+    ns.resetTimelineRevision = function (containerId) {
+        const grid = document.getElementById(containerId || TL_GRID_ID);
+        if (grid) {
+            grid.querySelectorAll(".timeline-cell--selected").forEach(function (cell) {
+                cell.classList.remove("timeline-cell--selected");
+            });
+        }
+        const timeline = window.__phenotypicTimeline;
+        if (timeline && timeline.closeCompareStrip) {
+            timeline.closeCompareStrip();
+        }
+    };
 })();

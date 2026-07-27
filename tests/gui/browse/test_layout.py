@@ -115,13 +115,15 @@ def test_layout_has_view_mode_toggle_and_both_bodies() -> None:
     assert _ids.BROWSE_TL_NAV_LEFT in ids_found
     assert _ids.BROWSE_TL_NAV_RIGHT in ids_found
     assert _ids.BROWSE_TL_POSITION in ids_found
-    # Stores + pop-out bridge.
+    # Stores + revision-bound pop-out event.
     assert _ids.BROWSE_TL_STORE_TILE_SIZE in ids_found
     assert _ids.BROWSE_TL_STORE_WARNINGS in ids_found
     # The warnings store now has a UI sink (M3 — was a dead store).
     assert _ids.BROWSE_TL_WARNINGS_ALERT in ids_found
     assert _ids.BROWSE_TL_POPOUT_MODAL in ids_found
-    assert _ids.BROWSE_TL_POPOUT_INPUT in ids_found
+    assert _ids.BROWSE_TL_POPOUT_TITLE in ids_found
+    assert _ids.BROWSE_TL_POPOUT_EVENT in ids_found
+    assert _ids.BROWSE_TL_SOURCE_REVISION in ids_found
 
 
 def test_timeline_body_carries_surface_agnostic_controller_classes() -> None:
@@ -139,7 +141,6 @@ def test_timeline_body_carries_surface_agnostic_controller_classes() -> None:
         "timeline-nav-left",
         "timeline-nav-right",
         "timeline-position",
-        "timeline-popout-bridge",
     ):
         assert required in classes, f"missing controller class: {required}"
 
@@ -161,4 +162,5 @@ def test_timeline_grid_carries_static_focus_navigate_data_attrs() -> None:
     assert getattr(grid, "data-focus-margin") == str(TIMELINE_FOCUS_MARGIN)
     assert getattr(grid, "data-mount-cap") == str(TIMELINE_MOUNT_CAP)
     assert getattr(grid, "data-warm-concurrency") == str(TIMELINE_WARM_CONCURRENCY)
+    assert getattr(grid, "data-grid-revision") == ""
     assert not hasattr(grid, "data-margin-screens")

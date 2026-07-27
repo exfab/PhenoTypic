@@ -7,8 +7,11 @@ a browser smoke check.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 from collections.abc import Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from pathlib import PurePosixPath
@@ -230,6 +233,23 @@ def timeline_thumb_url(prefix: str, token: str, fetch_size: int) -> str:
     return f"{prefix}{BROWSE_THUMB_URL_SEGMENT}/{token}?size={fetch_size}"
 
 
+def timeline_revision_token(*parts: object) -> str:
+    """Return a deterministic identity for one rendered Timeline generation.
+
+    The token is browser-session state, not filesystem authority. It binds a
+    client event to the exact source, metadata, axis, pattern, and tile inputs
+    that produced the live grid so delayed events from a retired generation
+    fail closed.
+    """
+    encoded = json.dumps(
+        parts,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def render_timeline_grid(
     records: Sequence[dict[str, object]], *, display_size: int, prefix: str
 ) -> Any:
@@ -345,6 +365,75 @@ def warnings_alert_state(warnings: Sequence[str] | None) -> tuple[Any, bool]:
     return [html.Div(message) for message in items], True
 
 
+def source_reset_values(source_payload: object) -> tuple[object, ...]:
+    """Return the complete source-dependent Timeline reset transaction."""
+    revision = timeline_revision_token("source", source_payload)
+    return (
+        "folder",
+        "exif",
+        None,
+        None,
+        None,
+        "",
+        [],
+        pattern_preview_rows({}, "", False),
+        f"{TIMELINE_TILE_SIZE_DEFAULT} px",
+        TIMELINE_TILE_SIZE_DEFAULT,
+        html.Div("Loading current source…", className="text-muted"),
+        [],
+        f"{revision}:reset",
+        revision,
+        False,
+        None,
+        "",
+        None,
+    )
+
+
+def resolve_popout_event(
+    sandbox: SandboxRoot,
+    event: Mapping[str, object] | None,
+    *,
+    grid_revision: str | None,
+    source_payload: object,
+) -> dict[str, str] | None:
+    """Validate a popout event against its grid revision and current source.
+
+    Args:
+        sandbox: Frozen launch-time filesystem boundary.
+        event: Client event carrying an opaque token and grid revision.
+        grid_revision: Revision of the currently rendered grid.
+        source_payload: Current shared source descriptor.
+
+    Returns:
+        A ``{"token", "label"}`` payload for a current-source image, or
+        ``None`` when the event is stale, malformed, unavailable, or outside
+        the selected source.
+    """
+    if (
+        not isinstance(event, Mapping)
+        or not grid_revision
+        or event.get("revision") != grid_revision
+    ):
+        return None
+    token = event.get("token")
+    if not isinstance(token, str) or not token:
+        return None
+    try:
+        relative_path = _source_render.decode_token(token)
+        target = sandbox.resolve(relative_path)
+        source_root = resolve_source_image_root(sandbox, source_payload)
+        if source_root is None:
+            return None
+        target.relative_to(source_root)
+        if not target.is_file():
+            return None
+        label = target.relative_to(sandbox.root).as_posix()
+    except (OSError, RuntimeError, ValueError):
+        return None
+    return {"token": token, "label": label}
+
+
 # --------------------------------------------------------------------------
 # Callback registration
 # --------------------------------------------------------------------------
@@ -370,6 +459,66 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         row_style = hidden_row if dataset_row_hidden(datasets) else dict(DATASET_ROW_STYLE)
         hint_style = {"display": "none"} if datasets else {"display": "block"}
         return datasets, options, value, row_style, hint_style
+
+    @app.callback(
+        Output(ids.BROWSE_TL_ROW_SOURCE, "value"),
+        Output(ids.BROWSE_TL_TIME_SOURCE, "value"),
+        Output(ids.BROWSE_TL_ROW_CSV_COL, "value"),
+        Output(ids.BROWSE_TL_TIME_CSV_COL, "value"),
+        Output(ids.BROWSE_TL_CSV_IMAGE_COL, "value", allow_duplicate=True),
+        Output(ids.BROWSE_TL_PATTERN_INPUT, "value"),
+        Output(ids.BROWSE_TL_PATTERN_ADVANCED, "value"),
+        Output(
+            ids.BROWSE_TL_PATTERN_PREVIEW,
+            "children",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_TILE_SIZE_READOUT,
+            "children",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_STORE_TILE_SIZE,
+            "data",
+            allow_duplicate=True,
+        ),
+        Output(ids.BROWSE_TL_GRID, "children", allow_duplicate=True),
+        Output(
+            ids.BROWSE_TL_STORE_WARNINGS,
+            "data",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_GRID,
+            "data-grid-revision",
+            allow_duplicate=True,
+        ),
+        Output(ids.BROWSE_TL_SOURCE_REVISION, "data"),
+        Output(
+            ids.BROWSE_TL_POPOUT_MODAL,
+            "is_open",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_POPOUT_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_POPOUT_TITLE,
+            "children",
+            allow_duplicate=True,
+        ),
+        Output(ids.BROWSE_TL_POPOUT_EVENT, "data"),
+        Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _reset_timeline_for_source(source_payload: object):
+        # One callback response retires every source-derived authoring and
+        # rendered value. Downstream callbacks may then build a fresh matrix,
+        # but no old-source state remains authoritative in the interim.
+        return source_reset_values(source_payload)
 
     @app.callback(
         Output(ids.BROWSE_IMAGE_PICKER, "options"),
@@ -587,6 +736,7 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
     @app.callback(
         Output(ids.BROWSE_TL_GRID, "children"),
         Output(ids.BROWSE_TL_STORE_WARNINGS, "data"),
+        Output(ids.BROWSE_TL_GRID, "data-grid-revision"),
         Input(ids.BROWSE_VIEW_MODE_TOGGLE, "value"),
         Input(ids.BROWSE_TL_ROW_SOURCE, "value"),
         Input(ids.BROWSE_TL_TIME_SOURCE, "value"),
@@ -596,8 +746,9 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         Input(ids.BROWSE_TL_PATTERN_INPUT, "value"),
         Input(ids.BROWSE_TL_PATTERN_ADVANCED, "value"),
         Input(ids.BROWSE_TL_STORE_TILE_SIZE, "data"),
+        Input(ids.BROWSE_TL_SOURCE_REVISION, "data"),
+        Input(SHELL_METADATA_CSV_STORE, "data"),
         State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
-        State(SHELL_METADATA_CSV_STORE, "data"),
     )
     def _render_grid(
         mode: str | None,
@@ -609,15 +760,33 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         pattern: str | None,
         advanced_value,
         tile_size,
-        source_payload: object,
+        source_revision: str | None,
         metadata_payload: object,
+        source_payload: object,
     ):
         if mode != "timeline":
             raise dash.exceptions.PreventUpdate
+        revision = timeline_revision_token(
+            source_payload,
+            metadata_payload,
+            row_source,
+            time_source,
+            row_csv_col,
+            time_csv_col,
+            csv_image_col,
+            pattern,
+            advanced_value,
+            tile_size,
+            source_revision,
+        )
         resolved = resolve_source_image_root(sandbox, source_payload)
         src_root_rel = _src_root_rel(sandbox, source_payload)
         if resolved is None or src_root_rel is None:
-            return no_update, no_update
+            return (
+                html.Div("No current source.", className="text-muted"),
+                [],
+                revision,
+            )
         datasets = _source_lister.list_datasets(resolved)
 
         csv_rows: list[dict[str, str]] | None = None
@@ -657,7 +826,7 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         component = render_timeline_grid(
             records, display_size=display_size, prefix=prefix
         )
-        return component, warnings
+        return component, warnings, revision
 
     @app.callback(
         Output(ids.BROWSE_TL_WARNINGS_ALERT, "children"),
@@ -676,13 +845,17 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
     app.clientside_callback(
         """
         function(children) {
+            if (window.__phenotypicBrowse
+                && window.__phenotypicBrowse.resetTimelineRevision) {
+                window.__phenotypicBrowse.resetTimelineRevision("%s");
+            }
             if (window.__phenotypicTimeline) {
                 window.__phenotypicTimeline.attach("%s");
             }
             return "";
         }
         """
-        % ids.BROWSE_TL_GRID,
+        % (ids.BROWSE_TL_GRID, ids.BROWSE_TL_GRID),
         Output(ids.BROWSE_TL_GRID, "data-render-sync"),
         Input(ids.BROWSE_TL_GRID, "children"),
     )
@@ -690,31 +863,32 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
     # ----------------------------------------------------------------------
     # Single-image deep-zoom pop-out (Task 9)
     # ----------------------------------------------------------------------
-    # The shared JS→Dash bridge: timeline.js writes the clicked/focused cell's
-    # data-ref (token) into BROWSE_TL_POPOUT_INPUT (for both the hover ⤢ click
-    # AND Enter/Space on the focused cell). This server callback opens the modal
-    # and stores the {token, label} payload for the clientside OSD mount.
+    # browse.js publishes a revision-stamped event through Dash's supported
+    # set_props API. The event remains connected after source/metadata/grid
+    # revisions and wholesale DOM remounts because its listener is delegated
+    # on document rather than attached to one React-controlled input node.
     @app.callback(
         Output(ids.BROWSE_TL_POPOUT_MODAL, "is_open"),
         Output(ids.BROWSE_TL_POPOUT_STORE, "data"),
-        Input(ids.BROWSE_TL_POPOUT_INPUT, "value"),
+        Output(ids.BROWSE_TL_POPOUT_TITLE, "children"),
+        Input(ids.BROWSE_TL_POPOUT_EVENT, "data"),
+        State(ids.BROWSE_TL_GRID, "data-grid-revision"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
     )
-    def _open_popout(raw_value: str | None):
-        # The hidden bridge dcc.Input(value="") fires this on first page load
-        # with "" — guard so the modal never flickers open with an empty
-        # payload (C2/OQ-5).
-        if not raw_value:
+    def _open_popout(
+        event: Mapping[str, object] | None,
+        grid_revision: str | None,
+        source_payload: object,
+    ):
+        payload = resolve_popout_event(
+            sandbox,
+            event,
+            grid_revision=grid_revision,
+            source_payload=source_payload,
+        )
+        if payload is None:
             raise dash.exceptions.PreventUpdate
-        # Strip the `#<nonce>` uniqueness suffix timeline.js appends so a
-        # same-cell re-open still fires this callback (POP-OUT M5).
-        token = strip_popout_nonce(raw_value)
-        if not token:
-            raise dash.exceptions.PreventUpdate
-        try:
-            label = _source_render.decode_token(token)
-        except Exception:  # noqa: BLE001 - label is best-effort; token still mounts
-            label = token
-        return True, {"token": token, "label": label}
+        return True, payload, payload["label"]
 
     # Clientside: mount the deep-zoom OSD viewer into the pop-out modal's
     # dedicated OSD div. Dash requires every clientside callback to declare an
