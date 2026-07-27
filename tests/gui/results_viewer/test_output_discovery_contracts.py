@@ -129,6 +129,30 @@ def test_pure_consistency_classification_covers_all_states() -> None:
             manifest_total=2,
         )
     )
+    unreadable_owner = classify_output_consistency(
+        OutputCompletionEvidence(
+            standalone_bundle=False,
+            owner_present=True,
+            owner_readable=False,
+            manifest_present=True,
+            manifest_is_complete=True,
+            manifest_completed=2,
+            manifest_failed=0,
+            manifest_total=2,
+        )
+    )
+    unknown_owner = classify_output_consistency(
+        OutputCompletionEvidence(
+            standalone_bundle=False,
+            owner_present=True,
+            owner_status="future-state",
+            manifest_present=True,
+            manifest_is_complete=True,
+            manifest_completed=2,
+            manifest_failed=0,
+            manifest_total=2,
+        )
+    )
 
     assert coherent.state == "coherent"
     assert coherent.cache_reusable is True
@@ -140,6 +164,12 @@ def test_pure_consistency_classification_covers_all_states() -> None:
     assert unreadable_present_evidence.cache_reusable is False
     assert active_contradiction.state == "contradictory"
     assert active_contradiction.has_active_owner is True
+    assert unreadable_owner.state == "incomplete"
+    assert unreadable_owner.reasons == ("output owner record is unreadable",)
+    assert unknown_owner.state == "incomplete"
+    assert unknown_owner.reasons == (
+        "output owner status is missing or unknown",
+    )
 
 
 def test_o2_discovery_contracts_are_publicly_importable() -> None:

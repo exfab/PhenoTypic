@@ -60,6 +60,7 @@ from phenotypic.gui.results_viewer._filtered_state import (
     get_curated_frame,
 )
 from phenotypic.gui.results_viewer._mutation_guard import (
+    OutputMutationBlocked,
     output_mutations_disabled,
     require_output_mutation,
 )
@@ -472,6 +473,7 @@ def _rebuild_qc_and_refresh_pipeline(
     result = rebuild_qc_database(
         output_root.layout,
         expected_source_fingerprint=expected_source_fingerprint,
+        publication_guard=_qc_publication_is_safe,
     )
     from phenotypic._core._image_pipeline import ImagePipeline
 
@@ -480,6 +482,15 @@ def _rebuild_qc_and_refresh_pipeline(
         skip_unknown_analyzers=False,
     )
     return result
+
+
+def _qc_publication_is_safe() -> bool:
+    """Reauthorize immediately before an explicit QC artifact write."""
+    try:
+        require_output_mutation("QC database rebuild")
+    except OutputMutationBlocked:
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------

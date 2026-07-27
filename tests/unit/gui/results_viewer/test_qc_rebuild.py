@@ -210,6 +210,30 @@ def test_rebuild_refuses_active_owner_and_changed_source(tmp_path: Path) -> None
         )
 
 
+@pytest.mark.parametrize(
+    ("payload", "reason"),
+    [
+        ("{malformed", "unreadable"),
+        (json.dumps({"status": "future-state"}), "missing or unknown"),
+        (json.dumps({"not_status": "complete"}), "missing or unknown"),
+    ],
+)
+def test_rebuild_preflight_fails_closed_on_malformed_owner(
+    tmp_path: Path,
+    payload: str,
+    reason: str,
+) -> None:
+    layout = _seed_output(tmp_path)
+    owner = gui_launch_owner_path(tmp_path)
+    owner.parent.mkdir(parents=True, exist_ok=True)
+    owner.write_text(payload, encoding="utf-8")
+
+    preflight = preflight_qc_rebuild(layout)
+
+    assert preflight.ready is False
+    assert reason in " ".join(preflight.blockers)
+
+
 def test_rebuild_discards_staging_when_runner_changes_source(
     tmp_path: Path,
 ) -> None:

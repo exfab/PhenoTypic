@@ -39,6 +39,8 @@ class OutputCompletionEvidence:
     """Normalized completion evidence read from one output."""
 
     standalone_bundle: bool
+    owner_present: bool = False
+    owner_readable: bool = True
     owner_status: str | None = None
     manifest_present: bool = False
     manifest_readable: bool = True
@@ -105,6 +107,9 @@ def classify_output_consistency(
     owner_active = evidence.owner_status in _ACTIVE_OWNER_STATUSES
     owner_success = evidence.owner_status == "complete"
     owner_failed = evidence.owner_status in {"failed", "cancelled"}
+    owner_status_known = evidence.owner_status in (
+        _ACTIVE_OWNER_STATUSES | _TERMINAL_OWNER_STATUSES
+    )
 
     manifest_counts_valid = all(
         value is not None and value >= 0
@@ -142,6 +147,10 @@ def classify_output_consistency(
 
     if evidence.manifest_present and not evidence.manifest_readable:
         incompleteness.append("publication manifest is unreadable")
+    if evidence.owner_present and not evidence.owner_readable:
+        incompleteness.append("output owner record is unreadable")
+    elif evidence.owner_present and not owner_status_known:
+        incompleteness.append("output owner status is missing or unknown")
     if evidence.processing_state_present and not evidence.processing_state_readable:
         incompleteness.append("processing state is unreadable")
     if evidence.completion_marker_present and not evidence.completion_marker_valid:
@@ -270,7 +279,8 @@ def inspect_output_consistency(layout: BundleLayout) -> OutputConsistencyReport:
 
     output_root = layout.output_root
     resolved_progress = resolve_progress_dir(output_root)
-    owner_payload, _ = _read_json(gui_launch_owner_path(output_root))
+    owner_path = gui_launch_owner_path(output_root)
+    owner_payload, owner_readable = _read_json(owner_path)
     manifest_path = resolve_manifest_json_path(output_root)
     manifest_payload, manifest_readable = _read_json(manifest_path)
     completion_path = resolved_progress / RUN_COMPLETION_JSON
@@ -290,6 +300,8 @@ def inspect_output_consistency(layout: BundleLayout) -> OutputConsistencyReport:
     )
     evidence = OutputCompletionEvidence(
         standalone_bundle=False,
+        owner_present=owner_path.is_file(),
+        owner_readable=owner_readable,
         owner_status=_string_value(owner_payload, "status"),
         manifest_present=manifest_path.is_file(),
         manifest_readable=manifest_readable,

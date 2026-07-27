@@ -9,6 +9,7 @@ import os
 import re
 import uuid
 from pathlib import Path
+from collections.abc import Callable
 from typing import Any
 
 from phenotypic.sdk_._file_locking import exclusive_path_lock
@@ -19,6 +20,10 @@ from ._output import PlotOutput, normalize_plot_output
 logger = logging.getLogger(__name__)
 
 _UNSAFE_COMPONENT = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+class PlotPublicationBlocked(RuntimeError):
+    """Raised when a late publication predicate rejects a plot write."""
 
 
 def safe_path_component(value: str) -> str:
@@ -49,6 +54,7 @@ def publish_plot_output(
     *,
     plot_id: str,
     plot_class: str | None = None,
+    publication_guard: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     """Publish successful pages and an authoritative per-plot manifest.
 
@@ -61,18 +67,24 @@ def publish_plot_output(
         plot_id: Stable binding ID used in diagnostics.
         plot_class: Producer class name. Defaults to ``plot_id`` for direct
             writer calls.
+        publication_guard: Optional GUI compare-and-set predicate rechecked
+            immediately before directory creation and every canonical page
+            or manifest replacement. CLI callers omit it.
 
     Returns:
         JSON-native manifest payload.
     """
+    _require_plot_publication(publication_guard)
     output = normalize_plot_output(value)
     directory.mkdir(parents=True, exist_ok=True)
     with exclusive_path_lock(directory / ".publication.lock"):
+        _require_plot_publication(publication_guard)
         return _publish_plot_output_locked(
             output,
             directory,
             plot_id=plot_id,
             plot_class=plot_class,
+            publication_guard=publication_guard,
         )
 
 
@@ -82,6 +94,7 @@ def _publish_plot_output_locked(
     *,
     plot_id: str,
     plot_class: str | None,
+    publication_guard: Callable[[], bool] | None,
 ) -> dict[str, Any]:
     """Publish one plot generation while its directory lock is held."""
     used: dict[str, str] = {}
@@ -111,7 +124,12 @@ def _publish_plot_output_locked(
         try:
             backend = FigureAdapter.backend_name(page.figure)
             FigureAdapter.save_png(page.figure, temporary)
+            _require_plot_publication(publication_guard)
             os.replace(temporary, destination)
+        except PlotPublicationBlocked:
+            temporary.unlink(missing_ok=True)
+            FigureAdapter.close(page.figure)
+            raise
         except Exception as exc:  # noqa: BLE001 - plots are best-effort
             temporary.unlink(missing_ok=True)
             FigureAdapter.close(page.figure)
@@ -140,11 +158,29 @@ def _publish_plot_output_locked(
     }
     manifest_path = directory / "manifest.json"
     temporary_manifest = directory / f".manifest.{uuid.uuid4().hex}.tmp"
-    temporary_manifest.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
-    )
-    os.replace(temporary_manifest, manifest_path)
+    try:
+        temporary_manifest.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
+        )
+        _require_plot_publication(publication_guard)
+        os.replace(temporary_manifest, manifest_path)
+    finally:
+        temporary_manifest.unlink(missing_ok=True)
     return manifest
 
 
-__all__ = ["publish_plot_output", "safe_path_component"]
+def _require_plot_publication(
+    publication_guard: Callable[[], bool] | None,
+) -> None:
+    """Fail closed immediately before a canonical plot mutation."""
+    if publication_guard is not None and not publication_guard():
+        raise PlotPublicationBlocked(
+            "Plot publication blocked because its output snapshot changed."
+        )
+
+
+__all__ = [
+    "PlotPublicationBlocked",
+    "publish_plot_output",
+    "safe_path_component",
+]

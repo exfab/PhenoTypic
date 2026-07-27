@@ -1030,6 +1030,7 @@ def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
             pipeline,
             Path(output_root.root),
             qc_output_dir=output_root.layout.qc_dir,
+            publication_guard=_qc_mutations_allowed,
         )
     except Exception:  # noqa: BLE001 - recompute failure must not crash curation
         logger.warning(
@@ -1045,6 +1046,7 @@ def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
             output_root.layout,
             frame,
             successful,
+            publication_guard=_qc_mutations_allowed,
         )
     except OutputMutationBlocked as exc:
         logger.warning("%s", exc)

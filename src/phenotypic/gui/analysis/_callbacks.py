@@ -978,6 +978,13 @@ def _run_inline(recipe: Any, output_root: "OutputRoot") -> Any:
             layout,
             master_pl.to_pandas(),
             result,
+            publication_guard=lambda: _analysis_publication_is_current(
+                recipe=recipe,
+                recipe_revision=recipe_revision,
+                measurements=measurements,
+                layout=layout,
+                source_fingerprint=source_fingerprint,
+            ),
         )
     except OutputMutationBlocked as exc:
         logger.warning("%s", exc)

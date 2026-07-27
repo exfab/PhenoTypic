@@ -150,6 +150,9 @@ def _register_plot_refresh_callback(
                 pipeline,
                 output_root.layout,
                 measurements,
+                publication_guard=lambda: _output_publication_is_safe(
+                    "Measurement plot refresh"
+                ),
             )
         except OutputMutationBlocked as exc:
             logger.warning("%s", exc)
@@ -161,6 +164,15 @@ def _register_plot_refresh_callback(
             )
             return no_update
         return (revision or 0) + 1
+
+
+def _output_publication_is_safe(action: str) -> bool:
+    """Reauthorize immediately before a Results artifact replacement."""
+    try:
+        require_output_mutation(action)
+    except OutputMutationBlocked:
+        return False
+    return True
 
 
 def _register_clientside_callbacks(app: dash.Dash) -> None:

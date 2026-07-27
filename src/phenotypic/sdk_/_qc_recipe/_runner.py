@@ -52,7 +52,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 import duckdb
 import pandas as pd
@@ -118,12 +118,17 @@ class SuccessfulQcModule:
     table_spec: "QcTableSpec"
 
 
+class QcPublicationBlocked(RuntimeError):
+    """Raised when a late publication predicate rejects a QC write."""
+
+
 def run_qc(
     measurements_df: pd.DataFrame,
     pipeline: "ImagePipeline",
     output_dir: Path,
     *,
     qc_output_dir: Path | None = None,
+    publication_guard: Callable[[], bool] | None = None,
 ) -> list[SuccessfulQcModule]:
     """Run enabled QC checks and atomically (re)build ``qc.duckdb``.
 
@@ -158,6 +163,9 @@ def run_qc(
             ``qc_duckdb_path(output_dir)`` — this is what keeps a standalone
             deliverables bundle (where ``output_dir`` is the deliverables
             folder) from double-joining ``deliverables/``.
+        publication_guard: Optional GUI compare-and-set predicate. It is
+            rechecked under the writer lock immediately before every
+            canonical database replacement or removal. CLI callers omit it.
 
     Side effects:
         Writes or removes ``deliverables/qc/qc.duckdb`` (via a unique
@@ -173,14 +181,17 @@ def run_qc(
         target = Path(qc_output_dir) / QC_DUCKDB
     else:
         target = qc_duckdb_path(output_dir)
+    _require_qc_publication(publication_guard)
     target.parent.mkdir(parents=True, exist_ok=True)
 
     with qc_publication_lock(target), _writer_lock(target):
+        _require_qc_publication(publication_guard)
         entries = [e for e in pipeline.get_qc() if e.enabled]
         if not entries:
             logger.debug(
                 "No enabled QC entries; removing stale qc.duckdb if present"
             )
+            _require_qc_publication(publication_guard)
             _remove_qc_db_if_present(target)
             return []
 
@@ -207,6 +218,7 @@ def run_qc(
             logger.info(
                 "No QC check produced a table; removing stale qc.duckdb"
             )
+            _require_qc_publication(publication_guard)
             _remove_qc_db_if_present(target)
             return []
 
@@ -246,9 +258,11 @@ def run_qc(
                     "No QC module ingested cleanly; removing stale qc.duckdb"
                 )
                 _remove_tmp_if_present(tmp)
+                _require_qc_publication(publication_guard)
                 _remove_qc_db_if_present(target)
                 return []
 
+            _require_qc_publication(publication_guard)
             _atomic_replace_with_retry(tmp, target)
         except Exception:
             _remove_tmp_if_present(tmp)
@@ -256,6 +270,16 @@ def run_qc(
 
     logger.info("Wrote QC DuckDB for %d module(s) -> %s", written, target)
     return successful
+
+
+def _require_qc_publication(
+    publication_guard: Callable[[], bool] | None,
+) -> None:
+    """Fail closed immediately before a canonical QC mutation."""
+    if publication_guard is not None and not publication_guard():
+        raise QcPublicationBlocked(
+            "QC publication blocked because its output snapshot changed."
+        )
 
 
 def _writer_lock(target: Path) -> threading.Lock:

@@ -152,8 +152,22 @@ def _owner_blocker(layout: BundleLayout) -> str | None:
         return f"Output owner record is unreadable: {exc}"
     if not isinstance(payload, dict):
         return "Output owner record is not a JSON object."
-    if run_status_is_nonterminal(payload.get("status")):
-        return f"Output has a nonterminal owner ({payload.get('status')!s})."
+    status = payload.get("status")
+    known_statuses = {
+        "queued",
+        "submitting",
+        "running",
+        "reconciling",
+        "cancelling",
+        "unknown",
+        "complete",
+        "failed",
+        "cancelled",
+    }
+    if not isinstance(status, str) or status not in known_statuses:
+        return "Output owner status is missing or unknown."
+    if run_status_is_nonterminal(status):
+        return f"Output has a nonterminal owner ({status!s})."
     return None
 
 
@@ -325,11 +339,14 @@ def rebuild_qc_database(
     expected_source_fingerprint: str,
     now: datetime | None = None,
     runner: Callable[..., object] = run_qc,
+    publication_guard: Callable[[], bool] | None = None,
 ) -> QcRebuildResult:
     """Explicitly rebuild, validate, and atomically publish ``qc.duckdb``."""
     layout = _layout_for(source)
     target = layout.qc_dir / QC_DUCKDB
+    _require_rebuild_publication(publication_guard)
     with _output_owner_guard(layout), qc_publication_lock(target):
+        _require_rebuild_publication(publication_guard)
         current = preflight_qc_rebuild(layout)
         if current.source_fingerprint != expected_source_fingerprint:
             raise QcRebuildError(
@@ -375,6 +392,7 @@ def rebuild_qc_database(
         published = False
         receipt_published = False
         try:
+            _require_rebuild_publication(publication_guard)
             if original_bytes is not None:
                 backup_path = _backup_path(
                     target,
@@ -387,6 +405,7 @@ def rebuild_qc_database(
                 pipeline,
                 layout.output_root or layout.deliverables_base,
                 qc_output_dir=staging_dir,
+                publication_guard=publication_guard,
             )
             _validate_database(staged_db, enabled_ids)
             database_bytes = staged_db.read_bytes()
@@ -402,6 +421,7 @@ def rebuild_qc_database(
                     "the staged database was discarded."
                 )
 
+            _require_rebuild_publication(publication_guard)
             atomic_write_bytes(target, database_bytes)
             published = True
             _validate_database(target, enabled_ids)
@@ -429,6 +449,7 @@ def rebuild_qc_database(
                     else None
                 ),
             }
+            _require_rebuild_publication(publication_guard)
             atomic_write_json(receipt_path, receipt, sort_keys=False)
             receipt_published = True
             receipt_boundary_source = preflight_qc_rebuild(layout)
@@ -478,6 +499,16 @@ def rebuild_qc_database(
             raise QcRebuildError(f"QC rebuild failed and was rolled back: {exc}") from exc
         finally:
             shutil.rmtree(staging_dir, ignore_errors=True)
+
+
+def _require_rebuild_publication(
+    publication_guard: Callable[[], bool] | None,
+) -> None:
+    """Fail closed immediately before an explicit rebuild publication."""
+    if publication_guard is not None and not publication_guard():
+        raise QcRebuildError(
+            "QC rebuild publication blocked because its output snapshot changed."
+        )
 
 
 __all__ = [

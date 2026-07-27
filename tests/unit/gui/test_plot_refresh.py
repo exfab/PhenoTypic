@@ -49,7 +49,11 @@ def _layout(tmp_path: Path) -> SimpleNamespace:
 
 def test_measurement_refresh_passes_exact_current_frame(monkeypatch, tmp_path) -> None:
     spy = _CoordinatorSpy()
-    monkeypatch.setattr(_plot_refresh, "_coordinator", lambda *_args: spy)
+    monkeypatch.setattr(
+        _plot_refresh,
+        "_coordinator",
+        lambda *_args, **_kwargs: spy,
+    )
     frame = pd.DataFrame({"Size_Area": [1.0]})
 
     _plot_refresh.refresh_measurement_plots(object(), _layout(tmp_path), frame)
@@ -68,7 +72,11 @@ def test_measurement_refresh_fans_out_refreshed_analysis_dependencies(
 ) -> None:
     spy = _CoordinatorSpy()
     spy.refreshed_analysis_ids = ("LinearLagModel",)
-    monkeypatch.setattr(_plot_refresh, "_coordinator", lambda *_args: spy)
+    monkeypatch.setattr(
+        _plot_refresh,
+        "_coordinator",
+        lambda *_args, **_kwargs: spy,
+    )
     frame = pd.DataFrame({"Size_Area": [1.0]})
 
     _plot_refresh.refresh_measurement_plots(object(), _layout(tmp_path), frame)
@@ -84,7 +92,11 @@ def test_measurement_refresh_fans_out_refreshed_analysis_dependencies(
 
 def test_analysis_refresh_registers_exact_gui_result(monkeypatch, tmp_path) -> None:
     spy = _CoordinatorSpy()
-    monkeypatch.setattr(_plot_refresh, "_coordinator", lambda *_args: spy)
+    monkeypatch.setattr(
+        _plot_refresh,
+        "_coordinator",
+        lambda *_args, **_kwargs: spy,
+    )
     measurements = pd.DataFrame({"Size_Area": [1.0]})
     analysis = pd.DataFrame({"lag": [2.0]})
     producer = object()
@@ -116,7 +128,11 @@ def test_qc_refresh_threads_modules_database_and_review_snapshot(
     monkeypatch, tmp_path
 ) -> None:
     spy = _CoordinatorSpy()
-    monkeypatch.setattr(_plot_refresh, "_coordinator", lambda *_args: spy)
+    monkeypatch.setattr(
+        _plot_refresh,
+        "_coordinator",
+        lambda *_args, **_kwargs: spy,
+    )
     layout = _layout(tmp_path)
     layout.qc_review_state_path.parent.mkdir(parents=True)
     layout.qc_review_state_path.write_text(

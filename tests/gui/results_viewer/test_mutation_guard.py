@@ -6,10 +6,12 @@ import json
 from pathlib import Path
 from typing import Any, Iterator
 
+import matplotlib.pyplot as plt
 import polars as pl
 import pytest
 
 from phenotypic._core._image_pipeline import ImagePipeline
+from phenotypic.analysis import ReplicateAgreement
 from phenotypic.gui._binding_generation import (
     BINDING_GENERATION_PAYLOAD_KEY,
 )
@@ -37,12 +39,20 @@ from phenotypic.gui.results_viewer._viewer_card import (
     layout as build_viewer_card,
 )
 from phenotypic.schema import METADATA
+from phenotypic.plotting import PlotOutput, PlotPage, publish_plot_output
+from phenotypic.plotting._writer import PlotPublicationBlocked
 from phenotypic.sdk_ import (
+    gui_launch_owner_path,
     master_measurements_parquet_path,
     measurements_parquet_path,
     pipeline_json_path,
     resolve_manifest_json_path,
     run_completion_marker_path,
+)
+from phenotypic.sdk_._qc_recipe import QcRecipeEntry
+from phenotypic.sdk_._qc_recipe._runner import (
+    QcPublicationBlocked,
+    run_qc,
 )
 
 
@@ -51,6 +61,7 @@ def _seed_output(
     *,
     contradictory: bool,
     overlay_count: int = 2,
+    pipeline: ImagePipeline | None = None,
 ) -> None:
     """Write a small scientific payload with configurable completion evidence."""
     frame = pl.DataFrame(
@@ -69,7 +80,12 @@ def _seed_output(
     frame.write_parquet(master)
     frame.write_parquet(measurements_parquet_path(root))
     pipeline_json_path(root).write_text(
-        ImagePipeline(name="mutation-guard").to_json() or "{}",
+        (
+            pipeline
+            if pipeline is not None
+            else ImagePipeline(name="mutation-guard")
+        ).to_json()
+        or "{}",
         encoding="utf-8",
     )
     overlays = root / "deliverables" / "overlays" / "plate"
@@ -254,6 +270,125 @@ def test_guard_detects_completion_evidence_change_before_write(
         )
 
     assert _tree_snapshot(source) == before_attempt
+
+
+def test_real_qc_writer_rechecks_after_build_and_preserves_all_artifacts(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "qc-race"
+    pipeline = ImagePipeline(name="qc-race")
+    pipeline.set_qc(
+        [
+            QcRecipeEntry(
+                cls=ReplicateAgreement,
+                params={
+                    "on": "Size_Area",
+                    "groupby": ["MetadataExperiment_Dataset"],
+                    "min_replicates": 2,
+                },
+                instance_id="qc-SE-race0001",
+                enabled=True,
+            )
+        ]
+    )
+    _seed_output(source, contradictory=False, pipeline=pipeline)
+    owner = gui_launch_owner_path(source)
+    owner.parent.mkdir(parents=True, exist_ok=True)
+    owner.write_text('{"status":"complete"}', encoding="utf-8")
+    output = _discover(source)
+    frame = output.master_df.to_pandas()
+    run_qc(
+        frame,
+        pipeline,
+        source,
+        qc_output_dir=output.layout.qc_dir,
+    )
+    output = _discover(source)
+    guard = OutputMutationGuard(output, "generation-qc")
+    before_dirs, before_files = _tree_snapshot(source)
+    checks = 0
+
+    def _late_guard() -> bool:
+        nonlocal checks
+        checks += 1
+        if checks == 3:
+            owner.write_text("{malformed", encoding="utf-8")
+        try:
+            guard.authorize(
+                "QC recompute",
+                presented_generation="generation-qc",
+            )
+        except OutputMutationBlocked:
+            return False
+        return True
+
+    with pytest.raises(QcPublicationBlocked):
+        run_qc(
+            frame.assign(Size_Area=frame["Size_Area"] * 3),
+            pipeline,
+            source,
+            qc_output_dir=output.layout.qc_dir,
+            publication_guard=_late_guard,
+        )
+
+    after_dirs, after_files = _tree_snapshot(source)
+    owner_key = owner.relative_to(source).as_posix()
+    assert checks == 3
+    assert after_dirs == before_dirs
+    assert after_files.pop(owner_key)[0] == b"{malformed"
+    before_files.pop(owner_key)
+    assert after_files == before_files
+
+
+def test_real_plot_writer_rechecks_after_render_and_preserves_generation(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "plot-race"
+    _seed_output(source, contradictory=False)
+    owner = gui_launch_owner_path(source)
+    owner.parent.mkdir(parents=True, exist_ok=True)
+    owner.write_text('{"status":"complete"}', encoding="utf-8")
+    output = _discover(source)
+    plot_dir = output.layout.plots_dir / "guarded"
+    publish_plot_output(
+        PlotOutput(pages=(PlotPage("default", plt.figure()),)),
+        plot_dir,
+        plot_id="guarded",
+    )
+    output = _discover(source)
+    guard = OutputMutationGuard(output, "generation-plot")
+    before_dirs, before_files = _tree_snapshot(source)
+    checks = 0
+
+    def _late_guard() -> bool:
+        nonlocal checks
+        checks += 1
+        if checks == 3:
+            owner.write_text('{"status":"future-state"}', encoding="utf-8")
+        try:
+            guard.authorize(
+                "Measurement plot refresh",
+                presented_generation="generation-plot",
+            )
+        except OutputMutationBlocked:
+            return False
+        return True
+
+    with pytest.raises(PlotPublicationBlocked):
+        publish_plot_output(
+            PlotOutput(pages=(PlotPage("default", plt.figure()),)),
+            plot_dir,
+            plot_id="guarded",
+            publication_guard=_late_guard,
+        )
+
+    after_dirs, after_files = _tree_snapshot(source)
+    owner_key = owner.relative_to(source).as_posix()
+    assert checks == 3
+    assert after_dirs == before_dirs
+    assert after_files.pop(owner_key)[0] == b'{"status":"future-state"}'
+    before_files.pop(owner_key)
+    assert after_files == before_files
 
 
 def test_inconsistent_results_layout_keeps_views_and_disables_mutations(
