@@ -15,6 +15,10 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Literal, TypeAlias, TypedDict
 
+from phenotypic.gui._metadata_aliases import (
+    LEGACY_METADATA_IMAGE_FILE_NAME,
+    LEGACY_METADATA_IMAGE_NAME,
+)
 from phenotypic.gui.shell._sandbox import (
     SandboxRoot,
     _is_safe_relative_path,
@@ -55,8 +59,8 @@ MetadataImageIdentityState: TypeAlias = Literal[
 # spellings. This is the sole compatibility list for Browse metadata identity.
 METADATA_IMAGE_IDENTITY_COLUMNS = (
     str(METADATA.IMAGE_NAME),
-    "Metadata_ImageName",
-    "Metadata_ImageFileName",
+    LEGACY_METADATA_IMAGE_NAME,
+    LEGACY_METADATA_IMAGE_FILE_NAME,
     "ImageName",
 )
 
@@ -166,7 +170,7 @@ def normalize_metadata_image_identity(
     text = str(value).strip()
     if not text:
         return None
-    if column == "Metadata_ImageFileName":
+    if column == LEGACY_METADATA_IMAGE_FILE_NAME:
         return PurePosixPath(text.replace("\\", "/")).stem or None
     return text
 

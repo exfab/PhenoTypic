@@ -32,6 +32,10 @@ _LITERAL_PAT = re.compile(r"""["'](Metadata_[A-Za-z][A-Za-z0-9_]*)["']""")
 # conversion.
 _ALLOWED = {
     # generic-fallback + legacy shims (kept literals, load old data)
+    "gui/_metadata_aliases.py": {
+        "Metadata_ImageFileName",
+        "Metadata_ImageName",
+    },  # centralized historical metadata identity spellings
     "gui/results_viewer/_output_root.py": {"Metadata_ImageName"},   # _IMAGENAME_COL legacy master shim
     "gui/results_viewer/_curation_labels.py": {"Metadata_ImageFile"},  # _LEGACY_IMAGE_FILE curation shim
     "_cli/_cli_recompile_worker.py": {"Metadata_Well"},             # no WELL schema member

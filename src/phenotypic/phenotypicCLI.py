@@ -193,6 +193,7 @@ from phenotypic._cli._cli_validation import (
 from phenotypic._cli._cli_constants import MAX_SLURM_TIME_MINUTES
 from phenotypic.schema import EXPERIMENT_METADATA
 from phenotypic.sdk_ import (
+    DIR_LOGS,
     DIR_PHENOTYPIC,
     DIR_RESULTS,
     GUI_LAUNCH_OWNER_JSON,
@@ -379,22 +380,23 @@ def is_safe_gui_launch_state_entry(entry: Path) -> bool:
     """Return whether ``entry`` contains only the pre-launch GUI owner state.
 
     The GUI must persist its launch generation before starting the CLI. That
-    owner record and its interprocess lock are the only machine-state entries
-    permitted by the fresh-output guard. Existing processing state, scheduler
-    metadata, completion markers, symlinks, and unrecognized files remain
-    non-fresh.
+    owner record, its interprocess lock, and exact generation-matched submitter
+    logs are the only machine-state entries permitted by the fresh-output
+    guard. Existing processing state, scheduler metadata, completion markers,
+    symlinks, and unrecognized files remain non-fresh.
     """
     if entry.name != DIR_PHENOTYPIC or entry.is_symlink():
         return False
     try:
         if not entry.is_dir():
             return False
-        children = list(entry.iterdir())
-        if len(children) != 1:
+        children = {child.name: child for child in entry.iterdir()}
+        if not children or set(children) - {"progress", DIR_LOGS}:
             return False
-        progress = children[0]
+        progress = children.get("progress")
         if (
-            progress.name != "progress"
+            progress is None
+            or progress.name != "progress"
             or progress.is_symlink()
             or not progress.is_dir()
         ):
@@ -417,21 +419,59 @@ def is_safe_gui_launch_state_entry(entry: Path) -> bool:
         payload = json.loads(owner.read_text(encoding="utf-8"))
         if not isinstance(payload, dict) or payload.get("version") != 1:
             return False
-        UUID(str(payload.get("generation")))
+        generation = UUID(str(payload.get("generation")))
         output_dir = Path(str(payload.get("output_dir", ""))).resolve(
             strict=False
         )
         if output_dir != entry.parent.resolve(strict=False):
             return False
-        return (
+        owner_is_safe = (
             payload.get("mode") in {"local", "slurm", "validate"}
             and payload.get("status")
             in {"queued", "submitting", "running", "reconciling"}
             and isinstance(payload.get("command_digest"), str)
             and bool(payload["command_digest"])
         )
+        logs = children.get(DIR_LOGS)
+        return owner_is_safe and (
+            logs is None
+            or _is_safe_gui_submitter_logs(logs, generation)
+        )
     except (OSError, RuntimeError, ValueError, json.JSONDecodeError):
         return False
+
+
+def _is_safe_gui_submitter_logs(logs: Path, generation: UUID) -> bool:
+    """Return whether ``logs`` contains only exact pre-launch submitter logs.
+
+    Args:
+        logs: Candidate ``.phenotypic/logs`` directory.
+        generation: Generation from the validated GUI launch owner.
+
+    Returns:
+        Whether the directory is a real ``logs/gui`` tree containing only
+        generation-matched stdout and stderr submitter logs. The GUI directory
+        may be empty while reader threads are starting.
+    """
+    if logs.name != DIR_LOGS or logs.is_symlink() or not logs.is_dir():
+        return False
+    children = list(logs.iterdir())
+    if len(children) != 1:
+        return False
+    gui_logs = children[0]
+    if gui_logs.name != "gui" or gui_logs.is_symlink() or not gui_logs.is_dir():
+        return False
+    token = generation.hex
+    allowed = {
+        f"submitter.{token}.stdout.log",
+        f"submitter.{token}.stderr.log",
+    }
+    return all(
+        child.name in allowed
+        and not child.is_symlink()
+        and child.is_file()
+        for child in gui_logs.iterdir()
+    )
 
 
 def _format_slurm_key(key: str) -> str:
@@ -976,6 +1016,9 @@ def phenotypic_cli(
         uv run python -m phenotypic --mode process --pipeline pipe.json \\
             --input ./plates --output ./out --layer detect_mat --force-local
     """
+    previous_processing_generation = os.environ.get(
+        PROCESSING_GENERATION_ENV_VAR
+    )
     try:
         _reject_unexpected_positional_args(ctx.args)
 
@@ -1979,6 +2022,13 @@ def phenotypic_cli(
 
         traceback.print_exc()
         sys.exit(1)
+    finally:
+        if previous_processing_generation is None:
+            os.environ.pop(PROCESSING_GENERATION_ENV_VAR, None)
+        else:
+            os.environ[PROCESSING_GENERATION_ENV_VAR] = (
+                previous_processing_generation
+            )
 
 
 def _regenerate_missing_overlays(
