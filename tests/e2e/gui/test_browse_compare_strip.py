@@ -20,10 +20,9 @@ Fixture design notes:
   (the conftest's documented ``_build_sandbox`` + ``_start_live_server``
   pattern) so each test gets a pristine sandbox — the over-cap fixture must not
   inherit another test's seeded PNGs from the module-scoped default.
-* The base sandbox always seeds an empty ``plate1/image.tif`` stub, which the
-  timeline renders as a ``.``/``(root)`` row whose DZI legitimately 500s. Every
-  assertion therefore targets REAL seeded PNG rows (``[data-row="t0"]`` …),
-  never the stub row.
+* The base sandbox seeds a valid ``plate1/image.tif`` in the ``.``/``(root)``
+  row. Assertions target the additional seeded PNG rows
+  (``[data-row="t0"]`` …) so matrix counts stay scoped to each test's fixture.
 """
 from __future__ import annotations
 
@@ -43,8 +42,8 @@ pytestmark = pytest.mark.ci_flaky
 
 _VIEWPORT = {"width": 600, "height": 450}
 # 3x3 matrix of REAL PNGs (9 cells) — under the cap of 12, so the small
-# fixture's selection never trips the over-cap path. (Plus the always-present
-# ``.`` stub row from the base sandbox, which the tests skip.)
+# fixture's selection never trips the over-cap path. The always-present valid
+# root-row TIFF is intentionally outside the scoped PNG selection.
 _SMALL_FOLDERS = ("t0", "t1", "t2")
 _SMALL_NAMES = ("plateA.png", "plateB.png", "plateC.png")
 # Exactly 14 REAL PNG cells (t0..t6 x plateA, plateB) for the over-cap notice.
@@ -110,7 +109,7 @@ def _seed_and_open_timeline(page, fake_sandbox, hub_url, folders, names):
     page.click("text=Timeline")
     # Validate the fixture renders a non-empty grid before any test relies on it.
     page.wait_for_selector(".timeline-cell[data-src]", timeout=10_000)
-    # And that the real seeded PNG rows rendered (not just the ``.`` stub row).
+    # And that the test-scoped PNG rows rendered (not just the base root row).
     page.wait_for_selector('.timeline-cell[data-src][data-row="t0"]', timeout=10_000)
     return page
 
@@ -133,8 +132,9 @@ def live_browse_timeline_large(fake_sandbox, live_server, hub_url, page):
     """Browse open in Timeline mode over EXACTLY 14 real-PNG cells (over cap).
 
     ``t0..t6 x plateA, plateB`` = 7x2 = 14 > ``TIMELINE_COMPARE_CAP`` (12). The
-    exact count is load-bearing: the over-cap test selects only the real PNG
-    cells (skipping the ``.`` stub row) and asserts the full notice string
+    exact count is load-bearing: the over-cap test selects only the seeded PNG
+    cells (excluding the valid base root-row TIFF) and asserts the full notice
+    string
     ``"Showing first 12 of 14 — narrow the selection"``.
     """
     return _seed_and_open_timeline(
@@ -143,11 +143,11 @@ def live_browse_timeline_large(fake_sandbox, live_server, hub_url, page):
 
 
 def _real_png_cells(page):
-    """Populated cells in the real seeded PNG rows (skip the ``.`` stub row).
+    """Populated cells in the test-scoped PNG rows.
 
-    The base sandbox always seeds an empty ``plate1/image.tif`` whose ``.`` row
-    cell has a 500ing DZI; every test targets real rows (``t0..``) so OSD has
-    decodable sources.
+    The base sandbox also seeds a valid ``plate1/image.tif`` in the ``.`` row.
+    Tests target ``t0..`` rows so selection counts cover only the matrices
+    seeded by this module.
     """
     return page.query_selector_all(
             '.timeline-cell[data-src][data-row^="t"][data-ref]'
@@ -225,7 +225,7 @@ def test_pan_zoom_one_viewer_propagates_to_peers(live_browse_timeline) -> None:
 
 def test_row_header_click_opens_strip_for_that_row(live_browse_timeline) -> None:
     page = live_browse_timeline
-    # Click the REAL ``t0`` row header (skip the ``.`` stub row, whose DZI 500s).
+    # Click the test-scoped ``t0`` row header, excluding the base root row.
     sel = '.timeline-axis-label--y[data-row="t0"]'
     page.wait_for_selector(sel)
     page.click(sel)
@@ -243,7 +243,7 @@ def test_over_cap_selection_shows_notice(live_browse_timeline_large) -> None:
     page = live_browse_timeline_large  # exactly 14 real-PNG cells (see fixture)
     page.wait_for_selector('.timeline-cell[data-src][data-row="t0"]')
     # Select via JS by toggling the class on every REAL populated cell directly
-    # (skip the ``.`` stub row), NOT by physical clicks: in the no-scroll
+    # (exclude the valid base root row), NOT by physical clicks: in the no-scroll
     # centered window, off-window cells are positioned via CSS transform and are
     # not reliably hit-testable, so 14 physical shift-clicks would be flaky. The
     # selection source of truth is the .timeline-cell--selected class, so

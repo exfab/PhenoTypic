@@ -228,10 +228,9 @@ def test_focused_cell_has_visible_highlight(live_browse_timeline) -> None:
 
 def test_popout_opens_deep_zoom_on_hover_click(live_browse_timeline) -> None:
     page = live_browse_timeline
-    # Target a SINGLE real seeded PNG (t0/plateA.png at col 1) — the shared
-    # fixture's (0,0) ``image.tif`` is an empty stub whose DZI 500s, so the
-    # deep-zoom would have no canvas to mount. The explicit col-index keeps the
-    # selector unambiguous (one cell, not the whole t0 row).
+    # Target a SINGLE test-scoped PNG (t0/plateA.png at col 1). The explicit
+    # row and column keep the selector unambiguous and independent of the
+    # valid base-fixture TIFF in the root row.
     sel = '.timeline-cell[data-src][data-row="t0"][data-col-index="1"]'
     page.wait_for_selector(sel)
     cell = page.query_selector(sel)
@@ -258,8 +257,8 @@ def test_enter_opens_popout_for_focused_cell(live_browse_timeline) -> None:
     page = live_browse_timeline
     page.wait_for_selector(".timeline-cell--focused")
     page.click(".browse-tl-viewport")  # focus the viewport (not a text input)
-    # Move focus off the (0,0) empty-image.tif stub onto a real seeded PNG
-    # (row t0, col plateA.png) so the deep-zoom has a decodable source.
+    # Move focus from the base-fixture TIFF onto a test-scoped PNG
+    # (row t0, col plateA.png) to exercise the seeded matrix.
     page.keyboard.press("ArrowDown")
     page.keyboard.press("ArrowRight")
     page.wait_for_function(

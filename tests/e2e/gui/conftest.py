@@ -8,7 +8,8 @@ Fixtures shipped:
 
 * :func:`fake_sandbox` (module-scoped) — temp directory pre-populated
   with one image directory and one CLI output (master parquet +
-  ``results/`` + ``dashboard.html`` + ``progress/manifest.json``) so
+  ``results/`` + ``dashboard.html`` +
+  ``.phenotypic/progress/manifest.json``) so
   the file browser has something interesting to render and the Recent
   Runs panel rehydrates a row. Module scope so all tests in a single
   test module share one sandbox build (~0.5–1s saved per test).
@@ -123,8 +124,9 @@ def _build_sandbox(parent_dir: Path) -> Path:
                             dashboard.html
                         results/
                             Run_0/
-                        progress/
-                            manifest.json
+                        .phenotypic/
+                            progress/
+                                manifest.json
 
     Returns:
         Path to the populated ``sandbox`` directory.
@@ -133,9 +135,11 @@ def _build_sandbox(parent_dir: Path) -> Path:
     sandbox.mkdir()
 
     # Image dir — populates the sandbox capability summary's "Image dirs" count.
+    from PIL import Image as PILImage
+
     plate = sandbox / "plate1"
     plate.mkdir()
-    (plate / "image.tif").write_bytes(b"")
+    PILImage.new("RGB", (32, 32), (40, 80, 120)).save(plate / "image.tif")
 
     # CLI output dir under ``results/``. The classifier checks for
     # deliverables/master_measurements.parquet + a ``results/`` subdir.
