@@ -19,6 +19,7 @@ The helpers accept either a polars or a pandas frame for the master.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -29,6 +30,7 @@ from phenotypic.sdk_ import (
     measurements_csv_path,
     measurements_parquet_path,
     pipeline_json_path,
+    resolve_manifest_json_path,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -112,6 +114,37 @@ def write_dashboard(root: Path, *, execution_mode: str = "local") -> Path:
     from phenotypic.sdk_ import dashboard_html_path
 
     return dashboard_html_path(root)
+
+
+def write_complete_manifest(root: Path, *, total_images: int) -> Path:
+    """Publish coherent terminal manifest evidence for a synthetic output.
+
+    Args:
+        root: Synthetic CLI output root.
+        total_images: Non-negative completed image count.
+
+    Returns:
+        The production-resolved manifest path.
+
+    Raises:
+        ValueError: If ``total_images`` is negative.
+    """
+    if total_images < 0:
+        raise ValueError("total_images must be non-negative")
+    manifest = resolve_manifest_json_path(root)
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        json.dumps(
+            {
+                "is_complete": True,
+                "completed": total_images,
+                "failed": 0,
+                "total_images": total_images,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return manifest
 
 
 def seed_output_dir(

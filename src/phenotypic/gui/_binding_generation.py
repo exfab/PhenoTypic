@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Collection
 from typing import TYPE_CHECKING, Any, Callable
 
 from flask import g, jsonify, request
@@ -112,19 +113,37 @@ def install_bound_output_callback_guard(
     app: "dash.Dash",
     *,
     mutation_is_safe: Callable[[], bool],
-    status_output_id: str,
+    protected_output_ids: Collection[str],
 ) -> None:
-    """Reject non-status callbacks when the bound output is unsafe to mutate."""
+    """Reject persistent mutation callbacks when the output is unsafe.
+
+    Read-only Results and Analysis interactions must remain available for
+    incomplete or contradictory outputs. The transport fence therefore
+    protects only callbacks whose output identifiers are explicitly listed,
+    rather than rejecting every callback except the snapshot-status poll.
+
+    Args:
+        app: Dash app whose Flask server receives callback requests.
+        mutation_is_safe: Fresh authorization predicate for one request.
+        protected_output_ids: Output component identifiers owned by durable
+            mutation callbacks.
+    """
+    protected = frozenset(protected_output_ids)
+    if not protected:
+        raise ValueError("protected_output_ids must not be empty")
 
     @app.server.before_request
     def _reject_unsafe_bound_output_callback() -> Any:
         if request.path.rstrip("/") != _DASH_CALLBACK_PATH:
             return None
-        if mutation_is_safe():
-            return None
         payload = request.get_json(silent=True)
         output = payload.get("output") if isinstance(payload, dict) else None
-        if isinstance(output, str) and status_output_id in output:
+        if not isinstance(output, str) or not _targets_protected_output(
+            output,
+            protected,
+        ):
+            return None
+        if mutation_is_safe():
             return None
         return (
             jsonify(
@@ -139,6 +158,22 @@ def install_bound_output_callback_guard(
             ),
             423,
         )
+
+
+def _targets_protected_output(
+    callback_output: str,
+    protected_output_ids: frozenset[str],
+) -> bool:
+    """Return whether a Dash callback key has one exact protected output."""
+    for segment in callback_output.strip(".").split("..."):
+        target = segment.strip(".").split("@", 1)[0]
+        try:
+            component_id, _property = target.rsplit(".", 1)
+        except ValueError:
+            continue
+        if component_id in protected_output_ids:
+            return True
+    return False
 
 
 def install_binding_generation_guard(

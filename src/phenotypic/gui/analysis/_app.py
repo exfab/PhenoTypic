@@ -38,6 +38,7 @@ from phenotypic.gui._async_binding_client import (
 from phenotypic.gui._binding_generation import (
     BindingRequestFence,
     binding_generation_hooks,
+    install_bound_output_callback_guard,
     install_binding_generation_guard,
 )
 from dash import Input, Output, State
@@ -161,6 +162,19 @@ def create_app(
         binding_generation=binding_generation,
     )
     app.server.config[CFG_OUTPUT_MUTATION_GUARD] = mutation_guard
+
+    def _analysis_mutation_is_safe() -> bool:
+        try:
+            mutation_guard.authorize("Analysis mutation")
+        except OutputMutationBlocked:
+            return False
+        return True
+
+    install_bound_output_callback_guard(
+        app,
+        mutation_is_safe=_analysis_mutation_is_safe,
+        protected_output_ids=(analysis_ids.ANALYSIS_PIPELINE_EVENT_STORE,),
+    )
     if output_root.snapshot.active_run:
         app.layout = build_active_snapshot_layout(
             output_root,

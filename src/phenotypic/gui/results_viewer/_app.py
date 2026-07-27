@@ -61,6 +61,7 @@ from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui._binding_generation import (
     BindingRequestFence,
     binding_generation_hooks,
+    install_bound_output_callback_guard,
     install_binding_generation_guard,
 )
 from phenotypic.gui._schema_cache import MeasurementSchema
@@ -87,7 +88,10 @@ from phenotypic.gui.results_viewer._layout import (
     build_app_layout,
     build_empty_state_layout,
 )
-from phenotypic.gui.results_viewer._mutation_guard import OutputMutationGuard
+from phenotypic.gui.results_viewer._mutation_guard import (
+    OutputMutationBlocked,
+    OutputMutationGuard,
+)
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer.colony_view import (
     _crop_routes as colony_crop_routes,
@@ -186,9 +190,26 @@ def create_app(
         context="Results session pre-read",
     )
     app.server.config[CFG_OUTPUT_ROOT] = output_root
-    app.server.config[CFG_OUTPUT_MUTATION_GUARD] = OutputMutationGuard(
+    mutation_guard = OutputMutationGuard(
         output_root=output_root,
         binding_generation=binding_generation,
+    )
+    app.server.config[CFG_OUTPUT_MUTATION_GUARD] = mutation_guard
+
+    def _results_mutation_is_safe() -> bool:
+        try:
+            mutation_guard.authorize("Results mutation")
+        except OutputMutationBlocked:
+            return False
+        return True
+
+    install_bound_output_callback_guard(
+        app,
+        mutation_is_safe=_results_mutation_is_safe,
+        protected_output_ids=(
+            ids.STORE_REMOVED_KEYS,
+            ids.STORE_QC_RECIPE_REVISION,
+        ),
     )
     if output_root.snapshot.active_run:
         app.layout = build_active_snapshot_layout(

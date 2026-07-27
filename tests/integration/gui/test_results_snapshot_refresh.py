@@ -39,7 +39,7 @@ from phenotypic.gui.shell._binding import BindingCoordinator
 from phenotypic.gui.shell._session import ToolSession
 from phenotypic.schema import METADATA
 from phenotypic.sdk_ import atomic_write_json, gui_launch_owner_path
-from tests._output_layout import seed_output_dir
+from tests._output_layout import seed_output_dir, write_complete_manifest
 
 
 def _seed_output(parent: Path, name: str = "output") -> Path:
@@ -66,6 +66,7 @@ def _seed_output(parent: Path, name: str = "output") -> Path:
     overlay = output / "deliverables" / "overlays" / "dataset" / "plate.png"
     overlay.parent.mkdir(parents=True, exist_ok=True)
     overlay.write_bytes(b"overlay")
+    write_complete_manifest(output, total_images=1)
     return output
 
 

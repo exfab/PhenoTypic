@@ -35,7 +35,11 @@ from phenotypic.sdk_ import (
     measurements_parquet_path,
 )
 
-from tests._output_layout import write_master, write_measurements_mirror
+from tests._output_layout import (
+    write_complete_manifest,
+    write_master,
+    write_measurements_mirror,
+)
 from phenotypic.schema import METADATA
 
 
@@ -71,6 +75,7 @@ def output_root(tmp_path: Path) -> OutputRoot:
     overlays.mkdir(parents=True)
     for stem in ("img-A", "img-B"):
         PILImage.new("RGB", (64, 64), (128, 128, 128)).save(overlays / f"{stem}.png")
+    write_complete_manifest(tmp_path, total_images=2)
 
     return OutputRoot.discover(
         tmp_path,
