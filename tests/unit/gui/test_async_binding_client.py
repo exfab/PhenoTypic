@@ -189,6 +189,149 @@ def test_poll_updates_progress_then_navigates_only_on_success() -> None:
     assert succeeded["navigations"] == ["/analysis/"]
 
 
+@pytest.mark.parametrize("status_code", [502, 503, 504])
+def test_transient_poll_failure_retains_active_job_then_reaches_success(
+    status_code: int,
+) -> None:
+    """A proxy failure is not authoritative terminal binding state."""
+    source = binding_poll_callback_source()
+    active = {
+        "job_id": "job-transient",
+        "poll_path": "/sandbox/api/viewer/output-root/jobs/job-transient",
+        "cancel_path": "/sandbox/api/viewer/output-root/jobs/job-transient",
+        "redirect_url": "/results/",
+        "job": {
+            "job_id": "job-transient",
+            "status": "running",
+            "phase": "measurements",
+            "detail": "Loading measurements.",
+            "completed": 10,
+            "total": 100,
+            "terminal": False,
+        },
+    }
+    unavailable = _evaluate_callback(
+        source,
+        invocation=f"callback(1, {json.dumps(active)})",
+        responses=[
+            {
+                "ok": False,
+                "status": status_code,
+                "body": {"error": "proxy temporarily unavailable"},
+            }
+        ],
+    )
+
+    assert unavailable["result"]["job"] == active["job"]
+    assert unavailable["result"]["job"]["terminal"] is False
+    assert unavailable["result"]["poll_error"] == (
+        "proxy temporarily unavailable"
+    )
+    assert unavailable["navigations"] == []
+
+    succeeded = _evaluate_callback(
+        source,
+        invocation=f"callback(2, {json.dumps(unavailable['result'])})",
+        responses=[
+            {
+                "ok": True,
+                "status": 200,
+                "body": {
+                    "status": "succeeded",
+                    "job": {
+                        "job_id": "job-transient",
+                        "status": "succeeded",
+                        "phase": "complete",
+                        "detail": "Results and Analysis binding published.",
+                        "terminal": True,
+                    },
+                },
+            }
+        ],
+    )
+    assert succeeded["result"]["job"]["status"] == "succeeded"
+    assert succeeded["result"]["poll_error"] is None
+    assert succeeded["navigations"] == ["/results/"]
+
+
+def test_concurrent_poll_ticks_issue_only_one_get() -> None:
+    """The browser-side in-flight fence bounds polling to one GET per job."""
+    if _NODE is None:
+        pytest.skip("Node.js is required for JavaScript callback behavior tests")
+    source = binding_poll_callback_source()
+    active = {
+        "job_id": "job-overlap",
+        "poll_path": "/sandbox/api/viewer/output-root/jobs/job-overlap",
+        "cancel_path": "/sandbox/api/viewer/output-root/jobs/job-overlap",
+        "redirect_url": "/results/",
+        "job": {
+            "job_id": "job-overlap",
+            "status": "running",
+            "phase": "inventory",
+            "terminal": False,
+        },
+    }
+    script = f"""
+    const callback = ({source});
+    const noUpdate = Symbol("no_update");
+    let calls = 0;
+    let activeFetches = 0;
+    let maxActiveFetches = 0;
+    global.window = {{
+        dash_clientside: {{no_update: noUpdate}},
+        location: {{assign: () => {{}}}},
+        setTimeout: setTimeout,
+    }};
+    global.fetch = async () => {{
+        calls += 1;
+        activeFetches += 1;
+        maxActiveFetches = Math.max(maxActiveFetches, activeFetches);
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        activeFetches -= 1;
+        return {{
+            ok: true,
+            status: 200,
+            json: async () => ({{
+                job: {{
+                    job_id: "job-overlap",
+                    status: "running",
+                    phase: "inventory",
+                    terminal: false,
+                }},
+            }}),
+        }};
+    }};
+    (async () => {{
+        const state = {json.dumps(active)};
+        const results = await Promise.all([
+            callback(1, state),
+            callback(2, state),
+        ]);
+        process.stdout.write(JSON.stringify({{
+            calls,
+            maxActiveFetches,
+            noUpdateCount: results.filter((value) => value === noUpdate).length,
+        }}));
+    }})().catch((error) => {{
+        console.error(error);
+        process.exit(1);
+    }});
+    """
+    completed = subprocess.run(
+        [_NODE, "-e", script],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    observed = json.loads(completed.stdout)
+
+    assert observed == {
+        "calls": 1,
+        "maxActiveFetches": 1,
+        "noUpdateCount": 1,
+    }
+
+
 def test_cancel_uses_delete_and_returns_terminal_state() -> None:
     """The sidebar cancellation action uses the advertised DELETE path."""
     source = binding_cancel_callback_source()

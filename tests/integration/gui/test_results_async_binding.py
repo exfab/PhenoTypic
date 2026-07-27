@@ -291,38 +291,55 @@ def test_candidate_construction_does_not_hold_publication_lock(
         manager.shutdown()
 
 
-def test_cancelled_synthetic_large_bind_cannot_delay_new_small_bind(
+def test_latest_bind_advances_after_one_of_two_saturated_workers_checkpoints(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A cancelled blocked discovery cannot occupy the newer request's worker."""
-    large = _seed_output(tmp_path, "synthetic-large")
+    """One cooperative checkpoint frees capacity for latest-request work."""
+    large_a = _seed_output(tmp_path, "instrumented-large-a")
+    large_b = _seed_output(tmp_path, "instrumented-large-b")
     small = _seed_output(tmp_path, "synthetic-small")
-    large_entered = threading.Event()
-    release_large = threading.Event()
+    entered = {
+        large_a: threading.Event(),
+        large_b: threading.Event(),
+    }
+    release_checkpoint = {
+        large_a: threading.Event(),
+        large_b: threading.Event(),
+    }
+    cancelled_at_checkpoint: list[Path] = []
     real_discover = results_viewer_module.OutputRoot.discover
 
-    def _synthetic_discover(root: Path, **kwargs: Any) -> Any:
-        if root == large:
+    def _instrumented_discover(root: Path, **kwargs: Any) -> Any:
+        if root in entered:
             progress_callback = kwargs.get("progress_callback")
-            if progress_callback is not None:
-                progress_callback(
-                    OutputDiscoveryProgress(
-                        phase="inventory",
-                        detail="Scanning 1,000,000 synthetic processing files.",
-                        completed=250_000,
-                        total=1_000_000,
+            # Model a large iterator reaching a regular cancellation
+            # checkpoint after four bounded inventory batches.
+            for completed in (1_024, 2_048, 3_072, 4_096):
+                if progress_callback is not None:
+                    progress_callback(
+                        OutputDiscoveryProgress(
+                            phase="inventory",
+                            detail=(
+                                f"Scanned {completed} of 16,384 processing "
+                                "entries."
+                            ),
+                            completed=completed,
+                            total=16_384,
+                        )
                     )
-                )
-            large_entered.set()
-            assert release_large.wait(5.0)
-            kwargs["cancellation"].raise_if_cancelled()
+            entered[root].set()
+            assert release_checkpoint[root].wait(5.0)
+            cancellation = kwargs["cancellation"]
+            if cancellation.cancelled:
+                cancelled_at_checkpoint.append(root)
+            cancellation.raise_if_cancelled()
         return real_discover(root, **kwargs)
 
     monkeypatch.setattr(
         results_viewer_module.OutputRoot,
         "discover",
-        _synthetic_discover,
+        _instrumented_discover,
     )
     shell_app, _viewer_session = compose_hub(
         SandboxRoot.from_path(tmp_path),
@@ -333,18 +350,22 @@ def test_cancelled_synthetic_large_bind_cannot_delay_new_small_bind(
     ]
     client = shell_app.server.test_client()
     try:
-        old = client.post(
+        first = client.post(
             "/sandbox/api/viewer/output-root",
-            json={"path": large.name},
+            json={"path": large_a.name},
         ).get_json()
-        assert large_entered.wait(5.0)
-        progress = client.get(old["poll_path"]).get_json()["job"]
-        assert (progress["completed"], progress["total"]) == (
-            250_000,
-            1_000_000,
-        )
-        assert client.delete(old["cancel_path"]).get_json()["status"] == (
-            "cancelled"
+        assert entered[large_a].wait(5.0)
+
+        second = client.post(
+            "/sandbox/api/viewer/output-root",
+            json={"path": large_b.name},
+        ).get_json()
+        assert entered[large_b].wait(5.0)
+        assert manager.get(first["job_id"]).status == "superseded"  # type: ignore[union-attr]
+        second_progress = client.get(second["poll_path"]).get_json()["job"]
+        assert (second_progress["completed"], second_progress["total"]) == (
+            4_096,
+            16_384,
         )
 
         started = time.monotonic()
@@ -352,18 +373,30 @@ def test_cancelled_synthetic_large_bind_cannot_delay_new_small_bind(
             "/sandbox/api/viewer/output-root",
             json={"path": small.name},
         ).get_json()
+        newest_snapshot = manager.get(newer["job_id"])
+        assert newest_snapshot is not None
+        assert newest_snapshot.status == "queued"
+        assert manager.get(second["job_id"]).status == "superseded"  # type: ignore[union-attr]
+
+        # Both workers are physically occupied. Releasing only A lets its
+        # cancellation checkpoint retire that superseded iterator; the freed
+        # worker must immediately take the latest pending small request while
+        # B remains blocked.
+        release_checkpoint[large_a].set()
         complete = _poll_terminal(client, newer["poll_path"], timeout=3.0)
         elapsed = time.monotonic() - started
 
         assert complete["status"] == "succeeded"
         assert complete["abs_path"] == str(small)
         assert elapsed < 3.0
-        assert release_large.is_set() is False
+        assert release_checkpoint[large_b].is_set() is False
+        assert cancelled_at_checkpoint == [large_a]
         assert shell_app.server.config[CFG_RESULTS_BINDING_STATE][
             "bound_path"
         ] == small
     finally:
-        release_large.set()
+        release_checkpoint[large_a].set()
+        release_checkpoint[large_b].set()
         manager.shutdown()
 
 

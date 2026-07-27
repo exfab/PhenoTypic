@@ -49,8 +49,12 @@ def test_binding_progress_and_cancel_are_visible_in_shared_sidebar(
 ) -> None:
     """The browser renders one running poll and cancels through DELETE."""
     job_path = "/sandbox/api/viewer/output-root/jobs/synthetic-large"
+    progress_gets = {"results": 0, "analysis": 0}
+    active_gets = 0
+    max_active_gets = 0
 
     def _binding_route(route) -> None:
+        nonlocal active_gets, max_active_gets
         method = route.request.method
         if method == "POST":
             route.fulfill(
@@ -60,9 +64,9 @@ def test_binding_progress_and_cancel_are_visible_in_shared_sidebar(
                     '{"status":"running","job_id":"synthetic-large",'
                     f'"poll_path":"{job_path}","cancel_path":"{job_path}",'
                     '"deduplicated":false,"job":{'
-                    '"job_id":"synthetic-large","status":"running",'
-                    '"phase":"inventory","detail":"Scanning synthetic files.",'
-                    '"completed":25,"total":100,"terminal":false,'
+                    '"job_id":"synthetic-large","status":"queued",'
+                    '"phase":"queued","detail":"Waiting for a worker.",'
+                    '"completed":0,"total":100,"terminal":false,'
                     '"target":"/sandbox/results/CliOutputExample"}}'
                 ),
             )
@@ -81,18 +85,37 @@ def test_binding_progress_and_cancel_are_visible_in_shared_sidebar(
                 ),
             )
         else:
-            route.fulfill(
-                status=200,
-                content_type="application/json",
-                body=(
-                    '{"status":"running","job_id":"synthetic-large",'
-                    f'"poll_path":"{job_path}","cancel_path":"{job_path}",'
-                    '"job":{"job_id":"synthetic-large","status":"running",'
-                    '"phase":"inventory","detail":"Scanning synthetic files.",'
-                    '"completed":25,"total":100,"terminal":false,'
-                    '"target":"/sandbox/results/CliOutputExample"}}'
-                ),
-            )
+            active_gets += 1
+            max_active_gets = max(max_active_gets, active_gets)
+            try:
+                referer = route.request.headers.get("referer", "")
+                on_analysis = "/analysis/" in referer
+                mount = "analysis" if on_analysis else "results"
+                progress_gets[mount] += 1
+                phase = "indexing" if on_analysis else "inventory"
+                detail = (
+                    "Indexing viewer rows."
+                    if on_analysis
+                    else "Scanning synthetic files."
+                )
+                completed = 75 if on_analysis else 25
+                route.fulfill(
+                    status=200,
+                    content_type="application/json",
+                    body=(
+                        '{"status":"running","job_id":"synthetic-large",'
+                        f'"poll_path":"{job_path}",'
+                        f'"cancel_path":"{job_path}",'
+                        '"job":{"job_id":"synthetic-large",'
+                        '"status":"running",'
+                        f'"phase":"{phase}","detail":"{detail}",'
+                        f'"completed":{completed},"total":100,'
+                        '"terminal":false,'
+                        '"target":"/sandbox/results/CliOutputExample"}}'
+                    ),
+                )
+            finally:
+                active_gets -= 1
 
     page.route("**/sandbox/api/viewer/output-root**", _binding_route)
     page.goto(hub_url + "/results/")
@@ -121,6 +144,7 @@ def test_binding_progress_and_cancel_are_visible_in_shared_sidebar(
     expect(page.locator("#shell-results-binding-progress-label")).to_have_text(
         "25 of 100"
     )
+    assert progress_gets["results"] >= 1
     expect(page.locator("#shell-results-binding-cancel")).to_be_enabled()
 
     # The session-backed shell state survives a cross-mount hard navigation,
@@ -130,9 +154,14 @@ def test_binding_progress_and_cancel_are_visible_in_shared_sidebar(
         timeout=5_000
     )
     expect(page.locator("#shell-results-binding-status")).to_have_text("Active")
-    expect(page.locator("#shell-results-binding-progress-label")).to_have_text(
-        "25 of 100"
+    expect(page.locator("#shell-results-binding-phase")).to_have_text(
+        "Indexing viewer data"
     )
+    expect(page.locator("#shell-results-binding-progress-label")).to_have_text(
+        "75 of 100"
+    )
+    assert progress_gets["analysis"] >= 1
+    assert max_active_gets == 1
 
     with page.expect_request(
         lambda request: request.method == "DELETE"

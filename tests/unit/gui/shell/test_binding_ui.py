@@ -15,6 +15,7 @@ def test_active_progress_surfaces_phase_counts_and_deduplication() -> None:
     state = binding_ui_state(
         {
             "deduplicated": True,
+            "poll_error": "HTTP 503",
             "job": {
                 "status": "running",
                 "phase": "inventory",
@@ -37,6 +38,7 @@ def test_active_progress_surfaces_phase_counts_and_deduplication() -> None:
     assert "Reused the active request." in state.diagnostic
     assert "Stable-read attempt 2." in state.diagnostic
     assert "Verified inventory cache hit." in state.diagnostic
+    assert "Progress check unavailable: HTTP 503" in state.diagnostic
 
 
 @pytest.mark.parametrize(

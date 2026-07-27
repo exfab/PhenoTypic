@@ -194,19 +194,28 @@ def binding_poll_callback_source() -> str:
             if (!response.ok) {
                 const message = data.error || ("HTTP " + response.status);
                 return Object.assign({}, current, {
-                    status: "failed",
-                    job: Object.assign({}, job, {
-                        status: "failed",
-                        phase: "failed",
-                        detail: "Binding progress is unavailable.",
-                        terminal: true,
-                        error_kind: "unavailable",
-                        error: message,
-                    }),
+                    poll_error: message,
+                });
+            }
+            const polledJob = data && data.job ? data.job : data;
+            const polledStatus = polledJob && polledJob.status;
+            if (
+                !polledJob ||
+                ![
+                    "queued",
+                    "running",
+                    "succeeded",
+                    "failed",
+                    "cancelled",
+                    "superseded",
+                ].includes(polledStatus)
+            ) {
+                return Object.assign({}, current, {
+                    poll_error: "Binding progress response was not authoritative.",
                 });
             }
             const updated = Object.assign({}, current, data, {
-                job: data && data.job ? data.job : data,
+                job: polledJob,
                 poll_error: null,
             });
             if (updated.job && updated.job.status === "succeeded") {
