@@ -38,7 +38,11 @@ from phenotypic.gui.shell._app import compose_hub
 from phenotypic.gui.shell._binding import BindingCoordinator
 from phenotypic.gui.shell._session import ToolSession
 from phenotypic.schema import METADATA
-from phenotypic.sdk_ import atomic_write_json, gui_launch_owner_path
+from phenotypic.sdk_ import (
+    atomic_write_json,
+    gui_launch_owner_path,
+    resolve_manifest_json_path,
+)
 from tests._output_layout import seed_output_dir, write_complete_manifest
 
 
@@ -261,6 +265,36 @@ def _callback_probe(
         "inputs": [],
         "state": [],
         "changedPropIds": [],
+    }
+    if generation is not None:
+        payload[BINDING_GENERATION_PAYLOAD_KEY] = generation
+    return app.server.test_client().post(
+        "/_dash-update-component",
+        json=payload,
+    )
+
+
+def _poll_snapshot_status(
+    app: Any,
+    *,
+    status_id: str,
+    interval_id: str,
+    generation: str | None,
+) -> Any:
+    """Poll one Results or Analysis snapshot-status callback."""
+    status_key = _find_output_key(app, status_id)
+    payload: dict[str, Any] = {
+        "output": status_key,
+        "outputs": _outputs_from_key(status_key),
+        "inputs": [
+            {
+                "id": interval_id,
+                "property": "n_intervals",
+                "value": 1,
+            }
+        ],
+        "state": [],
+        "changedPropIds": [f"{interval_id}.n_intervals"],
     }
     if generation is not None:
         payload[BINDING_GENERATION_PAYLOAD_KEY] = generation
@@ -799,6 +833,100 @@ def test_nonterminal_run_after_bind_blocks_current_page_mutations(
     assert status_response.status_code == 200
     assert "Active run detected" in status_response.get_data(as_text=True)
     assert _source_tree(output) == before
+
+
+@pytest.mark.parametrize(
+    ("evidence_change", "expected_status"),
+    [
+        ("incomplete_manifest", "Read-only · incomplete completion evidence"),
+        ("terminal_owner", "Completion evidence changed"),
+    ],
+)
+def test_completion_evidence_only_changes_never_report_current(
+    tmp_path: Path,
+    evidence_change: str,
+    expected_status: str,
+) -> None:
+    """Hub and standalone status polls detect completion-only drift."""
+    output = _seed_output(tmp_path)
+    standalone_root = OutputRoot.discover(
+        output,
+        cache_root=tmp_path / "standalone-cache",
+    )
+    standalone_viewer = results_viewer.create_app(standalone_root)
+    standalone_analysis = analysis.create_app(output_root=standalone_root)
+
+    shell_app, viewer_session = compose_hub(
+        SandboxRoot.from_path(tmp_path),
+        start_idle_thread=False,
+    )
+    _bind(shell_app.server.test_client(), output.name)
+    analysis_session: ToolSession[Any] = shell_app.server.config[
+        CFG_ANALYSIS_SESSION
+    ]
+    generation = shell_app.server.config[CFG_RESULTS_BINDING_STATE][
+        "binding_generation"
+    ]
+
+    if evidence_change == "incomplete_manifest":
+        atomic_write_json(
+            resolve_manifest_json_path(output),
+            {
+                "is_complete": False,
+                "completed": 0,
+                "failed": 0,
+                "total_images": 1,
+            },
+        )
+    else:
+        owner = gui_launch_owner_path(output)
+        owner.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(
+            owner,
+            {
+                "version": 1,
+                "run_id": "completed-after-bind",
+                "generation": "completed-generation",
+                "status": "complete",
+            },
+        )
+
+    for app, status_id, interval_id, app_generation in (
+        (
+            standalone_viewer,
+            results_ids.HEADER_SNAPSHOT_STATUS_ID,
+            results_ids.SNAPSHOT_STATUS_INTERVAL_ID,
+            None,
+        ),
+        (
+            standalone_analysis,
+            analysis_ids.ANALYSIS_SNAPSHOT_STATUS,
+            analysis_ids.ANALYSIS_SNAPSHOT_INTERVAL,
+            None,
+        ),
+        (
+            viewer_session.get(),
+            results_ids.HEADER_SNAPSHOT_STATUS_ID,
+            results_ids.SNAPSHOT_STATUS_INTERVAL_ID,
+            generation,
+        ),
+        (
+            analysis_session.get(),
+            analysis_ids.ANALYSIS_SNAPSHOT_STATUS,
+            analysis_ids.ANALYSIS_SNAPSHOT_INTERVAL,
+            generation,
+        ),
+    ):
+        response = _poll_snapshot_status(
+            app,
+            status_id=status_id,
+            interval_id=interval_id,
+            generation=app_generation,
+        )
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert expected_status in body
+        assert '"Current"' not in body
 
 
 def test_standalone_apps_block_processing_stale_mutation_callbacks(

@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from phenotypic.gui.results_viewer._output_consistency import (
+    inspect_output_consistency,
+)
+
 if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._output_root import OutputRoot
 
@@ -26,12 +30,12 @@ def snapshot_refresh_status(
             )
         if output_root.snapshot.active_run:
             return "Run finished · restart standalone app", "info", True
-        if output_root.consistency.is_read_only:
-            label = (
-                f"Read-only · {output_root.consistency.state} "
-                "completion evidence"
-            )
-            return label, "danger", True
+        completion_status = _completion_evidence_status(
+            output_root,
+            refresh_supported=False,
+        )
+        if completion_status is not None:
+            return completion_status
         current = (
             output_root.snapshot_is_current()
             and output_root.refresh_state_is_current()
@@ -45,11 +49,12 @@ def snapshot_refresh_status(
         return "Active run detected · refresh snapshot", "warning", False
     if output_root.snapshot.active_run:
         return "Run finished · refresh snapshot", "info", False
-    if output_root.consistency.is_read_only:
-        label = (
-            f"Read-only · {output_root.consistency.state} completion evidence"
-        )
-        return label, "danger", False
+    completion_status = _completion_evidence_status(
+        output_root,
+        refresh_supported=True,
+    )
+    if completion_status is not None:
+        return completion_status
     current = (
         output_root.snapshot_is_current()
         and output_root.refresh_state_is_current()
@@ -57,3 +62,40 @@ def snapshot_refresh_status(
     if current:
         return "Current", "success", False
     return "Changed on disk", "danger", False
+
+
+def _completion_evidence_status(
+    output_root: "OutputRoot",
+    *,
+    refresh_supported: bool,
+) -> tuple[str, str, bool] | None:
+    """Return a non-current status for unsafe or changed completion evidence."""
+    try:
+        fresh = inspect_output_consistency(output_root.layout)
+    except OSError:
+        return (
+            "Read-only · completion evidence unavailable",
+            "danger",
+            not refresh_supported,
+        )
+    if fresh.is_read_only:
+        return (
+            f"Read-only · {fresh.state} completion evidence",
+            "danger",
+            not refresh_supported,
+        )
+    if (
+        fresh.evidence_fingerprint
+        != output_root.consistency.evidence_fingerprint
+    ):
+        action = (
+            "refresh snapshot"
+            if refresh_supported
+            else "restart standalone app"
+        )
+        return (
+            f"Completion evidence changed · {action}",
+            "danger",
+            not refresh_supported,
+        )
+    return None
