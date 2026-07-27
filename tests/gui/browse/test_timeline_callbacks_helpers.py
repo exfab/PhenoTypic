@@ -4,6 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from phenotypic.gui.browse._callbacks import (
+    TimelineRevisionAuthority,
+    authorize_revision_candidate,
     pattern_preview_rows,
     render_timeline_grid,
     resolve_popout_event,
@@ -125,7 +127,7 @@ def test_source_reset_transaction_clears_all_timeline_dependent_state() -> None:
     assert reset[11] == []
     assert isinstance(reset[12], str) and reset[12].endswith(":reset")
     assert isinstance(reset[13], str) and reset[13]
-    assert reset[14:] == (False, None, "", None)
+    assert reset[14:] == (None,)
 
 
 def test_popout_event_is_revision_bound_and_current_source_contained(
@@ -144,32 +146,103 @@ def test_popout_event_is_revision_bound_and_current_source_contained(
         source="manual",
     )
     assert source_payload is not None
+    authority = TimelineRevisionAuthority()
+    authorized = authorize_revision_candidate(
+        authority,
+        sandbox,
+        {
+            "session_id": "browser-1",
+            "generation": 2,
+            "revision": "grid-2",
+        },
+        source_payload,
+    )
+    assert authorized is not None
 
     valid = resolve_popout_event(
         sandbox,
-        {"token": encode_token("source/plate.png"), "revision": "grid-2"},
-        grid_revision="grid-2",
-        source_payload=source_payload,
+        authority,
+        {
+            "session_id": "browser-1",
+            "generation": 2,
+            "revision": "grid-2",
+            "sequence": 1,
+            "token": encode_token("source/plate.png"),
+        },
     )
     assert valid == {
+        "session_id": "browser-1",
+        "generation": 2,
+        "revision": "grid-2",
+        "sequence": 1,
         "token": encode_token("source/plate.png"),
         "label": "source/plate.png",
     }
     assert (
         resolve_popout_event(
             sandbox,
-            {"token": encode_token("source/plate.png"), "revision": "grid-1"},
-            grid_revision="grid-2",
-            source_payload=source_payload,
+            authority,
+            {
+                "session_id": "browser-1",
+                "generation": 1,
+                "revision": "grid-1",
+                "sequence": 2,
+                "token": encode_token("source/plate.png"),
+            },
         )
         is None
     )
     assert (
         resolve_popout_event(
             sandbox,
-            {"token": encode_token("outside.png"), "revision": "grid-2"},
-            grid_revision="grid-2",
-            source_payload=source_payload,
+            authority,
+            {
+                "session_id": "browser-1",
+                "generation": 2,
+                "revision": "grid-2",
+                "sequence": 3,
+                "token": encode_token("outside.png"),
+            },
         )
         is None
     )
+
+
+def test_revision_authority_rejects_delayed_older_callback(
+    tmp_path: Path,
+) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    sandbox = SandboxRoot.from_path(tmp_path)
+    first_payload = source_payload_from_path(sandbox, first, source="manual")
+    second_payload = source_payload_from_path(sandbox, second, source="manual")
+    assert first_payload is not None and second_payload is not None
+    authority = TimelineRevisionAuthority()
+
+    newer = authorize_revision_candidate(
+        authority,
+        sandbox,
+        {
+            "session_id": "browser-1",
+            "generation": 8,
+            "revision": "revision-b",
+        },
+        second_payload,
+    )
+    delayed_older = authorize_revision_candidate(
+        authority,
+        sandbox,
+        {
+            "session_id": "browser-1",
+            "generation": 7,
+            "revision": "revision-a",
+        },
+        first_payload,
+    )
+
+    assert newer is not None
+    assert delayed_older is None
+    assert authority.current("browser-1", 8, "revision-b") is not None
+    assert authority.current("browser-1", 7, "revision-a") is None

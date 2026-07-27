@@ -52,7 +52,11 @@ BROWSE_TL_POPOUT_TITLE = "browse-tl-popout-title"
 BROWSE_TL_POPOUT_OSD = "browse-tl-popout-osd"
 BROWSE_TL_POPOUT_STORE = "browse-tl-popout-store"     # {token,label} for the pop-out
 BROWSE_TL_POPOUT_EVENT = "browse-tl-popout-event"     # revision-bound JS→Dash event
+BROWSE_TL_POPOUT_APPROVED = "browse-tl-popout-approved"
 BROWSE_TL_SOURCE_REVISION = "browse-tl-source-revision"
+BROWSE_TL_SESSION = "browse-tl-session"
+BROWSE_TL_REVISION_CANDIDATE = "browse-tl-revision-candidate"
+BROWSE_TL_REVISION_AUTHORIZED = "browse-tl-revision-authorized"
 
 # --- Compare strip (Phase 4) ---------------------------------------------
 # "Compare selected" button: a timeline.js DOM target (no Dash callback). The
@@ -107,6 +111,10 @@ __all__ = [
     "BROWSE_TL_POPOUT_OSD",
     "BROWSE_TL_POPOUT_STORE",
     "BROWSE_TL_POPOUT_EVENT",
+    "BROWSE_TL_POPOUT_APPROVED",
     "BROWSE_TL_SOURCE_REVISION",
+    "BROWSE_TL_SESSION",
+    "BROWSE_TL_REVISION_CANDIDATE",
+    "BROWSE_TL_REVISION_AUTHORIZED",
     "BROWSE_TL_COMPARE_BTN",
 ]

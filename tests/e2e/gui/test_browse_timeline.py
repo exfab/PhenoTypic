@@ -372,6 +372,118 @@ def test_same_cell_popout_reopens_after_close(live_browse_timeline) -> None:
     _open_via_cell()
 
 
+def _wait_for_authorized_grid(page) -> None:
+    """Wait until the server has acknowledged the browser-applied revision."""
+    page.wait_for_function(
+        """() => {
+            const grid = document.getElementById('browse-tl-grid');
+            if (!grid) { return false; }
+            const revision = grid.getAttribute('data-grid-revision');
+            return !!revision
+                && grid.getAttribute('data-authorized-revision') === revision
+                && !!grid.getAttribute('data-revision-generation')
+                && !!grid.getAttribute('data-session-id');
+        }""",
+        timeout=10_000,
+    )
+
+
+def test_delayed_popout_approval_cannot_reopen_retired_revision(
+    live_browse_timeline,
+) -> None:
+    """A revision-A response arriving after B is ignored by the live gate."""
+    page = live_browse_timeline
+    _wait_for_authorized_grid(page)
+    retired = page.evaluate(
+        """() => {
+            const grid = document.getElementById('browse-tl-grid');
+            const cell = grid.querySelector('.timeline-cell[data-ref]');
+            return {
+                session_id: grid.getAttribute('data-session-id'),
+                generation: Number(
+                    grid.getAttribute('data-revision-generation')),
+                revision: grid.getAttribute('data-grid-revision'),
+                sequence: 919,
+                token: cell.getAttribute('data-ref'),
+                label: 'retired/source.png',
+            };
+        }"""
+    )
+
+    page.click("#browse-tl-tile-size-plus")
+    page.wait_for_function(
+        """
+        previous => {
+            const grid = document.getElementById('browse-tl-grid');
+            return grid && grid.getAttribute('data-grid-revision') !== previous;
+        }
+        """,
+        arg=retired["revision"],
+    )
+    _wait_for_authorized_grid(page)
+
+    # Simulate a delayed server response and its request payload arriving after
+    # revision B. Neither may publish modal/store/title outputs for A.
+    page.evaluate(
+        """retired => {
+            window.dash_clientside.set_props(
+                'browse-tl-popout-event', {data: retired});
+            window.dash_clientside.set_props(
+                'browse-tl-popout-approved', {data: retired});
+        }""",
+        retired,
+    )
+    page.wait_for_timeout(300)
+    modal_open = page.evaluate(
+        """() => {
+            const dialog = document.getElementById('browse-tl-popout-modal');
+            const modal = dialog && dialog.closest('.modal');
+            return !!(modal && modal.classList.contains('show'));
+        }"""
+    )
+    assert modal_open is False
+
+
+def test_compare_await_is_cancelled_by_grid_revision(
+    live_browse_timeline,
+) -> None:
+    """An OSD-ready continuation cannot mount after its grid is retired."""
+    page = live_browse_timeline
+    _wait_for_authorized_grid(page)
+    cells = page.query_selector_all(".timeline-cell[data-src][data-ref]")
+    assert len(cells) >= 2
+    for cell in cells[:2]:
+        cell.click(modifiers=["Shift"])
+
+    old_revision = page.locator("#browse-tl-grid").get_attribute(
+        "data-grid-revision"
+    )
+    page.evaluate(
+        """() => {
+            window.__browseResolveOsd = null;
+            window.__phenotypicTimeline.osdReady = new Promise(resolve => {
+                window.__browseResolveOsd = resolve;
+            });
+        }"""
+    )
+    page.click("#browse-tl-compare-btn")
+    page.click("#browse-tl-tile-size-plus")
+    page.wait_for_function(
+        """
+        previous => {
+            const grid = document.getElementById('browse-tl-grid');
+            return grid && grid.getAttribute('data-grid-revision') !== previous;
+        }
+        """,
+        arg=old_revision,
+    )
+    _wait_for_authorized_grid(page)
+    page.evaluate("() => window.__browseResolveOsd()")
+    page.wait_for_timeout(300)
+
+    assert page.query_selector("#timeline-compare-modal") is None
+
+
 def test_source_revision_clears_stale_timeline_and_rebinds_actions(
     live_browse_timeline,
     fake_sandbox: Path,

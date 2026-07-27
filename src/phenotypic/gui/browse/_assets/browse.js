@@ -139,6 +139,7 @@
     const TL_GRID_ID = "browse-tl-grid";
     const TL_POPOUT_EVENT_ID = "browse-tl-popout-event";
     let timelineEventSequence = 0;
+    let timelineRevisionGeneration = 0;
 
     function browseGrid() {
         return document.getElementById(TL_GRID_ID);
@@ -148,8 +149,12 @@
         const grid = browseGrid();
         const token = cell && cell.getAttribute("data-ref");
         const revision = grid && grid.getAttribute("data-grid-revision");
+        const authorized = grid && grid.getAttribute("data-authorized-revision");
+        const generation = grid && grid.getAttribute("data-revision-generation");
+        const sessionId = grid && grid.getAttribute("data-session-id");
         const dc = window.dash_clientside;
         if (!grid || !grid.contains(cell) || !token || !revision
+            || revision !== authorized || !generation || !sessionId
             || !dc || typeof dc.set_props !== "function") {
             return false;
         }
@@ -158,6 +163,8 @@
             data: {
                 token: token,
                 revision: revision,
+                generation: parseInt(generation, 10),
+                session_id: sessionId,
                 sequence: timelineEventSequence,
             },
         });
@@ -214,14 +221,29 @@
         }).map(function (cell) { return cell.getAttribute("data-ref"); });
     }
 
-    function openBrowseCompare(grid, refs) {
+    async function openBrowseCompare(grid, refs) {
         const timeline = window.__phenotypicTimeline;
         if (!timeline || !timeline.openCompareStrip || !refs.length) { return; }
-        timeline.openCompareStrip(refs, {
+        const requestedRevision = grid.getAttribute("data-grid-revision");
+        const requestedGeneration = timelineRevisionGeneration;
+        await timeline.osdReady;
+        const current = browseGrid();
+        if (!current
+            || requestedGeneration !== timelineRevisionGeneration
+            || requestedRevision !== current.getAttribute("data-grid-revision")) {
+            return;
+        }
+        await timeline.openCompareStrip(refs, {
             dziUrlBuilder: browseTimelineDziUrl,
             titleFor: decodeBrowseRef,
             cap: compareCap(grid),
         });
+        const after = browseGrid();
+        if (!after
+            || requestedGeneration !== timelineRevisionGeneration
+            || requestedRevision !== after.getAttribute("data-grid-revision")) {
+            timeline.closeCompareStrip();
+        }
     }
 
     // Capture phase wins before the shared controller's per-node bubble
@@ -272,6 +294,7 @@
     }, true);
 
     ns.resetTimelineRevision = function (containerId) {
+        timelineRevisionGeneration += 1;
         const grid = document.getElementById(containerId || TL_GRID_ID);
         if (grid) {
             grid.querySelectorAll(".timeline-cell--selected").forEach(function (cell) {
@@ -282,5 +305,12 @@
         if (timeline && timeline.closeCompareStrip) {
             timeline.closeCompareStrip();
         }
+        const dc = window.dash_clientside;
+        if (dc && typeof dc.set_props === "function") {
+            dc.set_props("browse-tl-popout-modal", { is_open: false });
+            dc.set_props("browse-tl-popout-store", { data: null });
+            dc.set_props("browse-tl-popout-title", { children: "" });
+        }
+        return timelineRevisionGeneration;
     };
 })();

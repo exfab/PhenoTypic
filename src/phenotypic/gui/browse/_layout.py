@@ -347,6 +347,9 @@ def build_timeline_body() -> Any:
                 # Replaced on every render. Browse's delegated popout events
                 # echo this value and the server rejects retired revisions.
                 "data-grid-revision": "",
+                "data-revision-generation": "",
+                "data-session-id": "",
+                "data-authorized-revision": "",
             },
         ),
     )
@@ -432,7 +435,15 @@ def build_timeline_body() -> Any:
             # published by browse.js. Unlike a synthetic event on a controlled
             # dcc.Input, the store remains connected across grid remounts.
             dcc.Store(id=ids.BROWSE_TL_POPOUT_EVENT, data=None),
+            dcc.Store(id=ids.BROWSE_TL_POPOUT_APPROVED, data=None),
             dcc.Store(id=ids.BROWSE_TL_SOURCE_REVISION, data=None),
+            dcc.Store(
+                id=ids.BROWSE_TL_SESSION,
+                storage_type="memory",
+                data=None,
+            ),
+            dcc.Store(id=ids.BROWSE_TL_REVISION_CANDIDATE, data=None),
+            dcc.Store(id=ids.BROWSE_TL_REVISION_AUTHORIZED, data=None),
             dcc.Store(id=ids.BROWSE_TL_STORE_TILE_SIZE, data=TIMELINE_TILE_SIZE_DEFAULT),
             dcc.Store(id=ids.BROWSE_TL_STORE_WARNINGS, data=[]),
             dcc.Store(id=ids.BROWSE_TL_POPOUT_STORE, data=None),

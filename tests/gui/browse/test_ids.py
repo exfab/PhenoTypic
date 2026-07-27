@@ -57,7 +57,11 @@ def test_timeline_ids_present_and_unique() -> None:
         _ids.BROWSE_TL_POPOUT_OSD,
         _ids.BROWSE_TL_POPOUT_STORE,
         _ids.BROWSE_TL_POPOUT_EVENT,
+        _ids.BROWSE_TL_POPOUT_APPROVED,
         _ids.BROWSE_TL_SOURCE_REVISION,
+        _ids.BROWSE_TL_SESSION,
+        _ids.BROWSE_TL_REVISION_CANDIDATE,
+        _ids.BROWSE_TL_REVISION_AUTHORIZED,
     ]
     assert len(timeline_ids) == len(set(timeline_ids))  # all unique
     assert all(isinstance(i, str) and i for i in timeline_ids)

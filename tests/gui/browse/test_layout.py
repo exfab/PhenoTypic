@@ -123,7 +123,11 @@ def test_layout_has_view_mode_toggle_and_both_bodies() -> None:
     assert _ids.BROWSE_TL_POPOUT_MODAL in ids_found
     assert _ids.BROWSE_TL_POPOUT_TITLE in ids_found
     assert _ids.BROWSE_TL_POPOUT_EVENT in ids_found
+    assert _ids.BROWSE_TL_POPOUT_APPROVED in ids_found
     assert _ids.BROWSE_TL_SOURCE_REVISION in ids_found
+    assert _ids.BROWSE_TL_SESSION in ids_found
+    assert _ids.BROWSE_TL_REVISION_CANDIDATE in ids_found
+    assert _ids.BROWSE_TL_REVISION_AUTHORIZED in ids_found
 
 
 def test_timeline_body_carries_surface_agnostic_controller_classes() -> None:
@@ -163,4 +167,7 @@ def test_timeline_grid_carries_static_focus_navigate_data_attrs() -> None:
     assert getattr(grid, "data-mount-cap") == str(TIMELINE_MOUNT_CAP)
     assert getattr(grid, "data-warm-concurrency") == str(TIMELINE_WARM_CONCURRENCY)
     assert getattr(grid, "data-grid-revision") == ""
+    assert getattr(grid, "data-revision-generation") == ""
+    assert getattr(grid, "data-session-id") == ""
+    assert getattr(grid, "data-authorized-revision") == ""
     assert not hasattr(grid, "data-margin-screens")

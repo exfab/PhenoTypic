@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import threading
 from collections.abc import Sequence
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -85,6 +86,65 @@ class CsvMetadataPanelModel:
     state: CsvMetadataPanelState
     image_stem: str
     rows: list[dict[str, str]]
+
+
+@dataclass(frozen=True)
+class _AuthorizedTimelineRevision:
+    """Server-side authority for one browser's live Timeline generation."""
+
+    generation: int
+    revision: str
+    source_root: Path
+
+
+class TimelineRevisionAuthority:
+    """Thread-safe current Timeline revision authority keyed by browser session."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._by_session: dict[str, _AuthorizedTimelineRevision] = {}
+
+    def authorize(
+        self,
+        session_id: str,
+        generation: int,
+        revision: str,
+        source_root: Path,
+    ) -> bool:
+        """Publish a revision unless a newer browser generation already won."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            if current is not None:
+                if generation < current.generation:
+                    return False
+                if (
+                    generation == current.generation
+                    and revision != current.revision
+                ):
+                    return False
+            self._by_session[session_id] = _AuthorizedTimelineRevision(
+                generation=generation,
+                revision=revision,
+                source_root=source_root,
+            )
+        return True
+
+    def current(
+        self,
+        session_id: str,
+        generation: int,
+        revision: str,
+    ) -> _AuthorizedTimelineRevision | None:
+        """Return authority only when every live-generation field matches."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+        if (
+            current is None
+            or current.generation != generation
+            or current.revision != revision
+        ):
+            return None
+        return current
 
 
 # --------------------------------------------------------------------------
@@ -383,55 +443,104 @@ def source_reset_values(source_payload: object) -> tuple[object, ...]:
         [],
         f"{revision}:reset",
         revision,
-        False,
-        None,
-        "",
         None,
     )
 
 
+def authorize_revision_candidate(
+    authority: TimelineRevisionAuthority,
+    sandbox: SandboxRoot,
+    candidate: Mapping[str, object] | None,
+    source_payload: object,
+) -> dict[str, object] | None:
+    """Authorize one browser-applied grid generation on the server."""
+    if not isinstance(candidate, Mapping):
+        return None
+    session_id = candidate.get("session_id")
+    generation = candidate.get("generation")
+    revision = candidate.get("revision")
+    if (
+        not isinstance(session_id, str)
+        or not session_id
+        or type(generation) is not int
+        or generation < 1
+        or not isinstance(revision, str)
+        or not revision
+    ):
+        return None
+    source_root = resolve_source_image_root(sandbox, source_payload)
+    if source_root is None:
+        return None
+    if not authority.authorize(
+        session_id,
+        generation,
+        revision,
+        source_root,
+    ):
+        return None
+    return {
+        "session_id": session_id,
+        "generation": generation,
+        "revision": revision,
+    }
+
+
 def resolve_popout_event(
     sandbox: SandboxRoot,
+    authority: TimelineRevisionAuthority,
     event: Mapping[str, object] | None,
-    *,
-    grid_revision: str | None,
-    source_payload: object,
-) -> dict[str, str] | None:
-    """Validate a popout event against its grid revision and current source.
+) -> dict[str, object] | None:
+    """Validate a popout event against live server revision authority.
 
     Args:
         sandbox: Frozen launch-time filesystem boundary.
+        authority: Per-browser current generation authority.
         event: Client event carrying an opaque token and grid revision.
-        grid_revision: Revision of the currently rendered grid.
-        source_payload: Current shared source descriptor.
 
     Returns:
-        A ``{"token", "label"}`` payload for a current-source image, or
-        ``None`` when the event is stale, malformed, unavailable, or outside
-        the selected source.
+        An approved event for a current-source image, or ``None`` when stale,
+        malformed, unavailable, or outside the selected source.
     """
+    if not isinstance(event, Mapping):
+        return None
+    session_id = event.get("session_id")
+    generation = event.get("generation")
+    revision = event.get("revision")
+    token = event.get("token")
+    sequence = event.get("sequence")
     if (
-        not isinstance(event, Mapping)
-        or not grid_revision
-        or event.get("revision") != grid_revision
+        not isinstance(session_id, str)
+        or not session_id
+        or type(generation) is not int
+        or generation < 1
+        or not isinstance(revision, str)
+        or not revision
+        or not isinstance(token, str)
+        or not token
+        or type(sequence) is not int
+        or sequence < 1
     ):
         return None
-    token = event.get("token")
-    if not isinstance(token, str) or not token:
+    current = authority.current(session_id, generation, revision)
+    if current is None:
         return None
     try:
         relative_path = _source_render.decode_token(token)
         target = sandbox.resolve(relative_path)
-        source_root = resolve_source_image_root(sandbox, source_payload)
-        if source_root is None:
-            return None
-        target.relative_to(source_root)
+        target.relative_to(current.source_root)
         if not target.is_file():
             return None
         label = target.relative_to(sandbox.root).as_posix()
     except (OSError, RuntimeError, ValueError):
         return None
-    return {"token": token, "label": label}
+    return {
+        "session_id": session_id,
+        "generation": generation,
+        "revision": revision,
+        "sequence": sequence,
+        "token": token,
+        "label": label,
+    }
 
 
 # --------------------------------------------------------------------------
@@ -439,6 +548,7 @@ def resolve_popout_event(
 # --------------------------------------------------------------------------
 def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
     """Register every Browse callback on ``app``."""
+    revision_authority = TimelineRevisionAuthority()
 
     @app.callback(
         Output(ids.BROWSE_DATASETS_STORE, "data"),
@@ -495,21 +605,6 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
             allow_duplicate=True,
         ),
         Output(ids.BROWSE_TL_SOURCE_REVISION, "data"),
-        Output(
-            ids.BROWSE_TL_POPOUT_MODAL,
-            "is_open",
-            allow_duplicate=True,
-        ),
-        Output(
-            ids.BROWSE_TL_POPOUT_STORE,
-            "data",
-            allow_duplicate=True,
-        ),
-        Output(
-            ids.BROWSE_TL_POPOUT_TITLE,
-            "children",
-            allow_duplicate=True,
-        ),
         Output(ids.BROWSE_TL_POPOUT_EVENT, "data"),
         Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
         prevent_initial_call=True,
@@ -838,26 +933,102 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         # otherwise-dead warnings store; hidden when the list is empty.
         return warnings_alert_state(warnings)
 
-    # Clientside: re-attach the focus-navigate controller after each grid
-    # render so it resets focus to the first populated cell and re-renders the
-    # centered window. The controller reads focus-margin/mount-cap/warm
-    # concurrency off the BROWSE_TL_GRID container's static data-* attrs.
+    # Each browser gets a session-scoped identity. It keys the server-side
+    # revision authority without coupling independent tabs/users.
     app.clientside_callback(
         """
-        function(children) {
+        function(children, current) {
+            if (current) {
+                return current;
+            }
+            if (window.crypto && window.crypto.randomUUID) {
+                return window.crypto.randomUUID();
+            }
+            return "tl-" + Date.now().toString(36)
+                + "-" + Math.random().toString(36).slice(2);
+        }
+        """,
+        Output(ids.BROWSE_TL_SESSION, "data"),
+        Input(ids.BROWSE_TL_GRID, "children"),
+        State(ids.BROWSE_TL_SESSION, "data"),
+    )
+
+    # Re-attach after each render, retire all client-owned state, and publish
+    # the generation that the browser actually applied for server authority.
+    app.clientside_callback(
+        """
+        function(children, sessionId, gridRevision) {
+            let generation = 0;
             if (window.__phenotypicBrowse
                 && window.__phenotypicBrowse.resetTimelineRevision) {
-                window.__phenotypicBrowse.resetTimelineRevision("%s");
+                generation = window.__phenotypicBrowse.resetTimelineRevision("%s");
             }
             if (window.__phenotypicTimeline) {
                 window.__phenotypicTimeline.attach("%s");
             }
-            return "";
+            const grid = document.getElementById("%s");
+            const revision = gridRevision
+                || (grid && grid.getAttribute("data-grid-revision"));
+            const noUpdate = window.dash_clientside.no_update;
+            if (!sessionId || !revision || !generation) {
+                return ["", String(generation || ""), noUpdate];
+            }
+            return [
+                "",
+                String(generation),
+                {
+                    session_id: sessionId,
+                    generation: generation,
+                    revision: revision,
+                },
+            ];
         }
         """
-        % (ids.BROWSE_TL_GRID, ids.BROWSE_TL_GRID),
+        % (ids.BROWSE_TL_GRID, ids.BROWSE_TL_GRID, ids.BROWSE_TL_GRID),
         Output(ids.BROWSE_TL_GRID, "data-render-sync"),
+        Output(ids.BROWSE_TL_GRID, "data-revision-generation"),
+        Output(ids.BROWSE_TL_REVISION_CANDIDATE, "data"),
         Input(ids.BROWSE_TL_GRID, "children"),
+        Input(ids.BROWSE_TL_SESSION, "data"),
+        Input(ids.BROWSE_TL_GRID, "data-grid-revision"),
+    )
+
+    @app.callback(
+        Output(ids.BROWSE_TL_REVISION_AUTHORIZED, "data"),
+        Input(ids.BROWSE_TL_REVISION_CANDIDATE, "data"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+    )
+    def _authorize_revision(
+        candidate: Mapping[str, object] | None,
+        source_payload: object,
+    ):
+        authorized = authorize_revision_candidate(
+            revision_authority,
+            sandbox,
+            candidate,
+            source_payload,
+        )
+        if authorized is None:
+            raise dash.exceptions.PreventUpdate
+        return authorized
+
+    app.clientside_callback(
+        """
+        function(authorized, generation, sessionId) {
+            const noUpdate = window.dash_clientside.no_update;
+            if (!authorized || !sessionId
+                || authorized.session_id !== sessionId
+                || String(authorized.generation) !== String(generation)) {
+                return [noUpdate, sessionId || ""];
+            }
+            return [authorized.revision || "", sessionId];
+        }
+        """,
+        Output(ids.BROWSE_TL_GRID, "data-authorized-revision"),
+        Output(ids.BROWSE_TL_GRID, "data-session-id"),
+        Input(ids.BROWSE_TL_REVISION_AUTHORIZED, "data"),
+        Input(ids.BROWSE_TL_GRID, "data-revision-generation"),
+        State(ids.BROWSE_TL_SESSION, "data"),
     )
 
     # ----------------------------------------------------------------------
@@ -868,27 +1039,55 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
     # revisions and wholesale DOM remounts because its listener is delegated
     # on document rather than attached to one React-controlled input node.
     @app.callback(
-        Output(ids.BROWSE_TL_POPOUT_MODAL, "is_open"),
-        Output(ids.BROWSE_TL_POPOUT_STORE, "data"),
-        Output(ids.BROWSE_TL_POPOUT_TITLE, "children"),
+        Output(ids.BROWSE_TL_POPOUT_APPROVED, "data"),
         Input(ids.BROWSE_TL_POPOUT_EVENT, "data"),
-        State(ids.BROWSE_TL_GRID, "data-grid-revision"),
-        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
     )
-    def _open_popout(
+    def _approve_popout(
         event: Mapping[str, object] | None,
-        grid_revision: str | None,
-        source_payload: object,
     ):
         payload = resolve_popout_event(
             sandbox,
+            revision_authority,
             event,
-            grid_revision=grid_revision,
-            source_payload=source_payload,
         )
         if payload is None:
             raise dash.exceptions.PreventUpdate
-        return True, payload, payload["label"]
+        return payload
+
+    # Final publication is gated against the live browser generation and
+    # latest event. A delayed server response for revision A therefore cannot
+    # reopen or overwrite revision B even if request A began before B existed.
+    app.clientside_callback(
+        """
+        function(approved, event) {
+            const noUpdate = window.dash_clientside.no_update;
+            const grid = document.getElementById("%s");
+            if (!approved || !event || !grid) {
+                return [noUpdate, noUpdate, noUpdate];
+            }
+            const revision = grid.getAttribute("data-grid-revision");
+            const generation = grid.getAttribute("data-revision-generation");
+            const sessionId = grid.getAttribute("data-session-id");
+            const authorized = grid.getAttribute("data-authorized-revision");
+            if (approved.revision !== revision
+                || approved.revision !== authorized
+                || String(approved.generation) !== String(generation)
+                || approved.session_id !== sessionId
+                || approved.sequence !== event.sequence
+                || approved.token !== event.token) {
+                return [noUpdate, noUpdate, noUpdate];
+            }
+            const payload = {token: approved.token, label: approved.label};
+            return [true, payload, approved.label];
+        }
+        """
+        % ids.BROWSE_TL_GRID,
+        Output(ids.BROWSE_TL_POPOUT_MODAL, "is_open"),
+        Output(ids.BROWSE_TL_POPOUT_STORE, "data"),
+        Output(ids.BROWSE_TL_POPOUT_TITLE, "children"),
+        Input(ids.BROWSE_TL_POPOUT_APPROVED, "data"),
+        Input(ids.BROWSE_TL_POPOUT_EVENT, "data"),
+    )
 
     # Clientside: mount the deep-zoom OSD viewer into the pop-out modal's
     # dedicated OSD div. Dash requires every clientside callback to declare an
