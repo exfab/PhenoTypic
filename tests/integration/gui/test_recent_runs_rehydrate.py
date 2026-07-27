@@ -184,26 +184,30 @@ def test_rehydrate_respects_max_depth(tmp_path: Path) -> None:
     assert any(r.rel_path.endswith("deep") for r in rows_deep)
 
 
-def test_scan_ignores_private_legacy_backup_but_keeps_nested_run(
+def test_scan_ignores_backup_artifacts_at_every_depth_but_keeps_nested_run(
     tmp_path: Path,
 ) -> None:
-    """Private compatibility backups are not independent runs."""
+    """Recognized backup artifacts are never independent historical runs."""
     outer = _make_run(tmp_path, "run")
     _make_run(outer, "_legacy_metadata_backup")
     _make_run(outer, "nested_run")
     _make_run(tmp_path, "_legacy_experiment_backup")
+    nested_container = tmp_path / "container" / "nested"
+    _make_run(nested_container, "copied-output-backup")
+    _make_run(nested_container, "copied-output.backup")
 
     rows = scan_recent_runs(SandboxRoot.from_path(tmp_path), max_depth=4)
 
     assert {row.rel_path for row in rows} == {
-        "_legacy_experiment_backup",
         "run",
         "run/nested_run",
     }
 
 
-def test_scan_descends_below_invalid_owner_record(tmp_path: Path) -> None:
-    """A corrupt owner artifact must not hide valid descendant runs."""
+def test_scan_prunes_backup_tree_with_invalid_owner_record(
+    tmp_path: Path,
+) -> None:
+    """A corrupt owner artifact cannot turn a backup into a current run."""
     container = tmp_path / "container"
     owner = (
         container
@@ -217,10 +221,49 @@ def test_scan_descends_below_invalid_owner_record(tmp_path: Path) -> None:
 
     rows = scan_recent_runs(SandboxRoot.from_path(tmp_path), max_depth=4)
 
-    assert any(
-        row.rel_path == "container/_legacy_experiment_backup"
-        for row in rows
+    assert rows == []
+
+
+@pytest.mark.parametrize(
+    "name",
+    (
+        "root-level-backup",
+        "root_level_backup",
+        "root-level.backup",
+        "_legacy_experiment_backup",
+    ),
+)
+def test_scan_excludes_root_level_backup_suffixes(
+    tmp_path: Path,
+    name: str,
+) -> None:
+    """All reserved root-level backup suffixes require a valid owner."""
+    _make_run(tmp_path, name)
+
+    rows = scan_recent_runs(SandboxRoot.from_path(tmp_path), max_depth=2)
+
+    assert rows == []
+
+
+def test_scan_keeps_backup_named_run_with_valid_generation_owner(
+    tmp_path: Path,
+) -> None:
+    """A valid generation owner wins over the directory-name heuristic."""
+    output = tmp_path / "intentional-backup"
+    output.mkdir()
+    registry = RunRegistry()
+    owned = registry.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path=output.name,
+        command_digest="current-generation",
+        status="complete",
     )
+
+    rows = scan_recent_runs(SandboxRoot.from_path(tmp_path), max_depth=2)
+
+    assert owned.generation is not None
+    assert [row.rel_path for row in rows] == ["intentional-backup"]
 
 
 def test_scan_prunes_private_backup_when_sandbox_root_is_output(

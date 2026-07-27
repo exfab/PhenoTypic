@@ -89,7 +89,9 @@ from phenotypic.gui.shell._session import (
 from phenotypic.gui._url_prefix import configure_url_prefix_routing
 
 if TYPE_CHECKING:
-    pass
+    from phenotypic.gui.run_console._slurm import SlurmSubmitResult
+    from phenotypic.gui.run_console._slurm_observer import SchedulerClient
+    from phenotypic.gui.shell._runs_registry import RunRecord
 
 logger = logging.getLogger(__name__)
 
@@ -208,6 +210,10 @@ def compose_hub(
     url_prefix: str = DEFAULT_URL_PREFIX,
     idle_release_seconds: float = DEFAULT_IDLE_RELEASE_SECONDS,
     start_idle_thread: bool = True,
+    start_slurm_observer: bool | None = None,
+    slurm_scheduler: "SchedulerClient | None" = None,
+    slurm_submitter: "Callable[..., SlurmSubmitResult] | None" = None,
+    action_acknowledgement_hook: "Callable[[RunRecord], None] | None" = None,
     binding_drain_timeout_seconds: float = 5.0,
     progress: Callable[[str], None] | None = None,
 ) -> tuple[dash.Dash, ToolSession[dash.Dash]]:
@@ -228,6 +234,17 @@ def compose_hub(
         start_idle_thread: When ``True`` (default), spawn the daemon
             thread that releases idle sessions. Tests pass ``False``
             so they don't leak background threads.
+        start_slurm_observer: Whether to start the scheduler observer daemon.
+            ``None`` preserves the historical coupling to
+            ``start_idle_thread``. Tests can disable the scheduler observer
+            independently while retaining other production composition.
+        slurm_scheduler: Optional scheduler-query dependency for the shared
+            lifecycle observer. Tests inject an in-memory implementation so
+            no scheduler command can run.
+        slurm_submitter: Optional submission dependency forwarded to the Run
+            console. Production leaves this unset and uses ``submit_slurm``.
+        action_acknowledgement_hook: Optional action-response test seam
+            forwarded to the Run console.
         binding_drain_timeout_seconds: Maximum time an output Refresh waits
             for callbacks admitted by the previous binding to finish.
         progress: Optional callback invoked with a short label before each
@@ -242,6 +259,16 @@ def compose_hub(
     def _tick(label: str) -> None:
         if progress is not None:
             progress(label)
+
+    # Custom operations must self-register before any GUI registry discovers
+    # subclasses or any app deserializes a configured pipeline. This is the
+    # same fail-loud preload contract used by fresh CLI and SLURM workers.
+    _tick("custom operations")
+    from phenotypic._cli._cli_preload import (
+        preload_custom_operation_modules,
+    )
+
+    preload_custom_operation_modules()
 
     # Local imports to keep boot-time cycles minimal.
     _tick("sub-app modules")
@@ -528,16 +555,30 @@ def compose_hub(
     registry = RunRegistry()
     registry.rehydrate_from_sandbox(sandbox)
     runner = LocalRunner()
-    slurm_observer = SlurmLifecycleObserver(registry)
+    slurm_observer = (
+        SlurmLifecycleObserver(registry)
+        if slurm_scheduler is None
+        else SlurmLifecycleObserver(registry, scheduler=slurm_scheduler)
+    )
 
+    run_app_kwargs: dict[str, Any] = {
+        "url_prefix": join_url_prefix(base_url_prefix, MOUNT_RUN),
+        "server_url_prefix": base_url_prefix,
+        "registry": registry,
+        "runner": runner,
+        "slurm_observer": slurm_observer,
+        "start_slurm_observer": (
+            start_idle_thread
+            if start_slurm_observer is None
+            else start_slurm_observer
+        ),
+        "action_acknowledgement_hook": action_acknowledgement_hook,
+    }
+    if slurm_submitter is not None:
+        run_app_kwargs["slurm_submitter"] = slurm_submitter
     run_app = run_console.create_app(
         sandbox,
-        url_prefix=join_url_prefix(base_url_prefix, MOUNT_RUN),
-        server_url_prefix=base_url_prefix,
-        registry=registry,
-        runner=runner,
-        slurm_observer=slurm_observer,
-        start_slurm_observer=start_idle_thread,
+        **run_app_kwargs,
     )
     wrap_in_chrome(
         run_app,
@@ -636,6 +677,10 @@ def create_app(
     viewer_session: "ToolSession[Any] | None" = None,
     idle_release_seconds: float = DEFAULT_IDLE_RELEASE_SECONDS,
     start_idle_thread: bool | None = None,
+    start_slurm_observer: bool | None = None,
+    slurm_scheduler: "SchedulerClient | None" = None,
+    slurm_submitter: "Callable[..., SlurmSubmitResult] | None" = None,
+    action_acknowledgement_hook: "Callable[[RunRecord], None] | None" = None,
     progress: Callable[[str], None] | None = None,
 ) -> dash.Dash:
     """Build the unified GUI hub Dash app.
@@ -668,6 +713,14 @@ def create_app(
             launch but skipped under pytest (``PYTEST_CURRENT_TEST``
             in env). Tests that want the daemon explicitly should
             pass ``True``.
+        start_slurm_observer: Forwarded to :func:`compose_hub`. ``None``
+            preserves its production/test default.
+        slurm_scheduler: Optional scheduler-query dependency forwarded to
+            :func:`compose_hub`.
+        slurm_submitter: Optional submission dependency forwarded to
+            :func:`compose_hub`.
+        action_acknowledgement_hook: Optional Run action test seam forwarded
+            to :func:`compose_hub`.
         progress: Optional per-sub-app progress callback forwarded to
             :func:`compose_hub` (the launcher passes
             :meth:`StartupReporter.detail`). Ignored on the Phase 3
@@ -696,6 +749,10 @@ def create_app(
         url_prefix=url_prefix,
         idle_release_seconds=idle_release_seconds,
         start_idle_thread=start_idle_thread,
+        start_slurm_observer=start_slurm_observer,
+        slurm_scheduler=slurm_scheduler,
+        slurm_submitter=slurm_submitter,
+        action_acknowledgement_hook=action_acknowledgement_hook,
         progress=progress,
     )
     return configure_url_prefix_routing(shell_app, url_prefix)

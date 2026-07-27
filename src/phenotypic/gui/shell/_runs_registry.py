@@ -101,6 +101,7 @@ _TERMINAL_STATUSES: frozenset[str] = frozenset(
 )
 _OWNER_RECORD_VERSION = 1
 _UNSET = object()
+_BACKUP_NAME_SUFFIXES = ("-backup", "_backup", ".backup")
 
 
 def run_status_is_nonterminal(status: object) -> bool:
@@ -120,6 +121,17 @@ def _owner_record_path(output_dir: Path) -> Path:
 def _owner_lock_path(output_dir: Path) -> Path:
     """Return the interprocess acquisition lock beside the owner record."""
     return _owner_record_path(output_dir).with_suffix(".lock")
+
+
+def _is_recognized_backup_artifact_name(name: str) -> bool:
+    """Return whether ``name`` follows a reserved backup convention.
+
+    Backup-shaped trees are excluded from Recent Runs unless their directory
+    carries a valid current GUI owner record. The suffix rule includes the
+    private ``_legacy_*_backup`` migration convention without making backup
+    words in the middle of an ordinary run name special.
+    """
+    return name.endswith(_BACKUP_NAME_SUFFIXES)
 
 
 @dataclass
@@ -668,21 +680,10 @@ class RunRegistry:
         limitation of the conventional dotfile-as-hidden semantic.
         """
         root = sandbox.root
-        root_caps = classify(root)
-        root_owner_is_valid = (
-            self._read_owner_record(root, ".") is not None
-            if _owner_record_path(root).is_file()
-            else False
-        )
-        root_is_output = (
-            root_owner_is_valid
-            or root_caps.is_cli_output
-            or root_caps.is_process_only_output
-        )
-        stack: list[tuple[Path, int, bool]] = [(root, 0, root_is_output)]
+        stack: list[tuple[Path, int]] = [(root, 0)]
         seen_output_dirs: set[Path] = set()
         while stack:
-            current, depth, inside_output = stack.pop()
+            current, depth = stack.pop()
             if depth > max_depth:
                 continue
             try:
@@ -696,30 +697,29 @@ class RunRegistry:
             for child in children:
                 if not child.is_dir():
                     continue
+                try:
+                    child_rel = str(child.relative_to(sandbox.root))
+                except ValueError:
+                    child_rel = ""
+                owner_is_valid = bool(
+                    child_rel
+                    and _owner_record_path(child).is_file()
+                    and self._read_owner_record(child, child_rel) is not None
+                )
                 if (
-                    inside_output
-                    and child.name.startswith("_legacy_")
-                    and child.name.endswith("_backup")
+                    _is_recognized_backup_artifact_name(child.name)
+                    and not owner_is_valid
                 ):
-                    # Pre-canonical migration code used private directories
-                    # such as ``_legacy_metadata_backup`` to preserve copied
-                    # output layouts. Only reserve that convention inside a
-                    # recognized run; it remains a valid user path elsewhere.
+                    # Backups are private artifacts at every sandbox depth,
+                    # including root-level siblings of current outputs. A
+                    # valid durable generation owner takes precedence so a
+                    # legitimate run is not hidden merely because its chosen
+                    # name ends in a backup-shaped suffix.
                     continue
                 caps = classify(child)
                 output_dir: Path | None = None
-                owner_is_valid = False
-                if _owner_record_path(child).is_file():
+                if owner_is_valid:
                     output_dir = child
-                    try:
-                        child_rel = str(child.relative_to(sandbox.root))
-                    except ValueError:
-                        child_rel = ""
-                    if child_rel:
-                        owner_is_valid = (
-                            self._read_owner_record(child, child_rel)
-                            is not None
-                        )
                 elif caps.is_cli_output:
                     output_dir = self._canonical_cli_output_dir(child)
                 elif caps.is_process_only_output:
@@ -733,16 +733,7 @@ class RunRegistry:
                 # Recurse regardless. Nested outputs are uncommon but remain
                 # a supported compatibility layout, and an invalid owner file
                 # must not hide valid descendants.
-                stack.append(
-                    (
-                        child,
-                        depth + 1,
-                        inside_output
-                        or owner_is_valid
-                        or caps.is_cli_output
-                        or caps.is_process_only_output,
-                    )
-                )
+                stack.append((child, depth + 1))
 
     @staticmethod
     def _canonical_cli_output_dir(path: Path) -> Path:
