@@ -19,6 +19,9 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Page, expect
 
+from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
+from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.schema import METADATA
 from phenotypic.sdk_ import gui_launch_owner_path
 
 
@@ -44,7 +47,7 @@ def _set_action_controls(
     output_dir: Path,
     modes: list[str],
 ) -> None:
-    """Set path stores and rapidly apply the requested visible mode sequence."""
+    """Set source controls, then confirm the exact typed output in the UI."""
     page.evaluate(
         """(values) => {
             window.dash_clientside.set_props(
@@ -54,23 +57,31 @@ def _set_action_controls(
                 "rc-store-input-dir", {data: values.inputDir}
             );
             window.dash_clientside.set_props(
-                "rc-store-output-dir", {data: values.outputDir}
-            );
-            window.dash_clientside.set_props(
                 "rc-input-slurm-partition", {value: "compute"}
             );
-            for (const mode of values.modes) {
+        }""",
+        {
+            "pipeline": str(pipeline),
+            "inputDir": str(input_dir),
+        },
+    )
+    page.locator("#rc-btn-pick-output").click()
+    output_input = page.locator("#rc-input-output-path")
+    output_input.wait_for(state="visible")
+    output_input.fill(str(output_dir))
+    page.locator("#rc-btn-output-confirm").click()
+    expect(page.locator("#rc-modal-output")).not_to_be_visible()
+    expect(page.locator("#rc-label-output")).to_contain_text(output_dir.name)
+    expect(page.locator("#rc-metadata-preflight")).to_contain_text("1 image(s)")
+    page.evaluate(
+        """(modes) => {
+            for (const mode of modes) {
                 window.dash_clientside.set_props(
                     "rc-radio-mode", {value: mode}
                 );
             }
         }""",
-        {
-            "pipeline": str(pipeline),
-            "inputDir": str(input_dir),
-            "outputDir": str(output_dir),
-            "modes": modes,
-        },
+        modes,
     )
 
 
@@ -126,6 +137,88 @@ def test_picker_modal_opens(
         arg=modal_id,
         timeout=5_000,
     )
+
+
+def test_typed_nonexistent_output_keeps_exact_target(
+    page: Page,
+    hub_url: str,
+    fake_sandbox: Path,
+) -> None:
+    """Confirming a typed new path never substitutes the browsed sandbox root."""
+    target = fake_sandbox / "typed-output-new" / "nested"
+    assert not target.exists()
+    page.goto(hub_url + "/run/")
+    page.locator("#rc-btn-pick-output").click()
+    output_input = page.locator("#rc-input-output-path")
+    output_input.fill("typed-output-new/nested")
+    page.locator("#rc-btn-output-confirm").click()
+
+    expect(page.locator("#rc-modal-output")).not_to_be_visible()
+    expect(page.locator("#rc-label-output")).to_have_text(
+        "typed-output-new/nested"
+    )
+    assert not target.exists()
+
+
+def test_output_picker_refuses_sandbox_root(
+    page: Page,
+    hub_url: str,
+) -> None:
+    page.goto(hub_url + "/run/")
+    page.locator("#rc-btn-pick-output").click()
+    page.locator("#rc-input-output-path").fill(".")
+    page.locator("#rc-btn-output-confirm").click()
+
+    expect(page.locator("#rc-modal-output")).to_be_visible()
+    expect(page.locator("#rc-toast")).to_contain_text(
+        "sandbox root cannot be used"
+    )
+    expect(page.locator("#rc-label-output")).to_have_text("(none)")
+
+
+def test_metadata_preflight_shows_ambient_descriptor_but_defaults_to_omit(
+    page: Page,
+    hub_url: str,
+    fake_sandbox: Path,
+) -> None:
+    """One-image metadata is visible and compatible without implicit authority."""
+    metadata = fake_sandbox / "one-image-metadata.csv"
+    metadata.write_text(
+        f"{METADATA.IMAGE_NAME},Treatment\nimage,control\n",
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(fake_sandbox)
+    payload = metadata_payload_from_path(sandbox, metadata)
+    assert payload is not None
+    page.goto(hub_url + "/run/")
+    page.evaluate(
+        """(values) => {
+            window.dash_clientside.set_props(
+                "shell-source-image-root-store", {data: values.source}
+            );
+            window.dash_clientside.set_props(
+                "shell-metadata-csv-store", {data: values.metadata}
+            );
+        }""",
+        {
+            "source": None,
+            "metadata": payload,
+        },
+    )
+    page.evaluate(
+        """(source) => window.dash_clientside.set_props(
+            "rc-store-input-dir", {data: source}
+        )""",
+        str(fake_sandbox / "plate1"),
+    )
+
+    preflight = page.locator("#rc-metadata-preflight")
+    expect(preflight).to_contain_text(str(metadata))
+    expect(preflight).to_contain_text("Status: compatible")
+    expect(preflight).to_contain_text("1/1 input image(s) matched")
+    expect(
+        page.locator('#rc-metadata-choice input[value="omit"]')
+    ).to_be_checked()
 
 
 def test_mode_toggle_switches_state(page: Page, hub_url: str) -> None:

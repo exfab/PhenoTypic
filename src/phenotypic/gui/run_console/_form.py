@@ -628,6 +628,57 @@ def _build_action_buttons() -> html.Div:
     )
 
 
+def _build_metadata_preflight_section() -> html.Div:
+    """Build the visible ambient-metadata review and authority controls."""
+    return html.Div(
+        [
+            html.Div(
+                "Metadata preflight",
+                className="run-console-picker-label",
+            ),
+            html.Div(
+                "Ambient metadata is never added to a Run request until you "
+                "explicitly choose Include.",
+                className="small text-muted mb-2",
+            ),
+            html.Div(
+                "Checking source and ambient metadata…",
+                id=ids.RC_METADATA_PREFLIGHT,
+                className="run-console-metadata-preflight",
+            ),
+            dbc.RadioItems(
+                id=ids.RC_METADATA_CHOICE,
+                options=[
+                    {"label": "Omit", "value": "omit"},
+                    {"label": "Include", "value": "include"},
+                ],
+                value="omit",
+                inline=True,
+                className="mt-2",
+            ),
+            html.Div(
+                dbc.Checklist(
+                    id=ids.RC_METADATA_ACKNOWLEDGEMENT,
+                    options=[
+                        {
+                            "label": (
+                                "I understand that the reported metadata "
+                                "mismatches can change aggregation rows."
+                            ),
+                            "value": "acknowledge",
+                        }
+                    ],
+                    value=[],
+                ),
+                id=f"{ids.RC_METADATA_ACKNOWLEDGEMENT}-wrapper",
+                style={"display": "none"},
+                className="mt-2",
+            ),
+        ],
+        className="run-console-metadata-section",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public form builder
 # ---------------------------------------------------------------------------
@@ -750,6 +801,8 @@ def build_form(sandbox: SandboxRoot) -> html.Div:
         html.Hr(),
         mode_row,
         flags_row,
+        html.Hr(),
+        _build_metadata_preflight_section(),
         html.Hr(),
         advanced_collapse,
         slurm_collapse,

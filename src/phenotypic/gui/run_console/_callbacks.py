@@ -45,7 +45,8 @@ from typing import Any, Callable, List, Optional, Tuple
 from uuid import UUID
 
 import dash
-from dash import ALL, Input, Output, State, ctx, no_update
+import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
+from dash import ALL, Input, Output, State, ctx, html, no_update
 
 from phenotypic.gui._config import (
     DASHBOARD_FILENAME,
@@ -60,7 +61,6 @@ from phenotypic.gui._config import (
 )
 from phenotypic.gui.run_console import _ids as ids
 from phenotypic.gui.run_console._directory_picker import (
-    ensure_output_dir,
     render_output_dir_tree,
 )
 from phenotypic.gui.run_console._form import (
@@ -69,6 +69,14 @@ from phenotypic.gui.run_console._form import (
 )
 from phenotypic.gui.run_console._layout import render_recents_table
 from phenotypic.gui.run_console._recent_runs import scan_recent_runs
+from phenotypic.gui.run_console._request_safety import (
+    MetadataPreflight,
+    RunRequestSafetyError,
+    build_metadata_preflight,
+    confirm_output_target,
+    recheck_metadata_selection,
+    validate_output_confirmation,
+)
 from phenotypic.gui.run_console._runner import LocalRunner
 from phenotypic.gui.run_console._slurm_observer import (
     IncrementalLogReader,
@@ -80,15 +88,12 @@ from phenotypic.gui.shell._ids import (
     SHELL_SOURCE_IMAGE_ROOT_STORE,
 )
 from phenotypic.gui.shell._metadata_context import (
-    metadata_payload_from_path,
     resolve_metadata_csv,
 )
 from phenotypic.gui.shell._runs_registry import RunMode, RunRecord, RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._source_context import (
-    SourcePayload,
     resolve_source_image_root,
-    source_payload_from_path,
 )
 from phenotypic.sdk_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
 
@@ -144,32 +149,6 @@ def _shorten_path(path_str: Optional[str], sandbox: SandboxRoot) -> str:
         return path_str
 
 
-def _source_payload_for_input_dir(
-    sandbox: SandboxRoot,
-    input_dir: Optional[str],
-    current_payload: object,
-) -> SourcePayload | None:
-    """Build a shared source payload from the Run input directory."""
-    if not input_dir:
-        return None
-    payload = source_payload_from_path(
-        sandbox, input_dir, source="run-console"
-    )
-    if payload is None:
-        return None
-    if (
-        isinstance(current_payload, dict)
-        and current_payload.get("version") == payload["version"]
-        and current_payload.get("kind") == payload["kind"]
-        and current_payload.get("relative_path") == payload["relative_path"]
-        and current_payload.get("sandbox_fingerprint")
-        == payload["sandbox_fingerprint"]
-        and current_payload.get("validation") == payload["validation"]
-    ):
-        return None
-    return payload
-
-
 def _input_dir_from_shared_source(
     sandbox: SandboxRoot,
     shared_payload: object,
@@ -180,6 +159,74 @@ def _input_dir_from_shared_source(
         return None
     resolved = resolve_source_image_root(sandbox, shared_payload)
     return str(resolved) if resolved is not None else None
+
+
+def _fingerprint_label(value: str | None) -> str:
+    """Return a compact visible fingerprint without hiding its algorithm."""
+    if value is None:
+        return "unavailable"
+    return value if len(value) <= 24 else f"{value[:20]}…"
+
+
+def _metadata_preflight_children(report: MetadataPreflight) -> Any:
+    """Render the exact ambient descriptor and source compatibility."""
+    metadata_label = report.metadata_path or f"({report.metadata_state})"
+    source_label = report.source_path or f"({report.source_state})"
+    color = {
+        "compatible": "success",
+        "warning": "warning",
+        "blocked": "danger",
+        "pending": "secondary",
+        "absent": "secondary",
+    }[report.compatibility]
+    details: list[Any] = [
+        html.Div(
+            [
+                html.Strong("Status: "),
+                report.compatibility,
+            ]
+        ),
+        html.Div([html.Strong("Source: "), source_label]),
+        html.Div(
+            [
+                html.Strong("Source inventory: "),
+                f"{report.source_image_count} image(s), ",
+                _fingerprint_label(report.source_fingerprint),
+            ]
+        ),
+        html.Div([html.Strong("Ambient metadata: "), metadata_label]),
+    ]
+    if report.metadata_path is not None:
+        details.extend(
+            [
+                html.Div(
+                    [
+                        html.Strong("Metadata descriptor: "),
+                        f"{report.metadata_row_count} row(s), identity ",
+                        report.identity_column
+                        or report.identity_state
+                        or "unavailable",
+                        ", ",
+                        _fingerprint_label(report.metadata_fingerprint),
+                    ]
+                ),
+                html.Div(
+                    [
+                        html.Strong("Compatibility: "),
+                        f"{report.matched_source_count}/"
+                        f"{report.source_image_count} input image(s) matched; "
+                        f"{report.metadata_only_count} metadata-only row(s); "
+                        f"{report.duplicate_identity_count} duplicate "
+                        "identity row(s).",
+                    ]
+                ),
+            ]
+        )
+    if report.warnings:
+        details.append(
+            html.Ul([html.Li(message) for message in report.warnings])
+        )
+    return dbc.Alert(details, color=color, className="mb-0 py-2")
 
 
 def _looks_like_pipeline_json(path: Path) -> bool:
@@ -260,7 +307,7 @@ def _action_control_states() -> tuple[State, ...]:
     return (
         State(ids.RC_STORE_PIPELINE_PATH, "data"),
         State(ids.RC_STORE_INPUT_DIR, "data"),
-        State(ids.RC_STORE_OUTPUT_DIR, "data"),
+        State(ids.RC_INPUT_OUTPUT_PATH, "value"),
         State(ids.RC_RADIO_MODE, "value"),
         State(ids.RC_CHECKS_FLAGS, "value"),
         State(ids.RC_INPUT_SAMPLE, "value"),
@@ -278,15 +325,19 @@ def _action_control_states() -> tuple[State, ...]:
         State(ids.RC_INPUT_GPU_SLURM, "value"),
         State(ids.RC_INPUT_GPU_SHARDS, "value"),
         State(SHELL_METADATA_CSV_STORE, "data"),
+        State(ids.RC_METADATA_CHOICE, "value"),
+        State(ids.RC_METADATA_ACKNOWLEDGEMENT, "value"),
+        State(ids.RC_STORE_METADATA_PREFLIGHT, "data"),
+        State(ids.RC_STORE_OUTPUT_CONFIRMATION, "data"),
     )
 
 
 def _action_control_outputs() -> tuple[Output, ...]:
-    """Return action controls in the same order used by raw callback state."""
+    """Return preset-load controls without writing shared shell authority."""
     return (
         Output(ids.RC_STORE_PIPELINE_PATH, "data", allow_duplicate=True),
         Output(ids.RC_STORE_INPUT_DIR, "data", allow_duplicate=True),
-        Output(ids.RC_STORE_OUTPUT_DIR, "data", allow_duplicate=True),
+        Output(ids.RC_INPUT_OUTPUT_PATH, "value", allow_duplicate=True),
         Output(ids.RC_RADIO_MODE, "value", allow_duplicate=True),
         Output(ids.RC_CHECKS_FLAGS, "value", allow_duplicate=True),
         Output(ids.RC_INPUT_SAMPLE, "value", allow_duplicate=True),
@@ -303,7 +354,13 @@ def _action_control_outputs() -> tuple[Output, ...]:
         Output(ids.RC_INPUT_SLURM_EXTRA, "value", allow_duplicate=True),
         Output(ids.RC_INPUT_GPU_SLURM, "value", allow_duplicate=True),
         Output(ids.RC_INPUT_GPU_SHARDS, "value", allow_duplicate=True),
-        Output(SHELL_METADATA_CSV_STORE, "data", allow_duplicate=True),
+        Output(ids.RC_METADATA_CHOICE, "value", allow_duplicate=True),
+        Output(ids.RC_STORE_OUTPUT_DIR, "data", allow_duplicate=True),
+        Output(
+            ids.RC_STORE_OUTPUT_CONFIRMATION,
+            "data",
+            allow_duplicate=True,
+        ),
     )
 
 
@@ -313,14 +370,27 @@ def _state_from_action_controls(
     sandbox: SandboxRoot,
 ) -> RunConsoleState:
     """Build authoritative state from one action callback's raw controls."""
-    if len(values) != 20:
+    if len(values) != 24:
         raise ValueError(
-            f"expected 20 raw run controls, received {len(values)}"
+            f"expected 24 raw run controls, received {len(values)}"
         )
-    return state_from_controls(
+    output_dir = validate_output_confirmation(
+        sandbox,
+        values[2],
+        values[23],
+    )
+    metadata_csv = recheck_metadata_selection(
+        sandbox,
+        input_dir=values[1],
+        metadata_payload=values[19],
+        choice=values[20],
+        acknowledgement=values[21],
+        preflight_payload=values[22],
+    )
+    state = state_from_controls(
         pipeline_path=values[0],
         input_dir=values[1],
-        output_dir=values[2],
+        output_dir=str(output_dir),
         mode=values[3],
         flags=values[4],
         sample=values[5],
@@ -337,9 +407,11 @@ def _state_from_action_controls(
         slurm_extra=values[16],
         gpu_slurm=values[17],
         gpu_shards=values[18],
-        metadata_payload=values[19],
+        metadata_payload=None,
         sandbox=sandbox,
     )
+    state.metadata_csv = str(metadata_csv) if metadata_csv is not None else None
+    return state
 
 
 def _controls_from_run_state(
@@ -347,7 +419,7 @@ def _controls_from_run_state(
     *,
     sandbox: SandboxRoot,
 ) -> tuple[Any, ...]:
-    """Restore a serialized state into the authoritative visible controls."""
+    """Restore preset fields while requiring fresh output/metadata confirmation."""
     flags: list[str] = []
     if state.dry_run:
         flags.append("dry_run")
@@ -363,11 +435,7 @@ def _controls_from_run_state(
         else ""
     )
     gpu_lines = "\n".join(state.gpu_slurm_args)
-    metadata_payload = (
-        metadata_payload_from_path(sandbox, state.metadata_csv)
-        if state.metadata_csv is not None
-        else None
-    )
+    del sandbox
 
     return (
         state.pipeline_path,
@@ -389,7 +457,9 @@ def _controls_from_run_state(
         extra_lines or None,
         gpu_lines or None,
         state.gpu_shards,
-        metadata_payload,
+        "omit",
+        None,
+        None,
     )
 
 
@@ -465,6 +535,7 @@ def _form_inputs_to_state(
     slurm_extra: Optional[str],
     *,
     metadata_payload: object = None,
+    metadata_choice: object = "omit",
     sandbox: SandboxRoot | None = None,
 ) -> dict[str, Any]:
     """Bundle every form input into a flat state dict.
@@ -499,7 +570,7 @@ def _form_inputs_to_state(
         slurm_args["extra"] = extra
 
     metadata_csv: str | None = None
-    if sandbox is not None:
+    if sandbox is not None and metadata_choice == "include":
         resolved_metadata = resolve_metadata_csv(sandbox, metadata_payload)
         metadata_csv = (
             str(resolved_metadata) if resolved_metadata is not None else None
@@ -1276,6 +1347,11 @@ def register_callbacks(
 
     @app.callback(
         Output(ids.RC_STORE_OUTPUT_DIR, "data", allow_duplicate=True),
+        Output(
+            ids.RC_STORE_OUTPUT_CONFIRMATION,
+            "data",
+            allow_duplicate=True,
+        ),
         Output(ids.RC_MODAL_OUTPUT, "is_open", allow_duplicate=True),
         Output(ids.RC_TOAST, "is_open", allow_duplicate=True),
         Output(ids.RC_TOAST, "children", allow_duplicate=True),
@@ -1283,38 +1359,35 @@ def register_callbacks(
         Output(ids.RC_TOAST, "header", allow_duplicate=True),
         Input(ids.RC_BTN_OUTPUT_CONFIRM, "n_clicks"),
         State(ids.RC_INPUT_OUTPUT_PATH, "value"),
-        State(ids.RC_STORE_BROWSE_DIR_OUTPUT, "data"),
         prevent_initial_call=True,
     )
     def confirm_output_dir(
         n_clicks: Optional[int],
         typed_value: Optional[str],
-        browsed_value: Optional[str],
     ) -> Tuple[Any, ...]:
-        """Resolve + create the output directory and close the modal."""
+        """Confirm only the typed path and preserve a new canonical target."""
         if not n_clicks:
-            return (no_update,) * 6
-        candidate = (typed_value or browsed_value or "").strip()
-        if not candidate:
+            return (no_update,) * 7
+        try:
+            confirmation = confirm_output_target(sandbox, typed_value)
+        except RunRequestSafetyError as exc:
             return (
                 no_update,
-                no_update,
-                *_toast("Type or browse a directory first", ok=False),
-            )
-        resolved = ensure_output_dir(sandbox, candidate)
-        if resolved is None:
-            return (
                 no_update,
                 no_update,
                 *_toast(
-                    f"Refused: {candidate} escapes sandbox or cannot be created",
+                    str(exc),
                     ok=False,
                 ),
             )
         return (
-            str(resolved),
+            confirmation.canonical_path,
+            confirmation.to_json(),
             False,
-            *_toast(f"Output: {resolved.name}", ok=True),
+            *_toast(
+                f"Output confirmed: {confirmation.relative_path}",
+                ok=True,
+            ),
         )
 
     # ----------------------------------------------------------------------
@@ -1338,23 +1411,8 @@ def register_callbacks(
     _register_picker_label(ids.RC_LABEL_OUTPUT, ids.RC_STORE_OUTPUT_DIR)
 
     # ----------------------------------------------------------------------
-    # 5b. Shared source-image-root sync
+    # 5b. Shared source consumption + visible metadata preflight
     # ----------------------------------------------------------------------
-
-    @app.callback(
-        Output(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_duplicate=True),
-        Input(ids.RC_STORE_INPUT_DIR, "data"),
-        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
-        prevent_initial_call=True,
-    )
-    def _mirror_input_dir_to_shared_source(
-        input_dir: Optional[str],
-        current_payload: object,
-    ) -> Any:
-        payload = _source_payload_for_input_dir(
-            sandbox, input_dir, current_payload
-        )
-        return payload if payload is not None else no_update
 
     @app.callback(
         Output(ids.RC_STORE_INPUT_DIR, "data", allow_duplicate=True),
@@ -1370,6 +1428,43 @@ def register_callbacks(
             sandbox, shared_payload, current_input_dir
         )
         return input_dir if input_dir is not None else no_update
+
+    @app.callback(
+        Output(ids.RC_METADATA_PREFLIGHT, "children"),
+        Output(ids.RC_STORE_METADATA_PREFLIGHT, "data"),
+        Output(ids.RC_METADATA_CHOICE, "value", allow_duplicate=True),
+        Output(
+            ids.RC_METADATA_ACKNOWLEDGEMENT,
+            "value",
+            allow_duplicate=True,
+        ),
+        Output(f"{ids.RC_METADATA_ACKNOWLEDGEMENT}-wrapper", "style"),
+        Input(ids.RC_STORE_INPUT_DIR, "data"),
+        Input(SHELL_METADATA_CSV_STORE, "data"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def refresh_metadata_preflight(
+        input_dir: object,
+        metadata_payload: object,
+    ) -> tuple[Any, ...]:
+        """Publish a current snapshot and reset request authority to Omit."""
+        report = build_metadata_preflight(
+            sandbox,
+            input_dir,
+            metadata_payload,
+        )
+        acknowledgement_style = {
+            "display": "block"
+            if report.requires_acknowledgement
+            else "none"
+        }
+        return (
+            _metadata_preflight_children(report),
+            report.to_json(),
+            "omit",
+            [],
+            acknowledgement_style,
+        )
 
     # ----------------------------------------------------------------------
     # 6. Advanced + SLURM collapses
@@ -1434,6 +1529,7 @@ def register_callbacks(
         Input(ids.RC_INPUT_GPU_SLURM, "value"),
         Input(ids.RC_INPUT_GPU_SHARDS, "value"),
         Input(SHELL_METADATA_CSV_STORE, "data"),
+        Input(ids.RC_METADATA_CHOICE, "value"),
     )
     def sync_form_state(  # noqa: PLR0913
         pipeline_path: Optional[str],
@@ -1456,9 +1552,10 @@ def register_callbacks(
         gpu_slurm: Optional[str],
         gpu_shards: Optional[Any],
         metadata_payload: object,
+        metadata_choice: object,
     ) -> dict[str, Any]:
         """Bundle all form fields into the run-state store on any change."""
-        values = (
+        payload = _form_inputs_to_state(
             pipeline_path,
             input_dir,
             output_dir,
@@ -1476,45 +1573,17 @@ def register_callbacks(
             slurm_cpus,
             slurm_gpus,
             slurm_extra,
-            gpu_slurm,
-            gpu_shards,
-            metadata_payload,
+            metadata_payload=metadata_payload,
+            metadata_choice=metadata_choice,
+            sandbox=sandbox,
         )
-        try:
-            state = _state_from_action_controls(values, sandbox=sandbox)
-        except ValueError:
-            # Presentation state remains permissive while the user is midway
-            # through editing. Action callbacks perform authoritative
-            # validation from the same raw controls.
-            payload = _form_inputs_to_state(
-                pipeline_path,
-                input_dir,
-                output_dir,
-                mode,
-                flags,
-                sample,
-                nrows,
-                ncols,
-                image_type,
-                workers,
-                log_level,
-                slurm_partition,
-                slurm_time,
-                slurm_mem,
-                slurm_cpus,
-                slurm_gpus,
-                slurm_extra,
-                metadata_payload=metadata_payload,
-                sandbox=sandbox,
-            )
-            payload["gpu_slurm_args"] = [
-                line.strip()
-                for line in (gpu_slurm or "").splitlines()
-                if line.strip()
-            ]
-            payload["gpu_shards"] = gpu_shards or 1
-            return payload
-        return run_state_to_json(state)
+        payload["gpu_slurm_args"] = [
+            line.strip()
+            for line in (gpu_slurm or "").splitlines()
+            if line.strip()
+        ]
+        payload["gpu_shards"] = gpu_shards or 1
+        return payload
 
     # ----------------------------------------------------------------------
     # 8. Validate / Run / Cancel
@@ -2207,7 +2276,7 @@ def register_callbacks(
     def click_load_preset(preset_path: Optional[str]) -> Tuple[Any, ...]:
         """Restore every authoritative visible control from a preset file."""
         if not preset_path:
-            return (no_update,) * 24
+            return (no_update,) * 26
         try:
             payload = json.loads(Path(preset_path).read_text(encoding="utf-8"))
             state = run_state_from_json(payload)
@@ -2218,7 +2287,7 @@ def register_callbacks(
         except Exception as exc:  # noqa: BLE001
             logger.exception("Load preset failed")
             return (
-                *((no_update,) * 20),
+                *((no_update,) * 22),
                 *_toast(_format_exception(exc), ok=False),
             )
 
@@ -2297,7 +2366,14 @@ def register_callbacks(
     @app.callback(
         Output(ids.RC_STORE_PIPELINE_PATH, "data", allow_duplicate=True),
         Output(ids.RC_STORE_INPUT_DIR, "data", allow_duplicate=True),
+        Output(ids.RC_INPUT_OUTPUT_PATH, "value", allow_duplicate=True),
         Output(ids.RC_STORE_OUTPUT_DIR, "data", allow_duplicate=True),
+        Output(
+            ids.RC_STORE_OUTPUT_CONFIRMATION,
+            "data",
+            allow_duplicate=True,
+        ),
+        Output(ids.RC_MODAL_OUTPUT, "is_open", allow_duplicate=True),
         Output(ids.RC_TOAST, "is_open", allow_duplicate=True),
         Output(ids.RC_TOAST, "children", allow_duplicate=True),
         Output(ids.RC_TOAST, "icon", allow_duplicate=True),
@@ -2317,15 +2393,15 @@ def register_callbacks(
         _dismiss: Optional[int],
         selection: Optional[dict[str, Any]],
     ) -> Tuple[Any, ...]:
-        """Route the sidebar selection into the form's per-field stores.
+        """Route the sidebar selection into a form field.
 
-        ``ctx.triggered_id`` distinguishes which button fired. Each button
-        writes to one of the three RC stores and clears the selection
-        store so the banner closes.
+        ``ctx.triggered_id`` distinguishes which button fired. Output
+        selections populate the typed field and reopen confirmation; they
+        never become an accepted output target directly.
         """
         triggered = ctx.triggered_id
         if triggered is None:
-            return (no_update,) * 8
+            return (no_update,) * 11
 
         if triggered == ids.RC_HANDOFF_DISMISS:
             # ``no_update`` for the four toast outputs so an unrelated
@@ -2333,6 +2409,9 @@ def register_callbacks(
             # is not torn down as a side-effect of dismissing the
             # hand-off banner.
             return (
+                no_update,
+                no_update,
+                no_update,
                 no_update,
                 no_update,
                 no_update,
@@ -2350,6 +2429,9 @@ def register_callbacks(
                 no_update,
                 no_update,
                 no_update,
+                no_update,
+                no_update,
+                no_update,
                 *_toast("No sidebar selection", ok=False),
                 no_update,
             )
@@ -2364,6 +2446,9 @@ def register_callbacks(
                 target,
                 no_update,
                 no_update,
+                no_update,
+                no_update,
+                no_update,
                 *_toast(f"Set as pipeline: {path}", ok=True),
                 None,
             )
@@ -2371,6 +2456,9 @@ def register_callbacks(
             return (
                 no_update,
                 target,
+                no_update,
+                no_update,
+                no_update,
                 no_update,
                 *_toast(f"Set as input dir: {path}", ok=True),
                 None,
@@ -2380,7 +2468,13 @@ def register_callbacks(
                 no_update,
                 no_update,
                 target,
-                *_toast(f"Set as output dir: {path}", ok=True),
+                None,
+                None,
+                True,
+                *_toast(
+                    f"Review and confirm output path: {path}",
+                    ok=True,
+                ),
                 None,
             )
-        return (no_update,) * 8
+        return (no_update,) * 11

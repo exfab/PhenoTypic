@@ -18,9 +18,8 @@ The :func:`build_output_picker_modal` factory mirrors the builder's
 """
 from __future__ import annotations
 
-import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
@@ -28,12 +27,9 @@ from dash import dcc, html
 from phenotypic.gui.run_console import _ids as ids
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
-logger = logging.getLogger(__name__)
-
 __all__ = [
     "build_output_picker_modal",
     "render_output_dir_tree",
-    "ensure_output_dir",
 ]
 
 
@@ -171,7 +167,7 @@ def build_output_picker_modal(sandbox: SandboxRoot) -> dbc.Modal:
 
         1. **Free-form path input** — the source of truth. The user can
            type a not-yet-existing path (e.g. ``output_2026_04_30``) and
-           confirm; :func:`ensure_output_dir` will create it.
+           confirm it without substituting the currently browsed directory.
         2. **Tree** — depth-1 listing of subdirectories of the currently
            browsed directory. Clicking a folder navigates the tree; the
            selected folder also gets pasted into the path input on
@@ -249,35 +245,3 @@ def build_output_picker_modal(sandbox: SandboxRoot) -> dbc.Modal:
         backdrop=True,
         centered=True,
     )
-
-
-def ensure_output_dir(
-    sandbox: SandboxRoot,
-    candidate: str,
-) -> Optional[Path]:
-    """Resolve ``candidate`` to an in-sandbox path and ``mkdir -p`` it.
-
-    Used by the confirm callback. Falls through to the sandbox's
-    ``resolve(strict=False)`` so non-existent path components are
-    accepted (this is exactly the case where the user typed
-    ``output_<timestamp>``).
-
-    Args:
-        sandbox: Containment primitive.
-        candidate: Path string from :data:`ids.RC_INPUT_OUTPUT_PATH`.
-
-    Returns:
-        The absolute, sandbox-contained, freshly-created path on success;
-        ``None`` if the path escapes the sandbox or cannot be created.
-    """
-    try:
-        resolved = sandbox.resolve(candidate)
-    except ValueError:
-        logger.warning("output dir escapes sandbox: %r", candidate)
-        return None
-    try:
-        resolved.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        logger.warning("could not mkdir %s: %s", resolved, exc)
-        return None
-    return resolved

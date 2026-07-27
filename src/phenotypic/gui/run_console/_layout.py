@@ -222,6 +222,8 @@ def _stores() -> html.Div:
             dcc.Store(id=ids.RC_STORE_PIPELINE_PATH, data=None),
             dcc.Store(id=ids.RC_STORE_INPUT_DIR, data=None),
             dcc.Store(id=ids.RC_STORE_OUTPUT_DIR, data=None),
+            dcc.Store(id=ids.RC_STORE_OUTPUT_CONFIRMATION, data=None),
+            dcc.Store(id=ids.RC_STORE_METADATA_PREFLIGHT, data=None),
             dcc.Store(id=ids.RC_STORE_RECENTS_REFRESH, data=0),
         ]
     )

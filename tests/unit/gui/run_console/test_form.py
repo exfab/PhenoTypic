@@ -52,6 +52,19 @@ def test_staged_gpu_form_controls_are_mounted_hidden(tmp_path) -> None:
     assert cpu_gpu_labels[0].children == "CPU-stage GPUs"
 
 
+def test_metadata_preflight_is_visible_and_defaults_to_omit(tmp_path) -> None:
+    form = _form.build_form(SandboxRoot.from_path(tmp_path))
+    by_id = {
+        component.id: component
+        for component in _walk_components(form)
+        if getattr(component, "id", None) is not None
+    }
+
+    assert _ids.RC_METADATA_PREFLIGHT in by_id
+    assert by_id[_ids.RC_METADATA_CHOICE].value == "omit"
+    assert by_id[_ids.RC_METADATA_ACKNOWLEDGEMENT].value == []
+
+
 def _walk_components(component: Any):
     yield component
     children = getattr(component, "children", None)

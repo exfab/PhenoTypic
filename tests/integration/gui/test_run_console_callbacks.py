@@ -45,6 +45,10 @@ from phenotypic.gui.run_console._slurm import (
 from phenotypic.gui.run_console._slurm_observer import SlurmLifecycleObserver
 from phenotypic.gui.run_console._runner import LocalRunner
 from phenotypic.gui.run_console._app import create_app
+from phenotypic.gui.run_console._request_safety import (
+    build_metadata_preflight,
+    confirm_output_target,
+)
 from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic._cli._cli_slurm_lifecycle import (
@@ -114,6 +118,30 @@ def _callback_by_name(app: Any, name: str) -> Any:
         spec["callback"].__wrapped__
         for spec in app.callback_map.values()
         if spec["callback"].__wrapped__.__name__ == name
+    )
+
+
+def _guard_action_controls(
+    sandbox: SandboxRoot,
+    controls: tuple[Any, ...],
+    *,
+    metadata_choice: str = "omit",
+    acknowledgement: list[str] | None = None,
+) -> tuple[Any, ...]:
+    """Add current output and metadata receipts to the legacy control prefix."""
+    assert len(controls) == 20
+    preflight = build_metadata_preflight(
+        sandbox,
+        controls[1],
+        controls[19],
+    )
+    confirmation = confirm_output_target(sandbox, controls[2])
+    return (
+        *controls,
+        metadata_choice,
+        acknowledgement or [],
+        preflight.to_json(),
+        confirmation.to_json(),
     )
 
 
@@ -894,7 +922,6 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
     """Save and Load preserve every control consumed by the Run callback."""
     from phenotypic.gui.shell._metadata_context import (
         metadata_payload_from_path,
-        resolve_metadata_csv,
     )
     from phenotypic.schema import METADATA
 
@@ -907,13 +934,14 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
     metadata = tmp_path / "metadata.csv"
     pipeline.write_text('{"operations": []}', encoding="utf-8")
     images.mkdir()
+    (images / "plate_a.tif").write_bytes(b"one-image")
     output.mkdir()
     metadata.write_text(
         f"{METADATA.IMAGE_NAME},Treatment\nplate_a,control\n",
         encoding="utf-8",
     )
     metadata_payload = metadata_payload_from_path(sandbox, metadata)
-    controls = (
+    control_prefix = (
         str(pipeline),
         str(images),
         str(output),
@@ -934,6 +962,11 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
         "slurm_partition=gpu\nslurm_account=lab",
         4,
         metadata_payload,
+    )
+    controls = _guard_action_controls(
+        sandbox,
+        control_prefix,
+        metadata_choice="include",
     )
 
     save_callback = next(
@@ -964,11 +997,11 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
         / "full-slurm.json"
     )
     load_response = load_callback(str(preset))
-    loaded_controls = tuple(load_response[:20])
+    loaded_controls = tuple(load_response[:22])
 
-    assert loaded_controls[:17] == controls[:17]
-    assert loaded_controls[17:19] == controls[17:19]
-    assert resolve_metadata_csv(sandbox, loaded_controls[19]) == metadata
+    assert loaded_controls[:19] == control_prefix[:19]
+    assert loaded_controls[19] == "omit"
+    assert loaded_controls[20:] == (None, None)
 
     captured_states = []
 
@@ -992,7 +1025,12 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
         "submit",
         _capture_submit,
     )
-    run_response = run_callback(1, *loaded_controls, 0)
+    reauthorized = _guard_action_controls(
+        sandbox,
+        (*loaded_controls[:19], metadata_payload),
+        metadata_choice="include",
+    )
+    run_response = run_callback(1, *reauthorized, 0)
 
     assert "SLURM submitting" in run_response[1]
     assert len(captured_states) == 1
@@ -1041,8 +1079,9 @@ def test_load_legacy_preset_uses_visible_control_defaults(
     assert response[:5] == (None, None, None, "local", [])
     assert response[5:18] == (None,) * 13
     assert response[18] == 1
-    assert response[19] is None
-    assert response[21] == "Loaded preset legacy"
+    assert response[19] == "omit"
+    assert response[20:22] == (None, None)
+    assert response[23] == "Loaded preset legacy"
 
 
 def test_raw_mode_at_action_time_is_authoritative(tmp_path: Path) -> None:
@@ -1077,15 +1116,115 @@ def test_raw_mode_at_action_time_is_authoritative(tmp_path: Path) -> None:
         None,
     )
 
-    local = _state_from_action_controls(base, sandbox=sandbox)
+    local = _state_from_action_controls(
+        _guard_action_controls(sandbox, base),
+        sandbox=sandbox,
+    )
     slurm_values = list(base)
     slurm_values[3] = "slurm"
     slurm_values[11] = "compute"
-    slurm = _state_from_action_controls(tuple(slurm_values), sandbox=sandbox)
+    slurm = _state_from_action_controls(
+        _guard_action_controls(sandbox, tuple(slurm_values)),
+        sandbox=sandbox,
+    )
 
     assert local.mode == "local"
     assert slurm.mode == "slurm"
     assert slurm.slurm_args["partition"] == "compute"
+
+
+def test_run_action_shows_stale_output_confirmation_error(
+    tmp_path: Path,
+) -> None:
+    """A changed typed output is rejected visibly before durable allocation."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    app = create_app(sandbox, registry=registry)
+    pipeline = tmp_path / "pipeline.json"
+    images = tmp_path / "images"
+    pipeline.write_text('{"operations": []}', encoding="utf-8")
+    images.mkdir()
+    (images / "plate_a.tif").write_bytes(b"one-image")
+    controls = _guard_action_controls(
+        sandbox,
+        (
+            str(pipeline),
+            str(images),
+            str(tmp_path / "confirmed-output"),
+            "local",
+            [],
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            1,
+            None,
+        ),
+    )
+    stale_controls = list(controls)
+    stale_controls[2] = str(tmp_path / "changed-after-confirm")
+    callback = _callback_by_name(app, "click_run")
+
+    response = callback(1, *stale_controls, 0)
+
+    assert "stale" in response[1]
+    assert registry.list() == []
+
+
+def test_validate_action_shows_changed_source_fingerprint_error(
+    tmp_path: Path,
+) -> None:
+    """A changed source snapshot is rejected visibly before validation spawn."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    app = create_app(sandbox, registry=registry)
+    pipeline = tmp_path / "pipeline.json"
+    images = tmp_path / "images"
+    pipeline.write_text('{"operations": []}', encoding="utf-8")
+    images.mkdir()
+    image = images / "plate_a.tif"
+    image.write_bytes(b"one-image")
+    controls = _guard_action_controls(
+        sandbox,
+        (
+            str(pipeline),
+            str(images),
+            str(tmp_path / "validation-output"),
+            "local",
+            [],
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            1,
+            None,
+        ),
+    )
+    image.write_bytes(b"changed-source")
+    callback = _callback_by_name(app, "click_validate")
+
+    response = callback(1, *controls)
+
+    assert "changed after preflight" in response[1]
+    assert registry.list() == []
 
 
 def test_empty_slurm_profile_never_invokes_submitter(
@@ -1102,7 +1241,7 @@ def test_empty_slurm_profile_never_invokes_submitter(
     pipeline.write_text('{"operations": []}', encoding="utf-8")
     images.mkdir()
     output.mkdir()
-    controls = (
+    controls = _guard_action_controls(sandbox, (
         str(pipeline),
         str(images),
         str(output),
@@ -1123,7 +1262,7 @@ def test_empty_slurm_profile_never_invokes_submitter(
         None,
         1,
         None,
-    )
+    ))
     monkeypatch.setattr(
         callbacks_module._SLURM_EXECUTOR,
         "submit",
@@ -1155,7 +1294,7 @@ def test_immediate_local_exit_terminalizes_allocated_generation(
     pipeline.write_text('{"operations": "invalid"}', encoding="utf-8")
     images.mkdir()
     output.mkdir()
-    controls = (
+    controls = _guard_action_controls(sandbox, (
         str(pipeline),
         str(images),
         str(output),
@@ -1176,7 +1315,7 @@ def test_immediate_local_exit_terminalizes_allocated_generation(
         None,
         1,
         None,
-    )
+    ))
     callback = next(
         spec["callback"].__wrapped__
         for spec in app.callback_map.values()
@@ -1215,7 +1354,7 @@ def test_local_record_is_durable_before_spawn_failure(
     pipeline.write_text('{"operations": []}', encoding="utf-8")
     images.mkdir()
     output.mkdir()
-    controls = (
+    controls = _guard_action_controls(sandbox, (
         str(pipeline),
         str(images),
         str(output),
@@ -1236,7 +1375,7 @@ def test_local_record_is_durable_before_spawn_failure(
         None,
         1,
         None,
-    )
+    ))
 
     def fail_after_claim(*args, **kwargs):
         claimed = registry.get("output")
@@ -1261,70 +1400,23 @@ def test_local_record_is_durable_before_spawn_failure(
 
 
 # ---------------------------------------------------------------------------
-# Shared source-image-root sync
+# Shared descriptor consumption
 # ---------------------------------------------------------------------------
 
-def test_run_input_dir_builds_shared_source_payload(tmp_path: Path) -> None:
-    from phenotypic.gui.run_console._callbacks import (
-        _source_payload_for_input_dir,
-    )
-
-    plates = tmp_path / "plates"
-    plates.mkdir()
-    (plates / "plate.tif").write_bytes(b"")
-    sandbox = SandboxRoot.from_path(tmp_path)
-
-    payload = _source_payload_for_input_dir(sandbox, str(plates), None)
-
-    assert payload is not None
-    assert payload["abs_path"] == str(plates.resolve())
-    assert payload["source"] == "run-console"
-    assert payload["image_count"] == 1
-
-
-def test_run_input_dir_does_not_rewrite_matching_shared_source(
+def test_run_console_has_no_passive_shared_authority_writer(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.run_console._callbacks import (
-        _source_payload_for_input_dir,
+    """Run may consume shell descriptors but never publish either authority."""
+    from phenotypic.gui.shell._ids import (
+        SHELL_METADATA_CSV_STORE,
+        SHELL_SOURCE_IMAGE_ROOT_STORE,
     )
-    from phenotypic.gui.shell._source_context import source_payload_from_path
-
-    plates = tmp_path / "plates"
-    plates.mkdir()
     sandbox = SandboxRoot.from_path(tmp_path)
-    current = source_payload_from_path(sandbox, plates, source="manual")
+    app = create_app(sandbox)
+    outputs = [str(spec["output"]) for spec in app.callback_map.values()]
 
-    assert current is not None
-    assert _source_payload_for_input_dir(sandbox, str(plates), current) is None
-
-
-def test_same_path_reselection_upgrades_v1_shared_source(
-    tmp_path: Path,
-) -> None:
-    """Explicitly reselecting the same path must publish the V2 binding."""
-    from phenotypic.gui.run_console._callbacks import (
-        _source_payload_for_input_dir,
-    )
-
-    plates = tmp_path / "plates"
-    plates.mkdir()
-    sandbox = SandboxRoot.from_path(tmp_path)
-    legacy = {
-        "version": 1,
-        "abs_path": str(plates.resolve()),
-        "rel_path": "plates",
-        "source": "manual",
-    }
-
-    upgraded = _source_payload_for_input_dir(
-        sandbox, str(plates), legacy
-    )
-
-    assert upgraded is not None
-    assert upgraded["version"] == 2
-    assert upgraded["relative_path"] == "plates"
-    assert upgraded["sandbox_fingerprint"]
+    assert not any(SHELL_SOURCE_IMAGE_ROOT_STORE in output for output in outputs)
+    assert not any(SHELL_METADATA_CSV_STORE in output for output in outputs)
 
 
 def test_shared_source_initializes_empty_run_input(tmp_path: Path) -> None:
@@ -1360,7 +1452,7 @@ def test_shared_source_does_not_overwrite_non_empty_run_input(
     )
 
 
-def test_form_state_includes_resolved_global_metadata_csv(
+def test_form_state_omits_ambient_metadata_until_explicit_include(
     tmp_path: Path,
 ) -> None:
     from phenotypic.gui.run_console._callbacks import _form_inputs_to_state
@@ -1372,7 +1464,7 @@ def test_form_state_includes_resolved_global_metadata_csv(
     sandbox = SandboxRoot.from_path(tmp_path)
     payload = metadata_payload_from_path(sandbox, csv_path)
 
-    state = _form_inputs_to_state(
+    omitted = _form_inputs_to_state(
         "/p.json",
         "/in",
         "/out",
@@ -1393,5 +1485,28 @@ def test_form_state_includes_resolved_global_metadata_csv(
         metadata_payload=payload,
         sandbox=sandbox,
     )
+    included = _form_inputs_to_state(
+        "/p.json",
+        "/in",
+        "/out",
+        "local",
+        [],
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        metadata_payload=payload,
+        metadata_choice="include",
+        sandbox=sandbox,
+    )
 
-    assert state["metadata_csv"] == str(csv_path.resolve())
+    assert omitted["metadata_csv"] is None
+    assert included["metadata_csv"] == str(csv_path.resolve())

@@ -68,6 +68,13 @@ RC_STORE_INPUT_DIR = "rc-store-input-dir"
 #: Holds the selected output directory path (or ``None``).
 RC_STORE_OUTPUT_DIR = "rc-store-output-dir"
 
+#: Server-issued receipt binding the exact typed output path to its canonical
+#: sandbox-contained target. Browser storage is transport only; actions recheck it.
+RC_STORE_OUTPUT_CONFIRMATION = "rc-store-output-confirmation"
+
+#: Server-derived source/metadata compatibility snapshot displayed before launch.
+RC_STORE_METADATA_PREFLIGHT = "rc-store-metadata-preflight"
+
 #: Holds the directory currently being browsed in each modal.
 RC_STORE_BROWSE_DIR_PIPELINE = "rc-store-browse-dir-pipeline"
 RC_STORE_BROWSE_DIR_INPUT = "rc-store-browse-dir-input"
@@ -152,6 +159,19 @@ RC_MODAL_OUTPUT_BODY = "rc-modal-output-body"
 RC_INPUT_OUTPUT_PATH = "rc-input-output-path"
 RC_BTN_OUTPUT_CANCEL = "rc-btn-output-cancel"
 RC_BTN_OUTPUT_CONFIRM = "rc-btn-output-confirm"
+
+# ---------------------------------------------------------------------------
+# Metadata preflight
+# ---------------------------------------------------------------------------
+
+#: Visible ambient metadata descriptor and source-compatibility summary.
+RC_METADATA_PREFLIGHT = "rc-metadata-preflight"
+
+#: Explicit per-request metadata authority. Ambient metadata defaults to omitted.
+RC_METADATA_CHOICE = "rc-metadata-choice"
+
+#: Warning acknowledgement mounted only when the current preflight needs one.
+RC_METADATA_ACKNOWLEDGEMENT = "rc-metadata-acknowledgement"
 
 
 # ---------------------------------------------------------------------------
