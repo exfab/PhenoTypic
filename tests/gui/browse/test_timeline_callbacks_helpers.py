@@ -171,6 +171,24 @@ def test_source_revision_authority_rejects_out_of_order_reset_and_recovers() -> 
     assert authority.grid_is_current("tab-a", "refresh-2-grid")
 
 
+def test_source_revision_authority_blocks_initial_render_through_reset_gap() -> None:
+    authority = SourceRevisionAuthority()
+    authority.ensure_session("tab-a")
+    assert authority.is_current("tab-a", None)
+    assert authority.authorize_grid("tab-a", None, "initial-grid")
+
+    generation = authority.begin_reset("tab-a")
+
+    assert not authority.is_current("tab-a", None)
+    assert not authority.authorize_grid("tab-a", None, "delayed-initial-grid")
+    assert not authority.grid_is_current("tab-a", "initial-grid")
+    assert not authority.grid_is_current("tab-a", "delayed-initial-grid")
+
+    assert authority.publish_reset("tab-a", generation, "refresh-1")
+    assert authority.is_current("tab-a", "refresh-1")
+    assert authority.authorize_grid("tab-a", "refresh-1", "refresh-1-grid")
+
+
 def test_popout_event_is_revision_bound_and_current_source_contained(
     tmp_path: Path,
 ) -> None:
@@ -228,6 +246,21 @@ def test_popout_event_is_revision_bound_and_current_source_contained(
                 "generation": 1,
                 "revision": "grid-1",
                 "sequence": 2,
+                "token": encode_token("source/plate.png"),
+            },
+        )
+        is None
+    )
+    authority.retire("browser-1")
+    assert (
+        resolve_popout_event(
+            sandbox,
+            authority,
+            {
+                "session_id": "browser-1",
+                "generation": 2,
+                "revision": "grid-2",
+                "sequence": 4,
                 "token": encode_token("source/plate.png"),
             },
         )

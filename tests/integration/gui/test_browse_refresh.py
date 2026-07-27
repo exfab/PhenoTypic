@@ -106,6 +106,7 @@ def test_out_of_order_timeline_reset_cannot_roll_back_and_next_reset_recovers(
         app,
         "_reset_timeline_for_source",
     )
+    render_grid, _render_metadata = _callback_named(app, "_render_grid")
     original_reset = browse_callbacks.source_reset_values
     older_started = threading.Event()
     release_older = threading.Event()
@@ -131,6 +132,22 @@ def test_out_of_order_timeline_reset_cannot_roll_back_and_next_reset_recovers(
             "browser-1",
         )
         assert older_started.wait(timeout=5)
+        with pytest.raises(PreventUpdate):
+            render_grid(
+                "timeline",
+                "folder",
+                "exif",
+                None,
+                None,
+                None,
+                "",
+                [],
+                128,
+                None,
+                None,
+                None,
+                "browser-1",
+            )
         newer = reset_timeline(
             {"relative_path": "newer"},
             21,

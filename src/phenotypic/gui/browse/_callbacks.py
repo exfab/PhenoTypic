@@ -103,6 +103,7 @@ class _SourceRevisionState:
 
     generation: int = 0
     revision: str | None = None
+    reset_in_progress: bool = False
     grid_revisions: set[str] = field(default_factory=set)
 
 
@@ -155,6 +156,11 @@ class TimelineRevisionAuthority:
             return None
         return current
 
+    def retire(self, session_id: str) -> None:
+        """Retire every popout event authorized for ``session_id``."""
+        with self._lock:
+            self._by_session.pop(session_id, None)
+
 
 class SourceRevisionAuthority:
     """Thread-safe source refresh authority isolated by browser session."""
@@ -177,6 +183,7 @@ class SourceRevisionAuthority:
             )
             current.generation += 1
             current.revision = None
+            current.reset_in_progress = True
             current.grid_revisions.clear()
             return current.generation
 
@@ -192,13 +199,18 @@ class SourceRevisionAuthority:
             if current is None or current.generation != generation:
                 return False
             current.revision = revision
+            current.reset_in_progress = False
             return True
 
     def is_current(self, session_id: str, revision: str | None) -> bool:
         """Return whether ``revision`` is the live source refresh revision."""
         with self._lock:
             current = self._by_session.get(session_id)
-            return current is not None and current.revision == revision
+            return (
+                current is not None
+                and not current.reset_in_progress
+                and current.revision == revision
+            )
 
     def authorize_grid(
         self,
@@ -209,7 +221,11 @@ class SourceRevisionAuthority:
         """Publish a grid identity only while its source revision is current."""
         with self._lock:
             current = self._by_session.get(session_id)
-            if current is None or current.revision != source_revision:
+            if (
+                current is None
+                or current.reset_in_progress
+                or current.revision != source_revision
+            ):
                 return False
             current.grid_revisions.add(grid_revision)
             return True
@@ -220,6 +236,7 @@ class SourceRevisionAuthority:
             current = self._by_session.get(session_id)
             return (
                 current is not None
+                and not current.reset_in_progress
                 and grid_revision in current.grid_revisions
             )
 
@@ -709,6 +726,7 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         if not isinstance(session_id, str) or not session_id:
             raise dash.exceptions.PreventUpdate
         reset_generation = source_revision_authority.begin_reset(session_id)
+        revision_authority.retire(session_id)
         values = source_reset_values(source_payload, refresh_revision)
         if not source_revision_authority.publish_reset(
             session_id,
