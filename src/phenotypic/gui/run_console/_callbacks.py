@@ -413,6 +413,41 @@ def _state_from_action_controls(
     return state
 
 
+def _state_from_preset_controls(
+    values: tuple[Any, ...],
+    *,
+    sandbox: SandboxRoot,
+) -> RunConsoleState:
+    """Build serializable form state without requiring launch confirmation."""
+    if len(values) != 24:
+        raise ValueError(
+            f"expected 24 raw run controls, received {len(values)}"
+        )
+    return state_from_controls(
+        pipeline_path=values[0],
+        input_dir=values[1],
+        output_dir=values[2],
+        mode=values[3],
+        flags=values[4],
+        sample=values[5],
+        nrows=values[6],
+        ncols=values[7],
+        image_type=values[8],
+        workers=values[9],
+        log_level=values[10],
+        slurm_partition=values[11],
+        slurm_time=values[12],
+        slurm_mem=values[13],
+        slurm_cpus=values[14],
+        slurm_gpus=values[15],
+        slurm_extra=values[16],
+        gpu_slurm=values[17],
+        gpu_shards=values[18],
+        metadata_payload=None,
+        sandbox=sandbox,
+    )
+
+
 def _controls_from_run_state(
     state: RunConsoleState,
     *,
@@ -2593,7 +2628,7 @@ def register_callbacks(
             return _toast("Invalid preset name", ok=False)
         try:
             target = _presets_dir(sandbox) / f"{safe_name}.json"
-            state = _state_from_action_controls(
+            state = _state_from_preset_controls(
                 tuple(control_values), sandbox=sandbox
             )
             payload = run_state_to_json(state)
