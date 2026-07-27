@@ -115,7 +115,10 @@ def _seed_viewer_output(sandbox: Path) -> Path:
         stem = Path(image).stem
         PILImage.new("RGB", (120, 120), (200, 0, 0)).save(overlays / f"{stem}.png")
 
-    publish_coherent_terminal_evidence(out, total_images=len(_DS1_IMAGES))
+    publish_coherent_terminal_evidence(
+        out,
+        total_images=len(_DS1_IMAGES) + len(_DS2_IMAGES),
+    )
     return out
 
 

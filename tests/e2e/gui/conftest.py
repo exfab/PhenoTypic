@@ -326,11 +326,21 @@ def bind_results_output(
             }
             if (accepted.status === 200) {
                 const status = accepted.payload?.status;
-                if (status !== 'ok' && status !== 'succeeded') {
+                const absPath = accepted.payload?.abs_path;
+                const fingerprint = (
+                    accepted.payload?.snapshot?.processing_fingerprint
+                );
+                if (
+                    status !== 'ok' ||
+                    typeof absPath !== 'string' ||
+                    absPath.length === 0 ||
+                    typeof fingerprint !== 'string' ||
+                    fingerprint.length === 0
+                ) {
                     return {
                         ok: false,
                         status: accepted.status,
-                        error: `synchronous binding returned status ${status}`,
+                        error: 'synchronous binding acknowledgement was incomplete',
                         payload: accepted.payload,
                     };
                 }
@@ -345,12 +355,31 @@ def bind_results_output(
                 };
             }
 
+            const jobId = accepted.payload?.job_id;
+            const acceptedJob = accepted.payload?.job;
             const pollPath = accepted.payload?.poll_path;
-            if (typeof pollPath !== 'string' || pollPath.length === 0) {
+            const cancelPath = accepted.payload?.cancel_path;
+            const expectedSuffix = (
+                typeof jobId === 'string' && jobId.length > 0
+            ) ? `/jobs/${encodeURIComponent(jobId)}` : null;
+            const activeJob = (
+                acceptedJob &&
+                acceptedJob.job_id === jobId &&
+                ['queued', 'running'].includes(acceptedJob.status) &&
+                acceptedJob.terminal === false
+            );
+            const consistentPaths = (
+                expectedSuffix &&
+                typeof pollPath === 'string' &&
+                pollPath.length > 0 &&
+                pollPath === cancelPath &&
+                pollPath.split(/[?#]/, 1)[0].endsWith(expectedSuffix)
+            );
+            if (!activeJob || !consistentPaths) {
                 return {
                     ok: false,
                     status: accepted.status,
-                    error: 'binding acceptance omitted poll_path',
+                    error: 'binding acceptance had an incomplete polling contract',
                     payload: accepted.payload,
                 };
             }
@@ -369,21 +398,64 @@ def bind_results_output(
                         payload: snapshot.payload,
                     };
                 }
-                const terminal = snapshot.payload?.job?.terminal === true;
+                const polledJob = snapshot.payload?.job;
+                const polledStatus = polledJob?.status;
+                const authoritative = (
+                    snapshot.payload?.job_id === jobId &&
+                    snapshot.payload?.status === polledStatus &&
+                    polledJob?.job_id === jobId &&
+                    [
+                        'queued',
+                        'running',
+                        'succeeded',
+                        'failed',
+                        'cancelled',
+                        'superseded',
+                    ].includes(polledStatus) &&
+                    typeof polledJob?.terminal === 'boolean'
+                );
+                if (!authoritative) {
+                    return {
+                        ok: false,
+                        status: snapshot.status,
+                        error: 'binding progress response was not authoritative',
+                        payload: snapshot.payload,
+                    };
+                }
+                const terminal = polledJob.terminal;
                 if (terminal) {
-                    if (snapshot.payload?.status !== 'succeeded') {
+                    const fingerprint = (
+                        snapshot.payload?.snapshot?.processing_fingerprint
+                    );
+                    if (
+                        polledStatus !== 'succeeded' ||
+                        typeof snapshot.payload?.abs_path !== 'string' ||
+                        snapshot.payload.abs_path.length === 0 ||
+                        typeof fingerprint !== 'string' ||
+                        fingerprint.length === 0
+                    ) {
                         return {
                             ok: false,
                             status: snapshot.status,
                             error: (
                                 snapshot.payload?.error ||
-                                snapshot.payload?.job?.error ||
-                                `binding ended as ${snapshot.payload?.status}`
+                                polledJob?.error ||
+                                `binding ended as ${polledStatus}`
                             ),
                             payload: snapshot.payload,
                         };
                     }
                     return {ok: true, payload: snapshot.payload};
+                }
+                if (!['queued', 'running'].includes(polledStatus)) {
+                    return {
+                        ok: false,
+                        status: snapshot.status,
+                        error: (
+                            `nonterminal binding reported status ${polledStatus}`
+                        ),
+                        payload: snapshot.payload,
+                    };
                 }
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
