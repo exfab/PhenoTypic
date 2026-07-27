@@ -63,7 +63,11 @@ from phenotypic.gui.analysis._layout import (
 from phenotypic.gui.analysis._recipe_state import RecipeState
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
+from phenotypic.gui.shell._binding_ui import binding_error_text
+from phenotypic.gui.shell._ids import (
+    SHELL_RESULTS_BINDING_JOB_STORE,
+    SHELL_SIDEBAR_SELECTION_STORE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -239,10 +243,19 @@ def _register_snapshot_refresh_callbacks(
             redirect_url=url_prefix,
             selection_required=False,
         ),
-        Output(analysis_ids.ANALYSIS_REFRESH_ERROR, "children"),
+        Output(
+            SHELL_RESULTS_BINDING_JOB_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
         Input(analysis_ids.ANALYSIS_REFRESH_SNAPSHOT, "n_clicks"),
+        State(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
         prevent_initial_call=True,
     )
+    app.callback(
+        Output(analysis_ids.ANALYSIS_REFRESH_ERROR, "children"),
+        Input(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+    )(binding_error_text)
 
 
 def _handoff_banner_state(selection):
@@ -319,11 +332,20 @@ def _register_empty_state_callbacks(
             redirect_url=url_prefix,
             selection_required=True,
         ),
-        Output(analysis_ids.EMPTY_HANDOFF_ERROR, "children"),
+        Output(
+            SHELL_RESULTS_BINDING_JOB_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
         Input(analysis_ids.EMPTY_HANDOFF_OPEN_BUTTON, "n_clicks"),
         State(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+        State(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
         prevent_initial_call=True,
     )
+    app.callback(
+        Output(analysis_ids.EMPTY_HANDOFF_ERROR, "children"),
+        Input(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+    )(binding_error_text)
 
 
 __all__ = ["create_app"]

@@ -429,6 +429,13 @@ def compose_hub(
                 "captured_at": snapshot.captured_at.isoformat(),
                 "active_run": snapshot.active_run,
             },
+            "consistency": {
+                "state": candidate_root.consistency.state,
+                "reasons": list(candidate_root.consistency.reasons),
+                "evidence_fingerprint": (
+                    candidate_root.consistency.evidence_fingerprint
+                ),
+            },
         }
 
         # Discovery and both candidate constructors above intentionally run

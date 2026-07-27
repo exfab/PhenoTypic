@@ -157,6 +157,25 @@ SHELL_CLASSIFIER_CACHE_STORE = "shell-classifier-cache-store"
 #: retained so older callback clients and browser tests remain compatible.
 SHELL_REFRESH_REVISION_STORE = SHELL_CLASSIFIER_CACHE_STORE
 
+#: Browser-session record for the active or most recent Results/Analysis
+#: binding job. Shared by every chrome-wrapped mount so progress survives a
+#: full navigation between Results and Analysis.
+SHELL_RESULTS_BINDING_JOB_STORE = "shell-results-binding-job-store"
+
+#: Short client-side polling interval enabled only while the shared binding
+#: store contains a queued/running job.
+SHELL_RESULTS_BINDING_POLL_INTERVAL = "shell-results-binding-poll-interval"
+
+#: Sidebar status card for the shared Results/Analysis hand-off.
+SHELL_RESULTS_BINDING_PANEL = "shell-results-binding-panel"
+SHELL_RESULTS_BINDING_STATUS = "shell-results-binding-status"
+SHELL_RESULTS_BINDING_PHASE = "shell-results-binding-phase"
+SHELL_RESULTS_BINDING_DETAIL = "shell-results-binding-detail"
+SHELL_RESULTS_BINDING_PROGRESS = "shell-results-binding-progress"
+SHELL_RESULTS_BINDING_PROGRESS_LABEL = "shell-results-binding-progress-label"
+SHELL_RESULTS_BINDING_DIAGNOSTIC = "shell-results-binding-diagnostic"
+SHELL_RESULTS_BINDING_CANCEL = "shell-results-binding-cancel"
+
 
 def sidebar_entry_id(rel_path: str) -> dict[str, str]:
     """Return a pattern-matching ID for one sidebar tree row.
@@ -258,6 +277,16 @@ __all__ = [
     "SHELL_SIDEBAR_EXPANDED_STORE",
     "SHELL_CLASSIFIER_CACHE_STORE",
     "SHELL_REFRESH_REVISION_STORE",
+    "SHELL_RESULTS_BINDING_JOB_STORE",
+    "SHELL_RESULTS_BINDING_POLL_INTERVAL",
+    "SHELL_RESULTS_BINDING_PANEL",
+    "SHELL_RESULTS_BINDING_STATUS",
+    "SHELL_RESULTS_BINDING_PHASE",
+    "SHELL_RESULTS_BINDING_DETAIL",
+    "SHELL_RESULTS_BINDING_PROGRESS",
+    "SHELL_RESULTS_BINDING_PROGRESS_LABEL",
+    "SHELL_RESULTS_BINDING_DIAGNOSTIC",
+    "SHELL_RESULTS_BINDING_CANCEL",
     "SHELL_MAIN_PANE",
     "BUILDER_IMAGE_ROOT_STORE",
     "VIEWER_OUTPUT_ROOT_STORE",

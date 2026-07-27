@@ -25,6 +25,9 @@ from phenotypic.gui.shell._binding import BindingCoordinator
 from phenotypic.gui.shell._binding_jobs import ResultsBindJobManager
 from phenotypic.gui.shell._binding_jobs import ResultsBindJobContext
 from phenotypic.gui.shell._session import ToolSession
+from phenotypic.gui.results_viewer._discovery_contracts import (
+    OutputDiscoveryProgress,
+)
 from phenotypic.schema import METADATA
 from tests._output_layout import seed_output_dir
 
@@ -83,8 +86,13 @@ def test_post_returns_pollable_job_and_publishes_both_sessions(
     empty_analysis = analysis_session.get()
     for empty_app in (empty_viewer, empty_analysis):
         assert any(
-            "acceptedResponse.status === 202" in script
+            "response.status !== 202" in script
             and "selection.path" in script
+            for script in empty_app._inline_scripts
+        )
+        assert any('method: "DELETE"' in script for script in empty_app._inline_scripts)
+        assert any(
+            'method: "GET", cache: "no-store"' in script
             for script in empty_app._inline_scripts
         )
     client = shell_app.server.test_client()
@@ -111,7 +119,7 @@ def test_post_returns_pollable_job_and_publishes_both_sessions(
         assert analysis_session.get().server.config[CFG_OUTPUT_ROOT].root == output
         for bound_app in (viewer_session.get(), analysis_session.get()):
             assert any(
-                "acceptedResponse.status === 202" in script
+                "response.status !== 202" in script
                 and "requestBody = {refresh: true}" in script
                 for script in bound_app._inline_scripts
             )
@@ -280,6 +288,82 @@ def test_candidate_construction_does_not_hold_publication_lock(
         assert complete["status"] == "succeeded"
     finally:
         release_factory.set()
+        manager.shutdown()
+
+
+def test_cancelled_synthetic_large_bind_cannot_delay_new_small_bind(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A cancelled blocked discovery cannot occupy the newer request's worker."""
+    large = _seed_output(tmp_path, "synthetic-large")
+    small = _seed_output(tmp_path, "synthetic-small")
+    large_entered = threading.Event()
+    release_large = threading.Event()
+    real_discover = results_viewer_module.OutputRoot.discover
+
+    def _synthetic_discover(root: Path, **kwargs: Any) -> Any:
+        if root == large:
+            progress_callback = kwargs.get("progress_callback")
+            if progress_callback is not None:
+                progress_callback(
+                    OutputDiscoveryProgress(
+                        phase="inventory",
+                        detail="Scanning 1,000,000 synthetic processing files.",
+                        completed=250_000,
+                        total=1_000_000,
+                    )
+                )
+            large_entered.set()
+            assert release_large.wait(5.0)
+            kwargs["cancellation"].raise_if_cancelled()
+        return real_discover(root, **kwargs)
+
+    monkeypatch.setattr(
+        results_viewer_module.OutputRoot,
+        "discover",
+        _synthetic_discover,
+    )
+    shell_app, _viewer_session = compose_hub(
+        SandboxRoot.from_path(tmp_path),
+        start_idle_thread=False,
+    )
+    manager: ResultsBindJobManager = shell_app.server.config[
+        CFG_RESULTS_BINDING_JOBS
+    ]
+    client = shell_app.server.test_client()
+    try:
+        old = client.post(
+            "/sandbox/api/viewer/output-root",
+            json={"path": large.name},
+        ).get_json()
+        assert large_entered.wait(5.0)
+        progress = client.get(old["poll_path"]).get_json()["job"]
+        assert (progress["completed"], progress["total"]) == (
+            250_000,
+            1_000_000,
+        )
+        assert client.delete(old["cancel_path"]).get_json()["status"] == (
+            "cancelled"
+        )
+
+        started = time.monotonic()
+        newer = client.post(
+            "/sandbox/api/viewer/output-root",
+            json={"path": small.name},
+        ).get_json()
+        complete = _poll_terminal(client, newer["poll_path"], timeout=3.0)
+        elapsed = time.monotonic() - started
+
+        assert complete["status"] == "succeeded"
+        assert complete["abs_path"] == str(small)
+        assert elapsed < 3.0
+        assert release_large.is_set() is False
+        assert shell_app.server.config[CFG_RESULTS_BINDING_STATE][
+            "bound_path"
+        ] == small
+    finally:
+        release_large.set()
         manager.shutdown()
 
 

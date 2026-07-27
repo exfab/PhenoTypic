@@ -86,6 +86,8 @@ from phenotypic.gui.results_viewer._layout import (
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer.colony_view import _crop_routes as colony_crop_routes
 from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
+from phenotypic.gui.shell._binding_ui import binding_error_text
+from phenotypic.gui.shell._ids import SHELL_RESULTS_BINDING_JOB_STORE
 from phenotypic.sdk_._qc_recipe import QcRecipe
 
 logger = logging.getLogger(__name__)
@@ -299,10 +301,19 @@ def _register_snapshot_refresh_callbacks(
             redirect_url=url_prefix,
             selection_required=False,
         ),
-        Output(ids.HEADER_REFRESH_ERROR_ID, "children"),
+        Output(
+            SHELL_RESULTS_BINDING_JOB_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
         Input(ids.BTN_REFRESH_SNAPSHOT, "n_clicks"),
+        State(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
         prevent_initial_call=True,
     )
+    app.callback(
+        Output(ids.HEADER_REFRESH_ERROR_ID, "children"),
+        Input(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+    )(binding_error_text)
 
 
 def _load_qc_pipeline(output_root: OutputRoot):
@@ -436,11 +447,20 @@ def _register_empty_state_callbacks(
             redirect_url=url_prefix,
             selection_required=True,
         ),
-        Output(ids.EMPTY_HANDOFF_ERROR, "children"),
+        Output(
+            SHELL_RESULTS_BINDING_JOB_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
         Input(ids.EMPTY_HANDOFF_OPEN_BUTTON, "n_clicks"),
         State(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+        State(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
         prevent_initial_call=True,
     )
+    app.callback(
+        Output(ids.EMPTY_HANDOFF_ERROR, "children"),
+        Input(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+    )(binding_error_text)
 
 
 __all__ = ["create_app"]

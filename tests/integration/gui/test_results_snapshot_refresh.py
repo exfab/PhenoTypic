@@ -81,15 +81,46 @@ def _source_tree(root: Path) -> dict[str, tuple[str, bytes | None]]:
     return snapshot
 
 
-def _bind(client: Any, relative: str) -> Any:
-    """Bind one output and assert the route accepted it."""
+def _submit_binding(
+    client: Any,
+    payload: dict[str, Any],
+    *,
+    timeout: float = 10.0,
+) -> dict[str, Any]:
+    """Submit one asynchronous binding request and await its terminal job."""
     response = client.post(
         "/sandbox/api/viewer/output-root",
-        data=json.dumps({"path": relative}),
+        data=json.dumps(payload),
         content_type="application/json",
     )
-    assert response.status_code == 200, response.get_json()
-    return response
+    assert response.status_code == 202, response.get_json()
+    return _poll_binding(client, response.get_json(), timeout=timeout)
+
+
+def _poll_binding(
+    client: Any,
+    accepted: dict[str, Any],
+    *,
+    timeout: float = 10.0,
+) -> dict[str, Any]:
+    """Poll an already-accepted binding job to terminal state."""
+    poll_path = accepted["poll_path"]
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        polled = client.get(poll_path)
+        assert polled.status_code == 200, polled.get_json()
+        terminal = polled.get_json()
+        if terminal["job"]["terminal"]:
+            return terminal
+        threading.Event().wait(0.01)
+    raise AssertionError(f"binding job did not become terminal: {accepted}")
+
+
+def _bind(client: Any, relative: str) -> dict[str, Any]:
+    """Bind one output and assert paired publication succeeded."""
+    terminal = _submit_binding(client, {"path": relative})
+    assert terminal["status"] == "succeeded", terminal
+    return terminal
 
 
 def _rewrite_mirror(output_root: OutputRoot, increment: float = 1.0) -> None:
@@ -208,12 +239,12 @@ def _threaded_post(
     result: dict[str, Any],
     key: str,
 ) -> None:
-    """POST from a thread-local Flask client and retain response data."""
-    response = app.server.test_client().post(
-        "/sandbox/api/viewer/output-root",
-        json=payload,
+    """Submit/poll from a thread-local Flask client and retain terminal data."""
+    terminal = _submit_binding(
+        app.server.test_client(),
+        payload,
     )
-    result[key] = (response.status_code, response.get_json())
+    result[key] = (terminal["status"], terminal)
 
 
 def _callback_probe(
@@ -255,7 +286,7 @@ def test_bind_is_source_preserving_and_uses_external_cache(
     response = _bind(shell_app.server.test_client(), output.name)
     bound = viewer_session.get().server.config[CFG_OUTPUT_ROOT]
 
-    assert response.get_json()["snapshot"]["processing_fingerprint"]
+    assert response["snapshot"]["processing_fingerprint"]
     assert _source_tree(output) == before
     assert bound.cache_dir.is_relative_to(
         tmp_path / ".phenotypic-gui" / "viewer_cache"
@@ -284,12 +315,9 @@ def test_refresh_atomically_swaps_results_and_analysis_to_one_descriptor(
     assert old_root is old_analysis.server.config[CFG_OUTPUT_ROOT]
 
     _rewrite_mirror(old_root)
-    response = client.post(
-        "/sandbox/api/viewer/output-root",
-        json={"refresh": True},
-    )
+    response = _submit_binding(client, {"refresh": True})
 
-    assert response.status_code == 200, response.get_json()
+    assert response["status"] == "succeeded", response
     new_viewer = viewer_session.get()
     new_analysis = analysis_session.get()
     new_root = new_viewer.server.config[CFG_OUTPUT_ROOT]
@@ -327,13 +355,11 @@ def test_failed_refresh_keeps_both_live_sessions(
         raise RuntimeError("candidate analysis failed")
 
     monkeypatch.setattr(analysis, "create_app", _raise_analysis_failure)
-    response = client.post(
-        "/sandbox/api/viewer/output-root",
-        json={"refresh": True},
-    )
+    response = _submit_binding(client, {"refresh": True})
 
-    assert response.status_code == 500
-    assert response.get_json()["status"] == "unavailable"
+    assert response["status"] == "failed"
+    assert response["job"]["error_kind"] == "unavailable"
+    assert response["job"]["error"] == "candidate analysis failed"
     assert viewer_session.get() is old_viewer
     assert analysis_session.get() is old_analysis
     assert shell_app.server.config[CFG_RESULTS_BINDING_STATE] == old_state
@@ -365,13 +391,10 @@ def test_concurrent_source_change_is_stale_and_keeps_old_sessions(
         return candidate
 
     monkeypatch.setattr(results_viewer, "create_app", _build_then_change)
-    response = client.post(
-        "/sandbox/api/viewer/output-root",
-        json={"refresh": True},
-    )
+    response = _submit_binding(client, {"refresh": True})
 
-    assert response.status_code == 409
-    assert response.get_json()["status"] == "stale"
+    assert response["status"] == "failed"
+    assert response["job"]["error_kind"] == "stale"
     assert viewer_session.get() is old_viewer
     assert analysis_session.get() is old_analysis
     assert viewer_session.get().server.config[CFG_OUTPUT_ROOT] is old_root
@@ -431,7 +454,7 @@ def test_nonterminal_owner_marks_both_apps_as_active_snapshot(
     viewer_root = viewer_session.get().server.config[CFG_OUTPUT_ROOT]
     analysis_root = analysis_session.get().server.config[CFG_OUTPUT_ROOT]
 
-    assert response.get_json()["snapshot"]["active_run"] is True
+    assert response["snapshot"]["active_run"] is True
     assert viewer_root.snapshot.active_run is True
     assert analysis_root.snapshot is viewer_root.snapshot
     assert "Active run snapshot" in str(viewer_session.get().layout)
@@ -455,11 +478,11 @@ def test_nonterminal_owner_marks_both_apps_as_active_snapshot(
             "status": "complete",
         },
     )
-    refreshed = shell_app.server.test_client().post(
-        "/sandbox/api/viewer/output-root",
-        json={"refresh": True},
+    refreshed = _submit_binding(
+        shell_app.server.test_client(),
+        {"refresh": True},
     )
-    assert refreshed.status_code == 200
+    assert refreshed["status"] == "succeeded"
     assert any(
         results_ids.STORE_REMOVED_KEYS in key
         for key in viewer_session.get().callback_map
@@ -496,13 +519,10 @@ def test_final_publish_gap_change_returns_stale_and_rolls_back(
         return candidate
 
     monkeypatch.setattr(analysis_module, "create_app", _build_then_change)
-    response = client.post(
-        "/sandbox/api/viewer/output-root",
-        json={"refresh": True},
-    )
+    response = _submit_binding(client, {"refresh": True})
 
-    assert response.status_code == 409
-    assert response.get_json()["status"] == "stale"
+    assert response["status"] == "failed"
+    assert response["job"]["error_kind"] == "stale"
     assert viewer_session.get() is old_viewer
     assert analysis_session.get() is old_analysis
     # Failed publication reopens the old fence rather than wedging the page.
@@ -568,17 +588,17 @@ def test_newer_bind_supersedes_slow_older_bind(
     thread_a.join(10.0)
     thread_b.join(10.0)
 
-    assert responses["a"][0] == 409
-    assert responses["b"][0] == 200
+    assert responses["a"][0] == "superseded"
+    assert responses["b"][0] == "succeeded"
     state = shell_app.server.config[CFG_RESULTS_BINDING_STATE]
     assert state["bound_path"] == output_b
 
 
-def test_newer_refresh_supersedes_slow_older_refresh_same_output(
+def test_duplicate_refresh_reuses_slow_active_refresh_same_output(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """CAS fencing also orders two Refresh requests for the same output."""
+    """A duplicate Refresh reuses the same active job and publication ticket."""
     output = _seed_output(tmp_path)
     shell_app, _viewer_session = compose_hub(
         SandboxRoot.from_path(tmp_path),
@@ -622,18 +642,27 @@ def test_newer_refresh_supersedes_slow_older_refresh_same_output(
     older.start()
     assert entered.wait(5.0)
     older_ticket = coordinator.latest_request
-    newer = threading.Thread(
-        target=_threaded_post,
-        args=(shell_app, {"refresh": True}, responses, "newer"),
+    newer_response = shell_app.server.test_client().post(
+        "/sandbox/api/viewer/output-root",
+        json={"refresh": True},
     )
-    newer.start()
-    _wait_for(lambda: coordinator.latest_request == older_ticket + 1)
+    assert newer_response.status_code == 202
+    newer_accepted = newer_response.get_json()
+    assert newer_accepted["deduplicated"] is True
+    assert coordinator.latest_request == older_ticket
     release.set()
+    responses["newer"] = (
+        "succeeded",
+        _poll_binding(
+            shell_app.server.test_client(),
+            newer_accepted,
+        ),
+    )
     older.join(10.0)
-    newer.join(10.0)
 
-    assert responses["older"][0] == 409
-    assert responses["newer"][0] == 200
+    assert responses["older"][0] == "succeeded"
+    assert responses["newer"][0] == "succeeded"
+    assert responses["older"][1]["job_id"] == responses["newer"][1]["job_id"]
     state = shell_app.server.config[CFG_RESULTS_BINDING_STATE]
     assert state["binding_generation"] != old_generation
     assert state["snapshot"].captured_at.isoformat() == (
@@ -1061,7 +1090,7 @@ def test_publish_waits_for_admitted_analysis_writer(
     binder.join(10.0)
 
     assert writer_result["status"] == 200
-    assert bind_result["bind"][0] == 200
+    assert bind_result["bind"][0] == "succeeded"
     assert shell_app.server.config[CFG_RESULTS_BINDING_STATE][
         "bound_path"
     ] == output_b
@@ -1085,13 +1114,10 @@ def test_stuck_callback_times_out_then_later_refresh_recovers(
     old_fence = state["binding_fence"]
     assert old_fence.try_enter() is True
 
-    timed_out = client.post(
-        "/sandbox/api/viewer/output-root",
-        json={"path": output_b.name},
-    )
+    timed_out = _submit_binding(client, {"path": output_b.name})
 
-    assert timed_out.status_code == 500
-    assert timed_out.get_json()["status"] == "unavailable"
+    assert timed_out["status"] == "failed"
+    assert timed_out["job"]["error_kind"] == "unavailable"
     assert state["bound_path"] == output_a
     assert state["binding_generation"] == old_generation
     # The rollback reopens the old binding even while the admitted request is
@@ -1100,9 +1126,6 @@ def test_stuck_callback_times_out_then_later_refresh_recovers(
     old_fence.leave()
     old_fence.leave()
 
-    recovered = client.post(
-        "/sandbox/api/viewer/output-root",
-        json={"path": output_b.name},
-    )
-    assert recovered.status_code == 200
+    recovered = _submit_binding(client, {"path": output_b.name})
+    assert recovered["status"] == "succeeded"
     assert state["bound_path"] == output_b

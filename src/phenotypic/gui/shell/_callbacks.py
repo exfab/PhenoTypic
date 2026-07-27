@@ -28,6 +28,11 @@ from typing import TYPE_CHECKING, Any
 import psutil  # type: ignore[import-untyped]
 from dash import ALL, Input, Output, State, ctx, no_update
 
+from phenotypic.gui._async_binding_client import (
+    binding_cancel_callback_source,
+    binding_poll_callback_source,
+)
+from phenotypic.gui.shell._binding_ui import binding_ui_state
 from phenotypic.gui.shell._classifier import classify, invalidate_cache
 from phenotypic.gui.shell._ids import (
     SHELL_CLASSIFIER_CACHE_STORE,
@@ -42,6 +47,16 @@ from phenotypic.gui.shell._ids import (
     SHELL_METADATA_CSV_STORE,
     SHELL_RSS_INTERVAL,
     SHELL_RSS_LABEL,
+    SHELL_RESULTS_BINDING_CANCEL,
+    SHELL_RESULTS_BINDING_DETAIL,
+    SHELL_RESULTS_BINDING_DIAGNOSTIC,
+    SHELL_RESULTS_BINDING_JOB_STORE,
+    SHELL_RESULTS_BINDING_PANEL,
+    SHELL_RESULTS_BINDING_PHASE,
+    SHELL_RESULTS_BINDING_POLL_INTERVAL,
+    SHELL_RESULTS_BINDING_PROGRESS,
+    SHELL_RESULTS_BINDING_PROGRESS_LABEL,
+    SHELL_RESULTS_BINDING_STATUS,
     SHELL_SETTINGS_BUTTON,
     SHELL_SETTINGS_INPUT_FOLDER_CLEAR,
     SHELL_SETTINGS_INPUT_FOLDER_PICK,
@@ -108,6 +123,58 @@ def register_chrome_callbacks(
             walk the tree on each expansion change.
     """
     process = psutil.Process(os.getpid())
+
+    @app.callback(
+        Output(SHELL_RESULTS_BINDING_PANEL, "className"),
+        Output(SHELL_RESULTS_BINDING_STATUS, "children"),
+        Output(SHELL_RESULTS_BINDING_PHASE, "children"),
+        Output(SHELL_RESULTS_BINDING_DETAIL, "children"),
+        Output(SHELL_RESULTS_BINDING_PROGRESS, "value"),
+        Output(SHELL_RESULTS_BINDING_PROGRESS, "max"),
+        Output(SHELL_RESULTS_BINDING_PROGRESS_LABEL, "children"),
+        Output(SHELL_RESULTS_BINDING_DIAGNOSTIC, "children"),
+        Output(SHELL_RESULTS_BINDING_CANCEL, "disabled"),
+        Output(SHELL_RESULTS_BINDING_POLL_INTERVAL, "disabled"),
+        Input(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+    )
+    def _render_results_binding_job(payload: object) -> tuple[Any, ...]:
+        state = binding_ui_state(payload)
+        return (
+            state.panel_class_name,
+            state.status,
+            state.phase,
+            state.detail,
+            state.progress_value,
+            state.progress_max,
+            state.progress_label,
+            state.diagnostic,
+            state.cancel_disabled,
+            state.poll_disabled,
+        )
+
+    app.clientside_callback(
+        binding_poll_callback_source(),
+        Output(
+            SHELL_RESULTS_BINDING_JOB_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
+        Input(SHELL_RESULTS_BINDING_POLL_INTERVAL, "n_intervals"),
+        State(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+        prevent_initial_call=True,
+    )
+
+    app.clientside_callback(
+        binding_cancel_callback_source(),
+        Output(
+            SHELL_RESULTS_BINDING_JOB_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
+        Input(SHELL_RESULTS_BINDING_CANCEL, "n_clicks"),
+        State(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+        prevent_initial_call=True,
+    )
 
     @app.callback(
         Output(SHELL_RSS_LABEL, "children"),
