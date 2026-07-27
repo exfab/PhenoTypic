@@ -8,6 +8,7 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.tune._setup_authoring import (
+    SetupDraftCache,
     SetupPathResolution,
     authored_content_fingerprint,
     build_authored_setup_spec,
@@ -312,8 +313,12 @@ def test_setup_draft_is_the_revisioned_validated_write_authority(
         },
     )
 
-    restored = setup_draft_from_store(edited.to_store())
+    cache = SetupDraftCache()
+    receipt = cache.publish(edited)
+    restored = setup_draft_from_store(receipt, cache=cache)
     assert restored == edited
+    assert set(receipt) == {"version", "handle", "revision"}
+    assert "spec_json" not in receipt
     assert base.is_valid is True
     assert edited.is_valid is True
     assert base.revision != edited.revision

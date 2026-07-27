@@ -16,6 +16,11 @@ from phenotypic.gui.tune._callbacks import (
     setup_gate_state,
     setup_pipeline_path_from_sources,
 )
+from phenotypic.gui.tune._setup_authoring import (
+    SetupPathResolution,
+    build_setup_draft,
+    write_setup_draft_receipt,
+)
 from phenotypic.gui.tune._nav import destination_view_id
 from phenotypic.gui.tune._run_root import TuneRunRoot
 from phenotypic.sdk_ import trials_parquet_path
@@ -34,7 +39,7 @@ from phenotypic.tune import (
     infer_search_space,
 )
 from phenotypic.tune.score import QCScorer
-from phenotypic.tune.strategy import GridConfig, RandomConfig
+from phenotypic.tune.strategy import GridConfig, OptunaConfig, RandomConfig
 
 
 def _walk(component):
@@ -196,6 +201,126 @@ def test_continue_consumes_only_the_revisioned_setup_draft():
     )
     assert ids.TUNE_SETUP_PIPELINE_INPUT not in encoded
     assert ids.TUNE_SETUP_METADATA_INPUT not in encoded
+
+
+def test_draft_callback_serializes_only_opaque_receipt_for_credential_spec(
+    tmp_path: Path,
+) -> None:
+    secret = "setup-spec-browser-secret"
+    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    metadata = tmp_path / "layout.csv"
+    metadata.write_text(
+        "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
+        encoding="utf-8",
+    )
+    existing = TuningSpec(
+        pipeline=pipeline,
+        search_space=infer_search_space(pipeline).to_search_space(),
+        scorer=QCScorer(
+            check=ExpectedVsDetectedCount(
+                metadata=str(metadata),
+                groupby=["MetadataImage_ImageName"],
+            )
+        ),
+        evaluator=Evaluator(),
+        strategy=OptunaConfig(
+            sampler="tpe",
+            n_trials=5,
+            storage_url=f"postgresql+psycopg://tuner:{secret}@db/tune",
+        ),
+        budget=Budget(n_trials=5),
+    )
+    spec_path = tmp_path / "credentialed.json.pht-tune"
+    spec_path.write_text(existing.model_dump_json(), encoding="utf-8")
+    app = create_app(
+        root=None,
+        url_prefix="/tune/",
+        sandbox=SandboxRoot.from_path(tmp_path),
+    )
+    output_key = next(
+        key
+        for key in app.callback_map
+        if key.split("@", 1)[0] == f"{ids.TUNE_SETUP_DRAFT_STORE}.data"
+    )
+    callback = app.callback_map[output_key]
+    inputs = []
+    for entry in callback["inputs"]:
+        component_id = entry["id"]
+        if component_id == ids.TUNE_SETUP_PIPELINE_STORE:
+            value = {
+                "path": str(spec_path),
+                "source": "typed",
+                "issues": [],
+            }
+        elif component_id == ids.TUNE_SETUP_METADATA_STORE:
+            value = {"path": None, "source": "unset", "issues": []}
+        else:
+            value = []
+        inputs.append({**entry, "value": value})
+
+    response = app.server.test_client().post(
+        "/_dash-update-component",
+        json={
+            "output": output_key,
+            "outputs": {
+                "id": ids.TUNE_SETUP_DRAFT_STORE,
+                "property": "data",
+            },
+            "inputs": inputs,
+            "state": [],
+            "changedPropIds": [f"{ids.TUNE_SETUP_PIPELINE_STORE}.data"],
+        },
+    )
+
+    assert response.status_code == 200
+    receipt = response.get_json()["response"][ids.TUNE_SETUP_DRAFT_STORE]["data"]
+    serialized = json.dumps(receipt)
+    assert set(receipt) == {"version", "handle", "revision"}
+    assert secret not in serialized
+    assert "storage_url" not in serialized
+    assert "spec_json" not in serialized
+
+
+def test_write_receipt_does_not_bless_source_mutation_before_descriptor(
+    tmp_path: Path,
+) -> None:
+    pipeline_path = tmp_path / "pipeline.json.pht-pipe"
+    metadata_path = tmp_path / "layout.csv"
+    pipeline_path.write_text(
+        ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]).to_json(),
+        encoding="utf-8",
+    )
+    metadata_path.write_text(
+        "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
+        encoding="utf-8",
+    )
+    draft = build_setup_draft(
+        pipeline=SetupPathResolution(pipeline_path, "typed"),
+        metadata=SetupPathResolution(metadata_path, "typed"),
+    )
+    receipt = write_setup_draft_receipt(
+        sandbox_root=tmp_path,
+        draft=draft,
+    )
+    pipeline_path.write_text(
+        ImagePipeline(ops=[GaussianBlur(sigma=4.0), OtsuDetector()]).to_json(),
+        encoding="utf-8",
+    )
+    descriptor = authored_spec_descriptor(
+        path=str(receipt.path),
+        pipeline_path=str(pipeline_path),
+        metadata_path=str(metadata_path),
+        setup_signature=draft.revision,
+        write_receipt=receipt,
+    )
+
+    assert descriptor["source_fingerprint"] == draft.source_fingerprint
+    assert active_authored_spec_path(
+        descriptor,
+        pipeline_path=str(pipeline_path),
+        metadata_path=str(metadata_path),
+        setup_signature=draft.revision,
+    ) is None
 
 
 def test_authored_spec_descriptor_invalidates_when_setup_inputs_change():

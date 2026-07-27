@@ -64,7 +64,9 @@ from phenotypic.gui.tune._monitor import cancel_prompt, run_switcher_items
 from phenotypic.gui.tune._run_image_source import resolve_run_images
 from phenotypic.gui.tune._setup_authoring import (
     SetupDraft,
+    SetupDraftCache,
     SetupPathResolution,
+    SetupWriteReceipt,
     authored_content_fingerprint,
     build_setup_draft,
     load_pipeline_or_spec,
@@ -73,7 +75,7 @@ from phenotypic.gui.tune._setup_authoring import (
     setup_draft_from_store,
     setup_path_resolution_from_store,
     setup_path_payload,
-    write_setup_draft,
+    write_setup_draft_receipt,
 )
 from phenotypic.gui.tune._validation import preflight_issues, spec_path_issue
 from phenotypic.sdk_ import (
@@ -266,11 +268,25 @@ def authored_spec_descriptor(
     replace_scorer: bool = False,
     setup_signature: str | None = None,
     launch_defaults: dict[str, object] | None = None,
+    write_receipt: SetupWriteReceipt | None = None,
 ) -> dict[str, object]:
-    """Return the Setup-authored spec descriptor stored in Dash state."""
+    """Return a descriptor bound to the exact draft write provenance."""
     source_path = Path(pipeline_path)
     selected_metadata = Path(metadata_path) if metadata_path else None
     authored_path = Path(path)
+    if write_receipt is not None:
+        if (
+            write_receipt.path != authored_path
+            or write_receipt.draft_revision != (setup_signature or "")
+        ):
+            raise ValueError("write receipt does not match the authored Setup draft")
+        source_fingerprint = write_receipt.source_fingerprint
+        metadata_fingerprint = write_receipt.metadata_fingerprint
+        authored_fingerprint = write_receipt.authored_fingerprint
+    else:
+        source_fingerprint = path_content_fingerprint(source_path)
+        metadata_fingerprint = path_content_fingerprint(selected_metadata)
+        authored_fingerprint = authored_content_fingerprint(authored_path)
     return {
         "version": 2,
         "path": path,
@@ -279,9 +295,9 @@ def authored_spec_descriptor(
         "replace_scorer": replace_scorer,
         "setup_signature": setup_signature or "",
         "setup_revision": setup_signature or "",
-        "source_fingerprint": path_content_fingerprint(source_path),
-        "metadata_fingerprint": path_content_fingerprint(selected_metadata),
-        "authored_fingerprint": authored_content_fingerprint(authored_path),
+        "source_fingerprint": source_fingerprint,
+        "metadata_fingerprint": metadata_fingerprint,
+        "authored_fingerprint": authored_fingerprint,
         "launch_defaults": dict(launch_defaults or {}),
     }
 
@@ -481,9 +497,14 @@ def _build_command_from_controls(
     mode: str | None,
     screen_values: object,
     setup_draft_store: object = None,
+    setup_draft_cache: SetupDraftCache | None = None,
 ):  # type: ignore[no-untyped-def]
     """Build the authoritative command from the raw action controls."""
-    draft = setup_draft_from_store(setup_draft_store)
+    draft = (
+        setup_draft_from_store(setup_draft_store, cache=setup_draft_cache)
+        if setup_draft_cache is not None
+        else None
+    )
     if draft is not None:
         spec_path = active_authored_spec_for_draft(authored_descriptor, draft)
     else:
@@ -1094,6 +1115,8 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
     """
     from dash import ALL, Input, Output, State, html
 
+    setup_drafts = SetupDraftCache()
+
     @app.callback(
         Output(ids.TUNE_ACTIVE_DESTINATION_STORE, "data"),
         *[
@@ -1114,7 +1137,10 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
     )
     def _switch_destination(*args: object) -> tuple[str, ...]:
         descriptor = args[-2] if len(args) >= 2 else None
-        draft = setup_draft_from_store(args[-1] if args else None)
+        draft = setup_draft_from_store(
+            args[-1] if args else None,
+            cache=setup_drafts,
+        )
         spec_path = active_authored_spec_for_draft(
             descriptor,
             draft,
@@ -1229,7 +1255,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
             log_keys=log_ids,
             choice_keys=choice_ids,
         )
-        return build_setup_draft(
+        draft = build_setup_draft(
             pipeline=setup_path_resolution_from_store(
                 pipeline_store,
                 sandbox=sandbox,
@@ -1242,7 +1268,8 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
             ),
             edits=edits,
             replace_scorer=_toggle_on(replace_values),
-        ).to_store()
+        )
+        return setup_drafts.publish(draft)
 
     @app.callback(
         Output(ids.TUNE_SETUP_SEARCH_SPACE, "children"),
@@ -1258,7 +1285,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         draft_store: object,
         rendered_source_revision: object,
     ) -> tuple[object, object, str, str, list[dict[str, object]], object]:
-        draft = setup_draft_from_store(draft_store)
+        draft = setup_draft_from_store(draft_store, cache=setup_drafts)
         locked = "tune-setup-section tune-setup-locked"
         replace_options = [
             {
@@ -1332,7 +1359,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         draft_store: object,
         descriptor: object,
     ) -> tuple[bool, object, bool, str]:
-        draft = setup_draft_from_store(draft_store)
+        draft = setup_draft_from_store(draft_store, cache=setup_drafts)
         if draft is None:
             return True, "Choose a pipeline or existing tuning spec.", True, ""
         authored = active_authored_spec_for_draft(descriptor, draft)
@@ -1382,7 +1409,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
                 "Setup authoring requires a sandbox-bound GUI launch.",
                 *([no_update] * 12),
             )
-        draft = setup_draft_from_store(draft_store)
+        draft = setup_draft_from_store(draft_store, cache=setup_drafts)
         if draft is None or not draft.is_valid:
             return (
                 "",
@@ -1392,7 +1419,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
                 *([no_update] * 12),
             )
         try:
-            authored = write_setup_draft(
+            write_receipt = write_setup_draft_receipt(
                 sandbox_root=sandbox.root,
                 draft=draft,
             )
@@ -1403,6 +1430,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
                 f"Could not author tuning spec: {exc}",
                 *([no_update] * 12),
             )
+        authored = write_receipt.path
         launch_defaults = authored_spec_launch_defaults(authored)
         active: _nav.Destination = "run"
         view_classes = [
@@ -1419,6 +1447,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
                 replace_scorer=draft.replace_scorer,
                 setup_signature=draft.revision,
                 launch_defaults=launch_defaults,
+                write_receipt=write_receipt,
             ),
             f"Authored tuning spec: {authored}",
             active,
@@ -1508,6 +1537,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
             mode=mode,
             screen_values=screen_values,
             setup_draft_store=setup_draft_store,
+            setup_draft_cache=setup_drafts,
         )
         note = "\n".join(command.issues) if command.issues else "Ready to deploy."
         return (
@@ -1605,6 +1635,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
             mode=mode,
             screen_values=screen_values,
             setup_draft_store=setup_draft_store,
+            setup_draft_cache=setup_drafts,
         )
         if not command.deploy_eligible or command.output_dir is None:
             return ("\n".join(command.issues), no_update, *([no_update] * 8))

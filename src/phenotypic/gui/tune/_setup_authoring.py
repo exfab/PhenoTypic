@@ -4,9 +4,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import secrets
+from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from threading import RLock
 from typing import Literal, Mapping, TypedDict
 
 from pydantic import ValidationError
@@ -35,7 +38,8 @@ from phenotypic.tune.score import QCScorer
 SetupPathKind = Literal["pipeline", "metadata"]
 SetupPathSource = Literal["typed", "picker", "shared", "unset"]
 
-SETUP_DRAFT_VERSION = 1
+SETUP_DRAFT_VERSION = 2
+_SETUP_DRAFT_CACHE_SIZE = 256
 _SAFE_STEM = re.compile(r"[^A-Za-z0-9_.-]+")
 _METADATA_SUFFIXES = frozenset({".csv", ".parquet"})
 _PIPELINE_SUFFIXES = PIPELINE_CONFIG_SUFFIXES | frozenset({CONFIG_SUFFIX_TUNING})
@@ -129,10 +133,9 @@ class SetupAuthoringResult:
 class SetupDraft:
     """One revisioned, validated interpretation of all Setup controls.
 
-    The browser store is transport only. ``revision`` binds the resolved paths,
-    current source bytes, search-space edits, scorer choice, validation issues,
-    and validated spec JSON. Every action parses this same payload instead of
-    independently re-resolving raw controls.
+    ``revision`` binds the resolved paths, current source bytes, search-space
+    edits, scorer choice, validation issues, and validated spec JSON. The full
+    object remains server-side because an existing spec may contain credentials.
     """
 
     revision: str
@@ -156,24 +159,80 @@ class SetupDraft:
         return self.spec_json is not None and not self.issues
 
     def to_store(self) -> dict[str, object]:
-        """Return the canonical JSON-serializable Dash-store payload."""
+        """Return a redacted summary that never includes authored spec content.
+
+        This summary is diagnostic only. Browser callbacks use
+        :class:`SetupDraftCache.publish`, which adds an unguessable server-cache
+        handle while retaining only this revision in client transport.
+        """
         return {
             "version": SETUP_DRAFT_VERSION,
             "revision": self.revision,
-            "source_revision": self.source_revision,
-            "pipeline_path": self.pipeline_path,
-            "pipeline_source": self.pipeline_source,
-            "metadata_path": self.metadata_path,
-            "metadata_source": self.metadata_source,
-            "replace_scorer": self.replace_scorer,
-            "source_is_spec": self.source_is_spec,
-            "edits": self.edits,
-            "source_fingerprint": self.source_fingerprint,
-            "metadata_fingerprint": self.metadata_fingerprint,
-            "scorer_name": self.scorer_name,
-            "issues": list(self.issues),
-            "spec_json": self.spec_json,
         }
+
+
+class SetupDraftCache:
+    """Bounded per-app server cache for credential-bearing Setup drafts."""
+
+    def __init__(self, *, max_entries: int = _SETUP_DRAFT_CACHE_SIZE) -> None:
+        if max_entries < 1:
+            raise ValueError("max_entries must be positive")
+        self._max_entries = max_entries
+        self._drafts: OrderedDict[str, SetupDraft] = OrderedDict()
+        self._handles_by_revision: dict[str, str] = {}
+        self._lock = RLock()
+
+    def publish(self, draft: SetupDraft) -> dict[str, object]:
+        """Cache ``draft`` and return its credential-free browser receipt."""
+        with self._lock:
+            handle = self._handles_by_revision.get(draft.revision)
+            if handle is None or handle not in self._drafts:
+                handle = secrets.token_urlsafe(32)
+                self._handles_by_revision[draft.revision] = handle
+            self._drafts[handle] = draft
+            self._drafts.move_to_end(handle)
+            while len(self._drafts) > self._max_entries:
+                evicted_handle, evicted = self._drafts.popitem(last=False)
+                if self._handles_by_revision.get(evicted.revision) == evicted_handle:
+                    self._handles_by_revision.pop(evicted.revision, None)
+        return {
+            "version": SETUP_DRAFT_VERSION,
+            "handle": handle,
+            "revision": draft.revision,
+        }
+
+    def resolve(self, value: object) -> SetupDraft | None:
+        """Resolve an unmodified browser receipt to its server-side draft."""
+        if not isinstance(value, dict) or value.get("version") != SETUP_DRAFT_VERSION:
+            return None
+        if set(value) != {"version", "handle", "revision"}:
+            return None
+        handle = value.get("handle")
+        revision = value.get("revision")
+        if (
+            not isinstance(handle, str)
+            or not handle
+            or not isinstance(revision, str)
+            or not revision
+        ):
+            return None
+        with self._lock:
+            draft = self._drafts.get(handle)
+            if draft is None or draft.revision != revision:
+                return None
+            self._drafts.move_to_end(handle)
+            return draft
+
+
+@dataclass(frozen=True)
+class SetupWriteReceipt:
+    """Immutable provenance for the exact authored bytes written by Continue."""
+
+    path: Path
+    draft_revision: str
+    source_fingerprint: str
+    metadata_fingerprint: str
+    authored_fingerprint: str
 
 
 def _safe_stem(path: Path) -> str:
@@ -268,82 +327,13 @@ def _setup_source_revision(
     )
 
 
-def setup_draft_from_store(value: object) -> SetupDraft | None:
-    """Parse and integrity-check a serialized :class:`SetupDraft`."""
-    if not isinstance(value, dict) or value.get("version") != SETUP_DRAFT_VERSION:
-        return None
-    pipeline_path = value.get("pipeline_path")
-    metadata_path = value.get("metadata_path")
-    pipeline_source = value.get("pipeline_source")
-    metadata_source = value.get("metadata_source")
-    revision = value.get("revision")
-    source_revision = value.get("source_revision")
-    source_fingerprint = value.get("source_fingerprint")
-    metadata_fingerprint = value.get("metadata_fingerprint")
-    scorer_name = value.get("scorer_name")
-    spec_json = value.get("spec_json")
-    issues = value.get("issues")
-    edits = value.get("edits")
-    if (
-        (pipeline_path is not None and not isinstance(pipeline_path, str))
-        or (metadata_path is not None and not isinstance(metadata_path, str))
-        or pipeline_source not in {"typed", "picker", "shared", "unset"}
-        or metadata_source not in {"typed", "picker", "shared", "unset"}
-        or not isinstance(revision, str)
-        or not isinstance(source_revision, str)
-        or not isinstance(source_fingerprint, str)
-        or not isinstance(metadata_fingerprint, str)
-        or (scorer_name is not None and not isinstance(scorer_name, str))
-        or (spec_json is not None and not isinstance(spec_json, str))
-        or not isinstance(issues, list)
-        or not isinstance(edits, dict)
-        or type(value.get("replace_scorer")) is not bool
-        or type(value.get("source_is_spec")) is not bool
-    ):
-        return None
-    canonical_edits = _canonical_edits(edits)
-    normalized_issues = tuple(str(issue) for issue in issues)
-    expected_source_revision = _setup_source_revision(
-        pipeline_path=pipeline_path,
-        pipeline_source=pipeline_source,
-        source_fingerprint=source_fingerprint,
-    )
-    payload = {
-        "source_revision": expected_source_revision,
-        "pipeline_path": pipeline_path,
-        "pipeline_source": pipeline_source,
-        "metadata_path": metadata_path,
-        "metadata_source": metadata_source,
-        "replace_scorer": value["replace_scorer"],
-        "source_is_spec": value["source_is_spec"],
-        "edits": canonical_edits,
-        "source_fingerprint": source_fingerprint,
-        "metadata_fingerprint": metadata_fingerprint,
-        "scorer_name": scorer_name,
-        "issues": normalized_issues,
-        "spec_json": spec_json,
-    }
-    if (
-        source_revision != expected_source_revision
-        or revision != _content_revision(payload)
-    ):
-        return None
-    return SetupDraft(
-        revision=revision,
-        source_revision=source_revision,
-        pipeline_path=pipeline_path,
-        pipeline_source=pipeline_source,
-        metadata_path=metadata_path,
-        metadata_source=metadata_source,
-        replace_scorer=value["replace_scorer"],
-        source_is_spec=value["source_is_spec"],
-        edits=canonical_edits,
-        source_fingerprint=source_fingerprint,
-        metadata_fingerprint=metadata_fingerprint,
-        scorer_name=scorer_name,
-        issues=normalized_issues,
-        spec_json=spec_json,
-    )
+def setup_draft_from_store(
+    value: object,
+    *,
+    cache: SetupDraftCache,
+) -> SetupDraft | None:
+    """Resolve a redacted browser receipt through its per-app server cache."""
+    return cache.resolve(value)
 
 
 def load_pipeline_or_spec(path: Path) -> ImagePipeline | TuningSpec:
@@ -559,11 +549,11 @@ def build_authored_setup_spec(
         )
     try:
         source = load_pipeline_or_spec(pipeline_or_spec_path)
-    except (OSError, ValueError, ValidationError) as exc:
+    except (OSError, ValueError, ValidationError):
         return SetupAuthoringResult(
             None,
             False,
-            (f"Could not load pipeline/spec: {exc}",),
+            ("Could not load pipeline/spec; review the server log.",),
         )
 
     source_is_spec = isinstance(source, TuningSpec)
@@ -605,8 +595,8 @@ def build_authored_setup_spec(
     except ValidationError as exc:
         issues.extend(_validation_messages(exc))
         validated = None
-    except (TypeError, ValueError) as exc:
-        issues.append(str(exc))
+    except (TypeError, ValueError):
+        issues.append("Could not apply Setup edits; review the server log.")
         validated = None
 
     if issues:
@@ -696,8 +686,12 @@ def build_setup_draft(
     )
 
 
-def write_setup_draft(*, sandbox_root: Path, draft: SetupDraft) -> Path:
-    """Atomically write the exact validated spec represented by ``draft``.
+def write_setup_draft_receipt(
+    *,
+    sandbox_root: Path,
+    draft: SetupDraft,
+) -> SetupWriteReceipt:
+    """Atomically write ``draft`` and return its immutable provenance.
 
     The source and optional metadata fingerprints are rechecked immediately
     before writing so Continue cannot publish a draft whose files changed after
@@ -723,7 +717,23 @@ def write_setup_draft(*, sandbox_root: Path, draft: SetupDraft) -> Path:
         authored_content=authored_content,
     )
     atomic_write_text(target, authored_content)
-    return target
+    return SetupWriteReceipt(
+        path=target,
+        draft_revision=draft.revision,
+        source_fingerprint=draft.source_fingerprint,
+        metadata_fingerprint=draft.metadata_fingerprint,
+        authored_fingerprint=hashlib.sha256(
+            authored_content.encode("utf-8")
+        ).hexdigest(),
+    )
+
+
+def write_setup_draft(*, sandbox_root: Path, draft: SetupDraft) -> Path:
+    """Compatibility wrapper returning only the authored spec path."""
+    return write_setup_draft_receipt(
+        sandbox_root=sandbox_root,
+        draft=draft,
+    ).path
 
 
 def write_authored_setup_spec(
@@ -764,8 +774,10 @@ __all__ = [
     "SETUP_DRAFT_VERSION",
     "SetupAuthoringResult",
     "SetupDraft",
+    "SetupDraftCache",
     "SetupPathPayload",
     "SetupPathResolution",
+    "SetupWriteReceipt",
     "authored_content_fingerprint",
     "authored_setup_spec_path",
     "build_authored_setup_spec",
@@ -779,4 +791,5 @@ __all__ = [
     "setup_path_payload",
     "write_authored_setup_spec",
     "write_setup_draft",
+    "write_setup_draft_receipt",
 ]
