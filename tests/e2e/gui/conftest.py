@@ -30,6 +30,7 @@ page per test) and ``browser_context`` automatically.
 """
 from __future__ import annotations
 
+import json
 import os
 import socket
 import subprocess
@@ -37,11 +38,12 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator
 
 import pytest
 
 from phenotypic.gui._config import DELIVERABLES_DIRNAME
+from phenotypic.sdk_ import manifest_json_path
 
 if os.environ.get("PLAYWRIGHT") != "1":
     pytest.skip(
@@ -61,6 +63,44 @@ def _write_sample_dashboard(output_dir: Path) -> None:
     from phenotypic._cli._dashboard._generator import generate_dashboard
 
     generate_dashboard(output_dir, execution_mode="local")
+
+
+def publish_coherent_terminal_evidence(
+    output_dir: Path,
+    *,
+    total_images: int,
+) -> Path:
+    """Publish a minimal successful manifest for a terminal E2E fixture.
+
+    Mutation-capable Results fixtures must model a completed run rather than
+    relying on the viewer to infer write authority from deliverables.  Write
+    through the canonical SDK path so a generated dashboard's
+    ``.phenotypic/progress`` directory cannot shadow a legacy manifest.
+
+    Args:
+        output_dir: Full-run output root.
+        total_images: Number of successfully completed input images.
+
+    Returns:
+        Canonical manifest path.
+    """
+    target = manifest_json_path(output_dir)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "execution_mode": "local",
+                "is_complete": True,
+                "total_images": total_images,
+                "completed": total_images,
+                "failed": 0,
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    return target
 
 
 def _build_sandbox(parent_dir: Path) -> Path:
@@ -107,18 +147,12 @@ def _build_sandbox(parent_dir: Path) -> Path:
     (output_dir / "results").mkdir()  # the inner results/ subdir
     (output_dir / "results" / "Run_0").mkdir()
 
-    # Manifest — Recent Runs reads this to compute status.
-    progress = output_dir / "progress"
-    progress.mkdir()
-    (progress / "manifest.json").write_text(
-        '{"version":1,"execution_mode":"local","is_complete":true,'
-        '"total_images":2,"completed":2,"failed":0}',
-        encoding="utf-8",
-    )
-
     # Real dashboard.html (with postShellEvent JS) so the iframe + postMessage
     # tests have something live to load.
     _write_sample_dashboard(output_dir)
+    # Publish after dashboard generation because the generator creates the
+    # canonical ``.phenotypic/progress`` tree.
+    publish_coherent_terminal_evidence(output_dir, total_images=2)
 
     return sandbox
 
@@ -226,6 +260,151 @@ def _start_live_server(
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait(timeout=5.0)
+
+
+def bind_results_output(
+    page: Any,
+    hub_url: str,
+    output_rel: str,
+    *,
+    destination: str | None = "/results/",
+    timeout_ms: int = 30_000,
+) -> dict[str, Any]:
+    """Bind one Results output and wait for atomic publication.
+
+    The production endpoint accepts the request asynchronously (HTTP 202).
+    This helper polls the returned job path until the paired Results and
+    Analysis publication succeeds, then navigates to ``destination``.  The
+    legacy synchronous HTTP 200 response remains supported for isolated
+    route adapters.
+
+    Args:
+        page: Playwright page whose browser context sends the request.
+        hub_url: Origin of the running GUI hub.
+        output_rel: Sandbox-relative output or deliverables path.
+        destination: Hub path to load after publication. Pass ``None`` to
+            leave the page on the Shell landing route.
+        timeout_ms: Maximum time to wait for a terminal binding job.
+
+    Returns:
+        The successful synchronous response or terminal job payload.
+
+    Raises:
+        AssertionError: If submission, polling, or publication fails.
+    """
+    page.goto(hub_url + "/")
+    page.wait_for_load_state("networkidle")
+    outcome = page.evaluate(
+        """
+        async ({path, timeoutMs}) => {
+            const decode = async (response) => {
+                const text = await response.text();
+                let payload = null;
+                try {
+                    payload = text ? JSON.parse(text) : {};
+                } catch (_error) {
+                    return {
+                        ok: false,
+                        error: `non-JSON response: ${text}`,
+                        status: response.status,
+                    };
+                }
+                return {ok: true, payload, status: response.status};
+            };
+
+            const submitted = await fetch(
+                '/sandbox/api/viewer/output-root',
+                {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({path}),
+                },
+            );
+            const accepted = await decode(submitted);
+            if (!accepted.ok) {
+                return accepted;
+            }
+            if (accepted.status === 200) {
+                const status = accepted.payload?.status;
+                if (status !== 'ok' && status !== 'succeeded') {
+                    return {
+                        ok: false,
+                        status: accepted.status,
+                        error: `synchronous binding returned status ${status}`,
+                        payload: accepted.payload,
+                    };
+                }
+                return {ok: true, payload: accepted.payload};
+            }
+            if (accepted.status !== 202) {
+                return {
+                    ok: false,
+                    status: accepted.status,
+                    error: 'binding submission was not accepted',
+                    payload: accepted.payload,
+                };
+            }
+
+            const pollPath = accepted.payload?.poll_path;
+            if (typeof pollPath !== 'string' || pollPath.length === 0) {
+                return {
+                    ok: false,
+                    status: accepted.status,
+                    error: 'binding acceptance omitted poll_path',
+                    payload: accepted.payload,
+                };
+            }
+
+            const deadline = Date.now() + timeoutMs;
+            while (Date.now() < deadline) {
+                const polled = await fetch(pollPath, {
+                    headers: {'Accept': 'application/json'},
+                });
+                const snapshot = await decode(polled);
+                if (!snapshot.ok || snapshot.status !== 200) {
+                    return {
+                        ok: false,
+                        status: snapshot.status,
+                        error: snapshot.error || 'binding poll failed',
+                        payload: snapshot.payload,
+                    };
+                }
+                const terminal = snapshot.payload?.job?.terminal === true;
+                if (terminal) {
+                    if (snapshot.payload?.status !== 'succeeded') {
+                        return {
+                            ok: false,
+                            status: snapshot.status,
+                            error: (
+                                snapshot.payload?.error ||
+                                snapshot.payload?.job?.error ||
+                                `binding ended as ${snapshot.payload?.status}`
+                            ),
+                            payload: snapshot.payload,
+                        };
+                    }
+                    return {ok: true, payload: snapshot.payload};
+                }
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            return {
+                ok: false,
+                status: 202,
+                error: `binding did not finish within ${timeoutMs}ms`,
+                payload: accepted.payload,
+            };
+        }
+        """,
+        {"path": output_rel, "timeoutMs": timeout_ms},
+    )
+    assert outcome["ok"], (
+        f"viewer hand-off failed for {output_rel!r}: "
+        f"HTTP {outcome.get('status')} error={outcome.get('error')!r} "
+        f"payload={outcome.get('payload')!r}"
+    )
+    if destination is not None:
+        page.goto(hub_url + destination)
+    return outcome["payload"]
 
 
 @pytest.fixture(scope="module")

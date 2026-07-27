@@ -26,7 +26,12 @@ from playwright.sync_api import Page, expect
 from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 from phenotypic.sdk_ import error_category_parquet_path
 from tests._output_layout import write_master, write_measurements_mirror
-from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from tests.e2e.gui.conftest import (
+    _build_sandbox,
+    _start_live_server,
+    bind_results_output,
+    publish_coherent_terminal_evidence,
+)
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
 # gui-e2e workflow (see tests/CLAUDE.md). The single test here drives a
@@ -94,6 +99,7 @@ def _seed_real_output(sandbox: Path) -> Path:
     for image in _IMAGES:
         stem = Path(image).stem
         PILImage.new("RGB", (64, 64), (180, 120, 60)).save(overlays / f"{stem}.png")
+    publish_coherent_terminal_evidence(cli_out, total_images=len(_IMAGES))
     return cli_out
 
 
@@ -113,25 +119,7 @@ def live_server(fake_sandbox: Path) -> Iterator[str]:
 
 def _hand_off_viewer(page: Page, hub_url: str, output_rel: str) -> None:
     """POST ``output_rel`` to the viewer-handoff endpoint via the page."""
-    page.goto(hub_url + "/")
-    page.wait_for_load_state("networkidle")
-    response = page.evaluate(
-        """
-        async (path) => {
-            const resp = await fetch('/sandbox/api/viewer/output-root', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: path}),
-            });
-            const body = await resp.text();
-            return {status: resp.status, body};
-        }
-        """,
-        output_rel,
-    )
-    assert response["status"] == 200, (
-        f"Viewer hand-off failed: HTTP {response['status']} body={response['body']!r}"
-    )
+    bind_results_output(page, hub_url, output_rel)
 
 
 def test_colony_radial_debris_mark_writes_category_parquet(

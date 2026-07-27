@@ -33,7 +33,12 @@ from phenotypic.gui._design import OI_VERMILION
 from phenotypic.schema import CULTURE_METADATA, EXPERIMENT_METADATA, METADATA
 from phenotypic.sdk_ import pipeline_json_path
 from tests._output_layout import write_master, write_measurements_mirror
-from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from tests.e2e.gui.conftest import (
+    _build_sandbox,
+    _start_live_server,
+    bind_results_output,
+    publish_coherent_terminal_evidence,
+)
 
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
@@ -109,6 +114,7 @@ def _seed_master_df_in_output(sandbox: Path, df: pl.DataFrame) -> Path:
     for image in _IMAGES:
         (overlays / f"{image}.png").write_bytes(_TINY_PNG)
         (overlays / f"{Path(image).stem}.png").write_bytes(_TINY_PNG)
+    publish_coherent_terminal_evidence(cli_out, total_images=len(_IMAGES))
     return cli_out
 
 
@@ -128,25 +134,7 @@ def _seed_qc_recipe(output_dir: Path, payload: dict | str) -> Path:
 
 def _hand_off_viewer(page: Page, hub_url: str, output_rel: str) -> None:
     """POST ``output_rel`` to the viewer-handoff endpoint via the page."""
-    page.goto(hub_url + "/")
-    page.wait_for_load_state("networkidle")
-    response = page.evaluate(
-        """
-        async (path) => {
-            const resp = await fetch('/sandbox/api/viewer/output-root', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: path}),
-            });
-            const body = await resp.text();
-            return {status: resp.status, body};
-        }
-        """,
-        output_rel,
-    )
-    assert response["status"] == 200, (
-        f"Viewer hand-off failed: HTTP {response['status']} body={response['body']!r}"
-    )
+    bind_results_output(page, hub_url, output_rel)
 
 
 def _dismiss_qc_modal_if_open(page: Page) -> None:
@@ -382,11 +370,11 @@ def test_plate_card_image_icon_navigation(
     """Plate card image navigation uses icon-only previous/next buttons."""
     _hand_off_viewer(page, hub_url, output_rel)
     page.goto(hub_url + "/results/")
+    _wait_for_first_card_picker_options(page)
     page.wait_for_selector(
         'button[id*="\\"type\\":\\"card-picker-next\\""]:not([disabled])',
         timeout=15_000,
     )
-    _wait_for_first_card_picker_options(page)
 
     assert _first_card_picker_value(page) is None
     _click_first_card_nav(page, "next")

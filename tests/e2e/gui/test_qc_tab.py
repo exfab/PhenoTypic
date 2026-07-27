@@ -17,8 +17,8 @@ The tests share a function-scoped sandbox helper that:
    ``phenotypic.sdk_._qc_recipe.QcRecipe``), so tests exercise the same
    source of truth the CLI writes — not the retired
    ``.viewer_cache/qc_recipe.json`` sidecar.
-4. POSTs to ``/sandbox/api/viewer/output-root`` so the next GET to
-   ``/results/`` rebuilds the viewer with the loaded output root.
+4. POSTs to ``/sandbox/api/viewer/output-root`` and polls the asynchronous
+   binding job before loading ``/results/`` with the selected output root.
 
 Tests gated by ``PLAYWRIGHT=1`` via the module-level skip in
 ``conftest.py``.
@@ -35,7 +35,12 @@ from playwright.sync_api import Page, expect
 
 from phenotypic.schema import CULTURE_METADATA, EXPERIMENT_METADATA, METADATA
 from tests._output_layout import write_master, write_measurements_mirror
-from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from tests.e2e.gui.conftest import (
+    _build_sandbox,
+    _start_live_server,
+    bind_results_output,
+    publish_coherent_terminal_evidence,
+)
 
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
@@ -107,6 +112,7 @@ def _seed_real_output(sandbox: Path) -> Path:
 
     # Ensure a real ``results/<dataset>/`` subdir per OutputRoot.discover.
     (cli_out / "results" / "ds1" / "measurements").mkdir(parents=True, exist_ok=True)
+    publish_coherent_terminal_evidence(cli_out, total_images=len(_IMAGES))
     return cli_out
 
 
@@ -146,30 +152,10 @@ def _hand_off_viewer(page: Page, hub_url: str, output_rel: str) -> None:
     """POST ``output_rel`` to the viewer-handoff endpoint via the page.
 
     Uses ``page.evaluate`` so the request travels through the test's
-    browser context (preserving same-origin cookies if any). After the
-    POST resolves the next GET to ``/results/`` will rebuild the
-    viewer with ``output_root=<output_rel>``.
+    browser context (preserving same-origin cookies if any). The shared
+    helper waits for atomic Results/Analysis publication before navigating.
     """
-    page.goto(hub_url + "/")
-    # Wait for the sandbox API to be reachable.
-    page.wait_for_load_state("networkidle")
-    response = page.evaluate(
-        """
-        async (path) => {
-            const resp = await fetch('/sandbox/api/viewer/output-root', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: path}),
-            });
-            const body = await resp.text();
-            return {status: resp.status, body};
-        }
-        """,
-        output_rel,
-    )
-    assert response["status"] == 200, (
-        f"Viewer hand-off failed: HTTP {response['status']} body={response['body']!r}"
-    )
+    bind_results_output(page, hub_url, output_rel)
 
 
 def _dismiss_qc_modal_if_open(page: Page) -> None:

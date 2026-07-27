@@ -30,7 +30,12 @@ from phenotypic.sdk_._qc_recipe._runner import run_qc
 from phenotypic.sdk_ import qc_review_state_path
 
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
-from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from tests.e2e.gui.conftest import (
+    _build_sandbox,
+    _start_live_server,
+    bind_results_output,
+    publish_coherent_terminal_evidence,
+)
 from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 
 # Single-threaded dev server + Dash callback chain stochastically exceeds
@@ -112,6 +117,7 @@ def _seed_review_output(sandbox: Path) -> Path:
     write_pipeline_json(out, pipeline)
     # Generate the qc/ artifact the Review tab reads.
     run_qc(master.to_pandas(), pipeline, out)
+    publish_coherent_terminal_evidence(out, total_images=len(_IMAGES))
     return out
 
 
@@ -138,22 +144,7 @@ def hub_url(live_server: str) -> str:
 def _open_review(page: Page, hub_url: str) -> None:
     """Hand off the output root, open the QC tab, and switch to Review."""
     output_rel = f"results/{_OUTPUT_NAME}"
-    page.goto(hub_url + "/")
-    page.wait_for_load_state("networkidle")
-    resp = page.evaluate(
-        """async (path) => {
-            const r = await fetch('/sandbox/api/viewer/output-root', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: path}),
-            });
-            return {status: r.status, text: await r.text()};
-        }""",
-        output_rel,
-    )
-    assert resp["status"] == 200, f"viewer hand-off failed: {resp}"
-
-    page.goto(hub_url + "/results/")
+    bind_results_output(page, hub_url, output_rel)
     page.wait_for_selector("#qc-cards-container", state="attached", timeout=15_000)
     page.locator("a.nav-link", has_text="QC").first.click()
     # Flip the Configure | Review toggle.

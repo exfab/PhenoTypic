@@ -25,7 +25,12 @@ from phenotypic.analysis import LogGrowthModel, TukeyOutlierRemover
 from phenotypic.sdk_ import measurements_parquet_path, pipeline_json_path
 
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
-from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from tests.e2e.gui.conftest import (
+    _build_sandbox,
+    _start_live_server,
+    bind_results_output,
+    publish_coherent_terminal_evidence,
+)
 from phenotypic.schema import METADATA
 
 
@@ -82,6 +87,7 @@ def _seed_analysis_output(sandbox: Path) -> Path:
     # test surface.
     pipeline = ImagePipeline(name="analysis-e2e-fixture")
     write_pipeline_json(cli_out, pipeline)
+    publish_coherent_terminal_evidence(cli_out, total_images=12)
 
     return cli_out
 
@@ -218,21 +224,13 @@ def test_model_selection_publishes_once_and_feedback_is_noop(
     analysis_sandbox: Path,
 ) -> None:
     """Hydrated model selection emits one revision and no feedback save."""
-    page.goto(analysis_live_server + "/")
-    handoff = page.evaluate(
-        """async (path) => {
-            const response = await fetch('/sandbox/api/viewer/output-root', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path}),
-            });
-            return {status: response.status, body: await response.text()};
-        }""",
+    bind_results_output(
+        page,
+        analysis_live_server,
         "results/CliOutputExample",
+        destination="/analysis/",
     )
-    assert handoff["status"] == 200, handoff["body"]
 
-    page.goto(analysis_live_server + "/analysis/")
     page.wait_for_selector("#analysis-model-dropdown", timeout=20_000)
     page.wait_for_load_state("networkidle")
     pipeline_path = pipeline_json_path(
@@ -289,21 +287,13 @@ def test_delayed_revision_event_cannot_overwrite_newer_ui(
     analysis_sandbox: Path,
 ) -> None:
     """A delayed rev1 event is ignored after rev2 has rendered."""
-    page.goto(analysis_live_server + "/")
-    handoff = page.evaluate(
-        """async (path) => {
-            const response = await fetch('/sandbox/api/viewer/output-root', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path}),
-            });
-            return {status: response.status, body: await response.text()};
-        }""",
+    bind_results_output(
+        page,
+        analysis_live_server,
         "results/CliOutputExample",
+        destination="/analysis/",
     )
-    assert handoff["status"] == 200, handoff["body"]
 
-    page.goto(analysis_live_server + "/analysis/")
     page.wait_for_selector("#analysis-model-dropdown", timeout=20_000)
     page.wait_for_load_state("networkidle")
     dash_responses: list[tuple[int, str]] = []

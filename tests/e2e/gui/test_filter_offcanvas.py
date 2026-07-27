@@ -23,7 +23,12 @@ from playwright.sync_api import Page
 from playwright.sync_api import expect
 
 from phenotypic.schema import CULTURE_METADATA, EXPERIMENT_METADATA, METADATA
-from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from tests.e2e.gui.conftest import (
+    _build_sandbox,
+    _start_live_server,
+    bind_results_output,
+    publish_coherent_terminal_evidence,
+)
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
 # gui-e2e workflow. Locally these tests pass reliably; on GHA ubuntu-latest
@@ -110,6 +115,7 @@ def _seed_viewer_output(sandbox: Path) -> Path:
         stem = Path(image).stem
         PILImage.new("RGB", (120, 120), (200, 0, 0)).save(overlays / f"{stem}.png")
 
+    publish_coherent_terminal_evidence(out, total_images=len(_DS1_IMAGES))
     return out
 
 
@@ -146,22 +152,7 @@ def hub_url(live_server: str) -> str:
 def _open_viewer(page: Page, hub_url: str) -> None:
     """Hand off the output root to the viewer and navigate to /results/."""
     output_rel = f"results/{_OUTPUT_NAME}"
-    page.goto(hub_url + "/")
-    page.wait_for_load_state("networkidle")
-    resp = page.evaluate(
-        """async (path) => {
-            const r = await fetch('/sandbox/api/viewer/output-root', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: path}),
-            });
-            return r.status;
-        }""",
-        output_rel,
-    )
-    assert resp == 200, f"viewer hand-off failed: {resp}"
-
-    page.goto(hub_url + "/results/")
+    bind_results_output(page, hub_url, output_rel)
     page.wait_for_selector("#btn-filters-toggle", state="attached", timeout=15_000)
 
 
