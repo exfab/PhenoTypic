@@ -8,12 +8,14 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal
 
+from phenotypic._cli._cli_update_state import aggregate_state_from_events
 from phenotypic.sdk_ import (
     BundleLayout,
     DashboardManifestKey,
     ProcessingStateKey,
     RUN_COMPLETION_JSON,
     gui_launch_owner_path,
+    resolve_event_log_path,
     resolve_manifest_json_path,
     resolve_progress_dir,
     resolve_processing_state_path,
@@ -54,6 +56,8 @@ class OutputCompletionEvidence:
     staged_marker_valid: bool = False
     processing_state_present: bool = False
     processing_state_readable: bool = True
+    processing_event_log_present: bool = False
+    processing_event_log_readable: bool = True
     processing_total: int | None = None
     processing_completed: int | None = None
     processing_failed: int | None = None
@@ -153,6 +157,11 @@ def classify_output_consistency(
         incompleteness.append("output owner status is missing or unknown")
     if evidence.processing_state_present and not evidence.processing_state_readable:
         incompleteness.append("processing state is unreadable")
+    if (
+        evidence.processing_event_log_present
+        and not evidence.processing_event_log_readable
+    ):
+        incompleteness.append("processing event log is unreadable")
     if evidence.completion_marker_present and not evidence.completion_marker_valid:
         incompleteness.append("ordinary completion marker is invalid")
     if evidence.staged_marker_present and not evidence.staged_marker_valid:
@@ -292,8 +301,15 @@ def inspect_output_consistency(layout: BundleLayout) -> OutputConsistencyReport:
     )
     processing_path = resolve_processing_state_path(output_root)
     processing_payload, processing_readable = _read_json(processing_path)
+    event_log_path = resolve_event_log_path(output_root)
+    processing_events, event_log_readable = _read_processing_events(
+        event_log_path
+    )
 
-    processing_counts = _processing_counts(processing_payload)
+    processing_counts = _processing_counts(
+        processing_payload,
+        processing_events=processing_events,
+    )
     staged_valid = _staged_marker_is_valid(
         staged_payload,
         orchestration_payload=orchestration_payload,
@@ -332,6 +348,8 @@ def inspect_output_consistency(layout: BundleLayout) -> OutputConsistencyReport:
         staged_marker_valid=staged_valid,
         processing_state_present=processing_path.is_file(),
         processing_state_readable=processing_readable,
+        processing_event_log_present=event_log_path.is_file(),
+        processing_event_log_readable=event_log_readable,
         processing_total=processing_counts[0],
         processing_completed=processing_counts[1],
         processing_failed=processing_counts[2],
@@ -377,15 +395,24 @@ def _int_value(
 
 def _processing_counts(
     payload: dict[str, object] | None,
+    *,
+    processing_events: dict[str, tuple[set[str], set[str]]] | None = None,
 ) -> tuple[int | None, int | None, int | None, int | None]:
-    """Return total, completed, failed, and unfinished state counts."""
+    """Return total, completed, failed, and unfinished lifecycle counts.
+
+    ``processing_state.json`` is an initial resume snapshot. Local and
+    distributed workers append terminal transitions to
+    ``processing_events.log`` without rewriting that snapshot. When a readable
+    event log is present, its latest per-image state therefore overrides the
+    snapshot's completed and failed sets for each recorded dataset.
+    """
     if payload is None:
         return (None, None, None, None)
     raw_datasets = payload.get(ProcessingStateKey.DATASETS)
     if not isinstance(raw_datasets, dict):
         return (None, None, None, None)
     total = completed = failed = 0
-    for raw_state in raw_datasets.values():
+    for dataset_name, raw_state in raw_datasets.items():
         if not isinstance(raw_state, dict):
             return (None, None, None, None)
         initial = _string_list(raw_state.get(ProcessingStateKey.INITIAL_IMAGES))
@@ -395,10 +422,36 @@ def _processing_counts(
         failed_images = _string_list(raw_state.get(ProcessingStateKey.FAILED))
         if initial is None or completed_images is None or failed_images is None:
             return (None, None, None, None)
+        event_counts = (
+            processing_events.get(str(dataset_name))
+            if processing_events is not None
+            else None
+        )
+        if event_counts is not None:
+            completed_images, failed_images = event_counts
         total += len(initial)
         completed += len(initial & completed_images)
         failed += len(initial & failed_images)
     return (total, completed, failed, max(total - completed - failed, 0))
+
+
+def _read_processing_events(
+    path: Path,
+) -> tuple[dict[str, tuple[set[str], set[str]]] | None, bool]:
+    """Read the append-only lifecycle ledger without modifying the output."""
+    if not path.is_file():
+        return None, True
+    try:
+        aggregated = aggregate_state_from_events(path)
+    except (OSError, RuntimeError):
+        return None, False
+    return (
+        {
+            dataset: (set(state.completed), set(state.failed))
+            for dataset, state in aggregated.items()
+        },
+        True,
+    )
 
 
 def _string_list(value: object) -> set[str] | None:

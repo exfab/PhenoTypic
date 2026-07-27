@@ -8,6 +8,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
+from phenotypic._cli._cli_update_state import append_event
 from phenotypic.gui.results_viewer import (
     OutputConsistencyReport,
     OutputDiscoveryCancellation as PublicCancellation,
@@ -22,6 +23,7 @@ from phenotypic.gui.results_viewer._discovery_contracts import (
 from phenotypic.gui.results_viewer._output_consistency import (
     OutputCompletionEvidence,
     classify_output_consistency,
+    inspect_output_consistency,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._processing_inventory import (
@@ -29,9 +31,13 @@ from phenotypic.gui.results_viewer._processing_inventory import (
 )
 from phenotypic.schema import METADATA
 from phenotypic.sdk_ import (
+    BundleLayout,
+    ProcessingStateKey,
+    event_log_path,
     master_measurements_parquet_path,
     measurements_parquet_path,
     gui_launch_owner_path,
+    processing_state_path,
     resolve_manifest_json_path,
     run_completion_marker_path,
 )
@@ -204,6 +210,51 @@ def test_coherent_terminal_inventory_persists_and_reuses_externally(
     assert second.snapshot.processing_inventory_cache_hit is True
     assert cache_path.is_file()
     assert cache_path.is_relative_to(cache_root)
+    assert {
+        path.relative_to(source): path.read_bytes()
+        for path in source.rglob("*")
+        if path.is_file()
+    } == selected_before
+
+
+def test_terminal_event_log_supersedes_stale_processing_snapshot(
+    tmp_path: Path,
+) -> None:
+    """Fresh CLI output remains coherent when its initial snapshot is stale."""
+    source = tmp_path / "output"
+    _seed_output(source)
+    _publish_coherent_manifest(source)
+    state_path = processing_state_path(source)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                ProcessingStateKey.DATASETS: {
+                    "plate": {
+                        ProcessingStateKey.INITIAL_IMAGES: ["a", "b"],
+                        ProcessingStateKey.COMPLETED: [],
+                        ProcessingStateKey.FAILED: [],
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    log_path = event_log_path(source)
+    for image_name in ("a", "b"):
+        append_event(log_path, "plate", image_name, "started")
+        append_event(log_path, "plate", image_name, "completed")
+    selected_before = {
+        path.relative_to(source): path.read_bytes()
+        for path in source.rglob("*")
+        if path.is_file()
+    }
+
+    report = inspect_output_consistency(BundleLayout.detect(source))
+
+    assert report.state == "coherent"
+    assert report.evidence.processing_completed == 2
+    assert report.evidence.processing_unfinished == 0
     assert {
         path.relative_to(source): path.read_bytes()
         for path in source.rglob("*")
