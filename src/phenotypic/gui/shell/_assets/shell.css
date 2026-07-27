@@ -462,6 +462,10 @@
   border-left-color: var(--color-muted);
 }
 
+.shell-results-binding-panel--unknown {
+  border-left-color: var(--oi-orange);
+}
+
 .shell-results-binding-heading {
   display: flex;
   justify-content: space-between;

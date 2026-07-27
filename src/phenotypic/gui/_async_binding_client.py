@@ -74,19 +74,29 @@ def async_binding_callback_source(
             (previousJob.status === "queued" ||
              previousJob.status === "running");
 
-        const failureState = function(message, kind) {{
-            return {{
-                status: "failed",
+        const unknownSubmissionState = function(message) {{
+            const uncertainty = {{
+                submission_outcome: "unknown",
+                submission_error: message,
                 redirect_url: {redirect_literal},
+            }};
+            if (previousActive) {{
+                return Object.assign({{}}, current, uncertainty);
+            }}
+            return Object.assign({{}}, uncertainty, {{
+                status: "unknown",
                 job: {{
-                    status: "failed",
-                    phase: "failed",
-                    detail: "Results binding failed.",
-                    terminal: true,
-                    error_kind: kind || "unavailable",
+                    status: "unknown",
+                    phase: "submission_unknown",
+                    detail: (
+                        "The binding request may have been accepted, but " +
+                        "its acknowledgement was not received."
+                    ),
+                    terminal: false,
+                    authoritative: false,
                     error: message,
                 }},
-            }};
+            }});
         }};
         try {{
             const response = await fetch(
@@ -103,7 +113,7 @@ def async_binding_callback_source(
             }}
             if (!response.ok) {{
                 const message = data.error || ("HTTP " + response.status);
-                return failureState(message, data.error_kind);
+                return unknownSubmissionState(message);
             }}
             const job = data && data.job ? data.job : data;
             if (response.status !== 202) {{
@@ -123,9 +133,8 @@ def async_binding_callback_source(
                 return complete;
             }}
             if (!data.poll_path || !data.cancel_path) {{
-                return failureState(
-                    "Binding job response omitted its polling contract.",
-                    "unavailable"
+                return unknownSubmissionState(
+                    "Binding acknowledgement omitted its polling contract."
                 );
             }}
             shared.jobId = data.job_id || job.job_id || null;
@@ -145,7 +154,7 @@ def async_binding_callback_source(
             if (shared.epoch !== epoch) {{
                 return window.dash_clientside.no_update;
             }}
-            return failureState(String(error), "unavailable");
+            return unknownSubmissionState(String(error));
         }}
     }}
     """

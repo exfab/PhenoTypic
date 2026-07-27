@@ -41,6 +41,71 @@ def test_active_progress_surfaces_phase_counts_and_deduplication() -> None:
     assert "Progress check unavailable: HTTP 503" in state.diagnostic
 
 
+def test_unknown_submission_does_not_claim_the_live_pair_is_unchanged() -> None:
+    """A response-lost POST is rendered as uncertainty, not terminal failure."""
+    payload = {
+        "status": "unknown",
+        "submission_outcome": "unknown",
+        "submission_error": "TypeError: response lost",
+        "job": {
+            "status": "unknown",
+            "phase": "submission_unknown",
+            "detail": (
+                "The binding request may have been accepted, but its "
+                "acknowledgement was not received."
+            ),
+            "terminal": False,
+            "authoritative": False,
+        },
+    }
+
+    state = binding_ui_state(payload)
+
+    assert state.status == "Unconfirmed"
+    assert state.phase == "Submission acknowledgement unavailable"
+    assert "could not be confirmed and may have been accepted" in (
+        state.diagnostic
+    )
+    assert "previous Results + Analysis publication is unchanged" not in (
+        state.diagnostic
+    )
+    assert state.cancel_disabled is True
+    assert state.poll_disabled is True
+    assert "could not be confirmed and may have been accepted" in (
+        binding_error_text(payload)
+    )
+
+
+def test_unknown_retry_keeps_prior_active_progress_and_warns() -> None:
+    """An ambiguous retry leaves the previously authoritative monitor active."""
+    payload = {
+        "submission_outcome": "unknown",
+        "submission_error": "HTTP 504",
+        "job_id": "active-job",
+        "poll_path": "/jobs/active-job",
+        "cancel_path": "/jobs/active-job",
+        "job": {
+            "job_id": "active-job",
+            "status": "running",
+            "phase": "inventory",
+            "completed": 40,
+            "total": 100,
+            "terminal": False,
+        },
+    }
+
+    state = binding_ui_state(payload)
+
+    assert state.status == "Active"
+    assert state.progress_label == "40 of 100"
+    assert state.cancel_disabled is False
+    assert state.poll_disabled is False
+    assert "latest submission could not be confirmed" in state.diagnostic
+    assert "previous Results + Analysis publication is unchanged" not in (
+        state.diagnostic
+    )
+
+
 @pytest.mark.parametrize(
     ("kind", "expected"),
     [

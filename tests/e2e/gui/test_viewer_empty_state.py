@@ -50,11 +50,61 @@ def test_binding_progress_and_cancel_are_visible_in_shared_sidebar(
     """The browser renders one running poll and cancels through DELETE."""
     job_path = "/sandbox/api/viewer/output-root/jobs/synthetic-large"
     progress_gets = {"results": 0, "analysis": 0}
-    active_gets = 0
-    max_active_gets = 0
+
+    # Hold the first GET in each document beyond two 400 ms interval ticks.
+    # The in-page probe observes real fetch promise lifetimes, so another GET
+    # would raise maxActive above one if the client-side fence were ineffective.
+    page.add_init_script(
+        """
+        (() => {
+            const originalFetch = window.fetch.bind(window);
+            const probe = {
+                calls: 0,
+                active: 0,
+                maxActive: 0,
+                completed: 0,
+            };
+            window.__bindingFetchProbe = probe;
+            window.fetch = async (...args) => {
+                const input = args[0];
+                const options = args[1] || {};
+                const url = typeof input === "string" ? input : input.url;
+                const method = String(
+                    options.method ||
+                    (typeof input === "string" ? "GET" : input.method) ||
+                    "GET"
+                ).toUpperCase();
+                if (
+                    method !== "GET" ||
+                    !url.includes(
+                        "/sandbox/api/viewer/output-root/jobs/"
+                    )
+                ) {
+                    return originalFetch(...args);
+                }
+                probe.calls += 1;
+                probe.active += 1;
+                probe.maxActive = Math.max(
+                    probe.maxActive,
+                    probe.active
+                );
+                try {
+                    if (probe.calls === 1) {
+                        await new Promise(
+                            (resolve) => window.setTimeout(resolve, 950)
+                        );
+                    }
+                    return await originalFetch(...args);
+                } finally {
+                    probe.active -= 1;
+                    probe.completed += 1;
+                }
+            };
+        })();
+        """
+    )
 
     def _binding_route(route) -> None:
-        nonlocal active_gets, max_active_gets
         method = route.request.method
         if method == "POST":
             route.fulfill(
@@ -85,37 +135,32 @@ def test_binding_progress_and_cancel_are_visible_in_shared_sidebar(
                 ),
             )
         else:
-            active_gets += 1
-            max_active_gets = max(max_active_gets, active_gets)
-            try:
-                referer = route.request.headers.get("referer", "")
-                on_analysis = "/analysis/" in referer
-                mount = "analysis" if on_analysis else "results"
-                progress_gets[mount] += 1
-                phase = "indexing" if on_analysis else "inventory"
-                detail = (
-                    "Indexing viewer rows."
-                    if on_analysis
-                    else "Scanning synthetic files."
-                )
-                completed = 75 if on_analysis else 25
-                route.fulfill(
-                    status=200,
-                    content_type="application/json",
-                    body=(
-                        '{"status":"running","job_id":"synthetic-large",'
-                        f'"poll_path":"{job_path}",'
-                        f'"cancel_path":"{job_path}",'
-                        '"job":{"job_id":"synthetic-large",'
-                        '"status":"running",'
-                        f'"phase":"{phase}","detail":"{detail}",'
-                        f'"completed":{completed},"total":100,'
-                        '"terminal":false,'
-                        '"target":"/sandbox/results/CliOutputExample"}}'
-                    ),
-                )
-            finally:
-                active_gets -= 1
+            referer = route.request.headers.get("referer", "")
+            on_analysis = "/analysis/" in referer
+            mount = "analysis" if on_analysis else "results"
+            progress_gets[mount] += 1
+            phase = "indexing" if on_analysis else "inventory"
+            detail = (
+                "Indexing viewer rows."
+                if on_analysis
+                else "Scanning synthetic files."
+            )
+            completed = 75 if on_analysis else 25
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=(
+                    '{"status":"running","job_id":"synthetic-large",'
+                    f'"poll_path":"{job_path}",'
+                    f'"cancel_path":"{job_path}",'
+                    '"job":{"job_id":"synthetic-large",'
+                    '"status":"running",'
+                    f'"phase":"{phase}","detail":"{detail}",'
+                    f'"completed":{completed},"total":100,'
+                    '"terminal":false,'
+                    '"target":"/sandbox/results/CliOutputExample"}}'
+                ),
+            )
 
     page.route("**/sandbox/api/viewer/output-root**", _binding_route)
     page.goto(hub_url + "/results/")
@@ -145,6 +190,12 @@ def test_binding_progress_and_cancel_are_visible_in_shared_sidebar(
         "25 of 100"
     )
     assert progress_gets["results"] >= 1
+    page.wait_for_function(
+        """() => window.__bindingFetchProbe.calls >= 2 &&
+            window.__bindingFetchProbe.completed >= 2"""
+    )
+    results_probe = page.evaluate("() => window.__bindingFetchProbe")
+    assert results_probe["maxActive"] == 1
     expect(page.locator("#shell-results-binding-cancel")).to_be_enabled()
 
     # The session-backed shell state survives a cross-mount hard navigation,
@@ -161,7 +212,12 @@ def test_binding_progress_and_cancel_are_visible_in_shared_sidebar(
         "75 of 100"
     )
     assert progress_gets["analysis"] >= 1
-    assert max_active_gets == 1
+    page.wait_for_function(
+        """() => window.__bindingFetchProbe.calls >= 2 &&
+            window.__bindingFetchProbe.completed >= 2"""
+    )
+    analysis_probe = page.evaluate("() => window.__bindingFetchProbe")
+    assert analysis_probe["maxActive"] == 1
 
     with page.expect_request(
         lambda request: request.method == "DELETE"

@@ -24,6 +24,7 @@ _PHASE_LABELS = {
     "failed": "Binding failed",
     "cancelled": "Binding cancelled",
     "superseded": "Binding superseded",
+    "submission_unknown": "Submission acknowledgement unavailable",
 }
 _STATUS_LABELS = {
     "queued": "Queued",
@@ -32,6 +33,7 @@ _STATUS_LABELS = {
     "failed": "Failed",
     "cancelled": "Cancelled",
     "superseded": "Superseded",
+    "unknown": "Unconfirmed",
 }
 
 
@@ -126,9 +128,16 @@ def binding_ui_state(payload: object) -> BindingUiState:
 
 
 def binding_error_text(payload: object) -> str:
-    """Return the terminal page-local error text, if any."""
+    """Return the page-local binding error or submission warning, if any."""
     if not isinstance(payload, Mapping):
         return ""
+    if payload.get("submission_outcome") == "unknown":
+        detail = str(payload.get("submission_error") or "").strip()
+        suffix = f" {detail}" if detail else ""
+        return (
+            "Binding submission could not be confirmed and may have been "
+            f"accepted.{suffix}"
+        )
     job_value = payload.get("job")
     job = job_value if isinstance(job_value, Mapping) else payload
     status = str(job.get("status") or payload.get("status") or "")
@@ -166,6 +175,17 @@ def _diagnostic_text(
     cancel_error = payload.get("cancel_error")
     if isinstance(cancel_error, str) and cancel_error:
         notices.append(f"Cancellation not confirmed: {cancel_error}")
+    if payload.get("submission_outcome") == "unknown":
+        submission_error = payload.get("submission_error")
+        detail = (
+            f" ({submission_error})"
+            if isinstance(submission_error, str) and submission_error
+            else ""
+        )
+        notices.append(
+            "The latest submission could not be confirmed and may have been "
+            f"accepted{detail}."
+        )
 
     if status == "succeeded":
         snapshot_value = payload.get("snapshot")

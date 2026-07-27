@@ -32,6 +32,7 @@ def _evaluate_callback(
     const responses = {json.dumps(responses)};
     const calls = [];
     const navigations = [];
+    const acceptedJobs = [];
     const noUpdate = Symbol("no_update");
     global.window = {{
         dash_clientside: {{no_update: noUpdate}},
@@ -47,6 +48,12 @@ def _evaluate_callback(
         calls.push({{url, method: options.method || "GET"}});
         const response = responses.shift();
         assert.ok(response, "unexpected fetch");
+        if (response.accepted_job_id) {{
+            acceptedJobs.push(response.accepted_job_id);
+        }}
+        if (response.throw_error) {{
+            throw new TypeError(response.throw_error);
+        }}
         return {{
             ok: response.ok,
             status: response.status,
@@ -59,6 +66,7 @@ def _evaluate_callback(
             result: result === noUpdate ? "NO_UPDATE" : result,
             calls,
             navigations,
+            acceptedJobs,
             remaining: responses.length,
         }}));
     }})().catch((error) => {{
@@ -126,6 +134,109 @@ def test_submission_returns_pollable_state_without_waiting(
     assert observed["result"]["redirect_url"] == "/node/abc/results/"
     assert observed["navigations"] == []
     assert observed["remaining"] == 0
+
+
+def test_response_lost_after_submission_is_not_terminal_or_authoritative() -> None:
+    """A lost POST acknowledgement cannot prove non-publication."""
+    source = async_binding_callback_source(
+        api_url="/sandbox/api/viewer/output-root",
+        redirect_url="/results/",
+        selection_required=True,
+    )
+    observed = _evaluate_callback(
+        source,
+        invocation='callback(1, {path: "accepted-output"}, null)',
+        responses=[
+            {
+                # The server accepted this job before the transport lost the
+                # response, so the browser never learns its job identifier.
+                "accepted_job_id": "accepted-but-unacknowledged",
+                "throw_error": "connection closed before acknowledgement",
+            }
+        ],
+    )
+
+    assert observed["acceptedJobs"] == ["accepted-but-unacknowledged"]
+    assert observed["result"]["status"] == "unknown"
+    assert observed["result"]["submission_outcome"] == "unknown"
+    assert observed["result"]["job"]["status"] == "unknown"
+    assert observed["result"]["job"]["authoritative"] is False
+    assert observed["result"]["job"]["terminal"] is False
+    assert "unchanged" not in observed["result"]["job"]["detail"]
+    assert observed["navigations"] == []
+
+
+def test_response_lost_submission_retains_prior_authoritative_active_job() -> None:
+    """An ambiguous retry does not replace an already monitored job."""
+    source = async_binding_callback_source(
+        api_url="/sandbox/api/viewer/output-root",
+        redirect_url="/analysis/",
+        selection_required=False,
+    )
+    active = {
+        "job_id": "authoritative-active",
+        "poll_path": (
+            "/sandbox/api/viewer/output-root/jobs/authoritative-active"
+        ),
+        "cancel_path": (
+            "/sandbox/api/viewer/output-root/jobs/authoritative-active"
+        ),
+        "redirect_url": "/analysis/",
+        "job": {
+            "job_id": "authoritative-active",
+            "status": "running",
+            "phase": "measurements",
+            "completed": 20,
+            "total": 100,
+            "terminal": False,
+        },
+    }
+    observed = _evaluate_callback(
+        source,
+        invocation=f"callback(1, {json.dumps(active)})",
+        responses=[
+            {
+                "accepted_job_id": "possible-superseding-job",
+                "throw_error": "network response lost",
+            }
+        ],
+    )
+
+    assert observed["acceptedJobs"] == ["possible-superseding-job"]
+    assert observed["result"]["job"] == active["job"]
+    assert observed["result"]["poll_path"] == active["poll_path"]
+    assert observed["result"]["submission_outcome"] == "unknown"
+    assert observed["result"]["submission_error"] == (
+        "TypeError: network response lost"
+    )
+    assert observed["result"]["job"]["terminal"] is False
+    assert "superseded_job_id" not in observed["result"]
+
+
+def test_proxy_rejection_does_not_assert_submission_was_not_accepted() -> None:
+    """A gateway response cannot authoritatively terminalize the POST."""
+    source = async_binding_callback_source(
+        api_url="/sandbox/api/viewer/output-root",
+        redirect_url="/results/",
+        selection_required=False,
+    )
+    observed = _evaluate_callback(
+        source,
+        invocation="callback(1, null)",
+        responses=[
+            {
+                "ok": False,
+                "status": 502,
+                "body": {"error": "upstream response unavailable"},
+            }
+        ],
+    )
+
+    assert observed["result"]["status"] == "unknown"
+    assert observed["result"]["submission_outcome"] == "unknown"
+    assert observed["result"]["job"]["terminal"] is False
+    assert observed["result"]["job"]["authoritative"] is False
+    assert "unchanged" not in observed["result"]["job"]["detail"]
 
 
 def test_poll_updates_progress_then_navigates_only_on_success() -> None:
