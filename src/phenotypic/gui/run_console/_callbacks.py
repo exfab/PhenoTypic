@@ -202,10 +202,9 @@ def _metadata_preflight_children(report: MetadataPreflight) -> Any:
                 html.Div(
                     [
                         html.Strong("Metadata descriptor: "),
-                        f"{report.metadata_row_count} row(s), identity ",
-                        report.identity_column
-                        or report.identity_state
-                        or "unavailable",
+                        f"{report.metadata_row_count} row(s), preflight join "
+                        "keys ",
+                        ", ".join(report.join_columns) or "none",
                         ", ",
                         _fingerprint_label(report.metadata_fingerprint),
                     ]
@@ -216,8 +215,7 @@ def _metadata_preflight_children(report: MetadataPreflight) -> Any:
                         f"{report.matched_source_count}/"
                         f"{report.source_image_count} input image(s) matched; "
                         f"{report.metadata_only_count} metadata-only row(s); "
-                        f"{report.duplicate_identity_count} duplicate "
-                        "identity row(s).",
+                        f"{report.duplicate_key_count} duplicate key row(s).",
                     ]
                 ),
             ]

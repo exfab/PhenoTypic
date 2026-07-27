@@ -3,8 +3,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import polars as pl
 import pytest
 
+from phenotypic._cli._cli_output_manager import join_metadata
 from phenotypic.gui.run_console._request_safety import (
     RunRequestSafetyError,
     build_metadata_preflight,
@@ -14,7 +16,7 @@ from phenotypic.gui.run_console._request_safety import (
 )
 from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
 from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.schema import METADATA
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 
 
 def _one_image_source(root: Path, *, stem: str = "plate_a") -> Path:
@@ -167,7 +169,7 @@ def test_mismatched_metadata_requires_visible_warning_acknowledgement(
     assert preflight.compatibility == "warning"
     assert preflight.unmatched_source_count == 1
     assert preflight.metadata_only_count == 2
-    assert preflight.duplicate_identity_count == 1
+    assert preflight.duplicate_key_count == 1
     with pytest.raises(RunRequestSafetyError, match="Acknowledge"):
         recheck_metadata_selection(
             sandbox,
@@ -185,6 +187,108 @@ def test_mismatched_metadata_requires_visible_warning_acknowledgement(
         acknowledgement=["acknowledge"],
         preflight_payload=preflight.to_json(),
     ) == metadata
+
+
+def test_preflight_uses_every_source_level_production_join_key(
+    tmp_path: Path,
+) -> None:
+    """A matching image name cannot hide a mismatched dataset join key."""
+    source = _one_image_source(tmp_path)
+    metadata = tmp_path / "metadata.csv"
+    image_key = str(METADATA.IMAGE_NAME)
+    dataset_key = str(EXPERIMENT_METADATA.DATASET)
+    metadata.write_text(
+        f"{image_key},{dataset_key},Treatment\n"
+        "plate_a,wrong-dataset,control\n",
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payload = metadata_payload_from_path(sandbox, metadata)
+
+    preflight = build_metadata_preflight(sandbox, str(source), payload)
+    production_result = join_metadata(
+        pl.DataFrame(
+            {
+                image_key: ["plate_a"],
+                dataset_key: [source.name],
+                "Shape_Area": [1.0],
+            }
+        ),
+        metadata,
+    )
+
+    assert set(preflight.join_columns) == {image_key, dataset_key}
+    assert preflight.compatibility == "warning"
+    assert preflight.matched_source_count == 0
+    assert preflight.unmatched_source_count == 1
+    assert preflight.metadata_only_count == 1
+    assert production_result.height == 0
+
+
+def test_preflight_duplicate_risk_uses_full_production_key_grain(
+    tmp_path: Path,
+) -> None:
+    """Repeated image names are not duplicates when the full keys differ."""
+    source = _one_image_source(tmp_path)
+    metadata = tmp_path / "metadata.csv"
+    image_key = str(METADATA.IMAGE_NAME)
+    dataset_key = str(EXPERIMENT_METADATA.DATASET)
+    metadata.write_text(
+        f"{image_key},{dataset_key},Treatment\n"
+        f"plate_a,{source.name},control\n"
+        "plate_a,other-dataset,treated\n",
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payload = metadata_payload_from_path(sandbox, metadata)
+
+    preflight = build_metadata_preflight(sandbox, str(source), payload)
+
+    assert set(preflight.join_columns) == {image_key, dataset_key}
+    assert preflight.duplicate_key_count == 0
+    assert preflight.matched_source_count == 1
+    assert preflight.metadata_only_count == 1
+
+    metadata.write_text(
+        f"{image_key},{dataset_key},Treatment\n"
+        f"plate_a,{source.name},control\n"
+        f"plate_a,{source.name},treated\n",
+        encoding="utf-8",
+    )
+    refreshed = build_metadata_preflight(
+        sandbox,
+        str(source),
+        metadata_payload_from_path(sandbox, metadata),
+    )
+    assert refreshed.duplicate_key_count == 1
+
+
+def test_preflight_never_calls_measurement_level_join_keys_compatible(
+    tmp_path: Path,
+) -> None:
+    """Grid keys require post-measurement verification and stay a warning."""
+    source = _one_image_source(tmp_path)
+    metadata = tmp_path / "metadata.csv"
+    image_key = str(METADATA.IMAGE_NAME)
+    metadata.write_text(
+        f"{image_key},Grid_RowNum,Treatment\nplate_a,999,control\n",
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+
+    preflight = build_metadata_preflight(
+        sandbox,
+        str(source),
+        metadata_payload_from_path(sandbox, metadata),
+    )
+
+    assert preflight.matched_source_count == 1
+    assert preflight.compatibility == "warning"
+    assert preflight.unverified_join_columns == ("Grid_RowNum",)
+    assert any(
+        "production join will use" in warning
+        for warning in preflight.warnings
+    )
 
 
 @pytest.mark.parametrize("changed_input", ["source", "metadata"])

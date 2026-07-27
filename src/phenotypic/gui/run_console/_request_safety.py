@@ -12,15 +12,22 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, TypeAlias
 
+import polars as pl
+
 from phenotypic._cli._cli_directory_scanner import scan_directory_structure
+from phenotypic._cli._metadata_join import prepare_metadata_join_keys
 from phenotypic.gui.shell._metadata_context import (
     MetadataResolutionState,
-    read_metadata_csv_table,
     resolve_metadata_csv_state,
-    resolve_metadata_image_identity,
 )
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._source_context import sandbox_fingerprint
+from phenotypic.schema import (
+    EXPERIMENT_METADATA,
+    METADATA,
+    REMBI_MODULE,
+    header_to_module,
+)
 
 __all__ = [
     "MetadataPreflight",
@@ -35,7 +42,7 @@ __all__ = [
 ]
 
 _OUTPUT_CONFIRMATION_VERSION = 1
-_METADATA_PREFLIGHT_VERSION = 1
+_METADATA_PREFLIGHT_VERSION = 2
 _HASH_CHUNK_SIZE = 1024 * 1024
 
 SourcePreflightState: TypeAlias = Literal[
@@ -91,12 +98,12 @@ class MetadataPreflight:
     metadata_path: str | None
     metadata_fingerprint: str | None
     metadata_row_count: int
-    identity_state: str | None
-    identity_column: str | None
+    join_columns: tuple[str, ...]
+    unverified_join_columns: tuple[str, ...]
     matched_source_count: int
     unmatched_source_count: int
     metadata_only_count: int
-    duplicate_identity_count: int
+    duplicate_key_count: int
     compatibility: MetadataCompatibilityState
     warnings: tuple[str, ...]
     request_fingerprint: str
@@ -124,12 +131,12 @@ class MetadataPreflight:
             "metadata_path": self.metadata_path,
             "metadata_fingerprint": self.metadata_fingerprint,
             "metadata_row_count": self.metadata_row_count,
-            "identity_state": self.identity_state,
-            "identity_column": self.identity_column,
+            "join_columns": list(self.join_columns),
+            "unverified_join_columns": list(self.unverified_join_columns),
             "matched_source_count": self.matched_source_count,
             "unmatched_source_count": self.unmatched_source_count,
             "metadata_only_count": self.metadata_only_count,
-            "duplicate_identity_count": self.duplicate_identity_count,
+            "duplicate_key_count": self.duplicate_key_count,
             "compatibility": self.compatibility,
             "warnings": list(self.warnings),
             "request_fingerprint": self.request_fingerprint,
@@ -282,7 +289,12 @@ def _fingerprint_file(path: Path) -> str:
 def _source_snapshot(
     sandbox: SandboxRoot,
     input_dir: object,
-) -> tuple[SourcePreflightState, Path | None, str | None, tuple[Path, ...]]:
+) -> tuple[
+    SourcePreflightState,
+    Path | None,
+    str | None,
+    tuple[tuple[str, Path], ...],
+]:
     """Resolve and fingerprint the exact CLI image inventory."""
     if not isinstance(input_dir, str) or not input_dir.strip():
         return "unset", None, None, ()
@@ -296,21 +308,69 @@ def _source_snapshot(
         datasets = scan_directory_structure(resolved)
         images = tuple(
             sorted(
-                (path for paths in datasets.values() for path in paths),
-                key=lambda path: str(path.relative_to(resolved)),
+                (
+                    (dataset_name, path)
+                    for dataset_name, paths in datasets.items()
+                    for path in paths
+                ),
+                key=lambda item: (
+                    item[0],
+                    str(item[1].relative_to(resolved)),
+                ),
             )
         )
         digest = hashlib.sha256()
         digest.update(str(resolved).encode("utf-8", errors="surrogateescape"))
-        for image in images:
+        for dataset_name, image in images:
             stat = image.stat()
             relative = str(image.relative_to(resolved))
+            digest.update(dataset_name.encode("utf-8", errors="surrogateescape"))
             digest.update(relative.encode("utf-8", errors="surrogateescape"))
             digest.update(str(stat.st_size).encode("ascii"))
             digest.update(str(stat.st_mtime_ns).encode("ascii"))
     except (OSError, RuntimeError, ValueError):
         return "unavailable", resolved, None, ()
     return "resolved", resolved, f"sha256:{digest.hexdigest()}", images
+
+
+def _source_join_key_frame(
+    images: tuple[tuple[str, Path], ...],
+) -> pl.DataFrame:
+    """Project source inventory into keys emitted by CLI aggregation."""
+    return pl.DataFrame(
+        {
+            str(METADATA.IMAGE_NAME): [
+                image.stem for _dataset, image in images
+            ],
+            str(METADATA.SUFFIX): [
+                image.suffix for _dataset, image in images
+            ],
+            str(EXPERIMENT_METADATA.DATASET): [
+                dataset for dataset, _image in images
+            ],
+        }
+    )
+
+
+def _unverified_measurement_join_columns(
+    metadata_columns: list[str],
+    source_columns: list[str],
+) -> tuple[str, ...]:
+    """Return metadata columns that may join only after measurement."""
+    modules = header_to_module()
+    framework_image_headers = set(METADATA.get_headers())
+    source_set = set(source_columns)
+    return tuple(
+        sorted(
+            column
+            for column in metadata_columns
+            if column not in source_set
+            and (
+                modules.get(column) == REMBI_MODULE.ANALYZED_DATA
+                or column in framework_image_headers
+            )
+        )
+    )
 
 
 def _request_fingerprint(fields: dict[str, object]) -> str:
@@ -346,12 +406,12 @@ def build_metadata_preflight(
     metadata_path = metadata_resolution.path
     metadata_hash: str | None = None
     metadata_rows = 0
-    identity_state: str | None = None
-    identity_column: str | None = None
+    join_columns: tuple[str, ...] = ()
+    unverified_join_columns: tuple[str, ...] = ()
     matched_source = 0
     unmatched_source = len(images)
     metadata_only = 0
-    duplicate_identities = 0
+    duplicate_keys = 0
     warnings: list[str] = []
 
     if metadata_resolution.state == "unset":
@@ -364,68 +424,73 @@ def build_metadata_preflight(
     else:
         try:
             metadata_hash = _fingerprint_file(metadata_path)
-            columns, rows = read_metadata_csv_table(metadata_path)
-            metadata_rows = len(rows)
-            identity = resolve_metadata_image_identity(columns, rows)
-        except (OSError, RuntimeError, UnicodeError, ValueError):
+            metadata_frame = pl.read_csv(metadata_path)
+            metadata_rows = metadata_frame.height
+        except (
+            OSError,
+            RuntimeError,
+            UnicodeError,
+            ValueError,
+            pl.exceptions.PolarsError,
+        ):
             compatibility = "blocked"
             warnings.append("Ambient metadata CSV cannot be read.")
         else:
-            identity_state = identity.state
-            identity_column = identity.column
-            identities: tuple[str, ...] = ()
-            if identity.state == "missing":
-                warnings.append(
-                    "Metadata has no recognized image identity column."
-                )
-            elif identity.state == "ambiguous":
-                warnings.append(
-                    "Metadata image identity columns are ambiguous."
-                )
-            else:
-                identities = tuple(
-                    value
-                    for value in identity.normalized_values
-                    if value is not None
-                )
-                duplicate_identities = len(identities) - len(set(identities))
-            if duplicate_identities:
-                warnings.append(
-                    f"{duplicate_identities} duplicate metadata image "
-                    "identities may fan out aggregation rows."
-                )
-
             if source_state != "resolved":
                 compatibility = "pending"
                 warnings.insert(
                     0,
                     "Select a valid image source to check metadata compatibility.",
                 )
-            elif identity.state == "resolved":
-                identity_set = set(identities)
-                source_stems = tuple(image.stem for image in images)
-                source_stem_set = set(source_stems)
-                matched_source = sum(
-                    stem in identity_set for stem in source_stems
+            else:
+                source_frame = _source_join_key_frame(images)
+                prepared = prepare_metadata_join_keys(
+                    source_frame,
+                    metadata_frame,
                 )
-                unmatched_source = len(source_stems) - matched_source
-                metadata_only = sum(
-                    identity_value not in source_stem_set
-                    for identity_value in identities
+                analysis = prepared.analysis
+                join_columns = analysis.columns
+                unverified_join_columns = (
+                    _unverified_measurement_join_columns(
+                        metadata_frame.columns,
+                        source_frame.columns,
+                    )
                 )
+                matched_source = analysis.matched_measurement_count
+                unmatched_source = analysis.unmatched_measurement_count
+                metadata_only = analysis.unmatched_metadata_count
+                duplicate_keys = analysis.duplicate_metadata_key_count
+                if not join_columns:
+                    warnings.append(
+                        "Metadata shares no source-derived CLI join keys; "
+                        "the production join may skip it."
+                    )
+                if unverified_join_columns:
+                    warnings.append(
+                        "Metadata also contains measurement-level columns "
+                        "that the preflight cannot verify: "
+                        + ", ".join(unverified_join_columns)
+                        + ". The production join will use any of these columns "
+                        "that measurements emit."
+                    )
+                if duplicate_keys:
+                    warnings.append(
+                        f"{duplicate_keys} duplicate metadata key row(s) on "
+                        f"{', '.join(join_columns)} may fan out joined rows."
+                    )
                 if unmatched_source:
                     warnings.append(
-                        f"{unmatched_source}/{len(source_stems)} input images "
-                        "have no metadata identity match and may be dropped."
+                        f"{unmatched_source}/{len(images)} input images have "
+                        "no metadata match on all preflight join keys and may "
+                        "be dropped."
                     )
                 if metadata_only:
                     warnings.append(
-                        f"{metadata_only}/{len(identities)} metadata rows do "
-                        "not match an input image and may become metadata-only rows."
+                        f"{metadata_only}/{metadata_rows} metadata rows do not "
+                        "match an input image on all preflight join keys and "
+                        "may become metadata-only rows."
                     )
                 compatibility = "warning" if warnings else "compatible"
-            else:
-                compatibility = "warning"
 
     fingerprint_fields: dict[str, object] = {
         "sandbox_fingerprint": sandbox_fingerprint(sandbox),
@@ -437,12 +502,12 @@ def build_metadata_preflight(
         "metadata_path": str(metadata_path) if metadata_path is not None else None,
         "metadata_fingerprint": metadata_hash,
         "metadata_row_count": metadata_rows,
-        "identity_state": identity_state,
-        "identity_column": identity_column,
+        "join_columns": join_columns,
+        "unverified_join_columns": unverified_join_columns,
         "matched_source_count": matched_source,
         "unmatched_source_count": unmatched_source,
         "metadata_only_count": metadata_only,
-        "duplicate_identity_count": duplicate_identities,
+        "duplicate_key_count": duplicate_keys,
         "compatibility": compatibility,
         "warnings": warnings,
     }
@@ -455,12 +520,12 @@ def build_metadata_preflight(
         metadata_path=str(metadata_path) if metadata_path is not None else None,
         metadata_fingerprint=metadata_hash,
         metadata_row_count=metadata_rows,
-        identity_state=identity_state,
-        identity_column=identity_column,
+        join_columns=join_columns,
+        unverified_join_columns=unverified_join_columns,
         matched_source_count=matched_source,
         unmatched_source_count=unmatched_source,
         metadata_only_count=metadata_only,
-        duplicate_identity_count=duplicate_identities,
+        duplicate_key_count=duplicate_keys,
         compatibility=compatibility,
         warnings=tuple(warnings),
         request_fingerprint=_request_fingerprint(fingerprint_fields),
@@ -481,12 +546,12 @@ def metadata_preflight_from_json(payload: object) -> MetadataPreflight:
         metadata_path = payload["metadata_path"]
         metadata_hash = payload["metadata_fingerprint"]
         metadata_rows = payload["metadata_row_count"]
-        identity_state = payload["identity_state"]
-        identity_column = payload["identity_column"]
+        join_column_values = payload["join_columns"]
+        unverified_join_column_values = payload["unverified_join_columns"]
         matched = payload["matched_source_count"]
         unmatched = payload["unmatched_source_count"]
         metadata_only = payload["metadata_only_count"]
-        duplicates = payload["duplicate_identity_count"]
+        duplicates = payload["duplicate_key_count"]
         compatibility = payload["compatibility"]
         warning_values = payload["warnings"]
         request_hash = payload["request_fingerprint"]
@@ -516,6 +581,12 @@ def metadata_preflight_from_json(payload: object) -> MetadataPreflight:
         isinstance(item, str) for item in warning_values
     ):
         raise RunRequestSafetyError("Metadata preflight warnings are invalid")
+    if not all(
+        isinstance(values, list)
+        and all(isinstance(item, str) for item in values)
+        for values in (join_column_values, unverified_join_column_values)
+    ):
+        raise RunRequestSafetyError("Metadata preflight join columns are invalid")
     counts = (source_count, metadata_rows, matched, unmatched, metadata_only, duplicates)
     if not all(type(value) is int and value >= 0 for value in counts):
         raise RunRequestSafetyError("Metadata preflight counts are invalid")
@@ -524,8 +595,6 @@ def metadata_preflight_from_json(payload: object) -> MetadataPreflight:
         source_hash,
         metadata_path,
         metadata_hash,
-        identity_state,
-        identity_column,
     )
     if not all(
         value is None or isinstance(value, str) for value in optional_strings
@@ -542,12 +611,12 @@ def metadata_preflight_from_json(payload: object) -> MetadataPreflight:
         metadata_path=metadata_path,
         metadata_fingerprint=metadata_hash,
         metadata_row_count=metadata_rows,
-        identity_state=identity_state,
-        identity_column=identity_column,
+        join_columns=tuple(join_column_values),
+        unverified_join_columns=tuple(unverified_join_column_values),
         matched_source_count=matched,
         unmatched_source_count=unmatched,
         metadata_only_count=metadata_only,
-        duplicate_identity_count=duplicates,
+        duplicate_key_count=duplicates,
         compatibility=compatibility,
         warnings=tuple(warning_values),
         request_fingerprint=request_hash,

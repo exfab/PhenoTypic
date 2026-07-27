@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from phenotypic.plotting import AnalysisResult
 
 from ._cli_types import Dataset
+from ._metadata_join import prepare_metadata_join_keys
 from ._measurement_sources import (
     add_metadata_image_name_from_filename,
     discover_measurement_sources,
@@ -127,8 +128,7 @@ def join_metadata(
         frame.
     """
     metadata_df = pl.read_csv(metadata_csv)
-    # sorted() — a set's iteration order is not stable across runs, which would
-    # make the logged column order nondeterministic.
+    # sorted() makes the logged and join-key order deterministic.
     common = sorted(set(df.columns) & set(metadata_df.columns))
     if not common:
         logger.warning(
@@ -164,10 +164,9 @@ def join_metadata(
         logger.info("Prefixing bare metadata columns: %s", rename_map)
         metadata_df = metadata_df.rename(rename_map)
 
-    df = df.with_columns(pl.col(col).cast(pl.String) for col in common)
-    metadata_df = metadata_df.with_columns(
-        pl.col(col).cast(pl.String) for col in common
-    )
+    prepared = prepare_metadata_join_keys(df, metadata_df)
+    df = prepared.measurements
+    metadata_df = prepared.metadata
     n_rows_before = df.height
     n_cols_before = len(df.columns)
     flag = str(METADATA_MATCH.METADATA_ONLY)
@@ -188,22 +187,20 @@ def join_metadata(
     # (1) Duplicate metadata keys — asked of the metadata frame directly. Fan-out
     #     on the measurement side (one key -> many colonies) is the normal case
     #     and must never warn.
-    n_unique_keys = metadata_df.n_unique(subset=common)
-    if n_unique_keys < metadata_df.height:
+    duplicate_key_count = prepared.analysis.duplicate_metadata_key_count
+    if duplicate_key_count:
         logger.warning(
             "Metadata CSV has duplicate keys on columns %s (%d unique keys "
             "across %d rows) — each duplicate fans the join out into extra "
             "rows. Verify your metadata CSV has unique values on join columns.",
             common,
-            n_unique_keys,
+            metadata_df.height - duplicate_key_count,
             metadata_df.height,
         )
 
     # (2) Measurement rows that matched no metadata — real under both modes,
     #     since measurements are the right frame.
-    n_dropped = df.join(
-        metadata_df.select(common).unique(), on=common, how="anti"
-    ).height
+    n_dropped = prepared.analysis.unmatched_measurement_count
     if n_dropped > 0:
         logger.warning(
             "Metadata %s join dropped %d/%d measurement rows "
@@ -1689,11 +1686,19 @@ class OutputManager:
         for layer_name, accessor in layer_accessors.items():
             if not self.save_layers.get(layer_name) or accessor.isempty():
                 continue
+
+            def _save_selected_layer(
+                path: Path,
+                *,
+                _accessor: Any = accessor,
+            ) -> None:
+                _accessor.imsave(filepath=path)
+
             path = self._save_layer_safely(
                 layer_name,
                 dataset_name,
                 image_stem,
-                lambda p, acc=accessor: acc.imsave(filepath=p),
+                _save_selected_layer,
             )
             if path:
                 saved_paths[layer_name] = path
