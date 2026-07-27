@@ -11,8 +11,7 @@ import hashlib
 import json
 import logging
 import threading
-from collections.abc import Sequence
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from pathlib import PurePosixPath
@@ -44,6 +43,7 @@ from phenotypic.gui.browse._timeline_records import (
     build_browse_records,
 )
 from phenotypic.gui.shell._ids import (
+    SHELL_CLASSIFIER_CACHE_STORE,
     SHELL_METADATA_CSV_STORE,
     SHELL_SOURCE_IMAGE_ROOT_STORE,
 )
@@ -145,6 +145,39 @@ class TimelineRevisionAuthority:
         ):
             return None
         return current
+
+
+class SourceRevisionAuthority:
+    """Thread-safe authority for the current Browse source refresh revision."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._revision: str | None = None
+        self._grid_revisions: set[str] = set()
+
+    def replace(self, revision: str) -> None:
+        """Retire every render that was computed for an older revision."""
+        with self._lock:
+            self._revision = revision
+            self._grid_revisions.clear()
+
+    def is_current(self, revision: str | None) -> bool:
+        """Return whether ``revision`` is the live source refresh revision."""
+        with self._lock:
+            return self._revision == revision
+
+    def authorize_grid(self, source_revision: str | None, grid_revision: str) -> bool:
+        """Publish a grid identity only while its source revision is current."""
+        with self._lock:
+            if self._revision != source_revision:
+                return False
+            self._grid_revisions.add(grid_revision)
+            return True
+
+    def grid_is_current(self, grid_revision: str) -> bool:
+        """Return whether a grid was published for the live source revision."""
+        with self._lock:
+            return grid_revision in self._grid_revisions
 
 
 # --------------------------------------------------------------------------
@@ -425,9 +458,17 @@ def warnings_alert_state(warnings: Sequence[str] | None) -> tuple[Any, bool]:
     return [html.Div(message) for message in items], True
 
 
-def source_reset_values(source_payload: object) -> tuple[object, ...]:
+def source_reset_values(
+    source_payload: object,
+    refresh_revision: object = None,
+) -> tuple[object, ...]:
     """Return the complete source-dependent Timeline reset transaction."""
-    revision = timeline_revision_token("source", source_payload)
+    revision = timeline_revision_token(
+        "source",
+        source_payload,
+        "refresh",
+        refresh_revision,
+    )
     return (
         "folder",
         "exif",
@@ -549,6 +590,7 @@ def resolve_popout_event(
 def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
     """Register every Browse callback on ``app``."""
     revision_authority = TimelineRevisionAuthority()
+    source_revision_authority = SourceRevisionAuthority()
 
     @app.callback(
         Output(ids.BROWSE_DATASETS_STORE, "data"),
@@ -557,8 +599,9 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         Output(ids.BROWSE_DATASET_ROW, "style"),
         Output(ids.BROWSE_EMPTY_HINT, "style"),
         Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
     )
-    def _load_datasets(payload: Any):
+    def _load_datasets(payload: Any, _refresh_revision: object):
         hidden_row = {**DATASET_ROW_STYLE, "display": "none"}
         resolved = resolve_source_image_root(sandbox, payload)
         if resolved is None:
@@ -607,13 +650,19 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         Output(ids.BROWSE_TL_SOURCE_REVISION, "data"),
         Output(ids.BROWSE_TL_POPOUT_EVENT, "data"),
         Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
         prevent_initial_call=True,
     )
-    def _reset_timeline_for_source(source_payload: object):
+    def _reset_timeline_for_source(
+        source_payload: object,
+        refresh_revision: object,
+    ):
         # One callback response retires every source-derived authoring and
         # rendered value. Downstream callbacks may then build a fresh matrix,
         # but no old-source state remains authoritative in the interim.
-        return source_reset_values(source_payload)
+        values = source_reset_values(source_payload, refresh_revision)
+        source_revision_authority.replace(str(values[13]))
+        return values
 
     @app.callback(
         Output(ids.BROWSE_IMAGE_PICKER, "options"),
@@ -861,6 +910,8 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
     ):
         if mode != "timeline":
             raise dash.exceptions.PreventUpdate
+        if not source_revision_authority.is_current(source_revision):
+            raise dash.exceptions.PreventUpdate
         revision = timeline_revision_token(
             source_payload,
             metadata_payload,
@@ -921,6 +972,11 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         component = render_timeline_grid(
             records, display_size=display_size, prefix=prefix
         )
+        if not source_revision_authority.authorize_grid(
+            source_revision,
+            revision,
+        ):
+            raise dash.exceptions.PreventUpdate
         return component, warnings, revision
 
     @app.callback(
@@ -1002,6 +1058,18 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         candidate: Mapping[str, object] | None,
         source_payload: object,
     ):
+        candidate_revision = (
+            candidate.get("revision")
+            if isinstance(candidate, Mapping)
+            else None
+        )
+        if (
+            not isinstance(candidate_revision, str)
+            or not source_revision_authority.grid_is_current(
+                candidate_revision
+            )
+        ):
+            raise dash.exceptions.PreventUpdate
         authorized = authorize_revision_candidate(
             revision_authority,
             sandbox,

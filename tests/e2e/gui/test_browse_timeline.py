@@ -653,3 +653,96 @@ def test_source_revision_clears_stale_timeline_and_rebinds_actions(
         "plate2/new-t0/newA.png",
         "plate2/new-t0/newB.png",
     ]
+
+
+def test_shared_refresh_rescans_selected_source_and_retires_timeline_state(
+    live_browse_timeline,
+    fake_sandbox: Path,
+) -> None:
+    """Refresh keeps source authority stable while rebuilding Browse in place."""
+    from PIL import Image as PILImage
+
+    page = live_browse_timeline
+    late_dataset = fake_sandbox / "plate1" / "late-refresh"
+    late_image = late_dataset / "late.png"
+    source_before = page.evaluate(
+        "() => window.localStorage.getItem('shell-source-image-root-store')"
+    )
+
+    page.evaluate(
+        """() => {
+            window.dash_clientside.set_props(
+                'browse-tl-row-source', {value: 'pattern'});
+            window.dash_clientside.set_props(
+                'browse-tl-time-source', {value: 'folder'});
+            window.dash_clientside.set_props(
+                'browse-tl-pattern-input', {value: '(?P<plate>.+)'});
+            window.dash_clientside.set_props(
+                'browse-tl-pattern-advanced', {value: ['advanced']});
+        }"""
+    )
+    page.wait_for_function(
+        "() => document.getElementById('browse-tl-pattern-input').value"
+        " === '(?P<plate>.+)'"
+    )
+    cells = page.query_selector_all(".timeline-cell[data-src][data-ref]")
+    assert len(cells) >= 2
+    for cell in cells[:2]:
+        cell.click(modifiers=["Shift"])
+    page.click("#browse-tl-compare-btn")
+    page.wait_for_selector("#timeline-compare-modal")
+
+    try:
+        late_dataset.mkdir()
+        PILImage.new("RGB", (300, 200), (25, 50, 75)).save(late_image)
+        old_grid_revision = page.locator("#browse-tl-grid").get_attribute(
+            "data-grid-revision"
+        )
+
+        # The open Compare strip intentionally covers the chrome. A DOM click
+        # exercises the same shared Dash action while proving the refresh
+        # itself retires the overlay.
+        page.evaluate(
+            "() => document.getElementById('shell-sidebar-refresh').click()"
+        )
+
+        page.click("#browse-dataset-picker")
+        expect(page.get_by_role("option", name="late-refresh")).to_be_visible(
+            timeout=10_000,
+        )
+        page.keyboard.press("Escape")
+        page.wait_for_function(
+            """
+            previous => {
+                const grid = document.getElementById('browse-tl-grid');
+                return grid
+                    && grid.getAttribute('data-grid-revision') !== previous;
+            }
+            """,
+            arg=old_grid_revision,
+        )
+        page.wait_for_selector(
+            '.timeline-cell[data-src][data-row="late-refresh"][data-ref]',
+            timeout=10_000,
+        )
+
+        expect(page.locator("#browse-tl-row-source")).to_contain_text("Folder")
+        expect(page.locator("#browse-tl-time-source")).to_contain_text(
+            "EXIF capture time"
+        )
+        expect(page.locator("#browse-tl-pattern-preview")).to_contain_text(
+            "Enter a pattern to preview matches."
+        )
+        assert page.input_value("#browse-tl-pattern-input") == ""
+        assert page.query_selector("#timeline-compare-modal") is None
+        assert page.query_selector_all(".timeline-cell--selected") == []
+        assert (
+            page.evaluate(
+                "() => window.localStorage.getItem("
+                "'shell-source-image-root-store')"
+            )
+            == source_before
+        )
+    finally:
+        late_image.unlink(missing_ok=True)
+        late_dataset.rmdir()

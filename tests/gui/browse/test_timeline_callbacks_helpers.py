@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from phenotypic.gui.browse._callbacks import (
+    SourceRevisionAuthority,
     TimelineRevisionAuthority,
     authorize_revision_candidate,
     pattern_preview_rows,
@@ -128,6 +129,36 @@ def test_source_reset_transaction_clears_all_timeline_dependent_state() -> None:
     assert isinstance(reset[12], str) and reset[12].endswith(":reset")
     assert isinstance(reset[13], str) and reset[13]
     assert reset[14:] == (None,)
+
+
+def test_source_reset_revision_changes_when_shared_refresh_changes() -> None:
+    payload = {"relative_path": "source-b", "selected_at": "revision-2"}
+
+    first = source_reset_values(payload, 7)
+    repeated = source_reset_values(payload, 7)
+    refreshed = source_reset_values(payload, 8)
+
+    assert first[13] == repeated[13]
+    assert first[13] != refreshed[13]
+    assert first[12] != refreshed[12]
+
+
+def test_source_revision_authority_retires_delayed_render() -> None:
+    authority = SourceRevisionAuthority()
+
+    assert authority.is_current(None)
+    assert authority.authorize_grid(None, "initial-grid")
+    assert authority.grid_is_current("initial-grid")
+    authority.replace("refresh-1")
+    assert not authority.grid_is_current("initial-grid")
+    assert authority.is_current("refresh-1")
+    assert authority.authorize_grid("refresh-1", "refresh-1-grid")
+    authority.replace("refresh-2")
+    assert not authority.is_current("refresh-1")
+    assert not authority.authorize_grid("refresh-1", "delayed-grid")
+    assert not authority.grid_is_current("refresh-1-grid")
+    assert not authority.grid_is_current("delayed-grid")
+    assert authority.is_current("refresh-2")
 
 
 def test_popout_event_is_revision_bound_and_current_source_contained(
