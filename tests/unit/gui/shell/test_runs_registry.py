@@ -53,6 +53,7 @@ def _write_local_terminal_manifest(
     output: Path,
     *,
     start_time: float | str,
+    gui_generation: object | None = None,
     is_complete: bool = True,
     completed: int = 1,
     failed: int = 0,
@@ -69,19 +70,17 @@ def _write_local_terminal_manifest(
             timespec="milliseconds"
         )
     )
-    path.write_text(
-        json.dumps(
-            {
-                "execution_mode": execution_mode,
-                "start_time": start_text,
-                "is_complete": is_complete,
-                "completed": completed,
-                "failed": failed,
-                "total_images": total,
-            }
-        ),
-        encoding="utf-8",
-    )
+    payload = {
+        "execution_mode": execution_mode,
+        "start_time": start_text,
+        "is_complete": is_complete,
+        "completed": completed,
+        "failed": failed,
+        "total_images": total,
+    }
+    if gui_generation is not None:
+        payload["gui_record_generation"] = str(gui_generation)
+    path.write_text(json.dumps(payload), encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -937,6 +936,7 @@ def test_observe_local_zero_exit_rejects_incomplete_manifest(
     _write_local_terminal_manifest(
         output,
         start_time=record.started_at + 1.0,
+        gui_generation=record.generation,
         is_complete=False,
         completed=0,
         total=1,
@@ -955,11 +955,13 @@ def test_observe_local_zero_exit_rejects_preexisting_complete_manifest(
     """A prior run's complete manifest cannot terminalize a new generation."""
     reg = RunRegistry()
     output = tmp_path / "run"
+    prior_generation = uuid4()
     _write_local_terminal_manifest(
         output,
         start_time=datetime.now().timestamp() - 60.0,
+        gui_generation=prior_generation,
     )
-    _write_local_completion_marker(output, uuid4())
+    _write_local_completion_marker(output, prior_generation)
     record = reg.allocate(
         mode="local",
         output_dir=output,
@@ -1000,7 +1002,11 @@ def test_exact_generation_evidence_is_dst_fold_independent(
         status="running",
     )
     assert record.generation is not None
-    _write_local_terminal_manifest(output, start_time=fold_timestamp)
+    _write_local_terminal_manifest(
+        output,
+        start_time=fold_timestamp,
+        gui_generation=record.generation,
+    )
     _write_local_completion_marker(output, record.generation)
 
     assert reg.observe_local_exit(record.run_id, record.generation, 0)
@@ -1015,11 +1021,13 @@ def test_cross_timezone_future_manifest_cannot_satisfy_new_generation(
     """A copied artifact's wall time cannot override its stale generation."""
     reg = RunRegistry()
     output = tmp_path / "run"
+    prior_generation = uuid4()
     _write_local_terminal_manifest(
         output,
         start_time="2099-01-01T00:00:00+14:00",
+        gui_generation=prior_generation,
     )
-    _write_local_completion_marker(output, uuid4())
+    _write_local_completion_marker(output, prior_generation)
     record = reg.allocate(
         mode="local",
         output_dir=output,
@@ -1052,6 +1060,7 @@ def test_observe_local_zero_exit_rejects_mismatched_completion_marker(
     _write_local_terminal_manifest(
         output,
         start_time=record.started_at + 1.0,
+        gui_generation=record.generation,
     )
     _write_local_completion_marker(output, uuid4())
 
@@ -1085,7 +1094,7 @@ def test_observe_local_zero_exit_rejects_manifest_without_exact_generation(
     assert updated is not None
     assert updated.status == "failed"
     assert updated.returncode == 0
-    assert "no exact generation completion evidence" in (
+    assert "manifest belongs to a different launch generation" in (
         updated.status_detail or ""
     )
 
@@ -1106,6 +1115,7 @@ def test_observe_local_zero_exit_accepts_matching_completion_marker(
     _write_local_terminal_manifest(
         output,
         start_time=record.started_at + 1.0,
+        gui_generation=record.generation,
     )
     _write_local_completion_marker(output, record.generation)
 
@@ -1147,6 +1157,7 @@ def test_stale_local_exit_cannot_terminalize_replacement_generation(
     _write_local_terminal_manifest(
         output,
         start_time=replacement.started_at + 1.0,
+        gui_generation=replacement.generation,
     )
     _write_local_completion_marker(output, replacement.generation)
 

@@ -59,6 +59,7 @@ from phenotypic.sdk_ import (
     job_metadata_path,
     progress_dir,
 )
+from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 logger = logging.getLogger(__name__)
@@ -251,12 +252,18 @@ class LocalParallelStrategy(ExecutionStrategy):
                     execution_mode="local",
                     start_time=start_iso,
                     input_path=self.config.input_path.stem,
+                    gui_record_generation=os.environ.get(
+                        GUI_RECORD_GENERATION_ENV_VAR
+                    ),
                 )
             else:
                 local_job_meta: dict = {
                     JobMetadataKey.START_TIME: start_iso,
                     JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
                     JobMetadataKey.EXECUTION_MODE: "local",
+                    JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(
+                        GUI_RECORD_GENERATION_ENV_VAR
+                    ),
                 }
                 regenerate_dashboard_artifacts(
                     output_dir, local_job_meta, datasets_totals

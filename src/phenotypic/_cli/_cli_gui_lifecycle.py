@@ -83,14 +83,16 @@ def publish_local_gui_completion(output_dir: Path) -> bool:
     )
     if (
         payload.get(DashboardManifestKey.EXECUTION_MODE) != "local"
+        or payload.get(DashboardManifestKey.GUI_RECORD_GENERATION)
+        != generation
         or payload.get(DashboardManifestKey.IS_COMPLETE) is not True
         or not counts_are_ints
         or failed != 0
         or completed != total
     ):
         raise RuntimeError(
-            "Cannot publish GUI local completion for an incomplete, failed, "
-            "or non-local canonical manifest"
+            "Cannot publish GUI local completion for a stale-generation, "
+            "incomplete, failed, or non-local canonical manifest"
         )
 
     atomic_write_json(

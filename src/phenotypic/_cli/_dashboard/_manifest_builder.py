@@ -461,6 +461,7 @@ def build_manifest(
     slurm_job_ids: Optional[Dict[str, str]] = None,
     chunk_scripts: Optional[List[str]] = None,
     input_path: Optional[str] = None,
+    gui_record_generation: str | None = None,
 ) -> None:
     """Build ``progress/manifest.json`` for the live dashboard.
 
@@ -483,6 +484,8 @@ def build_manifest(
         input_path: Display name for the input (e.g. folder stem or
             image filename).  Stored in the manifest so the dashboard
             can show which input is being processed.
+        gui_record_generation: Exact private GUI launch generation. Written
+            only for local GUI publications; omitted otherwise.
     """
     event_log = resolve_event_log_path(output_dir)
 
@@ -592,6 +595,10 @@ def build_manifest(
             progress_dir
         ),
     }
+    if not is_slurm and gui_record_generation is not None:
+        manifest[DashboardManifestKey.GUI_RECORD_GENERATION] = (
+            gui_record_generation
+        )
 
     # Add SLURM info when in SLURM mode.
     if is_slurm:

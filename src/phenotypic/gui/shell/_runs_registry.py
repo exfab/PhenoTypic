@@ -610,6 +610,13 @@ class RunRegistry:
                 "local process exited successfully but terminal publication "
                 "mode does not match the current local generation"
             )
+        if payload.get(DashboardManifestKey.GUI_RECORD_GENERATION) != str(
+            record.generation
+        ):
+            return (
+                "local process exited successfully but its canonical "
+                "manifest belongs to a different launch generation"
+            )
 
         completed = payload.get(DashboardManifestKey.COMPLETED)
         failed = payload.get(DashboardManifestKey.FAILED)

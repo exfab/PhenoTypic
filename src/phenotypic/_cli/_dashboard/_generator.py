@@ -9,12 +9,19 @@ the ``progress/`` subdirectory.
 from __future__ import annotations
 
 import base64
+import json
 import logging
 from pathlib import Path
 
 from phenotypic._assets import asset_bytes
 from phenotypic.sdk_.register import AnalysisPluginRegistry
-from phenotypic.sdk_ import dashboard_html_path, analysis_html_path
+from phenotypic.sdk_ import (
+    DashboardManifestKey,
+    analysis_html_path,
+    atomic_write_json,
+    dashboard_html_path,
+    manifest_json_path,
+)
 from phenotypic.sdk_.typing_ import ExecutionMode
 
 from ._vendor_js import MARKED_MIN_JS
@@ -120,6 +127,11 @@ def regenerate_dashboard_artifacts(
 
     prog_dir = progress_dir(output_dir)
     execution_mode = resolve_execution_mode(job_meta)
+    gui_record_generation = (
+        (job_meta or {}).get(JobMetadataKey.GUI_RECORD_GENERATION)
+        if execution_mode == "local"
+        else None
+    )
 
     build_manifest(
         output_dir=output_dir,
@@ -132,6 +144,18 @@ def regenerate_dashboard_artifacts(
         input_path=(job_meta or {}).get(JobMetadataKey.INPUT_PATH),
     )
     generate_dashboard(output_dir, execution_mode=execution_mode)
+    if isinstance(gui_record_generation, str) and gui_record_generation:
+        # Authenticate the manifest only after both canonical manifest and
+        # dashboard publication succeed. A dashboard-only failure therefore
+        # cannot leave current-generation evidence for the GUI exit observer.
+        path = manifest_json_path(output_dir)
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise RuntimeError("Canonical dashboard manifest is not an object")
+        payload[DashboardManifestKey.GUI_RECORD_GENERATION] = (
+            gui_record_generation
+        )
+        atomic_write_json(path, payload, sort_keys=False)
 
 
 def _write_js_sidecar(output_dir: Path, filename: str, label: str) -> None:

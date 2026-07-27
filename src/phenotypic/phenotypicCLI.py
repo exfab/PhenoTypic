@@ -1777,7 +1777,7 @@ def phenotypic_cli(
         # or deliverables. The strategy already wrote the mirrored layers and
         # the manifest; print a focused summary and exit.
         if config.process_only_layer:
-            if results.total_failed == 0:
+            if not config.is_slurm_mode() and results.total_failed == 0:
                 from phenotypic._cli._cli_gui_lifecycle import (
                     publish_local_gui_completion,
                 )
@@ -1919,7 +1919,11 @@ def phenotypic_cli(
             )
             sys.exit(1)
 
-        if finalization_succeeded and results.total_failed == 0:
+        if (
+            not config.is_slurm_mode()
+            and finalization_succeeded
+            and results.total_failed == 0
+        ):
             from phenotypic._cli._cli_gui_lifecycle import (
                 publish_local_gui_completion,
             )

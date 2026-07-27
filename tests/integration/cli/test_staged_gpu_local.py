@@ -1,11 +1,13 @@
 """End-to-end tests for the local staged GPU engine (Spec 1, Plan 2)."""
 
+import json
 import phenotypic
 import numpy as np
 import polars as pl
 import pytest
 from click.testing import CliRunner
 from datetime import datetime
+from uuid import uuid4
 
 from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
@@ -41,7 +43,13 @@ from phenotypic._cli._cli_update_state import (
     aggregate_stage_state_from_events,
     parse_event_line,
 )
-from phenotypic.sdk_ import dataset_hdf_dir, dataset_overlays_dir, event_log_path
+from phenotypic.sdk_ import (
+    dataset_hdf_dir,
+    dataset_overlays_dir,
+    event_log_path,
+    manifest_json_path,
+)
+from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
 from phenotypic.phenotypicCLI import phenotypic_cli
 
@@ -132,7 +140,7 @@ def test_three_stage_cores_end_to_end(tmp_path):
     assert not sidecar_exists(out, "ds", "img")  # mandatory cleanup
 
 
-def test_staged_strategy_runs_all_stages(tmp_path):
+def test_staged_strategy_runs_all_stages(tmp_path, monkeypatch):
     image_path = _write_image(tmp_path)
     out = tmp_path / "out"
     out.mkdir()
@@ -144,6 +152,8 @@ def test_staged_strategy_runs_all_stages(tmp_path):
     pipe_path.write_text(pipe.to_json(), encoding="utf-8")
     om = OutputManager.from_config(out, ".tiff", save_overlays=True)
     om.create_structure([Dataset("ds", [image_path], tmp_path, out)])
+    generation = uuid4()
+    monkeypatch.setenv(GUI_RECORD_GENERATION_ENV_VAR, str(generation))
 
     strat = StagedGpuStrategy(_config(out, pipe_path), om)
     results = strat.execute([Dataset("ds", [image_path], tmp_path, out)], out)
@@ -152,6 +162,10 @@ def test_staged_strategy_runs_all_stages(tmp_path):
     assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
     assert (dataset_overlays_dir(out, "ds") / "img.png").is_file()
     assert not sidecar_exists(out, "ds", "img")
+    manifest = json.loads(
+        manifest_json_path(out).read_text(encoding="utf-8")
+    )
+    assert manifest["gui_record_generation"] == str(generation)
 
 
 def test_staged_strategy_resume_backfills_missing_overlay_without_gpu(tmp_path, monkeypatch):

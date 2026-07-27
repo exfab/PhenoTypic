@@ -50,7 +50,10 @@ def test_process_only_end_to_end(
     assert not list(out.rglob("*_detect_mat.tiff"))
     # detect_mat float TIFF (imsave, full precision)
     assert np.issubdtype(tifffile.imread(tiffs[0]).dtype, np.floating)
-    assert manifest_json_path(out).is_file()  # run-console visibility
+    manifest = json.loads(
+        manifest_json_path(out).read_text(encoding="utf-8")
+    )
+    assert manifest["gui_record_generation"] == str(generation)
     completion = json.loads(
         run_completion_marker_path(out).read_text(encoding="utf-8")
     )

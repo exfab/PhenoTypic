@@ -1792,6 +1792,9 @@ class DashboardManifestKey:
     SUCCESS_RATE: Final[str] = "success_rate"
     IS_COMPLETE: Final[str] = "is_complete"
     START_TIME: Final[str] = "start_time"
+    #: Exact GUI generation that published this canonical local manifest.
+    #: Omitted from non-GUI and scheduler manifests for compatibility.
+    GUI_RECORD_GENERATION: Final[str] = "gui_record_generation"
     INPUT_PATH: Final[str] = "input_path"
     DATASETS: Final[str] = "datasets"
     FAILURE_CATEGORIES: Final[str] = "failure_categories"

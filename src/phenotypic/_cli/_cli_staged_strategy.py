@@ -8,6 +8,8 @@ atomic Stage 3 publication marker. Legacy parquet-only runs remain compatible.
 
 from __future__ import annotations
 
+import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
@@ -15,7 +17,8 @@ from typing import Any, Dict, List
 from joblib import Parallel, delayed
 
 from phenotypic import ImagePipeline
-from phenotypic.sdk_ import dataset_hdf_dir, event_log_path
+from phenotypic.sdk_ import dataset_hdf_dir, event_log_path, progress_dir
+from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 
 from ._cli_execution_strategies import ExecutionStrategy
 from ._cli_pipeline_split import split_pipeline_at_gpu
@@ -36,6 +39,8 @@ from ._cli_staged_workers import (
 )
 from ._stages import STAGE_GPU_DETECT, STAGE_MEASURE, STAGE_PREPROCESS
 from ._cli_types import Dataset, DatasetResults, ExecutionResults
+
+logger = logging.getLogger(__name__)
 
 
 class StagedGpuStrategy(ExecutionStrategy):
@@ -181,6 +186,28 @@ class StagedGpuStrategy(ExecutionStrategy):
             )
             for name, d in results.items()
         }
+        try:
+            from ._dashboard._manifest_builder import build_manifest
+
+            build_manifest(
+                output_dir=output_dir,
+                progress_dir=progress_dir(output_dir),
+                datasets={dataset.name: len(dataset.images) for dataset in datasets},
+                execution_mode="local",
+                start_time=start.isoformat(timespec="milliseconds"),
+                input_path=cfg.input_path.stem,
+                gui_record_generation=os.environ.get(
+                    GUI_RECORD_GENERATION_ENV_VAR
+                ),
+            )
+        except Exception:
+            # Match the ordinary local strategy: process results remain
+            # available, but the GUI completion publisher will fail closed
+            # unless this exact-generation manifest was atomically replaced.
+            logger.debug(
+                "Failed to generate staged-local progress manifest",
+                exc_info=True,
+            )
         return ExecutionResults(
             datasets=ds_results,
             total_images=len(tasks),

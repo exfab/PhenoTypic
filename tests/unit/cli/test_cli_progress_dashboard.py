@@ -22,6 +22,7 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+from uuid import uuid4
 
 import pytest
 
@@ -356,6 +357,24 @@ class TestManifestBuilder:
         assert manifest["pending"] == 1  # 3 - 1 completed - 1 failed - 0 in_progress
         assert manifest["is_complete"] is False
         assert "ValueError" in manifest["failure_categories"]
+        assert "gui_record_generation" not in manifest
+
+    def test_local_gui_manifest_carries_exact_generation(self, tmp_dir):
+        progress_dir = tmp_dir / "progress"
+        progress_dir.mkdir()
+        generation = str(uuid4())
+
+        build_manifest(
+            output_dir=tmp_dir,
+            progress_dir=progress_dir,
+            datasets={},
+            execution_mode="local",
+            start_time=datetime.now().isoformat(timespec="milliseconds"),
+            gui_record_generation=generation,
+        )
+
+        manifest = json.loads((progress_dir / "manifest.json").read_text())
+        assert manifest["gui_record_generation"] == generation
 
     def test_manifest_is_complete(self, tmp_dir):
         event_log = tmp_dir / "processing_events.log"
