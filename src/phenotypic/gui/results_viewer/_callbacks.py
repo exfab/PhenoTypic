@@ -69,7 +69,13 @@ from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._filtered_state import get_curated_frame
 from phenotypic.gui.results_viewer._error_tab import register_error_callbacks
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer._heatmap_tab import register_heatmap_callbacks
+from phenotypic.gui.results_viewer._mutation_guard import (
+    OutputMutationBlocked,
+    require_output_mutation,
+)
+from phenotypic.gui.results_viewer._heatmap_tab import (
+    register_heatmap_callbacks,
+)
 from phenotypic.gui.results_viewer._qc_tab import register_qc_callbacks
 from phenotypic.gui.results_viewer.colony_view import (
     _callbacks as _colony_callbacks,
@@ -133,6 +139,7 @@ def _register_plot_refresh_callback(
         if pipeline is None:
             return no_update
         try:
+            require_output_mutation("Measurement plot refresh")
             from phenotypic.gui._plot_refresh import refresh_measurement_plots
 
             measurements = get_curated_frame(
@@ -143,7 +150,13 @@ def _register_plot_refresh_callback(
                 pipeline,
                 output_root.layout,
                 measurements,
+                publication_guard=lambda: _output_publication_is_safe(
+                    "Measurement plot refresh"
+                ),
             )
+        except OutputMutationBlocked as exc:
+            logger.warning("%s", exc)
+            return no_update
         except Exception:  # noqa: BLE001 - curation remains authoritative
             logger.warning(
                 "GUI measurement plot refresh failed after curation",
@@ -151,6 +164,15 @@ def _register_plot_refresh_callback(
             )
             return no_update
         return (revision or 0) + 1
+
+
+def _output_publication_is_safe(action: str) -> bool:
+    """Reauthorize immediately before a Results artifact replacement."""
+    try:
+        require_output_mutation(action)
+    except OutputMutationBlocked:
+        return False
+    return True
 
 
 def _register_clientside_callbacks(app: dash.Dash) -> None:

@@ -113,7 +113,10 @@ def _make_output_root(tmp_path: Path) -> OutputRoot:
     overlays.mkdir(parents=True, exist_ok=True)
     for stem in ("a", "b"):
         PILImage.new("RGB", (40, 30), (10, 20, 30)).save(overlays / f"{stem}.png")
-    return OutputRoot.discover(cli_out)
+    return OutputRoot.discover(
+        cli_out,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
 
 
 def test_build_timeline_records_emits_one_per_overlay_pair(tmp_path: Path) -> None:

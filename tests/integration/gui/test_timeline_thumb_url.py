@@ -44,7 +44,10 @@ def _output_root(tmp_path: Path) -> OutputRoot:
     overlays.mkdir(parents=True, exist_ok=True)
     for stem in ("a", "b"):
         PILImage.new("RGB", (200, 100), (0, 64, 128)).save(overlays / f"{stem}.png")
-    return OutputRoot.discover(cli_out)
+    return OutputRoot.discover(
+        cli_out,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
 
 
 def _walk(component):

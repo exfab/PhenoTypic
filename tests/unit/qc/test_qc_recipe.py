@@ -197,7 +197,9 @@ class TestSidecarMigration:
         _seed_pipeline_json(tmp_path)
         sidecar = self._write_sidecar(tmp_path, "qc-SE-legacy01")
 
-        migrated = QcRecipe.migrate_from_sidecar(tmp_path)
+        migrated = QcRecipe.migrate_from_sidecar(
+            tmp_path, allow_write=True
+        )
 
         assert migrated is True
         doc = json.loads(pipeline_json_path(tmp_path).read_text())
@@ -210,9 +212,13 @@ class TestSidecarMigration:
         _seed_pipeline_json(tmp_path)
         self._write_sidecar(tmp_path, "qc-SE-legacy01")
 
-        assert QcRecipe.migrate_from_sidecar(tmp_path) is True
+        assert (
+            QcRecipe.migrate_from_sidecar(tmp_path, allow_write=True) is True
+        )
         # Second call: sidecar already retired -> no-op.
-        assert QcRecipe.migrate_from_sidecar(tmp_path) is False
+        assert (
+            QcRecipe.migrate_from_sidecar(tmp_path, allow_write=True) is False
+        )
         doc = json.loads(pipeline_json_path(tmp_path).read_text())
         assert len(doc["qc"]) == 1
 
@@ -234,7 +240,9 @@ class TestSidecarMigration:
         pj.write_text(pipe.to_json() or "")
         sidecar = self._write_sidecar(tmp_path, "qc-SE-legacy01")
 
-        assert QcRecipe.migrate_from_sidecar(tmp_path) is False
+        assert (
+            QcRecipe.migrate_from_sidecar(tmp_path, allow_write=True) is False
+        )
         doc = json.loads(pipeline_json_path(tmp_path).read_text())
         # Pipeline's own qc entry wins; legacy entry is NOT merged in.
         assert [e["instance_id"] for e in doc["qc"]] == ["qc-SE-pipeline"]
@@ -244,3 +252,15 @@ class TestSidecarMigration:
     def test_no_sidecar_is_noop(self, tmp_path: Path) -> None:
         _seed_pipeline_json(tmp_path)
         assert QcRecipe.migrate_from_sidecar(tmp_path) is False
+
+    def test_default_call_is_source_preserving(self, tmp_path: Path) -> None:
+        """Viewer binding cannot fold or retire a legacy sidecar."""
+        pipeline = _seed_pipeline_json(tmp_path)
+        sidecar = self._write_sidecar(tmp_path, "qc-SE-legacy01")
+        before_pipeline = pipeline.read_bytes()
+        before_sidecar = sidecar.read_bytes()
+
+        assert QcRecipe.migrate_from_sidecar(tmp_path) is False
+
+        assert pipeline.read_bytes() == before_pipeline
+        assert sidecar.read_bytes() == before_sidecar

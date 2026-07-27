@@ -20,7 +20,7 @@ the images aligned with the implementation.
 | [Browse source images](18_browse.md) | Deep-zoom the raw input images under a source root with cascading dropdowns and a metadata panel. |
 | [Browse — find the ideal starting time](19_browse_timeline.md) | Flip Browse to Timeline mode and navigate a folder/EXIF matrix with arrow keys to find a starting time and deep-zoom any frame. |
 | [File Explorer](02_file_explorer.md) | Navigate the sandbox sidebar and read capability badges. |
-| [Build a Pipeline](03_build_pipeline.md) | Compose a pipeline.json with the fixed linear port map, side loader, and zoom controls. |
+| [Build a Pipeline](03_build_pipeline.md) | Compose a `pipeline.json.pht-pipe` with the fixed linear port map, side loader, and zoom controls. |
 | [Run Locally](04_run_local.md) | Submit a local subprocess run and tail the dashboard. |
 | [Run on SLURM](05_run_slurm.md) | Fill in SLURM resources and ship a submission to a cluster. |
 | [View Results](06_view_results.md) | Open the results viewer against a finished CLI output. |

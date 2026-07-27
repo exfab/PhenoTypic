@@ -202,7 +202,10 @@ def test_register_callbacks_wires_method_controls(tmp_path) -> None:
     for stem in ("a", "b"):
         (overlay_dir / f"{stem}.png").touch()
 
-    output_root = OutputRoot.discover(tmp_path)
+    output_root = OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
     state = CurationLabels.load(output_root.layout, output_root.clean_master_df)
     app = dash.Dash(__name__)
     _filter_panel.register_callbacks(app, output_root, state)

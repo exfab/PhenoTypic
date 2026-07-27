@@ -16,7 +16,10 @@ from phenotypic.gui._config import (
     print_launcher_banner,
 )
 from phenotypic.gui.analysis import create_app
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._output_root import (
+    OutputRoot,
+    user_viewer_cache_root,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -40,7 +43,10 @@ def main(argv: list[str] | None = None) -> int:
 
     configure_launcher_logging(debug=args.debug)
 
-    output_root = OutputRoot.discover(args.root)
+    output_root = OutputRoot.discover(
+        args.root,
+        cache_root=user_viewer_cache_root(),
+    )
     app = create_app(output_root=output_root, url_prefix=args.url_prefix)
 
     print_launcher_banner(

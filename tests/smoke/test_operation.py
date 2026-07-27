@@ -9,22 +9,29 @@ from phenotypic.detect import OtsuDetector
 from unit.test_fixtures import walk_package_for_class
 from unit.resources.TestHelper import timeit
 
-ops = walk_package_for_class(pkg=phenotypic,
-                             target_class=phenotypic.abc_.ImageOperation)
+ops = walk_package_for_class(
+    pkg=phenotypic, target_class=phenotypic.abc_.ImageOperation
+)
 
-image_ops = [(qualname, obj) for qualname, obj in ops
-             if (("Grid" not in qualname) or ("phenotypic.abc_" not in qualname))
-             and "ColorCorrector" not in qualname
-             # GridApply requires an `image_op` (the operation run on each grid
-             # section); like ColorCorrector it cannot be bare-constructed, so
-             # it is excluded from the defaults-only smoke contract.
-             and "GridApply" not in qualname]
+image_ops = [
+    (qualname, obj)
+    for qualname, obj in ops
+    if (("Grid" not in qualname) or ("phenotypic.abc_" not in qualname))
+    and "ColorCorrector" not in qualname
+    # GridApply requires an `image_op` (the operation run on each grid
+    # section); like ColorCorrector it cannot be bare-constructed, so
+    # it is excluded from the defaults-only smoke contract.
+    and "GridApply" not in qualname
+]
 
 # Filter image_ops down to ObjectDetector subclasses for the objmap-consistency
 # contract. detector_ops inherits the `Grid*` and `ColorCorrector` exclusions
 # from image_ops automatically.
-detector_ops = [(qualname, obj) for qualname, obj in image_ops
-                if issubclass(obj, ObjectDetector)]
+detector_ops = [
+    (qualname, obj)
+    for qualname, obj in image_ops
+    if issubclass(obj, ObjectDetector)
+]
 
 
 @pytest.fixture(scope="session")
@@ -44,7 +51,9 @@ def test_operation(qualname, obj, detected_grid_image):
     image = detected_grid_image.copy()
 
     instance = obj()
-    assert isinstance(instance, obj), "Operation did not instantiate with defaults"
+    assert isinstance(instance, obj), (
+        "Operation did not instantiate with defaults"
+    )
 
     image1 = instance.apply(image)
     assert image1.isempty() is False, "Operation failed"
@@ -55,10 +64,10 @@ def test_operation(qualname, obj, detected_grid_image):
     # (ColorDenoise + DenoiseBlockMatch + EnhanceBlockMatch + BM3D all wrap
     # bm3d.bm3d_rgb / bm3d).
     if (
-            ("BM3D" not in qualname)
-            and ("DenoiseBlockMatch" not in qualname)
-            and ("EnhanceBlockMatch" not in qualname)
-            and ("ColorDenoise" not in qualname)
+        ("BM3D" not in qualname)
+        and ("DenoiseBlockMatch" not in qualname)
+        and ("EnhanceBlockMatch" not in qualname)
+        and ("ColorDenoise" not in qualname)
     ):
         assert image1 == image2, "Operation was not reproducible"
 
@@ -82,11 +91,11 @@ def test_inplace_contract(qualname, obj, detected_grid_image):
     )
 
     # inplace=True: must mutate and return the input image itself.
-    # ImagePadder / ImageCropper legitimately change image dimensions and have
+    # PadImage / CropImage legitimately change image dimensions and have
     # to allocate a new image even with inplace=True; they're excluded here.
     target = detected_grid_image.copy()
     ret = obj().apply(target, inplace=True)
-    if ("ImagePadder" not in qualname) and ("ImageCropper" not in qualname):
+    if ("PadImage" not in qualname) and ("CropImage" not in qualname):
         assert ret is target, (
             f"{qualname} did not return the input with inplace=True"
         )
@@ -95,7 +104,9 @@ def test_inplace_contract(qualname, obj, detected_grid_image):
 @pytest.mark.smoke
 @pytest.mark.parametrize("qualname,obj", detector_ops)
 @timeit
-def test_detector_objmap_objmask_consistency(qualname, obj, detected_grid_image):
+def test_detector_objmap_objmask_consistency(
+    qualname, obj, detected_grid_image
+):
     """ABC contract: any ObjectDetector must satisfy `objmap > 0 == objmask`.
 
     Replaces per-detector test_objmask_objmap_consistency copies.
@@ -103,11 +114,14 @@ def test_detector_objmap_objmask_consistency(qualname, obj, detected_grid_image)
     image = detected_grid_image.copy()
     obj().apply(image, inplace=True)
     np.testing.assert_array_equal(
-            image.objmap[:] > 0,
-            image.objmask[:],
-            err_msg=f"{qualname}: objmap > 0 must equal objmask",
+        image.objmap[:] > 0,
+        image.objmask[:],
+        err_msg=f"{qualname}: objmap > 0 must equal objmask",
     )
 
 
-grid_ops = [(qualname, obj) for qualname, obj in ops if
-            ("Grid" in qualname) or ("phenotypic.abc_" not in qualname)]
+grid_ops = [
+    (qualname, obj)
+    for qualname, obj in ops
+    if ("Grid" in qualname) or ("phenotypic.abc_" not in qualname)
+]

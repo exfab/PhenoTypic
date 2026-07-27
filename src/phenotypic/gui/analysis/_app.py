@@ -10,6 +10,7 @@ stashed on ``app.server.config``, the layout assembled by
 :func:`._layout.build_empty_state_layout` when no output root is bound),
 and all callbacks registered via :func:`._callbacks.register_callbacks`.
 """
+
 from __future__ import annotations
 
 import logging
@@ -21,6 +22,7 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 
 from phenotypic.gui._config import (
     CFG_MEASUREMENT_SCHEMA,
+    CFG_OUTPUT_MUTATION_GUARD,
     CFG_OUTPUT_ROOT,
     CFG_RECIPE_STATE,
     CFG_URL_PREFIX,
@@ -29,6 +31,15 @@ from phenotypic.gui._config import (
     SANDBOX_API_VIEWER_OUTPUT_ROOT,
     TITLE_ANALYSIS,
     join_url_prefix,
+)
+from phenotypic.gui._async_binding_client import (
+    async_binding_callback_source,
+)
+from phenotypic.gui._binding_generation import (
+    BindingRequestFence,
+    binding_generation_hooks,
+    install_bound_output_callback_guard,
+    install_binding_generation_guard,
 )
 from dash import Input, Output, State
 
@@ -39,17 +50,30 @@ from phenotypic.gui._design import (
     inject_design_tokens,
 )
 from phenotypic.gui._shared import register_shared_static
-from phenotypic.gui._url_prefix import configure_url_prefix_routing
+from phenotypic.gui._snapshot_status import snapshot_refresh_status
+from phenotypic.gui._url_prefix import (
+    configure_url_prefix_routing,
+    dash_index_string_with_app_prefix,
+)
 from phenotypic.gui.analysis import _ids as analysis_ids
 from phenotypic.gui.analysis._callbacks import register_callbacks
 from phenotypic.gui.analysis._layout import (
+    build_active_snapshot_layout,
     build_app_layout,
     build_empty_state_layout,
 )
 from phenotypic.gui.analysis._recipe_state import RecipeState
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
+from phenotypic.gui.results_viewer._mutation_guard import (
+    OutputMutationBlocked,
+    OutputMutationGuard,
+)
+from phenotypic.gui.shell._binding_ui import binding_error_text
+from phenotypic.gui.shell._ids import (
+    SHELL_RESULTS_BINDING_JOB_STORE,
+    SHELL_SIDEBAR_SELECTION_STORE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +83,8 @@ def create_app(
     output_root: Optional[OutputRoot] = None,
     url_prefix: str = MOUNT_HOME,
     api_url_prefix: str = DEFAULT_URL_PREFIX,
+    binding_generation: str | None = None,
+    binding_fence: BindingRequestFence | None = None,
 ) -> dash.Dash:
     """Build a configured Dash instance for the analysis sub-app.
 
@@ -75,6 +101,9 @@ def create_app(
         api_url_prefix: Browser-visible base prefix for shell-level
             Flask APIs. Defaults to ``"/"``; the hub passes the external
             proxy prefix when configured.
+        binding_generation: Optional immutable shell bind UUID used to reject
+            callbacks from a browser page rendered for an older output.
+        binding_fence: Shared Results/Analysis request fence for this binding.
 
     Returns:
         Configured :class:`dash.Dash` instance.
@@ -94,13 +123,25 @@ def create_app(
         title=TITLE_ANALYSIS,
         requests_pathname_prefix=url_prefix,
         routes_pathname_prefix=MOUNT_HOME,
+        hooks=binding_generation_hooks(binding_generation),
+    )
+    app.index_string = dash_index_string_with_app_prefix(
+        url_prefix,
+        binding_generation=binding_generation,
     )
     inject_design_tokens(app)
     register_shared_static(app.server)
     app.server.config[CFG_URL_PREFIX] = url_prefix
+    install_binding_generation_guard(
+        app,
+        binding_generation,
+        binding_fence,
+    )
 
     if output_root is None:
-        app.layout = build_empty_state_layout()
+        app.layout = build_empty_state_layout(
+            binding_generation=binding_generation,
+        )
         _register_empty_state_callbacks(
             app,
             url_prefix=url_prefix,
@@ -112,9 +153,61 @@ def create_app(
     # ``output_root.root``: for a standalone deliverables bundle ``root`` IS the
     # deliverables folder, so any helper that internally joins ``deliverables/``
     # would double-join. ``from_layout`` anchors on ``layout.deliverables_base``.
-    recipe = RecipeState.from_layout(output_root.layout)
-    schema = MeasurementSchema.from_layout(output_root.layout)
+    output_root.require_session_snapshot_current(
+        context="Analysis session pre-read",
+    )
     app.server.config[CFG_OUTPUT_ROOT] = output_root
+    mutation_guard = OutputMutationGuard(
+        output_root=output_root,
+        binding_generation=binding_generation,
+    )
+    app.server.config[CFG_OUTPUT_MUTATION_GUARD] = mutation_guard
+
+    def _analysis_mutation_is_safe() -> bool:
+        try:
+            mutation_guard.authorize("Analysis mutation")
+        except OutputMutationBlocked:
+            return False
+        return True
+
+    install_bound_output_callback_guard(
+        app,
+        mutation_is_safe=_analysis_mutation_is_safe,
+        protected_output_ids=(analysis_ids.ANALYSIS_PIPELINE_EVENT_STORE,),
+    )
+    if output_root.snapshot.active_run:
+        app.layout = build_active_snapshot_layout(
+            output_root,
+            url_prefix=url_prefix,
+            binding_generation=binding_generation,
+        )
+        output_root.require_session_snapshot_current(
+            context="Analysis active session post-read",
+        )
+        _register_snapshot_refresh_callbacks(
+            app,
+            output_root,
+            url_prefix=url_prefix,
+            api_url_prefix=api_url_prefix,
+            refresh_supported=binding_generation is not None,
+        )
+        return configure_url_prefix_routing(app, url_prefix)
+
+    recipe = RecipeState.from_layout(output_root.layout)
+
+    def _analysis_recipe_mutation_is_safe() -> bool:
+        try:
+            mutation_guard.authorize("Analysis recipe save")
+        except OutputMutationBlocked:
+            logger.warning(
+                "Analysis recipe save rejected by the output mutation guard",
+                exc_info=True,
+            )
+            return False
+        return True
+
+    recipe.publication_guard = _analysis_recipe_mutation_is_safe
+    schema = MeasurementSchema.from_layout(output_root.layout)
     app.server.config[CFG_RECIPE_STATE] = recipe
     app.server.config[CFG_MEASUREMENT_SCHEMA] = schema
 
@@ -123,8 +216,20 @@ def create_app(
         recipe,
         url_prefix=url_prefix,
         columns_provider=schema.columns_for,
+        binding_generation=binding_generation,
+        refresh_supported=binding_generation is not None,
+    )
+    output_root.require_session_snapshot_current(
+        context="Analysis session post-read",
     )
     register_callbacks(app)
+    _register_snapshot_refresh_callbacks(
+        app,
+        output_root,
+        url_prefix=url_prefix,
+        api_url_prefix=api_url_prefix,
+        refresh_supported=binding_generation is not None,
+    )
 
     logger.info(
         "Analysis sub-app ready: output_root=%s pipeline=%s",
@@ -132,6 +237,56 @@ def create_app(
         recipe.pipeline.name,
     )
     return configure_url_prefix_routing(app, url_prefix)
+
+
+def _register_snapshot_refresh_callbacks(
+    app: dash.Dash,
+    output_root: OutputRoot,
+    *,
+    url_prefix: str,
+    api_url_prefix: str,
+    refresh_supported: bool,
+) -> None:
+    """Wire status-only polling and explicit shared-session Refresh."""
+
+    @app.callback(
+        Output(analysis_ids.ANALYSIS_SNAPSHOT_STATUS, "children"),
+        Output(analysis_ids.ANALYSIS_SNAPSHOT_STATUS, "color"),
+        Output(analysis_ids.ANALYSIS_REFRESH_SNAPSHOT, "disabled"),
+        Input(analysis_ids.ANALYSIS_SNAPSHOT_INTERVAL, "n_intervals"),
+    )
+    def _snapshot_status(_n_intervals: int) -> tuple[str, str, bool]:
+        return snapshot_refresh_status(
+            output_root,
+            refresh_supported=refresh_supported,
+        )
+
+    if not refresh_supported:
+        return
+
+    api_output_root = join_url_prefix(
+        api_url_prefix,
+        SANDBOX_API_VIEWER_OUTPUT_ROOT,
+    )
+    app.clientside_callback(
+        async_binding_callback_source(
+            api_url=api_output_root,
+            redirect_url=url_prefix,
+            selection_required=False,
+        ),
+        Output(
+            SHELL_RESULTS_BINDING_JOB_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
+        Input(analysis_ids.ANALYSIS_REFRESH_SNAPSHOT, "n_clicks"),
+        State(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    app.callback(
+        Output(analysis_ids.ANALYSIS_REFRESH_ERROR, "children"),
+        Input(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+    )(binding_error_text)
 
 
 def _handoff_banner_state(selection):
@@ -185,10 +340,10 @@ def _register_empty_state_callbacks(
 
     Mirrors the results-viewer empty-state pattern. The clientside
     callback POSTs to the shared ``/sandbox/api/viewer/output-root``
-    endpoint, which releases both viewer + analysis ToolSessions and
-    rebuilds them against the new ``viewer_state["output_root"]``. On
-    success the page navigates to ``url_prefix`` so the dispatcher
-    proxy resolves a freshly-built loaded analysis app.
+    endpoint, which builds and atomically publishes both the Results and
+    Analysis ToolSessions against one descriptor. On success the page
+    navigates to ``url_prefix`` so the dispatcher proxy serves the newly
+    published analysis app.
     """
 
     @app.callback(
@@ -200,41 +355,30 @@ def _register_empty_state_callbacks(
     def _populate_handoff_banner(selection):
         return _handoff_banner_state(selection)
 
-    api_output_root = join_url_prefix(api_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT)
+    api_output_root = join_url_prefix(
+        api_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT
+    )
 
     app.clientside_callback(
-        """
-        async function(n_clicks, selection) {
-            if (!n_clicks || !selection) {
-                return window.dash_clientside.no_update;
-            }
-            const path = selection.path;
-            if (!path) { return "No sidebar selection."; }
-            try {
-                const resp = await fetch(
-                    "__PHENO_API_OUTPUT_ROOT__",
-                    {
-                        method: "POST",
-                        headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({path: path}),
-                    }
-                );
-                const data = await resp.json().catch(() => ({}));
-                if (!resp.ok) {
-                    return (data && data.error) || ("HTTP " + resp.status);
-                }
-                window.location.assign(__PHENO_ANALYSIS_PREFIX__);
-                return "";
-            } catch (err) {
-                return String(err);
-            }
-        }
-        """.replace("__PHENO_API_OUTPUT_ROOT__", api_output_root).replace("__PHENO_ANALYSIS_PREFIX__", repr(url_prefix)),
-        Output(analysis_ids.EMPTY_HANDOFF_ERROR, "children"),
+        async_binding_callback_source(
+            api_url=api_output_root,
+            redirect_url=url_prefix,
+            selection_required=True,
+        ),
+        Output(
+            SHELL_RESULTS_BINDING_JOB_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
         Input(analysis_ids.EMPTY_HANDOFF_OPEN_BUTTON, "n_clicks"),
         State(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+        State(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
         prevent_initial_call=True,
     )
+    app.callback(
+        Output(analysis_ids.EMPTY_HANDOFF_ERROR, "children"),
+        Input(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+    )(binding_error_text)
 
 
 __all__ = ["create_app"]

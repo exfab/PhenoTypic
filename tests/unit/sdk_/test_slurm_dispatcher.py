@@ -1,14 +1,23 @@
 """Tests for SLURM drip-feed dispatcher script generation."""
 
 import sys
+from pathlib import Path
 
 import pytest
 
+import phenotypic._cli._cli_slurm_lifecycle as lifecycle
+from phenotypic._cli._cli_slurm_lifecycle import CancellationResult
 from phenotypic.sdk_.slurm._dispatcher import (
+    _infer_output_dir,
     generate_dispatcher_chain,
     generate_dispatcher_script,
+    submit_drip_feed_start,
 )
 from phenotypic.sdk_ import slurm_scripts_dir
+from phenotypic.sdk_.slurm import (
+    SLURM_PYTHONPATH_BOOTSTRAP_BASH,
+    SLURM_PYTHONPATH_ENV_VAR,
+)
 
 pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SLURM not available on Windows")
 
@@ -31,10 +40,92 @@ def chunk_scripts(tmp_path):
     return paths
 
 
+def test_infer_output_dir_from_nested_dataset_script(tmp_path: Path) -> None:
+    """Dataset nesting below the canonical scripts root retains one ledger."""
+    script = slurm_scripts_dir(tmp_path) / "dataset-a" / "array_job.sh"
+    script.parent.mkdir(parents=True)
+    script.touch()
+
+    assert _infer_output_dir(script) == tmp_path.resolve()
+
+
+def test_infer_output_dir_rejects_unscoped_slurm_scripts_name(
+    tmp_path: Path,
+) -> None:
+    """A similarly named directory outside ``.phenotypic`` is not trusted."""
+    script = tmp_path / "other" / "slurm_scripts" / "array_job.sh"
+    script.parent.mkdir(parents=True)
+    script.touch()
+
+    assert _infer_output_dir(script) == script.parent.resolve()
+
+
+def test_single_chunk_process_finalizer_depends_on_chunk(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A process publisher cannot run concurrently with its image array."""
+    scripts = slurm_scripts_dir(tmp_path)
+    scripts.mkdir(parents=True)
+    chunk = scripts / "chunk0.sh"
+    finalizer = scripts / "process_finalizer.sh"
+    chunk.touch()
+    finalizer.touch()
+    calls: list[dict[str, object]] = []
+
+    def fake_submit(
+        _output_dir: Path,
+        **kwargs: object,
+    ) -> str:
+        calls.append(kwargs)
+        return str(700 + len(calls))
+
+    monkeypatch.setattr(lifecycle, "submit_with_lifecycle", fake_submit)
+
+    job_ids, warning = submit_drip_feed_start(
+        [chunk],
+        [],
+        finalizer_script=finalizer,
+    )
+
+    assert warning is None
+    assert job_ids == ["701", "702"]
+    assert calls[0]["role"] == "chunk"
+    assert calls[1]["role"] == "finalizer"
+    assert calls[1]["dependencies"] == ("701",)
+
+
+def test_last_dispatcher_carries_process_finalizer(
+    tmp_path: Path,
+    slurm_args: dict[str, object],
+) -> None:
+    """Only the dispatcher for the final chunk can submit the publisher."""
+    scripts = slurm_scripts_dir(tmp_path)
+    scripts.mkdir(parents=True)
+    chunks = [scripts / f"chunk{i}.sh" for i in range(3)]
+    for chunk in chunks:
+        chunk.touch()
+    finalizer = scripts / "process_finalizer.sh"
+    finalizer.touch()
+
+    dispatchers = generate_dispatcher_chain(
+        chunk_scripts=chunks,
+        output_dir=tmp_path,
+        slurm_args=slurm_args,
+        log_dir=tmp_path / "logs",
+        finalizer_script=finalizer,
+    )
+
+    assert "--finalizer-script" not in dispatchers[0].read_text()
+    last = dispatchers[-1].read_text()
+    assert f"--finalizer-script {finalizer}" in last
+    assert "--dispatcher-script" not in last
+
+
 class TestGenerateDispatcherScript:
 
     def test_script_submits_next_chunk(self, tmp_path, slurm_args):
-        """Dispatcher script should contain sbatch --parsable for the next chunk."""
+        """Dispatcher delegates the next chunk to the lifecycle entry point."""
         chunk_script = tmp_path / "chunk1.sh"
         chunk_script.touch()
         dispatcher_script = tmp_path / "next_dispatch.sh"
@@ -51,10 +142,17 @@ class TestGenerateDispatcherScript:
         )
 
         content = output.read_text()
-        assert f"sbatch --parsable {chunk_script}" in content
+        assert "phenotypic._cli._cli_slurm_lifecycle" in content
+        assert f"--chunk-script {chunk_script}" in content
+        assert "sbatch --parsable" not in content
+        assert SLURM_PYTHONPATH_BOOTSTRAP_BASH in content
+        assert SLURM_PYTHONPATH_ENV_VAR in content
+        assert content.index(SLURM_PYTHONPATH_BOOTSTRAP_BASH) < content.index(
+            "phenotypic._cli._cli_slurm_lifecycle"
+        )
 
     def test_script_submits_next_dispatcher(self, tmp_path, slurm_args):
-        """Dispatcher should submit next dispatcher with dependency on chunk."""
+        """Dispatcher passes its successor to the lifecycle entry point."""
         chunk_script = tmp_path / "chunk1.sh"
         chunk_script.touch()
         next_dispatch = tmp_path / "dispatch_2.sh"
@@ -71,7 +169,7 @@ class TestGenerateDispatcherScript:
         )
 
         content = output.read_text()
-        assert "--dependency=afterany:$CHUNK_JOB" in content
+        assert "--dispatcher-script" in content
         assert str(next_dispatch) in content
 
     def test_last_dispatcher_has_no_next(self, tmp_path, slurm_args):
@@ -90,9 +188,9 @@ class TestGenerateDispatcherScript:
         )
 
         content = output.read_text()
-        assert f"sbatch --parsable {chunk_script}" in content
+        assert f"--chunk-script {chunk_script}" in content
         assert "no further dispatcher needed" in content
-        assert "--dependency=afterany:$CHUNK_JOB" not in content
+        assert "--dispatcher-script" not in content
 
     def test_dispatcher_minimal_resources(self, tmp_path, slurm_args):
         """Dispatcher should request minimal resources."""
@@ -274,6 +372,40 @@ class TestGenerateDispatcherChain:
             log_dir=tmp_path / "logs" / "slurm",
         )
         assert dispatchers == []
+
+
+def test_initial_dispatcher_failure_fences_and_fails_launch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    scripts_dir = slurm_scripts_dir(tmp_path)
+    scripts_dir.mkdir(parents=True)
+    chunk = scripts_dir / "chunk0.sh"
+    dispatcher = scripts_dir / "dispatch_1.sh"
+    chunk.touch()
+    dispatcher.touch()
+    submissions = 0
+    cancelled: list[tuple[Path, str]] = []
+
+    def fake_submit(*args, **kwargs):
+        nonlocal submissions
+        submissions += 1
+        if submissions == 1:
+            return "701"
+        raise RuntimeError("dispatcher unavailable")
+
+    def fake_cancel(output_dir, generation, **kwargs):
+        cancelled.append((output_dir, generation))
+        return CancellationResult(("701",), (), True)
+
+    monkeypatch.setattr(lifecycle, "submit_with_lifecycle", fake_submit)
+    monkeypatch.setattr(lifecycle, "cancel_generation", fake_cancel)
+
+    with pytest.raises(RuntimeError, match="Initial dispatcher submission failed"):
+        submit_drip_feed_start([chunk], [dispatcher])
+
+    assert cancelled == [
+        (tmp_path, lifecycle.load_slurm_lifecycle(tmp_path)["generation"])
+    ]
 
 
 class TestSbatchHelpers:

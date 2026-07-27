@@ -24,19 +24,28 @@ This module provides:
 
 from __future__ import annotations
 
+import copy
+import json
 import logging
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
+
+from pydantic import AliasChoices, AliasPath, BaseModel, ValidationError
 
 from phenotypic._core._pipeline_parts._serializable_pipeline import (
     PipelineLoadWarning,
+    SerializablePipeline,
 )
 from phenotypic.sdk_ import (
     DIR_DELIVERABLES,
     atomic_write_text,
+    bytes_fingerprint,
+    file_fingerprint,
     pipeline_json_path,
+    pipeline_publication_lock,
     resolve_pipeline_config_path,
 )
 
@@ -45,6 +54,782 @@ if TYPE_CHECKING:
     from phenotypic.sdk_ import BundleLayout
 
 logger = logging.getLogger(__name__)
+
+_SERIALIZED_PIPELINE_KEYS = frozenset({
+    "version",
+    "name",
+    "desc",
+    "reset",
+    "pipe_cfgs",
+    "meas",
+    "post",
+    "filters",
+    "model",
+    "qc",
+    "plots",
+    "nrows",
+    "ncols",
+})
+
+
+@dataclass(frozen=True)
+class RecipeRenderSnapshot:
+    """Detached recipe revision used to build one coherent GUI response."""
+
+    pipeline: "ImagePipeline"
+    last_json: str
+
+
+_ANALYZER_ENVELOPE_KEYS = frozenset({"class", "params"})
+_QC_ENVELOPE_KEYS = frozenset({"instance_id", "class", "enabled", "params"})
+_PLOT_ENVELOPE_KEYS = frozenset({"id", "ref", "inline", "input"})
+_INLINE_PLOT_KEYS = frozenset({"module", "qualname", "params"})
+
+
+def _validation_alias_roots(
+    alias: str | AliasChoices | AliasPath | None,
+) -> set[str]:
+    """Return top-level mapping keys accepted by one Pydantic alias."""
+    if isinstance(alias, str):
+        return {alias}
+    if isinstance(alias, AliasChoices):
+        roots: set[str] = set()
+        for choice in alias.choices:
+            roots.update(_validation_alias_roots(choice))
+        return roots
+    if isinstance(alias, AliasPath) and alias.path:
+        root = alias.path[0]
+        return {root} if isinstance(root, str) else set()
+    return set()
+
+
+def _strip_unowned_model_fields(
+    raw: object,
+    model_class: type[BaseModel] | None,
+) -> object:
+    """Copy a model payload with only fields its validation schema owns."""
+    if not isinstance(raw, dict) or model_class is None:
+        return copy.deepcopy(raw)
+    if model_class.model_config.get("extra") != "forbid":
+        return copy.deepcopy(raw)
+
+    accepted: set[str] = set()
+    for name, model_field in model_class.model_fields.items():
+        accepted.add(name)
+        accepted.update(_validation_alias_roots(model_field.validation_alias))
+        if isinstance(model_field.alias, str):
+            accepted.add(model_field.alias)
+    return {
+        key: copy.deepcopy(value)
+        for key, value in raw.items()
+        if key in accepted
+    }
+
+
+def _resolved_analyzer_class(node: object) -> type[BaseModel] | None:
+    """Resolve a known analyzer envelope through the production registry."""
+    if not isinstance(node, dict):
+        return None
+    class_name = node.get("class")
+    if not isinstance(class_name, str):
+        return None
+    resolved = SerializablePipeline._find_class_in_phenotypic(class_name)
+    if (
+        isinstance(resolved, type)
+        and issubclass(resolved, BaseModel)
+    ):
+        return resolved
+    return None
+
+
+def _analyzer_validation_node(node: object) -> object:
+    """Build the strict-loader copy of one filter or model envelope."""
+    if not isinstance(node, dict):
+        return copy.deepcopy(node)
+    validation_node = {
+        key: copy.deepcopy(value)
+        for key, value in node.items()
+        if key in _ANALYZER_ENVELOPE_KEYS
+    }
+    if "params" in validation_node:
+        validation_node["params"] = _strip_unowned_model_fields(
+            validation_node["params"],
+            _resolved_analyzer_class(node),
+        )
+    return validation_node
+
+
+def _qc_validation_node(node: object) -> object:
+    """Build the strict-loader copy of one QC envelope."""
+    if not isinstance(node, dict):
+        return copy.deepcopy(node)
+    validation_node = {
+        key: copy.deepcopy(value)
+        for key, value in node.items()
+        if key in _QC_ENVELOPE_KEYS
+    }
+    from phenotypic.sdk_._qc_recipe import QcRecipeEntry
+
+    parsed = QcRecipeEntry.from_dict(node)
+    model_class = parsed.cls if isinstance(parsed, QcRecipeEntry) else None
+    if "params" in validation_node:
+        validation_node["params"] = _strip_unowned_model_fields(
+            validation_node["params"],
+            model_class,
+        )
+    return validation_node
+
+
+def _plot_validation_node(node: object) -> object:
+    """Build the strict-loader copy of one plot binding envelope."""
+    if not isinstance(node, dict):
+        return copy.deepcopy(node)
+    validation_node = {
+        key: copy.deepcopy(value)
+        for key, value in node.items()
+        if key in _PLOT_ENVELOPE_KEYS
+    }
+
+    from phenotypic.plotting._bindings import (
+        AnalysisInput,
+        MeasurementInput,
+        PipelineObjectRef,
+        _load_qualified_class,
+    )
+
+    if "ref" in validation_node:
+        validation_node["ref"] = _strip_unowned_model_fields(
+            validation_node["ref"],
+            PipelineObjectRef,
+        )
+
+    input_payload = validation_node.get("input")
+    if isinstance(input_payload, dict):
+        input_models: dict[str, type[BaseModel]] = {
+            "measurements": MeasurementInput,
+            "analysis": AnalysisInput,
+        }
+        input_kind = input_payload.get("kind")
+        validation_node["input"] = _strip_unowned_model_fields(
+            input_payload,
+            input_models.get(input_kind)
+            if isinstance(input_kind, str)
+            else None,
+        )
+
+    inline = validation_node.get("inline")
+    if isinstance(inline, dict):
+        validation_inline = {
+            key: copy.deepcopy(value)
+            for key, value in inline.items()
+            if key in _INLINE_PLOT_KEYS
+        }
+        module = inline.get("module")
+        qualname = inline.get("qualname")
+        plot_class: type[BaseModel] | None = None
+        if isinstance(module, str) and isinstance(qualname, str):
+            try:
+                resolved = _load_qualified_class(
+                    module_name=module,
+                    qualname=qualname,
+                )
+            except (AttributeError, ImportError):
+                pass
+            else:
+                if isinstance(resolved, type) and issubclass(
+                    resolved,
+                    BaseModel,
+                ):
+                    plot_class = resolved
+        if "params" in validation_inline:
+            validation_inline["params"] = _strip_unowned_model_fields(
+                validation_inline["params"],
+                plot_class,
+            )
+        validation_node["inline"] = validation_inline
+    return validation_node
+
+
+def _pipeline_validation_payload(
+    source_payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Return a deep-copied payload safe for this version's strict schemas.
+
+    The exact parsed payload remains the round-trip source of truth. This
+    temporary copy removes only fields unowned by current known-node schemas
+    so forward-compatible extensions cannot block tolerant GUI loading.
+    """
+    validation_payload = copy.deepcopy(source_payload)
+
+    filters = validation_payload.get("filters")
+    if isinstance(filters, dict):
+        validation_payload["filters"] = {
+            name: _analyzer_validation_node(node)
+            for name, node in filters.items()
+        }
+
+    model = validation_payload.get("model")
+    if model is not None:
+        validation_payload["model"] = _analyzer_validation_node(model)
+
+    qc = validation_payload.get("qc")
+    if isinstance(qc, list):
+        validation_payload["qc"] = [
+            _qc_validation_node(node) for node in qc
+        ]
+
+    plots = validation_payload.get("plots")
+    if isinstance(plots, list):
+        validation_payload["plots"] = [
+            _plot_validation_node(node) for node in plots
+        ]
+    return validation_payload
+
+
+def _invalid_analyzer_warning(
+    *,
+    slot: str,
+    name: str,
+    node: object,
+) -> PipelineLoadWarning:
+    """Describe one malformed or known-but-invalid analyzer node."""
+    class_name = node.get("class") if isinstance(node, dict) else None
+    return PipelineLoadWarning(
+        slot=slot,
+        name=name,
+        class_name=(
+            class_name
+            if isinstance(class_name, str)
+            else f"<invalid {type(class_name).__name__}>"
+        ),
+    )
+
+
+def _tolerant_analyzer_payload(
+    source_payload: dict[str, Any],
+    load_warnings: List[PipelineLoadWarning],
+) -> dict[str, Any]:
+    """Drop every opaque analyzer node from the strict-loader copy.
+
+    ``ImagePipeline.from_json(skip_unknown_analyzers=True)`` already skips
+    unresolved classes, but a class that still resolves can reject retired or
+    malformed parameters with a Pydantic validation error. Validate each
+    filter/model independently here so one opaque node cannot abort the
+    otherwise-valid Results/Analysis binding. The original payload is never
+    changed and remains the save-time round-trip source of truth.
+    """
+    validation_payload = _pipeline_validation_payload(source_payload)
+
+    filters = validation_payload.get("filters")
+    if isinstance(filters, dict):
+        valid_filters: dict[str, Any] = {}
+        for name, node in filters.items():
+            try:
+                instance = SerializablePipeline._deserialize_analyzer(
+                    node,
+                    skipped=load_warnings,
+                    slot_name=name,
+                )
+            except (KeyError, TypeError, ValidationError):
+                load_warnings.append(
+                    _invalid_analyzer_warning(
+                        slot="filter",
+                        name=str(name),
+                        node=node,
+                    )
+                )
+            else:
+                if instance is not None:
+                    valid_filters[name] = node
+        validation_payload["filters"] = valid_filters
+
+    model = validation_payload.get("model")
+    if model is not None:
+        try:
+            instance = SerializablePipeline._deserialize_analyzer(
+                model,
+                skipped=load_warnings,
+                slot_name="model",
+            )
+            if instance is not None:
+                from phenotypic.analysis.abc_ import ModelFitter
+
+                if not isinstance(instance, ModelFitter):
+                    raise TypeError(
+                        "pipeline 'model' must deserialize to a ModelFitter"
+                    )
+        except (KeyError, TypeError, ValidationError):
+            load_warnings.append(
+                _invalid_analyzer_warning(
+                    slot="model",
+                    name="model",
+                    node=model,
+                )
+            )
+            validation_payload["model"] = None
+        else:
+            if instance is None:
+                validation_payload["model"] = None
+
+    return validation_payload
+
+
+def _merge_missing_mapping_fields(
+    current: object,
+    original: object,
+) -> object:
+    """Recursively retain forward-compatible mapping fields absent today."""
+    if not isinstance(current, dict) or not isinstance(original, dict):
+        return copy.deepcopy(current)
+    merged = copy.deepcopy(current)
+    for key, raw_value in original.items():
+        if key not in merged:
+            merged[key] = copy.deepcopy(raw_value)
+        elif isinstance(merged[key], dict) and isinstance(raw_value, dict):
+            merged[key] = _merge_missing_mapping_fields(
+                merged[key],
+                raw_value,
+            )
+    return merged
+
+
+def _merge_envelope_extensions(
+    current: object,
+    original: object,
+    *,
+    owned_keys: frozenset[str],
+    same_identity: bool,
+    nested_mapping_keys: frozenset[str],
+) -> object:
+    """Retain extension fields only while the serialized node is the same."""
+    if (
+        not same_identity
+        or not isinstance(current, dict)
+        or not isinstance(original, dict)
+    ):
+        return copy.deepcopy(current)
+    merged = copy.deepcopy(current)
+    for key, raw_value in original.items():
+        if key not in owned_keys:
+            if key not in merged:
+                merged[key] = copy.deepcopy(raw_value)
+            elif isinstance(merged[key], dict) and isinstance(raw_value, dict):
+                merged[key] = _merge_missing_mapping_fields(
+                    merged[key],
+                    raw_value,
+                )
+        elif key in nested_mapping_keys and key in merged:
+            merged[key] = _merge_missing_mapping_fields(
+                merged[key],
+                raw_value,
+            )
+    return merged
+
+
+def _referenced_class(
+    pipeline_payload: dict[str, Any],
+    ref: dict[str, Any],
+) -> object:
+    """Return the serialized class targeted by one plot reference."""
+    slot = ref.get("slot")
+    key = ref.get("key")
+    if slot == "model":
+        model = pipeline_payload.get("model")
+        return model.get("class") if isinstance(model, dict) else None
+    if not isinstance(slot, str):
+        return None
+    section = pipeline_payload.get(slot)
+    if isinstance(section, dict):
+        node = section.get(key)
+        return node.get("class") if isinstance(node, dict) else None
+    if isinstance(section, list):
+        for node in section:
+            if (
+                isinstance(node, dict)
+                and node.get("instance_id") == key
+            ):
+                return node.get("class")
+    return None
+
+
+def _plot_identity(
+    node: object,
+    pipeline_payload: dict[str, Any],
+) -> tuple[object, ...] | None:
+    """Return the stable serialized identity and class of one plot."""
+    if not isinstance(node, dict):
+        return None
+    ref = node.get("ref")
+    if isinstance(ref, dict):
+        return (
+            "ref",
+            ref.get("slot"),
+            ref.get("key"),
+            _referenced_class(pipeline_payload, ref),
+        )
+    inline = node.get("inline")
+    if isinstance(inline, dict):
+        return ("inline", inline.get("module"), inline.get("qualname"))
+    return None
+
+
+def _plot_input_identity(node: object) -> tuple[object, ...] | None:
+    """Return one known input variant's durable serialized identity."""
+    if not isinstance(node, dict):
+        return None
+    kind = node.get("kind")
+    if kind == "measurements":
+        return ("measurements",)
+    if kind == "analysis":
+        analysis_id = node.get("analysis_id")
+        if isinstance(analysis_id, str):
+            return ("analysis", analysis_id)
+    return None
+
+
+def _plot_target_defaults_to_measurements(
+    node: object,
+    pipeline_payload: dict[str, Any],
+) -> bool:
+    """Return whether the plot loader supplies an implicit measurements input."""
+    if not isinstance(node, dict):
+        return False
+
+    from phenotypic.abc_.plotting import PlotAnalysis, PlotQc
+    from phenotypic.plotting._bindings import _load_qualified_class
+
+    resolved: object = None
+    ref = node.get("ref")
+    if isinstance(ref, dict):
+        if ref.get("slot") == "qc":
+            return True
+        class_name = _referenced_class(pipeline_payload, ref)
+        if isinstance(class_name, str):
+            resolved = SerializablePipeline._find_class_in_phenotypic(
+                class_name
+            )
+    else:
+        inline = node.get("inline")
+        if isinstance(inline, dict):
+            module = inline.get("module")
+            qualname = inline.get("qualname")
+            if isinstance(module, str) and isinstance(qualname, str):
+                try:
+                    resolved = _load_qualified_class(
+                        module_name=module,
+                        qualname=qualname,
+                    )
+                except (AttributeError, ImportError):
+                    return False
+    return (
+        isinstance(resolved, type)
+        and issubclass(resolved, (PlotAnalysis, PlotQc))
+    )
+
+
+def _merge_known_node_extensions(
+    current: dict[str, Any],
+    original: dict[str, Any],
+) -> dict[str, Any]:
+    """Merge extensions while durable serialized node identities are stable."""
+    merged = copy.deepcopy(current)
+
+    current_filters = merged.get("filters")
+    original_filters = original.get("filters")
+    if isinstance(current_filters, dict) and isinstance(original_filters, dict):
+        for name, current_node in list(current_filters.items()):
+            original_node = original_filters.get(name)
+            same_class = (
+                isinstance(current_node, dict)
+                and isinstance(original_node, dict)
+                and current_node.get("class") == original_node.get("class")
+            )
+            current_filters[name] = _merge_envelope_extensions(
+                current_node,
+                original_node,
+                owned_keys=_ANALYZER_ENVELOPE_KEYS,
+                same_identity=same_class,
+                nested_mapping_keys=frozenset({"params"}),
+            )
+
+    current_model = merged.get("model")
+    original_model = original.get("model")
+    same_model_class = (
+        isinstance(current_model, dict)
+        and isinstance(original_model, dict)
+        and current_model.get("class") == original_model.get("class")
+    )
+    if current_model is not None:
+        merged["model"] = _merge_envelope_extensions(
+            current_model,
+            original_model,
+            owned_keys=_ANALYZER_ENVELOPE_KEYS,
+            same_identity=same_model_class,
+            nested_mapping_keys=frozenset({"params"}),
+        )
+
+    current_qc = merged.get("qc")
+    original_qc = original.get("qc")
+    if isinstance(current_qc, list) and isinstance(original_qc, list):
+        original_by_id = {
+            str(node.get("instance_id")): node
+            for node in original_qc
+            if isinstance(node, dict) and "instance_id" in node
+        }
+        for index, current_node in enumerate(current_qc):
+            if not isinstance(current_node, dict):
+                continue
+            original_node = original_by_id.get(
+                str(current_node.get("instance_id"))
+            )
+            same_qc_class = (
+                isinstance(original_node, dict)
+                and current_node.get("class") == original_node.get("class")
+            )
+            current_qc[index] = _merge_envelope_extensions(
+                current_node,
+                original_node,
+                owned_keys=_QC_ENVELOPE_KEYS,
+                same_identity=same_qc_class,
+                nested_mapping_keys=frozenset({"params"}),
+            )
+
+    current_plots = merged.get("plots")
+    original_plots = original.get("plots")
+    if isinstance(current_plots, list) and isinstance(original_plots, list):
+        original_by_id = {
+            str(node.get("id")): node
+            for node in original_plots
+            if isinstance(node, dict) and "id" in node
+        }
+        for index, current_node in enumerate(current_plots):
+            if not isinstance(current_node, dict):
+                continue
+            original_node = original_by_id.get(str(current_node.get("id")))
+            current_input = current_node.get("input")
+            original_input = (
+                original_node.get("input")
+                if isinstance(original_node, dict)
+                else None
+            )
+            original_input_is_implicit = (
+                isinstance(original_node, dict)
+                and "input" not in original_node
+                and _plot_target_defaults_to_measurements(
+                    original_node,
+                    original,
+                )
+            )
+            current_input_identity = _plot_input_identity(current_input)
+            original_input_identity = (
+                ("measurements",)
+                if original_input_is_implicit
+                else _plot_input_identity(original_input)
+            )
+            same_input_identity = (
+                current_input is None
+                and original_input is None
+            ) or (
+                current_input_identity is not None
+                and current_input_identity == original_input_identity
+            )
+            same_plot_identity = (
+                _plot_identity(current_node, current)
+                == _plot_identity(original_node, original)
+                and same_input_identity
+            )
+            merged_node = _merge_envelope_extensions(
+                current_node,
+                original_node,
+                owned_keys=_PLOT_ENVELOPE_KEYS,
+                same_identity=same_plot_identity,
+                nested_mapping_keys=frozenset({"ref", "inline"}),
+            )
+            if (
+                same_plot_identity
+                and isinstance(merged_node, dict)
+                and isinstance(original_node, dict)
+            ):
+                if original_input_is_implicit:
+                    merged_node.pop("input", None)
+                elif (
+                    current_input_identity is not None
+                    and current_input_identity == original_input_identity
+                ):
+                    merged_node["input"] = _merge_missing_mapping_fields(
+                        merged_node.get("input"),
+                        original_input,
+                    )
+            current_plots[index] = merged_node
+    return merged
+
+
+def _merge_named_opaque_nodes(
+    current: object,
+    original: object,
+    opaque_names: set[str],
+    *,
+    identity_key: str | None = None,
+) -> object:
+    """Merge opaque nodes into their original positions.
+
+    Args:
+        current: Newly serialized dict or list.
+        original: Raw dict or list retained from tolerant load.
+        opaque_names: Original keys or identities that must survive.
+        identity_key: List-entry key used as identity, or ``None`` for dicts.
+
+    Returns:
+        A deep-copied collection with current editable nodes and original
+        opaque nodes in their original relative positions.
+    """
+    if identity_key is None:
+        if not isinstance(current, dict) or not isinstance(original, dict):
+            return current
+        merged: dict[str, Any] = {}
+        for name, raw_node in original.items():
+            if name in current:
+                merged[name] = copy.deepcopy(current[name])
+            elif name in opaque_names:
+                merged[name] = copy.deepcopy(raw_node)
+        for name, node in current.items():
+            if name not in merged:
+                merged[name] = copy.deepcopy(node)
+        return merged
+
+    if not isinstance(current, list) or not isinstance(original, list):
+        return current
+    current_by_name = {
+        str(node.get(identity_key)): node
+        for node in current
+        if isinstance(node, dict) and identity_key in node
+    }
+    merged_list: list[Any] = []
+    emitted: set[str] = set()
+    for raw_node in original:
+        if not isinstance(raw_node, dict) or identity_key not in raw_node:
+            continue
+        name = str(raw_node[identity_key])
+        if name in current_by_name:
+            merged_list.append(copy.deepcopy(current_by_name[name]))
+            emitted.add(name)
+        elif name in opaque_names:
+            merged_list.append(copy.deepcopy(raw_node))
+            emitted.add(name)
+    for node in current:
+        if not isinstance(node, dict) or identity_key not in node:
+            merged_list.append(copy.deepcopy(node))
+            continue
+        name = str(node[identity_key])
+        if name not in emitted:
+            merged_list.append(copy.deepcopy(node))
+            emitted.add(name)
+    return merged_list
+
+
+def _merge_opaque_pipeline_payload(
+    current: dict[str, Any],
+    original: dict[str, Any] | None,
+    warnings: List[PipelineLoadWarning],
+) -> dict[str, Any]:
+    """Preserve opaque and forward-compatible nodes during a scoped save."""
+    if original is None:
+        return current
+
+    merged = _merge_known_node_extensions(current, original)
+    opaque_filters = {w.name for w in warnings if w.slot == "filter"}
+    if opaque_filters:
+        merged["filters"] = _merge_named_opaque_nodes(
+            merged.get("filters", {}),
+            original.get("filters", {}),
+            opaque_filters,
+        )
+
+    if any(w.slot == "model" for w in warnings) and merged.get("model") is None:
+        merged["model"] = copy.deepcopy(original.get("model"))
+
+    opaque_qc = {w.name for w in warnings if w.slot == "qc"}
+    if opaque_qc:
+        merged["qc"] = _merge_named_opaque_nodes(
+            merged.get("qc", []),
+            original.get("qc", []),
+            opaque_qc,
+            identity_key="instance_id",
+        )
+
+    opaque_plot_ids = {w.name for w in warnings if w.slot == "plot"}
+    opaque_refs: set[tuple[str, str | None]] = {
+        ("filters", name) for name in opaque_filters
+    }
+    if any(w.slot == "model" for w in warnings):
+        opaque_refs.add(("model", None))
+    opaque_refs.update(("qc", name) for name in opaque_qc)
+    original_plots = original.get("plots", [])
+    if isinstance(original_plots, list):
+        for node in original_plots:
+            if not isinstance(node, dict):
+                continue
+            ref = node.get("ref")
+            if not isinstance(ref, dict):
+                continue
+            if (ref.get("slot"), ref.get("key")) in opaque_refs:
+                opaque_plot_ids.add(str(node.get("id")))
+    if opaque_plot_ids:
+        merged["plots"] = _merge_named_opaque_nodes(
+            merged.get("plots", []),
+            original_plots,
+            opaque_plot_ids,
+            identity_key="id",
+        )
+
+    # Preserve extension metadata that this version does not own. Known
+    # pipeline sections keep current serialization semantics, including
+    # intentional removal of known nodes.
+    ordered: dict[str, Any] = {}
+    for key, raw_value in original.items():
+        if key in merged:
+            ordered[key] = merged[key]
+        elif key not in _SERIALIZED_PIPELINE_KEYS:
+            ordered[key] = copy.deepcopy(raw_value)
+    for key, value in merged.items():
+        if key not in ordered:
+            ordered[key] = value
+    return ordered
+
+
+def _remaining_opaque_warnings(
+    current: dict[str, Any],
+    warnings: List[PipelineLoadWarning],
+) -> List[PipelineLoadWarning]:
+    """Drop warnings whose slot was explicitly replaced by a live node."""
+    current_filters = current.get("filters", {})
+    filter_names = (
+        set(current_filters) if isinstance(current_filters, dict) else set()
+    )
+    current_qc = current.get("qc", [])
+    qc_names = {
+        str(node.get("instance_id"))
+        for node in current_qc
+        if isinstance(node, dict) and "instance_id" in node
+    } if isinstance(current_qc, list) else set()
+    current_plots = current.get("plots", [])
+    plot_names = {
+        str(node.get("id"))
+        for node in current_plots
+        if isinstance(node, dict) and "id" in node
+    } if isinstance(current_plots, list) else set()
+
+    remaining: List[PipelineLoadWarning] = []
+    for warning in warnings:
+        replaced = (
+            (warning.slot == "filter" and warning.name in filter_names)
+            or (warning.slot == "model" and current.get("model") is not None)
+            or (warning.slot == "qc" and warning.name in qc_names)
+            or (warning.slot == "plot" and warning.name in plot_names)
+        )
+        if not replaced:
+            remaining.append(warning)
+    return remaining
 
 
 @dataclass
@@ -65,6 +850,10 @@ class RecipeState:
     path: Path
     pipeline: "ImagePipeline"
     seed_mtime_ns: Optional[int] = None
+    #: Exact content fingerprint of the resolved configuration read into
+    #: :attr:`pipeline`. Unlike mtime alone, this detects a replacement whose
+    #: timestamp was preserved.
+    seed_source_fingerprint: str | None = None
     source_path: Optional[Path] = None
     #: JSON string from the most recent successful :meth:`save`. Callbacks
     #: read this for the ``ANALYSIS_PIPELINE_STORE`` payload instead of
@@ -74,15 +863,25 @@ class RecipeState:
     #: class could not be resolved in the live ``phenotypic`` namespace
     #: (typical cause: an analyzer was renamed or removed since the
     #: pipeline was saved). The analysis page renders a banner listing
-    #: these so the user can manually re-add a replacement; the file on
-    #: disk is left untouched until the next user-driven save.
+    #: these so the user can manually select a replacement. Their exact raw
+    #: nodes are retained in :attr:`source_payload` and merged through
+    #: unrelated saves until a live node explicitly replaces the same slot.
     load_warnings: List[PipelineLoadWarning] = field(default_factory=list)
+    #: Exact parsed payload retained across tolerant loading so a scoped
+    #: Analysis edit cannot silently discard unknown analyzer nodes.
+    source_payload: dict[str, Any] | None = field(default=None, repr=False)
     #: Resolved bundle topology this recipe was built from, when constructed
     #: via :meth:`from_layout`. ``None`` for the legacy ``output_dir``-rooted
     #: :meth:`load` path. When set, :meth:`reload` re-resolves through it so a
     #: standalone bundle (``root`` IS the deliverables folder) never
     #: double-joins ``deliverables/`` on a staleness refresh.
     layout: Optional["BundleLayout"] = None
+    #: Optional binding/processing/active-owner guard installed by the GUI.
+    #: It is rechecked inside the shared pipeline publication lock.
+    publication_guard: Callable[[], bool] | None = field(
+        default=None,
+        repr=False,
+    )
     _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     @classmethod
@@ -168,10 +967,20 @@ class RecipeState:
         from phenotypic._core._image_pipeline import ImagePipeline
 
         load_warnings: List[PipelineLoadWarning] = []
+        source_payload: dict[str, Any] | None = None
+        source_text = ""
 
         if read_path.exists():
+            source_text = read_path.read_text(encoding="utf-8")
+            parsed_payload = json.loads(source_text)
+            if not isinstance(parsed_payload, dict):
+                raise TypeError("pipeline configuration must be a JSON object")
+            source_payload = parsed_payload
             pipeline = ImagePipeline.from_json(
-                read_path,
+                _tolerant_analyzer_payload(
+                    parsed_payload,
+                    load_warnings,
+                ),
                 skip_unknown_analyzers=True,
                 load_warnings=load_warnings,
             )
@@ -181,7 +990,7 @@ class RecipeState:
                 mtime = None
             if load_warnings:
                 logger.warning(
-                    "%s referenced %d unknown analyzer class(es); the "
+                    "%s referenced %d opaque analyzer node(s); the "
                     "analysis page will render a banner. Skipped: %s",
                     read_path,
                     len(load_warnings),
@@ -195,8 +1004,15 @@ class RecipeState:
             path=pipeline_path,
             pipeline=pipeline,
             seed_mtime_ns=mtime,
+            seed_source_fingerprint=(
+                bytes_fingerprint(source_text.encode("utf-8"))
+                if source_payload is not None
+                else None
+            ),
             source_path=read_path if read_path != pipeline_path else None,
+            last_json=source_text,
             load_warnings=load_warnings,
+            source_payload=source_payload,
             layout=layout,
         )
 
@@ -210,15 +1026,68 @@ class RecipeState:
         cleared so we don't overwrite a fresh seed with a stale recipe.
         """
         if self.seed_mtime_ns is None:
-            # No on-disk file yet — nothing to be stale against.
-            return False
+            if self.seed_source_fingerprint is None:
+                return self._tracked_path().exists()
+            return (
+                self._current_source_fingerprint()
+                != self.seed_source_fingerprint
+            )
         tracked_path = self._tracked_path()
         try:
             current = tracked_path.stat().st_mtime_ns
         except FileNotFoundError:
             # File deleted out from under us; treat as stale.
             return True
-        return current != self.seed_mtime_ns
+        if current != self.seed_mtime_ns:
+            return True
+        if self.seed_source_fingerprint is None:
+            return False
+        return self._current_source_fingerprint() != self.seed_source_fingerprint
+
+    def _current_source_fingerprint(self) -> str:
+        """Return the exact revision of the currently tracked config path."""
+        tracked_path = self._tracked_path()
+        if not tracked_path.exists():
+            return "missing"
+        try:
+            return file_fingerprint(tracked_path)
+        except FileNotFoundError:
+            return "missing"
+
+    def capture_render_snapshot(self) -> RecipeRenderSnapshot:
+        """Copy one internally consistent in-memory revision for GUI rendering."""
+        with self._lock:
+            return RecipeRenderSnapshot(
+                pipeline=copy.deepcopy(self.pipeline),
+                last_json=self.last_json,
+            )
+
+    def capture_analysis_snapshot(
+        self,
+    ) -> tuple["ImagePipeline", str] | None:
+        """Copy the in-memory pipeline and its disk revision atomically.
+
+        Returns:
+            A detached pipeline plus exact source revision, or ``None`` when
+            the recipe changed externally before the snapshot.
+        """
+        with self._lock:
+            with pipeline_publication_lock(self.path):
+                if self.is_stale():
+                    return None
+                return (
+                    copy.deepcopy(self.pipeline),
+                    self._current_source_fingerprint(),
+                )
+
+    def source_revision_is_current(self, expected: str) -> bool:
+        """Return whether *expected* still names the bound recipe revision."""
+        with self._lock:
+            with pipeline_publication_lock(self.path):
+                return (
+                    not self.is_stale()
+                    and self._current_source_fingerprint() == expected
+                )
 
     def _tracked_path(self) -> Path:
         """Return the path whose mtime should be compared against the seed."""
@@ -246,29 +1115,110 @@ class RecipeState:
             logged at WARNING.
         """
         with self._lock:
-            if self.is_stale():
-                logger.warning(
-                    "Refusing to overwrite %s — mtime changed since "
-                    "load (likely a CLI recompile-mode run). Reload "
-                    "before saving again.",
-                    self.path,
+            with pipeline_publication_lock(self.path):
+                if (
+                    self.publication_guard is not None
+                    and not self.publication_guard()
+                ):
+                    logger.warning(
+                        "Refusing to overwrite %s because the bound output "
+                        "is active or its processing generation changed.",
+                        self.path,
+                    )
+                    return False
+                if self.is_stale():
+                    logger.warning(
+                        "Refusing to overwrite %s — mtime changed since "
+                        "load (likely a CLI recompile-mode run). Reload "
+                        "before saving again.",
+                        self.path,
+                    )
+                    return False
+
+                serialized = json.loads(self.pipeline.to_json() or "{}")
+                if not isinstance(serialized, dict):
+                    logger.warning(
+                        "Refusing to save non-object pipeline payload to %s",
+                        self.path,
+                    )
+                    return False
+                remaining_warnings = _remaining_opaque_warnings(
+                    serialized,
+                    self.load_warnings,
                 )
+                merged = _merge_opaque_pipeline_payload(
+                    serialized,
+                    self.source_payload,
+                    remaining_warnings,
+                )
+                payload = json.dumps(merged, indent=2)
+
+                try:
+                    atomic_write_text(self.path, payload)
+                except Exception:
+                    logger.warning(
+                        "Atomic write failed for %s",
+                        self.path,
+                        exc_info=True,
+                    )
+                    return False
+
+                self.seed_mtime_ns = self.path.stat().st_mtime_ns
+                self.seed_source_fingerprint = self._current_source_fingerprint()
+                self.source_path = None
+                self.last_json = payload
+                self.source_payload = merged
+                self.load_warnings = remaining_warnings
+                return True
+
+    def mutate_and_save(
+        self,
+        mutation: Callable[["ImagePipeline"], bool | None],
+    ) -> bool:
+        """Apply one pipeline mutation and publish it as a transaction.
+
+        A failed guard, source compare-and-swap check, or atomic write must not
+        leave the rejected edit in memory where a later unrelated save could
+        publish it. Reload the authoritative disk recipe on any save refusal;
+        if that recovery itself fails, restore the detached pre-edit snapshot.
+
+        Args:
+            mutation: Callback that mutates the supplied live pipeline. Return
+                ``False`` to refuse an edit whose rendered target no longer
+                exists; ``None`` or ``True`` proceeds to publication.
+
+        Returns:
+            ``True`` only when the mutation reached disk.
+
+        Raises:
+            Exception: Re-raises mutation errors after restoring the pre-edit
+                pipeline.
+        """
+        with self._lock:
+            previous_pipeline = copy.deepcopy(self.pipeline)
+            try:
+                mutation_result = mutation(self.pipeline)
+            except Exception:
+                self.pipeline = previous_pipeline
+                raise
+            if mutation_result is False:
+                self.pipeline = previous_pipeline
                 return False
 
-            payload = self.pipeline.to_json() or ""
+            if self.save():
+                return True
 
             try:
-                atomic_write_text(self.path, payload)
+                self.reload()
             except Exception:
                 logger.warning(
-                    "Atomic write failed for %s", self.path, exc_info=True
+                    "Could not reload %s after a rejected Analysis edit; "
+                    "restoring the pre-edit in-memory recipe.",
+                    self.path,
+                    exc_info=True,
                 )
-                return False
-
-            self.seed_mtime_ns = self.path.stat().st_mtime_ns
-            self.source_path = None
-            self.last_json = payload
-            return True
+                self.pipeline = previous_pipeline
+            return False
 
     def reload(self) -> None:
         """Re-read the on-disk pipeline, replacing :attr:`pipeline`.
@@ -285,5 +1235,8 @@ class RecipeState:
                 fresh = type(self).load(self._output_root())
             self.pipeline = fresh.pipeline
             self.seed_mtime_ns = fresh.seed_mtime_ns
+            self.seed_source_fingerprint = fresh.seed_source_fingerprint
             self.source_path = fresh.source_path
             self.load_warnings = fresh.load_warnings
+            self.last_json = fresh.last_json
+            self.source_payload = fresh.source_payload

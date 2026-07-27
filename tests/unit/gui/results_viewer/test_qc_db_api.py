@@ -119,7 +119,7 @@ def test_legacy_qc_parquet_cutover_message_when_duckdb_absent(tmp_path):
 
     assert message is not None
     assert "qc.duckdb" in message
-    assert "recompile" in message.lower()
+    assert "rebuild qc" in message.lower()
 
 
 def test_legacy_qc_parquet_cutover_message_suppressed_when_duckdb_exists(

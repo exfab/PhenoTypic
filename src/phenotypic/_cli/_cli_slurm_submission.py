@@ -36,6 +36,7 @@ def submit_slurm_script_chain(
     output_dir: Path,
     slurm_args: Dict[str, Any],
     console: Any,
+    finalizer_script: Path | None = None,
 ) -> SLURMScriptChainSubmission:
     """Generate and start a drip-feed SLURM dispatcher chain.
 
@@ -44,6 +45,8 @@ def submit_slurm_script_chain(
         output_dir: Base CLI output directory.
         slurm_args: SLURM parameters used for dispatcher scripts.
         console: Rich console-like object for status output.
+        finalizer_script: Terminal publisher submitted after the final chunk
+            becomes terminal.
 
     Returns:
         Submission result with job IDs and generated script paths.
@@ -60,22 +63,38 @@ def submit_slurm_script_chain(
         )
 
     log_dir = logs_dir(output_dir) / "slurm"
-    dispatcher_scripts = generate_dispatcher_chain(
-        chunk_scripts=flat_scripts,
-        output_dir=output_dir,
-        slurm_args=slurm_args,
-        log_dir=log_dir,
-    )
+    if finalizer_script is None:
+        dispatcher_scripts = generate_dispatcher_chain(
+            chunk_scripts=flat_scripts,
+            output_dir=output_dir,
+            slurm_args=slurm_args,
+            log_dir=log_dir,
+        )
+    else:
+        dispatcher_scripts = generate_dispatcher_chain(
+            chunk_scripts=flat_scripts,
+            output_dir=output_dir,
+            slurm_args=slurm_args,
+            log_dir=log_dir,
+            finalizer_script=finalizer_script,
+        )
 
     console.print("[bold cyan]Submitting jobs to SLURM...[/bold cyan]")
 
-    job_ids, warning = submit_drip_feed_start(
-        chunk_scripts=flat_scripts,
-        dispatcher_scripts=dispatcher_scripts,
-    )
+    if finalizer_script is None:
+        job_ids, warning = submit_drip_feed_start(
+            chunk_scripts=flat_scripts,
+            dispatcher_scripts=dispatcher_scripts,
+        )
+    else:
+        job_ids, warning = submit_drip_feed_start(
+            chunk_scripts=flat_scripts,
+            dispatcher_scripts=dispatcher_scripts,
+            finalizer_script=finalizer_script,
+        )
 
     console.print(f"  Chunk 0: [green]Job {job_ids[0]}[/green]")
-    if len(job_ids) > 1:
+    if dispatcher_scripts and len(job_ids) > 1:
         console.print(
             f"  Dispatcher 1: [green]Job {job_ids[1]}[/green] "
             f"(depends on {job_ids[0]})"
@@ -83,6 +102,11 @@ def submit_slurm_script_chain(
         console.print(
             f"  Remaining {len(flat_scripts) - 1} chunk(s) will be "
             f"auto-submitted as each completes"
+        )
+    elif finalizer_script is not None and len(job_ids) > 1:
+        console.print(
+            f"  Finalizer: [green]Job {job_ids[1]}[/green] "
+            f"(depends on {job_ids[0]})"
         )
     if warning:
         console.print(f"  [yellow]Warning: {warning}[/yellow]")

@@ -52,11 +52,11 @@ ERROR_CLIPBOARD_ID = "error-filter-spec-clipboard"
 
 # -- save report + chrome ----------------------------------------------------
 
-#: "Save analysis report" button → writes ``error_analysis.html``.
-ERROR_SAVE_REPORT_BTN_ID = "error-save-report-btn"
+#: Explicit all-category publication button.
+ERROR_PUBLISH_BTN_ID = "error-publish-all-btn"
 
-#: Toast confirming the report was saved.
-ERROR_SAVE_TOAST_ID = "error-save-toast"
+#: Toast reporting the exact publication outcome.
+ERROR_PUBLISH_TOAST_ID = "error-publish-toast"
 
 #: Banner shown when stored labels re-keyed/dropped against the current
 #: master (from ``filtered_state.rekey_report`` / ``.stale``).
@@ -96,8 +96,8 @@ __all__ = [
     "ERROR_READOUT_ID",
     "ERROR_FILTER_SPEC_ID",
     "ERROR_CLIPBOARD_ID",
-    "ERROR_SAVE_REPORT_BTN_ID",
-    "ERROR_SAVE_TOAST_ID",
+    "ERROR_PUBLISH_BTN_ID",
+    "ERROR_PUBLISH_TOAST_ID",
     "ERROR_STALE_BANNER_ID",
     "ERROR_EMPTY_STATE_ID",
     "ERROR_EMPTY_STATE_MSG_ID",

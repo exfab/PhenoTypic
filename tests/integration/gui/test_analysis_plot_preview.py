@@ -92,7 +92,10 @@ def output_root(tmp_path: Path) -> OutputRoot:
         )
     )
     write_pipeline_json(tmp_path, pipeline)
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def _ids_of_type(layout: Any, type_name: str) -> list[dict]:
@@ -152,7 +155,14 @@ class TestPlotControlsInLayout:
         write_measurements_mirror(tmp_path, df)
         (tmp_path / "results" / "ds1").mkdir(parents=True)
         write_pipeline_json(tmp_path, ImagePipeline(name="t"))
-        app = create_app(output_root=OutputRoot.discover(tmp_path))
+        app = create_app(
+            output_root=OutputRoot.discover(
+                tmp_path,
+                cache_root=(
+                    tmp_path.parent / ".test-phenotypic-viewer-cache"
+                ),
+            )
+        )
         assert _ids_of_type(app.layout, "analysis-plot-param") == []
 
 

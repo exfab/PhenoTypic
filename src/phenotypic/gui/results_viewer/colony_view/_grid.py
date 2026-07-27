@@ -375,6 +375,7 @@ def _build_cell(
     members: list[tuple[str, str, int]] | None = None,
     dim_alpha: float = 0.0,
     layer: str = "rgb",
+    mutations_disabled: bool = False,
 ) -> Component:
     """Render the chrome + crop for a single grid cell.
 
@@ -460,6 +461,7 @@ def _build_cell(
                 current_category is not None
                 and current_category not in _CORE_CATEGORY_TOKENS
             ),
+            disabled=mutations_disabled,
         ),
         extra_children=extra_children,
         # Reserve room beneath the frame for the stack tab to peek out.
@@ -600,6 +602,7 @@ def build_grid(
     dim_alpha: float = 0.0,
     category_of: dict[tuple[str, int], str] | None = None,
     layer: str = "rgb",
+    mutations_disabled: bool = False,
 ) -> tuple[Component, list[tuple[str, int]]]:
     """Render the colony-grid component and its row-major key order.
 
@@ -793,6 +796,7 @@ def build_grid(
                     members=typed_members,
                     dim_alpha=dim_alpha,
                     layer=layer,
+                    mutations_disabled=mutations_disabled,
                 )
             )
 

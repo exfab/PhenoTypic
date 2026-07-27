@@ -344,6 +344,12 @@ def build_timeline_body() -> Any:
                 # Compare-strip cap (spec §7): timeline.js reads it off the DOM
                 # like the other static focus-navigate constants above.
                 "data-compare-cap": str(TIMELINE_COMPARE_CAP),
+                # Replaced on every render. Browse's delegated popout events
+                # echo this value and the server rejects retired revisions.
+                "data-grid-revision": "",
+                "data-revision-generation": "",
+                "data-session-id": "",
+                "data-authorized-revision": "",
             },
         ),
     )
@@ -351,11 +357,11 @@ def build_timeline_body() -> Any:
     # scrollbar), bounded height, position:relative so the four edge buttons +
     # the focus position readout anchor to its edges. timeline.js centres the
     # inner grid on the focused cell via a CSS transform.
-    # SURFACE-AGNOSTIC classes: the four nav buttons + readout + bridge input
-    # carry stable `timeline-*` classes that `timeline.js` queries (scoped to
-    # the timeline body). The Dash ids stay (server callbacks + Browse e2e
-    # selectors target them); the controller never reads the ids. The
-    # `browse-tl-*` classes remain for Browse-only CSS styling.
+    # SURFACE-AGNOSTIC classes: the four nav buttons + readout carry stable
+    # `timeline-*` classes that `timeline.js` queries (scoped to the timeline
+    # body). The Dash ids stay (server callbacks + Browse e2e selectors target
+    # them); the controller never reads the ids. The `browse-tl-*` classes
+    # remain for Browse-only CSS styling.
     nav_up = html.Button(
         "▲",
         id=ids.BROWSE_TL_NAV_UP,
@@ -411,7 +417,7 @@ def build_timeline_body() -> Any:
     )
     popout = dbc.Modal(
         [
-            dbc.ModalHeader(dbc.ModalTitle("")),
+            dbc.ModalHeader(dbc.ModalTitle("", id=ids.BROWSE_TL_POPOUT_TITLE)),
             dbc.ModalBody(html.Div(id=ids.BROWSE_TL_POPOUT_OSD, style={"height": "70vh"})),
         ],
         id=ids.BROWSE_TL_POPOUT_MODAL,
@@ -425,27 +431,28 @@ def build_timeline_body() -> Any:
             controls,
             grid_viewport,
             popout,
-            # Hidden JS→Dash bridge: timeline.js sets .value to the clicked
-            # cell's data-ref (token) + dispatches an input event (P2-C).
-            # SURFACE-AGNOSTIC class `.timeline-popout-bridge`: the controller
-            # finds this input by class (scoped to the timeline body), so the
-            # vendored timeline.js works identically on Browse + Results. The id
-            # stays for the Dash server callback's Input target.
-            dcc.Input(
-                id=ids.BROWSE_TL_POPOUT_INPUT,
-                value="",
-                className="timeline-popout-bridge",
-                style={"display": "none"},
+            # Browse uses a delegated, revision-bound ``set_props`` event
+            # published by browse.js. Unlike a synthetic event on a controlled
+            # dcc.Input, the store remains connected across grid remounts.
+            dcc.Store(id=ids.BROWSE_TL_POPOUT_EVENT, data=None),
+            dcc.Store(id=ids.BROWSE_TL_POPOUT_APPROVED, data=None),
+            dcc.Store(id=ids.BROWSE_TL_SOURCE_REVISION, data=None),
+            dcc.Store(
+                id=ids.BROWSE_TL_SESSION,
+                storage_type="memory",
+                data=None,
             ),
+            dcc.Store(id=ids.BROWSE_TL_REVISION_CANDIDATE, data=None),
+            dcc.Store(id=ids.BROWSE_TL_REVISION_AUTHORIZED, data=None),
             dcc.Store(id=ids.BROWSE_TL_STORE_TILE_SIZE, data=TIMELINE_TILE_SIZE_DEFAULT),
             dcc.Store(id=ids.BROWSE_TL_STORE_WARNINGS, data=[]),
             dcc.Store(id=ids.BROWSE_TL_POPOUT_STORE, data=None),
         ],
         id=ids.BROWSE_TIMELINE_BODY,
         # SURFACE-AGNOSTIC class `.timeline-body`: the controller scopes its
-        # sibling-control queries (nav buttons, readout, bridge input) to the
-        # enclosing element carrying this class, so the vendored timeline.js
-        # never reads a surface-specific id.
+        # sibling-control queries (nav buttons and readout) to the enclosing
+        # element carrying this class, so the vendored timeline.js never reads
+        # a surface-specific id.
         className="timeline-body",
         style={"display": "none"},  # toggled on by the view-mode callback
     )

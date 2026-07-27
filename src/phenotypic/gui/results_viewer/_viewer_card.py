@@ -66,6 +66,11 @@ from phenotypic.gui.results_viewer._filtered_state import (
     KEY_OBJECT_LABEL,
     decode_removed_keys_payload,
 )
+from phenotypic.gui.results_viewer._mutation_guard import (
+    OutputMutationBlocked,
+    output_mutations_disabled,
+    require_output_mutation,
+)
 from phenotypic.gui.results_viewer._ids import (
     BTN_ADD_CARD,
     CARDS_CONTAINER_ID,
@@ -143,7 +148,9 @@ def _encode_picker_value(dataset: str, stem: str) -> str:
     Returns:
         A JSON string of shape ``{"dataset": ..., "stem": ...}``.
     """
-    return json.dumps({"dataset": dataset, "stem": stem}, separators=(",", ":"))
+    return json.dumps(
+        {"dataset": dataset, "stem": stem}, separators=(",", ":")
+    )
 
 
 def _decode_picker_value(value: str | None) -> tuple[str, str] | None:
@@ -181,7 +188,12 @@ def _decode_picker_value(value: str | None) -> tuple[str, str] | None:
 # ---------------------------------------------------------------------------
 
 
-def layout(idx: str, output_root: OutputRoot) -> Any:
+def layout(
+    idx: str,
+    output_root: OutputRoot,
+    *,
+    mutations_disabled: bool = False,
+) -> Any:
     """Build the component tree for a single viewer card.
 
     The card is a self-contained ``dbc.Card`` with:
@@ -203,14 +215,14 @@ def layout(idx: str, output_root: OutputRoot) -> Any:
             layout time -- options/values are populated by callbacks --
             but accepted so the module signature stays compatible
             with the dispatching ``register_callbacks`` flow.
+        mutations_disabled: Whether persistent table curation must be
+            unavailable for this bound output.
 
     Returns:
         A :class:`dash_bootstrap_components.Card` ready to drop into
         the cards container. Typed ``Any`` because Dash / dbc do not
         ship complete stub coverage.
     """
-    del output_root  # currently only callbacks need it; future-proof signature.
-
     picker = dcc.Dropdown(
         id=card_picker_id(idx),
         options=[],
@@ -337,7 +349,7 @@ def layout(idx: str, output_root: OutputRoot) -> Any:
         # ``cell_selectable=True`` is required so ``active_cell`` events
         # fire on click; ``editable=False`` keeps Dash from opening an
         # in-place editor for the Status cell.
-        cell_selectable=True,
+        cell_selectable=not mutations_disabled,
         editable=False,
         style_table={"overflowX": "auto"},
         style_cell={
@@ -400,8 +412,6 @@ def layout(idx: str, output_root: OutputRoot) -> Any:
         id=card_id(idx),
         className="viewer-card mb-3",
     )
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -469,7 +479,9 @@ def _build_picker_options(
     return options
 
 
-def _filter_active_columns(filter_spec_payload: list[dict] | None) -> list[str]:
+def _filter_active_columns(
+    filter_spec_payload: list[dict] | None,
+) -> list[str]:
     """Return the column names whose filter rows currently constrain the frame.
 
     Args:
@@ -484,7 +496,11 @@ def _filter_active_columns(filter_spec_payload: list[dict] | None) -> list[str]:
     """
     spec = FilterSpec.from_store(filter_spec_payload)
     columns = sorted(
-        {row.column for row in spec.rows if row.column and row.to_expr() is not None}
+        {
+            row.column
+            for row in spec.rows
+            if row.column and row.to_expr() is not None
+        }
     )
     return columns
 
@@ -561,7 +577,9 @@ def _project_details_columns(
     """
     available = set(df.columns)
     metadata_cols = [c for c in df.columns if is_metadata_header(c)]
-    object_label_cols = [KEY_OBJECT_LABEL] if KEY_OBJECT_LABEL in available else []
+    object_label_cols = (
+        [KEY_OBJECT_LABEL] if KEY_OBJECT_LABEL in available else []
+    )
     seen = set(metadata_cols) | set(object_label_cols)
     extra = [c for c in filter_columns if c in available and c not in seen]
     return metadata_cols + object_label_cols + extra
@@ -586,7 +604,10 @@ def _ensure_initial_card_trigger(app: dash.Dash) -> None:
             be wrapped to include the interval.
     """
     interval = dcc.Interval(
-        id=INITIAL_CARD_TRIGGER_ID, interval=200, max_intervals=1, n_intervals=0
+        id=INITIAL_CARD_TRIGGER_ID,
+        interval=200,
+        max_intervals=1,
+        n_intervals=0,
     )
     layout_obj = getattr(app, "layout", None)
     if layout_obj is None:
@@ -600,7 +621,10 @@ def _ensure_initial_card_trigger(app: dash.Dash) -> None:
     try:
         app.layout = html.Div([layout_obj, interval])
     except Exception:
-        logger.debug("Could not inject initial-card trigger into app.layout", exc_info=True)
+        logger.debug(
+            "Could not inject initial-card trigger into app.layout",
+            exc_info=True,
+        )
 
 
 def _layout_already_has_trigger(layout_obj: Any) -> bool:
@@ -683,27 +707,38 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         CFG_FILTERED_STATE
     )
 
-    # Diff the incoming card-id list against the previously-rendered
-    # one and emit a ``dash.Patch`` so existing cards (and their OSD
-    # viewers) survive sibling add/remove. The previously-rendered list
-    # lives in the closure: this is correct under Dash's single-process
-    # dev server (the only deployment shipped here); multi-worker
-    # deployments would need to lift the state into a Store.
-    rendered_ids: list[str] = []
-
+    # Diff the desired card list against the card IDs rendered in the
+    # requesting browser. The client-specific State keeps reloads and
+    # concurrent sessions independent while Patch preserves existing OSD
+    # viewers during sibling add/remove operations.
     @app.callback(
         Output(CARDS_CONTAINER_ID, "children"),
         Input(STORE_CARD_LIST, "data"),
+        State({"type": "card", "index": ALL}, "id"),
     )
-    def _render_cards(card_ids: list[str] | None) -> Any:
+    def _render_cards(
+        card_ids: list[str] | None,
+        rendered_card_ids: list[dict[str, Any]] | None,
+    ) -> Any:
         target = [cid for cid in (card_ids or []) if cid]
+        rendered_ids = [
+            str(rendered_id["index"])
+            for rendered_id in (rendered_card_ids or [])
+            if isinstance(rendered_id, dict) and rendered_id.get("index")
+        ]
 
         # First-time render: build the container from scratch.
         if not rendered_ids:
             if not target:
                 return []
-            rendered_ids[:] = list(target)
-            return [layout(cid, output_root) for cid in target]
+            return [
+                layout(
+                    cid,
+                    output_root,
+                    mutations_disabled=output_mutations_disabled(output_root),
+                )
+                for cid in target
+            ]
 
         # No-op if nothing actually changed.
         if target == rendered_ids:
@@ -720,8 +755,13 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         existing_set = set(rendered_ids)
         for cid in target:
             if cid not in existing_set:
-                patch.append(layout(cid, output_root))
-        rendered_ids[:] = list(target)
+                patch.append(
+                    layout(
+                        cid,
+                        output_root,
+                        mutations_disabled=output_mutations_disabled(output_root),
+                    )
+                )
         return patch
 
     # 2. Append a fresh card on every "+ Add card" click.
@@ -769,7 +809,9 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             return no_update
         # Dash fires the callback once with all-zero clicks on initial
         # registration; gate on a real click value.
-        triggered_value = ctx.triggered[0].get("value") if ctx.triggered else None
+        triggered_value = (
+            ctx.triggered[0].get("value") if ctx.triggered else None
+        )
         if not triggered_value:
             return no_update
         target = triggered.get("index")
@@ -794,7 +836,11 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
 
     # 6. Step an individual card picker from the icon-only navigation buttons.
     @app.callback(
-        Output({"type": "card-picker", "index": MATCH}, "value", allow_duplicate=True),
+        Output(
+            {"type": "card-picker", "index": MATCH},
+            "value",
+            allow_duplicate=True,
+        ),
         Input({"type": "card-picker-prev", "index": MATCH}, "n_clicks"),
         Input({"type": "card-picker-next", "index": MATCH}, "n_clicks"),
         State({"type": "card-picker", "index": MATCH}, "value"),
@@ -808,9 +854,15 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         options: list[dict[str, Any]] | None,
     ) -> str | Any:
         triggered = ctx.triggered_id
-        if isinstance(triggered, dict) and triggered.get("type") == "card-picker-prev":
+        if (
+            isinstance(triggered, dict)
+            and triggered.get("type") == "card-picker-prev"
+        ):
             return step_picker_value(current, options, "previous") or no_update
-        if isinstance(triggered, dict) and triggered.get("type") == "card-picker-next":
+        if (
+            isinstance(triggered, dict)
+            and triggered.get("type") == "card-picker-next"
+        ):
             return step_picker_value(current, options, "next") or no_update
         return no_update
 
@@ -1015,9 +1067,13 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             return no_update
 
         try:
+            require_output_mutation("Plate details curation")
             payload = filtered_state.mutate_and_payload(
                 lambda s: s.toggle(image_file, object_label)
             )
+        except OutputMutationBlocked as exc:
+            logger.warning("%s", exc)
+            return no_update
         except Exception:
             logger.exception(
                 "Failed to toggle curation state for %s / %d",

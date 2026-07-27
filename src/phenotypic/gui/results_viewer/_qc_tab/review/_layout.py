@@ -140,7 +140,10 @@ def _build_toolbar() -> Component:
     return html.Div(
         [
             html.Div(
-                [html.Span("Module:", className="fw-semibold me-2"), module_picker],
+                [
+                    html.Span("Module:", className="fw-semibold me-2"),
+                    module_picker,
+                ],
                 className="d-flex align-items-center",
                 style={"gap": "0.5rem"},
             ),
@@ -297,7 +300,7 @@ def _build_splitter() -> Component:
     )
 
 
-def _build_body() -> Component:
+def _build_body(*, mutations_disabled: bool = False) -> Component:
     """Build the master–detail body: collapsible sticky sidebar + page-scroll detail.
 
     The body is a flex *row* aligned to the top. The whole page scrolls
@@ -313,7 +316,7 @@ def _build_body() -> Component:
         [
             html.Div(id=rids.QC_REVIEW_DETAIL_HEADER_ID, children=[]),
             html.Div(id=rids.QC_REVIEW_GALLERY_ID, children=[]),
-            _build_detail_action_bar(),
+            _build_detail_action_bar(mutations_disabled=mutations_disabled),
         ],
         id=rids.QC_REVIEW_DETAIL_ID,
         # Grows with its content (no fixed height, no internal scroll) so
@@ -331,7 +334,10 @@ def _build_body() -> Component:
     )
 
 
-def _build_detail_action_bar() -> Component:
+def _build_detail_action_bar(
+    *,
+    mutations_disabled: bool = False,
+) -> Component:
     """Build the detail action bar: mark-reviewed / next / bulk remove-restore."""
     return html.Div(
         [
@@ -341,6 +347,7 @@ def _build_detail_action_bar() -> Component:
                 color="primary",
                 size="sm",
                 n_clicks=0,
+                disabled=mutations_disabled,
                 style={"background": COLOR_NAVY, "borderColor": COLOR_NAVY},
             ),
             html.Button(
@@ -368,6 +375,7 @@ def _build_detail_action_bar() -> Component:
                 value=None,
                 placeholder="Mark selected as…",
                 clearable=False,
+                disabled=mutations_disabled,
                 style={"minWidth": "12rem"},
             ),
             dbc.Button(
@@ -377,6 +385,7 @@ def _build_detail_action_bar() -> Component:
                 outline=True,
                 size="sm",
                 n_clicks=0,
+                disabled=mutations_disabled,
             ),
             dbc.Button(
                 "Restore selected",
@@ -385,6 +394,7 @@ def _build_detail_action_bar() -> Component:
                 outline=True,
                 size="sm",
                 n_clicks=0,
+                disabled=mutations_disabled,
             ),
         ],
         className="d-flex align-items-center",
@@ -397,7 +407,7 @@ def _build_detail_action_bar() -> Component:
     )
 
 
-def build_review_view() -> Component:
+def build_review_view(*, mutations_disabled: bool = False) -> Component:
     """Build the Review sub-view body (toolbar + summary header + master-detail).
 
     Returns a single ``html.Div`` ready to slot into the QC tab's Review
@@ -434,9 +444,13 @@ def build_review_view() -> Component:
             html.Div(
                 id=rids.QC_REVIEW_EMPTY_STATE_ID,
                 children=_default_empty_state(),
-                style={"flex": "0 0 auto", "padding": "2rem", "textAlign": "center"},
+                style={
+                    "flex": "0 0 auto",
+                    "padding": "2rem",
+                    "textAlign": "center",
+                },
             ),
-            _build_body(),
+            _build_body(mutations_disabled=mutations_disabled),
             # Review-scoped stores.
             dcc.Store(id=rids.STORE_QC_WORKLIST_ORDER, data=[]),
             dcc.Store(id=rids.STORE_QC_SELECTED_GROUP, data=None),
@@ -468,7 +482,8 @@ def _default_empty_state() -> Component:
             html.Div("No QC review queue yet.", className="fw-semibold"),
             html.Div(
                 "Configure a quality check, then re-run "
-                "`python -m phenotypic --mode recompile --output <output>` "
+                "`uv run python -m phenotypic --mode recompile "
+                "--output <output>` "
                 "(or pick a "
                 "module above if a qc/ artifact already exists).",
                 style={"color": COLOR_MUTED, "fontSize": FONT_SIZE_CAPTION},

@@ -25,7 +25,7 @@ right pane shows the dashboard preview slot and the log tail.
 
 You can fill in the pickers two ways:
 
-**From the sidebar (hand-off).** Click `pipeline.json` in the sidebar; the
+**From the sidebar (hand-off).** Click `pipeline.json.pht-pipe` in the sidebar; the
 hand-off banner above the form activates with `Set as pipeline`. Click it —
 the picker label updates. Then click `plates/` and use `Set as input dir`,
 and finally choose a fresh output folder and use `Set as output dir`.
@@ -46,6 +46,13 @@ exits without writing any output. The log tail shows the dry-run output.
 Use this whenever you're not sure the form values match what the CLI
 expects — the dry-run takes seconds, a bad real run can waste minutes.
 
+Validate and Run share one action path. The server durably records the run ID
+and generation UUID before it attempts a process spawn or scheduler submission.
+After the callback response reaches the page, the action notice displays that
+receipt. If acknowledgement is delayed or lost, the notice says the launch
+outcome is unknown and tells you not to submit again. Check Recent Runs and the
+selected output before taking further action.
+
 ## Run
 
 Clicking `Run` spawns `python -m phenotypic --mode full <args>` (no `--dry-run`).
@@ -61,6 +68,10 @@ While the subprocess is alive:
   disabled until the current run exits or you click `Cancel` (which
   sends SIGTERM, then SIGKILL after a 10-second grace period).
 
+Every status, log, dashboard, and Cancel update is matched to the displayed
+run ID and generation. Cancel disables when that generation becomes terminal;
+its final status and log tail remain visible.
+
 ## Recent Runs
 
 The Recent Runs panel below the form lists every run associated with this
@@ -71,12 +82,18 @@ panel populated with the synthetic dataset's run:
 ![Recent Runs panel after one local completion.](../../_static/gui_images/run_local/03_recent_runs_panel.png)
 
 Each row carries the output directory, mode (`local` or `slurm-<job-id>`),
-status (rendered uppercase by CSS, stored lowercase as one of `running`,
-`complete`, `failed`, `cancelled`, `unknown`), and a `Dashboard`
+status (rendered uppercase by CSS, stored lowercase as one of `queued`,
+`reconciling`, `running`, `cancelling`, `complete`, `failed`, `cancelled`,
+`unknown`), and a `Dashboard`
 indicator. Clicking a row re-points the iframe at that run's dashboard
 so you can re-visit historical results without leaving the page.
 
-The status comes from `<output_dir>/progress/manifest.json`; the dashboard
+Ambient metadata selected in Settings is visible in the preflight but is not
+added to this Run automatically. Choose **Include metadata** to opt in, review
+the resolved image-identity column, and let preflight recheck that selection
+before launch.
+
+The status comes from `<output_dir>/.phenotypic/progress/manifest.json`; the dashboard
 indicator is true when `deliverables/dashboard.html` is present. The hub
 registers a `/runs/<rel>/<file>` route on the shell's Flask server so the
 iframe URLs work regardless of which tab is currently active.

@@ -37,6 +37,28 @@ STORE_SESSION_ID = "store-session-id"
 #: List of ``node_id`` values that have a cached intermediate this session.
 STORE_INTERMEDIATE_KEYS = "store-intermediate-keys"
 
+#: Published preview snapshot metadata:
+#: ``{"pipeline_revision": str, "preview_generation": int}``.
+STORE_PREVIEW_SNAPSHOT = "store-preview-snapshot"
+
+#: Preview lifecycle payload shown independently of transient toast feedback:
+#: ``{"state": "idle|running|complete|error", "message": str, ...}``.
+STORE_PREVIEW_STATUS = "store-preview-status"
+
+#: Latest server-issued preview request.  The expensive preview callback reads
+#: this only after the launch callback has published the matching ``running``
+#: status to the browser.
+STORE_PREVIEW_REQUEST = "store-preview-request"
+
+#: Browser-applied acknowledgement of a visible ``running`` state.  Preview
+#: computation consumes this phase store, never the launch request directly.
+STORE_PREVIEW_WORK = "store-preview-work"
+
+#: Detached result event from preview computation.  A short publication
+#: callback accepts it only when its request identity still matches
+#: :data:`STORE_PREVIEW_REQUEST`.
+STORE_PREVIEW_RESULT = "store-preview-result"
+
 # ---------------------------------------------------------------------------
 # DAG-redesign ids (spec §6)
 # ---------------------------------------------------------------------------
@@ -276,7 +298,7 @@ LINEAR_MAP_CONTAINER = "linear-map-container"
 #: overlay on the canvas's right edge (it no longer shrinks the canvas); the
 #: tab handle on its upper-left edge toggles the ``is-closed`` class via a
 #: clientside listener (``builder.js``). The wrapper is stable across
-#: re-renders so the toggle state survives ``INSPECTOR_CONTAINER`` swaps.
+#: dynamic inspector-content re-renders.
 INSPECTOR_SLIDEOVER = "inspector-slideover"
 BTN_INSPECTOR_SLIDEOVER_TOGGLE = "btn-inspector-slideover-toggle"
 
@@ -625,11 +647,14 @@ PALETTE_CONTAINER = "palette"
 #: and write nodes/edges/elements as state changes.
 CANVAS_CYTOSCAPE = "canvas-cytoscape"
 
-#: Right-column inspector wrapper — Phase 3 swaps its children when the
-#: selected node changes.
+#: Stable right-column inspector wrapper. No callback replaces its children.
 INSPECTOR_CONTAINER = "inspector"
 
-#: Mount point for ``param_form`` output. Lives inside ``INSPECTOR_CONTAINER``.
+#: Dynamic inspector controls mount. Selection/state callbacks replace only
+#: this region, never the sibling :data:`INSPECTOR_PREVIEW`.
+INSPECTOR_CONTENT = "inspector-content"
+
+#: Mount point for ``param_form`` output. Lives inside ``INSPECTOR_CONTENT``.
 INSPECTOR_PARAM_FORM = "inspector-param-form"
 
 #: Mount point for the per-step preview (image thumbnail or DataTable).
@@ -657,6 +682,9 @@ FOOTER_CONTAINER = "footer"
 
 #: Triggers ``apply_with_intermediates`` against the current pipeline.
 BTN_RUN_PREVIEW = "btn-run-preview"
+
+#: Always-mounted, polite live region describing preview lifecycle state.
+PREVIEW_STATUS = "preview-status"
 
 #: Writes ``pipeline.to_json()`` to the path in INPUT_SAVE_PATH.
 BTN_SAVE = "btn-save"
@@ -1036,16 +1064,20 @@ __all__ = [
     "STORE_BUILDER_STATE",
     "STORE_SESSION_ID",
     "STORE_INTERMEDIATE_KEYS",
+    "STORE_PREVIEW_SNAPSHOT",
+    "STORE_PREVIEW_STATUS",
     "BREADCRUMB_CONTAINER",
     "PALETTE_CONTAINER",
     "CANVAS_CYTOSCAPE",
     "INSPECTOR_CONTAINER",
+    "INSPECTOR_CONTENT",
     "INSPECTOR_PARAM_FORM",
     "INSPECTOR_PREVIEW",
     "INSPECTOR_DOC_TOGGLE",
     "INSPECTOR_DOC_COLLAPSE",
     "FOOTER_CONTAINER",
     "BTN_RUN_PREVIEW",
+    "PREVIEW_STATUS",
     "BTN_SAVE",
     "BTN_LOAD",
     "BTN_NEW_PIPELINE_NODE",

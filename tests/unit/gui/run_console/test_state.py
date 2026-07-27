@@ -13,8 +13,11 @@ from phenotypic.gui.run_console._state import (
     RunConsoleState,
     run_state_from_json,
     run_state_to_json,
+    state_from_controls,
     to_argv,
 )
+from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
+from phenotypic.gui.shell._sandbox import SandboxRoot
 
 
 # ---------------------------------------------------------------------------
@@ -45,6 +48,11 @@ def test_full_state_round_trips_cleanly() -> None:
             "gpus": 1,
             "extra": {"qos": "bench"},
         },
+        gpu_slurm_args=(
+            "slurm_partition=gpu",
+            "slurm_gpus_per_node=1",
+        ),
+        gpu_shards=3,
     )
     assert run_state_from_json(run_state_to_json(state)) == state
 
@@ -77,6 +85,132 @@ def test_empty_string_path_coerced_to_none() -> None:
     state = run_state_from_json({"pipeline_path": "   ", "input_dir": ""})
     assert state.pipeline_path is None
     assert state.input_dir is None
+
+
+def test_from_json_tolerates_legacy_gpu_profile_shapes() -> None:
+    state = run_state_from_json(
+        {
+            "gpu_slurm_args": {
+                "slurm_partition": "gpu",
+                "slurm_account": "lab",
+            },
+            "gpu_shards": "invalid",
+        }
+    )
+    assert state.gpu_slurm_args == (
+        "slurm_partition=gpu",
+        "slurm_account=lab",
+    )
+    assert state.gpu_shards == 1
+
+
+# ---------------------------------------------------------------------------
+# Raw controls
+# ---------------------------------------------------------------------------
+
+
+def _raw_controls(sandbox: SandboxRoot) -> dict[str, object]:
+    return {
+        "pipeline_path": "pipeline.json",
+        "input_dir": "images",
+        "output_dir": "output",
+        "mode": "slurm",
+        "flags": ["dry_run", "resume"],
+        "sample": 2,
+        "nrows": 8,
+        "ncols": 12,
+        "image_type": "gridimage",
+        "workers": 4,
+        "log_level": "INFO",
+        "slurm_partition": "compute",
+        "slurm_time": "10",
+        "slurm_mem": "16G",
+        "slurm_cpus": 4,
+        "slurm_gpus": 0,
+        "slurm_extra": "account=lab\nqos=normal",
+        "metadata_payload": None,
+        "sandbox": sandbox,
+        "gpu_slurm": "slurm_partition=gpu\ntime=01:30:00",
+        "gpu_shards": 2,
+    }
+
+
+def test_state_from_controls_uses_raw_visible_values(tmp_path) -> None:
+    (tmp_path / "images").mkdir()
+    (tmp_path / "pipeline.json").write_text("{}", encoding="utf-8")
+    sandbox = SandboxRoot.from_path(tmp_path)
+    controls = _raw_controls(sandbox)
+
+    state = state_from_controls(**controls)
+
+    assert state.pipeline_path == str(tmp_path / "pipeline.json")
+    assert state.input_dir == str(tmp_path / "images")
+    assert state.output_dir == str(tmp_path / "output")
+    assert state.mode == "slurm"
+    assert state.dry_run is True
+    assert state.resume is True
+    assert state.advanced_args == {
+        "sample": 2,
+        "nrows": 8,
+        "ncols": 12,
+        "image_type": "GridImage",
+        "workers": 4,
+        "log_level": "INFO",
+    }
+    assert state.slurm_args == {
+        "partition": "compute",
+        "time": "00:10:00",
+        "mem": "16G",
+        "cpus_per_task": 4,
+        "gpus": 0,
+        "extra": {"account": "lab", "qos": "normal"},
+    }
+    assert state.gpu_slurm_args == (
+        "slurm_partition=gpu",
+        "time=01:30:00",
+    )
+    assert state.gpu_shards == 2
+
+
+def test_state_from_controls_resolves_metadata_payload(tmp_path) -> None:
+    metadata = tmp_path / "layout.csv"
+    metadata.write_text("Metadata_ImageName\nplate_a\n", encoding="utf-8")
+    sandbox = SandboxRoot.from_path(tmp_path)
+    controls = _raw_controls(sandbox)
+    controls["mode"] = "local"
+    controls["metadata_payload"] = metadata_payload_from_path(
+        sandbox, metadata
+    )
+
+    state = state_from_controls(**controls)
+
+    assert state.metadata_csv == str(metadata)
+
+
+def test_state_from_controls_rejects_empty_slurm_profile(tmp_path) -> None:
+    sandbox = SandboxRoot.from_path(tmp_path)
+    controls = _raw_controls(sandbox)
+    for key in (
+        "slurm_partition",
+        "slurm_time",
+        "slurm_mem",
+        "slurm_cpus",
+        "slurm_gpus",
+        "slurm_extra",
+    ):
+        controls[key] = None
+
+    with pytest.raises(ValueError, match="nonempty CPU SLURM profile"):
+        state_from_controls(**controls)
+
+
+def test_state_from_controls_rejects_path_escape(tmp_path) -> None:
+    sandbox = SandboxRoot.from_path(tmp_path)
+    controls = _raw_controls(sandbox)
+    controls["pipeline_path"] = tmp_path.parent / "outside.json"
+
+    with pytest.raises(ValueError, match="outside the GUI sandbox"):
+        state_from_controls(**controls)
 
 
 # ---------------------------------------------------------------------------

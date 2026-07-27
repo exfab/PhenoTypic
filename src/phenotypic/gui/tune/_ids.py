@@ -106,12 +106,40 @@ TUNE_PAGE_BODY = "tune-page-body"
 # ---------------------------------------------------------------------------
 
 TUNE_SETUP_PIPELINE_STORE = "tune-setup-pipeline-store"
+TUNE_SETUP_METADATA_STORE = "tune-setup-metadata-store"
+TUNE_SETUP_PIPELINE_PICKER_STORE = "tune-setup-pipeline-picker-store"
+TUNE_SETUP_METADATA_PICKER_STORE = "tune-setup-metadata-picker-store"
+TUNE_SETUP_DRAFT_STORE = "tune-setup-draft-store"
+TUNE_SETUP_RENDER_REVISION_STORE = "tune-setup-render-revision-store"
 TUNE_SETUP_AUTHORED_SPEC_STORE = "tune-setup-authored-spec-store"
+TUNE_SETUP_SIGNATURE_STORE = "tune-setup-signature-store"
 TUNE_SETUP_PIPELINE_INPUT = "tune-setup-pipeline-input"
 TUNE_SETUP_METADATA_INPUT = "tune-setup-metadata-input"
+TUNE_SETUP_PIPELINE_SOURCE = "tune-setup-pipeline-source"
+TUNE_SETUP_METADATA_SOURCE = "tune-setup-metadata-source"
+TUNE_SETUP_PICK_PIPELINE = "tune-setup-pick-pipeline"
+TUNE_SETUP_PICK_METADATA = "tune-setup-pick-metadata"
+TUNE_SETUP_PIPELINE_MODAL = "tune-setup-pipeline-modal"
+TUNE_SETUP_METADATA_MODAL = "tune-setup-metadata-modal"
+TUNE_SETUP_PIPELINE_MODAL_BODY = "tune-setup-pipeline-modal-body"
+TUNE_SETUP_METADATA_MODAL_BODY = "tune-setup-metadata-modal-body"
+TUNE_SETUP_PIPELINE_BROWSE_DIR = "tune-setup-pipeline-browse-dir"
+TUNE_SETUP_METADATA_BROWSE_DIR = "tune-setup-metadata-browse-dir"
+TUNE_SETUP_PIPELINE_CANCEL = "tune-setup-pipeline-cancel"
+TUNE_SETUP_METADATA_CANCEL = "tune-setup-metadata-cancel"
+TUNE_SETUP_PIPELINE_ENTRY = "tune-setup-pipeline-entry"
+TUNE_SETUP_METADATA_ENTRY = "tune-setup-metadata-entry"
 TUNE_SETUP_GATE = "tune-setup-gate"
 TUNE_SETUP_SEARCH_SPACE = "tune-setup-search-space"
 TUNE_SETUP_SCORER = "tune-setup-scorer"
+TUNE_SETUP_SCORER_NOTE = "tune-setup-scorer-note"
+TUNE_SETUP_REPLACE_SCORER = "tune-setup-replace-scorer"
+TUNE_SETUP_SPACE_KNOB_ROW = "tune-setup-space-knob-row"
+TUNE_SETUP_SPACE_LOW = "tune-setup-space-low"
+TUNE_SETUP_SPACE_HIGH = "tune-setup-space-high"
+TUNE_SETUP_SPACE_LOG = "tune-setup-space-log"
+TUNE_SETUP_SPACE_CHOICES = "tune-setup-space-choices"
+TUNE_SETUP_SPACE_TUNABLE = "tune-setup-space-tunable"
 TUNE_SETUP_FOOTER = "tune-setup-footer"
 TUNE_SETUP_CONTINUE = "tune-setup-continue"
 
@@ -124,6 +152,8 @@ TUNE_RUN_OUTPUT_DIR = "tune-run-output-dir"
 TUNE_RUN_STRATEGY = "tune-run-strategy"
 TUNE_RUN_N_TRIALS = "tune-run-n-trials"
 TUNE_RUN_STORAGE_URL = "tune-run-storage-url"
+TUNE_RUN_STORAGE_MODE = "tune-run-storage-mode"
+TUNE_RUN_STORAGE_ENV = "tune-run-storage-env"
 TUNE_RUN_N_WORKERS = "tune-run-n-workers"
 TUNE_RUN_SLURM_PARTITION = "tune-run-slurm-partition"
 TUNE_RUN_SLURM_MEM = "tune-run-slurm-mem"
@@ -133,6 +163,8 @@ TUNE_RUN_CV_GROUP = "tune-run-cv-group"
 TUNE_RUN_MODE = "tune-run-mode"
 TUNE_RUN_SCREEN = "tune-run-screen"
 TUNE_RUN_COMMAND = "tune-run-command"
+TUNE_RUN_PORTABLE_COMMAND = "tune-run-portable-command"
+TUNE_RUN_COPY = "tune-run-copy"
 TUNE_RUN_PREFLIGHT = "tune-run-preflight"
 TUNE_RUN_DEPLOY = "tune-run-deploy"
 TUNE_RUN_STATUS = "tune-run-status"
@@ -372,12 +404,40 @@ __all__ = [
     "TUNE_RUN_ROOT_STORE",
     "TUNE_PAGE_BODY",
     "TUNE_SETUP_PIPELINE_STORE",
+    "TUNE_SETUP_METADATA_STORE",
+    "TUNE_SETUP_PIPELINE_PICKER_STORE",
+    "TUNE_SETUP_METADATA_PICKER_STORE",
+    "TUNE_SETUP_DRAFT_STORE",
+    "TUNE_SETUP_RENDER_REVISION_STORE",
     "TUNE_SETUP_AUTHORED_SPEC_STORE",
+    "TUNE_SETUP_SIGNATURE_STORE",
     "TUNE_SETUP_PIPELINE_INPUT",
     "TUNE_SETUP_METADATA_INPUT",
+    "TUNE_SETUP_PIPELINE_SOURCE",
+    "TUNE_SETUP_METADATA_SOURCE",
+    "TUNE_SETUP_PICK_PIPELINE",
+    "TUNE_SETUP_PICK_METADATA",
+    "TUNE_SETUP_PIPELINE_MODAL",
+    "TUNE_SETUP_METADATA_MODAL",
+    "TUNE_SETUP_PIPELINE_MODAL_BODY",
+    "TUNE_SETUP_METADATA_MODAL_BODY",
+    "TUNE_SETUP_PIPELINE_BROWSE_DIR",
+    "TUNE_SETUP_METADATA_BROWSE_DIR",
+    "TUNE_SETUP_PIPELINE_CANCEL",
+    "TUNE_SETUP_METADATA_CANCEL",
+    "TUNE_SETUP_PIPELINE_ENTRY",
+    "TUNE_SETUP_METADATA_ENTRY",
     "TUNE_SETUP_GATE",
     "TUNE_SETUP_SEARCH_SPACE",
     "TUNE_SETUP_SCORER",
+    "TUNE_SETUP_SCORER_NOTE",
+    "TUNE_SETUP_REPLACE_SCORER",
+    "TUNE_SETUP_SPACE_KNOB_ROW",
+    "TUNE_SETUP_SPACE_LOW",
+    "TUNE_SETUP_SPACE_HIGH",
+    "TUNE_SETUP_SPACE_LOG",
+    "TUNE_SETUP_SPACE_CHOICES",
+    "TUNE_SETUP_SPACE_TUNABLE",
     "TUNE_SETUP_FOOTER",
     "TUNE_SETUP_CONTINUE",
     "TUNE_RUN_IMAGES_OVERRIDE",
@@ -385,6 +445,8 @@ __all__ = [
     "TUNE_RUN_STRATEGY",
     "TUNE_RUN_N_TRIALS",
     "TUNE_RUN_STORAGE_URL",
+    "TUNE_RUN_STORAGE_MODE",
+    "TUNE_RUN_STORAGE_ENV",
     "TUNE_RUN_N_WORKERS",
     "TUNE_RUN_SLURM_PARTITION",
     "TUNE_RUN_SLURM_MEM",
@@ -394,6 +456,8 @@ __all__ = [
     "TUNE_RUN_MODE",
     "TUNE_RUN_SCREEN",
     "TUNE_RUN_COMMAND",
+    "TUNE_RUN_PORTABLE_COMMAND",
+    "TUNE_RUN_COPY",
     "TUNE_RUN_PREFLIGHT",
     "TUNE_RUN_DEPLOY",
     "TUNE_RUN_STATUS",

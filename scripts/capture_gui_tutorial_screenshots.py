@@ -25,7 +25,9 @@ Requires Playwright + Chromium. Install on first run::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import shutil
 import socket
 import subprocess
 import sys
@@ -41,7 +43,7 @@ ASSETS_ROOT = REPO_ROOT / "docs" / "source" / "_static" / "gui_images"
 DATASET_DIR = ASSETS_ROOT / "_dataset"
 PLATES_DIR = DATASET_DIR / "plates"
 METADATA_CSV = DATASET_DIR / "metadata.csv"
-PIPELINE_JSON = DATASET_DIR / "pipeline.json"
+PIPELINE_JSON = DATASET_DIR / "pipeline.json.pht-pipe"
 OUTPUT_DIR = DATASET_DIR / "results"
 
 # The hermetic tune run output (a real ``python -m phenotypic.tune`` grid run
@@ -51,6 +53,8 @@ OUTPUT_DIR = DATASET_DIR / "results"
 # colony-count layout the QC scorer compares against.
 TUNE_OUTPUT_DIR = DATASET_DIR / "tune_run"
 TUNE_LAYOUT_CSV = DATASET_DIR / "tune_layout.csv"
+TUNE_SETUP_SPEC = DATASET_DIR / "tune_setup.json.pht-tune"
+TUNE_LAUNCH_OUTPUT_DIR = DATASET_DIR / "tune_launch_output"
 
 # A small folder/time-series matrix the Browse Timeline capture roots itself at:
 # three timepoint sub-folders, each holding the same three plate filenames, so
@@ -126,7 +130,7 @@ PIPELINE_DOC = {
 }
 
 METADATA_ROWS = [
-    "Metadata_ImageName,Metadata_StrainID,Metadata_MatingType,"
+    "MetadataImage_ImageName,Metadata_StrainID,Metadata_MatingType,"
     "Metadata_Media,Metadata_RunDate,Metadata_PlateNum,"
     "Metadata_Replicate,Grid_RowNum,Grid_ColNum",
     "plate_001.tif,SYN_001,a,YPD,2026-05-01,1,1,8,12",
@@ -146,9 +150,19 @@ def build_tutorial_dataset(force: bool = False) -> None:
                 plate_002.tif        # 8x12 grid, seed 2
                 plate_003.tif        # 8x12 grid, seed 3
             metadata.csv             # synthetic plate metadata (Neurospora-style schema)
-            pipeline.json            # GaussianBlur + OtsuDetector + MeasureShape + MeasureSize
+            pipeline.json.pht-pipe   # GaussianBlur + OtsuDetector + MeasureShape + MeasureSize
     """
+    # Current captures should advertise only the canonical typed config. These
+    # are capture-owned legacy residues from pre-suffix fixture generations.
+    for legacy_pipeline in (DATASET_DIR / "pipeline.json", OUTPUT_DIR / "pipeline.json"):
+        if legacy_pipeline.is_file():
+            legacy_pipeline.unlink()
+
     if DATASET_DIR.exists() and not force:
+        # Keep reusable fixtures on the current public suffix/schema even when
+        # the large synthetic images and prior CLI output are retained.
+        METADATA_CSV.write_text("\n".join(METADATA_ROWS) + "\n", encoding="utf-8")
+        PIPELINE_JSON.write_text(json.dumps(PIPELINE_DOC, indent=2), encoding="utf-8")
         print(f"[dataset] reusing existing {DATASET_DIR.relative_to(REPO_ROOT)}")
         return
 
@@ -177,7 +191,7 @@ def build_tutorial_dataset(force: bool = False) -> None:
     print(f"[dataset]   wrote metadata.csv ({len(METADATA_ROWS) - 1} rows)")
 
     PIPELINE_JSON.write_text(json.dumps(PIPELINE_DOC, indent=2), encoding="utf-8")
-    print("[dataset]   wrote pipeline.json")
+    print(f"[dataset]   wrote {PIPELINE_JSON.name}")
 
 
 def run_cli_once() -> None:
@@ -253,11 +267,18 @@ def _seed_error_triage_labels() -> None:
     import polars as pl
 
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+    from phenotypic.gui.results_viewer._qc_tab.review._review_state import ReviewState
+    from phenotypic import ImagePipeline
+    from phenotypic.analysis.qc import MaxModifiedZScore
+    from phenotypic.schema import METADATA
     from phenotypic.sdk_ import (
+        BundleLayout,
         curation_labels_parquet_path,
         master_measurements_parquet_path,
         measurements_parquet_path,
     )
+    from phenotypic.sdk_._qc_recipe import QcRecipeEntry
+    from phenotypic.sdk_._qc_recipe._runner import run_qc
 
     master_path = master_measurements_parquet_path(OUTPUT_DIR)
     if not master_path.is_file():
@@ -265,6 +286,15 @@ def _seed_error_triage_labels() -> None:
         return
 
     full = pl.read_parquet(master_path)
+    canonical_image_name = str(METADATA.IMAGE_NAME)
+    if canonical_image_name not in full.columns and "Metadata_ImageName" in full.columns:
+        # The committed tutorial fixture predates the public MetadataImage
+        # category rename. Normalize the capture-only mirror before handing it
+        # to CurationLabels, which keys durable labels by the canonical name.
+        full = full.rename({"Metadata_ImageName": canonical_image_name})
+        # CurationLabels re-reads the clean master to key durable labels, so
+        # persist the normalized capture fixture before constructing the store.
+        full.write_parquet(master_path)
     mirror_path = measurements_parquet_path(OUTPUT_DIR)
     mirror_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -279,11 +309,38 @@ def _seed_error_triage_labels() -> None:
     smallest = (
         full.sort("Size_Area")
         .head(12)
-        .select(["Metadata_ImageFile", "Object_Label"])
+        .select([canonical_image_name, "Object_Label"])
     )
     keys = [(str(f), int(label)) for f, label in smallest.iter_rows()]
-    store = CurationLabels.load(OUTPUT_DIR, full)
+    layout = BundleLayout.detect(OUTPUT_DIR)
+    store = CurationLabels.load(layout, full)
     store.mark_many(keys, "background_noise")
+
+    # Seed a real curation-supporting QC module and mark every image group
+    # reviewed. The Verified-only Error preview then has a non-empty, explicit
+    # good baseline rather than falling back to its "review more groups" state.
+    instance_id = "qc-MaxModifiedZScore-gui-capture"
+    qc_pipeline = ImagePipeline()
+    qc_pipeline.set_qc(
+        [
+            QcRecipeEntry(
+                cls=MaxModifiedZScore,
+                params={
+                    "on": "Size_Area",
+                    "groupby": [canonical_image_name],
+                },
+                instance_id=instance_id,
+                enabled=True,
+            )
+        ]
+    )
+    run_qc(full.to_pandas(), qc_pipeline, OUTPUT_DIR)
+    review = ReviewState.load(layout)
+    for image_name in full.get_column(canonical_image_name).unique().to_list():
+        if not review.mark_reviewed(instance_id, (str(image_name),)):
+            raise RuntimeError(
+                f"could not seed reviewed QC group for {image_name!r}"
+            )
 
     # (3) Restore the full mirror again — mark_many curated the labeled rows OUT,
     #     but the Error tab needs them present in OutputRoot.master_df to rank the
@@ -292,7 +349,7 @@ def _seed_error_triage_labels() -> None:
     full.write_parquet(mirror_path)
     print(
         f"[seed] labeled {len(keys)} smallest-Size_Area objects as "
-        f"'background_noise' (full mirror restored for the Error tab)"
+        f"'background_noise' and reviewed all QC image groups"
     )
 
 
@@ -307,7 +364,7 @@ def run_tune_once() -> None:
 
     * ``.pht-tune-cache/run.json`` — the discovery marker (written at run START);
     * ``trials.parquet`` (6 trials) + the local ``study.db``;
-    * ``deliverables/tuning_spec.json`` — the resolved recipe (drives the Space view).
+    * ``deliverables/tuning_spec.json.pht-tune`` — the resolved recipe (drives the Space view).
 
     The scorer is a :class:`~phenotypic.tune.QCScorer` over a layout CSV that
     declares the synthetic plates' nominal 96-colony count, so its
@@ -321,6 +378,23 @@ def run_tune_once() -> None:
     from phenotypic.sdk_ import _io_constants as io
 
     if io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR).exists():
+        resolved_spec = io.resolve_tuning_spec_path(TUNE_OUTPUT_DIR)
+        # Repair reusable pre-category-rename fixtures before the Setup capture.
+        layout = TUNE_LAYOUT_CSV.read_text(encoding="utf-8")
+        if layout.startswith("Metadata_ImageName,"):
+            TUNE_LAYOUT_CSV.write_text(
+                layout.replace(
+                    "Metadata_ImageName,",
+                    "MetadataImage_ImageName,",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+        setup_spec = resolved_spec.read_text(encoding="utf-8").replace(
+            "Metadata_ImageName",
+            "MetadataImage_ImageName",
+        )
+        TUNE_SETUP_SPEC.write_text(setup_spec, encoding="utf-8")
         print(
             f"[tune] reusing existing tune output at "
             f"{TUNE_OUTPUT_DIR.relative_to(REPO_ROOT)}"
@@ -355,7 +429,7 @@ def run_tune_once() -> None:
     # The layout: every loaded plate declares its nominal 96-colony (8x12) count
     # so the QC count scorer has a path-backed metadata source that round-trips.
     layout_rows = [
-        {"Metadata_ImageName": im.name, "Object_Label": label}
+        {"MetadataImage_ImageName": im.name, "Object_Label": label}
         for im in images
         for label in range(96)
     ]
@@ -374,13 +448,14 @@ def run_tune_once() -> None:
         search_space=space,
         scorer=QCScorer(
             check=ExpectedVsDetectedCount(
-                metadata=str(TUNE_LAYOUT_CSV), groupby=["Metadata_ImageName"]
+                metadata=str(TUNE_LAYOUT_CSV), groupby=["MetadataImage_ImageName"]
             )
         ),
         evaluator=Evaluator(),
         strategy=GridConfig(),
         budget=Budget(),
     )
+    TUNE_SETUP_SPEC.write_text(spec.model_dump_json(indent=2), encoding="utf-8")
     run_tuning(spec, images, TUNE_OUTPUT_DIR, spec_path=None, images_dir=PLATES_DIR)
     n_trials = len(pd.read_parquet(io.trials_parquet_path(TUNE_OUTPUT_DIR)))
 
@@ -585,12 +660,33 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
             browser.close()
 
 
-def _save(page, workflow: str, name: str) -> None:
+def _save(
+    page,
+    workflow: str,
+    name: str,
+    *,
+    full_page: bool = False,
+) -> None:
     target_dir = ASSETS_ROOT / workflow
     target_dir.mkdir(parents=True, exist_ok=True)
     out = target_dir / name
-    page.screenshot(path=str(out), full_page=False)
+    page.screenshot(path=str(out), full_page=full_page)
     print(f"[shot]   {workflow}/{name}")
+
+
+def _assert_distinct_stage_images(workflow: str, names: tuple[str, ...]) -> None:
+    """Fail when two named tutorial stages accidentally capture one UI state."""
+    digests: dict[str, str] = {}
+    for name in names:
+        path = ASSETS_ROOT / workflow / name
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if digest in digests:
+            raise RuntimeError(
+                f"{workflow}/{name} duplicates {workflow}/{digests[digest]} "
+                f"(sha256={digest})"
+            )
+        digests[digest] = name
+        print(f"[verify] {workflow}/{name} sha256={digest}")
 
 
 def _new_page(context, base_url: str, path: str = "/"):
@@ -611,6 +707,58 @@ def _emit_empty_state_shot(
     page = _new_page(context, base_url, path)
     _save(page, workflow, name)
     page.close()
+
+
+def _bind_hub_results_asynchronously(page, base_url: str) -> None:
+    """Bind the tutorial output through the hub's asynchronous API.
+
+    This intentionally exercises the production bind-job contract instead of
+    relying on a standalone viewer for every loaded-state capture.  The output
+    was produced by :func:`run_cli_once`, so it has coherent terminal evidence;
+    the helper waits for the server's terminal job response before reloading the
+    Results mount that serves the atomically published snapshot.
+    """
+    submission = page.evaluate(
+        """async () => {
+            const response = await fetch('/sandbox/api/viewer/output-root', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path: 'results'}),
+            });
+            return {status: response.status, payload: await response.json()};
+        }"""
+    )
+    if submission["status"] != 202:
+        raise RuntimeError(f"hub Results bind was rejected: {submission!r}")
+    poll_path = submission["payload"].get("poll_path")
+    if not isinstance(poll_path, str) or not poll_path:
+        raise RuntimeError(f"hub Results bind omitted poll_path: {submission!r}")
+
+    terminal: dict[str, Any] | None = None
+    for _ in range(120):
+        poll = page.evaluate(
+            """async path => {
+                const response = await fetch(path);
+                return {status: response.status, payload: await response.json()};
+            }""",
+            poll_path,
+        )
+        if poll["status"] != 200:
+            raise RuntimeError(f"hub Results bind poll failed: {poll!r}")
+        payload = poll["payload"]
+        job = payload.get("job", {}) if isinstance(payload, dict) else {}
+        if job.get("terminal") is True:
+            terminal = payload
+            break
+        page.wait_for_timeout(250)
+    if terminal is None:
+        raise RuntimeError("hub Results bind did not reach a terminal state")
+    if terminal.get("status") != "succeeded":
+        raise RuntimeError(f"hub Results bind did not succeed: {terminal!r}")
+
+    page.goto(base_url + "/results/")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(800)
 
 
 # ---------------------------------------------------------------------------
@@ -1206,38 +1354,110 @@ def _capture_run_slurm(context, base_url: str) -> None:
     print("[shot] workflow=run_slurm")
     page = _new_page(context, base_url, "/run/")
 
+    # Bind a complete, sandbox-valid form. Store injection uses the same Dash
+    # stores the three picker-confirm callbacks publish.
+    slurm_output = DATASET_DIR / "slurm_output"
+    if slurm_output.exists():
+        shutil.rmtree(slurm_output)
+    selections = {
+        "rc-store-pipeline-path": str(PIPELINE_JSON.resolve()),
+        "rc-store-input-dir": str(PLATES_DIR.resolve()),
+        "rc-store-output-dir": str(slurm_output.resolve()),
+    }
+    page.evaluate(
+        """items => {
+            for (const [id, data] of Object.entries(items)) {
+                window.dash_clientside.set_props(id, {data});
+            }
+        }""",
+        selections,
+    )
+    page.wait_for_function(
+        """() => {
+            const pipeline = document.querySelector('#rc-label-pipeline');
+            const input = document.querySelector('#rc-label-input');
+            const output = document.querySelector('#rc-label-output');
+            return pipeline?.textContent?.includes('pipeline.json.pht-pipe')
+                && input?.textContent?.includes('plates')
+                && output?.textContent?.includes('slurm_output');
+        }""",
+        timeout=8_000,
+    )
+
     # Toggle SLURM mode in the radio. dbc.RadioItems renders as labels
     # with hidden inputs; clicking the visible label is the reliable path.
     slurm_label = page.locator('label:has-text("SLURM")').first
-    if slurm_label.count() > 0:
-        slurm_label.click()
-        page.wait_for_timeout(400)
+    slurm_label.wait_for(state="visible", timeout=8_000)
+    slurm_label.click()
+    page.wait_for_timeout(400)
 
     # Open SLURM collapse if it isn't already.
     toggle = page.locator("#rc-btn-toggle-slurm")
-    if toggle.count() > 0:
+    toggle.wait_for(state="visible", timeout=8_000)
+    collapse = page.locator("#rc-collapse-slurm")
+    if not collapse.is_visible():
         toggle.click()
         page.wait_for_timeout(400)
 
-    _save(page, "run_slurm", "01_slurm_mode.png")
+    values = {
+        "#rc-input-slurm-partition": "general",
+        "#rc-input-slurm-time": "04:00:00",
+        "#rc-input-slurm-mem": "16G",
+        "#rc-input-slurm-cpus": "4",
+        "#rc-input-slurm-gpus": "0",
+        "#rc-input-slurm-extra": "account=lab\nqos=normal",
+    }
+    for selector, value in values.items():
+        field = page.locator(selector)
+        field.wait_for(state="visible", timeout=8_000)
+        field.fill(value)
+        field.press("Enter")
+    page.wait_for_timeout(700)
+
+    # Require the form-level validator to accept every selected path/resource.
+    # The capture does not launch even a dry-run generation because the durable
+    # registry intentionally rejects reusing an output with a nonterminal run.
+    validate = page.locator("#rc-btn-validate")
+    validate.wait_for(state="visible", timeout=8_000)
+    if not validate.is_enabled():
+        raise RuntimeError("SLURM tutorial form is not valid after path selection")
+    for selector, expected in values.items():
+        actual = page.locator(selector).input_value().rstrip("\n")
+        if actual != expected:
+            raise RuntimeError(
+                f"SLURM tutorial field {selector} did not retain {expected!r}"
+            )
+    page.set_viewport_size({"width": VIEWPORT["width"], "height": 1400})
+    page.evaluate(
+        """() => {
+            window.scrollTo(0, 0);
+            for (const element of document.querySelectorAll('*')) {
+                if (element.scrollTop) element.scrollTop = 0;
+            }
+        }"""
+    )
+    _save(page, "run_slurm", "01_slurm_mode.png", full_page=True)
     page.close()
 
 
 # --- view results -------------------------------------------------------
 
 def _capture_view_results(context, base_url: str) -> None:
-    """Empty-state hub viewer screenshot only.
-
-    Loaded-viewer screenshots are captured separately by
-    :func:`capture_standalone_viewer_screenshots` after the hub is torn
-    down — the hub's viewer mount renders empty in v1 (rebuild-on-select
-    is not wired), so we boot the standalone viewer pointed at the real
-    CLI output for the populated screenshots.
-    """
-    _emit_empty_state_shot(
-            context, base_url, "/results/", "view_results", "01_viewer_empty.png",
-            log="[shot] workflow=view_results (empty state via hub)",
-    )
+    """Capture the empty, asynchronous-bind, and loaded hub Results states."""
+    print("[shot] workflow=view_results (hub async binding)")
+    page = _new_page(context, base_url, "/results/")
+    _save(page, "view_results", "01_viewer_empty.png")
+    _bind_hub_results_asynchronously(page, base_url)
+    page.wait_for_selector("#results-viewer-empty-state", state="detached", timeout=15_000)
+    snapshot_status = page.locator("#header-snapshot-status")
+    snapshot_status.wait_for(state="visible", timeout=15_000)
+    if snapshot_status.inner_text().strip() != "Current":
+        raise RuntimeError(
+            "hub Results bind did not publish a coherent mutation-enabled "
+            f"snapshot: {snapshot_status.inner_text()!r}"
+        )
+    _save(page, "view_results", "05_hub_bound_snapshot.png")
+    page.close()
 
 
 def _capture_pick_points(context, base_url: str) -> None:
@@ -1578,8 +1798,8 @@ def _capture_qc_review(context, base_url: str) -> None:
 def _qc_review_loaded_shots(page) -> None:
     """Capture loaded-state QC Review screenshots in the standalone viewer.
 
-    The standalone launcher has a real ``output_root`` carrying a ``qc/``
-    artifact, so flipping the QC tab's Configure | Review toggle renders a
+    The standalone launcher has a real ``output_root`` carrying
+    ``deliverables/qc/qc.duckdb``, so flipping the QC tab's Configure | Review toggle renders a
     populated worklist + detail gallery. Captures:
 
     * ``02_review_worklist.png`` — the Review sub-view with the module
@@ -1650,8 +1870,8 @@ def _capture_heatmap_exploration(context, base_url: str) -> None:
        ``Grid_ColNum`` are missing (the synthetic tutorial dataset
        does not run ``GridMeasureFeatures``).
     2. ``02_color_picker_open.png`` — the color column dropdown
-       open so the reader can see the measurement / QC severity
-       union the dropdown surfaces.
+       open so the reader can see the available measurement columns.
+       Outputs with QC data also contribute QC-derived options.
     """
     print("[shot] workflow=heatmap_exploration")
     page = _new_page(context, base_url, "/results/")
@@ -1667,8 +1887,8 @@ def _capture_heatmap_exploration(context, base_url: str) -> None:
             pass
     _save(page, "heatmap_exploration", "01_default_view.png")
 
-    # Open the color picker dropdown so the reader sees the union of
-    # measurement columns + QC severity columns.
+    # Open the color picker dropdown so the available columns are visible.
+    # This fixture need not contain a QC-derived option for every capture.
     color_picker = page.locator("#heatmap-color-picker")
     if color_picker.count() > 0:
         try:
@@ -1689,7 +1909,8 @@ def _capture_error_analysis(context, base_url: str) -> None:
     natural entry-point shot for the tutorial. The populated ranked table +
     distribution plot + good-baseline toggle are captured from the standalone
     viewer in :func:`_error_analysis_loaded_shots` (it has a real
-    ``output_root`` carrying the seeded ``qc/curation_labels.parquet``).
+    ``output_root`` carrying the seeded
+    ``deliverables/qc/curation_labels.parquet``).
     """
     print("[shot] workflow=error_analysis")
     page = _new_page(context, base_url, "/results/")
@@ -2200,8 +2421,8 @@ def _qc_curation_loop_loaded_shots(page) -> None:
     The hub-mounted ``_capture_qc_curation_loop`` only sees the empty
     state because the hub viewer is unbound at startup. The standalone
     viewer has a real ``output_root``, so the tab strip mounts and the
-    QC top-strip buttons (``+ Add check`` / ``Export QC report``) are
-    reachable. Three additional screenshots cover the loaded state:
+    QC top-strip controls (``+ Add check`` / ``Rebuild QC database``) are
+    reachable. Two additional screenshots cover the loaded state:
 
     * ``02_qc_tab_selected.png`` — empty cards container with the top
       strip visible.
@@ -2279,7 +2500,7 @@ def _error_analysis_loaded_shots(page) -> None:
     """Capture the populated Error-analysis tab in the standalone viewer.
 
     The standalone launcher has a real ``output_root`` carrying the seeded
-    ``qc/curation_labels.parquet`` (12 ``background_noise`` labels written by
+    ``deliverables/qc/curation_labels.parquet`` (12 ``background_noise`` labels written by
     :func:`_seed_error_triage_labels`), so flipping to the Error tab ranks the
     measurements that separate that error category from the all-unlabeled good
     baseline. The recompute only fires when the tab is active (off-tab
@@ -2294,39 +2515,56 @@ def _error_analysis_loaded_shots(page) -> None:
       good-baseline toggle + the verified-good count badge.
     """
     tab = page.locator('a[role="tab"]:has-text("Error")').first
-    if tab.count() == 0:
-        print("[shot]   error_analysis: Error tab not found — loaded captures skipped")
-        return
-    try:
-        tab.click(timeout=3000)
-        # The ranked table is a dash_table.DataTable; its rendered body cells
-        # carry the ``.dash-cell`` class. Wait for them so the screenshot lands
-        # on the populated table, not the recompute-in-flight or empty state.
-        page.wait_for_selector("#error-cutoff-table .dash-cell", timeout=8000)
-        page.wait_for_timeout(800)
-    except Exception:  # pragma: no cover - best-effort
-        pass
+    tab.wait_for(state="visible", timeout=8_000)
+    tab.click(timeout=3_000)
+    # Fatal assertion: never save the empty/fallback view as a ranked-table
+    # tutorial stage.
+    page.wait_for_selector(
+        "#error-cutoff-table .dash-cell",
+        state="visible",
+        timeout=12_000,
+    )
+    if page.locator("#error-empty-state").is_visible():
+        raise RuntimeError("Error analysis remained in Need more labels state")
+    page.wait_for_timeout(800)
     _save(page, "error_analysis", "02_ranked_table.png")
 
     # The good-vs-error distribution figure (dcc.Graph) with the cutoff line.
     figure = page.locator("#error-distribution-figure")
-    if figure.count() > 0:
-        try:
-            figure.scroll_into_view_if_needed(timeout=1500)
-        except Exception:  # pragma: no cover - best-effort
-            pass
-        page.wait_for_timeout(400)
-        _save(page, "error_analysis", "03_distribution_cutoff.png")
+    figure.wait_for(state="visible", timeout=8_000)
+    page.wait_for_selector(
+        "#error-distribution-figure .js-plotly-plot",
+        state="visible",
+        timeout=8_000,
+    )
+    readout = page.locator("#error-readout")
+    readout.wait_for(state="visible", timeout=8_000)
+    readout.evaluate(
+        "(el) => el.scrollIntoView({block: 'center', inline: 'nearest'})"
+    )
+    page.wait_for_timeout(400)
+    _save(page, "error_analysis", "03_distribution_cutoff.png")
 
     # Good-baseline toggle (All unlabeled / Verified only) + verified count.
-    toggle = page.locator("#error-good-mode-toggle").first
-    if toggle.count() > 0:
-        try:
-            toggle.scroll_into_view_if_needed(timeout=1500)
-            page.wait_for_timeout(300)
-        except Exception:  # pragma: no cover - best-effort
-            pass
-        _save(page, "error_analysis", "04_good_baseline_toggle.png")
+    verified = page.locator(
+        'label[for$="error-good-mode-toggle_input_verified"]'
+    ).first
+    verified.wait_for(state="visible", timeout=8_000)
+    verified.click(timeout=3_000, force=True)
+    badge = page.locator("#error-verified-count")
+    badge.wait_for(state="visible", timeout=8_000)
+    page.wait_for_function(
+        "() => {"
+        " const b = document.querySelector('#error-verified-count');"
+        " return b && /verified good:\\s*[1-9]/.test(b.textContent || '');"
+        "}",
+        timeout=8_000,
+    )
+    if page.locator("#error-empty-state").is_visible():
+        raise RuntimeError("Verified-only Error preview lacks a seeded good baseline")
+    page.locator("#error-good-mode-toggle").scroll_into_view_if_needed(timeout=2_000)
+    page.wait_for_timeout(400)
+    _save(page, "error_analysis", "04_good_baseline_toggle.png")
 
 
 # ---------------------------------------------------------------------------
@@ -2398,56 +2636,42 @@ def _boot_standalone_tune(port: int) -> subprocess.Popen[str]:
 def _show_tune_subtab(page, name: str) -> None:
     """Click the ``tune-subtab-<name>`` button and let the view swap settle."""
     button = page.locator(f"#tune-subtab-{name}")
-    if button.count() > 0:
-        try:
-            button.click(timeout=4000)
-            page.wait_for_timeout(800)
-        except Exception as exc:  # pragma: no cover - best-effort
-            print(f"[shot]   tune_copilot: sub-tab {name} click skipped: {exc!r}")
+    button.wait_for(state="visible", timeout=8_000)
+    button.click(timeout=4_000)
+    page.wait_for_timeout(800)
 
 
 def _show_tune_destination(page, name: str) -> None:
     """Click the ``tune-dest-<name>`` destination button and let it settle."""
     button = page.locator(f"#tune-dest-{name}")
-    if button.count() > 0:
-        try:
-            button.click(timeout=4000)
-            page.wait_for_timeout(700)
-        except Exception as exc:  # pragma: no cover - best-effort
-            print(f"[shot]   tune_copilot: destination {name} click skipped: {exc!r}")
+    button.wait_for(state="visible", timeout=8_000)
+    button.click(timeout=4_000)
+    page.wait_for_timeout(700)
 
 
 def _author_tune_setup(page) -> None:
     """Fill the Setup pipeline + metadata inputs (debounced → blur to commit).
 
     The standalone tune app's sandbox is :data:`DATASET_DIR`, so the
-    sandbox-relative ``pipeline.json`` and ``tune_layout.csv`` paths resolve to
-    the dataset's base pipeline and the QC scorer's count layout. Both inputs
+    sandbox-relative ``tune_setup.json.pht-tune`` and ``tune_layout.csv`` paths resolve to
+    the dataset's valid tuning spec and the QC scorer's count layout. Both inputs
     are ``dcc.Input(debounce=True)``, so each fill is followed by a blur to
-    commit the value into the setup stores. Best-effort: missing inputs are
-    skipped.
+    commit the value into the setup stores. Missing/invalid state is fatal so
+    the capture cannot save a Setup fallback under a valid-state filename.
     """
     pipeline_input = page.locator("#tune-setup-pipeline-input")
     metadata_input = page.locator("#tune-setup-metadata-input")
-    try:
-        # ``dcc.Input(debounce=True)`` commits on Enter — fill then press Enter so
-        # the value lands in the setup stores (a blur alone does not reliably
-        # commit through Playwright's synthetic fill).
-        if pipeline_input.count() > 0:
-            pipeline_input.fill(PIPELINE_JSON.name, timeout=3000)
-            pipeline_input.press("Enter")
-            page.wait_for_timeout(600)
-        if metadata_input.count() > 0:
-            metadata_input.fill(TUNE_LAYOUT_CSV.name, timeout=3000)
-            metadata_input.press("Enter")
-            page.wait_for_timeout(800)
-        # Wait for the gate to unlock (Continue enabled) so the Setup screenshot
-        # shows the authored-ready state and the Run capture can proceed.
-        page.wait_for_selector(
-            "#tune-setup-continue:not([disabled])", timeout=5000
-        )
-    except Exception as exc:  # pragma: no cover - best-effort
-        print(f"[shot]   tune_copilot: setup authoring skipped: {exc!r}")
+    pipeline_input.wait_for(state="visible", timeout=8_000)
+    metadata_input.wait_for(state="visible", timeout=8_000)
+    pipeline_input.fill(TUNE_SETUP_SPEC.name, timeout=3_000)
+    pipeline_input.press("Enter")
+    page.wait_for_timeout(600)
+    metadata_input.fill(TUNE_LAYOUT_CSV.name, timeout=3_000)
+    metadata_input.press("Enter")
+    page.wait_for_selector("#tune-setup-continue:not([disabled])", timeout=8_000)
+    gate_text = page.locator("#tune-setup-gate").inner_text(timeout=3_000)
+    if "value error" in gate_text.lower() or "unavailable" in gate_text.lower():
+        raise RuntimeError(f"Tune Setup is invalid: {gate_text}")
 
 
 def _continue_tune_setup(page) -> None:
@@ -2457,20 +2681,57 @@ def _continue_tune_setup(page) -> None:
     flips the active destination to ``run`` — which is what unlocks the Run
     destination button (it is disabled until an authored spec exists). Waits for
     the Run view's Deploy button to render so the caller's ``01_run.png`` lands
-    on the real Run form, not the Setup view. Best-effort.
+    on the real Run form, not the Setup view. Failure is fatal.
     """
     button = page.locator("#tune-setup-continue")
-    if button.count() == 0:
-        print("[shot]   tune_copilot: setup Continue not found — Run capture skipped")
-        return
-    try:
-        button.click(timeout=4000)
-        # The authored-spec callback flips the destination store to ``run``;
-        # wait for the Run view (Deploy button) to become visible.
-        page.wait_for_selector("#tune-run-deploy", state="visible", timeout=6000)
-        page.wait_for_timeout(700)
-    except Exception as exc:  # pragma: no cover - best-effort
-        print(f"[shot]   tune_copilot: setup Continue skipped: {exc!r}")
+    button.wait_for(state="visible", timeout=8_000)
+    if not button.is_enabled():
+        raise RuntimeError("Tune Setup Continue remained disabled")
+    button.click(timeout=4_000)
+    page.wait_for_selector("#tune-run-deploy", state="visible", timeout=8_000)
+    page.wait_for_timeout(700)
+
+
+def _prepare_valid_tune_run(page) -> None:
+    """Populate Run inputs and require one fully deploy-eligible command plan."""
+    images = page.locator("#tune-run-images-override")
+    output = page.locator("#tune-run-output-dir")
+    images.wait_for(state="visible", timeout=8_000)
+    output.wait_for(state="visible", timeout=8_000)
+    images.fill(PLATES_DIR.name, timeout=3_000)
+    images.press("Enter")
+    output.fill(TUNE_LAUNCH_OUTPUT_DIR.name, timeout=3_000)
+    output.press("Enter")
+
+    deploy = page.locator("#tune-run-deploy")
+    page.wait_for_selector("#tune-run-deploy:not([disabled])", timeout=8_000)
+    page.wait_for_function(
+        """([imagesName, outputName]) => {
+            const gui = document.querySelector('#tune-run-command');
+            const portable = document.querySelector('#tune-run-portable-command');
+            const preflight = document.querySelector('#tune-run-preflight');
+            const deploy = document.querySelector('#tune-run-deploy');
+            const guiText = (gui?.textContent || '').trim();
+            const portableText = (portable?.textContent || '').trim();
+            return guiText.includes('phenotypic.tune')
+                && guiText.includes(imagesName)
+                && guiText.includes(outputName)
+                && portableText.includes('phenotypic.tune')
+                && portableText.includes(imagesName)
+                && portableText.includes(outputName)
+                && (preflight?.textContent || '').trim() === 'Ready to deploy.'
+                && deploy
+                && !deploy.disabled;
+        }""",
+        arg=[PLATES_DIR.name, TUNE_LAUNCH_OUTPUT_DIR.name],
+        timeout=8_000,
+    )
+    if images.input_value() != PLATES_DIR.name:
+        raise RuntimeError("Tune Run image source did not retain the selected path")
+    if output.input_value() != TUNE_LAUNCH_OUTPUT_DIR.name:
+        raise RuntimeError("Tune Run output did not retain the selected path")
+    if not deploy.is_enabled():
+        raise RuntimeError("Tune Run Deploy remained disabled")
 
 
 def _bind_tune_run_via_picker(page, *, run_dir_name: str) -> None:
@@ -2479,21 +2740,15 @@ def _bind_tune_run_via_picker(page, *, run_dir_name: str) -> None:
     Opens the sandbox-bounded run picker, screenshots the modal, navigates into
     the run directory (clicking its folder entry sets the browse-dir into it),
     and clicks "Bind this run" — exercising the real runtime binding path that
-    populates ``tune-run-root-store`` and swaps in the loaded views. Best-effort:
-    a missing affordance is logged and skipped so the rest of the capture still
-    runs.
+    populates ``tune-run-root-store`` and swaps in the loaded views. Every
+    required transition is asserted so a fallback page is never saved as a
+    bound Monitor shot.
     """
     browse = page.locator("#tune-btn-pick-run")
-    if browse.count() == 0:
-        print("[shot]   tune_copilot: run-picker button not found — bind skipped")
-        return
-    try:
-        browse.click(timeout=4000)
-        page.wait_for_selector("#tune-run-picker-modal", timeout=4000)
-        page.wait_for_timeout(500)
-    except Exception as exc:  # pragma: no cover - best-effort
-        print(f"[shot]   tune_copilot: run-picker open skipped: {exc!r}")
-        return
+    browse.wait_for(state="visible", timeout=8_000)
+    browse.click(timeout=4_000)
+    page.wait_for_selector("#tune-run-picker-modal", state="visible", timeout=8_000)
+    page.wait_for_timeout(500)
     _save(page, "tune_copilot", "02b_run_picker_modal.png")
 
     # Navigate INTO the run directory: clicking its folder entry sets the
@@ -2501,30 +2756,22 @@ def _bind_tune_run_via_picker(page, *, run_dir_name: str) -> None:
     folder = page.locator(
         f"#tune-run-picker-modal-body >> text={run_dir_name}/"
     ).first
-    try:
-        if folder.count() > 0:
-            folder.click(timeout=3000)
-            page.wait_for_timeout(600)
-    except Exception as exc:  # pragma: no cover - best-effort
-        print(f"[shot]   tune_copilot: run-dir navigation skipped: {exc!r}")
+    folder.wait_for(state="visible", timeout=8_000)
+    folder.click(timeout=3_000)
+    page.wait_for_timeout(600)
 
     confirm = page.locator("#tune-btn-run-picker-confirm")
-    try:
-        if confirm.count() > 0:
-            confirm.click(timeout=3000)
-            # The body swaps to the loaded views; wait for the Monitor objective
-            # figure to mount before the caller's poll-settle wait.
-            page.wait_for_selector("#tune-objective-figure", timeout=8000)
-            page.wait_for_timeout(500)
-    except Exception as exc:  # pragma: no cover - best-effort
-        print(f"[shot]   tune_copilot: run bind confirm skipped: {exc!r}")
+    confirm.wait_for(state="visible", timeout=8_000)
+    confirm.click(timeout=3_000)
+    page.wait_for_selector("#tune-objective-figure", state="visible", timeout=8_000)
+    page.wait_for_timeout(500)
 
 
 def _capture_tune_copilot(context, base_url: str) -> None:
     """Drive the tune co-pilot through Setup → Run → Monitor and its sub-tabs.
 
     The page lands on the **Setup** destination. :func:`_author_tune_setup` fills
-    the pipeline + metadata inputs (sandbox-relative ``pipeline.json`` /
+    the tuning spec + metadata inputs (sandbox-relative ``tune_setup.json.pht-tune`` /
     ``tune_layout.csv``), which unlocks the **Run** destination; Run is captured
     with its launch form + live command card + Deploy. Then **Monitor**:
     :func:`_bind_tune_run_via_picker` opens the sandbox-bounded picker, navigates
@@ -2539,24 +2786,29 @@ def _capture_tune_copilot(context, base_url: str) -> None:
     page.goto(base_url + "/")
     page.wait_for_load_state("networkidle")
 
-    # --- Setup: author a spec from the dataset pipeline + count layout --------
+    # --- Setup: author from the valid tuning spec + count layout --------------
     _author_tune_setup(page)
     _save(page, "tune_copilot", "00_setup.png")
 
     # --- Run: Continue authors the spec + switches to the Run destination -----
     _continue_tune_setup(page)
+    _prepare_valid_tune_run(page)
     # Scroll the live command card + Deploy into view — the novel launch
     # affordances sit below the form fold in the capture viewport.
-    deploy = page.locator("#tune-run-deploy")
-    if deploy.count() > 0:
-        try:
-            deploy.scroll_into_view_if_needed(timeout=2000)
-            page.wait_for_timeout(500)
-        except Exception as exc:  # pragma: no cover - best-effort
-            print(f"[shot]   tune_copilot: run-deploy scroll skipped: {exc!r}")
-    _save(page, "tune_copilot", "01_run.png")
+    page.set_viewport_size({"width": VIEWPORT["width"], "height": 1400})
+    page.evaluate(
+        """() => {
+            window.scrollTo(0, 0);
+            for (const element of document.querySelectorAll('*')) {
+                if (element.scrollTop) element.scrollTop = 0;
+            }
+        }"""
+    )
+    page.wait_for_timeout(500)
+    _save(page, "tune_copilot", "01_run.png", full_page=True)
 
     # --- Monitor: bind the pre-built run via the picker (read-only path) ------
+    page.set_viewport_size(VIEWPORT)
     _show_tune_destination(page, "monitor")
     page.wait_for_timeout(400)
     # Bind the run at runtime via the picker (Browse → pick run dir → Bind).
@@ -2634,40 +2886,17 @@ def main(argv: list[str] | None = None) -> int:
 
     build_tutorial_dataset(force=args.force)
     if not args.skip_cli:
-        try:
-            run_cli_once()
-        except subprocess.CalledProcessError as exc:
-            print(
-                    f"[cli] FAILED with exit {exc.returncode}; continuing without "
-                    "CLI output (Recent Runs / viewer screenshots will reflect "
-                    "an empty sandbox).",
-                    file=sys.stderr,
-            )
+        run_cli_once()
 
     # Seed synthetic error-category labels so the Error-analysis tab renders a
     # populated ranked table in the standalone-viewer capture. Runs after the
     # CLI master exists (or after a ``--skip-cli`` reuse of a prior master) and
-    # before any GUI boots. Idempotent + non-fatal.
-    try:
-        _seed_error_triage_labels()
-    except Exception as exc:  # noqa: BLE001 - capture run must not abort here
-        print(
-                f"[seed] FAILED ({exc!r}); continuing — the Error-analysis "
-                "loaded screenshots may show the empty state.",
-                file=sys.stderr,
-        )
+    # before any GUI boots. This is required evidence and therefore fatal.
+    _seed_error_triage_labels()
 
     # Build the hermetic tune output the loaded co-pilot capture reads. A
-    # failure here is non-fatal: the standalone-tune capture skips (no marker)
-    # rather than aborting the whole screenshot run.
-    try:
-        run_tune_once()
-    except Exception as exc:  # noqa: BLE001 - capture run must not abort here
-        print(
-                f"[tune] FAILED ({exc!r}); continuing — the Tune co-pilot "
-                "screenshots will be skipped.",
-                file=sys.stderr,
-        )
+    # valid Setup and Run states are required evidence, so failure is fatal.
+    run_tune_once()
 
     # Seed the small folder/time-series matrix the Browse Timeline capture
     # roots itself at. Idempotent + non-fatal.
@@ -2700,6 +2929,18 @@ def main(argv: list[str] | None = None) -> int:
 
     capture_standalone_viewer_screenshots(headed=args.headed)
     capture_standalone_analysis_screenshots(headed=args.headed)
+    _assert_distinct_stage_images(
+        "tune_copilot",
+        ("00_setup.png", "01_run.png"),
+    )
+    _assert_distinct_stage_images(
+        "error_analysis",
+        (
+            "02_ranked_table.png",
+            "03_distribution_cutoff.png",
+            "04_good_baseline_toggle.png",
+        ),
+    )
 
     print("[done] all screenshots written to docs/source/_static/gui_images/")
     return 0

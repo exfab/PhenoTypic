@@ -81,7 +81,9 @@ def radial_wedge_id(
     }
 
 
-def radial_trigger_id(surface: str, image_file: str, label: int) -> dict[str, Any]:
+def radial_trigger_id(
+    surface: str, image_file: str, label: int
+) -> dict[str, Any]:
     """Return the pattern-matched id for the per-tile radial trigger button.
 
     Args:
@@ -122,7 +124,9 @@ def radial_popover_body_id(
     }
 
 
-def radial_store_id(surface: str, image_file: str, label: int) -> dict[str, Any]:
+def radial_store_id(
+    surface: str, image_file: str, label: int
+) -> dict[str, Any]:
     """Return the pattern-matched id for the co-located radial data store.
 
     The store carries ``{image_file, label, surface}`` so the lazy-populate
@@ -227,7 +231,9 @@ _CENTER_SIZE: int = 32
 _CONTAINER_SIZE: int = _DEFAULT_RADIUS * 2 + _WEDGE_SIZE
 
 
-def _wedge_positions(n: int, radius: int = _DEFAULT_RADIUS) -> list[tuple[float, float]]:
+def _wedge_positions(
+    n: int, radius: int = _DEFAULT_RADIUS
+) -> list[tuple[float, float]]:
     """Compute absolute (left, top) pixel positions for ``n`` wedges on a circle.
 
     Wedges are placed evenly around a circle of the given ``radius``, starting
@@ -308,6 +314,7 @@ def build_radial_trigger(
     label: int,
     current_category: str | None = None,
     is_custom: bool = False,
+    disabled: bool = False,
 ) -> list[Component]:
     """Build the per-tile radial trigger + empty popover + data store.
 
@@ -371,6 +378,7 @@ def build_radial_trigger(
             },
             size="sm",
             n_clicks=0,
+            disabled=disabled,
         )
     else:
         trigger_button = dbc.Button(
@@ -380,6 +388,7 @@ def build_radial_trigger(
             style={},
             size="sm",
             n_clicks=0,
+            disabled=disabled,
         )
 
     popover = dbc.Popover(
@@ -522,7 +531,9 @@ def build_radial_body(
     # Center restore/close node.
     center_node = dbc.Button(
         "✕",
-        id=radial_wedge_id(surface, image_file, label, RADIAL_RESTORE_SENTINEL),
+        id=radial_wedge_id(
+            surface, image_file, label, RADIAL_RESTORE_SENTINEL
+        ),
         className="radial-center",
         style={
             "position": "absolute",

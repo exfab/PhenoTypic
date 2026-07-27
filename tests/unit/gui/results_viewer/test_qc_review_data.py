@@ -15,6 +15,7 @@ member resolution now live behind the catalog-driven read API
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -25,10 +26,14 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis.qc import MaxModifiedZScore
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._qc_tab.review import _callbacks, _data
+from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+    _persist_review_before_transition,
+)
 from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
     ReviewState,
     decode_group_key,
     encode_group_key,
+    review_state_lock_path,
 )
 from phenotypic.sdk_ import BundleLayout, measurements_parquet_path
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
@@ -84,7 +89,10 @@ def _write_output_root(tmp_path: Path) -> OutputRoot:
             overlays / f"{stem}.png"
         )
 
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +158,10 @@ def test_review_empty_state_calls_out_legacy_qc_parquets(
 
     assert "Legacy QC parquet artifacts" in text
     assert "qc.duckdb" in text
-    assert "recompile" in text.lower()
+    assert (
+        "uv run python -m phenotypic --mode recompile --output <output>"
+        in text
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -218,6 +229,63 @@ def test_review_state_unmark(tmp_path: Path) -> None:
     state.mark_reviewed("m", ("g1",))
     state.unmark_reviewed("m", ("g1",))
     assert not state.is_reviewed("m", ("g1",))
+
+
+def test_review_state_external_edit_conflict_preserves_disk(
+    tmp_path: Path,
+) -> None:
+    """A stale full-file writer never overwrites another process's edit."""
+    first = ReviewState.load(_layout(tmp_path))
+    second = ReviewState.load(_layout(tmp_path))
+    assert first.mark_reviewed("m", ("first",))
+    external_bytes = first.path.read_bytes()
+
+    assert not _persist_review_before_transition(
+        second,
+        "m",
+        ("second",),
+    )
+    assert second.path.read_bytes() == external_bytes
+    assert not second.is_reviewed("m", ("second",))
+
+
+def test_review_state_lock_path_is_canonical_sibling(tmp_path: Path) -> None:
+    state_path = tmp_path / "review_state.json"
+
+    assert review_state_lock_path(state_path) == (
+        tmp_path / ".review_state.json.lock"
+    )
+
+
+def test_review_state_preserves_compatible_legacy_extensions(
+    tmp_path: Path,
+) -> None:
+    """Scoped progress updates preserve unknown module fields and entries."""
+    state = ReviewState.load(_layout(tmp_path))
+    state.path.parent.mkdir(parents=True, exist_ok=True)
+    state.path.write_text(
+        '{"m":{"reviewed":[],"last":null,"legacy_note":"keep"},'
+        '"opaque":"keep-verbatim"}',
+        encoding="utf-8",
+    )
+    state = ReviewState.load(_layout(tmp_path))
+
+    assert state.mark_reviewed("m", ("g1",))
+    payload = json.loads(state.path.read_text(encoding="utf-8"))
+    assert payload["m"]["legacy_note"] == "keep"
+    assert payload["opaque"] == "keep-verbatim"
+
+
+def test_review_state_load_and_auto_selection_are_write_free(
+    tmp_path: Path,
+) -> None:
+    """Loading state and choosing an in-memory first row creates no file."""
+    state = ReviewState.load(_layout(tmp_path))
+    selected = ["group-a", "group-b"][0]
+
+    assert selected == "group-a"
+    assert state.reviewed_count("m") == 0
+    assert not state.path.exists()
 
 
 def test_review_state_reset_when_file_cleared(tmp_path: Path) -> None:

@@ -9,6 +9,7 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
+from collections.abc import Callable
 from typing import Any, Mapping
 
 import pandas as pd
@@ -20,7 +21,11 @@ from ._adapter import FigureAdapter
 from ._analysis_registry import AnalysisRegistry
 from ._bindings import AnalysisInput, MeasurementInput, PlotBinding, PlotInput
 from ._output import normalize_plot_output
-from ._writer import publish_plot_output, safe_path_component
+from ._writer import (
+    PlotPublicationBlocked,
+    publish_plot_output,
+    safe_path_component,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +54,8 @@ class PlotCoordinator:
         plots_base: Explicit resolved plots directory. GUI callers use their
             :class:`BundleLayout` path so standalone deliverables bundles do
             not acquire a second ``deliverables`` segment.
+        publication_guard: Optional GUI compare-and-set predicate forwarded
+            to the transactional plot writer. CLI callers omit it.
     """
 
     def __init__(
@@ -57,6 +64,7 @@ class PlotCoordinator:
         output_dir: Path,
         *,
         plots_base: Path | None = None,
+        publication_guard: Callable[[], bool] | None = None,
     ) -> None:
         self._pipeline = pipeline
         self._plots_base = (
@@ -64,6 +72,7 @@ class PlotCoordinator:
             if plots_base is not None
             else plots_dir(Path(output_dir))
         )
+        self._publication_guard = publication_guard
 
     def emit_image(
         self,
@@ -327,6 +336,7 @@ class PlotCoordinator:
             directory,
             plot_id=binding.id,
             plot_class=type(binding.plot).__name__,
+            publication_guard=self._publication_guard,
         )
 
     def _publish_image_value(
@@ -350,16 +360,29 @@ class PlotCoordinator:
                 base / output_stem,
                 plot_id=binding.id,
                 plot_class=type(binding.plot).__name__,
+                publication_guard=self._publication_guard,
             )
             return
+        self._require_publication()
         destination = base / f"{output_stem}.png"
         destination.parent.mkdir(parents=True, exist_ok=True)
         temporary = destination.parent / f".{destination.name}.{uuid.uuid4().hex}.tmp"
         try:
             FigureAdapter.save_png(output.pages[0].figure, temporary)
+            self._require_publication()
             os.replace(temporary, destination)
         finally:
             temporary.unlink(missing_ok=True)
+
+    def _require_publication(self) -> None:
+        """Fail closed immediately before a custom image-plot write."""
+        if (
+            self._publication_guard is not None
+            and not self._publication_guard()
+        ):
+            raise PlotPublicationBlocked(
+                "Plot publication blocked because its output snapshot changed."
+            )
 
 
 def _image_output_stem(dataset: str, image_stem: str) -> str:

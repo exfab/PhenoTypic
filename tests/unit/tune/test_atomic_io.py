@@ -85,6 +85,31 @@ def test_atomic_write_text_failure_no_partial_file_when_target_absent(
     assert _no_tmp_debris(tmp_path)
 
 
+def test_atomic_write_bytes_pre_replace_failure_cleans_synced_temp(tmp_path):
+    target = tmp_path / "blob.bin"
+    target.write_bytes(b"ORIGINAL")
+    saw_complete_temp = False
+
+    def _block_replace() -> None:
+        nonlocal saw_complete_temp
+        temps = list(tmp_path.glob(".blob.bin.*.tmp"))
+        assert len(temps) == 1
+        assert temps[0].read_bytes() == b"NEW CONTENT"
+        saw_complete_temp = True
+        raise RuntimeError("publication blocked")
+
+    with pytest.raises(RuntimeError, match="publication blocked"):
+        atomic_write_bytes(
+            target,
+            b"NEW CONTENT",
+            pre_replace=_block_replace,
+        )
+
+    assert saw_complete_temp
+    assert target.read_bytes() == b"ORIGINAL"
+    assert _no_tmp_debris(tmp_path)
+
+
 # --- JournalStudyStore.to_parquet atomicity -----------------------------------
 
 

@@ -4,7 +4,7 @@ Top-level shape (vertical stack):
 
 1. Control strip — category-chip container, good-baseline toggle
    (All unlabeled / Verified only), verified-good count badge, and the
-   "Save analysis report" button.
+   explicit "Publish all categories" button. Preview controls are read-only.
 2. Stale banner — hidden until the recompute callback surfaces a
    re-key/stale state.
 3. Content block (``ERROR_CONTENT_ID``) — the ranked cutoff
@@ -18,6 +18,7 @@ Top-level shape (vertical stack):
 The containers ship empty; the recompute callback (Task 6) fills the
 chips / table / figure / badges. No data reads happen at build time.
 """
+
 from __future__ import annotations
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
@@ -43,7 +44,7 @@ from phenotypic.gui.results_viewer._output_root import OutputRoot
 # ---------------------------------------------------------------------------
 
 
-def _build_control_strip() -> Component:
+def _build_control_strip(*, mutations_disabled: bool = False) -> Component:
     """Build the control strip: chips, baseline toggle, badge, save button."""
     good_mode_toggle = dbc.RadioItems(
         id=ids.ERROR_GOOD_MODE_TOGGLE_ID,
@@ -62,13 +63,13 @@ def _build_control_strip() -> Component:
         className="error-verified-badge",
         style={"display": "none"},
     )
-    save_button = dbc.Button(
-        "Save analysis report",
-        id=ids.ERROR_SAVE_REPORT_BTN_ID,
-        color="secondary",
+    publish_button = dbc.Button(
+        "Publish all categories",
+        id=ids.ERROR_PUBLISH_BTN_ID,
+        color="primary",
         size="sm",
-        outline=True,
         n_clicks=0,
+        disabled=mutations_disabled,
     )
     chips = html.Div(
         id=ids.ERROR_CATEGORY_CHIPS_ID,
@@ -104,7 +105,16 @@ def _build_control_strip() -> Component:
                     ),
                     good_mode_toggle,
                     verified_badge,
-                    html.Div(save_button, style={"marginLeft": "auto"}),
+                    html.Div(
+                        [
+                            html.Span(
+                                "Preview controls are read-only. ",
+                                className="text-muted small me-2",
+                            ),
+                            publish_button,
+                        ],
+                        style={"marginLeft": "auto"},
+                    ),
                 ],
                 className="error-baseline-row",
             ),
@@ -166,7 +176,11 @@ def _build_figure_block() -> Component:
     """Build the distribution graph + cutoff input + readout + filter spec."""
     figure = dcc.Graph(
         id=ids.ERROR_FIGURE_ID,
-        config={"editable": True, "edits": {"shapePosition": True}, "responsive": True},
+        config={
+            "editable": True,
+            "edits": {"shapePosition": True},
+            "responsive": True,
+        },
         style={"width": "100%", "height": "55vh"},
     )
     cutoff_input = html.Div(
@@ -194,7 +208,11 @@ def _build_figure_block() -> Component:
             ),
         ],
         className="error-cutoff-row",
-        style={"display": "flex", "alignItems": "center", "marginTop": "0.5rem"},
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "marginTop": "0.5rem",
+        },
     )
     filter_spec = html.Div(
         [
@@ -258,7 +276,10 @@ def _build_empty_state_card() -> Component:
                     "before the cutoff finder can rank measurements reliably.",
                     id=ids.ERROR_EMPTY_STATE_MSG_ID,
                     className="mb-0",
-                    style={"color": COLOR_MUTED, "fontSize": FONT_SIZE_BODY_SM},
+                    style={
+                        "color": COLOR_MUTED,
+                        "fontSize": FONT_SIZE_BODY_SM,
+                    },
                 ),
             ]
         ),
@@ -268,17 +289,22 @@ def _build_empty_state_card() -> Component:
     )
 
 
-def _build_save_toast() -> Component:
-    """Build the (hidden) save-confirmation toast."""
+def _build_publish_toast() -> Component:
+    """Build the hidden explicit-publication status toast."""
     return dbc.Toast(
-        "Saved error_analysis.html to deliverables/.",
-        id=ids.ERROR_SAVE_TOAST_ID,
-        header="Report saved",
+        "",
+        id=ids.ERROR_PUBLISH_TOAST_ID,
+        header="All categories published",
         icon="success",
         duration=4000,
         is_open=False,
         dismissable=True,
-        style={"position": "fixed", "top": "1rem", "right": "1rem", "zIndex": 1080},
+        style={
+            "position": "fixed",
+            "top": "1rem",
+            "right": "1rem",
+            "zIndex": 1080,
+        },
     )
 
 
@@ -300,6 +326,8 @@ def _build_stores() -> Component:
 def build_error_tab_body(
     output_root: OutputRoot,
     schema: MeasurementSchema,
+    *,
+    mutations_disabled: bool = False,
 ) -> Component:
     """Build the Error-analysis tab body.
 
@@ -321,11 +349,11 @@ def build_error_tab_body(
     return html.Div(
         [
             _build_stores(),
-            _build_control_strip(),
+            _build_control_strip(mutations_disabled=mutations_disabled),
             _build_stale_banner(),
             _build_content_block(),
             _build_empty_state_card(),
-            _build_save_toast(),
+            _build_publish_toast(),
         ],
         className="error-tab-root",
         style={

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import threading
+import time
+
 from playwright.sync_api import Page, expect
 
 from tests.e2e.gui.builder.conftest import (
@@ -53,6 +56,409 @@ def test_preview_here_selects_the_previewed_output_block(
 
     expect(page.locator(".linear-port-menu")).to_be_hidden()
     expect(page.locator(".linear-side-title")).to_have_text("BayesShrinkCorrector")
+
+
+def test_preview_mount_survives_reselection_and_marks_param_edit_stale(
+    page: Page, hub_url: str
+) -> None:
+    """Inspector updates preserve the mount and invalidate semantic edits."""
+
+    _open_builder(page, hub_url)
+    _click_palette_button(page, "GaussianBlur")
+    page.evaluate(
+        """() => {
+            const status = document.querySelector("#preview-status");
+            if (!status) throw new Error("preview status is not mounted");
+            window.__previewStatusHistory = [status.textContent];
+            new MutationObserver(() => {
+                window.__previewStatusHistory.push(status.textContent);
+            }).observe(status, {
+                childList: true,
+                characterData: true,
+                subtree: true,
+            });
+        }"""
+    )
+    page.locator("#btn-run-preview").click()
+    expect(page.locator("#preview-status")).to_contain_text(
+        "Preview complete",
+        timeout=20_000,
+    )
+    lifecycle = page.evaluate("() => window.__previewStatusHistory")
+    running_index = next(
+        i for i, message in enumerate(lifecycle) if "Preview running" in message
+    )
+    complete_index = next(
+        i for i, message in enumerate(lifecycle) if "Preview complete" in message
+    )
+    assert running_index < complete_index
+    expect(page.locator("#inspector-preview img")).to_have_count(
+        1,
+        timeout=20_000,
+    )
+    page.evaluate(
+        "() => { window.__previewMount = document.querySelector('#inspector-preview'); }"
+    )
+
+    page.locator(
+        "button.linear-node-title-button", has_text="GaussianBlur"
+    ).click()
+    expect(page.locator("#inspector-preview img")).to_have_count(1)
+    assert page.evaluate(
+        "() => window.__previewMount === document.querySelector('#inspector-preview')"
+    )
+
+    page.evaluate(
+        """() => {
+            const sigma = document.querySelector(
+                "#inspector-param-form input[type='number']"
+            );
+            if (!sigma) throw new Error("sigma input not mounted");
+            window.dash_clientside.set_props(
+                JSON.parse(sigma.id),
+                { value: 3, n_blur: 1 }
+            );
+        }"""
+    )
+    expect(page.locator("#inspector-preview")).to_have_text(
+        "Preview stale - run again"
+    )
+    expect(page.locator("#preview-status")).to_have_text(
+        "Preview stale - run again"
+    )
+    assert page.evaluate(
+        "() => window.__previewMount === document.querySelector('#inspector-preview')"
+    )
+
+    page.locator("#btn-run-preview").click()
+    expect(page.locator("#preview-status")).to_contain_text(
+        "Preview complete",
+        timeout=20_000,
+    )
+    expect(page.locator("#inspector-preview img")).to_have_count(
+        1,
+        timeout=20_000,
+    )
+
+
+def test_preview_running_renders_before_blocked_compute(
+    page: Page, hub_url: str
+) -> None:
+    """The launch response reaches the DOM before preview computation starts."""
+
+    compute_request_seen = threading.Event()
+
+    def delay_compute(route, request) -> None:  # noqa: ANN001
+        payload = request.post_data_json
+        if (
+            isinstance(payload, dict)
+            and payload.get("output") == "store-preview-result.data"
+        ):
+            compute_request_seen.set()
+            time.sleep(1.2)
+        route.continue_()
+
+    page.route("**/_dash-update-component", delay_compute)
+    _open_builder(page, hub_url)
+    _click_palette_button(page, "GaussianBlur")
+    page.evaluate(
+        """() => {
+            const status = document.querySelector("#preview-status");
+            window.__blockedPreviewHistory = [{
+                text: status.textContent,
+                at: performance.now(),
+            }];
+            new MutationObserver(() => {
+                window.__blockedPreviewHistory.push({
+                    text: status.textContent,
+                    at: performance.now(),
+                });
+            }).observe(status, {
+                childList: true,
+                characterData: true,
+                subtree: true,
+            });
+        }"""
+    )
+    page.locator("#btn-run-preview").click()
+
+    expect(page.locator("#preview-status")).to_contain_text(
+        "Preview complete",
+        timeout=20_000,
+    )
+    assert compute_request_seen.is_set()
+    history = page.evaluate("() => window.__blockedPreviewHistory")
+    running = next(item for item in history if "Preview running" in item["text"])
+    complete = next(item for item in history if "Preview complete" in item["text"])
+    assert complete["at"] - running["at"] >= 1_000
+
+
+def test_late_terminal_result_cannot_overwrite_newer_running_request(
+    page: Page, hub_url: str
+) -> None:
+    """The browser gate rejects A after B is already the current request."""
+
+    captured_requests: list[dict] = []
+
+    def capture_and_abort_compute(route, request) -> None:  # noqa: ANN001
+        payload = request.post_data_json
+        if (
+            isinstance(payload, dict)
+            and payload.get("output") == "store-preview-result.data"
+        ):
+            inputs = payload.get("inputs")
+            if isinstance(inputs, list):
+                work = next(
+                    (
+                        item.get("value")
+                        for item in inputs
+                        if item.get("id") == "store-preview-work"
+                    ),
+                    None,
+                )
+                if isinstance(work, dict):
+                    captured_requests.append(work)
+            route.abort()
+            return
+        route.continue_()
+
+    page.route("**/_dash-update-component", capture_and_abort_compute)
+    _open_builder(page, hub_url)
+    _click_palette_button(page, "GaussianBlur")
+
+    page.locator("#btn-run-preview").click()
+    for _ in range(20):
+        if len(captured_requests) >= 1:
+            break
+        page.wait_for_timeout(50)
+    assert len(captured_requests) == 1
+    page.locator("#btn-run-preview").click()
+    for _ in range(20):
+        if len(captured_requests) >= 2:
+            break
+        page.wait_for_timeout(50)
+    assert len(captured_requests) == 2
+    request_a, request_b = captured_requests
+    assert request_a["request_id"] != request_b["request_id"]
+
+    page.evaluate(
+        """(request) => {
+            window.dash_clientside.set_props("store-preview-status", {
+                data: {
+                    state: "running",
+                    message: "B remains authoritative",
+                    request_id: request.request_id,
+                    session_id: request.session_id,
+                    pipeline_revision: request.pipeline_revision,
+                },
+            });
+        }""",
+        request_b,
+    )
+    expect(page.locator("#preview-status")).to_have_text(
+        "B remains authoritative"
+    )
+
+    def terminal(request: dict, message: str) -> dict:
+        return {
+            "schema_version": 1,
+            "request_id": request["request_id"],
+            "session_id": request["session_id"],
+            "pipeline_revision": request["pipeline_revision"],
+            "state": "error",
+            "message": message,
+            "intermediate_keys": None,
+            "preview_snapshot": None,
+        }
+
+    page.evaluate(
+        """(result) => {
+            window.dash_clientside.set_props(
+                "store-preview-result",
+                {data: result}
+            );
+        }""",
+        terminal(request_a, "STALE A MUST NOT RENDER"),
+    )
+    page.wait_for_timeout(250)
+    expect(page.locator("#preview-status")).to_have_text(
+        "B remains authoritative"
+    )
+
+    page.evaluate(
+        """(result) => {
+            window.dash_clientside.set_props(
+                "store-preview-result",
+                {data: result}
+            );
+        }""",
+        terminal(request_b, "B terminal accepted"),
+    )
+    expect(page.locator("#preview-status")).to_have_text("B terminal accepted")
+
+
+def test_same_preview_work_is_consumed_once_with_reversed_responses(
+    page: Page, hub_url: str
+) -> None:
+    """Duplicate WORK returns first but cannot publish a second generation."""
+
+    captured_payloads: list[dict] = []
+
+    def capture_initial_work(route, request) -> None:  # noqa: ANN001
+        payload = request.post_data_json
+        if (
+            isinstance(payload, dict)
+            and payload.get("output") == "store-preview-result.data"
+            and any(
+                isinstance(item.get("value"), dict)
+                for item in payload.get("inputs", [])
+            )
+        ):
+            captured_payloads.append(payload)
+            route.abort()
+            return
+        route.continue_()
+
+    page.route("**/_dash-update-component", capture_initial_work)
+    _open_builder(page, hub_url)
+    _click_palette_button(page, "GaussianBlur")
+    page.locator("#btn-run-preview").click()
+    for _ in range(20):
+        if captured_payloads:
+            break
+        page.wait_for_timeout(50)
+    assert len(captured_payloads) == 1
+    request_payload = captured_payloads[0]
+    work_request = request_payload["inputs"][0]["value"]
+    page.unroute("**/_dash-update-component", capture_initial_work)
+
+    responses = page.evaluate(
+        """async (payload) => {
+            const endpoint = new URL(
+                "_dash-update-component",
+                window.location.href
+            ).toString();
+            const send = async () => {
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(payload),
+                });
+                return {
+                    at: performance.now(),
+                    body: await response.json(),
+                };
+            };
+            const first = send();
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            const duplicate = send();
+            return Promise.all([first, duplicate]);
+        }""",
+        request_payload,
+    )
+    first, duplicate = responses
+    assert duplicate["at"] < first["at"]
+    assert duplicate["body"] == {"multi": True, "response": {}}
+    result = first["body"]["response"]["store-preview-result"]["data"]
+    assert result["state"] == "complete"
+    assert result["preview_snapshot"]["preview_generation"] == 1
+
+    page.evaluate(
+        """(result) => {
+            window.dash_clientside.set_props(
+                "store-preview-result",
+                {data: result}
+            );
+        }""",
+        result,
+    )
+    expect(page.locator("#preview-status")).to_contain_text("Preview complete")
+    expect(page.locator("#inspector-preview img")).to_have_count(1)
+    terminal_text = page.locator("#preview-status").inner_text()
+
+    page.evaluate(
+        """() => {
+            window.dash_clientside.set_props(
+                "store-preview-work",
+                {data: null}
+            );
+        }"""
+    )
+    page.wait_for_timeout(100)
+    page.evaluate(
+        """(request) => {
+            window.dash_clientside.set_props(
+                "store-preview-work",
+                {data: request}
+            );
+        }""",
+        work_request,
+    )
+    page.wait_for_timeout(300)
+    expect(page.locator("#preview-status")).to_have_text(terminal_text)
+
+    page.locator(
+        "button.linear-node-title-button", has_text="InputImage"
+    ).click()
+    page.locator(
+        "button.linear-node-title-button", has_text="GaussianBlur"
+    ).click()
+    expect(page.locator("#inspector-preview img")).to_have_count(1)
+
+
+def test_preview_running_transitions_to_error(
+    page: Page, hub_url: str
+) -> None:
+    """A failed computation retains its visible running-to-error lifecycle."""
+
+    _open_builder(page, hub_url)
+    _click_palette_button(page, "GaussianBlur")
+    page.locator("#btn-run-preview").click()
+    expect(page.locator("#preview-status")).to_contain_text(
+        "Preview complete",
+        timeout=20_000,
+    )
+    preview_image = page.locator("#inspector-preview img")
+    expect(preview_image).to_have_count(1)
+    published_src = preview_image.get_attribute("src")
+    assert published_src
+    page.evaluate(
+        """() => {
+            const status = document.querySelector("#preview-status");
+            if (!status) throw new Error("preview status is not mounted");
+            window.__previewStatusHistory = [status.textContent];
+            new MutationObserver(() => {
+                window.__previewStatusHistory.push(status.textContent);
+            }).observe(status, {
+                childList: true,
+                characterData: true,
+                subtree: true,
+            });
+            window.dash_clientside.set_props(
+                "store-image-path",
+                {data: "/definitely/missing/phenotypic-preview.tiff"}
+            );
+        }"""
+    )
+    page.locator("#btn-run-preview").click()
+
+    expect(page.locator("#preview-status")).to_have_class(
+        "small text-danger mt-2",
+        timeout=20_000,
+    )
+    lifecycle = page.evaluate("() => window.__previewStatusHistory")
+    running_index = next(
+        i for i, message in enumerate(lifecycle) if "Preview running" in message
+    )
+    error_index = next(
+        i
+        for i, message in enumerate(lifecycle)
+        if message
+        and "Preview running" not in message
+        and i > running_index
+    )
+    assert running_index < error_index
+    expect(preview_image).to_have_attribute("src", published_src)
 
 
 def test_linear_map_source_and_connectors_align(page: Page, hub_url: str) -> None:
@@ -324,6 +730,35 @@ def test_new_pipeline_side_target_drills_and_breadcrumb_returns(
         "FilamentousFungiDetector"
     )
     expect(page.locator(".linear-side-value-label")).to_have_text("ImagePipeline")
+
+
+def test_scalar_aux_replace_keeps_operation_off_main_spine(
+    page: Page,
+    hub_url: str,
+) -> None:
+    """Replace consumes the exact scalar side target across a palette click."""
+
+    _open_builder(page, hub_url)
+    _click_palette_button(page, "FilamentousFungiDetector")
+    page.locator("#btn-inspector-slideover-toggle").click()
+    page.locator(
+        'button.linear-side-param-port[aria-label="Fill inoculum_detector"]'
+    ).click()
+    page.get_by_role("button", name="OtsuDetector", exact=True).click()
+    expect(page.locator(".linear-side-value-label")).to_have_text("OtsuDetector")
+    assert _linear_node_titles(page) == [
+        "InputImage",
+        "FilamentousFungiDetector",
+    ]
+
+    page.get_by_role("button", name="Replace", exact=True).click()
+    page.get_by_role("button", name="MeanDetector", exact=True).click()
+
+    expect(page.locator(".linear-side-value-label")).to_have_text("MeanDetector")
+    assert _linear_node_titles(page) == [
+        "InputImage",
+        "FilamentousFungiDetector",
+    ]
 
 
 def test_retired_drag_and_wire_stores_are_inert(page: Page, hub_url: str) -> None:

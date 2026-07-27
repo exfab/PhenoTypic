@@ -37,6 +37,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from phenotypic.gui.shell._metadata_context import resolve_metadata_csv
+from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.sdk_.slurm import parse_slurm_time
 from phenotypic.sdk_.typing_ import ExecutionMode
 
 
@@ -44,6 +47,7 @@ __all__ = [
     "RunConsoleState",
     "run_state_to_json",
     "run_state_from_json",
+    "state_from_controls",
     "to_argv",
 ]
 
@@ -92,6 +96,8 @@ class RunConsoleState:
             ``cpus_per_task`` (int), ``gpus`` (int), and ``extra`` — a
             ``dict[str, str]`` of free-form key/value pairs that are
             forwarded as additional ``--slurm k=v`` repeats.
+        gpu_slurm_args: Ordered GPU-stage SLURM delta ``key=value`` tokens.
+        gpu_shards: Number of whole-GPU Stage-2 shard tasks.
     """
 
     pipeline_path: str | None = None
@@ -103,6 +109,8 @@ class RunConsoleState:
     resume: bool = False
     advanced_args: dict[str, Any] = field(default_factory=dict)
     slurm_args: dict[str, Any] = field(default_factory=dict)
+    gpu_slurm_args: tuple[str, ...] = ()
+    gpu_shards: int = 1
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +143,8 @@ def run_state_to_json(state: RunConsoleState) -> dict[str, Any]:
         "resume": bool(state.resume),
         "advanced_args": dict(state.advanced_args or {}),
         "slurm_args": _slurm_args_to_json(state.slurm_args or {}),
+        "gpu_slurm_args": list(state.gpu_slurm_args),
+        "gpu_shards": state.gpu_shards,
     }
 
 
@@ -166,6 +176,10 @@ def run_state_from_json(payload: dict[str, Any]) -> RunConsoleState:
     slurm_args: dict[str, Any] = (
         _slurm_args_to_json(slurm_raw) if isinstance(slurm_raw, dict) else {}
     )
+    gpu_slurm_args = _gpu_slurm_args_from_json(
+        payload.get("gpu_slurm_args", ())
+    )
+    gpu_shards = _positive_int_or_default(payload.get("gpu_shards"), default=1)
 
     return RunConsoleState(
         pipeline_path=_coerce_optional_str(payload.get("pipeline_path")),
@@ -177,6 +191,8 @@ def run_state_from_json(payload: dict[str, Any]) -> RunConsoleState:
         resume=bool(payload.get("resume", False)),
         advanced_args=advanced_args,
         slurm_args=slurm_args,
+        gpu_slurm_args=gpu_slurm_args,
+        gpu_shards=gpu_shards,
     )
 
 
@@ -223,6 +239,272 @@ def _slurm_args_to_json(slurm_args: dict[str, Any]) -> dict[str, Any]:
         else:
             out[key] = value
     return out
+
+
+def _gpu_slurm_args_from_json(value: object) -> tuple[str, ...]:
+    """Return a tolerant tuple of GPU-stage ``key=value`` tokens."""
+    if isinstance(value, dict):
+        return tuple(
+            f"{key}={item}"
+            for key, item in value.items()
+            if key is not None and item is not None
+        )
+    if isinstance(value, str):
+        candidates: object = value.splitlines()
+    else:
+        candidates = value
+    if not isinstance(candidates, (list, tuple)):
+        return ()
+    return tuple(
+        text
+        for item in candidates
+        if (text := str(item).strip())
+    )
+
+
+def _positive_int_or_default(value: object, *, default: int) -> int:
+    """Return a positive integer or ``default`` for tolerant preset loading."""
+    try:
+        parsed = _coerce_optional_int(value, field_name="value", minimum=1)
+    except ValueError:
+        return default
+    return default if parsed is None else parsed
+
+
+def _coerce_optional_int(
+    value: object,
+    *,
+    field_name: str,
+    minimum: int,
+) -> int | None:
+    """Coerce one optional Dash numeric control to an integer."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be an integer >= {minimum}")
+    if not isinstance(value, (int, float, str)):
+        raise ValueError(f"{field_name} must be an integer >= {minimum}")
+    try:
+        parsed = int(value)
+    except (OverflowError, ValueError) as exc:
+        raise ValueError(
+            f"{field_name} must be an integer >= {minimum}"
+        ) from exc
+    if isinstance(value, float) and not value.is_integer():
+        raise ValueError(f"{field_name} must be an integer >= {minimum}")
+    if isinstance(value, str) and str(parsed) != value.strip():
+        raise ValueError(f"{field_name} must be an integer >= {minimum}")
+    if parsed < minimum:
+        raise ValueError(f"{field_name} must be an integer >= {minimum}")
+    return parsed
+
+
+def _resolve_control_path(
+    value: object,
+    *,
+    field_name: str,
+    sandbox: SandboxRoot,
+) -> str | None:
+    """Resolve an optional raw path control through ``sandbox``."""
+    text = _coerce_optional_str(value)
+    if text is None:
+        return None
+    try:
+        return str(sandbox.resolve(text))
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError(f"{field_name} is outside the GUI sandbox") from exc
+
+
+def _normalize_image_type(value: object) -> str | None:
+    """Normalize the optional CLI image class selected by the form."""
+    text = _coerce_optional_str(value)
+    if text is None:
+        return None
+    normalized = text.casefold()
+    if normalized == "image":
+        return "Image"
+    if normalized == "gridimage":
+        return "GridImage"
+    raise ValueError("image_type must be 'Image' or 'GridImage'")
+
+
+def _parse_key_value_lines(
+    value: object,
+    *,
+    field_name: str,
+) -> tuple[str, ...]:
+    """Parse and validate newline-delimited ``key=value`` controls."""
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        raw_items = value.splitlines()
+    elif isinstance(value, (list, tuple)):
+        raw_items = list(value)
+    else:
+        raise ValueError(f"{field_name} must contain key=value entries")
+
+    tokens: list[str] = []
+    for raw_item in raw_items:
+        text = str(raw_item).strip()
+        if not text:
+            continue
+        key, separator, raw_value = text.partition("=")
+        key = key.strip()
+        item_value = raw_value.strip()
+        if not separator or not key or not item_value:
+            raise ValueError(
+                f"{field_name} entries must use nonempty key=value syntax"
+            )
+        if key in {"time", "slurm_time"}:
+            item_value = parse_slurm_time(item_value) or ""
+        tokens.append(f"{key}={item_value}")
+    return tuple(tokens)
+
+
+def state_from_controls(  # noqa: PLR0913
+    *,
+    pipeline_path: object,
+    input_dir: object,
+    output_dir: object,
+    mode: object,
+    flags: object,
+    sample: object,
+    nrows: object,
+    ncols: object,
+    image_type: object,
+    workers: object,
+    log_level: object,
+    slurm_partition: object,
+    slurm_time: object,
+    slurm_mem: object,
+    slurm_cpus: object,
+    slurm_gpus: object,
+    slurm_extra: object,
+    metadata_payload: object,
+    sandbox: SandboxRoot,
+    gpu_slurm: object = None,
+    gpu_shards: object = 1,
+) -> RunConsoleState:
+    """Build authoritative run state directly from raw Dash controls.
+
+    Args:
+        pipeline_path: Pipeline picker value.
+        input_dir: Input-directory picker value.
+        output_dir: Output-directory picker value.
+        mode: Visible execution mode, ``"local"`` or ``"slurm"``.
+        flags: Visible checklist values (``dry_run`` and ``resume``).
+        sample: Optional positive sample size.
+        nrows: Optional positive grid row count.
+        ncols: Optional positive grid column count.
+        image_type: Optional CLI image class.
+        workers: Optional positive local worker count.
+        log_level: Optional presentation-only log level.
+        slurm_partition: Optional CPU-profile partition.
+        slurm_time: Optional positive minutes or SLURM duration.
+        slurm_mem: Optional CPU-profile memory request.
+        slurm_cpus: Optional positive CPU count.
+        slurm_gpus: Optional nonnegative common GPU count.
+        slurm_extra: Optional CPU-profile ``key=value`` lines.
+        metadata_payload: Shared metadata-context payload.
+        sandbox: Frozen GUI sandbox used to resolve every path.
+        gpu_slurm: Optional GPU-stage delta ``key=value`` lines.
+        gpu_shards: Positive number of whole-GPU Stage-2 shards.
+
+    Returns:
+        A validated :class:`RunConsoleState` reflecting the controls supplied
+        in this call, without consulting a derived browser store.
+
+    Raises:
+        ValueError: If a path escapes the sandbox, a typed control is invalid,
+            or SLURM mode has no common CPU profile.
+    """
+    if mode not in {"local", "slurm"}:
+        raise ValueError("mode must be 'local' or 'slurm'")
+    execution_mode: ExecutionMode = "slurm" if mode == "slurm" else "local"
+
+    flag_values = (
+        {
+            str(item)
+            for item in flags
+            if isinstance(item, str)
+        }
+        if isinstance(flags, (list, tuple, set, frozenset))
+        else set()
+    )
+
+    advanced_candidates: dict[str, object] = {
+        "sample": _coerce_optional_int(
+            sample, field_name="sample", minimum=1
+        ),
+        "nrows": _coerce_optional_int(
+            nrows, field_name="nrows", minimum=1
+        ),
+        "ncols": _coerce_optional_int(
+            ncols, field_name="ncols", minimum=1
+        ),
+        "image_type": _normalize_image_type(image_type),
+        "workers": _coerce_optional_int(
+            workers, field_name="workers", minimum=1
+        ),
+        "log_level": _coerce_optional_str(log_level),
+    }
+    advanced_args = {
+        key: value
+        for key, value in advanced_candidates.items()
+        if value is not None
+    }
+
+    cpu_extra_tokens = _parse_key_value_lines(
+        slurm_extra, field_name="Extra SLURM"
+    )
+    cpu_extra = dict(token.split("=", 1) for token in cpu_extra_tokens)
+    canonical_time = parse_slurm_time(slurm_time)
+    typed_slurm: dict[str, object] = {
+        "partition": _coerce_optional_str(slurm_partition),
+        "time": canonical_time,
+        "mem": _coerce_optional_str(slurm_mem),
+        "cpus_per_task": _coerce_optional_int(
+            slurm_cpus, field_name="SLURM CPUs per task", minimum=1
+        ),
+        "gpus": _coerce_optional_int(
+            slurm_gpus, field_name="SLURM GPUs", minimum=0
+        ),
+    }
+    slurm_args = {
+        key: value for key, value in typed_slurm.items() if value is not None
+    }
+    if cpu_extra:
+        slurm_args["extra"] = cpu_extra
+    if execution_mode == "slurm" and not slurm_args:
+        raise ValueError("SLURM mode requires a nonempty CPU SLURM profile")
+
+    metadata_csv = resolve_metadata_csv(sandbox, metadata_payload)
+    return RunConsoleState(
+        pipeline_path=_resolve_control_path(
+            pipeline_path, field_name="pipeline_path", sandbox=sandbox
+        ),
+        input_dir=_resolve_control_path(
+            input_dir, field_name="input_dir", sandbox=sandbox
+        ),
+        output_dir=_resolve_control_path(
+            output_dir, field_name="output_dir", sandbox=sandbox
+        ),
+        metadata_csv=str(metadata_csv) if metadata_csv is not None else None,
+        mode=execution_mode,
+        dry_run="dry_run" in flag_values,
+        resume="resume" in flag_values,
+        advanced_args=advanced_args,
+        slurm_args=slurm_args,
+        gpu_slurm_args=_parse_key_value_lines(
+            gpu_slurm, field_name="GPU-stage SLURM"
+        ),
+        gpu_shards=(
+            _coerce_optional_int(
+                gpu_shards, field_name="GPU shards", minimum=1
+            )
+            or 1
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------

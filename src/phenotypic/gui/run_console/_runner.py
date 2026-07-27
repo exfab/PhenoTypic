@@ -33,9 +33,11 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import IO, Iterable
+from typing import IO, Callable, Iterable
+from uuid import UUID
 
 from phenotypic.gui._config import RUN_LOG_DIRNAME, STDOUT_LOG
+from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +60,12 @@ _TERM_GRACE_SECONDS = 10.0
 #: empty bytes. We use ``readline``'s blocking semantics instead, but a
 #: timeout-style fall-back exists for race conditions on Windows.
 _TEE_THREAD_NAME_PREFIX = "phenotypic-runner-tee-"
+_EXIT_THREAD_NAME_PREFIX = "phenotypic-runner-exit-"
+_DEFAULT_RETENTION_LIMIT = 64
+#: A descendant may inherit the child's stdout descriptor and keep the pipe
+#: open after the observed process exits. Terminal state must not wait for
+#: that unrelated descendant, so log-drain joining is deliberately bounded.
+_TEE_DRAIN_GRACE_SECONDS = 0.25
 
 
 @dataclass
@@ -76,12 +84,17 @@ class LocalRunHandle:
         buffer_lock: Guards the deque against concurrent
             ``append`` (tee thread) and ``snapshot`` (Dash callback)
             calls.
+        generation: Durable launch generation used by every lifecycle access
+            and the exit callback.
+        exit_thread: Observer that waits for process termination.
+        finished_at: Monotonic completion timestamp used for bounded eviction.
     """
 
     run_id: str
     output_dir: Path
     process: subprocess.Popen[bytes]
     stdout_log_path: Path
+    generation: UUID
     buffer: "deque[str]" = field(default_factory=lambda: deque(maxlen=_LOG_BUFFER_MAXLEN))
     buffer_lock: threading.Lock = field(default_factory=threading.Lock)
     #: Daemon thread teeing ``process.stdout`` into ``buffer`` and disk.
@@ -89,6 +102,13 @@ class LocalRunHandle:
     #: fully drained — ``process.wait()`` only signals subprocess exit; the
     #: OS pipe may still hold buffered bytes the tee thread has yet to read.
     tee_thread: threading.Thread | None = None
+    exit_thread: threading.Thread | None = None
+    started_at: float = field(default_factory=time.monotonic)
+    finished_at: float | None = None
+
+
+ExitCallback = Callable[[LocalRunHandle, int], None]
+ThreadFactory = Callable[..., threading.Thread]
 
 
 class LocalRunner:
@@ -109,9 +129,18 @@ class LocalRunner:
     _instances: list["LocalRunner"] = []
     _atexit_lock = threading.Lock()
 
-    def __init__(self) -> None:
-        self._handles: dict[str, LocalRunHandle] = {}
+    def __init__(
+        self,
+        *,
+        retention_limit: int = _DEFAULT_RETENTION_LIMIT,
+        thread_factory: ThreadFactory = threading.Thread,
+    ) -> None:
+        if retention_limit < 1:
+            raise ValueError("retention_limit must be at least 1")
+        self._handles: dict[str, LocalRunHandle | None] = {}
         self._lock = threading.Lock()
+        self._retention_limit = retention_limit
+        self._thread_factory = thread_factory
         with LocalRunner._atexit_lock:
             LocalRunner._instances.append(self)
             if not LocalRunner._atexit_registered:
@@ -130,6 +159,8 @@ class LocalRunner:
         output_dir: Path,
         cwd: Path | None = None,
         env: dict[str, str] | None = None,
+        generation: UUID,
+        on_exit: ExitCallback | None = None,
     ) -> LocalRunHandle:
         """Spawn ``argv`` and tee its stdout.
 
@@ -143,6 +174,11 @@ class LocalRunner:
             cwd: Subprocess working directory. Defaults to ``output_dir``.
             env: Subprocess environment. Defaults to inheriting the
                 parent's full environment.
+            generation: Required durable launch generation. Every later
+                lifecycle access must present the same value.
+            on_exit: Callback invoked exactly once by the lifecycle observer
+                after the process exits. It receives the retained handle and
+                integer return code.
 
         Returns:
             :class:`LocalRunHandle` with the live process + ring buffer.
@@ -157,21 +193,39 @@ class LocalRunner:
         # spawn fails we drop the reservation in the ``except`` block so
         # a retry can proceed.
         with self._lock:
+            existing = self._handles.get(run_id)
             if run_id in self._handles:
-                raise RuntimeError(f"run_id already running: {run_id!r}")
+                can_replace_generation = (
+                    existing is not None
+                    and existing.process.poll() is not None
+                    and generation != existing.generation
+                )
+                if not can_replace_generation:
+                    raise RuntimeError(
+                        f"run_id already running or retained: {run_id!r}"
+                    )
+            # Starting a new generation for this output evicts its finished
+            # predecessor only now, preserving logs/handles until replacement.
             self._handles[run_id] = None  # type: ignore[assignment]
 
+        process: subprocess.Popen[bytes] | None = None
+        handle: LocalRunHandle | None = None
         try:
             log_dir = output_dir / RUN_LOG_DIRNAME
             log_dir.mkdir(parents=True, exist_ok=True)
             log_path = log_dir / STDOUT_LOG
 
+            child_env = dict(os.environ if env is None else env)
+            # The token is the only GUI-owned value added to the inherited
+            # child environment. It is never logged, and an explicitly
+            # supplied test/worker environment remains otherwise unchanged.
+            child_env[GUI_RECORD_GENERATION_ENV_VAR] = str(generation)
             process = subprocess.Popen(
                 argv,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,  # merge so dashboard sees both
                 cwd=str(cwd or output_dir),
-                env=env,
+                env=child_env,
                 # ``bufsize=0`` (unbuffered binary) so ``readline``
                 # returns full lines as the subprocess flushes them.
                 bufsize=0,
@@ -182,6 +236,7 @@ class LocalRunner:
                 output_dir=output_dir,
                 process=process,
                 stdout_log_path=log_path,
+                generation=generation,
             )
         except BaseException:
             with self._lock:
@@ -191,43 +246,79 @@ class LocalRunner:
         with self._lock:
             self._handles[run_id] = handle
 
-        thread = threading.Thread(
-            target=self._tee_loop,
-            args=(handle,),
-            name=f"{_TEE_THREAD_NAME_PREFIX}{run_id}",
-            daemon=True,
-        )
-        handle.tee_thread = thread
-        thread.start()
+        try:
+            tee_thread = self._thread_factory(
+                target=self._tee_loop,
+                args=(handle,),
+                name=f"{_TEE_THREAD_NAME_PREFIX}{run_id}",
+                daemon=True,
+            )
+            exit_thread = self._thread_factory(
+                target=self._observe_exit,
+                args=(handle, on_exit),
+                name=f"{_EXIT_THREAD_NAME_PREFIX}{run_id}",
+                daemon=True,
+            )
+            handle.tee_thread = tee_thread
+            handle.exit_thread = exit_thread
+            tee_thread.start()
+            exit_thread.start()
+        except BaseException:
+            # A child without an exit observer is unsafe. Terminate and reap
+            # it synchronously, release the reservation/handle, and preserve
+            # any log bytes already drained by the tee thread.
+            self._terminate_and_reap(handle, grace_seconds=1.0)
+            if handle.tee_thread is not None and handle.tee_thread.is_alive():
+                handle.tee_thread.join(timeout=1.0)
+            with self._lock:
+                if self._handles.get(run_id) is handle:
+                    self._handles.pop(run_id, None)
+            raise
+
+        with self._lock:
+            self._evict_finished_handles_locked(protected_run_id=run_id)
         logger.debug("LocalRunner.start: run_id=%s pid=%d", run_id, process.pid)
         return handle
 
-    def get(self, run_id: str) -> LocalRunHandle | None:
-        """Return the handle for ``run_id``, or ``None`` if absent.
+    def get(self, run_id: str, *, generation: UUID) -> LocalRunHandle | None:
+        """Return the exact generation handle, or ``None`` if absent/stale.
 
         Returns ``None`` for both "never registered" and "reservation
         held but ``Popen`` not yet completed" (the reservation window
-        in ``start()``). Callers that need to distinguish should use
-        :meth:`list_run_ids`.
+        in ``start()``), as well as a mismatched retained generation.
         """
         with self._lock:
             handle = self._handles.get(run_id)
-            return handle if handle is not None else None
+            if handle is None or handle.generation != generation:
+                return None
+            return handle
 
-    def list_run_ids(self) -> list[str]:
-        """Return live + reserved run_ids. May include reservations from
-        in-flight ``start()`` calls."""
-        with self._lock:
-            return list(self._handles.keys())
-
-    def is_running(self, run_id: str) -> bool:
-        handle = self.get(run_id)
+    def is_running(
+        self,
+        run_id: str,
+        *,
+        generation: UUID,
+    ) -> bool:
+        """Return whether the exact retained generation is still running."""
+        handle = self.get(run_id, generation=generation)
         if handle is None:
             return False
         return handle.process.poll() is None
 
-    def stop(self, run_id: str, *, grace_seconds: float = _TERM_GRACE_SECONDS) -> bool:
+    def stop(
+        self,
+        run_id: str,
+        *,
+        generation: UUID,
+        grace_seconds: float = _TERM_GRACE_SECONDS,
+    ) -> bool:
         """Send SIGTERM, wait ``grace_seconds``, escalate to SIGKILL.
+
+        Args:
+            run_id: Stable registry identity.
+            generation: Required exact generation fence. A mismatched retained
+                handle is left untouched.
+            grace_seconds: Seconds to wait before escalating to SIGKILL.
 
         Note:
             This method **does not** update the :class:`RunRegistry`. The
@@ -242,7 +333,7 @@ class LocalRunner:
             ``True`` if a handle was found and termination was attempted;
             ``False`` if no live handle exists for ``run_id``.
         """
-        handle = self.get(run_id)
+        handle = self.get(run_id, generation=generation)
         if handle is None:
             return False
         proc = handle.process
@@ -275,18 +366,25 @@ class LocalRunner:
                 )
         return True
 
-    def snapshot_log(self, run_id: str, *, tail: int | None = None) -> list[str]:
+    def snapshot_log(
+        self,
+        run_id: str,
+        *,
+        generation: UUID,
+        tail: int | None = None,
+    ) -> list[str]:
         """Return a snapshot of the in-memory log buffer for ``run_id``.
 
         Args:
             run_id: Registry key.
+            generation: Required exact generation fence.
             tail: If non-None, return at most this many trailing lines.
 
         Returns:
             List of decoded log lines (newline-terminated). Empty list if
             ``run_id`` is unknown.
         """
-        handle = self.get(run_id)
+        handle = self.get(run_id, generation=generation)
         if handle is None:
             return []
         with handle.buffer_lock:
@@ -299,15 +397,15 @@ class LocalRunner:
             return []
         return lines[-tail:]
 
-    def reap(self, run_id: str) -> int | None:
-        """Drop the handle for a finished run; return its exit code.
+    def reap(self, run_id: str, *, generation: UUID) -> int | None:
+        """Explicitly drop a finished retained handle and return its exit code.
 
-        Idempotent: returns ``None`` if no handle exists or the process
-        is still running.
+        Idempotent: returns ``None`` if no matching generation exists or the
+        process is still running. A stale generation cannot reap a replacement.
         """
         with self._lock:
             handle = self._handles.get(run_id)
-            if handle is None:
+            if handle is None or handle.generation != generation:
                 return None
             rc = handle.process.poll()
             if rc is None:
@@ -353,24 +451,117 @@ class LocalRunner:
             except OSError:
                 pass
 
+    def _observe_exit(
+        self,
+        handle: LocalRunHandle,
+        on_exit: ExitCallback | None,
+    ) -> None:
+        """Wait for terminal process evidence and notify the owner once."""
+        returncode = handle.process.wait()
+        if handle.tee_thread is not None:
+            handle.tee_thread.join(timeout=_TEE_DRAIN_GRACE_SECONDS)
+        handle.finished_at = time.monotonic()
+        if on_exit is not None:
+            try:
+                on_exit(handle, returncode)
+            except Exception:
+                logger.exception(
+                    "local exit callback failed for run_id=%s generation=%s",
+                    handle.run_id,
+                    handle.generation,
+                )
+        with self._lock:
+            self._evict_finished_handles_locked(
+                protected_run_id=handle.run_id
+            )
+
+    @staticmethod
+    def _terminate_and_reap(
+        handle: LocalRunHandle,
+        *,
+        grace_seconds: float,
+    ) -> None:
+        """Best-effort terminate and synchronously reap one child."""
+        process = handle.process
+        if process.poll() is None:
+            try:
+                process.terminate()
+            except (ProcessLookupError, OSError):
+                pass
+        try:
+            process.wait(timeout=grace_seconds)
+        except subprocess.TimeoutExpired:
+            try:
+                process.kill()
+            except (ProcessLookupError, OSError):
+                pass
+            try:
+                process.wait(timeout=2.0)
+            except subprocess.TimeoutExpired:
+                logger.error(
+                    "process %s did not exit after observer-start cleanup",
+                    handle.run_id,
+                )
+
+    def _evict_finished_handles_locked(
+        self,
+        *,
+        protected_run_id: str,
+    ) -> None:
+        """Evict oldest finished handles until the retention bound holds."""
+        excess = len(self._handles) - self._retention_limit
+        if excess <= 0:
+            return
+        candidates = sorted(
+            (
+                handle
+                for run_id, handle in self._handles.items()
+                if run_id != protected_run_id
+                and handle is not None
+                and handle.process.poll() is not None
+            ),
+            key=lambda item: (
+                item.finished_at
+                if item.finished_at is not None
+                else item.started_at
+            ),
+        )
+        for handle in candidates[:excess]:
+            if self._handles.get(handle.run_id) is handle:
+                self._handles.pop(handle.run_id, None)
+
+    def _snapshot_handles_for_shutdown(self) -> list[LocalRunHandle]:
+        """Return current handles for process-exit cleanup only.
+
+        This private adapter is intentionally unscoped because process exit
+        must terminate every child generation. Interactive lifecycle callers
+        must use the generation-fenced public methods.
+        """
+        with self._lock:
+            return [
+                handle
+                for handle in self._handles.values()
+                if handle is not None
+            ]
+
     @classmethod
     def _atexit_cleanup_all(cls) -> None:
         """SIGTERM every live subprocess across every runner instance.
 
-        Snapshots both the instances list and each runner's run-id list
+        Snapshots both the instances list and each runner's retained handles
         once, before either loop. Otherwise a run registered between the
         first (terminate) loop and the second (wait) loop would land on
         the SIGKILL fast-path without first receiving a SIGTERM.
         """
         with cls._atexit_lock:
             instances = list(cls._instances)
-        runner_snapshots: dict[LocalRunner, list[str]] = {
-            runner: runner.list_run_ids() for runner in instances
+        runner_snapshots: dict[LocalRunner, list[LocalRunHandle]] = {
+            runner: runner._snapshot_handles_for_shutdown()
+            for runner in instances
         }
-        for runner, run_ids in runner_snapshots.items():
-            for run_id in run_ids:
-                handle = runner.get(run_id)
-                if handle is None or handle.process.poll() is not None:
+        for handles in runner_snapshots.values():
+            for handle in handles:
+                if handle.process.poll() is not None:
                     continue
                 try:
                     handle.process.terminate()
@@ -378,11 +569,8 @@ class LocalRunner:
                     pass
         # Best-effort short wait so terminating cleanly beats SIGKILL.
         deadline = time.monotonic() + 2.0
-        for runner, run_ids in runner_snapshots.items():
-            for run_id in run_ids:
-                handle = runner.get(run_id)
-                if handle is None:
-                    continue
+        for handles in runner_snapshots.values():
+            for handle in handles:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     break

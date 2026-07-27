@@ -43,7 +43,9 @@ its body in ``try / except`` so a callback can never crash the running app
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
+import math
 import time
 import uuid
 from copy import deepcopy
@@ -103,7 +105,13 @@ from phenotypic.gui.builder._modal_browser import (
     render_load_picker_body,
 )
 from phenotypic.gui.builder._param_form import parse_widget_value
-from phenotypic.gui.builder._session import PreviewRenderError, get_cache
+from phenotypic.gui.builder._session import (
+    PreviewGenerationReservation,
+    PreviewGenerationWriter,
+    PreviewKey,
+    PreviewRenderError,
+    get_cache,
+)
 from phenotypic.gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
@@ -124,7 +132,8 @@ from phenotypic.gui.builder._conversion_dag import from_pipeline_dag, to_pipelin
 from phenotypic.gui.builder._validation import validate
 from phenotypic.gui.builder._validation import Issue
 from phenotypic.gui.shell._ids import SHELL_SOURCE_IMAGE_ROOT_STORE
-from phenotypic.gui.shell._source_context import SOURCE_PAYLOAD_VERSION
+from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.gui.shell._source_context import resolve_source_image_root
 from phenotypic.sdk_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
 
 logger = logging.getLogger(__name__)
@@ -1431,6 +1440,29 @@ def _linear_param_info(
     return info.parameters.get(param)
 
 
+def _linear_replacement_param_info(
+    scope_dict: Dict[str, Any],
+    target: LinearTarget,
+) -> Optional[Any]:
+    """Return parameter metadata when a replacement target has exact shape."""
+
+    if target.block_id is None or target.param is None:
+        return None
+    consumer = _linear_block(scope_dict, target.block_id)
+    if consumer is None:
+        return None
+    param_info = _linear_param_info(consumer, target.param)
+    if param_info is None:
+        return None
+    is_list = bool(getattr(param_info, "is_list", False))
+    if is_list:
+        if target.kind != "parameter_slot" or target.slot is None:
+            return None
+    elif target.kind != "parameter" or target.slot is not None:
+        return None
+    return param_info
+
+
 def _linear_class_can_fill_param(class_name: str, param_info: Any) -> bool:
     """Return whether ``class_name`` can be used as a parameter value."""
 
@@ -2056,6 +2088,7 @@ DispatchKind: TypeAlias = Literal[
     "target_select",
     "target_menu_close",
     "linear_palette_add",
+    "linear_aux_replace_begin",
     "linear_delete_node_request",
     "linear_delete_node_confirm",
     "linear_node_move",
@@ -2246,6 +2279,7 @@ def _dispatch_state_update(
             if isinstance(segment, str)
         ]
         target = target_from_dict(payload.get("target", payload), breadcrumb_list)
+        out["pending_aux_replacement"] = None
         _linear_set_target(
             out,
             target,
@@ -2255,6 +2289,65 @@ def _dispatch_state_update(
 
     if kind == "target_menu_close":
         out["open_port_menu"] = None
+        return out
+
+    if kind == "linear_aux_replace_begin":
+        if _linear_reject_unsupported_edit(out):
+            return out
+        scope_path, linear_scope = _linear_current_scope(out)
+        if linear_scope is None:
+            return out
+        target = target_from_dict(payload.get("target", payload), scope_path)
+        expected_source = payload.get("source_block_id")
+        nonce = payload.get("nonce")
+        if (
+            target.kind not in {"parameter", "parameter_slot"}
+            or target.block_id is None
+            or target.param is None
+            or not isinstance(expected_source, str)
+            or not expected_source
+            or not isinstance(nonce, str)
+            or not nonce
+        ):
+            _queue_toast(
+                out,
+                "Replacement target is unavailable. Select Replace again.",
+                kind="warning",
+            )
+            out["pending_aux_replacement"] = None
+            return out
+        if _linear_replacement_param_info(linear_scope, target) is None:
+            _queue_toast(
+                out,
+                "Replacement target shape is invalid. Select Replace again.",
+                kind="warning",
+            )
+            out["pending_aux_replacement"] = None
+            return out
+        current_sources = {
+            edge.get("source_block_id")
+            for edge in _linear_edges_for_param(
+                linear_scope,
+                target.block_id,
+                target.param,
+                target.slot if target.kind == "parameter_slot" else None,
+            )
+        }
+        if current_sources != {expected_source}:
+            _queue_toast(
+                out,
+                "Replacement target changed. Select Replace again.",
+                kind="warning",
+            )
+            out["pending_aux_replacement"] = None
+            return out
+        _linear_set_target(out, target, open_menu=False)
+        out["pending_aux_replacement"] = {
+            "target": target_to_dict(target),
+            "source_block_id": expected_source,
+            "pipeline_revision": _pipeline_revision(out),
+            "nonce": nonce,
+        }
         return out
 
     if kind == "linear_palette_add":
@@ -2270,6 +2363,80 @@ def _dispatch_state_update(
         if linear_scope is None:
             return out
         _seed_input_image_dict(linear_scope)
+        pending_replacement = out.get("pending_aux_replacement")
+        if isinstance(pending_replacement, dict):
+            target = target_from_dict(
+                pending_replacement.get("target", {}),
+                scope_path,
+            )
+            expected_source = pending_replacement.get("source_block_id")
+            attempted_revision = pending_replacement.get("pipeline_revision")
+            nonce = pending_replacement.get("nonce")
+            if (
+                not isinstance(expected_source, str)
+                or not isinstance(nonce, str)
+                or not nonce
+                or attempted_revision != _pipeline_revision(out)
+                or target.scope_path != scope_path
+                or target.block_id is None
+                or target.param is None
+            ):
+                out["pending_aux_replacement"] = None
+                _queue_toast(
+                    out,
+                    "Replacement target is stale. Select Replace again.",
+                    kind="warning",
+                )
+                _linear_reset_target_to_continuation(out, scope_path)
+                return out
+            param_info = _linear_replacement_param_info(
+                linear_scope,
+                target,
+            )
+            if param_info is None:
+                out["pending_aux_replacement"] = None
+                _queue_toast(
+                    out,
+                    "Replacement target shape changed. Select Replace again.",
+                    kind="warning",
+                )
+                _linear_reset_target_to_continuation(out, scope_path)
+                return out
+            current_sources = {
+                edge.get("source_block_id")
+                for edge in _linear_edges_for_param(
+                    linear_scope,
+                    target.block_id,
+                    target.param,
+                    target.slot if target.kind == "parameter_slot" else None,
+                )
+            }
+            if current_sources != {expected_source}:
+                out["pending_aux_replacement"] = None
+                _queue_toast(
+                    out,
+                    "Replacement target changed. Select Replace again.",
+                    kind="warning",
+                )
+                _linear_reset_target_to_continuation(out, scope_path)
+                return out
+            if not _linear_class_can_fill_param(class_name, param_info):
+                _queue_toast(
+                    out,
+                    "Selected target does not accept that operation.",
+                    kind="warning",
+                )
+                return out
+            out["pending_aux_replacement"] = None
+            replacement_id = _linear_fill_parameter(
+                out,
+                linear_scope,
+                target,
+                class_name,
+            )
+            if replacement_id is None:
+                _linear_reset_target_to_continuation(out, scope_path)
+            return out
         target = _linear_selected_target(out)
         if target.kind in {"continuation", "image_output", "image_input"}:
             _linear_insert_spine_block(out, linear_scope, target, class_name)
@@ -3421,31 +3588,321 @@ def _browse_seed_from_source(
     if image_root is None:
         return None
     try:
-        root = Path(image_root).resolve()
-    except (OSError, RuntimeError):
+        sandbox = SandboxRoot.from_path(image_root)
+    except (FileNotFoundError, NotADirectoryError, OSError, RuntimeError):
         return None
+    root = sandbox.root
+    candidate = resolve_source_image_root(sandbox, source_payload)
+    if candidate is None:
+        return str(root)
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return str(root)
+    return str(candidate)
+
+
+def _pipeline_revision(state_data: Dict[str, Any]) -> str:
+    """Return a stable digest of pipeline semantics, excluding UI selection."""
+
+    root = state_data.get("root")
+    canonical = json.dumps(
+        root,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _preview_status_presentation(
+    status_data: Optional[Dict[str, Any]],
+    state_data: Optional[Dict[str, Any]],
+) -> Tuple[str, str]:
+    """Return persistent preview status text and presentation class."""
+
+    payload = status_data if isinstance(status_data, dict) else {}
+    state = str(payload.get("state", "idle"))
+    message = str(payload.get("message", "Preview not run"))
+    if state in {"running", "complete", "error"} and isinstance(state_data, dict):
+        attempted_revision = payload.get("pipeline_revision")
+        if (
+            isinstance(attempted_revision, str)
+            and attempted_revision != _pipeline_revision(state_data)
+        ):
+            return "Preview stale - run again", "small text-warning mt-2"
+
+    class_by_state = {
+        "running": "small text-primary mt-2",
+        "complete": "small text-success mt-2",
+        "error": "small text-danger mt-2",
+    }
+    return message, class_by_state.get(state, "small text-muted mt-2")
+
+
+def _new_preview_request(
+    *,
+    kind: Literal["full", "prefix"],
+    state_data: Dict[str, Any],
+    session_id: Optional[str],
+    image_path: Optional[str],
+    nrows: Optional[Any],
+    ncols: Optional[Any],
+    target: Optional[Dict[str, Any]] = None,
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Build one revision-bound preview request and its running status.
+
+    The request is first published by a short callback.  Expensive preview
+    work is downstream of that publication, so the browser cannot continue to
+    present an older complete/error state as current while computation runs.
+    """
+
+    pipeline_revision = _pipeline_revision(state_data)
+    request_id = uuid.uuid4().hex
+    resolved_session_id = session_id or uuid.uuid4().hex
+    request = {
+        "schema_version": 1,
+        "request_id": request_id,
+        "session_id": resolved_session_id,
+        "pipeline_revision": pipeline_revision,
+        "kind": kind,
+        "state_data": state_data,
+        "image_path": image_path,
+        "nrows": nrows,
+        "ncols": ncols,
+        "target": target,
+    }
+    label = "Prefix preview" if kind == "prefix" else "Preview"
+    status = {
+        "state": "running",
+        "message": f"{label} running…",
+        "request_id": request_id,
+        "session_id": resolved_session_id,
+        "pipeline_revision": pipeline_revision,
+    }
+    return request, status
+
+
+def _reserve_preview_request(
+    request_data: Dict[str, Any],
+    status_data: Dict[str, Any],
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Reserve the cache fence before the running state reaches the browser."""
+
+    identity = _preview_request_identity(request_data)
+    if identity is None:
+        raise ValueError("preview request identity is invalid")
+    request_id, session_id, pipeline_revision = identity
+    reservation = get_cache().reserve_preview_generation(
+        session_id,
+        pipeline_revision,
+        request_id=request_id,
+    )
+    reserved = dict(request_data)
+    reserved["cache_request_sequence"] = reservation.request_sequence
+    return reserved, status_data
+
+
+def _preview_request_identity(
+    payload: object,
+) -> Optional[Tuple[str, str, str]]:
+    """Return an exact ``(request, session, revision)`` identity or ``None``."""
+
+    if not isinstance(payload, dict):
+        return None
+    values = (
+        payload.get("request_id"),
+        payload.get("session_id"),
+        payload.get("pipeline_revision"),
+    )
+    if not all(isinstance(value, str) and value for value in values):
+        return None
+    return values  # type: ignore[return-value]
+
+
+def _preview_request_is_valid(payload: object) -> bool:
+    """Validate the complete server-issued preview work-request schema."""
+
+    if not isinstance(payload, dict):
+        return False
+    required = {
+        "schema_version",
+        "request_id",
+        "session_id",
+        "pipeline_revision",
+        "cache_request_sequence",
+        "kind",
+        "state_data",
+        "image_path",
+        "nrows",
+        "ncols",
+        "target",
+    }
+    if set(payload) != required or payload.get("schema_version") != 1:
+        return False
+    identity = _preview_request_identity(payload)
+    if identity is None:
+        return False
+    request_id, _session_id, pipeline_revision = identity
+    try:
+        if uuid.UUID(hex=request_id).hex != request_id:
+            return False
+    except ValueError:
+        return False
     if (
-        isinstance(source_payload, dict)
-        and source_payload.get("version") == SOURCE_PAYLOAD_VERSION
-        and source_payload.get("validated") is True
+        len(pipeline_revision) != 64
+        or any(char not in "0123456789abcdef" for char in pipeline_revision)
     ):
-        raw_path = source_payload.get("abs_path")
-        if isinstance(raw_path, str) and raw_path:
-            try:
-                candidate = Path(raw_path).expanduser().resolve()
-            except (OSError, RuntimeError):
-                candidate = root
-            try:
-                candidate.relative_to(root)
-            except ValueError:
-                candidate = root
-            try:
-                is_directory = candidate.is_dir()
-            except (OSError, RuntimeError):
-                is_directory = False
-            if is_directory:
-                return str(candidate)
-    return str(root)
+        return False
+    sequence = payload.get("cache_request_sequence")
+    if type(sequence) is not int or sequence <= 0:
+        return False
+    state_data = payload.get("state_data")
+    if (
+        not isinstance(state_data, dict)
+        or _pipeline_revision(state_data) != pipeline_revision
+    ):
+        return False
+    image_path = payload.get("image_path")
+    if image_path is not None and not isinstance(image_path, str):
+        return False
+    for field_name in ("nrows", "ncols"):
+        value = payload.get(field_name)
+        if value is None:
+            continue
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or value <= 0
+        ):
+            return False
+    kind = payload.get("kind")
+    target = payload.get("target")
+    return (kind == "full" and target is None) or (
+        kind == "prefix" and _preview_prefix_target_is_valid(target)
+    )
+
+
+def _preview_prefix_target_is_valid(payload: object) -> bool:
+    """Validate the exact image-prefix target emitted by the linear map."""
+
+    if not isinstance(payload, dict) or set(payload) != {
+        "kind",
+        "scope_path",
+        "block_id",
+        "param",
+        "slot",
+    }:
+        return False
+    kind = payload.get("kind")
+    scope_path = payload.get("scope_path")
+    block_id = payload.get("block_id")
+    return (
+        kind in {"continuation", "image_output"}
+        and isinstance(scope_path, list)
+        and all(isinstance(part, str) and part for part in scope_path)
+        and payload.get("param") is None
+        and payload.get("slot") is None
+        and (
+            (kind == "continuation" and block_id is None)
+            or (
+                kind == "image_output"
+                and isinstance(block_id, str)
+                and bool(block_id)
+            )
+        )
+    )
+
+
+def _preview_result_schema_is_valid(payload: object) -> bool:
+    """Validate a complete/error result before any browser publication."""
+
+    if not isinstance(payload, dict):
+        return False
+    required = {
+        "schema_version",
+        "request_id",
+        "session_id",
+        "pipeline_revision",
+        "state",
+        "message",
+        "intermediate_keys",
+        "preview_snapshot",
+    }
+    if set(payload) != required or payload.get("schema_version") != 1:
+        return False
+    if _preview_request_identity(payload) is None:
+        return False
+    message = payload.get("message")
+    if not isinstance(message, str) or not message:
+        return False
+    state = payload.get("state")
+    if state == "error":
+        return (
+            payload.get("intermediate_keys") is None
+            and payload.get("preview_snapshot") is None
+        )
+    if state != "complete":
+        return False
+    snapshot = payload.get("preview_snapshot")
+    keys = payload.get("intermediate_keys")
+    if not isinstance(snapshot, dict) or set(snapshot) != {
+        "pipeline_revision",
+        "preview_generation",
+    }:
+        return False
+    generation = snapshot.get("preview_generation")
+    return (
+        snapshot.get("pipeline_revision") == payload.get("pipeline_revision")
+        and type(generation) is int
+        and generation > 0
+        and isinstance(keys, list)
+        and all(isinstance(key, str) and key for key in keys)
+    )
+
+
+def _preview_result_is_current(
+    result_data: object,
+    request_data: object,
+) -> bool:
+    """Return whether a terminal result belongs to the browser's request."""
+
+    if not _preview_request_is_valid(request_data):
+        return False
+    if not _preview_result_schema_is_valid(result_data):
+        return False
+    result_identity = _preview_request_identity(result_data)
+    request_identity = _preview_request_identity(request_data)
+    if result_identity is None or result_identity != request_identity:
+        return False
+    return True
+
+
+def _preview_result_event(
+    request_data: Dict[str, Any],
+    *,
+    state: Literal["complete", "error"],
+    message: str,
+    intermediate_keys: Optional[List[str]] = None,
+    preview_snapshot: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Build a detached preview result carrying the request's exact identity."""
+
+    identity = _preview_request_identity(request_data)
+    if identity is None:
+        raise ValueError("preview request identity is invalid")
+    request_id, session_id, pipeline_revision = identity
+    return {
+        "schema_version": 1,
+        "request_id": request_id,
+        "session_id": session_id,
+        "pipeline_revision": pipeline_revision,
+        "state": state,
+        "message": message,
+        "intermediate_keys": intermediate_keys,
+        "preview_snapshot": preview_snapshot,
+    }
 
 
 def _render_tree_body(
@@ -3501,9 +3958,9 @@ def _render_views(state: BuilderState) -> Tuple[Any, Any, Any]:
         rather than a full section wrapper. The breadcrumb callback
         target is the existing nav's ``children`` property, so returning
         a full nav here would nest the breadcrumb inside itself on every
-        update. The inspector callback follows the same mounted-region
-        contract and returns side-loader children, not another
-        :data:`ids.INSPECTOR_CONTAINER` wrapper.
+        update. The inspector callback targets
+        :data:`ids.INSPECTOR_CONTENT` and returns side-loader children,
+        leaving the stable preview sibling untouched.
     """
 
     registry = _registry()
@@ -3633,7 +4090,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data"),
         Output(ids.BREADCRUMB_CONTAINER, "children"),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children"),
+        Output(ids.INSPECTOR_CONTENT, "children"),
         # Toast outputs surface mutation errors to the user; success path leaves
         # them as ``no_update`` so they don't clobber other callbacks' toasts.
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
@@ -3864,11 +4321,16 @@ def register_callbacks(app: dash.Dash) -> None:
                     if action == "replace":
                         new_state_dict = _dispatch_state_update(
                             state_data,
-                            "target_select",
+                            "linear_aux_replace_begin",
                             {
-                                "kind": "target_select",
+                                "kind": "linear_aux_replace_begin",
                                 "target": target_payload,
-                                "open_menu": False,
+                                "source_block_id": (
+                                    _linear_source_block_id_from_action_id(
+                                        triggered
+                                    )
+                                ),
+                                "nonce": uuid.uuid4().hex,
                             },
                         )
                     elif action == "clear":
@@ -4164,7 +4626,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Input(
             {
                 "type": ids.LINEAR_NODE_ACTION,
@@ -4685,7 +5147,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -4809,7 +5271,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5123,7 +5585,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Input(ids.BTN_CONFIRM_DELETE, "n_clicks"),
         State(ids.STORE_BUILDER_STATE, "data"),
         prevent_initial_call=True,
@@ -5218,7 +5680,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5297,7 +5759,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5362,7 +5824,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5429,7 +5891,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -5452,11 +5914,8 @@ def register_callbacks(app: dash.Dash) -> None:
     # ----------------------------------------------------------------------
 
     @app.callback(
-        Output(ids.STORE_INTERMEDIATE_KEYS, "data", allow_duplicate=True),
-        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
-        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
-        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
-        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Output(ids.STORE_PREVIEW_REQUEST, "data", allow_duplicate=True),
+        Output(ids.STORE_PREVIEW_STATUS, "data", allow_duplicate=True),
         Input(
             {
                 "type": ids.LINEAR_NODE_ACTION,
@@ -5481,67 +5940,35 @@ def register_callbacks(app: dash.Dash) -> None:
         image_path: Optional[str],
         nrows: Optional[Any],
         ncols: Optional[Any],
-    ) -> Tuple[Any, bool, str, str, str]:
-        """Run ``Preview here`` for a linear map prefix only."""
+    ) -> Tuple[Any, Any]:
+        """Publish a prefix request and authoritative running state."""
 
         if not isinstance(ctx.triggered_id, dict):
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update, no_update
         triggered = ctx.triggered_id
         if triggered.get("type") != ids.LINEAR_NODE_ACTION:
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update, no_update
         if triggered.get("action") != "preview_here":
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update, no_update
         if not ctx.triggered or not ctx.triggered[0].get("value"):
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update, no_update
         if state_data is None:
-            return no_update, *_toast("No state to preview", ok=False)
-        if not session_id:
-            session_id = uuid.uuid4().hex
-
-        try:
-            from phenotypic.abc_ import GridOperation
-
-            t0 = time.time()
-            state = state_from_json(state_data)
-            if not hasattr(state, "selected_block_id"):
-                return no_update, *_toast(
-                    "Preview here is only available in the linear builder.",
-                    ok=False,
-                )
-            target = target_from_dict(
-                _linear_preview_target_payload_from_id(triggered),
-                state.breadcrumb,
-            )
-            prefix_state = _linear_prefix_state_for_preview(state, target)
-            pipeline = to_pipeline_dag(prefix_state)
-            uses_grid = _pipeline_uses_grid(pipeline, GridOperation)
-
-            image = _load_preview_image(image_path, uses_grid, nrows, ncols)
-            cache = get_cache()
-            cache.set_image(session_id, image, str(image_path) if image_path else None)
-
-            result = pipeline.apply_with_intermediates(image)
-            _bake_preview_cache(prefix_state, pipeline, result, session_id, cache)
-
-            duration = time.time() - t0
-            keys = cache.known_intermediate_keys(session_id)
-            return (
-                keys,
-                *_toast(f"Prefix preview ran in {duration:.2f}s", ok=True),
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("Prefix preview failed")
-            return (
-                no_update,
-                *_toast(_format_exception(exc), ok=False),
-            )
+            message = "No state to preview"
+            return no_update, {"state": "error", "message": message}
+        request_data, status_data = _new_preview_request(
+            kind="prefix",
+            state_data=state_data,
+            session_id=session_id,
+            image_path=image_path,
+            nrows=nrows,
+            ncols=ncols,
+            target=_linear_preview_target_payload_from_id(triggered),
+        )
+        return _reserve_preview_request(request_data, status_data)
 
     @app.callback(
-        Output(ids.STORE_INTERMEDIATE_KEYS, "data"),
-        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
-        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
-        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
-        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Output(ids.STORE_PREVIEW_REQUEST, "data", allow_duplicate=True),
+        Output(ids.STORE_PREVIEW_STATUS, "data", allow_duplicate=True),
         Input(ids.BTN_RUN_PREVIEW, "n_clicks"),
         State(ids.STORE_BUILDER_STATE, "data"),
         State(ids.STORE_SESSION_ID, "data"),
@@ -5550,93 +5977,405 @@ def register_callbacks(app: dash.Dash) -> None:
         State(ids.INPUT_NCOLS, "value"),
         prevent_initial_call=True,
     )
-    def run_preview(
+    def launch_preview(
         n_clicks: Optional[int],
         state_data: Dict[str, Any],
         session_id: Optional[str],
         image_path: Optional[str],
         nrows: Optional[Any],
         ncols: Optional[Any],
-    ) -> Tuple[Any, bool, str, str, str]:
-        """Build the pipeline, run preview, cache intermediates.
-
-        Spec §5.6 gate: before doing any work, filter validation
-        issues to ``severity == "error"`` and short-circuit with a
-        validation toast when any blocking error is present.  Advisory
-        hints (``severity == "advisory"``) NEVER block — they decorate
-        the canvas and badge but the user can still preview.
-        """
+    ) -> Tuple[Any, Any]:
+        """Publish a full preview request and authoritative running state."""
 
         if not n_clicks or state_data is None:
-            return no_update, *_toast("No state to preview", ok=False)
+            message = "No state to preview"
+            return no_update, {"state": "error", "message": message}
+        request_data, status_data = _new_preview_request(
+            kind="full",
+            state_data=state_data,
+            session_id=session_id,
+            image_path=image_path,
+            nrows=nrows,
+            ncols=ncols,
+        )
+        return _reserve_preview_request(request_data, status_data)
 
-        # Run preview gating — spec §5.6.
-        errors = _filter_blocking_issues(state_data)
-        if errors:
-            return no_update, *_gate_toast_for_issue("run preview", errors[0])
+    @app.callback(
+        Output(ids.STORE_PREVIEW_RESULT, "data"),
+        Input(ids.STORE_PREVIEW_WORK, "data"),
+        prevent_initial_call=True,
+    )
+    def compute_preview(request_data: object) -> Any:
+        """Compute one request into a detached, identity-bearing result."""
 
-        if not session_id:
-            session_id = uuid.uuid4().hex
+        if not _preview_request_is_valid(request_data):
+            return no_update
+        assert isinstance(request_data, dict)
+        identity = _preview_request_identity(request_data)
+        assert identity is not None
+        _request_id, session_id, pipeline_revision = identity
+        state_data = request_data.get("state_data")
+        kind = request_data.get("kind")
+        assert isinstance(state_data, dict)
+        assert kind in {"full", "prefix"}
+        sequence = request_data["cache_request_sequence"]
+        reservation = PreviewGenerationReservation(
+            session_id=session_id,
+            pipeline_revision=pipeline_revision,
+            request_id=_request_id,
+            request_sequence=sequence,
+        )
+        cache = get_cache()
+        staging = cache.claim_preview_generation(reservation)
+        if staging is None:
+            return no_update
+
+        if kind == "full":
+            errors = _filter_blocking_issues(state_data)
+            if errors:
+                toast = _gate_toast_for_issue("run preview", errors[0])
+                return _preview_result_event(
+                    request_data,
+                    state="error",
+                    message=str(toast[1]),
+                )
 
         try:
             from phenotypic.abc_ import GridOperation
 
             t0 = time.time()
             state = state_from_json(state_data)
-            # Duck-type the schema: DAG state needs the DAG converter
-            # (which walks ``state.root.blocks`` + ``edges`` topologically);
-            # the legacy converter walks ``state.root.nodes`` and would
-            # AttributeError on a ``_DagBuilderScope``.
-            if hasattr(state, "selected_block_id"):
+            preview_state = state
+            if kind == "prefix":
+                if not hasattr(state, "selected_block_id"):
+                    return _preview_result_event(
+                        request_data,
+                        state="error",
+                        message=(
+                            "Preview here is only available in the linear builder."
+                        ),
+                    )
+                raw_target = request_data.get("target")
+                if not isinstance(raw_target, dict):
+                    return _preview_result_event(
+                        request_data,
+                        state="error",
+                        message="Prefix preview target is invalid.",
+                    )
+                target = target_from_dict(raw_target, state.breadcrumb)
+                preview_state = _linear_prefix_state_for_preview(state, target)
+                pipeline = to_pipeline_dag(preview_state)
+            elif hasattr(state, "selected_block_id"):
                 pipeline = to_pipeline_dag(state)
             else:
                 pipeline = to_pipeline(state.root)
             uses_grid = _pipeline_uses_grid(pipeline, GridOperation)
 
-            image = _load_preview_image(image_path, uses_grid, nrows, ncols)
+            image_path = request_data.get("image_path")
+            image = _load_preview_image(
+                image_path if isinstance(image_path, str) else None,
+                uses_grid,
+                request_data.get("nrows"),
+                request_data.get("ncols"),
+            )
 
-            cache = get_cache()
-            cache.set_image(session_id, image, str(image_path) if image_path else None)
+            staging.set_image(
+                session_id,
+                image,
+                str(image_path) if image_path else None,
+            )
 
             result = pipeline.apply_with_intermediates(image)
-            _bake_preview_cache(state, pipeline, result, session_id, cache)
+            generation = _bake_preview_cache(
+                preview_state,
+                pipeline,
+                result,
+                session_id,
+                cache,
+                pipeline_revision=pipeline_revision,
+                staging=staging,
+            )
+            if generation is None:
+                return _preview_result_event(
+                    request_data,
+                    state="error",
+                    message="Preview was superseded before publication.",
+                )
 
             duration = time.time() - t0
             keys = cache.known_intermediate_keys(session_id)
-            return (
-                keys,
-                *_toast(f"Preview ran in {duration:.2f}s", ok=True),
+            prefix = "Prefix preview" if kind == "prefix" else "Preview"
+            message = f"{prefix} complete in {duration:.2f}s"
+            snapshot = {
+                "pipeline_revision": pipeline_revision,
+                "preview_generation": generation,
+            }
+            return _preview_result_event(
+                request_data,
+                state="complete",
+                message=message,
+                intermediate_keys=keys,
+                preview_snapshot=snapshot,
             )
 
         except Exception as exc:  # noqa: BLE001
-            logger.exception("Run preview failed")
-            return (
-                no_update,
-                *_toast(_format_exception(exc), ok=False),
+            logger.exception("%s preview failed", kind.title())
+            message = _format_exception(exc)
+            return _preview_result_event(
+                request_data,
+                state="error",
+                message=message,
             )
+
+    app.clientside_callback(
+        """
+        function(resultData, requestData) {
+            const no = window.dash_clientside.no_update;
+            const noops = [no, no, no, no, no, no, no, no, no, no];
+            const isObject = (value) => (
+                value !== null
+                && typeof value === "object"
+                && !Array.isArray(value)
+            );
+            const hasExactKeys = (value, expected) => {
+                if (!isObject(value)) return false;
+                const actual = Object.keys(value).sort();
+                const wanted = expected.slice().sort();
+                return (
+                    actual.length === wanted.length
+                    && actual.every((key, index) => key === wanted[index])
+                );
+            };
+            const requestKeys = [
+                "schema_version", "request_id", "session_id",
+                "pipeline_revision", "cache_request_sequence", "kind",
+                "state_data", "image_path", "nrows", "ncols", "target",
+            ];
+            const resultKeys = [
+                "schema_version", "request_id", "session_id",
+                "pipeline_revision", "state", "message",
+                "intermediate_keys", "preview_snapshot",
+            ];
+            const scalarDimension = (value) => (
+                value === null
+                || (
+                    typeof value === "number"
+                    && Number.isFinite(value)
+                    && value > 0
+                )
+            );
+            const validPrefixTarget = (target) => (
+                hasExactKeys(
+                    target,
+                    ["kind", "scope_path", "block_id", "param", "slot"]
+                )
+                && ["continuation", "image_output"].includes(target.kind)
+                && Array.isArray(target.scope_path)
+                && target.scope_path.every(
+                    (part) => typeof part === "string" && part.length > 0
+                )
+                && target.param === null
+                && target.slot === null
+                && (
+                    (
+                        target.kind === "continuation"
+                        && target.block_id === null
+                    )
+                    || (
+                        target.kind === "image_output"
+                        && typeof target.block_id === "string"
+                        && target.block_id.length > 0
+                    )
+                )
+            );
+            const validRequest = (
+                hasExactKeys(requestData, requestKeys)
+                && requestData.schema_version === 1
+                && typeof requestData.request_id === "string"
+                && /^[0-9a-f]{32}$/.test(requestData.request_id)
+                && typeof requestData.session_id === "string"
+                && requestData.session_id.length > 0
+                && typeof requestData.pipeline_revision === "string"
+                && /^[0-9a-f]{64}$/.test(requestData.pipeline_revision)
+                && Number.isInteger(requestData.cache_request_sequence)
+                && requestData.cache_request_sequence > 0
+                && isObject(requestData.state_data)
+                && (
+                    requestData.image_path === null
+                    || typeof requestData.image_path === "string"
+                )
+                && scalarDimension(requestData.nrows)
+                && scalarDimension(requestData.ncols)
+                && (
+                    (
+                        requestData.kind === "full"
+                        && requestData.target === null
+                    )
+                    || (
+                        requestData.kind === "prefix"
+                        && validPrefixTarget(requestData.target)
+                    )
+                )
+            );
+            const sameIdentity = (
+                isObject(resultData)
+                && validRequest
+                && resultData.request_id === requestData.request_id
+                && resultData.session_id === requestData.session_id
+                && resultData.pipeline_revision
+                    === requestData.pipeline_revision
+            );
+            const baseResult = (
+                hasExactKeys(resultData, resultKeys)
+                && resultData.schema_version === 1
+                && sameIdentity
+                && typeof resultData.message === "string"
+                && resultData.message.length > 0
+            );
+            let complete = false;
+            let error = false;
+            if (baseResult && resultData.state === "complete") {
+                const snapshot = resultData.preview_snapshot;
+                complete = (
+                    hasExactKeys(
+                        snapshot,
+                        ["pipeline_revision", "preview_generation"]
+                    )
+                    && snapshot.pipeline_revision
+                        === requestData.pipeline_revision
+                    && Number.isInteger(snapshot.preview_generation)
+                    && snapshot.preview_generation > 0
+                    && Array.isArray(resultData.intermediate_keys)
+                    && resultData.intermediate_keys.every(
+                        (key) => typeof key === "string" && key.length > 0
+                    )
+                );
+            } else if (baseResult && resultData.state === "error") {
+                error = (
+                    resultData.preview_snapshot === null
+                    && resultData.intermediate_keys === null
+                );
+            }
+            if (!complete && !error) return noops;
+
+            const status = {
+                state: resultData.state,
+                message: resultData.message,
+                request_id: resultData.request_id,
+                session_id: resultData.session_id,
+                pipeline_revision: resultData.pipeline_revision,
+            };
+            if (complete) {
+                status.preview_generation =
+                    resultData.preview_snapshot.preview_generation;
+            }
+            return [
+                complete ? resultData.intermediate_keys : no,
+                complete ? resultData.preview_snapshot : no,
+                status,
+                true,
+                resultData.message,
+                complete ? "primary" : "danger",
+                complete ? "Pipeline builder" : "Error",
+                resultData.message,
+                complete
+                    ? "small text-success mt-2"
+                    : "small text-danger mt-2",
+                "Run preview",
+            ];
+        }
+        """,
+        Output(ids.STORE_INTERMEDIATE_KEYS, "data"),
+        Output(ids.STORE_PREVIEW_SNAPSHOT, "data"),
+        Output(ids.STORE_PREVIEW_STATUS, "data", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Output(ids.PREVIEW_STATUS, "children", allow_duplicate=True),
+        Output(ids.PREVIEW_STATUS, "className", allow_duplicate=True),
+        Output(ids.BTN_RUN_PREVIEW, "children", allow_duplicate=True),
+        Input(ids.STORE_PREVIEW_RESULT, "data"),
+        Input(ids.STORE_PREVIEW_REQUEST, "data"),
+        prevent_initial_call=True,
+    )
+
+    @app.callback(
+        Output(ids.PREVIEW_STATUS, "children"),
+        Output(ids.PREVIEW_STATUS, "className"),
+        Output(ids.BTN_RUN_PREVIEW, "children"),
+        Output(ids.STORE_PREVIEW_WORK, "data"),
+        Input(ids.STORE_PREVIEW_STATUS, "data"),
+        Input(ids.STORE_BUILDER_STATE, "data"),
+        State(ids.STORE_PREVIEW_REQUEST, "data"),
+        State(ids.STORE_PREVIEW_WORK, "data"),
+    )
+    def render_preview_status(
+        status_data: Optional[Dict[str, Any]],
+        state_data: Optional[Dict[str, Any]],
+        request_data: object,
+        work_data: object,
+    ) -> Tuple[str, str, str, Any]:
+        """Render a persistent preview lifecycle message.
+
+        The published status is interpreted against the current semantic
+        pipeline revision so a successful generation becomes visibly stale
+        as soon as an operation changes.  The exact request is acknowledged
+        as work only in the same browser-applied response that renders the
+        visible running status and button.
+        """
+
+        message, class_name = _preview_status_presentation(
+            status_data,
+            state_data,
+        )
+        is_running = (
+            isinstance(status_data, dict)
+            and status_data.get("state") == "running"
+        )
+        button = "Preview running…" if is_running else "Run preview"
+        work: Any = no_update
+        if (
+            is_running
+            and isinstance(state_data, dict)
+            and _preview_request_is_valid(request_data)
+            and _preview_request_identity(status_data)
+            == _preview_request_identity(request_data)
+            and status_data.get("pipeline_revision")
+            == _pipeline_revision(state_data)
+            and _preview_request_identity(work_data)
+            != _preview_request_identity(request_data)
+        ):
+            work = request_data
+        elif (
+            isinstance(status_data, dict)
+            and status_data.get("state") in {"complete", "error"}
+            and _preview_request_identity(status_data)
+            == _preview_request_identity(request_data)
+            and message != "Preview stale - run again"
+        ):
+            return no_update, no_update, no_update, no_update
+        return message, class_name, button, work
 
     # ----------------------------------------------------------------------
     # 4. Inspector preview rendering
     # ----------------------------------------------------------------------
 
-    # Tracks the last (session_id, node_id, intermediate-id) tuple this
-    # callback rendered for. State changes that don't shift selection or
-    # intermediate identity short-circuit to ``no_update`` so the inspector
-    # doesn't re-encode the image / rebuild the DataTable on every keystroke
-    # or drag. Plain dict (single-process Dash dev server); under multi-
-    # worker deployment this would just degrade to "always render", same as
-    # before.
-    _preview_render_keys: Dict[str, Tuple[Optional[str], int]] = {}
+    # Plain process-local memoization is safe because the Builder remains a
+    # deliberate single-process deployment. Object identity is not part of
+    # the contract: a preview is identified only by its semantic revision
+    # and atomically published generation.
+    _preview_render_keys: Dict[str, PreviewKey] = {}
 
     @app.callback(
         Output(ids.INSPECTOR_PREVIEW, "children"),
         Input(ids.STORE_BUILDER_STATE, "data"),
-        Input(ids.STORE_INTERMEDIATE_KEYS, "data"),
+        Input(ids.STORE_PREVIEW_SNAPSHOT, "data"),
         State(ids.STORE_SESSION_ID, "data"),
     )
     def render_inspector_preview(
         state_data: Optional[Dict[str, Any]],
-        _keys: Optional[List[str]],
+        preview_snapshot: Optional[Dict[str, Any]],
         session_id: Optional[str],
     ) -> Any:
         """Show the cached intermediate (image / DataTable) for the selection."""
@@ -5653,6 +6392,22 @@ def register_callbacks(app: dash.Dash) -> None:
         except Exception:  # noqa: BLE001
             return no_update
 
+        pipeline_revision = _pipeline_revision(state_data)
+        published_revision: Optional[str] = None
+        preview_generation: Optional[int] = None
+        if isinstance(preview_snapshot, dict):
+            raw_revision = preview_snapshot.get("pipeline_revision")
+            raw_generation = preview_snapshot.get("preview_generation")
+            if isinstance(raw_revision, str) and type(raw_generation) is int:
+                published_revision = raw_revision
+                preview_generation = raw_generation
+        if (
+            published_revision is not None
+            and published_revision != pipeline_revision
+        ):
+            _preview_render_keys.pop(session_id, None)
+            return html.Div("Preview stale - run again", className="text-muted")
+
         # Duck-type the selection id: DAG state exposes
         # ``selected_block_id``, legacy state exposes
         # ``selected_node_id``. Both shapes share the preview cache by
@@ -5665,10 +6420,7 @@ def register_callbacks(app: dash.Dash) -> None:
         )
 
         if selected_id is None:
-            last = _preview_render_keys.get(session_id)
-            if last is not None and last[0] is None:
-                return no_update
-            _preview_render_keys[session_id] = (None, 0)
+            _preview_render_keys.pop(session_id, None)
             return html.Div(
                 "Select a node to view its preview.",
                 className="text-muted",
@@ -5695,12 +6447,24 @@ def register_callbacks(app: dash.Dash) -> None:
             if node is None:
                 return no_update
 
-        cached = get_cache().get_intermediate(session_id, selected_id)
-        cache_token = id(cached) if cached is not None else 0
+        if published_revision is None or preview_generation is None:
+            _preview_render_keys.pop(session_id, None)
+            return html.Div(
+                "No preview yet — click Run preview.",
+                className="text-muted",
+            )
+
+        preview_key: PreviewKey = (
+            session_id,
+            selected_id,
+            pipeline_revision,
+            preview_generation,
+        )
         last = _preview_render_keys.get(session_id)
-        if last == (selected_id, cache_token):
+        if last == preview_key:
             return no_update
-        _preview_render_keys[session_id] = (selected_id, cache_token)
+        _preview_render_keys[session_id] = preview_key
+        cached = get_cache().get_preview(preview_key)
         if cached is None:
             return html.Div(
                 "No preview yet — click Run preview.",
@@ -6083,7 +6847,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -6154,7 +6918,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output(ids.LINEAR_MAP_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -6965,7 +7729,10 @@ def _bake_preview_cache(
     result: Any,
     session_id: str,
     cache: Any,
-) -> None:
+    *,
+    pipeline_revision: Optional[str] = None,
+    staging: Optional[PreviewGenerationWriter] = None,
+) -> Optional[int]:
     """Render every intermediate to PNG bytes (or DataFrame) into *cache*.
 
     Pulled out of ``run_preview`` so the cache contract — bytes for ops,
@@ -6993,12 +7760,28 @@ def _bake_preview_cache(
             :meth:`ImagePipeline.apply_with_intermediates`.
         session_id: Per-tab uuid keying the cache.
         cache: The :class:`IntermediatesCache` to populate.
+        pipeline_revision: Semantic state revision associated with the bake.
+            Derived from ``state`` when omitted by direct test callers.
+        staging: Request-sequenced detached writer reserved before expensive
+            preview work. Direct callers may omit it to reserve immediately.
+
+    Returns:
+        Atomically published preview generation, or ``None`` when superseded.
     """
 
+    revision = pipeline_revision or _pipeline_revision(state_to_json(state))
+    if staging is None:
+        staging = cache.begin_preview_generation(session_id, revision)
+    elif (
+        staging.session_id != session_id
+        or staging.pipeline_revision != revision
+    ):
+        raise ValueError("preview staging writer does not match bake request")
     if hasattr(state, "selected_block_id"):
-        _bake_preview_cache_dag(state, pipeline, result, session_id, cache)
+        _bake_preview_cache_dag(state, pipeline, result, session_id, staging)
     else:
-        _bake_preview_cache_legacy(state, pipeline, result, session_id, cache)
+        _bake_preview_cache_legacy(state, pipeline, result, session_id, staging)
+    return cache.publish_preview_generation(staging)
 
 
 def _bake_preview_cache_legacy(
@@ -7049,17 +7832,20 @@ def _bake_preview_cache_legacy(
     # *processed* image (objmap populated by the detector chain), not the
     # raw input.
     if pipeline.get_meas() or pipeline.get_post():
+        meas_nodes = [
+            n
+            for n in state.root.nodes
+            if stage_of(n.class_name) in {"meas", "post"}
+        ]
         try:
             df = pipeline.measure(result.image)
-            meas_nodes = [
-                n
-                for n in state.root.nodes
-                if stage_of(n.class_name) in {"meas", "post"}
-            ]
             for node in meas_nodes:
                 cache.set_intermediate(session_id, node.node_id, df)
         except Exception as meas_exc:  # noqa: BLE001
             logger.warning("measure() failed: %s", meas_exc)
+            error = PreviewRenderError(_format_exception(meas_exc))
+            for node in meas_nodes:
+                cache.set_intermediate(session_id, node.node_id, error)
 
 
 def _bake_preview_cache_dag(
@@ -7125,17 +7911,20 @@ def _bake_preview_cache_dag(
         cache.set_intermediate(session_id, block.block_id, png)
 
     if pipeline.get_meas() or pipeline.get_post():
+        meas_blocks = [
+            b
+            for b in non_input_blocks
+            if stage_of(b.class_name) in {"meas", "post"}
+        ]
         try:
             df = pipeline.measure(result.image)
-            meas_blocks = [
-                b
-                for b in non_input_blocks
-                if stage_of(b.class_name) in {"meas", "post"}
-            ]
             for block in meas_blocks:
                 cache.set_intermediate(session_id, block.block_id, df)
         except Exception as meas_exc:  # noqa: BLE001
             logger.warning("measure() failed: %s", meas_exc)
+            error = PreviewRenderError(_format_exception(meas_exc))
+            for block in meas_blocks:
+                cache.set_intermediate(session_id, block.block_id, error)
 
 
 def _load_preview_image(

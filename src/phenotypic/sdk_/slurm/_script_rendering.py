@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from ._environment import SLURM_PYTHONPATH_BOOTSTRAP_BASH
 from ._sbatch import format_sbatch_directives
 
 
@@ -91,6 +92,8 @@ class SlurmArrayScriptSpec:
 {comment_block}
 set -e
 set -u
+
+{SLURM_PYTHONPATH_BOOTSTRAP_BASH}
 
 {prelude_block}
 

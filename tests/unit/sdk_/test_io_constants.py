@@ -1384,3 +1384,90 @@ def test_migrate_legacy_qc_noop_when_canonical_exists(tmp_path: Path) -> None:
     assert migrate_legacy_qc(tmp_path) is False
     # Legacy is left untouched (no merge); resolver will still prefer canonical.
     assert (tmp_path / "qc" / "a.parquet").is_file()
+
+
+def test_fingerprint_and_migration_paths_are_deterministic(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.sdk_ import (
+        bytes_fingerprint,
+        file_fingerprint,
+        generation_staging_path,
+        migration_backup_path,
+        migration_lock_path,
+        migration_receipt_path,
+        paths_fingerprint,
+        pipeline_publication_lock_path,
+        source_cache_key,
+    )
+
+    config = tmp_path / "pipeline.json.pht-pipe"
+    config.write_bytes(b'{"version":"1"}')
+    fingerprint = file_fingerprint(config)
+
+    assert fingerprint == bytes_fingerprint(config.read_bytes())
+    snapshot = paths_fingerprint([config], root=tmp_path)
+    config.write_bytes(b'{"version":"2"}')
+    assert paths_fingerprint([config], root=tmp_path) != snapshot
+    config.write_bytes(b'{"version":"1"}')
+    assert source_cache_key(config, fingerprint) == source_cache_key(
+        config, fingerprint
+    )
+    backup = migration_backup_path(
+        config,
+        timestamp="20260723T120000.000000Z",
+        source_fingerprint=fingerprint,
+    )
+    receipt = migration_receipt_path(
+        config,
+        resulting_fingerprint=fingerprint,
+    )
+    assert backup.parent == receipt.parent == tmp_path / ".migration_backups"
+    assert "20260723T120000.000000Z" in backup.name
+    assert migration_lock_path(config) == (
+        tmp_path / ".pipeline-config.migration.lock"
+    )
+    assert pipeline_publication_lock_path(config) == migration_lock_path(config)
+    assert pipeline_publication_lock_path(tmp_path / "pipeline.json") == (
+        migration_lock_path(config)
+    )
+    assert generation_staging_path(config, "generation-1").parent == tmp_path
+
+
+def test_generation_staging_path_rejects_path_traversal(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.sdk_ import generation_staging_path
+
+    with pytest.raises(ValueError):
+        generation_staging_path(tmp_path / "target.json", "../escape")
+
+
+def test_gui_log_constants_are_canonical_and_reexported() -> None:
+    import phenotypic.sdk_ as sdk
+    from phenotypic.sdk_ import _io_constants as io
+
+    assert io.RUN_LOG_DIRNAME == ".gui_log"
+    assert io.STDOUT_LOG == "stdout.log"
+    assert io.GUI_LOG_FILENAMES == frozenset({"stdout.log"})
+    assert sdk.RUN_LOG_DIRNAME == io.RUN_LOG_DIRNAME
+    assert sdk.GUI_LOG_FILENAMES is io.GUI_LOG_FILENAMES
+
+
+def test_generation_owner_and_completion_paths_use_progress_dir(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.sdk_ import (
+        GUI_LAUNCH_OWNER_JSON,
+        RUN_COMPLETION_JSON,
+        gui_launch_owner_path,
+        progress_dir,
+        run_completion_marker_path,
+    )
+
+    assert gui_launch_owner_path(tmp_path) == (
+        progress_dir(tmp_path) / GUI_LAUNCH_OWNER_JSON
+    )
+    assert run_completion_marker_path(tmp_path) == (
+        progress_dir(tmp_path) / RUN_COMPLETION_JSON
+    )

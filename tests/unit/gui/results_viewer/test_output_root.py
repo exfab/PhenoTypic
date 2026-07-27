@@ -38,7 +38,10 @@ def _seed_standalone_bundle(base: Path) -> None:
 def test_discover_standalone_deliverables_only(tmp_path: Path) -> None:
     base = tmp_path / "bundle" / "deliverables"
     _seed_standalone_bundle(base)
-    root = OutputRoot.discover(base)
+    root = OutputRoot.discover(
+        base,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
     assert root.has_results is False
     assert "plate1" in root.master_df["MetadataExperiment_Dataset"].unique().to_list()
     # Overlay-backed picker still works.
@@ -51,6 +54,9 @@ def test_discover_full_run_lights_up_results(tmp_path: Path) -> None:
     _seed_standalone_bundle(out / "deliverables")
     (out / "results" / "plate1" / "hdf").mkdir(parents=True)
     (out / "results" / "plate1" / "hdf" / "img001.h5").write_bytes(b"")
-    root = OutputRoot.discover(out)
+    root = OutputRoot.discover(
+        out,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
     assert root.has_results is True
     assert root.hdf_path("plate1", "img001") is not None

@@ -22,6 +22,7 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+from uuid import uuid4
 
 import pytest
 
@@ -31,6 +32,7 @@ from phenotypic._cli._cli_update_state import (
     append_completion_event,
     parse_event_line,
     aggregate_state_from_events,
+    aggregate_state_from_events_with_diagnostics,
 )
 from phenotypic._cli._cli_failure_tracker import (
     append_failure,
@@ -209,7 +211,7 @@ class TestAggregateState:
 
         state = aggregate_state_from_events(event_log)
         ds = state["plate1"]
-        assert "img001.tif" in ds.started
+        assert "img001.tif" not in ds.started
         assert "img002.tif" in ds.started
         assert "img001.tif" in ds.completed
         assert ds.in_progress == {"img002.tif"}
@@ -230,6 +232,59 @@ class TestAggregateState:
     def test_empty_log(self, event_log):
         state = aggregate_state_from_events(event_log)
         assert state == {}
+
+    def test_inventory_and_generation_exclude_stale_events(self, event_log):
+        append_event(
+            event_log,
+            "plate1",
+            "old.tif",
+            "completed",
+            generation="current",
+        )
+        append_event(
+            event_log,
+            "plate1",
+            "a.tif",
+            "completed",
+            generation="previous",
+        )
+        append_event(
+            event_log,
+            "plate1",
+            "a.tif",
+            "started",
+            generation="current",
+        )
+        append_event(
+            event_log,
+            "plate1",
+            "b.tif",
+            "failed",
+            generation="current",
+        )
+
+        aggregated = aggregate_state_from_events_with_diagnostics(
+            event_log,
+            inventory={"plate1": {"a.tif", "b.tif"}},
+            generation="current",
+        )
+
+        assert aggregated.datasets["plate1"].in_progress == {"a.tif"}
+        assert aggregated.datasets["plate1"].failed == {"b.tif"}
+        assert aggregated.diagnostics.unknown_image_events == 1
+        assert aggregated.diagnostics.other_generation_events == 1
+
+    def test_generationless_events_remain_inventory_filtered(self, event_log):
+        append_event(event_log, "plate1", "legacy.tif", "completed")
+        append_event(event_log, "plate1", "unknown.tif", "completed")
+
+        state = aggregate_state_from_events(
+            event_log,
+            inventory={"plate1": {"legacy.tif"}},
+            generation="new-generation",
+        )
+
+        assert state["plate1"].completed == {"legacy.tif"}
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -356,6 +411,24 @@ class TestManifestBuilder:
         assert manifest["pending"] == 1  # 3 - 1 completed - 1 failed - 0 in_progress
         assert manifest["is_complete"] is False
         assert "ValueError" in manifest["failure_categories"]
+        assert "gui_record_generation" not in manifest
+
+    def test_local_gui_manifest_carries_exact_generation(self, tmp_dir):
+        progress_dir = tmp_dir / "progress"
+        progress_dir.mkdir()
+        generation = str(uuid4())
+
+        build_manifest(
+            output_dir=tmp_dir,
+            progress_dir=progress_dir,
+            datasets={},
+            execution_mode="local",
+            start_time=datetime.now().isoformat(timespec="milliseconds"),
+            gui_record_generation=generation,
+        )
+
+        manifest = json.loads((progress_dir / "manifest.json").read_text())
+        assert manifest["gui_record_generation"] == generation
 
     def test_manifest_is_complete(self, tmp_dir):
         event_log = tmp_dir / "processing_events.log"
@@ -377,6 +450,91 @@ class TestManifestBuilder:
         assert manifest["is_complete"] is True
         assert manifest["completed"] == 1
         assert manifest["success_rate"] == 1.0
+
+    def test_manifest_filters_historical_images_and_reports_them(
+        self,
+        tmp_dir,
+    ):
+        event_log = tmp_dir / "processing_events.log"
+        progress_dir = tmp_dir / "progress"
+        progress_dir.mkdir()
+        append_event(event_log, "plate1", "old-1.tif", "completed")
+        append_event(event_log, "plate1", "a.tif", "completed")
+        append_failure(
+            progress_dir,
+            dataset="plate1",
+            image="old-1.tif",
+            error_type="HistoricalError",
+            error_message="stale",
+        )
+
+        build_manifest(
+            output_dir=tmp_dir,
+            progress_dir=progress_dir,
+            datasets={"plate1": 2},
+            dataset_inventory={"plate1": {"a.tif", "b.tif"}},
+            execution_mode="local",
+            start_time=datetime.now().isoformat(timespec="milliseconds"),
+            processing_generation="current",
+        )
+
+        manifest = json.loads((progress_dir / "manifest.json").read_text())
+        assert manifest["completed"] == 1
+        assert manifest["failed"] == 0
+        assert manifest["pending"] == 1
+        assert manifest["processing_generation"] == "current"
+        assert manifest["event_diagnostics"]["unknown_image_events"] == 1
+        assert "HistoricalError" not in manifest["failure_categories"]
+
+    def test_manifest_categories_only_latest_current_failures(self, tmp_dir):
+        event_log = tmp_dir / "processing_events.log"
+        progress_dir = tmp_dir / "progress"
+        progress_dir.mkdir()
+
+        append_event(event_log, "plate1", "recovered.tif", "failed")
+        append_failure(
+            progress_dir,
+            dataset="plate1",
+            image="recovered.tif",
+            error_type="RecoveredError",
+            error_message="first attempt",
+        )
+        append_event(event_log, "plate1", "recovered.tif", "started")
+        append_event(event_log, "plate1", "recovered.tif", "completed")
+
+        append_event(event_log, "plate1", "failed.tif", "failed")
+        append_failure(
+            progress_dir,
+            dataset="plate1",
+            image="failed.tif",
+            error_type="EarlierError",
+            error_message="earlier attempt",
+        )
+        append_event(event_log, "plate1", "failed.tif", "started")
+        append_event(event_log, "plate1", "failed.tif", "failed")
+        append_failure(
+            progress_dir,
+            dataset="plate1",
+            image="failed.tif",
+            error_type="CurrentError",
+            error_message="current attempt",
+        )
+
+        build_manifest(
+            output_dir=tmp_dir,
+            progress_dir=progress_dir,
+            datasets={"plate1": 2},
+            dataset_inventory={
+                "plate1": {"recovered.tif", "failed.tif"}
+            },
+            execution_mode="local",
+            start_time=datetime.now().isoformat(timespec="milliseconds"),
+        )
+
+        manifest = json.loads((progress_dir / "manifest.json").read_text())
+        assert manifest["completed"] == 1
+        assert manifest["failed"] == 1
+        assert manifest["failure_categories"] == {"CurrentError": 1}
 
     def test_manifest_multiple_datasets(self, tmp_dir):
         event_log = tmp_dir / "processing_events.log"
@@ -552,9 +710,33 @@ class TestDashboard:
         html = dashboard_html_path(tmp_dir).read_text()
         assert "<!DOCTYPE html>" in html
         assert "PhenoTypic" in html
-        assert "progress/manifest.json" in html
-        assert "progress/failures.jsonl" in html
+        assert "PROGRESS_PREFIX + 'manifest.json" in html
+        assert "PROGRESS_PREFIX + 'failures.jsonl" in html
         assert "setInterval" in html
+
+    def test_machine_state_urls_use_canonical_progress_prefix(self, tmp_dir):
+        """Generated pages fetch every machine-state asset from the hidden cache."""
+        generate_dashboard(tmp_dir)
+        dashboard = dashboard_html_path(tmp_dir).read_text()
+        analysis = analysis_html_path(tmp_dir).read_text()
+        pages = (dashboard, analysis)
+
+        canonical_prefix = (
+            'const PROGRESS_PREFIX = ROOT_PREFIX + ".phenotypic/progress/";'
+        )
+        assert all(canonical_prefix in page for page in pages)
+        assert all("ROOT_PREFIX + 'progress/" not in page for page in pages)
+
+        assert "PROGRESS_PREFIX + 'manifest.json" in dashboard
+        assert "PROGRESS_PREFIX + 'failures.jsonl" in dashboard
+        for asset in (
+            "manifest.json",
+            "plotly.min.js",
+            "hyparquet.min.js",
+            "analysis_full.parquet",
+            "analysis_stats.json",
+        ):
+            assert f"PROGRESS_PREFIX + '{asset}" in analysis
 
     def test_creates_dir_if_missing(self, tmp_dir):
         new_dir = tmp_dir / "new_output"
@@ -725,6 +907,7 @@ class TestSentinelScript:
         assert "trap " in content
         assert "SIGTERM" in content
         assert "sbatch --parsable" in content
+        assert "sbatch --parsable --export=ALL" in content
 
     @pytest.mark.skipif(sys.platform == "win32", reason="chmod not effective on Windows")
     def test_script_executable(self, tmp_dir):

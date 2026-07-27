@@ -69,6 +69,7 @@ See also
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -148,6 +149,162 @@ def ensure_typed_json_suffix(path: str | Path, suffix: str) -> Path:
         typed_tail = suffix.removeprefix(LEGACY_JSON_SUFFIX)
         return Path(f"{text}{typed_tail}")
     return Path(f"{text}{suffix}")
+
+
+def bytes_fingerprint(data: bytes) -> str:
+    """Return a versioned SHA-256 fingerprint for exact bytes.
+
+    Args:
+        data: Bytes to fingerprint.
+
+    Returns:
+        A ``"sha256:<hex>"`` content fingerprint.
+    """
+    return f"sha256:{hashlib.sha256(data).hexdigest()}"
+
+
+def file_fingerprint(path: Path) -> str:
+    """Return a versioned SHA-256 fingerprint for one file's contents.
+
+    Args:
+        path: Existing regular file to fingerprint.
+
+    Returns:
+        A ``"sha256:<hex>"`` content fingerprint.
+    """
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return f"sha256:{digest.hexdigest()}"
+
+
+def paths_fingerprint(paths: Iterable[Path], *, root: Path | None = None) -> str:
+    """Fingerprint an ordered set of named filesystem entries without writes.
+
+    Files include their exact contents, directories include their normalized
+    names, and missing entries are represented explicitly. Sorting by name
+    makes the result independent of caller enumeration order.
+
+    Args:
+        paths: Files to include.
+        root: Optional anchor used to normalize names.
+
+    Returns:
+        A deterministic ``"sha256:<hex>"`` fingerprint.
+    """
+    anchor = Path(root).resolve() if root is not None else None
+    named_paths: list[tuple[str, Path]] = []
+    for raw_path in paths:
+        path = Path(raw_path)
+        resolved = path.resolve(strict=False)
+        if anchor is not None:
+            try:
+                name = resolved.relative_to(anchor).as_posix()
+            except ValueError:
+                name = resolved.as_posix()
+        else:
+            name = resolved.as_posix()
+        named_paths.append((name, path))
+
+    digest = hashlib.sha256()
+    for name, path in sorted(named_paths, key=lambda item: item[0]):
+        encoded_name = name.encode("utf-8")
+        digest.update(len(encoded_name).to_bytes(8, "big"))
+        digest.update(encoded_name)
+        if path.is_dir():
+            digest.update(b"\x02")
+            continue
+        if not path.is_file():
+            digest.update(b"\x00")
+            continue
+        digest.update(b"\x01")
+        digest.update(path.stat().st_size.to_bytes(8, "big"))
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    return f"sha256:{digest.hexdigest()}"
+
+
+def source_cache_key(source: Path, fingerprint: str) -> str:
+    """Return an opaque cache key bound to canonical source and content."""
+    identity = f"{Path(source).resolve(strict=False)}\0{fingerprint}".encode()
+    return hashlib.sha256(identity).hexdigest()[:32]
+
+
+def migration_backup_dir(config_path: Path) -> Path:
+    """Return the dedicated sibling backup directory for a configuration."""
+    return Path(config_path).parent / ".migration_backups"
+
+
+def pipeline_publication_lock_path(config_path: Path) -> Path:
+    """Return the shared interprocess lock path for pipeline publication.
+
+    Every production writer of a canonical output pipeline must acquire this
+    lock before checking a source generation or replacing the file. The lock
+    is intentionally about publication, not one particular migration, so CLI,
+    QC, Analysis, and compatibility writers serialize against each other.
+
+    Legacy ``pipeline.json`` and canonical ``pipeline.json.pht-pipe`` paths
+    intentionally map to the same output-level identity. This prevents a V1
+    reader/writer and a V2 writer from bypassing one another merely because
+    they selected different compatibility filenames.
+    """
+    config = Path(config_path)
+    if config.name in {PIPELINE_JSON, _LEGACY_PIPELINE_JSON}:
+        return config.parent / ".pipeline-config.migration.lock"
+    return config.with_name(f".{config.name}.migration.lock")
+
+
+def migration_lock_path(config_path: Path) -> Path:
+    """Return the shared pipeline publication lock used by migrations.
+
+    This compatibility alias preserves the original SDK name while ensuring
+    migrations coordinate with every ordinary canonical pipeline writer.
+    """
+    return pipeline_publication_lock_path(config_path)
+
+
+def migration_backup_path(
+    config_path: Path,
+    *,
+    timestamp: str,
+    source_fingerprint: str,
+) -> Path:
+    """Return a timestamped, fingerprinted backup path."""
+    digest = source_fingerprint.removeprefix("sha256:")[:12]
+    return migration_backup_dir(config_path) / (
+        f"{Path(config_path).name}.{timestamp}.{digest}.bak"
+    )
+
+
+def migration_receipt_path(
+    config_path: Path,
+    *,
+    resulting_fingerprint: str,
+) -> Path:
+    """Return the durable receipt path for one migrated generation."""
+    digest = resulting_fingerprint.removeprefix("sha256:")[:12]
+    return migration_backup_dir(config_path) / (
+        f"{Path(config_path).name}.{digest}.migration.json"
+    )
+
+
+def generation_staging_path(target: Path, generation: str) -> Path:
+    """Return a sibling staging path for an explicit publication generation.
+
+    Raises:
+        ValueError: If ``generation`` is not a safe path component.
+    """
+    if (
+        not generation
+        or generation in {".", ".."}
+        or "/" in generation
+        or "\\" in generation
+    ):
+        raise ValueError("generation must be a nonempty path component")
+    target = Path(target)
+    return target.with_name(f".{target.name}.{generation}.generation")
 
 
 #: Master archive of all aggregated measurements (clean, pre-post). Written by
@@ -395,6 +552,17 @@ PROCESSING_EVENTS_LOG: Final[str] = "processing_events.log"
 #: documented in :class:`JobMetadataKey`.
 JOB_METADATA_JSON: Final[str] = "job_metadata.json"
 
+#: GUI launch-generation ownership record written before execution starts.
+GUI_LAUNCH_OWNER_JSON: Final[str] = "gui_launch_owner.json"
+
+#: Private child-process environment binding for a GUI launch generation.
+GUI_RECORD_GENERATION_ENV_VAR: Final[str] = (
+    "PHENOTYPIC_GUI_RECORD_GENERATION"
+)
+
+#: Generation- and mode-bearing terminal publication marker.
+RUN_COMPLETION_JSON: Final[str] = "run_completion.json"
+
 #: Append-only JSONL of per-image failures. Each row carries a
 #: :data:`phenotypic.sdk_.typing_.FailureSource` tag.
 FAILURES_JSONL: Final[str] = "failures.jsonl"
@@ -428,6 +596,13 @@ DASHBOARD_HTML: Final[str] = "dashboard.html"
 #: Per-run stdout capture written by the run console's local runner.
 STDOUT_LOG: Final[str] = "stdout.log"
 
+#: Reserved directory created inside an output root by the GUI runner.
+RUN_LOG_DIRNAME: Final[str] = ".gui_log"
+
+#: Complete allowlist of files permitted inside :data:`RUN_LOG_DIRNAME` when
+#: the CLI decides whether an output is otherwise fresh.
+GUI_LOG_FILENAMES: Final[frozenset[str]] = frozenset({STDOUT_LOG})
+
 #: Generated standalone analysis HTML emitted alongside the dashboard.
 ANALYSIS_HTML: Final[str] = "analysis.html"
 
@@ -449,7 +624,7 @@ SENTINEL_RESUBMITTED_MARKER: Final[str] = "sentinel_resubmitted"
 CHUNK_LOCK: Final[str] = ".chunk_lock"
 
 #: Recompile task manifest JSON (one per recompile invocation; lives at
-#: ``<output>/progress/recompile/task_manifest.json``). Lists every per-image
+#: ``<output>/.phenotypic/progress/recompile/task_manifest.json``). Lists every per-image
 #: shard the recompile worker is responsible for; consumed by
 #: ``_cli_recompile_worker._main``.
 RECOMPILE_TASK_MANIFEST_JSON: Final[str] = "task_manifest.json"
@@ -462,7 +637,9 @@ RECOMPILE_TASK_MANIFEST_JSON: Final[str] = "task_manifest.json"
 #: ``<output>/results/`` — per-dataset subdirectories live below here.
 DIR_RESULTS: Final[str] = "results"
 
-#: ``<output>/progress/`` — sidecar JSON / JSONL state for in-flight runs.
+#: ``progress`` — directory-name segment for sidecar state under
+#: ``<output>/.phenotypic/progress/``. Legacy readers may resolve a root-level
+#: ``<output>/progress/`` directory.
 DIR_PROGRESS: Final[str] = "progress"
 
 #: Per-dataset measurements subdirectory: ``<output>/results/<ds>/measurements/``.
@@ -1310,27 +1487,37 @@ def checkpoint_lock_path(
 
 
 def job_metadata_path(output_dir: Path) -> Path:
-    """Return ``<output>/progress/job_metadata.json``."""
+    """Return ``<output>/.phenotypic/progress/job_metadata.json``."""
     return progress_dir(output_dir) / JOB_METADATA_JSON
 
 
+def gui_launch_owner_path(output_dir: Path) -> Path:
+    """Return the canonical GUI launch-generation owner record path."""
+    return progress_dir(output_dir) / GUI_LAUNCH_OWNER_JSON
+
+
+def run_completion_marker_path(output_dir: Path) -> Path:
+    """Return the canonical generation-bearing completion marker path."""
+    return progress_dir(output_dir) / RUN_COMPLETION_JSON
+
+
 def failures_jsonl_path(output_dir: Path) -> Path:
-    """Return ``<output>/progress/failures.jsonl``."""
+    """Return ``<output>/.phenotypic/progress/failures.jsonl``."""
     return progress_dir(output_dir) / FAILURES_JSONL
 
 
 def manifest_json_path(output_dir: Path) -> Path:
-    """Return ``<output>/progress/manifest.json`` (dashboard manifest)."""
+    """Return ``<output>/.phenotypic/progress/manifest.json``."""
     return progress_dir(output_dir) / MANIFEST_JSON
 
 
 def chunk_manifest_path(output_dir: Path) -> Path:
-    """Return ``<output>/progress/chunk_manifest.json``."""
+    """Return ``<output>/.phenotypic/progress/chunk_manifest.json``."""
     return progress_dir(output_dir) / CHUNK_MANIFEST_JSON
 
 
 def chunk_state_path(output_dir: Path) -> Path:
-    """Return ``<output>/progress/chunk_state.json``."""
+    """Return ``<output>/.phenotypic/progress/chunk_state.json``."""
     return progress_dir(output_dir) / CHUNK_STATE_JSON
 
 
@@ -1534,7 +1721,7 @@ def resolve_execution_mode(job_meta: Optional[dict]) -> ExecutionMode:
     before calling this helper.
 
     Args:
-        job_meta: Parsed ``progress/job_metadata.json`` content, or
+        job_meta: Parsed ``.phenotypic/progress/job_metadata.json`` content, or
             :data:`None` when the file is absent.
 
     Returns:
@@ -1554,7 +1741,7 @@ def resolve_execution_mode(job_meta: Optional[dict]) -> ExecutionMode:
 
 
 class JobMetadataKey:
-    """Keys inside ``<output>/progress/job_metadata.json``.
+    """Keys inside ``<output>/.phenotypic/progress/job_metadata.json``.
 
     Writers (CLI execution strategies) and readers (recompile worker,
     sentinel, checkpoint handler, GUI runs registry) must reference
@@ -1577,6 +1764,11 @@ class JobMetadataKey:
     INCLUDE_DATASET_COLUMN: Final[str] = "include_dataset_column"
     IMAGE_TASK_MAPPING: Final[str] = "image_task_mapping"
     ORCHESTRATION_EPOCH: Final[str] = "orchestration_epoch"
+    #: GUI owner-record generation that initiated this scheduler launch.
+    #: Together with ``slurm_generation`` this is the durable restart-safe
+    #: binding between GUI identity and the CLI lifecycle epoch.
+    GUI_RECORD_GENERATION: Final[str] = "gui_record_generation"
+    PROCESSING_GENERATION: Final[str] = "processing_generation"
     PIPELINE_PATH: Final[str] = "pipeline_path"
     IMAGE_TYPE: Final[str] = "image_type"
     NROWS: Final[str] = "nrows"
@@ -1584,7 +1776,7 @@ class JobMetadataKey:
 
 
 class DashboardManifestKey:
-    """Keys inside ``<output>/progress/manifest.json`` (dashboard manifest).
+    """Keys inside ``<output>/.phenotypic/progress/manifest.json``.
 
     The manifest is built by :func:`_cli._dashboard._manifest_builder.build_manifest`
     and consumed by both the dashboard JS and the GUI run-console's runs
@@ -1603,6 +1795,11 @@ class DashboardManifestKey:
     SUCCESS_RATE: Final[str] = "success_rate"
     IS_COMPLETE: Final[str] = "is_complete"
     START_TIME: Final[str] = "start_time"
+    #: Exact GUI generation that published this canonical local manifest.
+    #: Omitted from non-GUI and scheduler manifests for compatibility.
+    GUI_RECORD_GENERATION: Final[str] = "gui_record_generation"
+    PROCESSING_GENERATION: Final[str] = "processing_generation"
+    EVENT_DIAGNOSTICS: Final[str] = "event_diagnostics"
     INPUT_PATH: Final[str] = "input_path"
     DATASETS: Final[str] = "datasets"
     FAILURE_CATEGORIES: Final[str] = "failure_categories"
@@ -1626,14 +1823,14 @@ class DashboardManifestSlurmInfoKey:
 
 
 class ChunkStateKey:
-    """Keys inside ``<output>/progress/chunk_state.json``."""
+    """Keys inside ``<output>/.phenotypic/progress/chunk_state.json``."""
 
     CHUNKED_FILES: Final[str] = "chunked_files"
     NEXT_CHUNK_ID: Final[str] = "next_chunk_id"
 
 
 class ProcessingStateKey:
-    """Keys inside ``<output>/processing_state.json`` (resume-state file).
+    """Keys inside ``<output>/.phenotypic/processing_state.json``.
 
     Distinct from :class:`JobMetadataKey` even where string values overlap
     (e.g. ``EXECUTION_MODE``, ``INPUT_PATH``) — these describe the
@@ -1662,7 +1859,7 @@ class ProcessingStateKey:
 
 
 class ChunkManifestKey:
-    """Keys inside ``<output>/progress/chunk_manifest.json``."""
+    """Keys inside ``<output>/.phenotypic/progress/chunk_manifest.json``."""
 
     CHUNKS: Final[str] = "chunks"
     ROWS: Final[str] = "rows"

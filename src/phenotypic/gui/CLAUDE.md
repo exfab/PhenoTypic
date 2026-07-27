@@ -205,10 +205,12 @@ QC module plus a `qc_modules` catalog); the QC tabs read it through the
 *into* `deliverables/` so a deliverables bundle is self-contained and portable;
 `resolve_qc_dir(output)` / `BundleLayout.qc_dir` still read the legacy
 output-root `qc/` of pre-relocation runs, and `migrate_legacy_qc` MOVES a
-legacy `qc/` into `deliverables/qc/` on discovery. The root-level directories
-`RESULTS_DIRNAME` (`results/`, per-image hdf/measurements),
-`PROGRESS_DIRNAME` (`progress/`), and `processing_state.json` are **not**
-deliverables and stay at the output-dir root.
+legacy `qc/` into `deliverables/qc/` on discovery. The root-level
+`RESULTS_DIRNAME` (`results/`, per-image HDF/measurements) is **not** a
+deliverable. Machine state resolves under `.phenotypic/`: use
+`progress_dir(output)` for `.phenotypic/progress/` and
+`processing_state_path(output)` for `.phenotypic/processing_state.json`.
+The `resolve_*` helpers continue to read pre-migration root-level locations.
 
 ---
 

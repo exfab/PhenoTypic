@@ -17,7 +17,7 @@ from phenotypic.sdk_.typing_ import TuneSpec
 import skimage.morphology as morphology
 from phenotypic.detect._grid_peak_common import (
     _round_odd as _grid_peak_round_odd,
-    grid_peak_threshold_mask,
+    _grid_peak_threshold_mask,
 )
 
 
@@ -172,7 +172,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
 
         if self.remove_noise:
             objmask = morphology.opening(
-                    objmask, footprint=morphology.diamond(radius=self.noise_radius)
+                objmask, footprint=morphology.diamond(radius=self.noise_radius)
             )
             self._log_memory_usage("noise removal")
 
@@ -180,9 +180,10 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         image.objmask[:] = objmask
 
         labeled, num_features = ndimage.label(
-                objmask, structure=ndimage.generate_binary_structure(
-                        rank=2,
-                        connectivity=2)
+            objmask,
+            structure=ndimage.generate_binary_structure(
+                rank=2, connectivity=2
+            ),
         )
         self._log_memory_usage(f"labeling ({num_features} features)")
 
@@ -199,20 +200,20 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
             self._log_memory_usage(f"inferred grid shape: {nrows}x{ncols}")
 
             row_edges = self._estimate_edges(
-                    objmask,
-                    axis=0,
-                    n_bins=nrows,
-                    smoothing_sigma=self.smoothing_sigma,
-                    min_peak_distance=self.min_peak_distance,
-                    peak_prominence=self.peak_prominence,
+                objmask,
+                axis=0,
+                n_bins=nrows,
+                smoothing_sigma=self.smoothing_sigma,
+                min_peak_distance=self.min_peak_distance,
+                peak_prominence=self.peak_prominence,
             )
             col_edges = self._estimate_edges(
-                    objmask,
-                    axis=1,
-                    n_bins=ncols,
-                    smoothing_sigma=self.smoothing_sigma,
-                    min_peak_distance=self.min_peak_distance,
-                    peak_prominence=self.peak_prominence,
+                objmask,
+                axis=1,
+                n_bins=ncols,
+                smoothing_sigma=self.smoothing_sigma,
+                min_peak_distance=self.min_peak_distance,
+                peak_prominence=self.peak_prominence,
             )
             self._log_memory_usage("edge estimation")
 
@@ -227,8 +228,13 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
 
         # Assign colonies to grid cells using selection strategy
         objmap = self._assign_grid_objects(
-                labeled, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE,
-                intensity=enh_matrix, split_merged=self.split_merged,
+            labeled,
+            row_edges,
+            col_edges,
+            self.selection_mode,
+            image._OBJMAP_DTYPE,
+            intensity=enh_matrix,
+            split_merged=self.split_merged,
         )
 
         # Fallback if no regions were labeled (e.g., grid inference failed)
@@ -242,16 +248,16 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
 
         gc.collect()  # Force garbage collection
         self._log_memory_usage(
-                "final cleanup", include_process=True, include_tracemalloc=True
+            "final cleanup", include_process=True, include_tracemalloc=True
         )
 
         return image
 
     def _thresholding(
-            self,
-            matrix: np.ndarray,
-            nrows: int | None = None,
-            ncols: int | None = None,
+        self,
+        matrix: np.ndarray,
+        nrows: int | None = None,
+        ncols: int | None = None,
     ) -> np.ndarray:
         """
         Threshold the image to create a binary mask of foreground colonies.
@@ -275,7 +281,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         Raises:
             ValueError: If an invalid thresholding method is specified.
         """
-        return grid_peak_threshold_mask(
+        return _grid_peak_threshold_mask(
             matrix,
             thresh_method=self.thresh_method,
             subtract_background=self.subtract_background,

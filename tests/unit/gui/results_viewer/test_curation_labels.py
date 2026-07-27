@@ -1,5 +1,6 @@
 """Tests for the durable CurationLabels store."""
 
+import json
 from pathlib import Path
 
 import polars as pl
@@ -433,6 +434,144 @@ def test_save_refuses_after_external_reseed(tmp_path: Path):
     assert store.stale is True
 
 
+def test_save_refuses_external_labels_replacement(tmp_path: Path) -> None:
+    """An external labels publication cannot be overwritten by a stale store."""
+    store = CurationLabels.load(_layout(tmp_path), _master())
+    _write_store_with_label(
+        tmp_path,
+        "plateA",
+        4,
+        "merged",
+        40.0,
+        80.0,
+    )
+    externally_written = tools_.curation_labels_parquet_path(tmp_path).read_bytes()
+
+    store.mark("plateA", 1, "debris")
+
+    assert store.stale is True
+    assert tools_.curation_labels_parquet_path(tmp_path).read_bytes() == externally_written
+
+
+def test_register_refuses_external_custom_registry_replacement(
+    tmp_path: Path,
+) -> None:
+    """A stale store preserves an externally replaced custom-category registry."""
+    store = CurationLabels.load(_layout(tmp_path), _master())
+    registry = tools_.custom_categories_json_path(tmp_path)
+    registry.parent.mkdir(parents=True, exist_ok=True)
+    registry.write_text(
+        json.dumps({"categories": ["external_category"]}),
+        encoding="utf-8",
+    )
+    externally_written = registry.read_bytes()
+
+    store.register_custom_category("local category")
+
+    assert store.stale is True
+    assert "local_category" not in store.custom_categories
+    assert registry.read_bytes() == externally_written
+
+
+def test_sequential_category_mark_and_restore_update_expected_fingerprint(
+    tmp_path: Path,
+) -> None:
+    """One store can publish multiple intentional curation revisions."""
+    store = CurationLabels.load(_layout(tmp_path), _master())
+
+    category = store.register_custom_category("halo")
+    store.mark("plateA", 1, category)
+    store.restore("plateA", 1)
+
+    assert store.stale is False
+    assert category in store.custom_categories
+    assert store.labels == {}
+    assert pl.read_parquet(tools_.measurements_parquet_path(tmp_path)).height == 4
+
+
+def test_concurrent_curation_store_loses_compare_and_swap(
+    tmp_path: Path,
+) -> None:
+    """Only the first of two stores loaded from one revision may publish."""
+    first = CurationLabels.load(_layout(tmp_path), _master())
+    second = CurationLabels.load(_layout(tmp_path), _master())
+
+    first.mark("plateA", 1, "debris")
+    first_labels = tools_.curation_labels_parquet_path(tmp_path).read_bytes()
+    second.mark("plateA", 2, "merged")
+
+    assert first.stale is False
+    assert second.stale is True
+    assert tools_.curation_labels_parquet_path(tmp_path).read_bytes() == first_labels
+    on_disk = pl.read_parquet(tools_.curation_labels_parquet_path(tmp_path))
+    assert on_disk.get_column("Object_Label").to_list() == [1]
+
+
+def test_load_retries_publication_interleaved_with_source_reads(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Load never pairs stale in-memory labels with a newer fingerprint."""
+    writer = CurationLabels.load(_layout(tmp_path), _master())
+    real_read_registry = CurationLabels._read_custom_registry
+    published = False
+
+    def _publish_during_first_read(path: Path) -> list[str]:
+        nonlocal published
+        if not published:
+            writer.mark("plateA", 1, "debris")
+            published = True
+        return real_read_registry(path)
+
+    monkeypatch.setattr(
+        CurationLabels,
+        "_read_custom_registry",
+        staticmethod(_publish_during_first_read),
+    )
+
+    loaded = CurationLabels.load(_layout(tmp_path), _master())
+    loaded.mark("plateA", 2, "merged")
+
+    assert loaded.stale is False
+    on_disk = pl.read_parquet(tools_.curation_labels_parquet_path(tmp_path))
+    assert sorted(on_disk.get_column("Object_Label").to_list()) == [1, 2]
+
+
+def test_clean_master_replacement_blocks_dash_free_publication(
+    tmp_path: Path,
+) -> None:
+    """Headless partitions use disk clean data and fence later replacements."""
+    layout = _layout(tmp_path)
+    clean = _master()
+    layout.master_parquet.parent.mkdir(parents=True, exist_ok=True)
+    clean.write_parquet(layout.master_parquet)
+    _write_store_with_label(
+        tmp_path,
+        "plateA",
+        1,
+        "debris",
+        10.0,
+        20.0,
+    )
+    stale_passed_frame = clean.with_columns(
+        pl.lit(-1.0).alias("Size_Area")
+    )
+    store = CurationLabels.load(layout, stale_passed_frame)
+    assert store._master_df.get_column("Size_Area")[0] == 100.0
+
+    replacement = clean.with_columns(
+        (pl.col("Size_Area") + 1.0).alias("Size_Area")
+    )
+    replacement.write_parquet(layout.master_parquet)
+    labels_before = layout.curation_labels_parquet.read_bytes()
+
+    store.write_error_partitions()
+
+    assert store.stale is True
+    assert layout.curation_labels_parquet.read_bytes() == labels_before
+    assert not layout.error_category_parquet("debris").exists()
+
+
 def test_labels_survive_reload_against_curated_mirror(tmp_path: Path):
     """Re-key against the CLEAN master on disk, not the curated mirror.
 
@@ -494,7 +633,10 @@ def test_curation_writes_into_deliverables_qc_for_standalone(tmp_path: Path):
     df.write_parquet(base / "master_measurements.parquet")
     df.write_parquet(base / "measurements.parquet")
 
-    root = OutputRoot.discover(base)
+    root = OutputRoot.discover(
+        base,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
     labels = CurationLabels.load(root.layout, root.master_df)  # NEW: takes BundleLayout
     labels.mark("img001", 1, "debris")
 

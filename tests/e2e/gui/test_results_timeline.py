@@ -23,7 +23,12 @@ from PIL import Image as PILImage
 from playwright.sync_api import Page
 
 from tests._output_layout import write_master, write_measurements_mirror
-from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from tests.e2e.gui.conftest import (
+    _build_sandbox,
+    _start_live_server,
+    bind_results_output,
+    publish_coherent_terminal_evidence,
+)
 from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 
 # Tight DOM-poll budget on a fresh Werkzeug server: stochastically slow on GHA.
@@ -91,6 +96,10 @@ def _seed(sandbox: Path, df: pl.DataFrame) -> Path:
             PILImage.new("RGB", (160, 120), (20, 40, 60)).save(
                 overlays / f"p{plate}_t{img_no}.png"
             )
+    publish_coherent_terminal_evidence(
+        cli_out,
+        total_images=_N_PLATES * _N_TIMES,
+    )
     return cli_out
 
 
@@ -122,23 +131,11 @@ def hub_url(live_server: str) -> str:
 def _hand_off_viewer(page: Page, hub_url: str) -> None:
     """POST the seeded output to the viewer-handoff endpoint via the page.
 
-    Asserts HTTP 200 — a sibling e2e was observed to get a 400 from this
-    endpoint; if the seed/hand-off 400s the test fails loudly rather than
-    silently proceeding to an empty viewer.
+    Polls an accepted asynchronous hand-off to success. If submission or
+    publication fails, the shared helper reports the response and terminal
+    job payload rather than silently proceeding to an empty viewer.
     """
-    page.goto(hub_url + "/")
-    page.wait_for_load_state("networkidle")
-    resp = page.evaluate(
-        """async (path) => {
-            const r = await fetch('/sandbox/api/viewer/output-root', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path}),
-            });
-            return {status: r.status, body: await r.text()};
-        }""",
-        f"results/{_OUTPUT_NAME}",
-    )
-    assert resp["status"] == 200, f"viewer hand-off failed: {resp!r}"
+    bind_results_output(page, hub_url, f"results/{_OUTPUT_NAME}")
 
 
 def _pick_dropdown(page: Page, dropdown_id: str, label_text: str) -> None:

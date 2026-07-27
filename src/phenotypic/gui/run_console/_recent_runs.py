@@ -14,6 +14,8 @@ the UI layer.
 from __future__ import annotations
 
 import logging
+import threading
+import weakref
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,6 +26,11 @@ from phenotypic.gui.shell._sandbox import SandboxRoot
 logger = logging.getLogger(__name__)
 
 __all__ = ["RecentRunRow", "scan_recent_runs"]
+
+_CACHE_LOCK = threading.Lock()
+_REGISTRY_ROWS: weakref.WeakKeyDictionary[
+    RunRegistry, tuple[Path, int, int, tuple["RecentRunRow", ...]]
+] = weakref.WeakKeyDictionary()
 
 
 @dataclass(frozen=True)
@@ -56,6 +63,7 @@ def scan_recent_runs(
     *,
     registry: RunRegistry | None = None,
     max_depth: int = 3,
+    refresh: bool = False,
 ) -> list[RecentRunRow]:
     """Scan the sandbox + return recent-run rows sorted by recency.
 
@@ -67,18 +75,51 @@ def scan_recent_runs(
             ``run_id`` keys).
         max_depth: How many levels below the root to scan. Default 3
             matches the spec's ``--scan-depth``.
+        refresh: Explicitly rescan the sandbox before reading the registry.
+            Normal interval redraws leave this false and use registry revision.
 
     Returns:
         List of :class:`RecentRunRow`, newest first. Empty if no output
         directories are found.
     """
     if registry is not None:
-        registry.rehydrate_from_sandbox(sandbox, max_depth=max_depth)
+        root = sandbox.root.resolve(strict=False)
+        with _CACHE_LOCK:
+            cached = _REGISTRY_ROWS.get(registry)
+        needs_initial_scan = cached is None
+        if refresh or needs_initial_scan:
+            try:
+                registry.rehydrate_from_sandbox(
+                    sandbox, max_depth=max_depth
+                )
+            except (PermissionError, FileNotFoundError, OSError):
+                logger.warning(
+                    "Recent-runs refresh skipped an unreadable path",
+                    exc_info=True,
+                )
+        revision = registry.revision
+        with _CACHE_LOCK:
+            cached = _REGISTRY_ROWS.get(registry)
+            if (
+                cached is not None
+                and cached[0] == root
+                and cached[1] == max_depth
+                and cached[2] == revision
+            ):
+                return list(cached[3])
         records = registry.list()
     else:
         # Standalone path (no registry stash): build records lazily.
         tmp_registry = RunRegistry()
-        tmp_registry.rehydrate_from_sandbox(sandbox, max_depth=max_depth)
+        try:
+            tmp_registry.rehydrate_from_sandbox(
+                sandbox, max_depth=max_depth
+            )
+        except (PermissionError, FileNotFoundError, OSError):
+            logger.warning(
+                "Recent-runs scan skipped an unreadable path",
+                exc_info=True,
+            )
         records = tmp_registry.list()
 
     rows: list[RecentRunRow] = []
@@ -98,6 +139,14 @@ def scan_recent_runs(
             )
         )
     rows.sort(key=lambda r: r.last_modified_seconds, reverse=True)
+    if registry is not None:
+        with _CACHE_LOCK:
+            _REGISTRY_ROWS[registry] = (
+                sandbox.root.resolve(strict=False),
+                max_depth,
+                registry.revision,
+                tuple(rows),
+            )
     return rows
 
 

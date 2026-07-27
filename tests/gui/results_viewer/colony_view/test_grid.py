@@ -229,7 +229,10 @@ def _make_output_root(tmp_path: Path) -> OutputRoot:
         parents=True, exist_ok=True
     )
     write_master(tmp_path, master)
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def _make_output_root_with_hdf_only(tmp_path: Path) -> OutputRoot:
@@ -256,7 +259,10 @@ def _make_output_root_with_hdf_only(tmp_path: Path) -> OutputRoot:
     for stem in ("img-001", "img-002"):
         (hdf_dir / f"{stem}.h5").write_bytes(b"")
     write_master(tmp_path, master)
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def test_build_grid_returns_component_and_row_major_order(
@@ -363,7 +369,10 @@ def _make_output_root_with_overlays(tmp_path: Path) -> OutputRoot:
             overlays / f"{stem}.png"
         )
     write_master(tmp_path, master)
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def test_build_grid_threads_dim_alpha_into_tile_urls(tmp_path: Path) -> None:

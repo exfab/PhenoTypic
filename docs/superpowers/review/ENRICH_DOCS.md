@@ -572,9 +572,9 @@ index 772aa170..dfef2bf1 100644
 +          assignment accurate.
 +
 +    Consider Also:
-+        - :class:`ImagePadder` for adding safety margins before rotation so
++        - :class:`PadImage` for adding safety margins before rotation so
 +          corner colonies are not clipped by the rotation fill.
-+        - :class:`ImageCropper` to remove the fill border introduced after
++        - :class:`CropImage` to remove the fill border introduced after
 +          alignment.
 +        - :class:`RefineBySineFit` when the grid periodicity itself needs
 +          correction rather than a global rotation.
@@ -611,9 +611,9 @@ index 772aa170..dfef2bf1 100644
 -          row and column assignment.
 -
 -    Consider Also:
--        - :class:`ImagePadder` to add safety margins before rotation so
+-        - :class:`PadImage` to add safety margins before rotation so
 -          corner colonies are not clipped.
--        - :class:`ImageCropper` to remove excess background after
+-        - :class:`CropImage` to remove excess background after
 -          alignment.
 -
      See Also:
@@ -626,7 +626,7 @@ index 5d754036..c46ee861 100644
 @@ -12,36 +12,61 @@ from phenotypic.abc_ import ImageCorrector
 
 
- class ImageCropper(ImageCorrector):
+ class CropImage(ImageCorrector):
 -    """Remove pixels from image edges by specifying crop margins.
 +    """Remove pixels from image edges by specifying per-edge crop margins.
 
@@ -651,7 +651,7 @@ index 5d754036..c46ee861 100644
 +          analysis.
 +
 +    Consider Also:
-+        - :class:`ImagePadder` for extending image dimensions rather than
++        - :class:`PadImage` for extending image dimensions rather than
 +          reducing them.
 +        - :class:`RemoveBorderObjects` when the goal is to exclude
 +          edge-touching colonies from analysis without altering image
@@ -687,7 +687,7 @@ index 5d754036..c46ee861 100644
 +        dimensions.
 
 -    Consider Also:
--        - :class:`ImagePadder` for adding pixels instead of removing them.
+-        - :class:`PadImage` for adding pixels instead of removing them.
 -        - :class:`RemoveBorderObjects` for removing edge-touching colonies
 -          without changing image dimensions.
 +    Raises:
@@ -709,7 +709,7 @@ index 2199a36f..51cf0d1c 100644
 --- a/src/phenotypic/correction/_image_padder.py
 +++ b/src/phenotypic/correction/_image_padder.py
 @@ -33,53 +33,60 @@ PadMode = Literal[
- class ImagePadder(ImageCorrector):
+ class PadImage(ImageCorrector):
      """Extend image dimensions by adding pixels to any combination of edges.
 
 -    Pad the image on the left, right, top, and/or bottom using a
@@ -736,7 +736,7 @@ index 2199a36f..51cf0d1c 100644
 +          boundary artefacts on tight image borders.
 +
 +    Consider Also:
-+        - :class:`ImageCropper` when the goal is to reduce image dimensions
++        - :class:`CropImage` when the goal is to reduce image dimensions
 +          rather than extend them.
 +        - :class:`GridAligner` for correcting plate rotation, which is
 +          typically paired with padding to protect corner colonies.
@@ -795,7 +795,7 @@ index 2199a36f..51cf0d1c 100644
 -          improving grid detection accuracy.
 -
 -    Consider Also:
--        - :class:`ImageCropper` when the image needs to be reduced rather
+-        - :class:`CropImage` when the image needs to be reduced rather
 -          than extended.
 -        - :class:`GridAligner` for correcting plate rotation after
 -          padding.

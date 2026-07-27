@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 from typing import Any, Optional, List
 from datetime import datetime
+from uuid import uuid4
 
 from ._cli_types import ProcessingState, DatasetState, Dataset, ExecutionConfig
 from ._cli_update_state import aggregate_state_from_events
@@ -105,7 +106,25 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
     # Aggregate latest events from log (sibling of progress/, per D14)
     event_log = resolve_event_log_path(output_dir)
     if event_log.exists():
-        latest_states = aggregate_state_from_events(event_log)
+        datasets_raw = state_dict[ProcessingStateKey.DATASETS]
+        inventory = {
+            dataset_name: set(
+                dataset_state.get(ProcessingStateKey.INITIAL_IMAGES, [])
+            )
+            for dataset_name, dataset_state in datasets_raw.items()
+        }
+        generation_raw = state_dict.get(ProcessingStateKey.CONFIG, {}).get(
+            "processing_generation"
+        )
+        latest_states = aggregate_state_from_events(
+            event_log,
+            inventory=inventory,
+            generation=(
+                generation_raw
+                if isinstance(generation_raw, str) and generation_raw
+                else None
+            ),
+        )
     else:
         latest_states = {}
 
@@ -195,6 +214,7 @@ def create_initial_state(
                 else None
             ),
             "staged_stage3_markers": config.staged_stage3_markers,
+            "processing_generation": uuid4().hex,
         }
     )
     
@@ -216,7 +236,18 @@ def update_state_from_events(state: ProcessingState, output_dir: Path) -> Proces
     
     if event_log.exists():
         # Aggregate events
-        latest_states = aggregate_state_from_events(event_log)
+        latest_states = aggregate_state_from_events(
+            event_log,
+            inventory={
+                name: dataset.initial_images
+                for name, dataset in state.datasets.items()
+            },
+            generation=(
+                str(state.config["processing_generation"])
+                if state.config.get("processing_generation")
+                else None
+            ),
+        )
         
         # Update dataset states
         for dataset_name, new_state in latest_states.items():

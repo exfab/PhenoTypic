@@ -7,11 +7,22 @@ mutation surface in milliseconds.
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 from dash import html
 
 from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._callbacks import _dispatch_state_update
+from phenotypic.gui.builder._callbacks import (
+    _dispatch_state_update,
+    _new_preview_request,
+    _pipeline_revision,
+    _preview_request_is_valid,
+    _preview_result_event,
+    _preview_result_is_current,
+    _preview_status_presentation,
+    _reserve_preview_request,
+)
 from phenotypic.gui.builder._app import create_app
 from phenotypic.gui.builder._state import (
     _DagBuilderState,
@@ -47,6 +58,180 @@ def _walk_components(component):
     if children is None:
         return
     yield from _walk_components(children)
+
+
+def test_pipeline_revision_excludes_selection_only_state() -> None:
+    state = _seed_state()
+    selected = deepcopy(state)
+    selected["selected_node_id"] = "bbb"
+
+    assert _pipeline_revision(selected) == _pipeline_revision(state)
+
+
+def test_pipeline_revision_changes_for_parameter_edit() -> None:
+    state = _seed_state()
+    edited = deepcopy(state)
+    edited["root"]["nodes"][0]["params"]["sigma"] = 2.0
+
+    assert _pipeline_revision(edited) != _pipeline_revision(state)
+
+
+def test_preview_error_becomes_stale_after_semantic_edit() -> None:
+    """An error from an older pipeline revision cannot remain authoritative."""
+
+    state = _seed_state()
+    status = {
+        "state": "error",
+        "message": "ValueError: invalid sigma",
+        "pipeline_revision": _pipeline_revision(state),
+    }
+    assert _preview_status_presentation(status, state) == (
+        "ValueError: invalid sigma",
+        "small text-danger mt-2",
+    )
+
+    edited = deepcopy(state)
+    edited["root"]["nodes"][0]["params"]["sigma"] = 2.0
+    assert _preview_status_presentation(status, edited) == (
+        "Preview stale - run again",
+        "small text-warning mt-2",
+    )
+
+
+def test_preview_running_is_revision_bound_and_replaces_old_terminal() -> None:
+    """A launch is immediately authoritative only for its exact revision."""
+
+    state = _seed_state()
+    request, running = _new_preview_request(
+        kind="full",
+        state_data=state,
+        session_id="session-1",
+        image_path=None,
+        nrows=None,
+        ncols=None,
+    )
+    request, running = _reserve_preview_request(request, running)
+
+    assert running == {
+        "state": "running",
+        "message": "Preview running…",
+        "request_id": request["request_id"],
+        "session_id": "session-1",
+        "pipeline_revision": _pipeline_revision(state),
+    }
+    assert _preview_status_presentation(running, state) == (
+        "Preview running…",
+        "small text-primary mt-2",
+    )
+
+    edited = deepcopy(state)
+    edited["root"]["nodes"][0]["params"]["sigma"] = 2.0
+    assert _preview_status_presentation(running, edited) == (
+        "Preview stale - run again",
+        "small text-warning mt-2",
+    )
+
+
+def test_preview_terminal_publication_rejects_superseded_request() -> None:
+    """An old terminal event cannot replace a newer running generation."""
+
+    state = _seed_state()
+    old_request, old_running = _new_preview_request(
+        kind="full",
+        state_data=state,
+        session_id="session-1",
+        image_path=None,
+        nrows=None,
+        ncols=None,
+    )
+    old_request, _old_running = _reserve_preview_request(
+        old_request,
+        old_running,
+    )
+    newer_request, new_running = _new_preview_request(
+        kind="full",
+        state_data=state,
+        session_id="session-1",
+        image_path=None,
+        nrows=None,
+        ncols=None,
+    )
+    newer_request, _new_running = _reserve_preview_request(
+        newer_request,
+        new_running,
+    )
+    old_result = _preview_result_event(
+        old_request,
+        state="complete",
+        message="Preview complete",
+        intermediate_keys=["aaa"],
+        preview_snapshot={
+            "pipeline_revision": old_request["pipeline_revision"],
+            "preview_generation": 1,
+        },
+    )
+
+    assert _preview_result_is_current(old_result, old_request)
+    assert not _preview_result_is_current(old_result, newer_request)
+
+
+def test_preview_complete_result_requires_exact_generation_descriptor() -> None:
+    """A malformed or cross-revision snapshot fails closed at publication."""
+
+    state = _seed_state()
+    request, running = _new_preview_request(
+        kind="full",
+        state_data=state,
+        session_id="session-1",
+        image_path=None,
+        nrows=None,
+        ncols=None,
+    )
+    request, _running = _reserve_preview_request(request, running)
+    malformed = _preview_result_event(
+        request,
+        state="complete",
+        message="Preview complete",
+        intermediate_keys=["aaa"],
+        preview_snapshot={
+            "pipeline_revision": "different-revision",
+            "preview_generation": True,
+        },
+    )
+
+    assert not _preview_result_is_current(malformed, request)
+
+
+def test_preview_request_schema_rejects_client_edits() -> None:
+    """Every work field is validated before cache claim or computation."""
+
+    state = _seed_state()
+    request, running = _new_preview_request(
+        kind="full",
+        state_data=state,
+        session_id="session-1",
+        image_path=None,
+        nrows=None,
+        ncols=None,
+    )
+    request, _running = _reserve_preview_request(request, running)
+    assert _preview_request_is_valid(request)
+
+    for key, value in (
+        ("request_id", "not-a-uuid"),
+        ("pipeline_revision", "0" * 64),
+        ("cache_request_sequence", True),
+        ("image_path", ["not", "a", "path"]),
+        ("nrows", float("nan")),
+        ("kind", "unknown"),
+    ):
+        malformed = deepcopy(request)
+        malformed[key] = value
+        assert not _preview_request_is_valid(malformed), key
+
+    extra = deepcopy(request)
+    extra["unrecognised"] = True
+    assert not _preview_request_is_valid(extra)
 
 
 def test_render_views_returns_breadcrumb_children_not_nested_nav() -> None:
@@ -118,6 +303,18 @@ def test_render_views_returns_side_loader_children_not_nested_container() -> Non
         getattr(child, "id", None) == ids.INSPECTOR_CONTAINER
         for child in _walk_components(inspector_children)
     )
+
+
+def test_no_callback_replaces_stable_inspector_shell_children() -> None:
+    registry = OperationRegistry()
+    registry.discover()
+    app = create_app(registry=registry)
+
+    output_keys = tuple(app.callback_map)
+    assert not any(
+        f"{ids.INSPECTOR_CONTAINER}.children" in key for key in output_keys
+    )
+    assert any(f"{ids.INSPECTOR_CONTENT}.children" in key for key in output_keys)
 
 
 def test_add_node_appends_and_selects() -> None:

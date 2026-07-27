@@ -20,7 +20,7 @@ from phenotypic.sdk_.mixin import GridInferenceMixin
 import skimage.morphology as morphology
 from phenotypic.detect._grid_peak_common import (
     _round_odd as _grid_peak_round_odd,
-    grid_peak_threshold_mask,
+    _grid_peak_threshold_mask,
 )
 
 
@@ -179,7 +179,7 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
 
         if self.remove_noise:
             objmask = morphology.opening(
-                    objmask, footprint=morphology.diamond(radius=self.noise_radius)
+                objmask, footprint=morphology.diamond(radius=self.noise_radius)
             )
             self._log_memory_usage("noise removal")
 
@@ -187,9 +187,10 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
         image.objmask[:] = objmask
 
         labeled, num_features = ndimage.label(
-                objmask, structure=ndimage.generate_binary_structure(
-                        rank=2,
-                        connectivity=2)
+            objmask,
+            structure=ndimage.generate_binary_structure(
+                rank=2, connectivity=2
+            ),
         )
         self._log_memory_usage(f"labeling ({num_features} features)")
 
@@ -220,8 +221,13 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
 
         # Assign colonies to grid cells using selection strategy
         objmap = self._assign_grid_objects(
-            labeled, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE,
-            intensity=enh_matrix, split_merged=self.split_merged,
+            labeled,
+            row_edges,
+            col_edges,
+            self.selection_mode,
+            image._OBJMAP_DTYPE,
+            intensity=enh_matrix,
+            split_merged=self.split_merged,
         )
 
         # Fallback if no regions were labeled (e.g., grid inference failed)
@@ -235,16 +241,16 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
 
         gc.collect()  # Force garbage collection
         self._log_memory_usage(
-                "final cleanup", include_process=True, include_tracemalloc=True
+            "final cleanup", include_process=True, include_tracemalloc=True
         )
 
         return image
 
     def _thresholding(
-            self,
-            matrix: np.ndarray,
-            nrows: int | None = None,
-            ncols: int | None = None,
+        self,
+        matrix: np.ndarray,
+        nrows: int | None = None,
+        ncols: int | None = None,
     ) -> np.ndarray:
         """
         Threshold the image to create a binary mask of foreground colonies.
@@ -268,7 +274,7 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
         Raises:
             ValueError: If an invalid thresholding method is specified.
         """
-        return grid_peak_threshold_mask(
+        return _grid_peak_threshold_mask(
             matrix,
             thresh_method=self.thresh_method,
             subtract_background=self.subtract_background,
@@ -278,7 +284,13 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
             round_odd=self._round_odd,
         )
 
-    def _estimate_edges(self, binary_image: np.ndarray, axis: int, n_bins: int, **kwargs: object) -> np.ndarray:  # type: ignore[override]
+    def _estimate_edges(
+        self,
+        binary_image: np.ndarray,
+        axis: int,
+        n_bins: int,
+        **kwargs: object,
+    ) -> np.ndarray:  # type: ignore[override]
         """Estimate grid edges using sinusoidal cross-correlation.
 
         Overrides GridInferenceMixin._estimate_edges with a projection-based
@@ -305,7 +317,9 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
             and ``correlation_threshold`` from ``self``.
         """
         # 1. Clean projection sums (from mixin)
-        sums = GridInferenceMixin._clean_and_sum_binary(binary_image, axis=axis)
+        sums = GridInferenceMixin._clean_and_sum_binary(
+            binary_image, axis=axis
+        )
 
         # 2. Gaussian smooth
         if self.smoothing_sigma > 0:
@@ -328,14 +342,17 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
         ranked_template = rankdata(template).astype(np.float64)
 
         # 6. FFT normalized cross-correlation
-        ncc = self._normalized_cross_correlation(ranked_signal, ranked_template)
+        ncc = self._normalized_cross_correlation(
+            ranked_signal, ranked_template
+        )
 
         # 7. Threshold low correlations
         ncc[ncc < self.correlation_threshold] = 0
 
         # 8. Find peaks
         min_distance = (
-            self.min_peak_distance if self.min_peak_distance is not None
+            self.min_peak_distance
+            if self.min_peak_distance is not None
             else max(expected_spacing // 2, 1)
         )
         if self.peak_prominence is not None:
@@ -344,7 +361,9 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
             signal_range = np.max(ncc) - np.min(ncc)
             prominence = 0.1 * signal_range if signal_range > 0 else None
 
-        peaks, _ = find_peaks(ncc, distance=min_distance, prominence=prominence)
+        peaks, _ = find_peaks(
+            ncc, distance=min_distance, prominence=prominence
+        )
 
         # 9. Select best n_bins peaks by correlation height, sorted by position
         if peaks.size > n_bins:
@@ -369,7 +388,7 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
 
         # Ensure exactly n_bins + 1 edges
         if edges.size > n_bins + 1:
-            edges = edges[:n_bins + 1]
+            edges = edges[: n_bins + 1]
         elif edges.size < n_bins + 1:
             missing = (n_bins + 1) - edges.size
             edges = np.concatenate((edges, np.full(missing, image_size)))
@@ -377,7 +396,9 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
         return edges.astype(int)
 
     @staticmethod
-    def _normalized_cross_correlation(signal: np.ndarray, template: np.ndarray) -> np.ndarray:
+    def _normalized_cross_correlation(
+        signal: np.ndarray, template: np.ndarray
+    ) -> np.ndarray:
         """FFT-based normalized cross-correlation.
 
         Computes the normalized cross-correlation between a signal and a
@@ -398,7 +419,7 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
         # Zero-mean template
         template_mean = np.mean(template)
         template_zm = template - template_mean
-        template_norm = np.sqrt(np.sum(template_zm ** 2))
+        template_norm = np.sqrt(np.sum(template_zm**2))
 
         if template_norm < 1e-10:
             return np.zeros(n)
@@ -409,11 +430,11 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
         # Local statistics via FFT with ones kernel
         ones_kernel = np.ones(k)
         local_sum = fftconvolve(signal, ones_kernel, mode="same")
-        local_sum_sq = fftconvolve(signal ** 2, ones_kernel, mode="same")
+        local_sum_sq = fftconvolve(signal**2, ones_kernel, mode="same")
 
         local_mean = local_sum / k
         # Use sum-of-squares form: sqrt(sum((x-mean)^2)) to match template_norm scale
-        local_energy = np.maximum(local_sum_sq - local_sum ** 2 / k, 0)
+        local_energy = np.maximum(local_sum_sq - local_sum**2 / k, 0)
         local_std = np.sqrt(local_energy)
 
         # Normalize (suppress divide-by-zero where denom is near-zero)

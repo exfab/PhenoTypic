@@ -22,8 +22,13 @@ from playwright.sync_api import Page
 
 from playwright.sync_api import expect
 
-from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
-from phenotypic.schema import METADATA
+from phenotypic.schema import CULTURE_METADATA, EXPERIMENT_METADATA, METADATA
+from tests.e2e.gui.conftest import (
+    _build_sandbox,
+    _start_live_server,
+    bind_results_output,
+    publish_coherent_terminal_evidence,
+)
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
 # gui-e2e workflow. Locally these tests pass reliably; on GHA ubuntu-latest
@@ -33,10 +38,12 @@ from phenotypic.schema import METADATA
 pytestmark = pytest.mark.ci_flaky
 
 _OUTPUT_NAME = "FilterOffcanvasOutput"
-# Two datasets with distinct values in Metadata_Dataset to drive filtering.
+# Two datasets with distinct values in the canonical dataset column.
 _DS1_IMAGES = ("plate_001.tif", "plate_002.tif")
 _DS2_IMAGES = ("plate_003.tif",)
 _NROWS, _NCOLS = 2, 3
+_DATASET_COLUMN = str(EXPERIMENT_METADATA.DATASET)
+_TIME_COLUMN = str(CULTURE_METADATA.TIME)
 
 
 # ---------------------------------------------------------------------------
@@ -45,7 +52,7 @@ _NROWS, _NCOLS = 2, 3
 
 
 def _build_master() -> pl.DataFrame:
-    """Build a master frame with two distinct Metadata_Dataset values.
+    """Build a master frame with two distinct canonical dataset values.
 
     ``ds1`` has two image files; ``ds2`` has one. This lets the filter
     test narrow from 3 to 2 image files when ds1 is selected.
@@ -59,9 +66,9 @@ def _build_master() -> pl.DataFrame:
                     label += 1
                     rows.append(
                         {
-                            "Metadata_Dataset": dataset,
+                            _DATASET_COLUMN: dataset,
                             str(METADATA.IMAGE_NAME): image,
-                            "Metadata_Time": 0.0,
+                            _TIME_COLUMN: 0.0,
                             "Object_Label": label,
                             "Grid_RowNum": r,
                             "Grid_ColNum": c,
@@ -108,6 +115,10 @@ def _seed_viewer_output(sandbox: Path) -> Path:
         stem = Path(image).stem
         PILImage.new("RGB", (120, 120), (200, 0, 0)).save(overlays / f"{stem}.png")
 
+    publish_coherent_terminal_evidence(
+        out,
+        total_images=len(_DS1_IMAGES) + len(_DS2_IMAGES),
+    )
     return out
 
 
@@ -144,22 +155,7 @@ def hub_url(live_server: str) -> str:
 def _open_viewer(page: Page, hub_url: str) -> None:
     """Hand off the output root to the viewer and navigate to /results/."""
     output_rel = f"results/{_OUTPUT_NAME}"
-    page.goto(hub_url + "/")
-    page.wait_for_load_state("networkidle")
-    resp = page.evaluate(
-        """async (path) => {
-            const r = await fetch('/sandbox/api/viewer/output-root', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: path}),
-            });
-            return r.status;
-        }""",
-        output_rel,
-    )
-    assert resp == 200, f"viewer hand-off failed: {resp}"
-
-    page.goto(hub_url + "/results/")
+    bind_results_output(page, hub_url, output_rel)
     page.wait_for_selector("#btn-filters-toggle", state="attached", timeout=15_000)
 
 
@@ -243,7 +239,7 @@ def test_filter_offcanvas_toggle_and_filtering(page: Page, hub_url: str) -> None
     1. Open the viewer via the hand-off pattern.
     2. Assert the offcanvas boots CLOSED (zero width / not visible).
     3. Click ``#btn-filters-toggle`` → assert the offcanvas becomes visible.
-    4. Click ``#btn-add-filter-row`` → choose ``Metadata_Dataset`` in the
+    4. Click ``#btn-add-filter-row`` → choose the canonical dataset column in the
        column dropdown → assert ``#filter-toggle-badge`` shows "1".
     5. Choose "ds1" in the values dropdown → assert ``#filter-match-count``
        contains "images match".
@@ -274,7 +270,7 @@ def test_filter_offcanvas_toggle_and_filtering(page: Page, hub_url: str) -> None
         "filter offcanvas should be visible after clicking #btn-filters-toggle"
     )
 
-    # Step 4 — add a filter row and pick the Metadata_Dataset column.
+    # Step 4 — add a filter row and pick the canonical dataset column.
     page.locator("#btn-add-filter-row").click()
 
     # Wait for a filter row to appear in the container.
@@ -287,8 +283,8 @@ def test_filter_offcanvas_toggle_and_filtering(page: Page, hub_url: str) -> None
     _open_filter_row_dropdown(page, row_index=0, dropdown_index=0)
     page.wait_for_timeout(200)
 
-    # Click the "Metadata_Dataset" option in the open listbox.
-    _pick_listbox_option(page, "Metadata_Dataset")
+    # Click the canonical dataset option in the open listbox.
+    _pick_listbox_option(page, _DATASET_COLUMN)
     page.wait_for_timeout(800)  # let Dash callback write the spec store
 
     # Under the method-aware redesign a row is only "active" once it has a

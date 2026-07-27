@@ -20,13 +20,9 @@ class _Handle:
 class _Runner:
     def __init__(self):
         self.started = []
-        self.reaped = []
 
-    def reap(self, run_id):
-        self.reaped.append(run_id)
-
-    def start(self, run_id, argv, *, output_dir):
-        self.started.append((run_id, argv, output_dir))
+    def start(self, run_id, argv, *, output_dir, generation):
+        self.started.append((run_id, argv, output_dir, generation))
         return _Handle()
 
 
@@ -36,7 +32,7 @@ def test_deploy_local_registers_run_and_starts_runner(tmp_path: Path):
     runner = _Runner()
     output_dir = tmp_path / "tune-runs" / "run1"
 
-    run_id = deploy_tune_run(
+    receipt = deploy_tune_run(
         runner=runner,
         registry=registry,
         sandbox=sandbox,
@@ -44,6 +40,7 @@ def test_deploy_local_registers_run_and_starts_runner(tmp_path: Path):
         output_dir=output_dir,
         slurm=False,
     )
+    run_id = receipt["run_id"]
 
     assert run_id == "tune-runs/run1"
     assert runner.started[0][0] == run_id
@@ -52,6 +49,8 @@ def test_deploy_local_registers_run_and_starts_runner(tmp_path: Path):
     assert record.mode == "local"
     assert record.status == "running"
     assert record.pid == 1234
+    assert runner.started[0][3] == record.generation
+    assert receipt["generation"] == str(record.generation)
 
 
 def test_deploy_resolves_relative_output_inside_sandbox(tmp_path: Path):
@@ -59,7 +58,7 @@ def test_deploy_resolves_relative_output_inside_sandbox(tmp_path: Path):
     registry = RunRegistry()
     runner = _Runner()
 
-    run_id = deploy_tune_run(
+    receipt = deploy_tune_run(
         runner=runner,
         registry=registry,
         sandbox=sandbox,
@@ -67,6 +66,7 @@ def test_deploy_resolves_relative_output_inside_sandbox(tmp_path: Path):
         output_dir=Path("relative-out"),
         slurm=False,
     )
+    run_id = receipt["run_id"]
 
     assert run_id == "relative-out"
     assert runner.started[0][2] == tmp_path / "relative-out"
@@ -84,7 +84,7 @@ def test_deploy_slurm_uses_runner_without_job_id(tmp_path: Path):
     registry = RunRegistry()
     runner = _Runner()
 
-    run_id = deploy_tune_run(
+    receipt = deploy_tune_run(
         runner=runner,
         registry=registry,
         sandbox=sandbox,
@@ -92,6 +92,7 @@ def test_deploy_slurm_uses_runner_without_job_id(tmp_path: Path):
         output_dir=tmp_path / "out",
         slurm=True,
     )
+    run_id = receipt["run_id"]
 
     record = registry.get(run_id)
     assert record is not None

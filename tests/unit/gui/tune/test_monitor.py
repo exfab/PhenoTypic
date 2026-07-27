@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 
@@ -10,7 +11,12 @@ from phenotypic.gui.tune._monitor import (
 
 
 def _rec(run_id, mode, status):
-    return SimpleNamespace(run_id=run_id, mode=mode, status=status)
+    return SimpleNamespace(
+        run_id=run_id,
+        generation=uuid4(),
+        mode=mode,
+        status=status,
+    )
 
 
 def test_switcher_marks_active_and_killable():
@@ -19,7 +25,13 @@ def test_switcher_marks_active_and_killable():
         _rec("b", "slurm", "running"),
         _rec("c", "local", "complete"),
     ]
-    items = run_switcher_items(recs, active_id="b")
+    items = run_switcher_items(
+        recs,
+        active_receipt={
+            "run_id": "b",
+            "generation": str(recs[1].generation),
+        },
+    )
     by_id = {item.run_id: item for item in items}
     assert by_id["b"].active is True
     assert by_id["a"].active is False

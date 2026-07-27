@@ -42,7 +42,10 @@ def _output_root(tmp_path: Path) -> OutputRoot:
     overlays.mkdir(parents=True, exist_ok=True)
     PILImage.new("RGB", (200, 100), (0, 64, 128)).save(overlays / "a.png")
     PILImage.new("RGB", (200, 100), (0, 64, 128)).save(overlays / "b.png")
-    return OutputRoot.discover(cli_out)
+    return OutputRoot.discover(
+        cli_out,
+        cache_root=tmp_path / ".test-phenotypic-viewer-cache",
+    )
 
 
 def _client(tmp_path: Path):
@@ -81,8 +84,35 @@ def test_thumb_unsafe_identity_is_404(tmp_path: Path) -> None:
 
 def test_thumb_cache_persists_under_viewer_cache(tmp_path: Path) -> None:
     client, root = _client(tmp_path)
+    source_before = {
+        path.relative_to(root.root).as_posix(): path.read_bytes()
+        for path in root.root.rglob("*")
+        if path.is_file()
+    }
     ident = _thumb_routes.encode_cell_ref("ds", "a")
     assert client.get(f"/timeline-thumb/{ident}?size=128").status_code == 200
-    cache_dir = root.root / ".viewer_cache" / "timeline_thumbs"
+    cache_dir = root.viewer_cache_dir / "timeline_thumbs"
     assert cache_dir.is_dir()
     assert list(cache_dir.glob("*.png"))  # a cached thumbnail was written
+    assert not (root.root / ".viewer_cache").exists()
+    source_after = {
+        path.relative_to(root.root).as_posix(): path.read_bytes()
+        for path in root.root.rglob("*")
+        if path.is_file()
+    }
+    assert source_after == source_before
+
+
+def test_thumb_refuses_mutated_bound_source_without_old_key_write(
+    tmp_path: Path,
+) -> None:
+    """A changed overlay cannot create a thumbnail under the old revision key."""
+    client, root = _client(tmp_path)
+    root.overlay_path("ds", "a").write_bytes(b"changed-after-bind")
+    ident = _thumb_routes.encode_cell_ref("ds", "a")
+
+    response = client.get(f"/timeline-thumb/{ident}?size=128")
+
+    assert response.status_code == 404
+    cache_dir = root.viewer_cache_dir / "timeline_thumbs"
+    assert not cache_dir.exists()

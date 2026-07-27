@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -9,11 +10,20 @@ from phenotypic import ImagePipeline
 from phenotypic.sdk_ import (
     best_params_path,
     best_pipeline_path,
+    atomic_write_text,
     pareto_best_pipeline_path,
     resolve_tuning_spec_path,
 )
 from phenotypic.tune._evaluation import build_pipeline
 from phenotypic.tune._spec import TuningSpec
+
+
+@dataclass(frozen=True)
+class PreparedPipelineExport:
+    """Complete in-memory pipeline export awaiting atomic publication."""
+
+    path: Path
+    payload: str
 
 
 def export_winning_pipeline(
@@ -56,8 +66,8 @@ def _params_from_best_params_payload(payload: object) -> dict[str, Any]:
     return payload
 
 
-def export_best_from_run(output_dir: Path) -> Path:
-    """Read a completed run's winner params and write the tuned pipeline."""
+def prepare_best_from_run(output_dir: Path) -> PreparedPipelineExport:
+    """Read winner inputs and build the complete pipeline payload in memory."""
     spec_path = resolve_tuning_spec_path(output_dir)
     if not spec_path.is_file():
         raise FileNotFoundError(f"tuning spec not found: {spec_path}")
@@ -68,11 +78,32 @@ def export_best_from_run(output_dir: Path) -> Path:
 
     spec = TuningSpec.model_validate_json(spec_path.read_text())
     params = _params_from_best_params_payload(json.loads(params_path.read_text()))
-    return export_winning_pipeline(spec.pipeline, params, output_dir)
+    pipeline = build_pipeline(spec.pipeline, params)
+    payload = pipeline.to_json()
+    if not isinstance(payload, str):  # pragma: no cover
+        raise RuntimeError("in-memory pipeline serialization returned no payload")
+    return PreparedPipelineExport(
+        path=best_pipeline_path(output_dir),
+        payload=payload,
+    )
+
+
+def publish_prepared_export(prepared: PreparedPipelineExport) -> Path:
+    """Atomically publish one fully prepared pipeline payload."""
+    atomic_write_text(prepared.path, prepared.payload)
+    return prepared.path
+
+
+def export_best_from_run(output_dir: Path) -> Path:
+    """Read a completed run's winner params and atomically write its pipeline."""
+    return publish_prepared_export(prepare_best_from_run(output_dir))
 
 
 __all__ = [
     "export_best_from_run",
     "export_pareto_pipeline",
     "export_winning_pipeline",
+    "prepare_best_from_run",
+    "publish_prepared_export",
+    "PreparedPipelineExport",
 ]

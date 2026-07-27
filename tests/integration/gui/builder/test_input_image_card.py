@@ -171,15 +171,17 @@ def test_input_image_card_has_no_delete_button() -> None:
         )
 
 
-def test_input_image_card_helper_returns_correct_container_id() -> None:
-    """``_build_input_image_card`` returns a Div with INSPECTOR_CONTAINER id."""
+def test_input_image_card_helper_does_not_remount_inspector_shell() -> None:
+    """Dynamic cards must not own the stable inspector or preview mounts."""
 
     scope = _DagBuilderScope()
     input_image = scope.blocks[0]
     state = _DagBuilderState(root=scope, selected_block_id=input_image.block_id)
 
     div = _build_input_image_card(state, input_image)
-    assert getattr(div, "id", None) == ids.INSPECTOR_CONTAINER
+    assert getattr(div, "id", None) is None
+    assert not _find_by_id(div, ids.INSPECTOR_CONTAINER)
+    assert not _find_by_id(div, ids.INSPECTOR_PREVIEW)
 
 
 def test_input_image_card_replaces_empty_state_on_selection() -> None:

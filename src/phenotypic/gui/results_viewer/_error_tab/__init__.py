@@ -23,9 +23,12 @@ State and persistence:
 * State is server-side: the recompute callback reads ``filtered_state.labels`` under
   its lock (the shared ``CurationLabels`` — there is **no** ``STORE_LABELS`` Dash
   store) and gates on ``active_tab == TAB_ERROR_ID``.
-* Each recompute writes ``deliverables/error_analysis.{parquet,csv}`` for the focused
-  category and, in verified mode, ``deliverables/verified.parquet``. The per-category
-  ``deliverables/errors/<category>.parquet`` are written by the curation layer.
+* Recompute, activation, category focus, and verified-baseline preview are
+  compute-only. They never write canonical deliverables.
+* ``Publish all categories`` computes the complete configured vocabulary from
+  one fingerprinted snapshot and transactionally publishes checksummed
+  ``error_analysis.{parquet,csv,html}`` plus ``verified.parquet`` in verified
+  mode. Empty categories remain explicit manifest entries.
 * ``reemit_error_deliverables`` (``_cli/_cli_error_outputs.py``, called from
   ``finalize_post_master_outputs``) authoritatively rewrites ``errors/*`` +
   ``error_analysis.*`` from the durable labels on headless finalize, so CLI output
@@ -34,10 +37,24 @@ State and persistence:
 """
 from __future__ import annotations
 
-from phenotypic.gui.results_viewer._error_tab._callbacks import (
-    register_error_callbacks,
-)
-from phenotypic.gui.results_viewer._error_tab._layout import build_error_tab_body
+from typing import Any
+
+
+def __getattr__(name: str) -> Any:
+    """Lazy-load Dash UI while keeping publication services headless."""
+    if name == "register_error_callbacks":
+        from phenotypic.gui.results_viewer._error_tab._callbacks import (
+            register_error_callbacks,
+        )
+
+        return register_error_callbacks
+    if name == "build_error_tab_body":
+        from phenotypic.gui.results_viewer._error_tab._layout import (
+            build_error_tab_body,
+        )
+
+        return build_error_tab_body
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "build_error_tab_body",

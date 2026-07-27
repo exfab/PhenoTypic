@@ -7,15 +7,21 @@ from types import SimpleNamespace
 from typing import Iterator
 
 from dash import dcc
+import polars as pl
 
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer import _viewer_card
+from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._heatmap_tab import _ids as heatmap_ids
 from phenotypic.gui.results_viewer._heatmap_tab import _layout as heatmap_layout
+from phenotypic.gui.results_viewer._layout import _build_header, build_app_layout
+from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer.colony_view import _layout as colony_layout
 from phenotypic.gui.shell import _sidebar
 from phenotypic.gui.shell._ids import sidebar_entry_id
 from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.schema import METADATA
+from phenotypic.sdk_ import master_measurements_parquet_path
 
 
 def _walk(component: object) -> Iterator[object]:
@@ -140,15 +146,6 @@ def test_shell_sidebar_folder_row_uses_folder_icon_not_chevron(tmp_path: Path) -
 # Sticky tab-row Filters button placement (Feature A, Task 9)
 # ---------------------------------------------------------------------------
 
-import polars as pl
-
-from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-from phenotypic.gui.results_viewer._layout import _build_header, build_app_layout
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.sdk_ import master_measurements_parquet_path
-from phenotypic.schema import METADATA
-
-
 def _iter(component):
     yield component
     children = getattr(component, "children", None)
@@ -176,7 +173,10 @@ def _make_output(tmp_path: Path) -> OutputRoot:
     target.parent.mkdir(parents=True, exist_ok=True)
     df.write_parquet(target)
     (overlay_dir / "a.png").touch()
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def test_header_no_longer_contains_filters_toggle(tmp_path) -> None:

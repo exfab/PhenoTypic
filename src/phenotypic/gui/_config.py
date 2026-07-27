@@ -35,13 +35,17 @@ These are bare *filenames*, not paths. The user-facing run artifacts
 under ``<output>/deliverables/`` — ``DELIVERABLES_DIRNAME`` (= ``"deliverables"``,
 backed by ``DIR_DELIVERABLES`` in :mod:`phenotypic.sdk_`). Join them via the
 ``phenotypic.sdk_`` path helpers (``deliverables_dir(output)``,
-``master_measurements_parquet_path(output)``, …). ``RESULTS_DIRNAME`` and
-``QC_DIRNAME`` are *not* deliverables and stay at the output-dir root; the
-machine-state sidecars ``PROGRESS_DIRNAME`` (``progress/``) and
+``master_measurements_parquet_path(output)``, …). ``RESULTS_DIRNAME`` is not
+a deliverable and stays at the output-dir root. ``QC_DIRNAME`` resolves below
+``deliverables/`` through ``qc_dir(output)``; legacy root-level QC reads go
+through the corresponding resolver. The machine-state sidecars
+``PROGRESS_DIRNAME`` (``progress/``) and
 ``processing_state.json`` now live under the hidden ``<output>/.phenotypic/``
 cache (``PHENOTYPIC_CACHE_DIRNAME``), resolved for legacy runs via
-``resolve_manifest_json_path``.
+``resolve_progress_dir`` / ``resolve_manifest_json_path`` and
+``resolve_processing_state_path``.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -66,6 +70,7 @@ from phenotypic.sdk_ import (
     MEASUREMENTS_PARQUET,
     PIPELINE_JSON,
     QC_REVIEW_STATE_JSON,
+    RUN_LOG_DIRNAME,
     STDOUT_LOG,
 )
 
@@ -93,6 +98,7 @@ __all__ = [
     "CFG_IMAGE_ROOT",
     "CFG_SANDBOX_ROOT",
     "CFG_OUTPUT_ROOT",
+    "CFG_OUTPUT_MUTATION_GUARD",
     "CFG_FILTERED_STATE",
     "CFG_RECIPE_STATE",
     "CFG_MEASUREMENT_SCHEMA",
@@ -100,6 +106,12 @@ __all__ = [
     "CFG_QC_INSTANCES_CACHE",
     "CFG_QC_AUGMENTED_FRAME",
     "CFG_QC_PIPELINE",
+    "CFG_VIEWER_SESSION",
+    "CFG_ANALYSIS_SESSION",
+    "CFG_RESULTS_BINDING_STATE",
+    "CFG_RESULTS_BINDING_COORDINATOR",
+    "CFG_RESULTS_BINDING_JOBS",
+    "CFG_BINDING_GENERATION",
     # Sandbox subdirectories
     "SANDBOX_GUI_DIRNAME",
     "SANDBOX_PRESETS_SUBDIR",
@@ -171,6 +183,7 @@ __all__ = [
     # Tunables
     "DEFAULT_IDLE_RELEASE_SECONDS",
     "RSS_INTERVAL_MS",
+    "RUN_ACTION_ACK_UNCERTAIN_MS",
     # Branding
     "TITLE_HUB",
     "TITLE_BUILDER",
@@ -260,6 +273,11 @@ CFG_SANDBOX_ROOT: str = "pheno_sandbox_root"
 #: a CLI output directory. Set when the results viewer is in loaded mode.
 CFG_OUTPUT_ROOT: str = "output_root"
 
+#: ``app.server.config[CFG_OUTPUT_MUTATION_GUARD]`` — bound Results/Analysis
+#: mutation authority. Every persistent callback obtains a fresh receipt from
+#: this one guard immediately before its first write.
+CFG_OUTPUT_MUTATION_GUARD: str = "pheno_output_mutation_guard"
+
 #: ``app.server.config[CFG_FILTERED_STATE]`` —
 #: :class:`FilteredMeasurements` for the loaded results viewer.
 CFG_FILTERED_STATE: str = "filtered_state"
@@ -304,6 +322,28 @@ CFG_QC_AUGMENTED_FRAME: str = "pheno_qc_augmented_frame"
 #: a no-op in that case. Spec §D.5.
 CFG_QC_PIPELINE: str = "pheno_qc_pipeline"
 
+#: Shell-owned Results :class:`ToolSession`, exposed for coordinated
+#: Results/Analysis refresh and integration diagnostics.
+CFG_VIEWER_SESSION: str = "pheno_viewer_session"
+
+#: Shell-owned Analysis :class:`ToolSession` paired with
+#: :data:`CFG_VIEWER_SESSION`.
+CFG_ANALYSIS_SESSION: str = "pheno_analysis_session"
+
+#: Mutable shell binding record containing the selected output path,
+#: :class:`OutputRoot`, and shared :class:`OutputSnapshotDescriptor`.
+CFG_RESULTS_BINDING_STATE: str = "pheno_results_binding_state"
+
+#: Shell-owned binding coordinator used to serialize and generation-fence
+#: Results/Analysis selection and Refresh requests.
+CFG_RESULTS_BINDING_COORDINATOR: str = "pheno_results_binding_coordinator"
+
+#: Bounded process-local asynchronous Results binding job manager.
+CFG_RESULTS_BINDING_JOBS: str = "pheno_results_binding_jobs"
+
+#: Immutable per-bind UUID embedded in a bound Results or Analysis page.
+CFG_BINDING_GENERATION: str = "pheno_binding_generation"
+
 # ---------------------------------------------------------------------------
 # Sandbox subdirectories
 # ---------------------------------------------------------------------------
@@ -333,9 +373,6 @@ def tune_presets_dir(sandbox_root: Path) -> Path:
         / SANDBOX_TUNE_PRESETS_SUBDIR
     )
 
-#: Hidden directory inside a run's *output* directory (NOT the sandbox)
-#: holding ``stdout.log`` and other on-disk run artifacts.
-RUN_LOG_DIRNAME: str = ".gui_log"
 
 #: Hidden directory inside the results viewer's *output* directory
 #: holding cached DZI tiles.
@@ -352,14 +389,27 @@ BROWSE_CACHE_TMP_SUBPATH: tuple[str, str] = ("phenotypic", "browse")
 # builder package. ``builder/_directory_browser`` re-exports IMAGE_EXTS.
 # ---------------------------------------------------------------------------
 IMAGE_EXTS: frozenset[str] = frozenset(
-    {".png", ".tif", ".tiff", ".jpg", ".jpeg", ".cr2", ".cr3", ".nef", ".arw", ".dng"}
+    {
+        ".png",
+        ".tif",
+        ".tiff",
+        ".jpg",
+        ".jpeg",
+        ".cr2",
+        ".cr3",
+        ".nef",
+        ".arw",
+        ".dng",
+    }
 )
 
 #: Camera-RAW subset of :data:`IMAGE_EXTS`. These require rawpy (absent on
 #: Windows) and decode through ``phenotypic.Image.imread`` — mirroring the
 #: core ``IO.RAW_FILE_EXTENSIONS`` decode set. Bare ``.raw`` is intentionally
 #: excluded (libraw can't reliably decode the ambiguous container).
-RAW_IMAGE_EXTS: frozenset[str] = frozenset({".cr2", ".cr3", ".nef", ".arw", ".dng"})
+RAW_IMAGE_EXTS: frozenset[str] = frozenset(
+    {".cr2", ".cr3", ".nef", ".arw", ".dng"}
+)
 
 # ---------------------------------------------------------------------------
 # Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.sdk_
@@ -380,9 +430,10 @@ RAW_IMAGE_EXTS: frozenset[str] = frozenset({".cr2", ".cr3", ".nef", ".arw", ".dn
 # generated HTML reports, README, and pipeline.json) now resolve under
 # ``<output>/deliverables/`` (DELIVERABLES_DIRNAME / DIR_DELIVERABLES) via the
 # phenotypic.sdk_ path helpers (deliverables_dir, master_measurements_parquet_path,
-# …). The per-image results dir and the qc dir stay at the output-dir root,
-# while machine-state (progress dir, processing_state.json, processing_events.log)
-# now lives under the hidden cache dir ``<output>/.phenotypic/``
+# …). The per-image results dir stays at the output-dir root; QC resolves
+# under ``<output>/deliverables/qc/`` (with a legacy root resolver). Machine
+# state (progress dir, processing_state.json, processing_events.log) lives
+# under the hidden cache dir ``<output>/.phenotypic/``
 # (PHENOTYPIC_CACHE_DIRNAME / DIR_PHENOTYPIC); resolve it via the
 # phenotypic.sdk_ helpers (progress_dir, resolve_manifest_json_path, …).
 #
@@ -421,7 +472,9 @@ DASHBOARD_FILENAME: str = DASHBOARD_HTML
 # ---------------------------------------------------------------------------
 
 #: Full Flask route for the sandbox API viewer output-root handoff endpoint.
-SANDBOX_API_VIEWER_OUTPUT_ROOT: str = f"{SANDBOX_API_PREFIX}/viewer/output-root"
+SANDBOX_API_VIEWER_OUTPUT_ROOT: str = (
+    f"{SANDBOX_API_PREFIX}/viewer/output-root"
+)
 
 #: URL prefix where the builder's DZI tile blueprint mounts on the Flask
 #: app — the path the Flask server sees AFTER the hub
@@ -737,6 +790,10 @@ DEFAULT_IDLE_RELEASE_SECONDS: float = 15 * 60.0
 #: ``psutil.Process().memory_info().rss``.
 RSS_INTERVAL_MS: int = 5_000
 
+#: Time before an unacknowledged Validate/Run request is labelled uncertain.
+#: This is presentation-only: it cannot determine whether the server launched.
+RUN_ACTION_ACK_UNCERTAIN_MS: int = 5_000
+
 # ---------------------------------------------------------------------------
 # Branding strings
 # ---------------------------------------------------------------------------
@@ -764,6 +821,7 @@ THREAD_NAME_PREFIX: str = "phenotypic-gui"
 # ---------------------------------------------------------------------------
 # Launcher helpers
 # ---------------------------------------------------------------------------
+
 
 def normalize_url_prefix(value: str | None) -> str:
     """Return a canonical browser-visible path prefix.

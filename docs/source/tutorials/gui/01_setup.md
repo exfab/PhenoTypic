@@ -28,7 +28,7 @@ for i, seed in enumerate((1, 2, 3), start=1):
     iio.imwrite(plates / f"plate_{i:03d}.tif", arr)
 
 (root / "metadata.csv").write_text(
-    "Metadata_ImageName,Metadata_StrainID,Metadata_MatingType,"
+    "MetadataImage_ImageName,Metadata_StrainID,Metadata_MatingType,"
     "Metadata_Media,Metadata_RunDate,Metadata_PlateNum,"
     "Metadata_Replicate,Grid_RowNum,Grid_ColNum\n"
     "plate_001.tif,SYN_001,a,YPD,2026-05-01,1,1,8,12\n"
@@ -37,7 +37,7 @@ for i, seed in enumerate((1, 2, 3), start=1):
     encoding="utf-8",
 )
 
-(root / "pipeline.json").write_text("""{
+(root / "pipeline.json.pht-pipe").write_text("""{
   "version": "0.1.0",
   "name": "gui_tutorial",
   "desc": "Synthetic yeast tutorial pipeline",
@@ -73,7 +73,7 @@ gui_tutorial_dataset/
 │   ├── plate_002.tif
 │   └── plate_003.tif
 ├── metadata.csv
-└── pipeline.json
+└── pipeline.json.pht-pipe
 ```
 
 ## Launch the hub

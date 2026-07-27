@@ -6,6 +6,7 @@ renames flow everywhere. IDs are unprefixed kebab-case in line with the
 builder/results-viewer convention; the shell uses ``"shell-"`` and
 mount middleware keeps the namespaces independent.
 """
+
 from __future__ import annotations
 
 from typing import Literal
@@ -37,6 +38,21 @@ ANALYSIS_PAGE = "analysis-page"
 #: Output-root header (path display + reload button).
 ANALYSIS_OUTPUT_HEADER = "analysis-output-header"
 
+#: Snapshot freshness badge. Polling updates only this status, not app data.
+ANALYSIS_SNAPSHOT_STATUS = "analysis-snapshot-status"
+
+#: Explicit shared Results/Analysis snapshot refresh action.
+ANALYSIS_REFRESH_SNAPSHOT = "analysis-refresh-snapshot"
+
+#: Inline failure message from an explicit refresh attempt.
+ANALYSIS_REFRESH_ERROR = "analysis-refresh-error"
+
+#: Status-only fingerprint poll trigger.
+ANALYSIS_SNAPSHOT_INTERVAL = "analysis-snapshot-interval"
+
+#: Monotonic shell binding generation carried by this rendered page.
+ANALYSIS_BINDING_GENERATION = "analysis-binding-generation"
+
 #: Pipeline summary chip (e.g. "3 ops · 1 post · 2 filters · LogGrowthModel").
 ANALYSIS_PIPELINE_HEADER = "analysis-pipeline-header"
 
@@ -55,6 +71,9 @@ ANALYSIS_STALE_BANNER = "analysis-stale-banner"
 #: so the user can manually re-add a replacement. Hidden when no
 #: warnings were collected during load.
 ANALYSIS_LOAD_WARNINGS_BANNER = "analysis-load-warnings-banner"
+
+#: Persistent diagnostic for a browsable but non-mutable output binding.
+ANALYSIS_READ_ONLY_DIAGNOSTIC = "analysis-read-only-diagnostic"
 
 # ---------------------------------------------------------------------------
 # Section stacks
@@ -101,9 +120,18 @@ ANALYSIS_RUN_SPINNER = "analysis-run-spinner"
 # Stores
 # ---------------------------------------------------------------------------
 
-#: ``dcc.Store`` echoing the current pipeline JSON so callbacks can avoid
-#: round-tripping disk on every dropdown change.
+#: ``dcc.Store`` carrying ``{revision, pipeline_json}`` after every recipe
+#: transaction. Its unique revision drives the single full-page reconciler
+#: even when a rejected edit reloads byte-identical JSON.
 ANALYSIS_PIPELINE_STORE = "analysis-pipeline-store"
+
+#: Mutation callbacks publish candidate revisions here. A synchronous
+#: clientside gate advances :data:`ANALYSIS_PIPELINE_STORE` monotonically.
+ANALYSIS_PIPELINE_EVENT_STORE = "analysis-pipeline-event-store"
+
+#: The clientside monotonic gate acknowledges every valid candidate revision
+#: with ``{revision, accepted}``, including stale candidates it rejects.
+ANALYSIS_PIPELINE_GATE_ACK_STORE = "analysis-pipeline-gate-ack-store"
 
 #: ``dcc.Store(storage_type="session")`` holding per-section plotting
 #: preferences (``figsize`` / ``collapsed`` / ``cmap`` / ...). Session
@@ -200,6 +228,8 @@ __all__ = [
     "ANALYSIS_RUN_STATUS",
     "ANALYSIS_RUN_SPINNER",
     "ANALYSIS_PIPELINE_STORE",
+    "ANALYSIS_PIPELINE_EVENT_STORE",
+    "ANALYSIS_PIPELINE_GATE_ACK_STORE",
     "ANALYSIS_PLOT_PREFS_STORE",
     "EMPTY_HANDOFF_BANNER",
     "EMPTY_HANDOFF_LABEL",

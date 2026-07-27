@@ -5,7 +5,8 @@ through ``app.test_client()`` — fast, deterministic, no port allocation.
 
 Coverage:
 
-    * ``dashboard.html`` and nested ``progress/manifest.json`` paths serve.
+    * ``dashboard.html`` and canonical hidden progress paths serve.
+    * Legacy root-level ``progress/manifest.json`` paths remain readable.
     * Path-traversal URLs (``..``-style, absolute, symlink-escape) return 404.
     * Permission-denied targets return 403 (POSIX-only).
     * ``viewer_session.touch()`` is called on every successful request and
@@ -61,11 +62,11 @@ def test_dashboard_html_served(sandbox: SandboxRoot) -> None:
 
 
 def test_nested_progress_polls_served(sandbox: SandboxRoot) -> None:
-    """The catch-all ``<path:rel_file>`` must serve nested polls.
+    """The catch-all retains read compatibility for legacy progress polls.
 
-    The dashboard polls ``progress/manifest.json`` relative to its own URL;
-    a single-segment route would 404 these and the iframed dashboard would
-    look frozen.
+    Dashboards generated before the hidden machine-state migration poll
+    ``progress/manifest.json``. The generic route must continue serving those
+    files even though current writers use ``.phenotypic/progress/``.
     """
     (sandbox.root / "plate" / "progress").mkdir(parents=True)
     (sandbox.root / "plate" / "progress" / "manifest.json").write_text(
@@ -74,6 +75,25 @@ def test_nested_progress_polls_served(sandbox: SandboxRoot) -> None:
     app = _make_app(sandbox)
     client = app.test_client()
     resp = client.get("/runs/plate/progress/manifest.json")
+    assert resp.status_code == 200
+    assert b'"chunks"' in resp.data
+
+
+def test_canonical_hidden_progress_polls_served(
+    sandbox: SandboxRoot,
+) -> None:
+    """Current dashboard polls reach ``.phenotypic/progress/``."""
+    progress = sandbox.root / "plate" / ".phenotypic" / "progress"
+    progress.mkdir(parents=True)
+    (progress / "manifest.json").write_text(
+        '{"chunks": []}',
+        encoding="utf-8",
+    )
+    app = _make_app(sandbox)
+    client = app.test_client()
+
+    resp = client.get("/runs/plate/.phenotypic/progress/manifest.json")
+
     assert resp.status_code == 200
     assert b'"chunks"' in resp.data
 

@@ -1,6 +1,7 @@
 """Unit guards for source-image-root chrome components."""
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 from urllib.parse import unquote
@@ -233,3 +234,165 @@ def test_metadata_picker_registers_store_writer(tmp_path: Path) -> None:
         SHELL_METADATA_CSV_CONFIRM in json.dumps(meta["inputs"])
         for meta in metadata_store_callbacks
     )
+
+
+def test_shell_callback_map_shared_store_writers_are_explicit_actions_only(
+    tmp_path: Path,
+) -> None:
+    import dash
+
+    from phenotypic.gui.shell._ids import (
+        SHELL_METADATA_CSV_CONFIRM,
+        SHELL_METADATA_CSV_STORE,
+        SHELL_SETTINGS_INPUT_FOLDER_CLEAR,
+        SHELL_SETTINGS_METADATA_CSV_CLEAR,
+        SHELL_SIDEBAR_SELECTION_STORE,
+        SHELL_SOURCE_IMAGE_ROOT_CONFIRM,
+        SHELL_SOURCE_IMAGE_ROOT_STORE,
+        SHELL_TAB_HOME,
+    )
+
+    sandbox = SandboxRoot.from_path(tmp_path)
+    app = dash.Dash(__name__)
+    app.layout = dcc.Markdown("body")
+    wrap_in_chrome(app, active_tab=SHELL_TAB_HOME, sandbox=sandbox)
+
+    def _writer_inputs(store_id: str) -> set[str]:
+        inputs: set[str] = set()
+        for callback_id, meta in app.callback_map.items():
+            if f"{store_id}.data" not in callback_id:
+                continue
+            inputs.update(item["id"] for item in meta["inputs"])
+        return inputs
+
+    assert _writer_inputs(SHELL_SOURCE_IMAGE_ROOT_STORE) == {
+        SHELL_SETTINGS_INPUT_FOLDER_CLEAR,
+        SHELL_SOURCE_IMAGE_ROOT_CONFIRM,
+        SHELL_SIDEBAR_SELECTION_STORE,
+    }
+    assert _writer_inputs(SHELL_METADATA_CSV_STORE) == {
+        SHELL_SETTINGS_METADATA_CSV_CLEAR,
+        SHELL_METADATA_CSV_CONFIRM,
+    }
+
+
+def test_repository_shared_store_writer_inventory_is_explicit() -> None:
+    """Audit every production ``Output`` declaration for shared-store writes.
+
+    Run controls are deliberately absent because typed Run paths are not
+    allowed to mutate shared Shell authority. Tune retains its explicit
+    image-source selection hand-off.
+    """
+    source_root = Path(__file__).parents[4] / "src" / "phenotypic" / "gui"
+    target_names = {
+        "SHELL_SOURCE_IMAGE_ROOT_STORE",
+        "SHELL_METADATA_CSV_STORE",
+    }
+    inventory: set[tuple[str, str, str]] = set()
+
+    for path in source_root.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+
+        class _OutputVisitor(ast.NodeVisitor):
+            def __init__(self) -> None:
+                self.function_name = "<module>"
+
+            def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+                previous = self.function_name
+                self.function_name = node.name
+                self.generic_visit(node)
+                self.function_name = previous
+
+            visit_AsyncFunctionDef = visit_FunctionDef
+
+            def visit_Call(self, node: ast.Call) -> None:
+                if (
+                    isinstance(node.func, ast.Name)
+                    and node.func.id == "Output"
+                    and node.args
+                    and isinstance(node.args[0], ast.Name)
+                    and node.args[0].id in target_names
+                ):
+                    inventory.add(
+                        (
+                            path.relative_to(source_root).as_posix(),
+                            self.function_name,
+                            node.args[0].id,
+                        )
+                    )
+                self.generic_visit(node)
+
+        _OutputVisitor().visit(tree)
+
+    assert inventory == {
+        (
+            "shell/_callbacks.py",
+            "_clear_source_root",
+            "SHELL_SOURCE_IMAGE_ROOT_STORE",
+        ),
+        (
+            "shell/_callbacks.py",
+            "_confirm_source_picker",
+            "SHELL_SOURCE_IMAGE_ROOT_STORE",
+        ),
+        (
+            "shell/_callbacks.py",
+            "_source_from_sidebar_selection",
+            "SHELL_SOURCE_IMAGE_ROOT_STORE",
+        ),
+        (
+            "shell/_callbacks.py",
+            "_clear_metadata_csv",
+            "SHELL_METADATA_CSV_STORE",
+        ),
+        (
+            "shell/_callbacks.py",
+            "_confirm_metadata_picker",
+            "SHELL_METADATA_CSV_STORE",
+        ),
+        (
+            "tune/_callbacks.py",
+            "_mirror_tune_image_source_to_shared",
+            "SHELL_SOURCE_IMAGE_ROOT_STORE",
+        ),
+    }
+
+
+def test_shared_refresh_revision_invalidates_labels_and_open_pickers(
+    tmp_path: Path,
+) -> None:
+    import dash
+
+    from phenotypic.gui.shell._ids import (
+        SHELL_CLASSIFIER_CACHE_STORE,
+        SHELL_METADATA_CSV_MODAL_BODY,
+        SHELL_SETTINGS_METADATA_CSV_LABEL,
+        SHELL_SOURCE_IMAGE_ROOT_LABEL,
+        SHELL_SOURCE_IMAGE_ROOT_MODAL_BODY,
+        SHELL_TAB_HOME,
+    )
+
+    sandbox = SandboxRoot.from_path(tmp_path)
+    app = dash.Dash(__name__)
+    app.layout = dcc.Markdown("body")
+
+    wrap_in_chrome(app, active_tab=SHELL_TAB_HOME, sandbox=sandbox)
+
+    expected_outputs = {
+        SHELL_SOURCE_IMAGE_ROOT_LABEL,
+        SHELL_SETTINGS_METADATA_CSV_LABEL,
+        SHELL_SOURCE_IMAGE_ROOT_MODAL_BODY,
+        SHELL_METADATA_CSV_MODAL_BODY,
+    }
+    refresh_consumers: set[str] = set()
+    for callback_id, meta in app.callback_map.items():
+        input_ids = {item["id"] for item in meta["inputs"]}
+        if SHELL_CLASSIFIER_CACHE_STORE not in input_ids:
+            continue
+        refresh_consumers.update(
+            output_id
+            for output_id in expected_outputs
+            if output_id in callback_id
+        )
+
+    assert refresh_consumers == expected_outputs

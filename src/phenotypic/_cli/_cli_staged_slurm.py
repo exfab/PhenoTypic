@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import shlex
 import time
 from datetime import datetime
@@ -50,6 +51,7 @@ from ._cli_types import (
     ExecutionResults,
     ImageFailure,
 )
+from ._cli_update_state import PROCESSING_GENERATION_ENV_VAR
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 
 logger = logging.getLogger(__name__)
@@ -110,6 +112,7 @@ def _stage_worker_body(
     n_shards: int | None = None,
     index_var: str = "$SLURM_ARRAY_TASK_ID",
     overlay_alpha: float = 0.3,
+    processing_generation: str | None = None,
 ) -> str:
     """The per-array-task command line that invokes the staged SLURM worker.
 
@@ -139,7 +142,13 @@ def _stage_worker_body(
         parts.append(f"--n-shards {n_shards}")
     if stage == 3:
         parts.append(f"--overlay-alpha {overlay_alpha}")
-    return " \\\n    ".join(parts)
+    command = " \\\n    ".join(parts)
+    if processing_generation:
+        return (
+            f"export {PROCESSING_GENERATION_ENV_VAR}="
+            f"{shlex.quote(processing_generation)}\n{command}"
+        )
+    return command
 
 
 def _write_stage_script(
@@ -245,6 +254,7 @@ def generate_staged_scripts(
     resume: bool = False,
     markers_required: bool = True,
     overlay_alpha: float = 0.3,
+    processing_generation: str | None = None,
 ) -> Dict[str, Any]:
     """Write the per-stage SBATCH array scripts (no submission).
 
@@ -293,6 +303,7 @@ def generate_staged_scripts(
             markers_required,
             index_var="$CURRENT_TASK_INDEX",
             overlay_alpha=overlay_alpha,
+            processing_generation=processing_generation,
         )
 
     stage1 = _write_image_stage_chunks(
@@ -322,6 +333,7 @@ def generate_staged_scripts(
             resume,
             markers_required,
             n_shards=n_shards,
+            processing_generation=processing_generation,
         ),
     )
     stage3 = _write_image_stage_chunks(
@@ -437,6 +449,16 @@ def _write_staged_job_metadata(
         JobMetadataKey.NO_QC: config.no_qc,
         JobMetadataKey.INPUT_PATH: config.input_path.stem,
         JobMetadataKey.ORCHESTRATION_EPOCH: epoch,
+        JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(
+            "PHENOTYPIC_GUI_RECORD_GENERATION"
+        ),
+        JobMetadataKey.PROCESSING_GENERATION: getattr(
+            config,
+            "processing_generation",
+            None,
+        ),
+        "slurm_metadata_version": 2,
+        "slurm_generation": epoch,
         JobMetadataKey.PIPELINE_PATH: str(
             Path(getattr(config, "pipeline_json", "pipeline.json")).absolute()
         ),
@@ -444,7 +466,12 @@ def _write_staged_job_metadata(
         JobMetadataKey.NROWS: getattr(config, "nrows", None),
         JobMetadataKey.NCOLS: getattr(config, "ncols", None),
         JobMetadataKey.SLURM_JOB_IDS: {
-            str(index): str(job_id) for index, job_id in enumerate(job_ids)
+            str(index): {
+                "job_id": str(job_id),
+                "role": "unknown",
+                "generation": epoch,
+            }
+            for index, job_id in enumerate(job_ids)
         },
     }
     metadata_path = job_metadata_path(output_dir)
@@ -506,15 +533,11 @@ class StagedSlurmStrategy(ExecutionStrategy):
             resume=getattr(cfg, "resume", False),
             markers_required=getattr(cfg, "staged_stage3_markers", True),
             overlay_alpha=cfg.overlay_alpha,
-        )
-        _write_staged_job_metadata(
-            datasets=datasets,
-            output_dir=output_dir,
-            config=cfg,
-            scripts=scripts,
-            job_ids=[],
-            start_time=start,
-            epoch=epoch,
+            processing_generation=getattr(
+                cfg,
+                "processing_generation",
+                None,
+            ),
         )
         state = initialize_orchestration(
             output_dir,
@@ -527,6 +550,15 @@ class StagedSlurmStrategy(ExecutionStrategy):
                 else "fresh"
             ),
             controller_config_path=scripts["controller_config"],
+        )
+        _write_staged_job_metadata(
+            datasets=datasets,
+            output_dir=output_dir,
+            config=cfg,
+            scripts=scripts,
+            job_ids=[],
+            start_time=start,
+            epoch=epoch,
         )
         if getattr(cfg, "restart", False):
             state["restart_parquet_fingerprints"] = snapshot_inventory_parquets(
@@ -552,7 +584,7 @@ class StagedSlurmStrategy(ExecutionStrategy):
                 output_dir,
                 epoch=epoch,
                 token="controller-initial",
-                role="controller",
+                role="controller-initial",
                 round_index=0,
                 script_path=scripts["controller"],
             )

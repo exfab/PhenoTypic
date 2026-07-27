@@ -121,6 +121,9 @@ def test_bind_releases_both_sessions(sandbox: SandboxRoot) -> None:
     # ``viewer_state`` was stamped with the resolved OutputRoot.
     assert viewer_state["output_root"] is not None
     assert str(viewer_state["output_root"].root).endswith("demo")
+    assert viewer_state["output_root"].cache_dir.is_relative_to(
+        sandbox.root / ".phenotypic-gui" / "viewer_cache"
+    )
 
 
 def test_bind_without_analysis_session_still_releases_viewer(

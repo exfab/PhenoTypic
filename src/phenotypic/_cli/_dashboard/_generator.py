@@ -3,18 +3,27 @@ Dashboard HTML generator for PhenoTypic CLI processing progress.
 
 Generates a single self-contained HTML+CSS+JS dashboard file that monitors
 processing progress by polling ``manifest.json`` and ``failures.jsonl`` in
-the ``progress/`` subdirectory.
+the ``.phenotypic/progress/`` machine-state subdirectory.
 """
 
 from __future__ import annotations
 
 import base64
+import json
 import logging
 from pathlib import Path
 
 from phenotypic._assets import asset_bytes
 from phenotypic.sdk_.register import AnalysisPluginRegistry
-from phenotypic.sdk_ import dashboard_html_path, analysis_html_path
+from phenotypic.sdk_ import (
+    DashboardManifestKey,
+    DIR_PHENOTYPIC,
+    DIR_PROGRESS,
+    analysis_html_path,
+    atomic_write_json,
+    dashboard_html_path,
+    manifest_json_path,
+)
 from phenotypic.sdk_.typing_ import ExecutionMode
 
 from ._vendor_js import MARKED_MIN_JS
@@ -75,8 +84,8 @@ def generate_dashboard(output_dir: Path, *, execution_mode: ExecutionMode = "loc
     Both HTML artifacts are user-facing deliverables, so they land in
     ``<output>/deliverables/`` (via :func:`dashboard_html_path` /
     :func:`analysis_html_path`). The JS sidecars they lazy-load stay in
-    ``<output>/progress/`` and the HTML re-bases its relative fetches with
-    ``../`` accordingly.
+    ``<output>/.phenotypic/progress/`` and the HTML re-bases its relative
+    fetches with ``../`` accordingly.
 
     Args:
         output_dir: Root output directory.
@@ -116,10 +125,21 @@ def regenerate_dashboard_artifacts(
         datasets: Mapping of dataset name to total image count.
     """
     from phenotypic.sdk_ import JobMetadataKey, progress_dir, resolve_execution_mode
-    from ._manifest_builder import build_manifest
+    from ._manifest_builder import (
+        build_manifest,
+        dataset_inventory_from_metadata,
+    )
 
     prog_dir = progress_dir(output_dir)
     execution_mode = resolve_execution_mode(job_meta)
+    gui_record_generation = (
+        (job_meta or {}).get(JobMetadataKey.GUI_RECORD_GENERATION)
+        if execution_mode == "local"
+        else None
+    )
+    dataset_inventory = dataset_inventory_from_metadata(
+        (job_meta or {}).get(JobMetadataKey.DATASETS)
+    )
 
     build_manifest(
         output_dir=output_dir,
@@ -130,8 +150,24 @@ def regenerate_dashboard_artifacts(
         slurm_job_ids=(job_meta or {}).get(JobMetadataKey.CHUNK_JOB_IDS),
         chunk_scripts=(job_meta or {}).get(JobMetadataKey.CHUNK_SCRIPTS),
         input_path=(job_meta or {}).get(JobMetadataKey.INPUT_PATH),
+        dataset_inventory=dataset_inventory,
+        processing_generation=(job_meta or {}).get(
+            JobMetadataKey.PROCESSING_GENERATION
+        ),
     )
     generate_dashboard(output_dir, execution_mode=execution_mode)
+    if isinstance(gui_record_generation, str) and gui_record_generation:
+        # Authenticate the manifest only after both canonical manifest and
+        # dashboard publication succeed. A dashboard-only failure therefore
+        # cannot leave current-generation evidence for the GUI exit observer.
+        path = manifest_json_path(output_dir)
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise RuntimeError("Canonical dashboard manifest is not an object")
+        payload[DashboardManifestKey.GUI_RECORD_GENERATION] = (
+            gui_record_generation
+        )
+        atomic_write_json(path, payload, sort_keys=False)
 
 
 def _write_js_sidecar(output_dir: Path, filename: str, label: str) -> None:
@@ -1067,16 +1103,17 @@ def _build_js(
         plugins: Optional analysis plugins whose JS is appended.
         root_prefix: Relative path from the generated HTML back to the
             output root. The dashboard lives in ``deliverables/`` while
-            ``progress/`` and ``results/`` stay at the output root, so the
-            default ``"../"`` re-roots every ``progress/``/``results/`` URL.
+            machine state lives in ``.phenotypic/progress/`` and results
+            stay at the output root, so the default ``"../"`` re-roots both.
     """
     framework_js = f"""\
     // ── State ──────────────────────────────────────────────────
     const EXECUTION_MODE = "{execution_mode}";
     // Path from this HTML (in deliverables/) back to the output root, where
-    // progress/ and results/ live. Sibling files (README.md, measurements.*)
-    // move with the HTML and stay bare.
+    // results/ lives. Machine-state sidecars use the canonical hidden cache.
+    // Sibling files (README.md, measurements.*) move with the HTML and stay bare.
     const ROOT_PREFIX = "{root_prefix}";
+    const PROGRESS_PREFIX = ROOT_PREFIX + "{DIR_PHENOTYPIC}/{DIR_PROGRESS}/";
     let refreshTimer = null;
     const REFRESH_MS = 10000;
     let fetchErrors = 0;
@@ -1349,7 +1386,7 @@ def _build_js(
       const container = document.getElementById('failures-table-container');
       let records = [];
       try {{
-        const resp = await fetch(ROOT_PREFIX + 'progress/failures.jsonl?' + Date.now());
+        const resp = await fetch(PROGRESS_PREFIX + 'failures.jsonl?' + Date.now());
         if (resp.ok) {{
           const text = await resp.text();
           const lines = text.trim().split('\\n').filter(Boolean);
@@ -1419,7 +1456,7 @@ def _build_js(
         const container = document.querySelector('.tab-content.active');
         if (container) container.prepend(hint);
       }}
-      hint.innerHTML = 'Cannot load <code>' + ROOT_PREFIX + 'progress/manifest.json</code> (' + esc(String(reason)) +
+      hint.innerHTML = 'Cannot load <code>' + PROGRESS_PREFIX + 'manifest.json</code> (' + esc(String(reason)) +
         '). Verify the progress directory exists and is accessible via this web server.' +
         '<br><small style="opacity:0.7">Retrying every ' + (REFRESH_MS/1000) + 's...</small>';
     }}
@@ -1437,7 +1474,7 @@ def _build_js(
     // ── Main Refresh Loop ──────────────────────────────────────
     async function refresh() {{
       try {{
-        const resp = await fetch(ROOT_PREFIX + 'progress/manifest.json?' + Date.now());
+        const resp = await fetch(PROGRESS_PREFIX + 'manifest.json?' + Date.now());
         if (!resp.ok) {{
           fetchErrors++;
           console.warn('Dashboard: manifest fetch HTTP ' + resp.status);
@@ -1564,8 +1601,8 @@ def _build_analysis_js(plugins: list, root_prefix: str = "../") -> str:
         plugins: Analysis plugins whose JS is appended.
         root_prefix: Relative path from the generated HTML back to the
             output root. The analysis page lives in ``deliverables/`` while
-            ``progress/`` stays at the output root, so the default ``"../"``
-            re-roots every ``progress/`` URL. Sibling files
+            machine state lives in ``.phenotypic/progress/``, so the default
+            ``"../"`` re-roots every machine-state URL. Sibling files
             (``measurements.parquet``) move with the HTML and stay bare.
     """
     # Declared once here and referenced everywhere below. The rest of this
@@ -1573,8 +1610,9 @@ def _build_analysis_js(plugins: list, root_prefix: str = "../") -> str:
     # in this short preamble and used via string concatenation thereafter.
     root_prefix_js = f"""\
     // Path from this HTML (in deliverables/) back to the output root, where
-    // progress/ lives. Sibling files (measurements.parquet) stay bare.
+    // machine-state sidecars live. Sibling files (measurements.parquet) stay bare.
     const ROOT_PREFIX = "{root_prefix}";
+    const PROGRESS_PREFIX = ROOT_PREFIX + "{DIR_PHENOTYPIC}/{DIR_PROGRESS}/";
 """
     framework_js = """\
     // ── Helpers ────────────────────────────────────────────────
@@ -1611,8 +1649,8 @@ def _build_analysis_js(plugins: list, root_prefix: str = "../") -> str:
       });
       return _scriptCache[src];
     }
-    function loadPlotly() { return loadScript(ROOT_PREFIX + 'progress/plotly.min.js', 'Plotly'); }
-    function loadHyparquet() { return loadScript(ROOT_PREFIX + 'progress/hyparquet.min.js', 'hyparquet'); }
+    function loadPlotly() { return loadScript(PROGRESS_PREFIX + 'plotly.min.js', 'Plotly'); }
+    function loadHyparquet() { return loadScript(PROGRESS_PREFIX + 'hyparquet.min.js', 'hyparquet'); }
 
     function _appendParquetRows(rows) {
       if (rows.length === 0) return;
@@ -1682,7 +1720,7 @@ def _build_analysis_js(plugins: list, root_prefix: str = "../") -> str:
           sharedParquetState.loading = null;
         })
         .catch(function() {
-          return _loadParquetFile(ROOT_PREFIX + 'progress/analysis_full.parquet')
+          return _loadParquetFile(PROGRESS_PREFIX + 'analysis_full.parquet')
             .then(function() {
               sharedParquetState.loaded = true;
               sharedParquetState.loading = null;
@@ -1718,7 +1756,7 @@ def _build_analysis_js(plugins: list, root_prefix: str = "../") -> str:
 
     async function fetchAnalysisData() {
       const sources = [
-        { key: 'stats', url: ROOT_PREFIX + 'progress/analysis_stats.json' },
+        { key: 'stats', url: PROGRESS_PREFIX + 'analysis_stats.json' },
         { key: 'overlay', url: 'overlays/overlay_manifest.json' },
       ];
       for (const src of sources) {
@@ -1750,7 +1788,7 @@ def _build_analysis_js(plugins: list, root_prefix: str = "../") -> str:
     let _refreshTimer = null;
     async function _pollManifest() {
       try {
-        const resp = await fetch(ROOT_PREFIX + 'progress/manifest.json?' + Date.now());
+        const resp = await fetch(PROGRESS_PREFIX + 'manifest.json?' + Date.now());
         if (!resp.ok) return;
         const data = await resp.json();
         const newVersion = data.analysis_data_version || 0;

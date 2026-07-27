@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 import time
 from abc import ABC, abstractmethod
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
 from ._cli_types import (
     Dataset,
     DatasetResults,
+    DatasetState,
     ExecutionConfig,
     ExecutionResults,
     ImageFailure,
@@ -34,23 +36,51 @@ from ._cli_types import (
 from ._cli_output_manager import OutputManager
 from ._cli_process_single import process_single_image_core
 from phenotypic.sdk_.slurm import get_slurm_array_limit
-from ._cli_slurm_array_scripts import generate_all_array_job_scripts
+from phenotypic.sdk_._file_locking import exclusive_path_lock
+from ._cli_slurm_array_scripts import (
+    generate_all_array_job_scripts,
+    generate_terminal_finalizer_script,
+)
 from ._cli_slurm_submission import submit_slurm_script_chain
+from ._cli_slurm_lifecycle import (
+    initialize_slurm_lifecycle,
+    mirror_job_to_metadata,
+    new_slurm_generation,
+)
 from ._cli_update_state import append_event, append_completion_event, aggregate_state_from_events
 from ._cli_failure_tracker import append_failure, read_failures
 from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
 from ._cli_constants import MAX_TRACEBACK_LINES
 from phenotypic.sdk_ import (
-    JOB_METADATA_JSON,
     JobMetadataKey,
     HdfAttr,
     event_log_path,
+    atomic_write_json,
+    job_metadata_path,
     progress_dir,
 )
+from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 logger = logging.getLogger(__name__)
+
+
+def _write_slurm_image_task_mapping(
+    metadata_path: Path,
+    image_task_mapping: Dict[str, List[str]],
+) -> None:
+    """Merge the initial array mapping without losing concurrent job records.
+
+    Args:
+        metadata_path: Canonical scheduler metadata path.
+        image_task_mapping: Array-task keys mapped to dataset and image names.
+    """
+    metadata_lock = metadata_path.with_name(f".{metadata_path.name}.lock")
+    with exclusive_path_lock(metadata_lock, timeout=60.0):
+        job_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        job_metadata[JobMetadataKey.IMAGE_TASK_MAPPING] = image_task_mapping
+        atomic_write_json(metadata_path, job_metadata)
 
 
 def _truncate_error_message(error_msg: str, max_lines: int = MAX_TRACEBACK_LINES) -> str:
@@ -210,7 +240,17 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         # Generate progress manifest and dashboard (local mode — runs once)
         try:
-            datasets_totals = {ds.name: len(ds.images) for ds in datasets}
+            datasets_inventory = (
+                self.config.full_dataset_inventory
+                or {
+                    ds.name: [image.name for image in ds.images]
+                    for ds in datasets
+                }
+            )
+            datasets_totals = {
+                name: len(images)
+                for name, images in datasets_inventory.items()
+            }
             start_iso = start_time.isoformat(timespec="milliseconds")
             if self.config.process_only_layer:
                 # Manifest only — no dashboard HTML, no aggregation (D13).
@@ -223,15 +263,32 @@ class LocalParallelStrategy(ExecutionStrategy):
                     execution_mode="local",
                     start_time=start_iso,
                     input_path=self.config.input_path.stem,
+                    gui_record_generation=os.environ.get(
+                        GUI_RECORD_GENERATION_ENV_VAR
+                    ),
+                    dataset_inventory=datasets_inventory,
+                    processing_generation=self.config.processing_generation,
                 )
             else:
                 local_job_meta: dict = {
                     JobMetadataKey.START_TIME: start_iso,
                     JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
                     JobMetadataKey.EXECUTION_MODE: "local",
+                    JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(
+                        GUI_RECORD_GENERATION_ENV_VAR
+                    ),
+                    JobMetadataKey.PROCESSING_GENERATION: (
+                        self.config.processing_generation
+                    ),
+                    JobMetadataKey.DATASETS: {
+                        name: {"total": len(images), "images": images}
+                        for name, images in datasets_inventory.items()
+                    },
                 }
                 regenerate_dashboard_artifacts(
-                    output_dir, local_job_meta, datasets_totals
+                    output_dir,
+                    local_job_meta,
+                    datasets_totals,
                 )
         except Exception:
             logger.debug("Failed to generate progress dashboard", exc_info=True)
@@ -523,7 +580,7 @@ class LocalParallelStrategy(ExecutionStrategy):
             Dictionary mapping dataset names to DatasetResults
         """
         # Initialize result containers
-        dataset_results = {}
+        dataset_results: dict[str, dict[str, Any]] = {}
         for dataset in datasets:
             dataset_results[dataset.name] = {
                 "total": len(dataset.images),
@@ -714,26 +771,105 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         for dataset in datasets:
             flat_scripts.extend(all_scripts.get(dataset.name, []))
 
+        if not flat_scripts:
+            raise RuntimeError(
+                "No array job scripts were generated. "
+                "Check that datasets contain images."
+            )
+
+        # Publish the generation fence and metadata skeleton before the first
+        # scheduler call. The lifecycle recorder fills both job registries
+        # while the submit/cancel lock is still held.
+        generation = new_slurm_generation()
+        initialize_slurm_lifecycle(
+            output_dir, generation=generation, mode="ordinary"
+        )
+        prog_dir = progress_dir(output_dir)
+        prog_dir.mkdir(parents=True, exist_ok=True)
+        metadata_path = job_metadata_path(output_dir)
+        job_metadata: Dict[str, Any] = {
+            JobMetadataKey.START_TIME: start_time.isoformat(
+                timespec="milliseconds"
+            ),
+            JobMetadataKey.EXECUTION_MODE: "slurm",
+            JobMetadataKey.DATASETS: {
+                name: {
+                    "total": len(images),
+                    "images": images,
+                }
+                for name, images in (
+                    self.config.full_dataset_inventory
+                    or {
+                        ds.name: [img.name for img in ds.images]
+                        for ds in datasets
+                    }
+                ).items()
+            },
+            JobMetadataKey.CHUNK_SCRIPTS: [str(s) for s in flat_scripts],
+            JobMetadataKey.CHUNK_JOB_IDS: {},
+            JobMetadataKey.SLURM_JOB_IDS: {},
+            JobMetadataKey.IMAGE_TASK_MAPPING: {},
+            JobMetadataKey.INCLUDE_DATASET_COLUMN: (
+                self.config.include_dataset_column
+            ),
+            JobMetadataKey.METADATA_CSV: (
+                str(self.config.metadata_csv)
+                if self.config.metadata_csv
+                else None
+            ),
+            JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
+            JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(
+                "PHENOTYPIC_GUI_RECORD_GENERATION"
+            ),
+            JobMetadataKey.PROCESSING_GENERATION: (
+                self.config.processing_generation
+            ),
+            "slurm_metadata_version": 2,
+            "slurm_generation": generation,
+        }
+        atomic_write_json(metadata_path, job_metadata)
+
+        finalizer_script = generate_terminal_finalizer_script(
+            self.config,
+            output_dir,
+        )
         submission = submit_slurm_script_chain(
             flat_chunk_scripts=flat_scripts,
             output_dir=output_dir,
             slurm_args=self.config.slurm_args,
             console=console,
+            finalizer_script=finalizer_script,
         )
         job_ids = submission.job_ids
         flat_scripts = submission.flat_scripts
+        mirror_job_to_metadata(
+            output_dir,
+            generation=generation,
+            token="chunk-0",
+            role="chunk",
+            job_id=str(job_ids[0]),
+        )
+        if len(job_ids) > 1:
+            has_initial_dispatcher = bool(submission.dispatcher_scripts)
+            mirror_job_to_metadata(
+                output_dir,
+                generation=generation,
+                token=(
+                    "dispatcher-1"
+                    if has_initial_dispatcher
+                    else "finalizer"
+                ),
+                role="dispatcher" if has_initial_dispatcher else "finalizer",
+                job_id=str(job_ids[1]),
+            )
 
         # ── Progress dashboard setup ──────────────────────────────────
-        prog_dir = progress_dir(output_dir)
-        prog_dir.mkdir(parents=True, exist_ok=True)
-
         # Build image-task mapping: {job_id}_{array_idx} -> [dataset, image]
         # NOTE: Only chunk 0's job ID is known at submission time. Subsequent
         # chunk IDs are assigned by the drip-feed dispatcher after each chunk
         # completes, so OOM detection via sacct is limited to chunk 0 images
         # until the sentinel discovers later job IDs.
         image_task_mapping: Dict[str, List[str]] = {}
-        chunk_job_ids: Dict[str, str] = {"0": str(job_ids[0])}
         array_offset = 0
         for dataset in datasets:
             for i, img_path in enumerate(dataset.images):
@@ -741,48 +877,21 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
                 image_task_mapping[task_key] = [dataset.name, img_path.name]
             array_offset += len(dataset.images)
 
-        # Write job_metadata.json
-        job_metadata: Dict[str, Any] = {
-            JobMetadataKey.START_TIME: start_time.isoformat(timespec="milliseconds"),
-            JobMetadataKey.EXECUTION_MODE: "slurm",
-            JobMetadataKey.DATASETS: {
-                ds.name: {
-                    "total": len(ds.images),
-                    "images": [img.name for img in ds.images],
-                }
-                for ds in datasets
-            },
-            JobMetadataKey.CHUNK_SCRIPTS: [str(s) for s in flat_scripts],
-            JobMetadataKey.CHUNK_JOB_IDS: chunk_job_ids,
-            JobMetadataKey.IMAGE_TASK_MAPPING: image_task_mapping,
-            JobMetadataKey.INCLUDE_DATASET_COLUMN: self.config.include_dataset_column,
-            JobMetadataKey.METADATA_CSV: str(self.config.metadata_csv) if self.config.metadata_csv else None,
-            JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
-        }
-        metadata_path = prog_dir / JOB_METADATA_JSON
-        metadata_path.write_text(
-            json.dumps(job_metadata, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
+        # Preserve the lifecycle's role-bearing job records.
+        _write_slurm_image_task_mapping(metadata_path, image_task_mapping)
         console.print(f"[green]✓[/green] Job metadata: [dim]{metadata_path}[/dim]")
 
         if self.config.process_only_layer:
-            # Process-only (D13): no aggregation/checkpoint chain and no dashboard
-            # HTML. The manifest-only finalizer is embedded as a sentinel in the
-            # LAST chunk (reusing the forward path's last-chunk finalizer
-            # mechanism), so it rebuilds progress/manifest.json after every image
-            # across all chunks — no separate dependent job, correct under the
-            # drip-feed for any number of chunks.
+            # Process-only (D13): no aggregation/dashboard. A dedicated
+            # finalizer is dependency-ordered after the final image chunk.
             console.print(
-                "[green]✓[/green] Manifest finalizer embedded in last chunk "
+                "[green]✓[/green] Manifest finalizer follows the last chunk "
                 "(process-only: no aggregation/dashboard)\n"
             )
         else:
-            # Checkpoint, manifest, and finalizer tasks are embedded in the
-            # array job scripts — no separate sentinel job needed.
             console.print(
-                "[green]✓[/green] Checkpoint tasks embedded in array scripts "
-                "(manifest + finalizer)"
+                "[green]✓[/green] Terminal finalizer follows the last image "
+                "chunk; nonterminal checkpoints remain embedded"
             )
 
             # Generate dashboard HTML
@@ -842,12 +951,23 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         start_time = datetime.now()
 
         total_images = sum(len(d.images) for d in datasets)
+        inventory = (
+            self.config.full_dataset_inventory
+            or {
+                dataset.name: [image.name for image in dataset.images]
+                for dataset in datasets
+            }
+        )
         last_completed = 0
 
         try:
             while True:
                 # Aggregate latest events
-                datasets_state = aggregate_state_from_events(event_log)
+                datasets_state = aggregate_state_from_events(
+                    event_log,
+                    inventory=inventory,
+                    generation=self.config.processing_generation,
+                )
 
                 # Count completed and failed
                 total_completed = sum(
@@ -881,7 +1001,11 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
 
         # Build final results
         end_time = datetime.now()
-        datasets_state = aggregate_state_from_events(event_log)
+        datasets_state = aggregate_state_from_events(
+            event_log,
+            inventory=inventory,
+            generation=self.config.processing_generation,
+        )
 
         # Enrich with structured failure data from failures.jsonl
         prog_dir = progress_dir(output_dir)
@@ -894,13 +1018,11 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         # Convert to DatasetResults
         dataset_results = {}
         for dataset in datasets:
-            ds_state = datasets_state.get(
-                dataset.name, {"completed": set(), "failed": set(), "errors": {}}
-            )
+            ds_state = datasets_state.get(dataset.name, DatasetState())
 
             failures = []
-            for img_name in ds_state.get("failed", set()):
-                error_msg = ds_state.get("errors", {}).get(img_name, "Unknown error")
+            for img_name in ds_state.failed:
+                error_msg = ds_state.errors.get(img_name, "Unknown error")
                 rec = failure_lookup.get((dataset.name, img_name), {})
                 failures.append(
                     ImageFailure(
@@ -916,8 +1038,8 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             dataset_results[dataset.name] = DatasetResults(
                 name=dataset.name,
                 total=len(dataset.images),
-                completed=len(ds_state.get("completed", set())),
-                failed=len(ds_state.get("failed", set())),
+                completed=len(ds_state.completed),
+                failed=len(ds_state.failed),
                 failures=failures,
             )
 

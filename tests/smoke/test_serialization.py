@@ -9,7 +9,7 @@ import pytest
 import phenotypic
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import BaseOperation, ImageOperation
-from phenotypic.correction import ImagePadder
+from phenotypic.correction import CropImage, PadImage
 from phenotypic.detect import CompositeDetector, OtsuDetector, TriangleDetector
 from phenotypic.enhance import GaussianBlur
 from phenotypic.measure import MeasureShape
@@ -50,12 +50,12 @@ _SKIP_PREFABS: set[str] = set()
 
 _all_prefabs = [
     pytest.param(
-            f"phenotypic.prefab.{name}",
-            getattr(phenotypic.prefab, name),
-            marks=pytest.mark.xfail(
-                    reason="GridApply requires mandatory image_op arg",
-                    strict=True,
-            ),
+        f"phenotypic.prefab.{name}",
+        getattr(phenotypic.prefab, name),
+        marks=pytest.mark.xfail(
+            reason="GridApply requires mandatory image_op arg",
+            strict=True,
+        ),
     )
     if name in _SKIP_PREFABS
     else (f"phenotypic.prefab.{name}", getattr(phenotypic.prefab, name))
@@ -66,6 +66,7 @@ _all_prefabs = [
 # ---------------------------------------------------------------------------
 # Parametrized: every operation survives round-trip
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.smoke
 @pytest.mark.parametrize("qualname,obj", _all_operations)
@@ -84,8 +85,7 @@ def test_operation_roundtrip(qualname, obj):
 
     # Public attributes should survive the round-trip
     original_attrs = {
-        k: v for k, v in instance.__dict__.items()
-        if not k.startswith("_")
+        k: v for k, v in instance.__dict__.items() if not k.startswith("_")
     }
     for key, expected in original_attrs.items():
         actual = getattr(loaded_op, key, _SENTINEL)
@@ -108,6 +108,7 @@ _SENTINEL = object()
 # Parametrized: every measurement survives round-trip
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.smoke
 @pytest.mark.parametrize("qualname,obj", _all_measurements)
 @timeit
@@ -128,6 +129,7 @@ def test_measurement_roundtrip(qualname, obj):
 # ---------------------------------------------------------------------------
 # Parametrized: every prefab pipeline survives round-trip
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.smoke
 @pytest.mark.parametrize("qualname,cls", _all_prefabs)
@@ -154,16 +156,19 @@ def test_prefab_roundtrip(qualname, cls):
 # Structural tests (hand-picked, covering nesting / file I/O / params)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.smoke
 @timeit
 def test_operation_params_survive_roundtrip():
     """Operations from all ABC categories preserve params through JSON round-trip."""
-    pipe = ImagePipeline(ops=[
-        GaussianBlur(sigma=3.5, mode="reflect"),
-        OtsuDetector(ignore_zeros=True, ignore_borders=False),
-        RemoveBorderObjects(border_size=7),
-        ImagePadder(left=10, right=20, top=5, bottom=15, mode="constant"),
-    ])
+    pipe = ImagePipeline(
+        ops=[
+            GaussianBlur(sigma=3.5, mode="reflect"),
+            OtsuDetector(ignore_zeros=True, ignore_borders=False),
+            RemoveBorderObjects(border_size=7),
+            PadImage(left=10, right=20, top=5, bottom=15, mode="constant"),
+        ]
+    )
 
     loaded = ImagePipeline.from_json(pipe.to_json())
 
@@ -178,12 +183,45 @@ def test_operation_params_survive_roundtrip():
     rem = loaded._ops["RemoveBorderObjects"]
     assert rem.border_size == 7
 
-    pad = loaded._ops["ImagePadder"]
+    pad = loaded._ops["PadImage"]
     assert pad.left == 10
     assert pad.right == 20
     assert pad.top == 5
     assert pad.bottom == 15
     assert pad.mode == "constant"
+
+
+@pytest.mark.parametrize(
+    ("legacy_name", "operation", "live_type"),
+    [
+        ("ImageCropper", CropImage(left=3), CropImage),
+        ("ImagePadder", PadImage(left=3), PadImage),
+    ],
+)
+def test_legacy_correction_names_deserialize(
+    legacy_name: str,
+    operation: BaseOperation,
+    live_type: type[BaseOperation],
+) -> None:
+    """Serialized pipelines retain compatibility across operation renames."""
+    pipeline = ImagePipeline(ops=[operation])
+    payload = pipeline.to_json()
+    assert payload is not None
+    payload = payload.replace(operation.__class__.__name__, legacy_name)
+
+    loaded = ImagePipeline.from_json(payload)
+
+    assert isinstance(next(iter(loaded._ops.values())), live_type)
+
+
+def test_legacy_correction_imports_resolve_with_deprecation() -> None:
+    """Old public correction imports remain available during migration."""
+    import phenotypic.correction as correction
+
+    with pytest.warns(DeprecationWarning, match="use CropImage"):
+        assert correction.ImageCropper is CropImage
+    with pytest.warns(DeprecationWarning, match="use PadImage"):
+        assert correction.ImagePadder is PadImage
 
 
 @pytest.mark.smoke
@@ -199,8 +237,7 @@ def test_prefab_custom_params_roundtrip():
     assert first_op.sigma == 7
 
     removers = [
-        op for op in loaded._ops.values()
-        if isinstance(op, SmallObjectRemover)
+        op for op in loaded._ops.values() if isinstance(op, SmallObjectRemover)
     ]
     assert all(r.min_size == 150 for r in removers)
 
@@ -251,15 +288,15 @@ def test_prefab_embedded_in_pipeline():
 def test_file_roundtrip():
     """Pipeline serialization to file and back preserves structure."""
     pipe = ImagePipeline(
-            ops=[GaussianBlur(sigma=4), OtsuDetector()],
-            meas=[MeasureShape()],
-            name="file_test",
+        ops=[GaussianBlur(sigma=4), OtsuDetector()],
+        meas=[MeasureShape()],
+        name="file_test",
     )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = Path(tmpdir) / "pipeline.json"
         typed_filepath = ensure_typed_json_suffix(
-                filepath, CONFIG_SUFFIX_PIPELINE
+            filepath, CONFIG_SUFFIX_PIPELINE
         )
         pipe.to_json(filepath)
 
@@ -278,6 +315,7 @@ def test_file_roundtrip():
 # ---------------------------------------------------------------------------
 # Operation-level to_json/from_json (BaseOperation)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.smoke
 @timeit
@@ -299,7 +337,7 @@ def test_operation_to_json_from_json_file_roundtrip():
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = Path(tmpdir) / "op.json"
         typed_filepath = ensure_typed_json_suffix(
-                filepath, CONFIG_SUFFIX_OPERATION
+            filepath, CONFIG_SUFFIX_OPERATION
         )
         OtsuDetector(ignore_zeros=True).to_json(filepath)
 
@@ -328,7 +366,7 @@ def test_operation_polymorphic_from_json_via_base():
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = Path(tmpdir) / "op.json"
         typed_filepath = ensure_typed_json_suffix(
-                filepath, CONFIG_SUFFIX_OPERATION
+            filepath, CONFIG_SUFFIX_OPERATION
         )
         OtsuDetector().to_json(filepath)
 
@@ -344,7 +382,7 @@ def test_operation_from_json_subclass_mismatch_raises():
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = Path(tmpdir) / "op.json"
         typed_filepath = ensure_typed_json_suffix(
-                filepath, CONFIG_SUFFIX_OPERATION
+            filepath, CONFIG_SUFFIX_OPERATION
         )
         OtsuDetector().to_json(filepath)
 
@@ -359,7 +397,7 @@ def test_operation_from_json_measurement_via_image_op_raises():
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = Path(tmpdir) / "meas.json"
         typed_filepath = ensure_typed_json_suffix(
-                filepath, CONFIG_SUFFIX_OPERATION
+            filepath, CONFIG_SUFFIX_OPERATION
         )
         MeasureShape().to_json(filepath)
 
@@ -368,8 +406,8 @@ def test_operation_from_json_measurement_via_image_op_raises():
             ImageOperation.from_json(typed_filepath)
         # ...but BaseOperation.from_json resolves it fine.
         assert (
-                type(BaseOperation.from_json(typed_filepath)).__name__
-                == "MeasureShape"
+            type(BaseOperation.from_json(typed_filepath)).__name__
+            == "MeasureShape"
         )
 
 
@@ -378,12 +416,12 @@ def test_operation_from_json_measurement_via_image_op_raises():
 def test_nested_op_to_json_from_json_roundtrip():
     """A nested ``OperationField`` (CompositeDetector.ops) round-trips."""
     composite = CompositeDetector(
-            ops=[OtsuDetector(ignore_zeros=True), TriangleDetector()],
+        ops=[OtsuDetector(ignore_zeros=True), TriangleDetector()],
     )
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = Path(tmpdir) / "composite.json"
         typed_filepath = ensure_typed_json_suffix(
-                filepath, CONFIG_SUFFIX_OPERATION
+            filepath, CONFIG_SUFFIX_OPERATION
         )
         composite.to_json(filepath)
 

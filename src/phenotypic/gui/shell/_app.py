@@ -36,11 +36,17 @@ import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import html
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from uuid import uuid4
 
 from phenotypic.gui._config import (
-    DEFAULT_URL_PREFIX,
+    CFG_ANALYSIS_SESSION,
+    CFG_RESULTS_BINDING_STATE,
+    CFG_RESULTS_BINDING_COORDINATOR,
+    CFG_RESULTS_BINDING_JOBS,
     CFG_RUN_REGISTRY,
     CFG_RUNNER,
+    CFG_VIEWER_SESSION,
+    DEFAULT_URL_PREFIX,
     DEFAULT_IDLE_RELEASE_SECONDS,
     MOUNT_ANALYSIS,
     MOUNT_BROWSE,
@@ -53,6 +59,7 @@ from phenotypic.gui._config import (
     join_url_prefix,
     normalize_url_prefix,
 )
+from phenotypic.gui._binding_generation import BindingRequestFence
 from phenotypic.gui.shell._home import build_home_layout
 from phenotypic.gui.shell._ids import (
     SHELL_TAB_ANALYSIS,
@@ -66,13 +73,25 @@ from phenotypic.gui.shell._ids import (
 from phenotypic.gui.shell._layout import wrap_in_chrome
 from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui.shell._routes import register_sandbox_api
+from phenotypic.gui.shell._binding import BindingCoordinator
+from phenotypic.gui.shell._binding_jobs import (
+    ResultsBindJobContext,
+    ResultsBindJobFailure,
+    ResultsBindJobManager,
+)
 from phenotypic.gui.shell._runs_blueprint import register as register_runs
 from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.gui.shell._session import ToolSession, start_idle_release_thread
+from phenotypic.gui.shell._session import (
+    ToolSession,
+    start_idle_release_thread,
+    swap_tool_session_states,
+)
 from phenotypic.gui._url_prefix import configure_url_prefix_routing
 
 if TYPE_CHECKING:
-    pass
+    from phenotypic.gui.run_console._slurm import SlurmSubmitResult
+    from phenotypic.gui.run_console._slurm_observer import SchedulerClient
+    from phenotypic.gui.shell._runs_registry import RunRecord
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +146,8 @@ def _build_shell_dash_app(
     viewer_session: "ToolSession[Any] | None" = None,
     viewer_state: "dict[str, Any] | None" = None,
     extra_release_sessions: "tuple[ToolSession[Any], ...] | None" = None,
+    bind_output: "Callable[[Path | None], Any] | None" = None,
+    binding_jobs: "ResultsBindJobManager | None" = None,
 ) -> dash.Dash:
     """Build the shell's home Dash (chrome + home pane + Flask blueprints).
 
@@ -170,6 +191,9 @@ def _build_shell_dash_app(
         viewer_session=viewer_session,
         viewer_state=viewer_state,
         extra_release_sessions=extra_release_sessions,
+        bind_output=bind_output,
+        binding_jobs=binding_jobs,
+        browser_url_prefix=url_prefix,
     )
     register_runs(app.server, sandbox, viewer_session=viewer_session)
     register_shared_static(app.server)
@@ -186,6 +210,12 @@ def compose_hub(
     url_prefix: str = DEFAULT_URL_PREFIX,
     idle_release_seconds: float = DEFAULT_IDLE_RELEASE_SECONDS,
     start_idle_thread: bool = True,
+    start_slurm_observer: bool | None = None,
+    slurm_scheduler: "SchedulerClient | None" = None,
+    slurm_submitter: "Callable[..., SlurmSubmitResult] | None" = None,
+    slurm_canceller: "Callable[..., object] | None" = None,
+    action_acknowledgement_hook: "Callable[[RunRecord], None] | None" = None,
+    binding_drain_timeout_seconds: float = 5.0,
     progress: Callable[[str], None] | None = None,
 ) -> tuple[dash.Dash, ToolSession[dash.Dash]]:
     """Build the shell + builder + viewer-session + run console; mount via DispatcherMiddleware.
@@ -205,6 +235,22 @@ def compose_hub(
         start_idle_thread: When ``True`` (default), spawn the daemon
             thread that releases idle sessions. Tests pass ``False``
             so they don't leak background threads.
+        start_slurm_observer: Whether to start the scheduler observer daemon.
+            ``None`` preserves the historical coupling to
+            ``start_idle_thread``. Tests can disable the scheduler observer
+            independently while retaining other production composition.
+        slurm_scheduler: Optional scheduler-query dependency for the shared
+            lifecycle observer. Tests inject an in-memory implementation so
+            no scheduler command can run.
+        slurm_submitter: Optional submission dependency forwarded to the Run
+            console. Production leaves this unset and uses ``submit_slurm``.
+        slurm_canceller: Optional cancellation dependency forwarded to the
+            Run console. Production leaves this unset and resolves the shared
+            lifecycle canceller lazily.
+        action_acknowledgement_hook: Optional action-response test seam
+            forwarded to the Run console.
+        binding_drain_timeout_seconds: Maximum time an output Refresh waits
+            for callbacks admitted by the previous binding to finish.
         progress: Optional callback invoked with a short label before each
             eager sub-app is built (``"sub-app modules"``, ``"shell"``,
             ``"builder"``, …). The launcher passes
@@ -218,6 +264,16 @@ def compose_hub(
         if progress is not None:
             progress(label)
 
+    # Custom operations must self-register before any GUI registry discovers
+    # subclasses or any app deserializes a configured pipeline. This is the
+    # same fail-loud preload contract used by fresh CLI and SLURM workers.
+    _tick("custom operations")
+    from phenotypic._cli._cli_preload import (
+        preload_custom_operation_modules,
+    )
+
+    preload_custom_operation_modules()
+
     # Local imports to keep boot-time cycles minimal.
     _tick("sub-app modules")
     from phenotypic.gui import (
@@ -228,22 +284,37 @@ def compose_hub(
         run_console,
         tune,
     )
-    from phenotypic.gui.results_viewer._output_root import OutputRoot
+    from phenotypic.gui.results_viewer._output_root import (
+        OutputRoot,
+        OutputSnapshotChangedError,
+        sandbox_viewer_cache_root,
+    )
 
-    # Mutable handoff slot so the sidebar can hand a CLI output path to the
-    # viewer without changing the ToolSession's build identity. The
-    # ``/sandbox/api/viewer/output-root`` endpoint validates an incoming
-    # path with ``OutputRoot.discover``, stamps the result here, and calls
-    # ``viewer_session.release()``; the next GET to ``/results/`` rebuilds
-    # the viewer with this OutputRoot.
-    viewer_state: dict[str, "OutputRoot | None"] = {"output_root": None}
+    # Shared binding record. A successful bind or explicit Refresh publishes
+    # all four fields together with the paired ToolSession states.
+    initial_binding_fence = BindingRequestFence()
+    viewer_state: dict[str, Any] = {
+        "bound_path": None,
+        "output_root": None,
+        "snapshot": None,
+        "status": "unavailable",
+        "error": None,
+        "binding_generation": str(uuid4()),
+        "binding_fence": initial_binding_fence,
+    }
+    binding_coordinator = BindingCoordinator()
 
-    # 1. Viewer session (lazy — heavy parquet load deferred to first GET).
-    def _build_viewer() -> dash.Dash:
+    def _make_viewer(
+        output_root: OutputRoot | None,
+        binding_generation: str,
+        binding_fence: BindingRequestFence,
+    ) -> dash.Dash:
         viewer_app = results_viewer.create_app(
-            output_root=viewer_state["output_root"],
+            output_root=output_root,
             url_prefix=join_url_prefix(base_url_prefix, MOUNT_VIEWER),
             api_url_prefix=base_url_prefix,
+            binding_generation=binding_generation,
+            binding_fence=binding_fence,
         )
         wrap_in_chrome(
             viewer_app,
@@ -252,6 +323,14 @@ def compose_hub(
             url_prefix=base_url_prefix,
         )
         return viewer_app
+
+    # 1. Viewer session (lazy — heavy parquet load deferred to first GET).
+    def _build_viewer() -> dash.Dash:
+        return _make_viewer(
+            viewer_state["output_root"],
+            viewer_state["binding_generation"],
+            viewer_state["binding_fence"],
+        )
 
     def _teardown_viewer(viewer_app: dash.Dash) -> None:
         # Intentionally a no-op: the released ``viewer_app`` is dropped
@@ -272,16 +351,17 @@ def compose_hub(
         teardown=_teardown_viewer,
     )
 
-    # 1b. Analysis session built up front so the bind endpoint in step 2
-    #     can release it alongside the viewer when the sidebar hands off
-    #     a CLI output. The session's build closure reads
-    #     ``viewer_state["output_root"]`` lazily, so the order between
-    #     this and the analysis layout factory doesn't matter.
-    def _build_analysis() -> dash.Dash:
+    def _make_analysis(
+        output_root: OutputRoot | None,
+        binding_generation: str,
+        binding_fence: BindingRequestFence,
+    ) -> dash.Dash:
         analysis_app = analysis.create_app(
-            output_root=viewer_state["output_root"],
+            output_root=output_root,
             url_prefix=join_url_prefix(base_url_prefix, MOUNT_ANALYSIS),
             api_url_prefix=base_url_prefix,
+            binding_generation=binding_generation,
+            binding_fence=binding_fence,
         )
         wrap_in_chrome(
             analysis_app,
@@ -290,6 +370,14 @@ def compose_hub(
             url_prefix=base_url_prefix,
         )
         return analysis_app
+
+    # 1b. Analysis shares the same binding record as Results.
+    def _build_analysis() -> dash.Dash:
+        return _make_analysis(
+            viewer_state["output_root"],
+            viewer_state["binding_generation"],
+            viewer_state["binding_fence"],
+        )
 
     def _teardown_analysis(_app: dash.Dash) -> None:
         del _app  # pragma: no cover
@@ -300,8 +388,134 @@ def compose_hub(
         teardown=_teardown_analysis,
     )
 
+    def _bind_output(context: ResultsBindJobContext) -> dict[str, Any]:
+        """Build candidates off-lock and publish one fenced revision."""
+        selected = context.target
+        try:
+            candidate_root = OutputRoot.discover(
+                selected,
+                cache_root=sandbox_viewer_cache_root(sandbox.root),
+                cancellation=context.cancellation,
+                progress_callback=context.report_discovery,
+            )
+            context.set_phase(
+                "building_results",
+                "Building the Results session candidate.",
+            )
+            binding_generation = str(uuid4())
+            candidate_fence = BindingRequestFence()
+            candidate_viewer = _make_viewer(
+                candidate_root,
+                binding_generation,
+                candidate_fence,
+            )
+            context.set_phase(
+                "building_analysis",
+                "Building the Analysis session candidate.",
+            )
+            candidate_analysis = _make_analysis(
+                candidate_root,
+                binding_generation,
+                candidate_fence,
+            )
+            context.set_phase(
+                "publishing",
+                "Publishing the shared Results and Analysis revision.",
+            )
+        except (FileNotFoundError, ValueError) as exc:
+            raise ResultsBindJobFailure("invalid", str(exc)) from exc
+        except OutputSnapshotChangedError as exc:
+            raise ResultsBindJobFailure("stale", str(exc)) from exc
+
+        def _commit_binding() -> None:
+            # Runs with both ToolSession locks held. This closes the final
+            # candidate-build-to-publish gap and acts as the request CAS.
+            def _publish_latest() -> None:
+                viewer_state.update(
+                    {
+                        "bound_path": selected,
+                        "output_root": candidate_root,
+                        "snapshot": candidate_root.snapshot,
+                        "status": "current",
+                        "error": None,
+                        "binding_generation": binding_generation,
+                        "binding_fence": candidate_fence,
+                    }
+                )
+
+            binding_coordinator.commit_if_latest(
+                context.ticket,
+                _publish_latest,
+            )
+
+        snapshot = candidate_root.snapshot
+        publication_result = {
+            "abs_path": str(candidate_root.root),
+            "binding_generation": binding_generation,
+            "snapshot": {
+                "processing_fingerprint": snapshot.processing_fingerprint,
+                "processing_inventory_assurance": (
+                    snapshot.processing_inventory_assurance
+                ),
+                "consumed_state_fingerprint": (
+                    snapshot.consumed_state_fingerprint
+                ),
+                "captured_at": snapshot.captured_at.isoformat(),
+                "active_run": snapshot.active_run,
+            },
+            "consistency": {
+                "state": candidate_root.consistency.state,
+                "reasons": list(candidate_root.consistency.reasons),
+                "evidence_fingerprint": (
+                    candidate_root.consistency.evidence_fingerprint
+                ),
+            },
+        }
+
+        # Discovery and both candidate constructors above intentionally run
+        # outside this short publication lock. Only callback draining and the
+        # paired session/state CAS are serialized.
+        try:
+            context.require_active()
+            with binding_coordinator.serialized():
+                context.require_active()
+                binding_coordinator.require_latest(context.ticket)
+                old_fence = viewer_state["binding_fence"]
+                if not isinstance(old_fence, BindingRequestFence):
+                    raise RuntimeError(
+                        "bound output request fence is unavailable"
+                    )
+                try:
+                    old_fence.close_and_wait(
+                        timeout_seconds=binding_drain_timeout_seconds,
+                    )
+                    candidate_root.require_session_snapshot_current(
+                        context="Shared Results/Analysis publish",
+                    )
+                    context.commit_publication(
+                        lambda: swap_tool_session_states(
+                            (
+                                (viewer_session, candidate_viewer),
+                                (analysis_session, candidate_analysis),
+                            ),
+                            commit=_commit_binding,
+                        ),
+                        result=publication_result,
+                    )
+                except Exception:
+                    old_fence.reopen()
+                    raise
+        except OutputSnapshotChangedError as exc:
+            raise ResultsBindJobFailure("stale", str(exc)) from exc
+        return publication_result
+
+    binding_jobs = ResultsBindJobManager(
+        _bind_output,
+        issue_ticket=binding_coordinator.issue_request,
+    )
+
     # 2. Shell Dash (registers the API + runs blueprints with the
-    #    viewer-session touch hook + analysis-session release hook).
+    #    viewer-session touch hook + atomic Results/Analysis binder).
     _tick("shell")
     shell_app = _build_shell_dash_app(
         sandbox,
@@ -309,7 +523,15 @@ def compose_hub(
         viewer_session=viewer_session,
         viewer_state=viewer_state,
         extra_release_sessions=(analysis_session,),
+        binding_jobs=binding_jobs,
     )
+    shell_app.server.config[CFG_VIEWER_SESSION] = viewer_session
+    shell_app.server.config[CFG_ANALYSIS_SESSION] = analysis_session
+    shell_app.server.config[CFG_RESULTS_BINDING_STATE] = viewer_state
+    shell_app.server.config[CFG_RESULTS_BINDING_COORDINATOR] = (
+        binding_coordinator
+    )
+    shell_app.server.config[CFG_RESULTS_BINDING_JOBS] = binding_jobs
 
     # 3. Builder Dash (eager — single-process registry build).
     _tick("builder")
@@ -331,18 +553,40 @@ def compose_hub(
     #    visible immediately without waiting for a refresh.
     _tick("run console")
     from phenotypic.gui.run_console._runner import LocalRunner
+    from phenotypic.gui.run_console._slurm_observer import (
+        SlurmLifecycleObserver,
+    )
+    from phenotypic.gui.run_console._app import SLURM_OBSERVER_EXTENSION
     from phenotypic.gui.shell._runs_registry import RunRegistry
 
     registry = RunRegistry()
     registry.rehydrate_from_sandbox(sandbox)
     runner = LocalRunner()
+    slurm_observer = (
+        SlurmLifecycleObserver(registry)
+        if slurm_scheduler is None
+        else SlurmLifecycleObserver(registry, scheduler=slurm_scheduler)
+    )
 
+    run_app_kwargs: dict[str, Any] = {
+        "url_prefix": join_url_prefix(base_url_prefix, MOUNT_RUN),
+        "server_url_prefix": base_url_prefix,
+        "registry": registry,
+        "runner": runner,
+        "slurm_observer": slurm_observer,
+        "start_slurm_observer": (
+            start_idle_thread
+            if start_slurm_observer is None
+            else start_slurm_observer
+        ),
+        "action_acknowledgement_hook": action_acknowledgement_hook,
+        "slurm_canceller": slurm_canceller,
+    }
+    if slurm_submitter is not None:
+        run_app_kwargs["slurm_submitter"] = slurm_submitter
     run_app = run_console.create_app(
         sandbox,
-        url_prefix=join_url_prefix(base_url_prefix, MOUNT_RUN),
-        server_url_prefix=base_url_prefix,
-        registry=registry,
-        runner=runner,
+        **run_app_kwargs,
     )
     wrap_in_chrome(
         run_app,
@@ -390,6 +634,7 @@ def compose_hub(
     # same singletons.
     shell_app.server.config[CFG_RUNNER] = runner
     shell_app.server.config[CFG_RUN_REGISTRY] = registry
+    shell_app.server.extensions[SLURM_OBSERVER_EXTENSION] = slurm_observer
 
     # 5. Compose at the WSGI layer. The dispatcher receives the shell's
     #    Flask app as its default; any path not matching a mount prefix
@@ -440,6 +685,11 @@ def create_app(
     viewer_session: "ToolSession[Any] | None" = None,
     idle_release_seconds: float = DEFAULT_IDLE_RELEASE_SECONDS,
     start_idle_thread: bool | None = None,
+    start_slurm_observer: bool | None = None,
+    slurm_scheduler: "SchedulerClient | None" = None,
+    slurm_submitter: "Callable[..., SlurmSubmitResult] | None" = None,
+    slurm_canceller: "Callable[..., object] | None" = None,
+    action_acknowledgement_hook: "Callable[[RunRecord], None] | None" = None,
     progress: Callable[[str], None] | None = None,
 ) -> dash.Dash:
     """Build the unified GUI hub Dash app.
@@ -472,6 +722,16 @@ def create_app(
             launch but skipped under pytest (``PYTEST_CURRENT_TEST``
             in env). Tests that want the daemon explicitly should
             pass ``True``.
+        start_slurm_observer: Forwarded to :func:`compose_hub`. ``None``
+            preserves its production/test default.
+        slurm_scheduler: Optional scheduler-query dependency forwarded to
+            :func:`compose_hub`.
+        slurm_submitter: Optional submission dependency forwarded to
+            :func:`compose_hub`.
+        slurm_canceller: Optional cancellation dependency forwarded to
+            :func:`compose_hub`.
+        action_acknowledgement_hook: Optional Run action test seam forwarded
+            to :func:`compose_hub`.
         progress: Optional per-sub-app progress callback forwarded to
             :func:`compose_hub` (the launcher passes
             :meth:`StartupReporter.detail`). Ignored on the Phase 3
@@ -500,6 +760,11 @@ def create_app(
         url_prefix=url_prefix,
         idle_release_seconds=idle_release_seconds,
         start_idle_thread=start_idle_thread,
+        start_slurm_observer=start_slurm_observer,
+        slurm_scheduler=slurm_scheduler,
+        slurm_submitter=slurm_submitter,
+        slurm_canceller=slurm_canceller,
+        action_acknowledgement_hook=action_acknowledgement_hook,
         progress=progress,
     )
     return configure_url_prefix_routing(shell_app, url_prefix)

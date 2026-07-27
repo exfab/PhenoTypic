@@ -1,0 +1,25 @@
+{
+  "version": "0.20.0",
+  "name": "historical-grid-occupancy",
+  "operations": [],
+  "qc": [
+    {
+      "instance_id": "qc-Occupancy-historical",
+      "class": "GridOccupancy",
+      "enabled": true,
+      "historical_note": {
+        "preserve": "verbatim"
+      },
+      "params": {
+        "metadata": "",
+        "metadata_source": "__METADATA_PATH__",
+        "groupby": [
+          "Metadata_ImageName"
+        ],
+        "cell_label": null,
+        "warn_threshold": 0.95,
+        "fail_threshold": 0.9
+      }
+    }
+  ]
+}

@@ -190,3 +190,171 @@ def test_known_intermediate_keys_returns_insertion_order():
 def test_known_intermediate_keys_unknown_session():
     cache = IntermediatesCache()
     assert cache.known_intermediate_keys("nope") == []
+
+
+# ---------------------------------------------------------------------------
+# Atomic preview generations
+# ---------------------------------------------------------------------------
+
+
+def test_preview_generation_is_invisible_until_atomic_publish() -> None:
+    cache = IntermediatesCache()
+    first = cache.begin_preview_generation("s1", "revision-1")
+    first.set_intermediate("s1", "node-a", b"complete-1")
+    generation_1 = cache.publish_preview_generation(first)
+    key_1 = ("s1", "node-a", "revision-1", generation_1)
+
+    second = cache.begin_preview_generation("s1", "revision-2")
+    second.set_intermediate("s1", "node-a", b"partial-2")
+
+    assert cache.preview_descriptor("s1") == ("revision-1", generation_1)
+    assert cache.get_preview(key_1) == b"complete-1"
+    assert cache.get_preview(("s1", "node-a", "revision-2", generation_1 + 1)) is None
+
+    generation_2 = cache.publish_preview_generation(second)
+    assert generation_2 == generation_1 + 1
+    assert cache.get_preview(key_1) is None
+    assert (
+        cache.get_preview(("s1", "node-a", "revision-2", generation_2))
+        == b"partial-2"
+    )
+
+
+def test_launch_reservation_fences_image_and_intermediates_together() -> None:
+    """Superseded compute cannot mutate either half of the live snapshot."""
+
+    cache = IntermediatesCache()
+    original_image = object()
+    stale_image = object()
+    current_image = object()
+    cache.set_image("s1", original_image, "original.tiff")  # type: ignore[arg-type]
+
+    stale_reservation = cache.reserve_preview_generation(
+        "s1",
+        "revision-1",
+        request_id="request-a",
+    )
+    stale = cache.claim_preview_generation(stale_reservation)
+    assert stale is not None
+    stale.set_image("s1", stale_image, "stale.tiff")  # type: ignore[arg-type]
+    stale.set_intermediate("s1", "node-a", b"stale")
+
+    current_reservation = cache.reserve_preview_generation(
+        "s1",
+        "revision-2",
+        request_id="request-b",
+    )
+    current = cache.claim_preview_generation(current_reservation)
+    assert current is not None
+    current.set_image("s1", current_image, "current.tiff")  # type: ignore[arg-type]
+    current.set_intermediate("s1", "node-a", b"current")
+
+    assert cache.publish_preview_generation(stale) is None
+    assert cache.get_image("s1") == (original_image, "original.tiff")
+    generation = cache.publish_preview_generation(current)
+    assert generation == 1
+    assert cache.get_image("s1") == (current_image, "current.tiff")
+    assert cache.get_preview(
+        ("s1", "node-a", "revision-2", generation)
+    ) == b"current"
+
+
+def test_preview_reservation_can_be_claimed_only_once() -> None:
+    """A reservation stays consumed before and after atomic publication."""
+
+    cache = IntermediatesCache()
+    reservation = cache.reserve_preview_generation(
+        "s1",
+        "revision-1",
+        request_id="request-a",
+    )
+
+    writer = cache.claim_preview_generation(reservation)
+    assert writer is not None
+    assert cache.claim_preview_generation(reservation) is None
+    writer.set_intermediate("s1", "node-a", b"generation-1")
+    assert cache.publish_preview_generation(writer) == 1
+
+    assert cache.claim_preview_generation(reservation) is None
+    assert cache.preview_descriptor("s1") == ("revision-1", 1)
+    assert cache.get_preview(
+        ("s1", "node-a", "revision-1", 1)
+    ) == b"generation-1"
+
+
+def test_abandoned_preview_writer_cannot_mix_with_live_generation() -> None:
+    cache = IntermediatesCache()
+    published = cache.begin_preview_generation("s1", "revision-1")
+    published.set_intermediate("s1", "node-a", b"a1")
+    published.set_intermediate("s1", "node-b", b"b1")
+    generation = cache.publish_preview_generation(published)
+
+    failed = cache.begin_preview_generation("s1", "revision-2")
+    failed.set_intermediate("s1", "node-a", b"a2")
+    # Simulate a bake failure before node-b is staged: no publish occurs.
+
+    assert cache.preview_descriptor("s1") == ("revision-1", generation)
+    assert (
+        cache.get_preview(("s1", "node-a", "revision-1", generation)) == b"a1"
+    )
+    assert (
+        cache.get_preview(("s1", "node-b", "revision-1", generation)) == b"b1"
+    )
+
+
+def test_superseded_prefix_publish_preserves_complete_downstream_snapshot() -> None:
+    """An older prefix request cannot replace a newer full request."""
+    cache = IntermediatesCache()
+    initial = cache.begin_preview_generation("s1", "revision-1")
+    initial.set_intermediate("s1", "upstream", b"upstream-1")
+    initial.set_intermediate("s1", "downstream", b"downstream-1")
+    initial_generation = cache.publish_preview_generation(initial)
+    assert initial_generation is not None
+
+    slow_prefix = cache.begin_preview_generation("s1", "revision-1")
+    slow_prefix.set_intermediate("s1", "upstream", b"stale-prefix")
+    newest_full = cache.begin_preview_generation("s1", "revision-1")
+    newest_full.set_intermediate("s1", "upstream", b"upstream-2")
+    newest_full.set_intermediate("s1", "downstream", b"downstream-2")
+
+    # The newer full request completes first. A late prefix publication must
+    # then be rejected without deleting the full request's downstream slots.
+    full_generation = cache.publish_preview_generation(newest_full)
+    assert full_generation == initial_generation + 1
+    assert cache.preview_descriptor("s1") == (
+        "revision-1",
+        full_generation,
+    )
+    assert cache.publish_preview_generation(slow_prefix) is None
+    assert cache.known_intermediate_keys("s1") == ["upstream", "downstream"]
+    assert cache.get_preview(
+        ("s1", "downstream", "revision-1", full_generation)
+    ) == b"downstream-2"
+
+
+@pytest.mark.parametrize("removal", ["clear", "fifo-eviction"])
+def test_recreated_session_rejects_writer_from_prior_lifetime(
+    removal: str,
+) -> None:
+    """Session recreation cannot reuse an old in-flight writer's token."""
+    cache = IntermediatesCache(max_sessions=1)
+    stale = cache.begin_preview_generation("s1", "old-revision")
+    stale.set_intermediate("s1", "node-a", b"stale")
+
+    if removal == "clear":
+        cache.clear("s1")
+    else:
+        # Creating another session FIFO-evicts s1 while its writer is still
+        # detached and able to complete later.
+        cache.begin_preview_generation("s2", "other-revision")
+
+    current = cache.begin_preview_generation("s1", "current-revision")
+    current.set_intermediate("s1", "node-a", b"current")
+    assert current.request_sequence > stale.request_sequence
+
+    generation = cache.publish_preview_generation(current)
+    assert generation == 1
+    assert cache.publish_preview_generation(stale) is None
+    assert cache.get_preview(
+        ("s1", "node-a", "current-revision", generation)
+    ) == b"current"

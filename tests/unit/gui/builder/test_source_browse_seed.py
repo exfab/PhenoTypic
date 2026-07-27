@@ -52,7 +52,7 @@ def test_builder_browse_seed_rejects_outside_image_root(
     )
 
 
-def test_builder_browse_seed_rejects_unvalidated_payload(
+def test_builder_browse_seed_accepts_v1_compatibility_payload(
     tmp_path: Path,
 ) -> None:
     from phenotypic.gui.builder._callbacks import _browse_seed_from_source
@@ -69,7 +69,31 @@ def test_builder_browse_seed_rejects_unvalidated_payload(
         "version": 1,
     }
 
-    assert _browse_seed_from_source(tmp_path, payload) == str(tmp_path.resolve())
+    assert _browse_seed_from_source(tmp_path, payload) == str(plates.resolve())
+
+
+def test_builder_browse_seed_rejects_v2_fingerprint_mismatch(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.builder._callbacks import _browse_seed_from_source
+
+    image_root = tmp_path / "active"
+    image_root.mkdir()
+    plates = image_root / "plates"
+    plates.mkdir()
+    other_root = tmp_path / "other"
+    other_root.mkdir()
+    other_plates = other_root / "plates"
+    other_plates.mkdir()
+    payload = source_payload_from_path(
+        SandboxRoot.from_path(other_root),
+        other_plates,
+        source="manual",
+    )
+
+    assert _browse_seed_from_source(image_root, payload) == str(
+        image_root.resolve()
+    )
 
 
 def test_builder_browse_seed_falls_back_on_resolver_errors(

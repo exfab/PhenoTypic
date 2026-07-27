@@ -61,6 +61,7 @@ from phenotypic.gui._config import (
     CFG_FILTERED_STATE,
     CFG_OUTPUT_ROOT,
     CFG_QC_PIPELINE,
+    CFG_QC_RECIPE,
     CFG_URL_PREFIX,
     MOUNT_HOME,
     QC_CROPS_URL_SEGMENT,
@@ -97,6 +98,11 @@ from phenotypic.gui.results_viewer._filtered_state import (
     KEY_IMAGE_FILE,
     KEY_OBJECT_LABEL,
     decode_removed_keys_payload,
+)
+from phenotypic.gui.results_viewer._mutation_guard import (
+    OutputMutationBlocked,
+    output_mutations_disabled,
+    require_output_mutation,
 )
 from phenotypic.schema import ErrorCategory, METADATA
 from phenotypic.gui.results_viewer._qc_tab import _ids as qc_tab_ids
@@ -140,6 +146,25 @@ def _url_prefix() -> str:
     return current_app.config.get(CFG_URL_PREFIX, MOUNT_HOME)
 
 
+def _qc_mutations_allowed() -> bool:
+    """Return whether the bound recipe passed a fresh compatibility preflight."""
+    from phenotypic.gui.results_viewer._compatibility import (
+        preflight_output_compatibility,
+    )
+    from phenotypic.sdk_._qc_recipe import QcRecipe
+
+    recipe = current_app.config.get(CFG_QC_RECIPE)
+    if not isinstance(recipe, QcRecipe):
+        return False
+    try:
+        require_output_mutation("QC review mutation")
+    except OutputMutationBlocked as exc:
+        logger.warning("%s", exc)
+        return False
+    source = recipe.source_path or recipe.path
+    return preflight_output_compatibility(source).status == "compatible"
+
+
 def _qc_crop_url(
     dataset: str,
     image_file: str,
@@ -181,6 +206,8 @@ _CORE_CATEGORY_TOKENS: frozenset[str] = frozenset(ErrorCategory.labels())
 
 def _review_radial_trigger_builder(
     category_of: dict[tuple[str, int], str],
+    *,
+    mutations_disabled: bool = False,
 ) -> Callable[[str, int, bool], list[Component]]:
     """Return a ``remove_button_builder`` that injects the QC radial trigger.
 
@@ -213,6 +240,7 @@ def _review_radial_trigger_builder(
                 current_category is not None
                 and current_category not in _CORE_CATEGORY_TOKENS
             ),
+            disabled=mutations_disabled,
         )
 
     return _build
@@ -577,7 +605,14 @@ def _render_faceted_gallery(
     """
     url_builder = functools.partial(_qc_crop_url, dim_alpha=dim_alpha)
     selected_keys = selected if selected is not None else set()
-    remove_button_builder = _review_radial_trigger_builder(category_of or {})
+    output_root = current_app.config.get(CFG_OUTPUT_ROOT)
+    mutations_disabled = output_root is None or output_mutations_disabled(
+        output_root
+    )
+    remove_button_builder = _review_radial_trigger_builder(
+        category_of or {},
+        mutations_disabled=mutations_disabled,
+    )
     rows: list[Component] = []
     single_facet = len(facets) == 1 and facets[0][0] is None
     for timepoint, keys in facets:
@@ -735,7 +770,8 @@ def _review_empty_state_children(output_root) -> Component:
                         },
                     ),
                     html.Div(
-                        "`python -m phenotypic --mode recompile --output <output>`",
+                        "`uv run python -m phenotypic --mode recompile "
+                        "--output <output>`",
                         style={
                             "color": COLOR_MUTED,
                             "fontFamily": FONT_FAMILY_MONO,
@@ -749,7 +785,8 @@ def _review_empty_state_children(output_root) -> Component:
             html.Div("No QC review queue yet.", className="fw-semibold"),
             html.Div(
                 "Configure a quality check, then re-run "
-                "`python -m phenotypic --mode recompile --output <output>` "
+                "`uv run python -m phenotypic --mode recompile "
+                "--output <output>` "
                 "(or pick a module above if a qc/ artifact already exists).",
                 style={"color": COLOR_MUTED, "fontSize": FONT_SIZE_CAPTION},
             ),
@@ -974,7 +1011,12 @@ def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
         ``True`` when ``run_qc`` ran (or no-oped cleanly), ``False`` on a
         missing root / pipeline / empty recipe or a rebuild exception.
     """
-    if output_root is None or pipeline is None or not pipeline.get_qc():
+    if output_root is None or pipeline is None:
+        return False
+    try:
+        require_output_mutation("QC review recompute")
+    except OutputMutationBlocked as exc:
+        logger.warning("%s", exc)
         return False
 
     from phenotypic.sdk_._qc_recipe._runner import run_qc
@@ -988,6 +1030,7 @@ def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
             pipeline,
             Path(output_root.root),
             qc_output_dir=output_root.layout.qc_dir,
+            publication_guard=_qc_mutations_allowed,
         )
     except Exception:  # noqa: BLE001 - recompute failure must not crash curation
         logger.warning(
@@ -995,6 +1038,7 @@ def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
         )
         return False
     try:
+        require_output_mutation("QC plot refresh")
         from phenotypic.gui._plot_refresh import refresh_qc_plots
 
         refresh_qc_plots(
@@ -1002,7 +1046,10 @@ def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
             output_root.layout,
             frame,
             successful,
+            publication_guard=_qc_mutations_allowed,
         )
+    except OutputMutationBlocked as exc:
+        logger.warning("%s", exc)
     except Exception:  # noqa: BLE001 - QC database remains authoritative
         logger.warning(
             "GUI QC plot refresh failed after qc.duckdb rebuild",
@@ -1141,8 +1188,8 @@ def register_review_callbacks(app: dash.Dash) -> None:
         Input(rids.QC_REVIEW_MODULE_PICKER_ID, "value"),
         Input(rids.QC_REVIEW_RESORT_BTN_ID, "n_clicks"),
         Input(rids.QC_REVIEW_SHOW_FILTER_ID, "value"),
-        # A settings-edit full rebuild ticks this store after rewriting
-        # qc.duckdb, so the worklist + header re-render off the fresh DB
+        # A user-confirmed full rebuild ticks this store after publishing
+        # qc.duckdb, so the worklist and header re-render from the fresh DB
         # even when the selected module's instance_id is unchanged.
         Input(qc_tab_ids.STORE_QC_RECOMPUTE_DONE, "data"),
         State(rids.STORE_QC_SELECTED_GROUP, "data"),
@@ -1274,6 +1321,19 @@ def register_review_callbacks(app: dash.Dash) -> None:
         )
         if is_row_click:
             clicked_key = triggered.get("key")
+            if (
+                instance_id
+                and isinstance(clicked_key, str)
+                and clicked_key
+                and _qc_mutations_allowed()
+            ):
+                # A row click is the sole explicit selection gesture. Store
+                # last-visited here, never on the selection-store echo or
+                # initial auto-selection/tab activation.
+                _load_review_state().set_last(
+                    instance_id,
+                    decode_group_key(clicked_key),
+                )
             # A row click that *changes* the selection only needs to update
             # the store: that write re-fires this callback on the store-input
             # path, which renders the detail once. Rendering here too would
@@ -1345,9 +1405,7 @@ def register_review_callbacks(app: dash.Dash) -> None:
             selected=selected,
             category_of=category_of,
         )
-        # Record last-visited group for this module.
         review_state = _load_review_state()
-        review_state.set_last(instance_id, key_values)
         row_styles = _worklist_row_styles_for_selection(
             row_ids or [],
             selected_encoded=selected_encoded,
@@ -1496,7 +1554,10 @@ def _crop_size_for(keys: list[tuple[str, str, int]], output_root) -> int:
     member_keys = {(im, lbl) for _ds, im, lbl in keys}
     subset = master.filter(
         pl.struct([str(METADATA.IMAGE_NAME), "Object_Label"]).map_elements(
-            lambda s: (str(s[str(METADATA.IMAGE_NAME)]), int(s["Object_Label"]))
+            lambda s: (
+                str(s[str(METADATA.IMAGE_NAME)]),
+                int(s["Object_Label"]),
+            )
             in member_keys,
             return_dtype=pl.Boolean,
         )
@@ -1630,6 +1691,8 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
         decode → ``no_update`` (the QC no-op); the QC-specific
         ``filtered is None`` guard stays here.
         """
+        if not _qc_mutations_allowed():
+            return no_update
         filtered = _filtered_state()
         if filtered is None:
             return no_update
@@ -1796,6 +1859,12 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
         except (KeyError, TypeError, ValueError):
             return no_update, no_update, no_update
 
+        if not _qc_mutations_allowed():
+            return (
+                no_update,
+                "Output is read-only; refresh before editing.",
+                no_update,
+            )
         token, message = register_custom_category_safe(filtered, name)
         if token is None:
             return no_update, message, no_update
@@ -1865,6 +1934,8 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
         selection_payload: Any,
     ):
         """Apply remove/restore to the multi-selected Review tiles, then clear."""
+        if not _qc_mutations_allowed():
+            return no_update, no_update
         triggered = callback_context.triggered_id
         filtered = _filtered_state()
         if filtered is None or triggered is None:
@@ -1912,7 +1983,7 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
         selection_payload: Any,
     ):
         """Mark the multi-selected QC tiles with the chosen category, then clear."""
-        if not category:
+        if not category or not _qc_mutations_allowed():
             return no_update, no_update, no_update
         filtered = _filtered_state()
         if filtered is None:
@@ -1977,6 +2048,8 @@ def _register_review_progress_callbacks(app: dash.Dash) -> None:
             if not order:
                 return deltas, selected_encoded
             return deltas, _previous_group(order, selected_encoded)
+        if not _qc_mutations_allowed():
+            return no_update, no_update
 
         output_root = _output_root()
         if output_root is None:
@@ -1998,7 +2071,16 @@ def _register_review_progress_callbacks(app: dash.Dash) -> None:
         if triggered == rids.QC_REVIEW_MARK_REVIEWED_BTN_ID or (
             is_next and curated
         ):
-            review_state.mark_reviewed(instance_id, key_values)
+            if not _persist_review_before_transition(
+                review_state,
+                instance_id,
+                key_values,
+            ):
+                logger.warning(
+                    "Review progress changed externally; refusing to "
+                    "recompute or advance from unpersisted state."
+                )
+                return no_update, no_update
 
         # Recompute only when changes were made (spec §D.5).
         if curated:
@@ -2019,6 +2101,20 @@ def _register_review_progress_callbacks(app: dash.Dash) -> None:
             )
 
         return deltas, next_encoded
+
+
+def _persist_review_before_transition(
+    review_state: ReviewState,
+    instance_id: str,
+    key_values: tuple[Any, ...],
+) -> bool:
+    """Persist review progress before recompute or selection advance."""
+    try:
+        require_output_mutation("QC review progress")
+    except OutputMutationBlocked as exc:
+        logger.warning("%s", exc)
+        return False
+    return review_state.mark_reviewed(instance_id, key_values)
 
 
 def _group_has_removed_members(

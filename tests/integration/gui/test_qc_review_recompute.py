@@ -7,7 +7,7 @@ a QC entry) and verify the spec §D contracts that span modules:
 - ``create_app`` boots with the Review sub-view mounted and the QC crop
   route registered under its own segment;
 - the Configure recipe is now pipeline-backed (reads ``pipeline.json``'s
-  ``qc`` array, not the legacy sidecar) and a legacy sidecar is migrated;
+  ``qc`` array, not the legacy sidecar) without mutating legacy source state;
 - the in-session per-group recompute (``run_qc`` on the post-applied frame
   anti-joined with removals) **matches** the CLI artifact for identical
   removals — and never wipes ``review_state.json``.
@@ -39,6 +39,7 @@ from phenotypic.sdk_ import (
     measurements_parquet_path,
     pipeline_json_path,
     qc_review_state_path,
+    resolve_manifest_json_path,
 )
 
 from tests._output_layout import (
@@ -121,8 +122,24 @@ def output_root(tmp_path: Path) -> OutputRoot:
 
     # Seed the qc/ artifact exactly as the CLI would.
     run_qc(master.to_pandas(), pipeline, tmp_path)
+    manifest = resolve_manifest_json_path(tmp_path)
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        json.dumps(
+            {
+                "is_complete": True,
+                "completed": 2,
+                "failed": 0,
+                "total_images": 2,
+            }
+        ),
+        encoding="utf-8",
+    )
 
-    return OutputRoot.discover(tmp_path)
+    return OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def test_create_app_boots_with_review_and_qc_crop_route(output_root) -> None:
@@ -222,8 +239,10 @@ def test_recompute_does_not_touch_review_state(
     assert reloaded.is_reviewed(_INSTANCE_ID, ("img-1",))
 
 
-def test_legacy_sidecar_is_migrated_into_pipeline(tmp_path: Path) -> None:
-    """A legacy .viewer_cache/qc_recipe.json folds into pipeline.json at boot."""
+def test_legacy_sidecar_is_not_migrated_during_viewer_binding(
+    tmp_path: Path,
+) -> None:
+    """Viewer binding leaves the complete legacy source tree byte-identical."""
     # Minimal output dir WITHOUT a qc entry in pipeline.json, but WITH a
     # legacy sidecar carrying one.
     master = pl.DataFrame(
@@ -253,7 +272,8 @@ def test_legacy_sidecar_is_migrated_into_pipeline(tmp_path: Path) -> None:
     write_pipeline_json(tmp_path, ImagePipeline(name="no-qc"))
     sidecar_dir = tmp_path / ".viewer_cache"
     sidecar_dir.mkdir()
-    (sidecar_dir / "qc_recipe.json").write_text(
+    sidecar = sidecar_dir / "qc_recipe.json"
+    sidecar.write_text(
         json.dumps(
             {
                 "version": 1,
@@ -273,16 +293,26 @@ def test_legacy_sidecar_is_migrated_into_pipeline(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    root = OutputRoot.discover(tmp_path)
+    source_before = {
+        path.relative_to(tmp_path): path.read_bytes()
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    }
+    root = OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+    )
     app = create_app(root)
     recipe = app.server.config.get(CFG_QC_RECIPE)
-    # The migrated entry now lives in the pipeline-backed recipe.
-    assert any(e.instance_id == _INSTANCE_ID for e in recipe.entries)
-    # And it landed in pipeline.json's qc array.
-    payload = json.loads(
-        pipeline_json_path(tmp_path).read_text(encoding="utf-8")
-    )
-    assert any(e["instance_id"] == _INSTANCE_ID for e in payload.get("qc", []))
+    # Binding is read-only. Compatibility UI may offer an explicit migration,
+    # but app construction cannot fold or retire this source sidecar.
+    assert not any(e.instance_id == _INSTANCE_ID for e in recipe.entries)
+    source_after = {
+        path.relative_to(tmp_path): path.read_bytes()
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    }
+    assert source_after == source_before
 
 
 def test_recompute_delta_carries_after_status(
@@ -455,29 +485,34 @@ def test_qc_gallery_default_dim_alpha_is_zero(output_root) -> None:
 
 
 # ---------------------------------------------------------------------------
-# T9: durable settings-edit recompute + review-state reconciliation
+# T9: explicit settings rebuild + review-state reconciliation
 # ---------------------------------------------------------------------------
 
 
-def test_settings_edit_durably_rewrites_db(
+def test_settings_edit_waits_for_explicit_database_rebuild(
     output_root, tmp_path: Path
 ) -> None:
-    """A QC settings edit rewrites qc.duckdb so the worklist reflects it.
+    """A settings edit leaves the database unchanged until explicit rebuild.
 
     The agreeing group (img-1) passes under the default thresholds. Tighten
-    the thresholds (a settings edit) and run the durable recompute; the
-    rewritten catalog summary must report img-1 as ``fail`` (not the stale
-    ``pass``), proving the in-memory pipeline was synced from the recipe
-    before the rebuild.
+    the thresholds, verify the existing catalog remains untouched, then use
+    the guarded rebuild path and verify the rewritten summary reports
+    img-1 as ``fail``. A later curated-frame recompute must keep those new
+    settings instead of reverting to the boot-time pipeline.
     """
     from phenotypic.gui.results_viewer._qc_tab import (
         _callbacks as qc_callbacks,
+    )
+    from phenotypic.gui.results_viewer._qc_tab._rebuild import (
+        preflight_qc_rebuild,
+    )
+    from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+        _recompute_full_rebuild,
     )
     from phenotypic.gui.results_viewer._qc_tab.review import _db
 
     app = create_app(output_root)
     recipe = app.server.config[CFG_QC_RECIPE]
-    pipeline = app.server.config[CFG_QC_PIPELINE]
 
     before = _db.module_summary(output_root, _INSTANCE_ID)
     img1_before = before.filter(
@@ -497,10 +532,20 @@ def test_settings_edit_durably_rewrites_db(
         },
     )
 
+    stale = _db.module_summary(output_root, _INSTANCE_ID)
+    img1_stale = stale.filter(
+        pl.col(str(METADATA.IMAGE_NAME)) == "img-1"
+    ).get_column("status")[0]
+    assert img1_stale == "pass"
+
+    preflight = preflight_qc_rebuild(output_root.layout)
+    assert preflight.ready
     with app.server.app_context():
-        assert qc_callbacks._run_settings_edit_recompute(
-            output_root, recipe, pipeline, set()
+        rebuilt = qc_callbacks._rebuild_qc_and_refresh_pipeline(
+            output_root,
+            expected_source_fingerprint=preflight.source_fingerprint,
         )
+    assert rebuilt.applied
 
     after = _db.module_summary(output_root, _INSTANCE_ID)
     img1_after = after.filter(
@@ -508,31 +553,52 @@ def test_settings_edit_durably_rewrites_db(
     ).get_column("status")[0]
     assert img1_after == "fail"
 
+    # The idempotent success path refreshes the cache too.
+    app.server.config[CFG_QC_PIPELINE] = _build_pipeline()
+    repeat_preflight = preflight_qc_rebuild(output_root.layout)
+    with app.server.app_context():
+        repeated = qc_callbacks._rebuild_qc_and_refresh_pipeline(
+            output_root,
+            expected_source_fingerprint=repeat_preflight.source_fingerprint,
+        )
+        assert not repeated.applied
+        assert _recompute_full_rebuild(
+            output_root,
+            app.server.config[CFG_QC_PIPELINE],
+            set(),
+        )
 
-def test_settings_edit_all_disabled_empties_worklist(
+    recomputed = _db.module_summary(output_root, _INSTANCE_ID)
+    img1_recomputed = recomputed.filter(
+        pl.col(str(METADATA.IMAGE_NAME)) == "img-1"
+    ).get_column("status")[0]
+    assert img1_recomputed == "fail"
+
+
+def test_disabling_all_checks_preserves_database_and_blocks_rebuild(
     output_root, tmp_path: Path
 ) -> None:
-    """Disabling every check clears the stale qc.duckdb (empty worklist)."""
-    from phenotypic.gui.results_viewer._qc_tab import (
-        _callbacks as qc_callbacks,
+    """Disabling every check does not implicitly delete prior QC results."""
+    from phenotypic.gui.results_viewer._qc_tab._rebuild import (
+        preflight_qc_rebuild,
     )
     from phenotypic.gui.results_viewer._qc_tab.review import _db
 
     app = create_app(output_root)
     recipe = app.server.config[CFG_QC_RECIPE]
-    pipeline = app.server.config[CFG_QC_PIPELINE]
 
     assert _db.list_modules(output_root)  # seeded module present
+    database_before = output_root.layout.qc_duckdb.read_bytes()
 
-    recipe.update(_INSTANCE_ID, enabled=False)
-    with app.server.app_context():
-        assert qc_callbacks._run_settings_edit_recompute(
-            output_root, recipe, pipeline, set()
-        )
+    assert recipe.update(_INSTANCE_ID, enabled=False)
+    preflight = preflight_qc_rebuild(output_root.layout)
 
-    # The stale DB is removed → empty module list (worklist degrades empty).
-    assert not output_root.layout.qc_duckdb.exists()
-    assert _db.list_modules(output_root) == []
+    assert not preflight.ready
+    assert any(
+        "enabled QC recipe entry" in item for item in preflight.blockers
+    )
+    assert output_root.layout.qc_duckdb.read_bytes() == database_before
+    assert _db.list_modules(output_root)
 
 
 def test_reconcile_drops_vanished_reviewed_keys(tmp_path: Path) -> None:

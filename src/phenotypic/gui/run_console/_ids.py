@@ -44,6 +44,7 @@ RC_RECENTS_BODY = "rc-recents-body"
 
 #: Status banner below the iframe (mode + run-id + status).
 RC_STATUS_BANNER = "rc-status-banner"
+RC_ACTION_FEEDBACK = "rc-action-feedback"
 
 
 # ---------------------------------------------------------------------------
@@ -56,8 +57,19 @@ RC_STORE_FORM_STATE = "rc-store-form-state"
 #: Holds the active run id (string) so the log-tail interval can target it.
 RC_STORE_ACTIVE_RUN_ID = "rc-store-active-run-id"
 
+#: Holds the active run id + durable generation receipt used to fence every
+#: status, log, dashboard, and cancellation update.
+RC_STORE_ACTIVE_RUN_RECEIPT = "rc-store-active-run-receipt"
+
 #: Holds the active run's ``rel_path`` so the iframe ``src`` can be set.
 RC_STORE_ACTIVE_REL_PATH = "rc-store-active-rel-path"
+
+#: Browser-side record of the newest Validate/Run click. The action watchdog
+#: compares it with the server result so a failed callback request is visible.
+RC_STORE_ACTION_ATTEMPT = "rc-store-action-attempt"
+
+#: Server acknowledgement for the newest Validate/Run click.
+RC_STORE_ACTION_RESULT = "rc-store-action-result"
 
 #: Holds the selected pipeline JSON path (or ``None``).
 RC_STORE_PIPELINE_PATH = "rc-store-pipeline-path"
@@ -67,6 +79,13 @@ RC_STORE_INPUT_DIR = "rc-store-input-dir"
 
 #: Holds the selected output directory path (or ``None``).
 RC_STORE_OUTPUT_DIR = "rc-store-output-dir"
+
+#: Server-issued receipt binding the exact typed output path to its canonical
+#: sandbox-contained target. Browser storage is transport only; actions recheck it.
+RC_STORE_OUTPUT_CONFIRMATION = "rc-store-output-confirmation"
+
+#: Server-derived source/metadata compatibility snapshot displayed before launch.
+RC_STORE_METADATA_PREFLIGHT = "rc-store-metadata-preflight"
 
 #: Holds the directory currently being browsed in each modal.
 RC_STORE_BROWSE_DIR_PIPELINE = "rc-store-browse-dir-pipeline"
@@ -114,6 +133,12 @@ RC_INPUT_SLURM_GPUS = "rc-input-slurm-gpus"
 #: Free-form ``k=v`` SLURM textarea (one entry per line).
 RC_INPUT_SLURM_EXTRA = "rc-input-slurm-extra"
 
+#: Staged-GPU controls. The section is mounted but hidden until callbacks
+#: determine that the selected pipeline contains a ``GpuDetector``.
+RC_STAGED_GPU_SECTION = "rc-staged-gpu-section"
+RC_INPUT_GPU_SLURM = "rc-input-gpu-slurm"
+RC_INPUT_GPU_SHARDS = "rc-input-gpu-shards"
+
 
 # ---------------------------------------------------------------------------
 # Picker buttons and modal IDs
@@ -147,6 +172,19 @@ RC_INPUT_OUTPUT_PATH = "rc-input-output-path"
 RC_BTN_OUTPUT_CANCEL = "rc-btn-output-cancel"
 RC_BTN_OUTPUT_CONFIRM = "rc-btn-output-confirm"
 
+# ---------------------------------------------------------------------------
+# Metadata preflight
+# ---------------------------------------------------------------------------
+
+#: Visible ambient metadata descriptor and source-compatibility summary.
+RC_METADATA_PREFLIGHT = "rc-metadata-preflight"
+
+#: Explicit per-request metadata authority. Ambient metadata defaults to omitted.
+RC_METADATA_CHOICE = "rc-metadata-choice"
+
+#: Warning acknowledgement mounted only when the current preflight needs one.
+RC_METADATA_ACKNOWLEDGEMENT = "rc-metadata-acknowledgement"
+
 
 # ---------------------------------------------------------------------------
 # Action buttons (validate / run / cancel / save preset / load preset)
@@ -155,6 +193,7 @@ RC_BTN_OUTPUT_CONFIRM = "rc-btn-output-confirm"
 RC_BTN_VALIDATE = "rc-btn-validate"
 RC_BTN_RUN = "rc-btn-run"
 RC_BTN_CANCEL = "rc-btn-cancel"
+RC_BTN_REFRESH_DASHBOARD = "rc-btn-refresh-dashboard"
 RC_BTN_SAVE_PRESET = "rc-btn-save-preset"
 RC_INPUT_PRESET_NAME = "rc-input-preset-name"
 RC_DROPDOWN_LOAD_PRESET = "rc-dropdown-load-preset"
@@ -190,6 +229,7 @@ RC_HANDOFF_DISMISS = "rc-handoff-dismiss"
 RC_TOAST = "rc-toast"
 RC_INTERVAL_LOG = "rc-interval-log"
 RC_INTERVAL_DASHBOARD_POLL = "rc-interval-dashboard-poll"
+RC_INTERVAL_ACTION_WATCHDOG = "rc-interval-action-watchdog"
 
 
 # ---------------------------------------------------------------------------
@@ -233,9 +273,13 @@ __all__ = [
     "RC_RECENTS",
     "RC_RECENTS_BODY",
     "RC_STATUS_BANNER",
+    "RC_ACTION_FEEDBACK",
     "RC_STORE_FORM_STATE",
     "RC_STORE_ACTIVE_RUN_ID",
+    "RC_STORE_ACTIVE_RUN_RECEIPT",
     "RC_STORE_ACTIVE_REL_PATH",
+    "RC_STORE_ACTION_ATTEMPT",
+    "RC_STORE_ACTION_RESULT",
     "RC_STORE_PIPELINE_PATH",
     "RC_STORE_INPUT_DIR",
     "RC_STORE_OUTPUT_DIR",
@@ -261,6 +305,9 @@ __all__ = [
     "RC_INPUT_SLURM_CPUS",
     "RC_INPUT_SLURM_GPUS",
     "RC_INPUT_SLURM_EXTRA",
+    "RC_STAGED_GPU_SECTION",
+    "RC_INPUT_GPU_SLURM",
+    "RC_INPUT_GPU_SHARDS",
     "RC_BTN_PICK_PIPELINE",
     "RC_BTN_PICK_INPUT",
     "RC_BTN_PICK_OUTPUT",
@@ -283,6 +330,7 @@ __all__ = [
     "RC_BTN_VALIDATE",
     "RC_BTN_RUN",
     "RC_BTN_CANCEL",
+    "RC_BTN_REFRESH_DASHBOARD",
     "RC_BTN_SAVE_PRESET",
     "RC_INPUT_PRESET_NAME",
     "RC_HANDOFF_BANNER",
@@ -295,6 +343,7 @@ __all__ = [
     "RC_TOAST",
     "RC_INTERVAL_LOG",
     "RC_INTERVAL_DASHBOARD_POLL",
+    "RC_INTERVAL_ACTION_WATCHDOG",
     "RC_DIR_ENTRY_TYPE_PIPELINE_JSON",
     "RC_DIR_ENTRY_TYPE_INPUT_DIR",
     "RC_DIR_ENTRY_TYPE_OUTPUT_DIR",

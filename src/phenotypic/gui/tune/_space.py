@@ -158,6 +158,28 @@ def _build_search_space(
     return SearchSpace(knobs=tuple(knobs))
 
 
+def apply_space_edits(
+    search_space: "SearchSpace",
+    edits: Mapping[str, Mapping[str, Any]],
+) -> "SearchSpace":
+    """Apply domain edits to an existing space without re-inferring it.
+
+    This is the Setup path for an existing :class:`TuningSpec`: its configured
+    search space is preserved byte-for-byte when ``edits`` is empty, while
+    explicit editor changes affect only the named knobs.
+    """
+    from phenotypic.tune import SearchSpace
+
+    if not edits:
+        return search_space
+    knobs = []
+    for knob in search_space.knobs:
+        edited = _apply_edits(knob, edits)
+        if edited is not None:
+            knobs.append(edited)
+    return SearchSpace(knobs=tuple(knobs))
+
+
 def _default_qc_scorer() -> Any:
     """A fresh, unconfigured ``QCScorer`` — the "review in Launch" signal.
 
@@ -249,18 +271,32 @@ def space_to_spec(
 _REVIEW_BADGE: str = "review"
 
 
-def _tunable_toggle(knob: "Knob", *, disabled: bool) -> dbc.Checklist:
+def _tunable_toggle(
+    knob: "Knob",
+    *,
+    disabled: bool,
+    selected_when_disabled: bool = False,
+    component_type: str = ids.TUNE_SPACE_TUNABLE,
+) -> dbc.Checklist:
     """A per-knob on/off ``tunable`` switch (on by default, off when disabled)."""
     return dbc.Checklist(
-        id={"type": ids.TUNE_SPACE_TUNABLE, "key": knob.key},
+        id={"type": component_type, "key": knob.key},
         options=[{"label": "tunable", "value": "on", "disabled": disabled}],
-        value=[] if disabled else ["on"],
+        value=["on"] if not disabled or selected_when_disabled else [],
         switch=True,
         className="tune-space-tunable",
     )
 
 
-def _range_inputs(knob: "Knob", *, is_int: bool, disabled: bool) -> list[Any]:
+def _range_inputs(
+    knob: "Knob",
+    *,
+    is_int: bool,
+    disabled: bool,
+    low_type: str = ids.TUNE_SPACE_LOW,
+    high_type: str = ids.TUNE_SPACE_HIGH,
+    log_type: str = ids.TUNE_SPACE_LOG,
+) -> list[Any]:
     """Two numeric low/high inputs + a log switch for a range domain.
 
     The caller has already dispatched on ``knob.domain.kind`` being a range, so
@@ -271,7 +307,7 @@ def _range_inputs(knob: "Knob", *, is_int: bool, disabled: bool) -> list[Any]:
     return [
         html.Label("low", className="tune-space-bound-label"),
         dbc.Input(
-            id={"type": ids.TUNE_SPACE_LOW, "key": knob.key},
+            id={"type": low_type, "key": knob.key},
             type="number",
             value=getattr(knob.domain, "low", None),
             step=step,
@@ -280,7 +316,7 @@ def _range_inputs(knob: "Knob", *, is_int: bool, disabled: bool) -> list[Any]:
         ),
         html.Label("high", className="tune-space-bound-label"),
         dbc.Input(
-            id={"type": ids.TUNE_SPACE_HIGH, "key": knob.key},
+            id={"type": high_type, "key": knob.key},
             type="number",
             value=getattr(knob.domain, "high", None),
             step=step,
@@ -288,7 +324,7 @@ def _range_inputs(knob: "Knob", *, is_int: bool, disabled: bool) -> list[Any]:
             className="tune-space-bound",
         ),
         dbc.Checklist(
-            id={"type": ids.TUNE_SPACE_LOG, "key": knob.key},
+            id={"type": log_type, "key": knob.key},
             options=[{"label": "log", "value": "on", "disabled": disabled}],
             value=["on"] if getattr(knob.domain, "log", False) else [],
             switch=True,
@@ -297,12 +333,17 @@ def _range_inputs(knob: "Knob", *, is_int: bool, disabled: bool) -> list[Any]:
     ]
 
 
-def _categorical_input(knob: "Knob", *, disabled: bool) -> list[Any]:
+def _categorical_input(
+    knob: "Knob",
+    *,
+    disabled: bool,
+    component_type: str = ids.TUNE_SPACE_CHOICES,
+) -> list[Any]:
     """A checklist of the categorical choices (all pre-checked)."""
     choices = list(getattr(knob.domain, "choices", ()))
     return [
         dbc.Checklist(
-            id={"type": ids.TUNE_SPACE_CHOICES, "key": knob.key},
+            id={"type": component_type, "key": knob.key},
             options=[
                 {"label": str(choice), "value": str(choice), "disabled": disabled}
                 for choice in choices
@@ -313,20 +354,51 @@ def _categorical_input(knob: "Knob", *, disabled: bool) -> list[Any]:
     ]
 
 
-def _domain_editor(knob: "Knob", *, disabled: bool) -> list[Any]:
+def _domain_editor(
+    knob: "Knob",
+    *,
+    disabled: bool,
+    low_type: str = ids.TUNE_SPACE_LOW,
+    high_type: str = ids.TUNE_SPACE_HIGH,
+    log_type: str = ids.TUNE_SPACE_LOG,
+    choices_type: str = ids.TUNE_SPACE_CHOICES,
+) -> list[Any]:
     """Dispatch a knob's domain to its editor widgets (range / categorical)."""
     kind = knob.domain.kind
     if kind == "float_range":
-        return _range_inputs(knob, is_int=False, disabled=disabled)
+        return _range_inputs(
+            knob,
+            is_int=False,
+            disabled=disabled,
+            low_type=low_type,
+            high_type=high_type,
+            log_type=log_type,
+        )
     if kind == "int_range":
-        return _range_inputs(knob, is_int=True, disabled=disabled)
+        return _range_inputs(
+            knob,
+            is_int=True,
+            disabled=disabled,
+            low_type=low_type,
+            high_type=high_type,
+            log_type=log_type,
+        )
     if kind == "categorical":
-        return _categorical_input(knob, disabled=disabled)
+        return _categorical_input(
+            knob,
+            disabled=disabled,
+            component_type=choices_type,
+        )
     # ``fixed`` (and any future domain) renders read-only — nothing to tune.
     return [html.Span(str(getattr(knob.domain, "value", "")), className="tune-space-fixed")]
 
 
-def _knob_form(knob: "Knob") -> dbc.Row:
+def _knob_form(
+    knob: "Knob",
+    *,
+    setup: bool = False,
+    preserve_disabled: bool = False,
+) -> dbc.Row:
     """Render one inferred ``Knob`` as a ``dbc.Row`` editor.
 
     A flat / presence knob is fully editable: the domain editor
@@ -353,19 +425,79 @@ def _knob_form(knob: "Knob") -> dbc.Row:
         label_children.append(
             html.Span("nested (read-only)", className="tune-space-nested-note")
         )
+    low_type = ids.TUNE_SETUP_SPACE_LOW if setup else ids.TUNE_SPACE_LOW
+    high_type = ids.TUNE_SETUP_SPACE_HIGH if setup else ids.TUNE_SPACE_HIGH
+    log_type = ids.TUNE_SETUP_SPACE_LOG if setup else ids.TUNE_SPACE_LOG
+    choices_type = (
+        ids.TUNE_SETUP_SPACE_CHOICES if setup else ids.TUNE_SPACE_CHOICES
+    )
+    tunable_type = (
+        ids.TUNE_SETUP_SPACE_TUNABLE if setup else ids.TUNE_SPACE_TUNABLE
+    )
+    row_type = ids.TUNE_SETUP_SPACE_KNOB_ROW if setup else ids.TUNE_SPACE_KNOB_ROW
     cells: list[Any] = [
         dbc.Col(label_children, className="tune-space-key-col"),
-        dbc.Col(_domain_editor(knob, disabled=disabled), className="tune-space-domain-col"),
-        dbc.Col(_tunable_toggle(knob, disabled=disabled), className="tune-space-toggle-col"),
+        dbc.Col(
+            _domain_editor(
+                knob,
+                disabled=disabled,
+                low_type=low_type,
+                high_type=high_type,
+                log_type=log_type,
+                choices_type=choices_type,
+            ),
+            className="tune-space-domain-col",
+        ),
+        dbc.Col(
+            _tunable_toggle(
+                knob,
+                disabled=disabled,
+                selected_when_disabled=preserve_disabled,
+                component_type=tunable_type,
+            ),
+            className="tune-space-toggle-col",
+        ),
     ]
     return dbc.Row(
         cells,
-        id={"type": ids.TUNE_SPACE_KNOB_ROW, "key": knob.key},
+        id={"type": row_type, "key": knob.key},
         className="tune-space-knob-row",
     )
 
 
-__all__ = ["space_to_spec", "build_space_view"]
+def setup_knob_forms(source: Any) -> list[dbc.Row]:
+    """Render editable Setup rows while preserving an existing spec's space."""
+    from phenotypic.tune import infer_search_space
+
+    if _is_tuning_spec(source):
+        configured = list(source.search_space.knobs)
+        existing_keys = {knob.key for knob in configured}
+        inferred = infer_search_space(source.pipeline)
+        inferred_nested = [
+            knob
+            for knob in inferred.knobs
+            if type(knob.target).__name__ == "Nested"
+            and knob.key not in existing_keys
+        ]
+        return [
+            *[
+                _knob_form(knob, setup=True, preserve_disabled=True)
+                for knob in configured
+            ],
+            *[_knob_form(knob, setup=True) for knob in inferred_nested],
+        ]
+    return [
+        _knob_form(knob, setup=True)
+        for knob in infer_search_space(source).knobs
+    ]
+
+
+__all__ = [
+    "apply_space_edits",
+    "build_space_view",
+    "setup_knob_forms",
+    "space_to_spec",
+]
 
 
 def build_space_view(root: "TuneRunRoot") -> html.Div:

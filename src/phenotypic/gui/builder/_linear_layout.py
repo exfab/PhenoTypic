@@ -997,7 +997,6 @@ def _side_loader_empty(state: BuilderState) -> html.Div:
             html.P("Select a node to edit parameters.", className="text-muted mb-0"),
             *_hidden_inspector_widgets(),
         ],
-        id=ids.INSPECTOR_CONTAINER,
         className="linear-side-loader",
     )
 
@@ -1124,11 +1123,6 @@ def build_linear_side_loader(
 
     body.extend(
         [
-            html.Div(
-                "(Run preview to populate)",
-                id=ids.INSPECTOR_PREVIEW,
-                className="text-muted small fst-italic mt-3",
-            ),
             dbc.Button(id=ids.BTN_DRILL_IN, n_clicks=0, style=_HIDDEN_STYLE),
             dbc.Button(
                 id=ids.INSPECTOR_DOC_TOGGLE,
@@ -1146,7 +1140,6 @@ def build_linear_side_loader(
 
     return html.Div(
         body,
-        id=ids.INSPECTOR_CONTAINER,
         className="linear-side-loader",
     )
 

@@ -57,13 +57,23 @@ from phenotypic.gui._design import (
     OI_ORANGE,
     OI_ORANGE_TEXT,
 )
-from phenotypic.gui.results_viewer import _filter_panel, _ids as ids, colony_view
+from phenotypic.gui.results_viewer import (
+    _filter_panel,
+    _ids as ids,
+    colony_view,
+)
 from phenotypic.gui.results_viewer._error_tab import build_error_tab_body
 from phenotypic.gui.results_viewer._heatmap_tab import build_heatmap_tab_body
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._mutation_guard import (
+    output_mutations_disabled,
+    output_read_only_diagnostic,
+)
 from phenotypic.gui.results_viewer._qc_tab import build_qc_tab_body
 from phenotypic.gui.results_viewer.colony_view import _layout as _colony_layout  # noqa: F401
-from phenotypic.gui.results_viewer.timeline_view import _layout as _timeline_layout
+from phenotypic.gui.results_viewer.timeline_view import (
+    _layout as _timeline_layout,
+)
 
 if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
@@ -157,7 +167,12 @@ def build_mode_badge(output_root: OutputRoot) -> Component:
     )
 
 
-def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> Component:
+def _build_header(
+    output_root: OutputRoot,
+    *,
+    url_prefix: str = MOUNT_HOME,
+    refresh_supported: bool = True,
+) -> Component:
     """Build the top header bar.
 
     Args:
@@ -166,6 +181,7 @@ def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> C
         url_prefix: Mount-point prefix used to resolve the dashboard
             logo URL. Defaults to ``MOUNT_HOME`` ("/") for standalone
             launches; the hub passes ``MOUNT_VIEWER``.
+        refresh_supported: Whether the host can replace the bound app.
 
     Returns:
         A header :class:`dash.html.Div` styled as a navy-on-white bar.
@@ -215,8 +231,59 @@ def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> C
     )
 
     subtitle = html.Div(
-        str(output_root.root),
-        className="text-muted small results-viewer-header-subtitle",
+        [
+            html.Span(str(output_root.root)),
+            html.Span(" · "),
+            html.Span(
+                "Snapshot "
+                f"{output_root.snapshot.captured_at.astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')}"
+            ),
+            html.Span(" · "),
+            html.Code(
+                output_root.snapshot.processing_fingerprint[:12],
+                title=output_root.snapshot.processing_fingerprint,
+            ),
+            dbc.Badge(
+                (
+                    "Active run snapshot"
+                    if output_root.snapshot.active_run
+                    else (
+                        f"Read-only · {output_root.consistency.state}"
+                        if output_root.consistency.is_read_only
+                        else "Current"
+                    )
+                ),
+                id=ids.HEADER_SNAPSHOT_STATUS_ID,
+                color=(
+                    "danger"
+                    if output_root.consistency.is_read_only
+                    else "warning"
+                    if output_root.snapshot.active_run
+                    else "success"
+                ),
+                className="ms-2",
+            ),
+            dbc.Button(
+                "Refresh snapshot",
+                id=ids.BTN_REFRESH_SNAPSHOT,
+                color="secondary",
+                outline=True,
+                size="sm",
+                n_clicks=0,
+                disabled=(
+                    output_root.snapshot.active_run or not refresh_supported
+                ),
+                className="ms-2",
+            ),
+            html.Span(
+                id=ids.HEADER_REFRESH_ERROR_ID,
+                className="text-danger ms-2",
+            ),
+        ],
+        className=(
+            "text-muted small results-viewer-header-subtitle "
+            "d-flex align-items-center flex-wrap gap-1"
+        ),
         style={"marginTop": "0.1rem"},
     )
 
@@ -313,6 +380,18 @@ def _build_startup_banner(output_root: OutputRoot) -> Component:
             "background": "rgba(27,117,188,0.08)",
             "color": COLOR_BLUE,
         },
+    )
+
+
+def _build_read_only_diagnostic(output_root: OutputRoot) -> Component:
+    """Build a persistent warning without hiding read-only views."""
+    message = output_read_only_diagnostic(output_root)
+    return dbc.Alert(
+        message or "",
+        id=ids.READ_ONLY_DIAGNOSTIC_ID,
+        color="danger",
+        is_open=message is not None,
+        className="mx-3 mt-2 mb-0 small",
     )
 
 
@@ -480,6 +559,8 @@ def build_app_layout(
     filtered_state: "CurationLabels",
     *,
     url_prefix: str = MOUNT_HOME,
+    binding_generation: str | None = None,
+    refresh_supported: bool = True,
 ) -> Component:
     """Compose the top-level Dash component tree for the results viewer.
 
@@ -500,15 +581,25 @@ def build_app_layout(
         url_prefix: Mount-point prefix passed through to
             :func:`_build_header` so the dashboard logo resolves
             correctly under both standalone and hub-mounted launches.
+        binding_generation: Optional shell generation embedded in the page.
+        refresh_supported: Whether the host supports in-process rebinding.
 
     Returns:
         A :class:`dash.html.Div` ready to assign to ``app.layout``.
     """
-    header = _build_header(output_root, url_prefix=url_prefix)
+    header = _build_header(
+        output_root,
+        url_prefix=url_prefix,
+        refresh_supported=refresh_supported,
+    )
     banner = _build_startup_banner(output_root)
     sidebar = _filter_panel.layout(output_root)
     cards_column = _build_cards_column()
-    colony_tab_body = colony_view._layout.layout(output_root)
+    mutations_disabled = output_mutations_disabled(output_root)
+    colony_tab_body = colony_view._layout.layout(
+        output_root,
+        mutations_disabled=mutations_disabled,
+    )
 
     # Heatmap tab uses the measurement-schema cache; lazily attach it to
     # ``app.server.config`` here if ``create_app`` did not. The
@@ -516,8 +607,15 @@ def build_app_layout(
     # keeps the cache hits warm across tabs.
     schema = _resolve_measurement_schema(output_root)
     heatmap_tab_body = build_heatmap_tab_body(output_root, schema)
-    error_tab_body = build_error_tab_body(output_root, schema)
-    qc_tab_body = build_qc_tab_body(_resolve_qc_recipe(output_root))
+    error_tab_body = build_error_tab_body(
+        output_root,
+        schema,
+        mutations_disabled=mutations_disabled,
+    )
+    qc_tab_body = build_qc_tab_body(
+        _resolve_qc_recipe(output_root),
+        mutations_disabled=mutations_disabled,
+    )
     timeline_tab_body = _timeline_layout.layout(output_root)
     stores = _build_stores(filtered_state)
 
@@ -591,14 +689,83 @@ def build_app_layout(
         backdrop=True,
     )
 
+    children: list[Component] = [
+        stores,
+        dcc.Interval(
+            id=ids.SNAPSHOT_STATUS_INTERVAL_ID,
+            interval=10_000,
+            n_intervals=0,
+        ),
+        header,
+        _build_read_only_diagnostic(output_root),
+        banner,
+        body,
+        filter_offcanvas,
+    ]
+    if binding_generation is not None:
+        children.insert(
+            0,
+            dcc.Store(
+                id=ids.STORE_BINDING_GENERATION,
+                data=binding_generation,
+            ),
+        )
     return html.Div(
-        [stores, header, banner, body, filter_offcanvas],
+        children,
         id="results-viewer-root",
         style={"background": _BG, "minHeight": "100vh"},
     )
 
 
-def build_empty_state_layout() -> Component:
+def build_active_snapshot_layout(
+    output_root: OutputRoot,
+    *,
+    url_prefix: str = MOUNT_HOME,
+    binding_generation: str | None = None,
+) -> Component:
+    """Build a mutation-free placeholder for a nonterminal output."""
+    children: list[Component] = [
+        dcc.Interval(
+            id=ids.SNAPSHOT_STATUS_INTERVAL_ID,
+            interval=5_000,
+            n_intervals=0,
+        ),
+        _build_header(output_root, url_prefix=url_prefix),
+        dbc.Alert(
+            [
+                html.H5("Processing output is read-only"),
+                html.P(
+                    "This output still has a nonterminal run owner. Results, "
+                    "curation, and QC callbacks are not loaded for this page."
+                ),
+                html.P(
+                    "When processing finishes, use Refresh snapshot to load a "
+                    "stable Results and Analysis revision."
+                ),
+            ],
+            color="warning",
+            className="m-4",
+        ),
+    ]
+    if binding_generation is not None:
+        children.insert(
+            0,
+            dcc.Store(
+                id=ids.STORE_BINDING_GENERATION,
+                data=binding_generation,
+            ),
+        )
+    return html.Div(
+        children,
+        id="results-viewer-active-snapshot",
+        style={"background": _BG, "minHeight": "100vh"},
+    )
+
+
+def build_empty_state_layout(
+    *,
+    binding_generation: str | None = None,
+) -> Component:
     """Compose a placeholder layout when no ``OutputRoot`` is available.
 
     The hub mounts the viewer with ``output_root=None`` so the page is
@@ -659,27 +826,36 @@ def build_empty_state_layout() -> Component:
         style={"marginTop": "0.5rem", "minHeight": "1.25rem"},
     )
 
-    return html.Div(
-        [
-            html.Div(
-                [
-                    html.H2(
-                        "No output selected",
-                        className="results-viewer-empty-title",
-                    ),
-                    html.P(
-                        "Pick a CLI output directory in the sidebar, "
-                        "then click ↩ Open in viewer to load it. The "
-                        "viewer rebuilds in place once the chosen "
-                        "directory passes layout validation.",
-                        className="results-viewer-empty-body",
-                    ),
-                    handoff_banner,
-                    error_slot,
-                ],
-                className="results-viewer-empty-card",
+    children: list[Component] = [
+        html.Div(
+            [
+                html.H2(
+                    "No output selected",
+                    className="results-viewer-empty-title",
+                ),
+                html.P(
+                    "Pick a CLI output directory in the sidebar, "
+                    "then click ↩ Open in viewer to load it. The "
+                    "viewer rebuilds in place once the chosen "
+                    "directory passes layout validation.",
+                    className="results-viewer-empty-body",
+                ),
+                handoff_banner,
+                error_slot,
+            ],
+            className="results-viewer-empty-card",
+        ),
+    ]
+    if binding_generation is not None:
+        children.insert(
+            0,
+            dcc.Store(
+                id=ids.STORE_BINDING_GENERATION,
+                data=binding_generation,
             ),
-        ],
+        )
+    return html.Div(
+        children,
         id="results-viewer-empty-state",
         className="results-viewer-empty",
         style={

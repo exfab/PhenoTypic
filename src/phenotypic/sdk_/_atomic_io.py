@@ -31,7 +31,12 @@ PARQUET_WRITE_OPTIONS: dict[str, Any] = {
 }
 
 
-def _atomic_replace(target: Path, data: bytes) -> None:
+def _atomic_replace(
+    target: Path,
+    data: bytes,
+    *,
+    pre_replace: Callable[[], None] | None = None,
+) -> None:
     """Write ``data`` to a same-dir temp file, fsync, then replace ``target``.
 
     The shared core of :func:`atomic_write_text` and :func:`atomic_write_bytes`:
@@ -44,6 +49,9 @@ def _atomic_replace(target: Path, data: bytes) -> None:
     Args:
         target: The final destination path.
         data: The exact bytes to write.
+        pre_replace: Optional callback invoked after the temporary file is
+            flushed and synced, immediately before it replaces ``target``.
+            An exception aborts publication and removes the temporary file.
 
     Raises:
         OSError: Propagated from the write/replace after the temp file is
@@ -66,6 +74,8 @@ def _atomic_replace(target: Path, data: bytes) -> None:
             os.fsync(handle.fileno())
         finally:
             handle.close()
+        if pre_replace is not None:
+            pre_replace()
         os.replace(tmp_path, target)
     except BaseException:
         if tmp_path is not None:
@@ -79,12 +89,17 @@ def _atomic_replace(target: Path, data: bytes) -> None:
 def atomic_write_with_writer(
     path: Union[str, Path],
     writer: Callable[[str], None],
+    *,
+    pre_replace: Callable[[], None] | None = None,
 ) -> None:
     """Atomically write ``path`` using a callback that receives a temp path.
 
     Args:
         path: Final destination path.
         writer: Callable that writes complete output to a temporary path string.
+        pre_replace: Optional callback invoked after the temporary file is
+            synced, immediately before it replaces ``path``. An exception
+            aborts publication and removes the temporary file.
 
     Raises:
         OSError: Propagated from the writer or rename after temp cleanup.
@@ -104,6 +119,8 @@ def atomic_write_with_writer(
         writer(tmp_path)
         with open(tmp_path, "r+b") as fh:
             os.fsync(fh.fileno())
+        if pre_replace is not None:
+            pre_replace()
         os.replace(tmp_path, target)
     except BaseException:
         if tmp_path is not None:
@@ -115,7 +132,11 @@ def atomic_write_with_writer(
 
 
 def atomic_write_text(
-    path: Union[str, Path], text: str, *, encoding: str = "utf-8"
+    path: Union[str, Path],
+    text: str,
+    *,
+    encoding: str = "utf-8",
+    pre_replace: Callable[[], None] | None = None,
 ) -> None:
     """Atomically write ``text`` to ``path`` (temp sibling + ``os.replace``).
 
@@ -128,14 +149,24 @@ def atomic_write_text(
         path: The destination file path.
         text: The full text payload to write.
         encoding: The text encoding (default ``"utf-8"``).
+        pre_replace: Optional callback invoked immediately before publication.
 
     Raises:
         OSError: If the write or rename fails (the temp file is removed first).
     """
-    _atomic_replace(Path(path), text.encode(encoding))
+    _atomic_replace(
+        Path(path),
+        text.encode(encoding),
+        pre_replace=pre_replace,
+    )
 
 
-def atomic_write_bytes(path: Union[str, Path], data: bytes) -> None:
+def atomic_write_bytes(
+    path: Union[str, Path],
+    data: bytes,
+    *,
+    pre_replace: Callable[[], None] | None = None,
+) -> None:
     """Atomically write ``data`` to ``path`` (temp sibling + ``os.replace``).
 
     The bytes counterpart of :func:`atomic_write_text` for binary payloads
@@ -145,11 +176,12 @@ def atomic_write_bytes(path: Union[str, Path], data: bytes) -> None:
     Args:
         path: The destination file path.
         data: The full binary payload to write.
+        pre_replace: Optional callback invoked immediately before publication.
 
     Raises:
         OSError: If the write or rename fails (the temp file is removed first).
     """
-    _atomic_replace(Path(path), bytes(data))
+    _atomic_replace(Path(path), bytes(data), pre_replace=pre_replace)
 
 
 def atomic_write_json(
@@ -159,6 +191,7 @@ def atomic_write_json(
     indent: int = 2,
     sort_keys: bool = True,
     ensure_ascii: bool = False,
+    pre_replace: Callable[[], None] | None = None,
 ) -> None:
     """Atomically write a JSON payload with deterministic formatting.
 
@@ -168,6 +201,7 @@ def atomic_write_json(
         indent: Indentation passed to :func:`json.dumps`.
         sort_keys: Whether mapping keys are sorted for deterministic output.
         ensure_ascii: Whether non-ASCII characters are escaped.
+        pre_replace: Optional callback invoked immediately before publication.
     """
     atomic_write_text(
         path,
@@ -178,6 +212,7 @@ def atomic_write_json(
             ensure_ascii=ensure_ascii,
         )
         + "\n",
+        pre_replace=pre_replace,
     )
 
 

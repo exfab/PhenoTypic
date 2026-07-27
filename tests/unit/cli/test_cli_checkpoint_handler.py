@@ -12,6 +12,7 @@ import json
 import sys
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -23,6 +24,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 from phenotypic._cli._cli_checkpoint_handler import (  # noqa: E402
+    _publish_run_completion_marker,
     _run_finalize,
     _run_manifest,
     main,
@@ -35,6 +37,14 @@ from phenotypic._cli._cli_staged_orchestration import (  # noqa: E402
 from phenotypic.sdk_ import (  # noqa: E402
     atomic_write_json,
     progress_dir as progress_dir_helper,
+    resolve_manifest_json_path,
+    run_completion_marker_path,
+)
+from phenotypic._cli._cli_slurm_lifecycle import (  # noqa: E402
+    deactivate_generation,
+    initialize_slurm_lifecycle,
+    lifecycle_state_path,
+    load_slurm_lifecycle,
 )
 
 
@@ -51,12 +61,11 @@ def _write_job_metadata(
     datasets_field: dict,
     *,
     no_qc: bool = False,
+    slurm_generation: str | None = None,
 ) -> None:
     """Write a minimal job_metadata.json with the given datasets shape."""
     progress_dir.mkdir(parents=True, exist_ok=True)
-    (progress_dir / "job_metadata.json").write_text(
-        json.dumps(
-            {
+    payload = {
                 "start_time": "2026-04-21T00:00:00.000",
                 "execution_mode": "slurm",
                 "datasets": datasets_field,
@@ -68,7 +77,10 @@ def _write_job_metadata(
                 "no_qc": no_qc,
                 "input_path": "fake",
             }
-        ),
+    if slurm_generation is not None:
+        payload["slurm_generation"] = slurm_generation
+    (progress_dir / "job_metadata.json").write_text(
+        json.dumps(payload),
         encoding="utf-8",
     )
 
@@ -97,6 +109,56 @@ class TestRunManifestCoercion:
         kwargs = mock_build_manifest.call_args.kwargs
         assert kwargs["datasets"] == EXPECTED_TOTALS
         assert all(isinstance(v, int) for v in kwargs["datasets"].values())
+
+    def test_process_export_manifest_publishes_generation_marker_last(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        output_dir = tmp_path / "out"
+        progress_dir = output_dir / "progress"
+        generation = "fedcba9876543210fedcba9876543210"
+        _write_job_metadata(
+            progress_dir,
+            {"ds1": {"total": 1, "images": ["a.tif"]}},
+            slurm_generation=generation,
+        )
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=generation,
+            mode="ordinary",
+        )
+        marker_path = run_completion_marker_path(output_dir)
+
+        def publish_manifest(**_kwargs: object) -> None:
+            assert not marker_path.exists()
+            atomic_write_json(
+                resolve_manifest_json_path(output_dir),
+                {
+                    "is_complete": True,
+                    "completed": 1,
+                    "failed": 0,
+                    "total_images": 1,
+                },
+            )
+
+        with (
+            patch(
+                "phenotypic._cli._dashboard._manifest_builder.build_manifest",
+                side_effect=publish_manifest,
+            ),
+            patch(
+                "phenotypic._cli._cli_state_management.load_processing_state",
+                return_value=SimpleNamespace(
+                    config={"process_only_layer": "rgb"}
+                ),
+            ),
+        ):
+            _run_manifest(output_dir, progress_dir)
+
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        assert marker["generation"] == generation
+        assert marker["status"] == "complete"
+        assert marker["finalizer_succeeded"] is True
 
     def test_no_metadata_file_early_exits(self, tmp_path: Path) -> None:
         output_dir = tmp_path / "out"
@@ -174,8 +236,15 @@ class TestRunFinalizeCoercion:
             _run_finalize(output_dir, progress_dir)
 
         mock_wait.assert_called_once()
-        wait_total = mock_wait.call_args.args[1]
+        wait_total = mock_wait.call_args.kwargs["total_expected"]
         assert wait_total == sum(EXPECTED_TOTALS.values())
+        if datasets_field is NESTED_DATASETS:
+            assert mock_wait.call_args.kwargs["inventory"] == {
+                "ds1": frozenset({"a.tif", "b.tif", "c.tif"}),
+                "ds2": frozenset({"x.tif", "y.tif"}),
+            }
+        else:
+            assert mock_wait.call_args.kwargs["inventory"] is None
 
         mock_aggregate.assert_called_once()
         aggregate_kwargs = mock_aggregate.call_args.kwargs
@@ -210,6 +279,215 @@ class TestRunFinalizeCoercion:
         mock_wait.assert_not_called()
         mock_aggregate.assert_not_called()
         mock_build_manifest.assert_not_called()
+
+    def test_ordinary_finalizer_publishes_generation_marker_last(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        output_dir = tmp_path / "out"
+        progress_dir = output_dir / "progress"
+        generation = "0123456789abcdef0123456789abcdef"
+        _write_job_metadata(
+            progress_dir,
+            {"ds1": {"total": 1, "images": ["a.tif"]}},
+            slurm_generation=generation,
+        )
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=generation,
+            mode="ordinary",
+        )
+        marker_path = run_completion_marker_path(output_dir)
+
+        def publish_manifest(**_kwargs: object) -> None:
+            assert not marker_path.exists()
+            atomic_write_json(
+                resolve_manifest_json_path(output_dir),
+                {
+                    "is_complete": True,
+                    "completed": 1,
+                    "failed": 0,
+                    "total_images": 1,
+                },
+            )
+
+        with (
+            patch(
+                "phenotypic._cli._cli_checkpoint_handler._wait_for_completion"
+            ),
+            patch(
+                "phenotypic._cli._cli_output_manager.aggregate_measurements",
+                return_value=output_dir / "deliverables" / "measurements.parquet",
+            ),
+            patch(
+                "phenotypic._cli._dashboard._manifest_builder.build_manifest",
+                side_effect=publish_manifest,
+            ),
+            patch(
+                "phenotypic._cli._cli_chunk_writer._run_analysis_plugins"
+            ),
+            patch(
+                "phenotypic._cli._dashboard._generator.generate_dashboard"
+            ),
+        ):
+            _run_finalize(output_dir, progress_dir)
+
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        assert marker["generation"] == generation
+        assert marker["status"] == "complete"
+        assert marker["finalizer_succeeded"] is True
+        lifecycle = load_slurm_lifecycle(output_dir)
+        assert lifecycle is not None
+        assert lifecycle["active"] is False
+
+    def test_ordinary_finalizer_refuses_marker_for_failed_manifest(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        output_dir = tmp_path / "out"
+        progress_dir = output_dir / "progress"
+        _write_job_metadata(
+            progress_dir,
+            {"ds1": {"total": 1, "images": ["a.tif"]}},
+            slurm_generation="0123456789abcdef0123456789abcdef",
+        )
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation="0123456789abcdef0123456789abcdef",
+            mode="ordinary",
+        )
+
+        def publish_failed_manifest(**_kwargs: object) -> None:
+            atomic_write_json(
+                resolve_manifest_json_path(output_dir),
+                {
+                    "is_complete": True,
+                    "completed": 0,
+                    "failed": 1,
+                    "total_images": 1,
+                },
+            )
+
+        with (
+            patch(
+                "phenotypic._cli._cli_checkpoint_handler._wait_for_completion"
+            ),
+            patch(
+                "phenotypic._cli._cli_output_manager.aggregate_measurements",
+                return_value=output_dir / "deliverables" / "measurements.parquet",
+            ),
+            patch(
+                "phenotypic._cli._dashboard._manifest_builder.build_manifest",
+                side_effect=publish_failed_manifest,
+            ),
+            patch(
+                "phenotypic._cli._cli_chunk_writer._run_analysis_plugins"
+            ),
+            patch(
+                "phenotypic._cli._dashboard._generator.generate_dashboard"
+            ),
+            pytest.raises(RuntimeError, match="incomplete or failed manifest"),
+        ):
+            _run_finalize(output_dir, progress_dir)
+
+        assert not run_completion_marker_path(output_dir).exists()
+
+    def test_completion_marker_is_idempotent_for_same_finished_generation(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        output_dir = tmp_path / "out"
+        generation = "1123456789abcdef0123456789abcdef"
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=generation,
+            mode="ordinary",
+        )
+        atomic_write_json(
+            resolve_manifest_json_path(output_dir),
+            {
+                "is_complete": True,
+                "completed": 1,
+                "failed": 0,
+                "total_images": 1,
+            },
+        )
+
+        _publish_run_completion_marker(output_dir, generation)
+        _publish_run_completion_marker(output_dir, generation)
+
+        marker = json.loads(
+            run_completion_marker_path(output_dir).read_text(encoding="utf-8")
+        )
+        assert marker["generation"] == generation
+        assert load_slurm_lifecycle(output_dir)["active"] is False  # type: ignore[index]
+
+    def test_old_finalizer_cannot_publish_after_new_generation(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        output_dir = tmp_path / "out"
+        old_generation = "2123456789abcdef0123456789abcdef"
+        new_generation = "3123456789abcdef0123456789abcdef"
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=old_generation,
+            mode="ordinary",
+        )
+        state = load_slurm_lifecycle(output_dir)
+        assert state is not None
+        state["active"] = False
+        atomic_write_json(lifecycle_state_path(output_dir), state)
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=new_generation,
+            mode="ordinary",
+        )
+        atomic_write_json(
+            resolve_manifest_json_path(output_dir),
+            {
+                "is_complete": True,
+                "completed": 1,
+                "failed": 0,
+                "total_images": 1,
+            },
+        )
+
+        with pytest.raises(RuntimeError, match="stale SLURM generation"):
+            _publish_run_completion_marker(output_dir, old_generation)
+
+        assert not run_completion_marker_path(output_dir).exists()
+        lifecycle = load_slurm_lifecycle(output_dir)
+        assert lifecycle is not None
+        assert lifecycle["generation"] == new_generation
+        assert lifecycle["active"] is True
+
+    def test_cancelled_generation_cannot_publish_completion_marker(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        output_dir = tmp_path / "out"
+        generation = "4123456789abcdef0123456789abcdef"
+        initialize_slurm_lifecycle(
+            output_dir,
+            generation=generation,
+            mode="ordinary",
+        )
+        assert deactivate_generation(output_dir, generation) is True
+        atomic_write_json(
+            resolve_manifest_json_path(output_dir),
+            {
+                "is_complete": True,
+                "completed": 1,
+                "failed": 0,
+                "total_images": 1,
+            },
+        )
+
+        with pytest.raises(RuntimeError, match="cancelled or superseded"):
+            _publish_run_completion_marker(output_dir, generation)
+
+        assert not run_completion_marker_path(output_dir).exists()
 
     def test_staged_finalize_fails_when_no_current_measurements(
         self, tmp_path: Path

@@ -38,6 +38,9 @@ STORE_CARD_LIST = "store-card-list"
 #: pan/zoom on one mirrors to the others.
 STORE_LOCK_VIEWS = "store-lock-views"
 
+#: Monotonic shell binding generation carried by this rendered page.
+STORE_BINDING_GENERATION = "results-binding-generation"
+
 
 # ---------------------------------------------------------------------------
 # Empty-state hand-off (only mounted when ``output_root is None``)
@@ -96,6 +99,22 @@ HEADER_PIPELINE_CHIP_ID = "header-pipeline-chip"
 #: Mode badge in the header bar — "Full run" (per-image ``results/`` present)
 #: vs "Standalone bundle" (deliverables-only). Reads ``OutputRoot.has_results``.
 HEADER_MODE_BADGE_ID = "header-mode-badge"
+
+#: Snapshot freshness badge updated by a lightweight fingerprint check.
+HEADER_SNAPSHOT_STATUS_ID = "header-snapshot-status"
+
+#: Explicit shared Results/Analysis snapshot refresh action.
+BTN_REFRESH_SNAPSHOT = "btn-refresh-snapshot"
+
+#: Inline error surfaced when an explicit snapshot refresh is refused.
+HEADER_REFRESH_ERROR_ID = "header-refresh-error"
+
+#: Persistent diagnostic shown when discovery succeeded but completion
+#: evidence does not authorize any Results/Analysis mutation.
+READ_ONLY_DIAGNOSTIC_ID = "results-read-only-diagnostic"
+
+#: Poll trigger for status-only freshness checks. It never refreshes data.
+SNAPSHOT_STATUS_INTERVAL_ID = "snapshot-status-interval"
 
 #: Outer pattern-matching root for the dynamic filter rows. The filter
 #: rows are rendered into this ``html.Div`` by a callback whenever
@@ -692,7 +711,9 @@ def colony_cell_id(image_file: str, label: int) -> Dict[str, str | int]:
     return {"type": "colony-cell", "image_file": image_file, "label": label}
 
 
-def colony_cell_remove_btn_id(image_file: str, label: int) -> Dict[str, str | int]:
+def colony_cell_remove_btn_id(
+    image_file: str, label: int
+) -> Dict[str, str | int]:
     """Build the pattern-matching id for a colony-cell single-action remove button.
 
     Args:
@@ -703,10 +724,16 @@ def colony_cell_remove_btn_id(image_file: str, label: int) -> Dict[str, str | in
         Dict of shape
         ``{"type": "colony-cell-remove-btn", "image_file": image_file, "label": label}``.
     """
-    return {"type": "colony-cell-remove-btn", "image_file": image_file, "label": label}
+    return {
+        "type": "colony-cell-remove-btn",
+        "image_file": image_file,
+        "label": label,
+    }
 
 
-def colony_cell_count_badge_id(image_file: str, label: int) -> Dict[str, str | int]:
+def colony_cell_count_badge_id(
+    image_file: str, label: int
+) -> Dict[str, str | int]:
     """Build the pattern-matching id for a colony-cell N=k badge.
 
     The badge reports how many colonies are aggregated behind a given tile
@@ -721,10 +748,16 @@ def colony_cell_count_badge_id(image_file: str, label: int) -> Dict[str, str | i
         Dict of shape
         ``{"type": "colony-cell-count-badge", "image_file": image_file, "label": label}``.
     """
-    return {"type": "colony-cell-count-badge", "image_file": image_file, "label": label}
+    return {
+        "type": "colony-cell-count-badge",
+        "image_file": image_file,
+        "label": label,
+    }
 
 
-def colony_cell_popover_body_id(image_file: str, label: int) -> Dict[str, str | int]:
+def colony_cell_popover_body_id(
+    image_file: str, label: int
+) -> Dict[str, str | int]:
     """Build the pattern-matching id for a colony-cell popover body.
 
     The body is rendered empty at grid build time and populated on first
@@ -739,10 +772,16 @@ def colony_cell_popover_body_id(image_file: str, label: int) -> Dict[str, str | 
         Dict of shape
         ``{"type": "colony-cell-popover-body", "image_file": image_file, "label": label}``.
     """
-    return {"type": "colony-cell-popover-body", "image_file": image_file, "label": label}
+    return {
+        "type": "colony-cell-popover-body",
+        "image_file": image_file,
+        "label": label,
+    }
 
 
-def colony_cell_popover_data_id(image_file: str, label: int) -> Dict[str, str | int]:
+def colony_cell_popover_data_id(
+    image_file: str, label: int
+) -> Dict[str, str | int]:
     """Build the pattern-matching id for a colony-cell popover's data store.
 
     Each multi-colony cell carries a co-located ``dcc.Store`` holding the
@@ -758,10 +797,16 @@ def colony_cell_popover_data_id(image_file: str, label: int) -> Dict[str, str | 
         Dict of shape
         ``{"type": "colony-cell-popover-data", "image_file": image_file, "label": label}``.
     """
-    return {"type": "colony-cell-popover-data", "image_file": image_file, "label": label}
+    return {
+        "type": "colony-cell-popover-data",
+        "image_file": image_file,
+        "label": label,
+    }
 
 
-def colony_cell_expand_btn_id(image_file: str, label: int) -> Dict[str, str | int]:
+def colony_cell_expand_btn_id(
+    image_file: str, label: int
+) -> Dict[str, str | int]:
     """Build the pattern-matching id for a colony-cell expand-on-click trigger.
 
     Clicking the trigger opens a detailed view of the cell's underlying
@@ -776,7 +821,11 @@ def colony_cell_expand_btn_id(image_file: str, label: int) -> Dict[str, str | in
         Dict of shape
         ``{"type": "colony-cell-expand-btn", "image_file": image_file, "label": label}``.
     """
-    return {"type": "colony-cell-expand-btn", "image_file": image_file, "label": label}
+    return {
+        "type": "colony-cell-expand-btn",
+        "image_file": image_file,
+        "label": label,
+    }
 
 
 __all__ = [

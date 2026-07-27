@@ -1,11 +1,11 @@
 """SLURM batch script generation for the sentinel job.
 
 .. deprecated::
-    The standalone sentinel job has been replaced by checkpoint tasks
-    embedded in the array job scripts (``__PHENOTYPIC_MANIFEST__`` and
-    ``__PHENOTYPIC_FINALIZER__``). See :mod:`_cli_checkpoint_handler`
-    and :mod:`_cli_slurm_array_scripts`. This module is retained only
-    for in-flight runs that may still reference it.
+    The standalone sentinel job has been replaced by nonterminal checkpoint
+    tasks embedded in array scripts plus a scheduler-dependent terminal
+    finalizer. See :mod:`_cli_checkpoint_handler` and
+    :mod:`_cli_slurm_array_scripts`. This module is retained only for
+    in-flight runs that may still reference it.
 
 This module generates the bash script that runs the sentinel Click command
 as a self-resubmitting SLURM job.
@@ -22,6 +22,7 @@ from typing import Any, Dict
 from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_utils import get_python_command
 from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
+from phenotypic.sdk_.slurm import SLURM_PYTHONPATH_BOOTSTRAP_BASH
 
 logger = logging.getLogger(__name__)
 
@@ -85,10 +86,12 @@ def generate_sentinel_script(
 # Allow Polars to run on nodes without AVX2/BMI2/MOVBE CPU features
 export POLARS_SKIP_CPU_CHECK=1
 
+{SLURM_PYTHONPATH_BOOTSTRAP_BASH}
+
 RESUBMIT_MARKER={q_progress_dir}/sentinel_resubmitted
 trap 'if [ ! -f "$RESUBMIT_MARKER" ]; then
     echo "SIGTERM received — resubmitting sentinel from trap"
-    sbatch --parsable {q_script_path}
+    sbatch --parsable --export=ALL {q_script_path}
 fi
 exit 0' TERM
 

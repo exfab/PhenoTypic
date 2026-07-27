@@ -113,6 +113,91 @@ def test_refresh_callback_flushes_cache(sandbox: SandboxRoot) -> None:
     assert _classify_cached.cache_info().currsize == 0
 
 
+def test_explicit_sidebar_reselection_repairs_same_path_payloads(
+    sandbox: SandboxRoot,
+) -> None:
+    """A same-path click upgrades V1 and repairs a mismatched V2 payload."""
+    from phenotypic.gui.shell._source_context import sandbox_fingerprint
+
+    plates = sandbox.root / "plates"
+    plates.mkdir()
+    (plates / "plate.tif").write_bytes(b"")
+    app = create_app(sandbox)
+    callback_id = next(
+        callback_id
+        for callback_id, metadata in app.callback_map.items()
+        if callback_id.startswith("shell-source-image-root-store.data")
+        and any(
+            item["id"] == "shell-sidebar-selection-store"
+            for item in metadata["inputs"]
+        )
+    )
+    client = app.server.test_client()
+    selection = {
+        "path": "plates",
+        "abs_path": str(plates.resolve()),
+        "is_dir": True,
+        "capabilities": {"is_image_dir": True},
+    }
+    stale_payloads = [
+        {
+            "version": 1,
+            "abs_path": str(plates.resolve()),
+            "rel_path": "plates",
+            "label": "plates",
+            "validated": True,
+        },
+        {
+            "version": 2,
+            "kind": "image_source",
+            "relative_path": "plates",
+            "absolute_path_at_selection": str(plates.resolve()),
+            "sandbox_fingerprint": "different-sandbox",
+            "validation": {"exists": True, "is_directory": True},
+            "selected_at": "2026-07-23T00:00:00+00:00",
+            "abs_path": str(plates.resolve()),
+            "rel_path": "plates",
+            "label": "plates",
+            "validated": True,
+        },
+    ]
+
+    for stale_payload in stale_payloads:
+        response = client.post(
+            "/_dash-update-component",
+            json={
+                "output": callback_id,
+                "outputs": {
+                    "id": "shell-source-image-root-store",
+                    "property": "data",
+                },
+                "inputs": [
+                    {
+                        "id": "shell-sidebar-selection-store",
+                        "property": "data",
+                        "value": selection,
+                    }
+                ],
+                "state": [
+                    {
+                        "id": "shell-source-image-root-store",
+                        "property": "data",
+                        "value": stale_payload,
+                    }
+                ],
+                "changedPropIds": ["shell-sidebar-selection-store.data"],
+            },
+        )
+
+        assert response.status_code == 200
+        refreshed = response.get_json()["response"][
+            "shell-source-image-root-store"
+        ]["data"]
+        assert refreshed["version"] == 2
+        assert refreshed["abs_path"] == str(plates.resolve())
+        assert refreshed["sandbox_fingerprint"] == sandbox_fingerprint(sandbox)
+
+
 # ---------------------------------------------------------------------------
 # Help-modal toggle
 # ---------------------------------------------------------------------------

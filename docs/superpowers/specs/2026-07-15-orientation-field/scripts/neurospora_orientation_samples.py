@@ -16,7 +16,7 @@ import numpy as np
 from skimage.exposure import adjust_gamma, rescale_intensity
 
 import phenotypic as pht
-from phenotypic.correction import ImageCropper
+from phenotypic.correction import CropImage
 from phenotypic.detect import HysteresisDetector, ManualGridPointDetector
 from phenotypic.enhance import (
     ContrastStretching,
@@ -35,7 +35,6 @@ from phenotypic.measure._zone_segmentation import (
     distance_from_point,
 )
 from phenotypic.util._orientation_field import orientation_field
-
 
 IMAGE_PATH = Path(
     "/Volumes/T9/exfab/UCR-010-I-D_Neurospora/data/"
@@ -66,7 +65,9 @@ def report(message: str) -> None:
     print(f"[{time.strftime('%H:%M:%S')}] {message}", flush=True)
 
 
-def normalize_response(response: np.ndarray, percentile: float = 99.5) -> np.ndarray:
+def normalize_response(
+    response: np.ndarray, percentile: float = 99.5
+) -> np.ndarray:
     """Rescale a response map to [0, 1] using the notebook's robust range."""
     upper = float(np.percentile(response, percentile))
     return rescale_intensity(
@@ -79,7 +80,7 @@ def normalize_response(response: np.ndarray, percentile: float = 99.5) -> np.nda
 def load_notebook_base() -> pht.GridImage:
     """Load and preprocess the notebook's source image."""
     image = pht.GridImage.imread(IMAGE_PATH, nrows=6, ncols=10)
-    ImageCropper(left=650, right=650, top=600, bottom=600).apply(
+    CropImage(left=650, right=650, top=600, bottom=600).apply(
         image,
         inplace=True,
     )
@@ -87,7 +88,9 @@ def load_notebook_base() -> pht.GridImage:
     return image
 
 
-def reproduce_notebook_segmentation() -> tuple[pht.GridImage, dict[str, float]]:
+def reproduce_notebook_segmentation() -> tuple[
+    pht.GridImage, dict[str, float]
+]:
     """Reproduce the notebook pipeline, caching its expensive array outputs."""
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     composite_path = CACHE_DIR / "composite.npy"
@@ -100,7 +103,9 @@ def reproduce_notebook_segmentation() -> tuple[pht.GridImage, dict[str, float]]:
         objmap = np.load(objmap_path, mmap_mode="r")
         segmented = base.copy()
         segmented.detect_mat[:] = np.asarray(composite, dtype=np.float32)
-        segmented.objmap[:] = np.asarray(objmap, dtype=segmented.objmap[:].dtype)
+        segmented.objmap[:] = np.asarray(
+            objmap, dtype=segmented.objmap[:].dtype
+        )
         return segmented, {
             "branch_p99": float("nan"),
             "center_p99": float("nan"),
@@ -122,7 +127,9 @@ def reproduce_notebook_segmentation() -> tuple[pht.GridImage, dict[str, float]]:
         inplace=True,
     )
     branch = normalize_response(branch_image.detect_mat[:])
-    report(f"Phase-congruency map finished in {time.perf_counter() - start:.1f}s")
+    report(
+        f"Phase-congruency map finished in {time.perf_counter() - start:.1f}s"
+    )
 
     report("Computing grid-gated center-fill map")
     center_image = flat.copy()
@@ -211,8 +218,14 @@ def block_summaries(
             if weight_sum <= 1e-9:
                 continue
             local_phi = phi[row0:row1, col0:col1][local_selector]
-            mean_cos = float((local_coherence * np.cos(2.0 * local_phi)).sum()) / weight_sum
-            mean_sin = float((local_coherence * np.sin(2.0 * local_phi)).sum()) / weight_sum
+            mean_cos = (
+                float((local_coherence * np.cos(2.0 * local_phi)).sum())
+                / weight_sum
+            )
+            mean_sin = (
+                float((local_coherence * np.sin(2.0 * local_phi)).sum())
+                / weight_sum
+            )
             concentration = float(np.hypot(mean_cos, mean_sin))
             gradient_normal = 0.5 * np.arctan2(mean_sin, mean_cos)
             fiber_axis = gradient_normal + np.pi / 2.0
@@ -228,7 +241,9 @@ def block_summaries(
     return records
 
 
-def draw_zone_boundaries(axis, centre: tuple[float, float], radii: dict[str, float]) -> None:
+def draw_zone_boundaries(
+    axis, centre: tuple[float, float], radii: dict[str, float]
+) -> None:
     """Draw the exact radial boundaries used by the operation."""
     row, col = centre
     styles = (
@@ -282,7 +297,9 @@ def add_headless_axes(
             else colormap(normalizer(record["C"]))
         )
         colors.append((*base_color[:3], 0.18 + 0.82 * record["C"]))
-    axis.add_collection(LineCollection(segments, colors=colors, linewidths=2.2))
+    axis.add_collection(
+        LineCollection(segments, colors=colors, linewidths=2.2)
+    )
 
 
 def add_double_headed_axes(
@@ -376,7 +393,9 @@ def render_zone_arrows(
         )
     draw_zone_boundaries(axis, centre, radii)
     handles = [
-        plt.Line2D([0], [0], color=ZONE_COLORS[zone], lw=2, label=f"{zone} blocks")
+        plt.Line2D(
+            [0], [0], color=ZONE_COLORS[zone], lw=2, label=f"{zone} blocks"
+        )
         for zone in ("Dense", "Sparse")
     ]
     axis.legend(handles=handles, loc="lower right", framealpha=0.85)
@@ -406,7 +425,9 @@ def render_calculation_triptych(
     output_path: Path,
 ) -> None:
     """Render source field, local coherence, and local turning side by side."""
-    figure, axes = plt.subplots(1, 3, figsize=(19, 6.5), constrained_layout=True)
+    figure, axes = plt.subplots(
+        1, 3, figsize=(19, 6.5), constrained_layout=True
+    )
     show_actual_layer(axes[0], tile, "A. Actual detect_mat + local fiber axes")
     add_headless_axes(axes[0], overall_records, BLOCK, fixed_color="#56B4E9")
     draw_zone_boundaries(axes[0], centre, radii)
@@ -475,8 +496,14 @@ def render_axial_rose(
     figure = plt.figure(figsize=(17, 10), constrained_layout=True)
     grid = figure.add_gridspec(2, 3, width_ratios=(1.45, 1.0, 1.0))
     image_axis = figure.add_subplot(grid[:, 0])
-    show_actual_layer(image_axis, tile, "Candidate 4: field plus coherence-weighted axial roses")
-    add_headless_axes(image_axis, overall_records, BLOCK, fixed_color="#56B4E9")
+    show_actual_layer(
+        image_axis,
+        tile,
+        "Candidate 4: field plus coherence-weighted axial roses",
+    )
+    add_headless_axes(
+        image_axis, overall_records, BLOCK, fixed_color="#56B4E9"
+    )
     draw_zone_boundaries(image_axis, centre, radii)
 
     zone_positions = {
@@ -511,8 +538,12 @@ def render_axial_rose(
             grad_phi,
             selector,
         )
-        direction = _resultant_direction(phi, coherence, selector) + np.pi / 2.0
-        peak = float(axial_probability.max()) if axial_probability.size else 1.0
+        direction = (
+            _resultant_direction(phi, coherence, selector) + np.pi / 2.0
+        )
+        peak = (
+            float(axial_probability.max()) if axial_probability.size else 1.0
+        )
         resultant_radius = peak * concentration
         axis.plot(
             [direction, direction],
@@ -675,7 +706,9 @@ def render_samples() -> None:
         f"foreground fraction={(segmented.objmask[:] > 0).mean():.4f}"
     )
 
-    section, source_label, section_index = select_real_colony_section(segmented)
+    section, source_label, section_index = select_real_colony_section(
+        segmented
+    )
     report(
         f"Selected grid section {section_index} for mapped source label {source_label}; "
         f"section shape={section.gray[:].shape}"
@@ -696,7 +729,9 @@ def render_samples() -> None:
 
     props, label_to_section = operation._prep(section)
     if not props:
-        raise RuntimeError("The selected grid section has no measurable object")
+        raise RuntimeError(
+            "The selected grid section has no measurable object"
+        )
     prop = max(props, key=lambda candidate: candidate.area)
     segmentation = compute_zone_segmentation(
         section,
@@ -792,7 +827,9 @@ def render_samples() -> None:
 
     summary = {
         "source_notebook": str(
-            Path("/Users/alex/Projects/Neurospora/notebooks/LightDetectFungi_Workflow.ipynb")
+            Path(
+                "/Users/alex/Projects/Neurospora/notebooks/LightDetectFungi_Workflow.ipynb"
+            )
         ),
         "source_image": str(IMAGE_PATH),
         "processed_shape": list(segmented.detect_mat[:].shape),

@@ -127,12 +127,19 @@ persisting the returned ID.
 
 ## Environment variables (important for future work)
 
-- `PHENOTYPIC_PRELOAD_MODULES` — comma list of modules a SLURM **worker** imports
-  on startup (`_cli_staged_slurm_worker.py:_preload_custom_op_modules`) before
-  `ImagePipeline.from_json`. A fresh worker process can't see op classes defined
-  outside the `phenotypic` namespace; list a self-registering module here so a
-  pipeline with **custom operations** deserializes on the compute node. `sbatch
-  --export=ALL` propagates it. (Tests use `tests/_fakes/register_fake_gpu.py`.)
+- `PHENOTYPIC_PRELOAD_MODULES` — comma list of modules staged SLURM **workers and
+  the finalizer** import before `ImagePipeline.from_json`
+  (`_cli_preload.py:preload_custom_operation_modules`). Fresh remote processes
+  can't see op classes defined outside the `phenotypic` namespace; list a
+  self-registering module here so a pipeline with **custom operations**
+  deserializes on compute nodes and during final publication. `sbatch
+  --export=ALL` propagates it. (Tests use
+  `tests/_fakes/register_fake_gpu.py`.)
+- `PHENOTYPIC_SLURM_PYTHONPATH` — internal submission snapshot of the caller's
+  `PYTHONPATH`. Generated batch scripts restore it before invoking Python. This
+  keeps custom-operation modules and the reviewed source checkout importable on
+  clusters that filter raw `PYTHONPATH` even when `sbatch --export=ALL` is used.
+  Callers set `PYTHONPATH`; PhenoTypic owns the namespaced snapshot.
 - `PHENOTYPIC_ACCEPT_MODEL_LICENSE` — comma list of model names accepted for
   gated-weight downloads; checked by `require_license_acceptance`
   (`detect/nn/_checkpoint_manager.py`). SAM2/micro-sam are ungated and never call
@@ -163,8 +170,12 @@ User-facing run outputs live under `<output>/deliverables/` (hard cutover):
 `plots/<plot-id>/...`,
 `dashboard.html`, `analysis.html`, `processing_report.html`, `README.md`,
 `pipeline.json`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
-**per-image** parquets in `results/<ds>/measurements/` (and the rest of `results/`,
-`progress/`, `processing_state.json`) stay at the output-dir **root**. The durable
+**per-image** parquets in `results/<ds>/measurements/` (and the rest of `results/`)
+stay at the output-dir **root**. Machine state lives under
+`.phenotypic/`: `progress_dir(output)` resolves
+`<output>/.phenotypic/progress/` and `processing_state_path(output)` resolves
+`<output>/.phenotypic/processing_state.json`; the corresponding `resolve_*`
+helpers retain legacy root-level reads. The durable
 **QC + curation state** lives under `deliverables/qc/` (`qc.duckdb`,
 `review_state.json`, `curation_labels.parquet`, `custom_categories.json`) so a
 `deliverables/` bundle is self-contained and GUI-openable standalone; `resolve_qc_dir`

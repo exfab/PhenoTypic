@@ -318,11 +318,19 @@ def _build_toolbar(layer_toggle: Component | None = None) -> Component:
     toolbar_children: list[Component] = [
         html.Div(
             [x_label, x_dropdown],
-            style={"display": "flex", "alignItems": "center", "gap": "0.25rem"},
+            style={
+                "display": "flex",
+                "alignItems": "center",
+                "gap": "0.25rem",
+            },
         ),
         html.Div(
             [y_label, y_dropdown],
-            style={"display": "flex", "alignItems": "center", "gap": "0.25rem"},
+            style={
+                "display": "flex",
+                "alignItems": "center",
+                "gap": "0.25rem",
+            },
         ),
         tile_size_stepper,
         dim_stepper,
@@ -352,7 +360,7 @@ def _build_toolbar(layer_toggle: Component | None = None) -> Component:
     )
 
 
-def _build_bulk_bar() -> Component:
+def _build_bulk_bar(*, mutations_disabled: bool = False) -> Component:
     """Build the bulk-action alert bar (count label + remove/restore/clear).
 
     The bar is hidden by default (``display: none``); a callback in
@@ -374,6 +382,7 @@ def _build_bulk_bar() -> Component:
         color="danger",
         size="sm",
         n_clicks=0,
+        disabled=mutations_disabled,
     )
     restore_btn = dbc.Button(
         "Restore",
@@ -381,6 +390,7 @@ def _build_bulk_bar() -> Component:
         color="success",
         size="sm",
         n_clicks=0,
+        disabled=mutations_disabled,
     )
     clear_btn = dbc.Button(
         "Clear",
@@ -400,6 +410,7 @@ def _build_bulk_bar() -> Component:
         value=None,
         placeholder="Mark selected as…",
         clearable=False,
+        disabled=mutations_disabled,
         style={"minWidth": "12rem"},
     )
 
@@ -409,7 +420,11 @@ def _build_bulk_bar() -> Component:
             html.Div(style={"flex": "1 1 auto"}),  # spacer
             html.Div(
                 [mark_dropdown, remove_btn, restore_btn, clear_btn],
-                style={"display": "flex", "gap": "0.5rem", "alignItems": "center"},
+                style={
+                    "display": "flex",
+                    "gap": "0.5rem",
+                    "alignItems": "center",
+                },
             ),
         ],
         id=ids.COLONY_BULK_BAR_ID,
@@ -446,7 +461,11 @@ def _build_grid_container() -> Component:
 # ---------------------------------------------------------------------------
 
 
-def layout(output_root: OutputRoot) -> Component:
+def layout(
+    output_root: OutputRoot,
+    *,
+    mutations_disabled: bool = False,
+) -> Component:
     """Build the colony-view tab body.
 
     Vertical stack (top → bottom):
@@ -474,7 +493,7 @@ def layout(output_root: OutputRoot) -> Component:
     """
     layer_toggle = build_layer_toggle(output_root)
     toolbar = _build_toolbar(layer_toggle=layer_toggle)
-    bulk_bar = _build_bulk_bar()
+    bulk_bar = _build_bulk_bar(mutations_disabled=mutations_disabled)
     grid_container = _build_grid_container()
 
     # The active-layer store is mounted unconditionally (even in a standalone

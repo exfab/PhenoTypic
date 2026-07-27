@@ -7,9 +7,12 @@ a browser smoke check.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
-from collections.abc import Sequence
-from dataclasses import dataclass
+import threading
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
 from pathlib import PurePosixPath
 from typing import Any, Literal
@@ -40,6 +43,7 @@ from phenotypic.gui.browse._timeline_records import (
     build_browse_records,
 )
 from phenotypic.gui.shell._ids import (
+    SHELL_CLASSIFIER_CACHE_STORE,
     SHELL_METADATA_CSV_STORE,
     SHELL_SOURCE_IMAGE_ROOT_STORE,
 )
@@ -48,6 +52,7 @@ from phenotypic.gui.shell._metadata_context import (
     read_metadata_csv_table,
     read_metadata_row_for_image_stem,
     resolve_metadata_csv,
+    resolve_metadata_image_identity,
 )
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._source_context import resolve_source_image_root
@@ -68,6 +73,7 @@ CsvMetadataPanelState = Literal[
     "unset",
     "unavailable",
     "missing_image_name",
+    "ambiguous_image_name",
     "no_match",
     "matched",
 ]
@@ -80,6 +86,222 @@ class CsvMetadataPanelModel:
     state: CsvMetadataPanelState
     image_stem: str
     rows: list[dict[str, str]]
+
+
+@dataclass(frozen=True)
+class _AuthorizedTimelineRevision:
+    """Server-side authority for one browser's live Timeline generation."""
+
+    generation: int
+    revision: str
+    source_root: Path
+
+
+@dataclass
+class _SourceRevisionState:
+    """Mutable server authority for one browser's source refresh lifecycle."""
+
+    generation: int = 0
+    revision: str | None = None
+    reset_in_progress: bool = False
+    grid_revisions: set[str] = field(default_factory=set)
+
+
+class TimelineRevisionAuthority:
+    """Thread-safe current Timeline revision authority keyed by browser session."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._by_session: dict[str, _AuthorizedTimelineRevision] = {}
+
+    def authorize(
+        self,
+        session_id: str,
+        generation: int,
+        revision: str,
+        source_root: Path,
+    ) -> bool:
+        """Publish a revision unless a newer browser generation already won."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            if current is not None:
+                if generation < current.generation:
+                    return False
+                if (
+                    generation == current.generation
+                    and revision != current.revision
+                ):
+                    return False
+            self._by_session[session_id] = _AuthorizedTimelineRevision(
+                generation=generation,
+                revision=revision,
+                source_root=source_root,
+            )
+        return True
+
+    def current(
+        self,
+        session_id: str,
+        generation: int,
+        revision: str,
+    ) -> _AuthorizedTimelineRevision | None:
+        """Return authority only when every live-generation field matches."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+        if (
+            current is None
+            or current.generation != generation
+            or current.revision != revision
+        ):
+            return None
+        return current
+
+    def retire(self, session_id: str) -> None:
+        """Retire every popout event authorized for ``session_id``."""
+        with self._lock:
+            self._by_session.pop(session_id, None)
+
+    def retire_if_matches(
+        self,
+        session_id: str,
+        generation: int,
+        revision: str,
+    ) -> None:
+        """Retire one stale authorization without clobbering a newer one."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            if (
+                current is not None
+                and current.generation == generation
+                and current.revision == revision
+            ):
+                self._by_session.pop(session_id, None)
+
+
+class SourceRevisionAuthority:
+    """Thread-safe source refresh authority isolated by browser session."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._by_session: dict[str, _SourceRevisionState] = {}
+
+    def ensure_session(self, session_id: str) -> None:
+        """Create the initial, unrefreshed authority for ``session_id``."""
+        with self._lock:
+            self._by_session.setdefault(session_id, _SourceRevisionState())
+
+    def begin_reset(self, session_id: str) -> int:
+        """Start a newer reset and immediately retire its session's grids."""
+        with self._lock:
+            return self._begin_reset_locked(session_id)
+
+    def begin_reset_and_retire(
+        self,
+        session_id: str,
+        revision_authority: TimelineRevisionAuthority,
+    ) -> int:
+        """Start a reset and retire popouts under one source-generation lock."""
+        with self._lock:
+            generation = self._begin_reset_locked(session_id)
+            revision_authority.retire(session_id)
+            return generation
+
+    def _begin_reset_locked(self, session_id: str) -> int:
+        """Begin a reset while ``self._lock`` is held."""
+        current = self._by_session.setdefault(
+            session_id,
+            _SourceRevisionState(),
+        )
+        current.generation += 1
+        current.revision = None
+        current.reset_in_progress = True
+        current.grid_revisions.clear()
+        return current.generation
+
+    def publish_reset(
+        self,
+        session_id: str,
+        generation: int,
+        revision: str,
+    ) -> bool:
+        """Publish only if no newer reset for this session has started."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            if current is None or current.generation != generation:
+                return False
+            current.revision = revision
+            current.reset_in_progress = False
+            return True
+
+    def is_current(self, session_id: str, revision: str | None) -> bool:
+        """Return whether ``revision`` is the live source refresh revision."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            return (
+                current is not None
+                and not current.reset_in_progress
+                and current.revision == revision
+            )
+
+    def authorize_grid(
+        self,
+        session_id: str,
+        source_revision: str | None,
+        grid_revision: str,
+    ) -> bool:
+        """Publish a grid identity only while its source revision is current."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            if (
+                current is None
+                or current.reset_in_progress
+                or current.revision != source_revision
+            ):
+                return False
+            current.grid_revisions.add(grid_revision)
+            return True
+
+    def grid_is_current(self, session_id: str, grid_revision: str) -> bool:
+        """Return whether a grid was published for the live source revision."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            return (
+                current is not None
+                and not current.reset_in_progress
+                and grid_revision in current.grid_revisions
+            )
+
+    def grid_authorization_generation(
+        self,
+        session_id: str,
+        grid_revision: str,
+    ) -> int | None:
+        """Return the source generation authorizing ``grid_revision``."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            if (
+                current is None
+                or current.reset_in_progress
+                or grid_revision not in current.grid_revisions
+            ):
+                return None
+            return current.generation
+
+    def grid_generation_is_current(
+        self,
+        session_id: str,
+        grid_revision: str,
+        generation: int,
+    ) -> bool:
+        """Return whether the exact source/grid generation remains current."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            return (
+                current is not None
+                and not current.reset_in_progress
+                and current.generation == generation
+                and grid_revision in current.grid_revisions
+            )
 
 
 # --------------------------------------------------------------------------
@@ -165,6 +387,11 @@ def render_csv_metadata_panel(model: CsvMetadataPanelModel) -> Any:
             "Metadata CSV has no image-name column",
             className="text-warning",
         )
+    if model.state == "ambiguous_image_name":
+        return html.Div(
+            "Metadata CSV has conflicting image-name columns",
+            className="text-warning",
+        )
     if model.state == "no_match":
         return html.Div(
             f"No metadata row for {model.image_stem}",
@@ -221,6 +448,23 @@ def _src_root_rel(sandbox: SandboxRoot, payload: Any) -> str | None:
 def timeline_thumb_url(prefix: str, token: str, fetch_size: int) -> str:
     """Build a thumbnail ``<img>`` URL for the Browse thumb route."""
     return f"{prefix}{BROWSE_THUMB_URL_SEGMENT}/{token}?size={fetch_size}"
+
+
+def timeline_revision_token(*parts: object) -> str:
+    """Return a deterministic identity for one rendered Timeline generation.
+
+    The token is browser-session state, not filesystem authority. It binds a
+    client event to the exact source, metadata, axis, pattern, and tile inputs
+    that produced the live grid so delayed events from a retired generation
+    fail closed.
+    """
+    encoded = json.dumps(
+        parts,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def render_timeline_grid(
@@ -300,6 +544,17 @@ def _csv_column_options(columns: Sequence[str]) -> list[dict[str, str]]:
     return [{"label": column, "value": column} for column in columns]
 
 
+def csv_column_options_and_image_default(
+    columns: Sequence[str],
+    rows: Sequence[dict[str, str]],
+) -> tuple[list[dict[str, str]], str | None]:
+    """Return Timeline CSV options and a compatible image-column default."""
+    options = _csv_column_options(columns)
+    identity = resolve_metadata_image_identity(columns, rows)
+    default = identity.column if identity.state == "resolved" else None
+    return options, default
+
+
 def strip_popout_nonce(value: str) -> str:
     """Strip the ``#<nonce>`` uniqueness suffix timeline.js appends to a token.
 
@@ -327,11 +582,192 @@ def warnings_alert_state(warnings: Sequence[str] | None) -> tuple[Any, bool]:
     return [html.Div(message) for message in items], True
 
 
+def source_reset_values(
+    source_payload: object,
+    refresh_revision: object = None,
+) -> tuple[object, ...]:
+    """Return the complete source-dependent Timeline reset transaction."""
+    revision = timeline_revision_token(
+        "source",
+        source_payload,
+        "refresh",
+        refresh_revision,
+    )
+    return (
+        "folder",
+        "exif",
+        None,
+        None,
+        None,
+        "",
+        [],
+        pattern_preview_rows({}, "", False),
+        f"{TIMELINE_TILE_SIZE_DEFAULT} px",
+        TIMELINE_TILE_SIZE_DEFAULT,
+        html.Div("Loading current source…", className="text-muted"),
+        [],
+        f"{revision}:reset",
+        revision,
+        None,
+        None,
+        False,
+        None,
+        "",
+    )
+
+
+def authorize_revision_candidate(
+    authority: TimelineRevisionAuthority,
+    sandbox: SandboxRoot,
+    candidate: Mapping[str, object] | None,
+    source_payload: object,
+) -> dict[str, object] | None:
+    """Authorize one browser-applied grid generation on the server."""
+    if not isinstance(candidate, Mapping):
+        return None
+    session_id = candidate.get("session_id")
+    generation = candidate.get("generation")
+    revision = candidate.get("revision")
+    if (
+        not isinstance(session_id, str)
+        or not session_id
+        or type(generation) is not int
+        or generation < 1
+        or not isinstance(revision, str)
+        or not revision
+    ):
+        return None
+    source_root = resolve_source_image_root(sandbox, source_payload)
+    if source_root is None:
+        return None
+    if not authority.authorize(
+        session_id,
+        generation,
+        revision,
+        source_root,
+    ):
+        return None
+    return {
+        "session_id": session_id,
+        "generation": generation,
+        "revision": revision,
+    }
+
+
+def authorize_current_revision_candidate(
+    source_authority: SourceRevisionAuthority,
+    revision_authority: TimelineRevisionAuthority,
+    sandbox: SandboxRoot,
+    candidate: Mapping[str, object] | None,
+    source_payload: object,
+) -> dict[str, object] | None:
+    """Authorize a grid only while its exact source generation stays current."""
+    if not isinstance(candidate, Mapping):
+        return None
+    session_id = candidate.get("session_id")
+    grid_revision = candidate.get("revision")
+    browser_generation = candidate.get("generation")
+    if (
+        not isinstance(session_id, str)
+        or not session_id
+        or not isinstance(grid_revision, str)
+        or not grid_revision
+        or type(browser_generation) is not int
+    ):
+        return None
+    source_generation = source_authority.grid_authorization_generation(
+        session_id,
+        grid_revision,
+    )
+    if source_generation is None:
+        return None
+    authorized = authorize_revision_candidate(
+        revision_authority,
+        sandbox,
+        candidate,
+        source_payload,
+    )
+    if authorized is None:
+        return None
+    if not source_authority.grid_generation_is_current(
+        session_id,
+        grid_revision,
+        source_generation,
+    ):
+        revision_authority.retire_if_matches(
+            session_id,
+            browser_generation,
+            grid_revision,
+        )
+        return None
+    return authorized
+
+
+def resolve_popout_event(
+    sandbox: SandboxRoot,
+    authority: TimelineRevisionAuthority,
+    event: Mapping[str, object] | None,
+) -> dict[str, object] | None:
+    """Validate a popout event against live server revision authority.
+
+    Args:
+        sandbox: Frozen launch-time filesystem boundary.
+        authority: Per-browser current generation authority.
+        event: Client event carrying an opaque token and grid revision.
+
+    Returns:
+        An approved event for a current-source image, or ``None`` when stale,
+        malformed, unavailable, or outside the selected source.
+    """
+    if not isinstance(event, Mapping):
+        return None
+    session_id = event.get("session_id")
+    generation = event.get("generation")
+    revision = event.get("revision")
+    token = event.get("token")
+    sequence = event.get("sequence")
+    if (
+        not isinstance(session_id, str)
+        or not session_id
+        or type(generation) is not int
+        or generation < 1
+        or not isinstance(revision, str)
+        or not revision
+        or not isinstance(token, str)
+        or not token
+        or type(sequence) is not int
+        or sequence < 1
+    ):
+        return None
+    current = authority.current(session_id, generation, revision)
+    if current is None:
+        return None
+    try:
+        relative_path = _source_render.decode_token(token)
+        target = sandbox.resolve(relative_path)
+        target.relative_to(current.source_root)
+        if not target.is_file():
+            return None
+        label = target.relative_to(sandbox.root).as_posix()
+    except (OSError, RuntimeError, ValueError):
+        return None
+    return {
+        "session_id": session_id,
+        "generation": generation,
+        "revision": revision,
+        "sequence": sequence,
+        "token": token,
+        "label": label,
+    }
+
+
 # --------------------------------------------------------------------------
 # Callback registration
 # --------------------------------------------------------------------------
 def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
     """Register every Browse callback on ``app``."""
+    revision_authority = TimelineRevisionAuthority()
+    source_revision_authority = SourceRevisionAuthority()
 
     @app.callback(
         Output(ids.BROWSE_DATASETS_STORE, "data"),
@@ -340,8 +776,9 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         Output(ids.BROWSE_DATASET_ROW, "style"),
         Output(ids.BROWSE_EMPTY_HINT, "style"),
         Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
     )
-    def _load_datasets(payload: Any):
+    def _load_datasets(payload: Any, _refresh_revision: object):
         hidden_row = {**DATASET_ROW_STYLE, "display": "none"}
         resolved = resolve_source_image_root(sandbox, payload)
         if resolved is None:
@@ -352,6 +789,90 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         row_style = hidden_row if dataset_row_hidden(datasets) else dict(DATASET_ROW_STYLE)
         hint_style = {"display": "none"} if datasets else {"display": "block"}
         return datasets, options, value, row_style, hint_style
+
+    @app.callback(
+        Output(ids.BROWSE_TL_ROW_SOURCE, "value"),
+        Output(ids.BROWSE_TL_TIME_SOURCE, "value"),
+        Output(ids.BROWSE_TL_ROW_CSV_COL, "value"),
+        Output(ids.BROWSE_TL_TIME_CSV_COL, "value"),
+        Output(ids.BROWSE_TL_CSV_IMAGE_COL, "value", allow_duplicate=True),
+        Output(ids.BROWSE_TL_PATTERN_INPUT, "value"),
+        Output(ids.BROWSE_TL_PATTERN_ADVANCED, "value"),
+        Output(
+            ids.BROWSE_TL_PATTERN_PREVIEW,
+            "children",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_TILE_SIZE_READOUT,
+            "children",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_STORE_TILE_SIZE,
+            "data",
+            allow_duplicate=True,
+        ),
+        Output(ids.BROWSE_TL_GRID, "children", allow_duplicate=True),
+        Output(
+            ids.BROWSE_TL_STORE_WARNINGS,
+            "data",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_GRID,
+            "data-grid-revision",
+            allow_duplicate=True,
+        ),
+        Output(ids.BROWSE_TL_SOURCE_REVISION, "data"),
+        Output(ids.BROWSE_TL_POPOUT_EVENT, "data"),
+        Output(
+            ids.BROWSE_TL_POPOUT_APPROVED,
+            "data",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_POPOUT_MODAL,
+            "is_open",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_POPOUT_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_POPOUT_TITLE,
+            "children",
+            allow_duplicate=True,
+        ),
+        Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
+        State(ids.BROWSE_TL_SESSION, "data"),
+        prevent_initial_call=True,
+    )
+    def _reset_timeline_for_source(
+        source_payload: object,
+        refresh_revision: object,
+        session_id: object,
+    ):
+        # One callback response retires every source-derived authoring and
+        # rendered value. Downstream callbacks may then build a fresh matrix,
+        # but no old-source state remains authoritative in the interim.
+        if not isinstance(session_id, str) or not session_id:
+            raise dash.exceptions.PreventUpdate
+        reset_generation = source_revision_authority.begin_reset_and_retire(
+            session_id,
+            revision_authority,
+        )
+        values = source_reset_values(source_payload, refresh_revision)
+        if not source_revision_authority.publish_reset(
+            session_id,
+            reset_generation,
+            str(values[13]),
+        ):
+            raise dash.exceptions.PreventUpdate
+        return values
 
     @app.callback(
         Output(ids.BROWSE_IMAGE_PICKER, "options"),
@@ -539,18 +1060,22 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         Output(ids.BROWSE_TL_ROW_CSV_COL, "options"),
         Output(ids.BROWSE_TL_TIME_CSV_COL, "options"),
         Output(ids.BROWSE_TL_CSV_IMAGE_COL, "options"),
+        Output(ids.BROWSE_TL_CSV_IMAGE_COL, "value"),
         Input(SHELL_METADATA_CSV_STORE, "data"),
     )
     def _populate_csv_columns(metadata_payload: object):
         path = resolve_metadata_csv(sandbox, metadata_payload)
         if path is None:
-            return [], [], []
+            return [], [], [], None
         try:
-            columns, _rows = read_metadata_csv_table(path)
-        except OSError:
-            return [], [], []
-        options = _csv_column_options(columns)
-        return options, options, options
+            columns, rows = read_metadata_csv_table(path)
+        except (OSError, UnicodeError):
+            return [], [], [], None
+        options, image_default = csv_column_options_and_image_default(
+            columns,
+            rows,
+        )
+        return options, options, options, image_default
 
     @app.callback(
         Output(ids.BROWSE_TL_PATTERN_PREVIEW, "children"),
@@ -565,6 +1090,7 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
     @app.callback(
         Output(ids.BROWSE_TL_GRID, "children"),
         Output(ids.BROWSE_TL_STORE_WARNINGS, "data"),
+        Output(ids.BROWSE_TL_GRID, "data-grid-revision"),
         Input(ids.BROWSE_VIEW_MODE_TOGGLE, "value"),
         Input(ids.BROWSE_TL_ROW_SOURCE, "value"),
         Input(ids.BROWSE_TL_TIME_SOURCE, "value"),
@@ -574,8 +1100,10 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         Input(ids.BROWSE_TL_PATTERN_INPUT, "value"),
         Input(ids.BROWSE_TL_PATTERN_ADVANCED, "value"),
         Input(ids.BROWSE_TL_STORE_TILE_SIZE, "data"),
+        Input(ids.BROWSE_TL_SOURCE_REVISION, "data"),
+        Input(SHELL_METADATA_CSV_STORE, "data"),
         State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
-        State(SHELL_METADATA_CSV_STORE, "data"),
+        State(ids.BROWSE_TL_SESSION, "data"),
     )
     def _render_grid(
         mode: str | None,
@@ -587,15 +1115,42 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         pattern: str | None,
         advanced_value,
         tile_size,
-        source_payload: object,
+        source_revision: str | None,
         metadata_payload: object,
+        source_payload: object,
+        session_id: object,
     ):
         if mode != "timeline":
             raise dash.exceptions.PreventUpdate
+        if not isinstance(session_id, str) or not session_id:
+            raise dash.exceptions.PreventUpdate
+        source_revision_authority.ensure_session(session_id)
+        if not source_revision_authority.is_current(
+            session_id,
+            source_revision,
+        ):
+            raise dash.exceptions.PreventUpdate
+        revision = timeline_revision_token(
+            source_payload,
+            metadata_payload,
+            row_source,
+            time_source,
+            row_csv_col,
+            time_csv_col,
+            csv_image_col,
+            pattern,
+            advanced_value,
+            tile_size,
+            source_revision,
+        )
         resolved = resolve_source_image_root(sandbox, source_payload)
         src_root_rel = _src_root_rel(sandbox, source_payload)
         if resolved is None or src_root_rel is None:
-            return no_update, no_update
+            return (
+                html.Div("No current source.", className="text-muted"),
+                [],
+                revision,
+            )
         datasets = _source_lister.list_datasets(resolved)
 
         csv_rows: list[dict[str, str]] | None = None
@@ -635,7 +1190,13 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         component = render_timeline_grid(
             records, display_size=display_size, prefix=prefix
         )
-        return component, warnings
+        if not source_revision_authority.authorize_grid(
+            session_id,
+            source_revision,
+            revision,
+        ):
+            raise dash.exceptions.PreventUpdate
+        return component, warnings, revision
 
     @app.callback(
         Output(ids.BROWSE_TL_WARNINGS_ALERT, "children"),
@@ -647,52 +1208,162 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         # otherwise-dead warnings store; hidden when the list is empty.
         return warnings_alert_state(warnings)
 
-    # Clientside: re-attach the focus-navigate controller after each grid
-    # render so it resets focus to the first populated cell and re-renders the
-    # centered window. The controller reads focus-margin/mount-cap/warm
-    # concurrency off the BROWSE_TL_GRID container's static data-* attrs.
+    # Each browser gets a session-scoped identity. It keys the server-side
+    # revision authority without coupling independent tabs/users.
     app.clientside_callback(
         """
-        function(children) {
+        function(children, current) {
+            if (current) {
+                return current;
+            }
+            if (window.crypto && window.crypto.randomUUID) {
+                return window.crypto.randomUUID();
+            }
+            return "tl-" + Date.now().toString(36)
+                + "-" + Math.random().toString(36).slice(2);
+        }
+        """,
+        Output(ids.BROWSE_TL_SESSION, "data"),
+        Input(ids.BROWSE_TL_GRID, "children"),
+        State(ids.BROWSE_TL_SESSION, "data"),
+    )
+
+    # Re-attach after each render, retire all client-owned state, and publish
+    # the generation that the browser actually applied for server authority.
+    app.clientside_callback(
+        """
+        function(children, sessionId, gridRevision) {
+            let generation = 0;
+            if (window.__phenotypicBrowse
+                && window.__phenotypicBrowse.resetTimelineRevision) {
+                generation = window.__phenotypicBrowse.resetTimelineRevision("%s");
+            }
             if (window.__phenotypicTimeline) {
                 window.__phenotypicTimeline.attach("%s");
             }
-            return "";
+            const grid = document.getElementById("%s");
+            const revision = gridRevision
+                || (grid && grid.getAttribute("data-grid-revision"));
+            const noUpdate = window.dash_clientside.no_update;
+            if (!sessionId || !revision || !generation) {
+                return ["", String(generation || ""), noUpdate];
+            }
+            return [
+                "",
+                String(generation),
+                {
+                    session_id: sessionId,
+                    generation: generation,
+                    revision: revision,
+                },
+            ];
         }
         """
-        % ids.BROWSE_TL_GRID,
+        % (ids.BROWSE_TL_GRID, ids.BROWSE_TL_GRID, ids.BROWSE_TL_GRID),
         Output(ids.BROWSE_TL_GRID, "data-render-sync"),
+        Output(ids.BROWSE_TL_GRID, "data-revision-generation"),
+        Output(ids.BROWSE_TL_REVISION_CANDIDATE, "data"),
         Input(ids.BROWSE_TL_GRID, "children"),
+        Input(ids.BROWSE_TL_SESSION, "data"),
+        Input(ids.BROWSE_TL_GRID, "data-grid-revision"),
+    )
+
+    @app.callback(
+        Output(ids.BROWSE_TL_REVISION_AUTHORIZED, "data"),
+        Input(ids.BROWSE_TL_REVISION_CANDIDATE, "data"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+    )
+    def _authorize_revision(
+        candidate: Mapping[str, object] | None,
+        source_payload: object,
+    ):
+        authorized = authorize_current_revision_candidate(
+            source_revision_authority,
+            revision_authority,
+            sandbox,
+            candidate,
+            source_payload,
+        )
+        if authorized is None:
+            raise dash.exceptions.PreventUpdate
+        return authorized
+
+    app.clientside_callback(
+        """
+        function(authorized, generation, sessionId) {
+            const noUpdate = window.dash_clientside.no_update;
+            if (!authorized || !sessionId
+                || authorized.session_id !== sessionId
+                || String(authorized.generation) !== String(generation)) {
+                return [noUpdate, sessionId || ""];
+            }
+            return [authorized.revision || "", sessionId];
+        }
+        """,
+        Output(ids.BROWSE_TL_GRID, "data-authorized-revision"),
+        Output(ids.BROWSE_TL_GRID, "data-session-id"),
+        Input(ids.BROWSE_TL_REVISION_AUTHORIZED, "data"),
+        Input(ids.BROWSE_TL_GRID, "data-revision-generation"),
+        State(ids.BROWSE_TL_SESSION, "data"),
     )
 
     # ----------------------------------------------------------------------
     # Single-image deep-zoom pop-out (Task 9)
     # ----------------------------------------------------------------------
-    # The shared JS→Dash bridge: timeline.js writes the clicked/focused cell's
-    # data-ref (token) into BROWSE_TL_POPOUT_INPUT (for both the hover ⤢ click
-    # AND Enter/Space on the focused cell). This server callback opens the modal
-    # and stores the {token, label} payload for the clientside OSD mount.
+    # browse.js publishes a revision-stamped event through Dash's supported
+    # set_props API. The event remains connected after source/metadata/grid
+    # revisions and wholesale DOM remounts because its listener is delegated
+    # on document rather than attached to one React-controlled input node.
     @app.callback(
+        Output(ids.BROWSE_TL_POPOUT_APPROVED, "data"),
+        Input(ids.BROWSE_TL_POPOUT_EVENT, "data"),
+    )
+    def _approve_popout(
+        event: Mapping[str, object] | None,
+    ):
+        payload = resolve_popout_event(
+            sandbox,
+            revision_authority,
+            event,
+        )
+        if payload is None:
+            raise dash.exceptions.PreventUpdate
+        return payload
+
+    # Final publication is gated against the live browser generation and
+    # latest event. A delayed server response for revision A therefore cannot
+    # reopen or overwrite revision B even if request A began before B existed.
+    app.clientside_callback(
+        """
+        function(approved, event) {
+            const noUpdate = window.dash_clientside.no_update;
+            const grid = document.getElementById("%s");
+            if (!approved || !event || !grid) {
+                return [noUpdate, noUpdate, noUpdate];
+            }
+            const revision = grid.getAttribute("data-grid-revision");
+            const generation = grid.getAttribute("data-revision-generation");
+            const sessionId = grid.getAttribute("data-session-id");
+            const authorized = grid.getAttribute("data-authorized-revision");
+            if (approved.revision !== revision
+                || approved.revision !== authorized
+                || String(approved.generation) !== String(generation)
+                || approved.session_id !== sessionId
+                || approved.sequence !== event.sequence
+                || approved.token !== event.token) {
+                return [noUpdate, noUpdate, noUpdate];
+            }
+            const payload = {token: approved.token, label: approved.label};
+            return [true, payload, approved.label];
+        }
+        """
+        % ids.BROWSE_TL_GRID,
         Output(ids.BROWSE_TL_POPOUT_MODAL, "is_open"),
         Output(ids.BROWSE_TL_POPOUT_STORE, "data"),
-        Input(ids.BROWSE_TL_POPOUT_INPUT, "value"),
+        Output(ids.BROWSE_TL_POPOUT_TITLE, "children"),
+        Input(ids.BROWSE_TL_POPOUT_APPROVED, "data"),
+        Input(ids.BROWSE_TL_POPOUT_EVENT, "data"),
     )
-    def _open_popout(raw_value: str | None):
-        # The hidden bridge dcc.Input(value="") fires this on first page load
-        # with "" — guard so the modal never flickers open with an empty
-        # payload (C2/OQ-5).
-        if not raw_value:
-            raise dash.exceptions.PreventUpdate
-        # Strip the `#<nonce>` uniqueness suffix timeline.js appends so a
-        # same-cell re-open still fires this callback (POP-OUT M5).
-        token = strip_popout_nonce(raw_value)
-        if not token:
-            raise dash.exceptions.PreventUpdate
-        try:
-            label = _source_render.decode_token(token)
-        except Exception:  # noqa: BLE001 - label is best-effort; token still mounts
-            label = token
-        return True, {"token": token, "label": label}
 
     # Clientside: mount the deep-zoom OSD viewer into the pop-out modal's
     # dedicated OSD div. Dash requires every clientside callback to declare an

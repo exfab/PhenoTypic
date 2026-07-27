@@ -9,8 +9,8 @@ mutation.
 Callbacks registered here
     * RSS readout — ``dcc.Interval`` tick refreshes the top-right RSS label.
     * Help-modal toggle — open/close on the ``?`` button + close button.
-    * Sidebar refresh — bumps the ``SHELL_CLASSIFIER_CACHE_STORE`` key, which
-      is the signal the tree-render callback watches to re-paint.
+    * Shared refresh — bumps the ``SHELL_CLASSIFIER_CACHE_STORE`` revision,
+      invalidating the classifier, sidebar, open pickers, and source labels.
     * Sidebar entry click — toggles a directory's rel-path in
       ``SHELL_SIDEBAR_EXPANDED_STORE`` AND stamps the click target into
       ``SHELL_SIDEBAR_SELECTION_STORE`` (consumed by per-tool ``[↩ from
@@ -28,6 +28,11 @@ from typing import TYPE_CHECKING, Any
 import psutil  # type: ignore[import-untyped]
 from dash import ALL, Input, Output, State, ctx, no_update
 
+from phenotypic.gui._async_binding_client import (
+    binding_cancel_callback_source,
+    binding_poll_callback_source,
+)
+from phenotypic.gui.shell._binding_ui import binding_ui_state
 from phenotypic.gui.shell._classifier import classify, invalidate_cache
 from phenotypic.gui.shell._ids import (
     SHELL_CLASSIFIER_CACHE_STORE,
@@ -42,6 +47,16 @@ from phenotypic.gui.shell._ids import (
     SHELL_METADATA_CSV_STORE,
     SHELL_RSS_INTERVAL,
     SHELL_RSS_LABEL,
+    SHELL_RESULTS_BINDING_CANCEL,
+    SHELL_RESULTS_BINDING_DETAIL,
+    SHELL_RESULTS_BINDING_DIAGNOSTIC,
+    SHELL_RESULTS_BINDING_JOB_STORE,
+    SHELL_RESULTS_BINDING_PANEL,
+    SHELL_RESULTS_BINDING_PHASE,
+    SHELL_RESULTS_BINDING_POLL_INTERVAL,
+    SHELL_RESULTS_BINDING_PROGRESS,
+    SHELL_RESULTS_BINDING_PROGRESS_LABEL,
+    SHELL_RESULTS_BINDING_STATUS,
     SHELL_SETTINGS_BUTTON,
     SHELL_SETTINGS_INPUT_FOLDER_CLEAR,
     SHELL_SETTINGS_INPUT_FOLDER_PICK,
@@ -110,6 +125,58 @@ def register_chrome_callbacks(
     process = psutil.Process(os.getpid())
 
     @app.callback(
+        Output(SHELL_RESULTS_BINDING_PANEL, "className"),
+        Output(SHELL_RESULTS_BINDING_STATUS, "children"),
+        Output(SHELL_RESULTS_BINDING_PHASE, "children"),
+        Output(SHELL_RESULTS_BINDING_DETAIL, "children"),
+        Output(SHELL_RESULTS_BINDING_PROGRESS, "value"),
+        Output(SHELL_RESULTS_BINDING_PROGRESS, "max"),
+        Output(SHELL_RESULTS_BINDING_PROGRESS_LABEL, "children"),
+        Output(SHELL_RESULTS_BINDING_DIAGNOSTIC, "children"),
+        Output(SHELL_RESULTS_BINDING_CANCEL, "disabled"),
+        Output(SHELL_RESULTS_BINDING_POLL_INTERVAL, "disabled"),
+        Input(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+    )
+    def _render_results_binding_job(payload: object) -> tuple[Any, ...]:
+        state = binding_ui_state(payload)
+        return (
+            state.panel_class_name,
+            state.status,
+            state.phase,
+            state.detail,
+            state.progress_value,
+            state.progress_max,
+            state.progress_label,
+            state.diagnostic,
+            state.cancel_disabled,
+            state.poll_disabled,
+        )
+
+    app.clientside_callback(
+        binding_poll_callback_source(),
+        Output(
+            SHELL_RESULTS_BINDING_JOB_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
+        Input(SHELL_RESULTS_BINDING_POLL_INTERVAL, "n_intervals"),
+        State(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+        prevent_initial_call=True,
+    )
+
+    app.clientside_callback(
+        binding_cancel_callback_source(),
+        Output(
+            SHELL_RESULTS_BINDING_JOB_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
+        Input(SHELL_RESULTS_BINDING_CANCEL, "n_clicks"),
+        State(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+        prevent_initial_call=True,
+    )
+
+    @app.callback(
         Output(SHELL_RSS_LABEL, "children"),
         Input(SHELL_RSS_INTERVAL, "n_intervals"),
     )
@@ -135,9 +202,16 @@ def register_chrome_callbacks(
         Output(SHELL_SOURCE_IMAGE_ROOT_LABEL, "children"),
         Output(SHELL_SOURCE_IMAGE_ROOT_LABEL, "title"),
         Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
     )
-    def _update_source_label(payload: object) -> tuple[str, str]:
-        return source_label(payload), source_title(payload)
+    def _update_source_label(
+        payload: object,
+        _refresh_revision: int | None,
+    ) -> tuple[str, str]:
+        return (
+            source_label(payload, sandbox=sandbox),
+            source_title(payload, sandbox=sandbox),
+        )
 
     @app.callback(
         Output(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_duplicate=True),
@@ -202,9 +276,13 @@ def register_chrome_callbacks(
     @app.callback(
         Output(SHELL_SOURCE_IMAGE_ROOT_MODAL_BODY, "children"),
         Input(SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE, "data"),
+        Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
         prevent_initial_call=True,
     )
-    def _render_source_picker_body(dir_value: str | None) -> Any:
+    def _render_source_picker_body(
+        dir_value: str | None,
+        _refresh_revision: int | None,
+    ) -> Any:
         current = Path(dir_value) if dir_value else None
         return render_source_picker_tree(sandbox, current)
 
@@ -230,9 +308,16 @@ def register_chrome_callbacks(
         Output(SHELL_SETTINGS_METADATA_CSV_LABEL, "children"),
         Output(SHELL_SETTINGS_METADATA_CSV_LABEL, "title"),
         Input(SHELL_METADATA_CSV_STORE, "data"),
+        Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
     )
-    def _update_metadata_csv_label(payload: object) -> tuple[str, str]:
-        return metadata_csv_label(payload), metadata_csv_title(payload)
+    def _update_metadata_csv_label(
+        payload: object,
+        _refresh_revision: int | None,
+    ) -> tuple[str, str]:
+        return (
+            metadata_csv_label(payload, sandbox=sandbox),
+            metadata_csv_title(payload, sandbox=sandbox),
+        )
 
     @app.callback(
         Output(SHELL_METADATA_CSV_STORE, "data", allow_duplicate=True),
@@ -302,9 +387,13 @@ def register_chrome_callbacks(
     @app.callback(
         Output(SHELL_METADATA_CSV_MODAL_BODY, "children"),
         Input(SHELL_METADATA_CSV_BROWSE_STORE, "data"),
+        Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
         prevent_initial_call=True,
     )
-    def _render_metadata_picker_body(path_value: str | None) -> Any:
+    def _render_metadata_picker_body(
+        path_value: str | None,
+        _refresh_revision: int | None,
+    ) -> Any:
         current = Path(path_value) if path_value else None
         return render_metadata_csv_picker_tree(sandbox, current)
 
@@ -365,7 +454,7 @@ def register_chrome_callbacks(
         invalidate_cache()
         bumped = (version or 0) + 1
         logger.debug(
-            "sidebar refresh: classifier cache flushed; version=%d", bumped
+            "shell refresh: path snapshots invalidated; revision=%d", bumped
         )
         return bumped
 
@@ -478,7 +567,7 @@ def register_chrome_callbacks(
     )
     def _source_from_sidebar_selection(
         selection: dict[str, Any] | None,
-        current_payload: object,
+        _current_payload: object,
     ) -> Any:
         """Promote image-directory sidebar selections to the shared source."""
         if not selection or not isinstance(selection, dict):
@@ -492,16 +581,15 @@ def register_chrome_callbacks(
         payload = source_payload_from_path(sandbox, path, source="sidebar")
         if payload is None:
             return no_update
-        if (
-            isinstance(current_payload, dict)
-            and current_payload.get("abs_path") == payload["abs_path"]
-        ):
-            return no_update
+        # A click is an explicit selection, even when the resolved path text
+        # matches the stored value. Always publish the freshly validated V2
+        # payload so the action can repair a fingerprint mismatch or upgrade
+        # a readable V1 payload.
         return payload
 
     # ----------------------------------------------------------------------
-    # Sidebar tree re-render — fires when expansion / toggles / cache
-    # version change.
+    # Sidebar tree re-render — fires when expansion / toggles / shared
+    # refresh revision change.
     # ----------------------------------------------------------------------
 
     @app.callback(

@@ -17,15 +17,26 @@ import pytest
 from phenotypic.gui.results_viewer import _output_root
 from phenotypic.gui.results_viewer._output_root import (
     OutputRoot,
+    OutputSnapshotChangedError,
     _all_parse_as_float,
+    sandbox_viewer_cache_root,
 )
 from phenotypic.sdk_ import (
     master_measurements_parquet_path,
     measurements_parquet_path,
 )
 
-from tests._output_layout import write_pipeline_json
+from tests._output_layout import write_complete_manifest, write_pipeline_json
 from phenotypic.schema import METADATA
+
+
+def _discover(root: Path) -> OutputRoot:
+    """Discover with a test-owned cache outside the selected output."""
+    source = Path(root).resolve()
+    return OutputRoot.discover(
+        source,
+        cache_root=source.parent / ".test-phenotypic-viewer-cache",
+    )
 
 
 def _write_master_parquet(root: Path, df: pl.DataFrame) -> None:
@@ -33,6 +44,23 @@ def _write_master_parquet(root: Path, df: pl.DataFrame) -> None:
     target = master_measurements_parquet_path(root)
     target.parent.mkdir(parents=True, exist_ok=True)
     df.write_parquet(target)
+
+
+def _tree_bytes(root: Path) -> tuple[tuple[str, ...], dict[str, bytes]]:
+    """Capture relative directories and exact file bytes."""
+    directories = tuple(
+        sorted(
+            path.relative_to(root).as_posix()
+            for path in root.rglob("*")
+            if path.is_dir()
+        )
+    )
+    files = {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+    return directories, files
 
 
 def _make_minimal_output(
@@ -74,6 +102,7 @@ def _make_minimal_output(
     )
     if write_master:
         _write_master_parquet(root, df)
+        write_complete_manifest(root, total_images=2)
     if with_overlays:
         overlays = root / "deliverables" / "overlays" / dataset
         overlays.mkdir(parents=True, exist_ok=True)
@@ -86,34 +115,32 @@ def test_discover_succeeds_on_well_formed_root(tmp_path: Path) -> None:
     """A complete output dir yields a populated ``OutputRoot``."""
 
     df = _make_minimal_output(tmp_path)
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
 
     assert out.root == tmp_path.resolve()
     assert out.master_df.height == df.height
     assert "MetadataGenetic_Strain" in out.column_value_sets
-    assert out.cache_dir == tmp_path.resolve() / ".viewer_cache" / "dzi"
+    assert not out.cache_dir.is_relative_to(tmp_path.resolve())
+    assert out.cache_dir.name == "dzi"
+    assert out.source_fingerprint.startswith("sha256:")
 
 
-def test_resolve_cache_dir_falls_back_when_existing_cache_unwritable(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_external_cache_path_is_pure_and_owned_by_sandbox(
+    tmp_path: Path,
 ) -> None:
-    cache_root = tmp_path / "readonly-run"
-    primary = cache_root / ".viewer_cache" / "dzi"
-    primary.mkdir(parents=True)
+    source = tmp_path / "source"
+    sandbox = tmp_path / "sandbox"
+    _make_minimal_output(source)
 
-    monkeypatch.setattr(
-        _output_root,
-        "_cache_dir_is_writable",
-        lambda path: path != primary,
+    cache_root = sandbox_viewer_cache_root(sandbox)
+    out = OutputRoot.discover(
+        source,
+        cache_root=cache_root,
     )
 
-    resolved = _output_root._resolve_cache_dir(
-        cache_root, tmp_path / "deliverables"
-    )
-
-    assert resolved != primary
-    assert resolved.is_dir()
-    assert ".viewer_cache" in str(resolved)
+    assert out.cache_dir.is_relative_to(cache_root)
+    assert not out.cache_dir.exists()
+    assert not (source / ".viewer_cache").exists()
 
 
 def test_discover_prefers_post_applied_mirror_over_master(
@@ -137,7 +164,7 @@ def test_discover_prefers_post_applied_mirror_over_master(
     mirror_path.parent.mkdir(parents=True, exist_ok=True)
     mirror_df.write_parquet(mirror_path)
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert "post_tag" in out.master_df.columns
     assert out.master_df["post_tag"].to_list() == ["tagged", "tagged"]
 
@@ -150,7 +177,7 @@ def test_discover_falls_back_to_master_when_mirror_absent(
     # No measurements.parquet — only master.
     assert not measurements_parquet_path(tmp_path).exists()
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     # Display frame falls back to the clean master.
     assert out.master_df.height == df.height
     assert "post_tag" not in out.master_df.columns
@@ -161,7 +188,7 @@ def test_discover_missing_master_raises(tmp_path: Path) -> None:
 
     _make_minimal_output(tmp_path, write_master=False)
     with pytest.raises(FileNotFoundError) as excinfo:
-        OutputRoot.discover(tmp_path)
+        _discover(tmp_path)
     msg = str(excinfo.value)
     assert "master_measurements.parquet" in msg
     assert "python -m phenotypic" in msg
@@ -181,7 +208,7 @@ def test_discover_without_results_dir_boots_standalone(tmp_path: Path) -> None:
     )
     _write_master_parquet(tmp_path, df)
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.has_results is False
     assert out.hdf_path("d1", "a") is None
     assert "d1" in out.master_df["MetadataExperiment_Dataset"].to_list()
@@ -198,7 +225,7 @@ def test_discover_dataset_from_master_with_empty_results(
     )
     _write_master_parquet(tmp_path, df)
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.image_pairs(out.master_df) == [("d1", "a")]
 
 
@@ -214,7 +241,7 @@ def test_discover_results_with_no_overlays_succeeds(
     _write_master_parquet(tmp_path, df)
 
     with caplog.at_level("WARNING"):
-        out = OutputRoot.discover(tmp_path)
+        out = _discover(tmp_path)
     assert out.master_df.height == 1
     assert any("overlays" in rec.message.lower() for rec in caplog.records)
     assert out.has_overlay("d1", "a") is False
@@ -228,7 +255,7 @@ def test_discover_missing_imagefile_column_raises(tmp_path: Path) -> None:
         tmp_path, pl.DataFrame({"MetadataExperiment_Dataset": ["d1"], "Other": ["x"]})
     )
     with pytest.raises(ValueError) as excinfo:
-        OutputRoot.discover(tmp_path)
+        _discover(tmp_path)
     assert str(METADATA.IMAGE_NAME) in str(excinfo.value)
 
 
@@ -250,7 +277,7 @@ def test_discover_aliases_imagename_when_imagefile_absent(
         ),
     )
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert str(METADATA.IMAGE_NAME) in out.master_df.columns
     assert out.master_df[str(METADATA.IMAGE_NAME)].to_list() == ["a"]
 
@@ -269,17 +296,222 @@ def test_discover_backfills_dataset_from_filesystem(tmp_path: Path) -> None:
         ),
     )
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert "MetadataExperiment_Dataset" in out.master_df.columns
     pairs = out.image_pairs(out.master_df)
     assert pairs == [("d1", "a"), ("d2", "b")]
+
+
+def test_legacy_backfill_parquets_are_part_of_snapshot_revision(
+    tmp_path: Path,
+) -> None:
+    """Every per-image parquet consulted for backfill invalidates the snapshot."""
+    measurements = tmp_path / "results" / "d1" / "measurements"
+    measurements.mkdir(parents=True)
+    legacy_parquet = measurements / "a.parquet"
+    legacy_parquet.write_bytes(b"first")
+    _write_master_parquet(
+        tmp_path,
+        pl.DataFrame({str(METADATA.IMAGE_NAME): ["a"], "Size_Area": [100.0]}),
+    )
+    write_complete_manifest(tmp_path, total_images=1)
+
+    output = _discover(tmp_path)
+    legacy_parquet.write_bytes(b"second")
+
+    assert output.snapshot_is_current() is False
+    refreshed = _discover(tmp_path)
+    assert refreshed.source_fingerprint != output.source_fingerprint
+
+
+def test_discover_retries_complete_read_after_snapshot_change(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A pre/post mismatch retries from the first source read."""
+    _make_minimal_output(tmp_path)
+    overlay = tmp_path / "deliverables" / "overlays" / "d1" / "a.png"
+    real_is_current = _output_root.inventory_is_current
+    calls = 0
+
+    def _mutate_before_first_verification(
+        inventory,
+        *,
+        source_root,
+        cancellation,
+        progress,
+    ):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            overlay.write_bytes(b"new-revision")
+        return real_is_current(
+            inventory,
+            source_root=source_root,
+            cancellation=cancellation,
+            progress=progress,
+        )
+
+    monkeypatch.setattr(
+        _output_root,
+        "inventory_is_current",
+        _mutate_before_first_verification,
+    )
+
+    updates = []
+    output = OutputRoot.discover(
+        tmp_path,
+        cache_root=tmp_path.parent / ".test-phenotypic-viewer-cache",
+        progress_callback=updates.append,
+    )
+
+    assert calls == 2
+    assert {update.attempt for update in updates} == {1, 2}
+    phase_rank = {
+        "classifying": 0,
+        "inventory": 1,
+        "measurements": 2,
+        "indexing": 3,
+        "verifying": 4,
+        "complete": 5,
+    }
+    for attempt in (1, 2):
+        ranks = [
+            phase_rank[update.phase]
+            for update in updates
+            if update.attempt == attempt
+        ]
+        assert ranks == sorted(ranks)
+    assert output.snapshot_is_current() is True
+
+
+def test_mutable_viewer_state_does_not_stale_processing_snapshot(
+    tmp_path: Path,
+) -> None:
+    """GUI-owned state is refresh-visible without invalidating image reads."""
+    frame = _make_minimal_output(tmp_path)
+    mirror = measurements_parquet_path(tmp_path)
+    frame.write_parquet(mirror)
+    write_pipeline_json(tmp_path, json.dumps({"name": "first"}))
+
+    output = _discover(tmp_path)
+    first_source = output.source_fingerprint
+    first_consumed = output.consumed_state_fingerprint
+
+    frame.with_columns(pl.lit("changed").alias("Mutable_State")).write_parquet(
+        mirror
+    )
+    output.layout.curation_labels_parquet.parent.mkdir(parents=True, exist_ok=True)
+    output.layout.curation_labels_parquet.write_bytes(b"labels-revision")
+    output.layout.custom_categories_json.write_text(
+        '{"categories": ["debris"]}',
+        encoding="utf-8",
+    )
+    output.layout.qc_duckdb.write_bytes(b"qc-revision")
+    output.layout.qc_review_state_path.write_text(
+        '{"reviewed": ["group-1"]}',
+        encoding="utf-8",
+    )
+    write_pipeline_json(tmp_path, json.dumps({"name": "second"}))
+
+    assert output.snapshot_is_current() is True
+    assert output.refresh_state_is_current() is False
+
+    refreshed = _discover(tmp_path)
+    assert refreshed.source_fingerprint == first_source
+    assert refreshed.consumed_state_fingerprint != first_consumed
+    assert refreshed.cache_dir == output.cache_dir
+    assert refreshed.refresh_state_is_current() is True
+    assert "Mutable_State" in refreshed.master_df.columns
+    assert refreshed.pipeline_summary == "second"
+
+
+def test_discover_retries_when_consumed_state_changes_during_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Refresh never binds Results data to a torn viewer-state revision."""
+    _make_minimal_output(tmp_path)
+    review_state = (
+        tmp_path / "deliverables" / "qc" / "review_state.json"
+    )
+    review_state.parent.mkdir(parents=True)
+    review_state.write_text('{"revision": 1}', encoding="utf-8")
+    real_fingerprint = _output_root._cancellable_paths_fingerprint
+    calls = 0
+
+    def _mutate_after_first_consumed_fingerprint(
+        paths,
+        *,
+        root,
+        cancellation,
+    ):
+        nonlocal calls
+        result = real_fingerprint(
+            paths,
+            root=root,
+            cancellation=cancellation,
+        )
+        calls += 1
+        if calls == 1:
+            review_state.write_text('{"revision": 2}', encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(
+        _output_root,
+        "_cancellable_paths_fingerprint",
+        _mutate_after_first_consumed_fingerprint,
+    )
+
+    output = _discover(tmp_path)
+
+    assert calls == 4
+    assert output.snapshot_is_current() is True
+    assert output.refresh_state_is_current() is True
+
+
+def test_discover_refuses_continuously_changing_snapshot(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two unstable pre/post reads fail instead of binding mixed generations."""
+    _make_minimal_output(tmp_path)
+    overlay = tmp_path / "deliverables" / "overlays" / "d1" / "a.png"
+    real_is_current = _output_root.inventory_is_current
+    revision = 0
+
+    def _mutate_before_every_verification(
+        inventory,
+        *,
+        source_root,
+        cancellation,
+        progress,
+    ):
+        nonlocal revision
+        revision += 1
+        overlay.write_bytes(f"revision-{revision}".encode())
+        return real_is_current(
+            inventory,
+            source_root=source_root,
+            cancellation=cancellation,
+            progress=progress,
+        )
+
+    monkeypatch.setattr(
+        _output_root,
+        "inventory_is_current",
+        _mutate_before_every_verification,
+    )
+
+    with pytest.raises(OutputSnapshotChangedError):
+        _discover(tmp_path)
 
 
 def test_column_value_sets_are_sorted_unique_str(tmp_path: Path) -> None:
     """``column_value_sets`` casts to str, dedupes, sorts, drops nulls."""
 
     _make_minimal_output(tmp_path)
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
 
     cvs = out.column_value_sets
     assert cvs["MetadataGenetic_Strain"] == ["s1", "s2"]
@@ -294,7 +526,7 @@ def test_column_value_sets_outer_mapping_is_immutable(tmp_path: Path) -> None:
     """The mapping itself rejects ``__setitem__`` (``MappingProxyType``)."""
 
     _make_minimal_output(tmp_path)
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     with pytest.raises(TypeError):
         out.column_value_sets["new_column"] = ["x"]  # type: ignore[index]
 
@@ -303,7 +535,7 @@ def test_overlay_path_returns_expected_absolute_path(tmp_path: Path) -> None:
     """``overlay_path`` resolves to ``<root>/deliverables/overlays/<ds>/<stem>.png``."""
 
     _make_minimal_output(tmp_path)
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     expected = (
         tmp_path.resolve() / "deliverables" / "overlays" / "d1" / "a.png"
     )
@@ -318,7 +550,7 @@ def test_has_overlay_distinguishes_present_and_absent(tmp_path: Path) -> None:
     overlays = tmp_path / "deliverables" / "overlays" / "d1"
     overlays.mkdir(parents=True, exist_ok=True)
     (overlays / "a.png").touch()
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
 
     assert out.has_overlay("d1", "a") is True
     assert out.has_overlay("d1", "b") is False
@@ -328,7 +560,7 @@ def test_image_pairs_returns_sorted_unique_tuples(tmp_path: Path) -> None:
     """``image_pairs`` deduplicates and sorts the (dataset, stem) tuples."""
 
     _make_minimal_output(tmp_path)
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
 
     # Feed a frame with shuffled order and a duplicate row.
     df = pl.DataFrame(
@@ -348,7 +580,7 @@ def test_pipeline_summary_reads_name_from_pipeline_json(
 
     _make_minimal_output(tmp_path)
     write_pipeline_json(tmp_path, json.dumps({"name": "test_pipeline"}))
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.pipeline_summary == "test_pipeline"
 
 
@@ -359,11 +591,11 @@ def test_pipeline_summary_is_none_when_missing_or_malformed(
 
     # Case 1: missing → None.
     _make_minimal_output(tmp_path)
-    assert OutputRoot.discover(tmp_path).pipeline_summary is None
+    assert _discover(tmp_path).pipeline_summary is None
 
     # Case 2: malformed JSON → None (does not raise).
     write_pipeline_json(tmp_path, "{not valid json")
-    assert OutputRoot.discover(tmp_path).pipeline_summary is None
+    assert _discover(tmp_path).pipeline_summary is None
 
     # Case 3: parsed JSON dict with no ``name`` or ``class_name`` field → None.
     # Regression: previously returned the literal string ``"pipeline.json"``
@@ -371,15 +603,47 @@ def test_pipeline_summary_is_none_when_missing_or_malformed(
     # refactor (the agent substituted the constant where the original code
     # likely had ``return None``). Caught by opus review of PR #78.
     write_pipeline_json(tmp_path, json.dumps({"version": "1.0"}))
-    assert OutputRoot.discover(tmp_path).pipeline_summary is None
+    assert _discover(tmp_path).pipeline_summary is None
 
 
-def test_cache_dir_is_created_on_discover(tmp_path: Path) -> None:
-    """``cache_dir`` exists as a real directory after ``discover``."""
+def test_cache_dir_is_not_created_on_discover(tmp_path: Path) -> None:
+    """Discovery computes the external path without writing it."""
 
     _make_minimal_output(tmp_path)
-    out = OutputRoot.discover(tmp_path)
-    assert out.cache_dir.is_dir()
+    out = _discover(tmp_path)
+    assert not out.cache_dir.exists()
+
+
+def test_discover_rejects_cache_root_inside_selected_output(
+    tmp_path: Path,
+) -> None:
+    """A cache-owning caller cannot accidentally mutate the source tree."""
+    _make_minimal_output(tmp_path)
+
+    with pytest.raises(ValueError, match="must be external"):
+        OutputRoot.discover(
+            tmp_path,
+            cache_root=tmp_path / ".phenotypic-gui" / "viewer_cache",
+        )
+
+
+def test_discover_leaves_legacy_qc_and_viewer_sidecar_byte_identical(
+    tmp_path: Path,
+) -> None:
+    """Discovery never moves legacy topology or folds a viewer sidecar."""
+    source = tmp_path / "run"
+    _make_minimal_output(source)
+    legacy_qc = source / "qc"
+    legacy_qc.mkdir()
+    (legacy_qc / "legacy.parquet").write_bytes(b"legacy-qc")
+    sidecar = source / ".viewer_cache" / "qc_recipe.json"
+    sidecar.parent.mkdir()
+    sidecar.write_text('{"version": 1, "checks": []}', encoding="utf-8")
+    before = _tree_bytes(source)
+
+    _discover(source)
+
+    assert _tree_bytes(source) == before
 
 
 def test_all_parse_as_float_true_for_numeric_strings() -> None:
@@ -407,13 +671,13 @@ def test_column_value_sets_sorts_numeric_columns_numerically(tmp_path) -> None:
     for stem in ("a", "b", "c"):
         (overlays / f"{stem}.png").touch()
 
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.column_value_sets["MetadataCulture_Time"] == ["1", "2", "10"]
 
 
 def test_column_value_sets_keeps_lexical_for_text_columns(tmp_path) -> None:
     df = _make_minimal_output(tmp_path)  # has Metadata_Strain = s1, s2
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.column_value_sets["MetadataGenetic_Strain"] == sorted(
         df.get_column("MetadataGenetic_Strain").to_list()
     )
@@ -421,7 +685,7 @@ def test_column_value_sets_keeps_lexical_for_text_columns(tmp_path) -> None:
 
 def test_is_numeric_column_true_for_float_measurement(tmp_path) -> None:
     _make_minimal_output(tmp_path)  # Size_Area is Float64
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.is_numeric_column("Size_Area") is True
 
 
@@ -439,12 +703,12 @@ def test_is_numeric_column_true_for_numeric_string_metadata(tmp_path) -> None:
     _write_master_parquet(tmp_path, df)
     for stem in ("a", "b"):
         (overlays / f"{stem}.png").touch()
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.is_numeric_column("MetadataCulture_Time") is True
 
 
 def test_is_numeric_column_false_for_text_and_missing(tmp_path) -> None:
     _make_minimal_output(tmp_path)  # Metadata_Strain = s1, s2
-    out = OutputRoot.discover(tmp_path)
+    out = _discover(tmp_path)
     assert out.is_numeric_column("MetadataGenetic_Strain") is False
     assert out.is_numeric_column("NoSuchColumn") is False

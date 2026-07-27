@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable
+from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
@@ -25,9 +26,15 @@ def refresh_measurement_plots(
     pipeline: Any,
     layout: "BundleLayout",
     measurements: pd.DataFrame,
+    *,
+    publication_guard: Callable[[], bool] | None = None,
 ) -> None:
     """Refresh every configured ``PlotMeas`` from a GUI mirror update."""
-    coordinator = _coordinator(pipeline, layout)
+    coordinator = _coordinator(
+        pipeline,
+        layout,
+        publication_guard=publication_guard,
+    )
     coordinator.emit_measurements(measurements)
     registry = AnalysisRegistry(layout.deliverables_base)
     refreshed_analysis_ids = coordinator.emit_analyses(
@@ -60,6 +67,8 @@ def refresh_analysis_plots(
     layout: "BundleLayout",
     measurements: pd.DataFrame,
     result: "AnalysisResult",
+    *,
+    publication_guard: Callable[[], bool] | None = None,
 ) -> None:
     """Refresh every configured ``PlotAnalysis`` after GUI analysis output."""
     registry = AnalysisRegistry(layout.deliverables_base)
@@ -70,7 +79,11 @@ def refresh_analysis_plots(
         artifacts=result.artifacts,
         manifest_entry=result.manifest_entry,
     )
-    coordinator = _coordinator(pipeline, layout)
+    coordinator = _coordinator(
+        pipeline,
+        layout,
+        publication_guard=publication_guard,
+    )
     coordinator.emit_analyses(
         measurements,
         registry,
@@ -88,10 +101,16 @@ def refresh_qc_plots(
     layout: "BundleLayout",
     measurements: pd.DataFrame,
     successful_modules: Iterable["SuccessfulQcModule"],
+    *,
+    publication_guard: Callable[[], bool] | None = None,
 ) -> None:
     """Refresh every configured ``PlotQc`` after a GUI QC rebuild."""
     modules = {module.instance_id: module for module in successful_modules}
-    _coordinator(pipeline, layout).emit_qc(
+    _coordinator(
+        pipeline,
+        layout,
+        publication_guard=publication_guard,
+    ).emit_qc(
         measurements,
         AnalysisRegistry(layout.deliverables_base),
         successful_modules=modules,
@@ -100,12 +119,18 @@ def refresh_qc_plots(
     )
 
 
-def _coordinator(pipeline: Any, layout: "BundleLayout") -> PlotCoordinator:
+def _coordinator(
+    pipeline: Any,
+    layout: "BundleLayout",
+    *,
+    publication_guard: Callable[[], bool] | None = None,
+) -> PlotCoordinator:
     output_dir = layout.output_root or layout.deliverables_base
     return PlotCoordinator(
         pipeline,
         output_dir,
         plots_base=layout.plots_dir,
+        publication_guard=publication_guard,
     )
 
 

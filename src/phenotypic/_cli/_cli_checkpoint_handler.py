@@ -1,15 +1,16 @@
 """Checkpoint handler for manifest rebuilds and final aggregation.
 
-Handles ``__PHENOTYPIC_MANIFEST__`` and ``__PHENOTYPIC_FINALIZER__``
-sentinel tasks embedded in SLURM array jobs. Uses file-lock leader
-election so that only one concurrent task performs the work.
+Handles nonterminal ``__PHENOTYPIC_MANIFEST__`` array tasks and the
+scheduler-dependent terminal finalizer job. Uses file-lock leader election
+so that only one concurrent task performs the work.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Optional, cast
@@ -17,18 +18,24 @@ from typing import Optional, cast
 import click
 
 from ._cli_file_locking import FileLockTimeout, file_lock
+from ._cli_preload import preload_custom_operation_modules
 from ._cli_utils import load_job_metadata
 from phenotypic.sdk_ import (
     PROCESSING_EVENTS_LOG,
+    DashboardManifestKey,
     JobMetadataKey,
+    atomic_write_json,
     checkpoint_lock_filename,
     event_log_path,
     measurements_parquet_path,
     processing_report_html_path,
+    resolve_manifest_json_path,
     resolve_execution_mode,
+    run_completion_marker_path,
     progress_dir as progress_dir_helper,
 )
 from phenotypic.sdk_.typing_ import CheckpointType
+from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +133,10 @@ def _run_manifest(output_dir: Path, progress_dir: Path) -> None:
         logger.warning("No job_metadata.json found -- skipping manifest build")
         return
 
-    from ._dashboard._manifest_builder import build_manifest
+    from ._dashboard._manifest_builder import (
+        build_manifest,
+        dataset_inventory_from_metadata,
+    )
 
     datasets_raw = job_metadata.get(JobMetadataKey.DATASETS, {}) or {}
     datasets_totals: dict[str, int] = {
@@ -143,7 +153,25 @@ def _run_manifest(output_dir: Path, progress_dir: Path) -> None:
         slurm_job_ids=job_metadata.get(JobMetadataKey.CHUNK_JOB_IDS),
         chunk_scripts=job_metadata.get(JobMetadataKey.CHUNK_SCRIPTS),
         input_path=job_metadata.get(JobMetadataKey.INPUT_PATH),
+        dataset_inventory=dataset_inventory_from_metadata(datasets_raw),
+        processing_generation=job_metadata.get(
+            JobMetadataKey.PROCESSING_GENERATION
+        ),
     )
+
+    # Process/export runs use a scheduler-dependent manifest finalizer after
+    # the final image array. Publish here only for that mode; forward/measure
+    # manifest checkpoints never publish completion.
+    slurm_generation = job_metadata.get("slurm_generation")
+    if isinstance(slurm_generation, str) and slurm_generation:
+        from ._cli_state_management import load_processing_state
+
+        state = load_processing_state(output_dir)
+        process_only_layer = (
+            state.config.get("process_only_layer") if state is not None else None
+        )
+        if process_only_layer:
+            _publish_run_completion_marker(output_dir, slurm_generation)
 
 
 # ---------------------------------------------------------------------------
@@ -166,6 +194,12 @@ def _run_finalize(
             logger.warning("No job_metadata.json; cannot finalize")
             return
         raise RuntimeError("No job_metadata.json; cannot finalize")
+    slurm_generation_raw = job_metadata.get("slurm_generation")
+    slurm_generation = (
+        str(slurm_generation_raw)
+        if isinstance(slurm_generation_raw, str) and slurm_generation_raw
+        else None
+    )
 
     if epoch is not None:
         from ._cli_staged_orchestration import assert_active_epoch
@@ -183,11 +217,24 @@ def _run_finalize(
         name: (info["total"] if isinstance(info, dict) else int(info))
         for name, info in datasets_raw.items()
     }
+    from ._dashboard._manifest_builder import (
+        dataset_inventory_from_metadata,
+    )
+
+    dataset_inventory = dataset_inventory_from_metadata(datasets_raw)
     total_expected = sum(datasets_totals.values())
 
     # Wait for all images to complete (or fail)
     if epoch is None:
-        _wait_for_completion(progress_dir, total_expected, timeout=600)
+        _wait_for_completion(
+            progress_dir,
+            inventory=dataset_inventory,
+            total_expected=total_expected,
+            generation=job_metadata.get(
+                JobMetadataKey.PROCESSING_GENERATION
+            ),
+            timeout=600,
+        )
 
     # Final aggregation
     from ._cli_output_manager import aggregate_measurements
@@ -245,7 +292,10 @@ def _run_finalize(
         logger.warning("Analysis sidecar write failed", exc_info=True)
 
     # Final manifest
-    from ._dashboard._manifest_builder import build_manifest
+    from ._dashboard._manifest_builder import (
+        build_manifest,
+        dataset_inventory_from_metadata,
+    )
 
     build_manifest(
         output_dir=output_dir,
@@ -256,6 +306,10 @@ def _run_finalize(
         slurm_job_ids=job_metadata.get(JobMetadataKey.CHUNK_JOB_IDS),
         chunk_scripts=job_metadata.get(JobMetadataKey.CHUNK_SCRIPTS),
         input_path=job_metadata.get(JobMetadataKey.INPUT_PATH),
+        dataset_inventory=dataset_inventory,
+        processing_generation=job_metadata.get(
+            JobMetadataKey.PROCESSING_GENERATION
+        ),
     )
     _check_epoch()
 
@@ -290,7 +344,7 @@ def _run_finalize(
         )
         _check_epoch()
     except Exception:
-        if epoch is not None:
+        if epoch is not None or slurm_generation is not None:
             raise
         logger.warning("Dashboard generation failed", exc_info=True)
 
@@ -299,14 +353,103 @@ def _run_finalize(
         from ._cli_staged_orchestration import mark_staged_complete
 
         mark_staged_complete(output_dir, epoch)
+    elif slurm_generation is not None:
+        _publish_run_completion_marker(output_dir, slurm_generation)
 
     logger.info("Finalization complete")
+
+
+def _publish_run_completion_marker(
+    output_dir: Path,
+    slurm_generation: str,
+) -> None:
+    """Publish and fence ordinary completion for the exact active generation."""
+    from ._cli_slurm_lifecycle import (
+        deactivate_generation,
+        lifecycle_lock_path,
+        load_slurm_lifecycle,
+    )
+
+    marker_path = run_completion_marker_path(output_dir)
+    with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
+        lifecycle = load_slurm_lifecycle(output_dir)
+        if lifecycle is None or lifecycle.get("generation") != slurm_generation:
+            raise RuntimeError(
+                "Cannot publish completion for a stale SLURM generation"
+            )
+        if lifecycle.get("active") is not True:
+            try:
+                existing = json.loads(marker_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                existing = None
+            if (
+                isinstance(existing, dict)
+                and existing.get("generation") == slurm_generation
+                and existing.get("status") == "complete"
+                and existing.get("finalizer_succeeded") is True
+            ):
+                return
+            raise RuntimeError(
+                "Cannot publish completion after the SLURM generation "
+                "was cancelled or superseded"
+            )
+        try:
+            manifest = json.loads(
+                resolve_manifest_json_path(output_dir).read_text(
+                    encoding="utf-8"
+                )
+            )
+        except (OSError, ValueError) as exc:
+            raise RuntimeError(
+                "Cannot publish the SLURM completion marker without "
+                "a valid manifest"
+            ) from exc
+        if not isinstance(manifest, dict):
+            raise RuntimeError("Final dashboard manifest is not a JSON object")
+        completed = manifest.get(DashboardManifestKey.COMPLETED)
+        failed = manifest.get(DashboardManifestKey.FAILED)
+        total = manifest.get(DashboardManifestKey.TOTAL_IMAGES)
+        complete = (
+            manifest.get(DashboardManifestKey.IS_COMPLETE) is True
+            and isinstance(completed, int)
+            and not isinstance(completed, bool)
+            and isinstance(failed, int)
+            and not isinstance(failed, bool)
+            and isinstance(total, int)
+            and not isinstance(total, bool)
+            and failed == 0
+            and completed == total
+        )
+        if not complete:
+            raise RuntimeError(
+                "Cannot publish the SLURM completion marker for an incomplete "
+                "or failed manifest"
+            )
+        atomic_write_json(
+            marker_path,
+            {
+                "schema_version": 1,
+                "generation": slurm_generation,
+                "status": "complete",
+                "finalizer_succeeded": True,
+                "completed_at": datetime.now(timezone.utc).isoformat(
+                    timespec="milliseconds"
+                ),
+            },
+        )
+        if not deactivate_generation(output_dir, slurm_generation):
+            raise RuntimeError(
+                "SLURM completion marker was published but the generation "
+                "could not be deactivated"
+            )
 
 
 def _publish_staged_report_and_readme(
     output_dir: Path, job_metadata: dict, epoch: str
 ) -> None:
     """Publish the report and README as part of the sole remote finalizer."""
+    preload_custom_operation_modules()
+
     from phenotypic import ImagePipeline
 
     from ._cli_readme_generator import READMEGenerator
@@ -322,7 +465,16 @@ def _publish_staged_report_and_readme(
     from ._cli_update_state import aggregate_state_from_events
 
     datasets_raw = job_metadata.get(JobMetadataKey.DATASETS, {}) or {}
-    states = aggregate_state_from_events(event_log_path(output_dir))
+    inventory = {
+        name: list(raw.get("images", []))
+        for name, raw in datasets_raw.items()
+        if isinstance(raw, dict)
+    }
+    states = aggregate_state_from_events(
+        event_log_path(output_dir),
+        inventory=inventory,
+        generation=job_metadata.get(JobMetadataKey.PROCESSING_GENERATION),
+    )
     dataset_results: dict[str, DatasetResults] = {}
     datasets: list[Dataset] = []
     for name, raw in datasets_raw.items():
@@ -399,14 +551,22 @@ def _publish_staged_report_and_readme(
 
 
 def _wait_for_completion(
-    progress_dir: Path, total_expected: int, timeout: int = 600
+    progress_dir: Path,
+    *,
+    inventory: dict[str, frozenset[str]] | None,
+    total_expected: int,
+    generation: str | None,
+    timeout: int = 600,
 ) -> None:
     """Poll event log until all images are done or timeout.
 
     Args:
         progress_dir: Progress directory (the event log is at
             ``progress_dir.parent / "processing_events.log"``).
-        total_expected: Total number of images expected.
+        inventory: Authorized current-generation image names by dataset, or
+            ``None`` for legacy count-only metadata.
+        total_expected: Total number of expected images.
+        generation: Durable processing generation.
         timeout: Maximum seconds to wait.
     """
     from ._cli_update_state import aggregate_state_from_events
@@ -415,7 +575,11 @@ def _wait_for_completion(
     deadline = time.monotonic() + timeout
     done = 0
     while time.monotonic() < deadline:
-        dataset_states = aggregate_state_from_events(event_log)
+        dataset_states = aggregate_state_from_events(
+            event_log,
+            inventory=inventory,
+            generation=generation,
+        )
         completed = sum(len(ds.completed) for ds in dataset_states.values())
         failed = sum(len(ds.failed) for ds in dataset_states.values())
         done = completed + failed

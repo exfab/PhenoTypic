@@ -40,6 +40,7 @@ from phenotypic.gui._config import (
     CFG_FILTERED_STATE,
     CFG_MEASUREMENT_SCHEMA,
     CFG_OPERATION_REGISTRY,
+    CFG_OUTPUT_MUTATION_GUARD,
     CFG_OUTPUT_ROOT,
     CFG_QC_AUGMENTED_FRAME,
     CFG_QC_INSTANCES_CACHE,
@@ -53,11 +54,25 @@ from phenotypic.gui._config import (
     TITLE_VIEWER,
     join_url_prefix,
 )
+from phenotypic.gui._async_binding_client import (
+    async_binding_callback_source,
+)
 from phenotypic.gui._operation_registry import OperationRegistry
+from phenotypic.gui._binding_generation import (
+    BindingRequestFence,
+    binding_generation_hooks,
+    install_bound_output_callback_guard,
+    install_binding_generation_guard,
+)
 from phenotypic.gui._schema_cache import MeasurementSchema
-from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
+from phenotypic.gui._design import (
+    COLOR_BLUE,
+    COLOR_SURFACE,
+    inject_design_tokens,
+)
 from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui._shared.tiles import register_crop_route
+from phenotypic.gui._snapshot_status import snapshot_refresh_status
 from phenotypic.gui._url_prefix import (
     configure_url_prefix_routing,
     dash_index_string_with_app_prefix,
@@ -69,12 +84,21 @@ from phenotypic.gui.results_viewer.timeline_view import (
 )
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._layout import (
+    build_active_snapshot_layout,
     build_app_layout,
     build_empty_state_layout,
 )
+from phenotypic.gui.results_viewer._mutation_guard import (
+    OutputMutationBlocked,
+    OutputMutationGuard,
+)
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer.colony_view import _crop_routes as colony_crop_routes
+from phenotypic.gui.results_viewer.colony_view import (
+    _crop_routes as colony_crop_routes,
+)
 from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
+from phenotypic.gui.shell._binding_ui import binding_error_text
+from phenotypic.gui.shell._ids import SHELL_RESULTS_BINDING_JOB_STORE
 from phenotypic.sdk_._qc_recipe import QcRecipe
 
 logger = logging.getLogger(__name__)
@@ -85,6 +109,8 @@ def create_app(
     *,
     url_prefix: str = MOUNT_HOME,
     api_url_prefix: str = DEFAULT_URL_PREFIX,
+    binding_generation: str | None = None,
+    binding_fence: BindingRequestFence | None = None,
 ) -> dash.Dash:
     """Build a Dash application instance for the results viewer.
 
@@ -104,6 +130,9 @@ def create_app(
         api_url_prefix: Browser-visible base prefix for shell-level
             Flask APIs. Defaults to ``"/"``; the hub passes the external
             proxy prefix when configured.
+        binding_generation: Optional shell generation used to fence stale
+            browser callback requests after a rebind.
+        binding_fence: Shared Results/Analysis request fence for the binding.
 
     Returns:
         A configured :class:`dash.Dash` instance whose ``app.run(...)``
@@ -122,19 +151,30 @@ def create_app(
         # mount prefix from PATH_INFO, so Dash must route at "/".
         requests_pathname_prefix=url_prefix,
         routes_pathname_prefix=MOUNT_HOME,
+        hooks=binding_generation_hooks(binding_generation),
     )
 
     # Inject window.__phenotypicAppPrefix so results_viewer.js can build
     # mount-aware URLs for DZI tiles and OSD assets.
-    app.index_string = dash_index_string_with_app_prefix(url_prefix)
+    app.index_string = dash_index_string_with_app_prefix(
+        url_prefix,
+        binding_generation=binding_generation,
+    )
 
     inject_design_tokens(app)
     register_shared_static(app.server)
 
     app.server.config[CFG_URL_PREFIX] = url_prefix
+    install_binding_generation_guard(
+        app,
+        binding_generation,
+        binding_fence,
+    )
 
     if output_root is None:
-        app.layout = build_empty_state_layout()
+        app.layout = build_empty_state_layout(
+            binding_generation=binding_generation,
+        )
         _register_empty_state_callbacks(
             app,
             url_prefix=url_prefix,
@@ -146,12 +186,55 @@ def create_app(
         )
         return configure_url_prefix_routing(app, url_prefix)
 
+    output_root.require_session_snapshot_current(
+        context="Results session pre-read",
+    )
     app.server.config[CFG_OUTPUT_ROOT] = output_root
+    mutation_guard = OutputMutationGuard(
+        output_root=output_root,
+        binding_generation=binding_generation,
+    )
+    app.server.config[CFG_OUTPUT_MUTATION_GUARD] = mutation_guard
+
+    def _results_mutation_is_safe() -> bool:
+        try:
+            mutation_guard.authorize("Results mutation")
+        except OutputMutationBlocked:
+            return False
+        return True
+
+    install_bound_output_callback_guard(
+        app,
+        mutation_is_safe=_results_mutation_is_safe,
+        protected_output_ids=(
+            ids.STORE_REMOVED_KEYS,
+            ids.STORE_QC_RECIPE_REVISION,
+        ),
+    )
+    if output_root.snapshot.active_run:
+        app.layout = build_active_snapshot_layout(
+            output_root,
+            url_prefix=url_prefix,
+            binding_generation=binding_generation,
+        )
+        output_root.require_session_snapshot_current(
+            context="Results active session post-read",
+        )
+        _register_snapshot_refresh_callbacks(
+            app,
+            output_root,
+            url_prefix=url_prefix,
+            api_url_prefix=api_url_prefix,
+            refresh_supported=binding_generation is not None,
+        )
+        return configure_url_prefix_routing(app, url_prefix)
 
     _tile_routes.register(app, output_root)
     timeline_thumb_routes.register(app, output_root)
 
-    filtered_state = CurationLabels.load(output_root.layout, output_root.master_df)
+    filtered_state = CurationLabels.load(
+        output_root.layout, output_root.master_df
+    )
     app.server.config[CFG_FILTERED_STATE] = filtered_state
     colony_crop_routes.register(app, output_root)
     # QC Review tab serves the same centered crops under its own segment
@@ -163,8 +246,8 @@ def create_app(
     # clobber an existing instance e.g. when the analysis sub-app has
     # already populated the key.
     if app.server.config.get(CFG_MEASUREMENT_SCHEMA) is None:
-        app.server.config[CFG_MEASUREMENT_SCHEMA] = MeasurementSchema.from_layout(
-            output_root.layout
+        app.server.config[CFG_MEASUREMENT_SCHEMA] = (
+            MeasurementSchema.from_layout(output_root.layout)
         )
     # QC tab's augmented-frame cache starts empty; Wave E's QC writer
     # fills it on its first card refresh. The heatmap render callback
@@ -183,26 +266,83 @@ def create_app(
         operation_registry.discover()
         app.server.config[CFG_OPERATION_REGISTRY] = operation_registry
 
-    # QC recipe is now the ``qc`` section of ``pipeline.json`` (pipeline-
-    # backed adapter), not the legacy ``.viewer_cache/qc_recipe.json``
-    # sidecar. Fold any legacy sidecar into the pipeline exactly once, then
-    # load the recipe + the full pipeline (for the Review tab's in-session
-    # recompute via ``run_qc``). The per-revision instance cache is keyed
-    # on the recipe revision counter so a stale entry can never serve a
-    # moved configuration.
-    # Legacy ``.viewer_cache/qc_recipe.json`` sidecar migration only applies to
-    # full runs (the sidecar lived at the *output root*). A standalone bundle
-    # (``layout.output_root is None``) never has one, so skip it (review W6).
-    if output_root.layout.output_root is not None:
-        QcRecipe.migrate_from_sidecar(output_root.layout.output_root)
+    # Viewer boot is source-preserving. Legacy sidecar migration is an
+    # explicit compatibility action, never an implicit consequence of bind
+    # or Refresh.
     app.server.config[CFG_QC_RECIPE] = QcRecipe.from_layout(output_root.layout)
     app.server.config[CFG_QC_PIPELINE] = _load_qc_pipeline(output_root)
     app.server.config.setdefault(CFG_QC_INSTANCES_CACHE, {})
 
-    app.layout = build_app_layout(output_root, filtered_state, url_prefix=url_prefix)
+    app.layout = build_app_layout(
+        output_root,
+        filtered_state,
+        url_prefix=url_prefix,
+        binding_generation=binding_generation,
+        refresh_supported=binding_generation is not None,
+    )
+    output_root.require_session_snapshot_current(
+        context="Results session post-read",
+    )
     register_callbacks(app, output_root)
+    _register_snapshot_refresh_callbacks(
+        app,
+        output_root,
+        url_prefix=url_prefix,
+        api_url_prefix=api_url_prefix,
+        refresh_supported=binding_generation is not None,
+    )
 
     return configure_url_prefix_routing(app, url_prefix)
+
+
+def _register_snapshot_refresh_callbacks(
+    app: dash.Dash,
+    output_root: OutputRoot,
+    *,
+    url_prefix: str,
+    api_url_prefix: str,
+    refresh_supported: bool,
+) -> None:
+    """Wire status-only polling and explicit shared-session Refresh."""
+
+    @app.callback(
+        Output(ids.HEADER_SNAPSHOT_STATUS_ID, "children"),
+        Output(ids.HEADER_SNAPSHOT_STATUS_ID, "color"),
+        Output(ids.BTN_REFRESH_SNAPSHOT, "disabled"),
+        Input(ids.SNAPSHOT_STATUS_INTERVAL_ID, "n_intervals"),
+    )
+    def _snapshot_status(_n_intervals: int) -> tuple[str, str, bool]:
+        return snapshot_refresh_status(
+            output_root,
+            refresh_supported=refresh_supported,
+        )
+
+    if not refresh_supported:
+        return
+
+    api_output_root = join_url_prefix(
+        api_url_prefix,
+        SANDBOX_API_VIEWER_OUTPUT_ROOT,
+    )
+    app.clientside_callback(
+        async_binding_callback_source(
+            api_url=api_output_root,
+            redirect_url=url_prefix,
+            selection_required=False,
+        ),
+        Output(
+            SHELL_RESULTS_BINDING_JOB_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
+        Input(ids.BTN_REFRESH_SNAPSHOT, "n_clicks"),
+        State(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    app.callback(
+        Output(ids.HEADER_REFRESH_ERROR_ID, "children"),
+        Input(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+    )(binding_error_text)
 
 
 def _load_qc_pipeline(output_root: OutputRoot):
@@ -306,12 +446,12 @@ def _register_empty_state_callbacks(
        has the ``is_cli_output`` capability.
 
     2. **Open button -> POST + redirect.** A clientside callback fetches
-       ``/sandbox/api/viewer/output-root`` with the selection's
-       ``abs_path`` (or rel ``path`` as fallback). On success the
-       browser navigates to ``url_prefix`` so :class:`_ViewerProxy`
-       resolves a freshly-built loaded viewer; on 4xx the JSON
-       ``error`` is rendered into the inline error slot.
+       ``/sandbox/api/viewer/output-root`` with the selection's rel ``path``.
+       On success the browser navigates to ``url_prefix`` so
+       :class:`_ViewerProxy` serves the atomically published loaded viewer;
+       on failure the JSON ``error`` is rendered into the inline error slot.
     """
+
     @app.callback(
         Output(ids.EMPTY_HANDOFF_BANNER, "style"),
         Output(ids.EMPTY_HANDOFF_LABEL, "children"),
@@ -326,44 +466,33 @@ def _register_empty_state_callbacks(
     # Clientside POST + navigate. Uses ``window.fetch`` with the prefix
     # so it works under any DispatcherMiddleware mount. On success the
     # callback calls ``window.location.assign(prefix)`` directly (forces
-    # a full reload even though the URL is unchanged), which is what
-    # ``_ViewerProxy`` needs to resolve the freshly-built session. On
-    # 4xx the JSON ``error`` is rendered into the inline error slot.
-    api_output_root = join_url_prefix(api_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT)
+    # a full reload even though the URL is unchanged), which makes the
+    # ``_ViewerProxy`` serve the newly published session. On failure the
+    # JSON ``error`` is rendered into the inline error slot.
+    api_output_root = join_url_prefix(
+        api_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT
+    )
 
     app.clientside_callback(
-        """
-        async function(n_clicks, selection) {
-            if (!n_clicks || !selection) {
-                return window.dash_clientside.no_update;
-            }
-            const path = selection.path;
-            if (!path) { return "No sidebar selection."; }
-            try {
-                const resp = await fetch(
-                    "__PHENO_API_OUTPUT_ROOT__",
-                    {
-                        method: "POST",
-                        headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({path: path}),
-                    }
-                );
-                const data = await resp.json().catch(() => ({}));
-                if (!resp.ok) {
-                    return (data && data.error) || ("HTTP " + resp.status);
-                }
-                window.location.assign(__PHENO_VIEWER_PREFIX__);
-                return "";
-            } catch (err) {
-                return String(err);
-            }
-        }
-        """.replace("__PHENO_API_OUTPUT_ROOT__", api_output_root).replace("__PHENO_VIEWER_PREFIX__", repr(url_prefix)),
-        Output(ids.EMPTY_HANDOFF_ERROR, "children"),
+        async_binding_callback_source(
+            api_url=api_output_root,
+            redirect_url=url_prefix,
+            selection_required=True,
+        ),
+        Output(
+            SHELL_RESULTS_BINDING_JOB_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
         Input(ids.EMPTY_HANDOFF_OPEN_BUTTON, "n_clicks"),
         State(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+        State(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
         prevent_initial_call=True,
     )
+    app.callback(
+        Output(ids.EMPTY_HANDOFF_ERROR, "children"),
+        Input(SHELL_RESULTS_BINDING_JOB_STORE, "data"),
+    )(binding_error_text)
 
 
 __all__ = ["create_app"]

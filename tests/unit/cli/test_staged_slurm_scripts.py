@@ -20,6 +20,10 @@ from phenotypic._cli._cli_staged_orchestration import (
 )
 from phenotypic._cli._cli_types import Dataset
 from phenotypic.sdk_ import JOB_METADATA_JSON, progress_dir
+from phenotypic.sdk_.slurm import (
+    SLURM_PYTHONPATH_BOOTSTRAP_BASH,
+    SLURM_PYTHONPATH_ENV_VAR,
+)
 
 
 def _manifest(n):
@@ -93,6 +97,7 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
         n_shards=2,
         epoch="epoch-1",
         overlay_alpha=0.65,
+        processing_generation="generation-123",
     )
     assert set(scripts) == {
         "stage1",
@@ -109,6 +114,7 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
     s2 = scripts["stage2"].read_text(encoding="utf-8")
     s3 = scripts["stage3"][0].read_text(encoding="utf-8")
     finalizer = scripts["finalizer"].read_text(encoding="utf-8")
+    controller = scripts["controller"].read_text(encoding="utf-8")
 
     # Stage 1 & 3 on the CPU partition; Stage 2 on the GPU partition + 1 GPU
     assert "--partition=batch" in s1 and "--partition=batch" in s3
@@ -120,11 +126,24 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
     assert "--overlay-alpha" not in s1 and "--overlay-alpha" not in s2
     # Stage 2 invokes the shard worker
     assert "_cli_staged_slurm_worker" in s2
+    for worker_script in (s1, s2, s3):
+        assert (
+            "export PHENOTYPIC_PROCESSING_GENERATION=generation-123"
+            in worker_script
+        )
     assert "_cli_checkpoint_handler" in finalizer
     assert "--checkpoint-type finalize" in finalizer
     assert "--epoch epoch-1" in finalizer
     assert "--partition=batch" in finalizer
-    assert "_cli_staged_controller" in scripts["controller"].read_text()
+    assert "_cli_staged_controller" in controller
+    # The controller must restore the reviewed source path before it imports
+    # PhenoTypic and before its nested lifecycle submissions inherit the env.
+    for script_text in (s1, s2, s3, finalizer, controller):
+        assert SLURM_PYTHONPATH_BOOTSTRAP_BASH in script_text
+        assert SLURM_PYTHONPATH_ENV_VAR in script_text
+    assert controller.index(SLURM_PYTHONPATH_BOOTSTRAP_BASH) < controller.index(
+        "_cli_staged_controller"
+    )
 
 
 def test_stage2_script_uses_controller_not_signal_requeue(tmp_path):
@@ -328,7 +347,7 @@ def test_strategy_reserves_two_max_submit_slots_for_controllers(
     strategy.execute([], tmp_path)
 
     assert captured["array_limit"] == 3
-    assert submitted_roles == ["controller"]
+    assert submitted_roles == ["controller-initial"]
     state = load_orchestration_state(tmp_path)
     assert state is not None
     assert state["phase"] == expected_phase
@@ -351,7 +370,12 @@ def test_strategy_rejects_max_submit_limit_below_three(monkeypatch, tmp_path):
         strategy.execute([], tmp_path)
 
 
-def test_staged_job_metadata_supports_canonical_finalizer(tmp_path):
+def test_staged_job_metadata_supports_canonical_finalizer(
+    tmp_path,
+    monkeypatch,
+):
+    gui_generation = "41234567-89ab-cdef-0123-456789abcdef"
+    monkeypatch.setenv("PHENOTYPIC_GUI_RECORD_GENERATION", gui_generation)
     images = [tmp_path / f"image_{index}.tif" for index in range(3)]
     datasets = [
         Dataset(
@@ -378,6 +402,7 @@ def test_staged_job_metadata_supports_canonical_finalizer(tmp_path):
         nrows=None,
         ncols=None,
         full_dataset_inventory={"plate": [image.name for image in images]},
+        processing_generation="generation-123",
     )
 
     metadata_path = _write_staged_job_metadata(
@@ -397,3 +422,5 @@ def test_staged_job_metadata_supports_canonical_finalizer(tmp_path):
     assert metadata["chunk_scripts"][-1] == "finalizer.sh"
     assert metadata["no_qc"] is True
     assert metadata["image_task_mapping"] == {}
+    assert metadata["gui_record_generation"] == gui_generation
+    assert metadata["processing_generation"] == "generation-123"

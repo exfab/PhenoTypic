@@ -30,6 +30,10 @@ _LEGACY_CLASS_ALIASES = {
     # Resolve it here instead of exporting a module alias that would appear in
     # the GUI operation registry as a duplicate palette entry.
     "BM3DDenoiser": ("phenotypic.enhance", "EnhanceBlockMatch"),
+    # Preserve pipelines written before the correction operations adopted
+    # verb-first public names.
+    "ImageCropper": ("phenotypic.correction", "CropImage"),
+    "ImagePadder": ("phenotypic.correction", "PadImage"),
 }
 
 

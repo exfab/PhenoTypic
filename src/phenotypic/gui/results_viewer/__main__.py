@@ -39,13 +39,15 @@ from phenotypic.gui._config import (
     DEFAULT_URL_PREFIX,
     SSH_TUNNEL_HINT,
     TITLE_VIEWER,
-    VIEWER_CACHE_DIRNAME,
     add_launcher_args,
     configure_launcher_logging,
     print_launcher_banner,
 )
 from phenotypic.gui.results_viewer._app import create_app
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._output_root import (
+    OutputRoot,
+    user_viewer_cache_root,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +91,12 @@ def launch_results_viewer(
             columns.
     """
     root = Path(output_root).resolve()
-    output = OutputRoot.discover(root)
+    output = OutputRoot.discover(
+        root,
+        cache_root=user_viewer_cache_root(),
+    )
     app = create_app(output, url_prefix=url_prefix)
-    cache_dir = root / VIEWER_CACHE_DIRNAME
+    cache_dir = output.viewer_cache_dir
     print_launcher_banner(
         title=TITLE_VIEWER,
         host=host,

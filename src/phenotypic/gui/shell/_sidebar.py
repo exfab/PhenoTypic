@@ -23,6 +23,16 @@ from dash import dcc, html
 from phenotypic.gui.shell._classifier import Capabilities, classify
 from phenotypic.gui.shell._ids import (
     SHELL_CLASSIFIER_CACHE_STORE,
+    SHELL_RESULTS_BINDING_CANCEL,
+    SHELL_RESULTS_BINDING_DETAIL,
+    SHELL_RESULTS_BINDING_DIAGNOSTIC,
+    SHELL_RESULTS_BINDING_JOB_STORE,
+    SHELL_RESULTS_BINDING_PANEL,
+    SHELL_RESULTS_BINDING_PHASE,
+    SHELL_RESULTS_BINDING_POLL_INTERVAL,
+    SHELL_RESULTS_BINDING_PROGRESS,
+    SHELL_RESULTS_BINDING_PROGRESS_LABEL,
+    SHELL_RESULTS_BINDING_STATUS,
     SHELL_SIDEBAR,
     SHELL_SIDEBAR_EXPANDED_STORE,
     SHELL_SIDEBAR_HIDDEN_TOGGLE,
@@ -96,12 +106,80 @@ def build_sidebar(sandbox: SandboxRoot) -> html.Div:
                 id=SHELL_SIDEBAR_TREE,
                 className="shell-sidebar-tree",
             ),
+            _build_results_binding_panel(),
             dcc.Store(id=SHELL_SIDEBAR_SELECTION_STORE),
             dcc.Store(id=SHELL_SIDEBAR_EXPANDED_STORE, data=[]),
             dcc.Store(id=SHELL_CLASSIFIER_CACHE_STORE, data=0),
+            dcc.Store(
+                id=SHELL_RESULTS_BINDING_JOB_STORE,
+                data=None,
+                storage_type="session",
+            ),
+            dcc.Interval(
+                id=SHELL_RESULTS_BINDING_POLL_INTERVAL,
+                interval=400,
+                n_intervals=0,
+                disabled=True,
+            ),
         ],
         id=SHELL_SIDEBAR,
         className="shell-sidebar",
+    )
+
+
+def _build_results_binding_panel() -> html.Div:
+    """Build the cross-mount Results/Analysis hand-off status card."""
+    return html.Div(
+        [
+            html.Div(
+                [
+                    html.Strong("Results hand-off"),
+                    html.Span("Idle", id=SHELL_RESULTS_BINDING_STATUS),
+                ],
+                className="shell-results-binding-heading",
+            ),
+            html.Div(
+                "",
+                id=SHELL_RESULTS_BINDING_PHASE,
+                className="shell-results-binding-phase",
+            ),
+            html.Progress(
+                id=SHELL_RESULTS_BINDING_PROGRESS,
+                value="0",
+                max="1",
+                className="shell-results-binding-progress",
+            ),
+            html.Div(
+                "",
+                id=SHELL_RESULTS_BINDING_PROGRESS_LABEL,
+                className="shell-results-binding-progress-label",
+            ),
+            html.Div(
+                "",
+                id=SHELL_RESULTS_BINDING_DETAIL,
+                className="shell-results-binding-detail",
+            ),
+            html.Div(
+                "",
+                id=SHELL_RESULTS_BINDING_DIAGNOSTIC,
+                className="shell-results-binding-diagnostic",
+            ),
+            dbc.Button(
+                "Cancel",
+                id=SHELL_RESULTS_BINDING_CANCEL,
+                n_clicks=0,
+                size="sm",
+                color="danger",
+                outline=True,
+                disabled=True,
+                className="shell-results-binding-cancel",
+            ),
+        ],
+        id=SHELL_RESULTS_BINDING_PANEL,
+        className=(
+            "shell-results-binding-panel shell-results-binding-panel--hidden"
+        ),
+        **cast(Any, {"aria-live": "polite"}),
     )
 
 

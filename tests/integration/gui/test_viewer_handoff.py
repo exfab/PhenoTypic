@@ -8,13 +8,18 @@ Covers ``POST /sandbox/api/viewer/output-root`` and the
 from __future__ import annotations
 
 import json
+import threading
+import time
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 import pytest
 
+from phenotypic.gui._config import CFG_RESULTS_BINDING_JOBS
 from phenotypic.gui.shell import SandboxRoot
 from phenotypic.gui.shell._app import compose_hub
+from phenotypic.gui.shell._binding_jobs import ResultsBindJobManager
 
 from tests._output_layout import write_master
 from phenotypic.schema import METADATA
@@ -46,6 +51,24 @@ def _make_minimal_output(root: Path, dataset: str = "d1") -> None:
         (overlay_dir / f"{stem}.png").touch()
 
 
+def _poll_terminal(
+    client: Any,
+    poll_path: str,
+    *,
+    timeout: float = 10.0,
+) -> dict[str, Any]:
+    """Poll an asynchronous viewer hand-off to a terminal job snapshot."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        response = client.get(poll_path)
+        assert response.status_code == 200
+        payload: dict[str, Any] = response.get_json()
+        if payload["job"]["terminal"]:
+            return payload
+        threading.Event().wait(0.01)
+    raise AssertionError("viewer hand-off did not become terminal")
+
+
 @pytest.fixture()
 def sandbox_with_output(tmp_path: Path) -> tuple[SandboxRoot, str]:
     out_dir = tmp_path / "output_synth"
@@ -60,33 +83,45 @@ def test_post_swaps_output_root_and_rebuilds(
     sandbox, rel = sandbox_with_output
     shell_app, viewer_session = compose_hub(sandbox, start_idle_thread=False)
     client = shell_app.server.test_client()
+    manager: ResultsBindJobManager = shell_app.server.config[
+        CFG_RESULTS_BINDING_JOBS
+    ]
 
-    # First /results/ hit builds the empty-state viewer. Dash returns the
-    # bare index HTML; the actual layout is fetched via /_dash-layout.
-    assert client.get("/results/").status_code == 200
-    assert viewer_session.is_built() is True
-    layout_before = client.get("/results/_dash-layout").get_json()
-    assert "results-viewer-empty-state" in str(layout_before)
+    try:
+        # First /results/ hit builds the empty-state viewer. Dash returns the
+        # bare index HTML; the actual layout is fetched via /_dash-layout.
+        assert client.get("/results/").status_code == 200
+        assert viewer_session.is_built() is True
+        layout_before = client.get("/results/_dash-layout").get_json()
+        assert "results-viewer-empty-state" in str(layout_before)
 
-    # POST hand-off; endpoint validates layout, swaps state, releases session.
-    post_resp = client.post(
-        "/sandbox/api/viewer/output-root",
-        data=json.dumps({"path": rel}),
-        content_type="application/json",
-    )
-    assert post_resp.status_code == 200, post_resp.data
-    payload = post_resp.get_json()
-    assert payload["status"] == "ok"
-    assert payload["abs_path"].endswith(rel)
-    assert viewer_session.is_built() is False, "session should be released"
+        # POST queues discovery and candidate construction. Only the terminal
+        # success publishes the already-built Results/Analysis pair.
+        post_resp = client.post(
+            "/sandbox/api/viewer/output-root",
+            data=json.dumps({"path": rel}),
+            content_type="application/json",
+        )
+        assert post_resp.status_code == 202, post_resp.data
+        accepted = post_resp.get_json()
+        assert accepted["status"] in {"queued", "running"}
+        assert accepted["abs_path"].endswith(rel)
+        assert post_resp.headers["Location"] == accepted["poll_path"]
 
-    # Next /results/ hit rebuilds with the new OutputRoot — empty-state gone.
-    assert client.get("/results/").status_code == 200
-    assert viewer_session.is_built() is True
-    layout_after = client.get("/results/_dash-layout").get_json()
-    layout_after_s = str(layout_after)
-    assert "results-viewer-empty-state" not in layout_after_s
-    assert "results-viewer-root" in layout_after_s
+        payload = _poll_terminal(client, accepted["poll_path"])
+        assert payload["status"] == "succeeded"
+        assert payload["abs_path"].endswith(rel)
+        assert viewer_session.is_built() is True
+
+        # The next /results/ hit serves the atomically published loaded app.
+        assert client.get("/results/").status_code == 200
+        assert viewer_session.is_built() is True
+        layout_after = client.get("/results/_dash-layout").get_json()
+        layout_after_s = str(layout_after)
+        assert "results-viewer-empty-state" not in layout_after_s
+        assert "results-viewer-root" in layout_after_s
+    finally:
+        manager.shutdown()
 
 
 def test_post_rejects_path_outside_sandbox(
@@ -116,14 +151,23 @@ def test_post_rejects_invalid_layout(
     sandbox = SandboxRoot.from_path(tmp_path)
     shell_app, _viewer_session = compose_hub(sandbox, start_idle_thread=False)
     client = shell_app.server.test_client()
+    manager: ResultsBindJobManager = shell_app.server.config[
+        CFG_RESULTS_BINDING_JOBS
+    ]
 
-    resp = client.post(
-        "/sandbox/api/viewer/output-root",
-        data=json.dumps({"path": "not_an_output"}),
-        content_type="application/json",
-    )
-    assert resp.status_code == 400
-    assert "master_measurements.parquet" in resp.get_json()["error"]
+    try:
+        resp = client.post(
+            "/sandbox/api/viewer/output-root",
+            data=json.dumps({"path": "not_an_output"}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 202
+        terminal = _poll_terminal(client, resp.get_json()["poll_path"])
+        assert terminal["status"] == "failed"
+        assert terminal["job"]["error_kind"] == "invalid"
+        assert "master_measurements.parquet" in terminal["job"]["error"]
+    finally:
+        manager.shutdown()
 
 
 def test_post_requires_path_in_body(

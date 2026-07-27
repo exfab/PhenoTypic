@@ -2,12 +2,15 @@
 
 Iframed dashboards (``dashboard.html`` artefacts produced by
 ``python -m phenotypic``) poll their progress files using **relative URLs**
-(``progress/manifest.json``, ``progress/failures.jsonl``). When a dashboard is
-iframed at ``/runs/plate_2026-04/output/dashboard.html``, the browser resolves
-those polls to ``/runs/plate_2026-04/output/progress/manifest.json``. Reaching
+(``../.phenotypic/progress/manifest.json``,
+``../.phenotypic/progress/failures.jsonl``). When a dashboard is iframed at
+``/runs/plate_2026-04/output/deliverables/dashboard.html``, the browser
+resolves those polls to
+``/runs/plate_2026-04/output/.phenotypic/progress/manifest.json``. Reaching
 that file requires a multi-segment route parameter — Flask's ``<path:file>``
-catch-all. A single-segment ``<file>`` would silently 404 the polls and the
-iframed dashboard would render once but never update, making it look frozen.
+catch-all. The generic route also preserves read compatibility for legacy
+``<output>/progress/`` paths. A single-segment ``<file>`` would silently 404
+both layouts and make an iframed dashboard look frozen.
 
 Security
     Every request runs ``SandboxRoot.resolve(...)`` first. ``..``-style URLs,
@@ -89,7 +92,8 @@ def build_runs_blueprint(
             404 — path escapes the sandbox, or target file is missing.
             403 — target file is unreadable (PermissionError).
         """
-        # ``rel_file`` may be e.g. "plate/output/progress/manifest.json".
+        # ``rel_file`` may be e.g.
+        # "plate/output/.phenotypic/progress/manifest.json".
         # We split off the directory and serve the file from it; this lets
         # ``send_from_directory`` apply its own safe-join + 404 semantics
         # for the leaf, while we apply sandbox containment to the whole

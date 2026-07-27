@@ -37,7 +37,7 @@ import gc
 import logging
 import threading
 import time
-from typing import Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, Iterable, TypeVar
 
 from phenotypic.gui._config import THREAD_NAME_PREFIX
 
@@ -46,6 +46,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "ToolSession",
     "start_idle_release_thread",
+    "swap_tool_session_states",
 ]
 
 T = TypeVar("T")
@@ -219,6 +220,68 @@ class ToolSession(Generic[T]):
     def __repr__(self) -> str:  # pragma: no cover - cosmetic
         built = "built" if self.is_built() else "empty"
         return f"<ToolSession name={self.name!r} {built}>"
+
+
+def swap_tool_session_states(
+    updates: Iterable[tuple["ToolSession[Any]", Any]],
+    *,
+    commit: Callable[[], None] | None = None,
+) -> None:
+    """Atomically replace a group of already-built tool states.
+
+    Every session lock is acquired before the shared ``commit`` callback or
+    any state assignment runs. A request can therefore observe the complete
+    old group or the complete new group, never one updated tool paired with
+    another tool's prior revision. Candidate states must be constructed
+    before calling this function.
+
+    Args:
+        updates: ``(session, candidate_state)`` pairs to publish together.
+        commit: Optional shared-state update executed while every session is
+            locked and before candidate states become visible.
+
+    Raises:
+        ValueError: If the same session appears more than once.
+        Exception: Any exception raised by ``commit``. No session state is
+            changed when that happens.
+    """
+    pairs = list(updates)
+    sessions = [session for session, _state in pairs]
+    if len({id(session) for session in sessions}) != len(sessions):
+        raise ValueError("each ToolSession may appear only once in a swap")
+
+    ordered_locks = sorted(
+        {id(session._lock): session._lock for session in sessions}.values(),
+        key=id,
+    )
+    for lock in ordered_locks:
+        lock.acquire()
+
+    stale_states: list[tuple[ToolSession[Any], Any]] = []
+    try:
+        if commit is not None:
+            commit()
+        accessed_at = time.monotonic()
+        for session, candidate in pairs:
+            if session._state is not None:
+                stale_states.append((session, session._state))
+            session._state = candidate
+            session._last_access = accessed_at
+    finally:
+        for lock in reversed(ordered_locks):
+            lock.release()
+
+    for session, stale in stale_states:
+        try:
+            session._teardown(stale)
+        except Exception:
+            logger.exception(
+                "ToolSession[%s]: teardown raised after atomic swap",
+                session.name,
+            )
+    if stale_states:
+        del stale_states
+        gc.collect()
 
 
 def _noop_teardown(_: object) -> None:

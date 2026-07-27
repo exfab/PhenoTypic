@@ -35,6 +35,7 @@ from playwright.sync_api import Page, expect
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ReplicateAgreement
+from phenotypic.schema import CULTURE_METADATA, EXPERIMENT_METADATA, METADATA
 from phenotypic.sdk_ import curation_labels_parquet_path
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
@@ -43,8 +44,12 @@ from tests._output_layout import (
     write_measurements_mirror,
     write_pipeline_json,
 )
-from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
-from phenotypic.schema import METADATA
+from tests.e2e.gui.conftest import (
+    _build_sandbox,
+    _start_live_server,
+    bind_results_output,
+    publish_coherent_terminal_evidence,
+)
 
 # Single-threaded Werkzeug dev server + Dash callback-chain timing flakes on
 # GHA shared runners (skipped on CI via ``-m "not ci_flaky"``); the SUT is
@@ -57,6 +62,8 @@ _DATASET = "ds1"
 _IMAGES = ("plate_001.tif", "plate_002.tif")
 _NROWS, _NCOLS = 3, 4
 _INSTANCE_ID = "qc-SE-standalone01"
+_DATASET_COLUMN = str(EXPERIMENT_METADATA.DATASET)
+_TIME_COLUMN = str(CULTURE_METADATA.TIME)
 
 
 def _build_master() -> pl.DataFrame:
@@ -69,9 +76,9 @@ def _build_master() -> pl.DataFrame:
                 label += 1
                 rows.append(
                     {
-                        "Metadata_Dataset": _DATASET,
+                        _DATASET_COLUMN: _DATASET,
                         str(METADATA.IMAGE_NAME): image,
-                        "Metadata_Time": 0.0,
+                        _TIME_COLUMN: 0.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,
@@ -155,6 +162,7 @@ def _seed_full_run(sandbox: Path) -> Path:
     # The per-image results/ tree drives ``layout.has_results`` -> layer toggle.
     (out / "results" / _DATASET / "measurements").mkdir(parents=True, exist_ok=True)
     write_pipeline_json(out, _pipeline())
+    publish_coherent_terminal_evidence(out, total_images=len(_IMAGES))
     return out
 
 
@@ -186,24 +194,7 @@ def hub_url(live_server: str) -> str:
 
 def _hand_off_viewer(page: Page, hub_url: str, output_rel: str) -> None:
     """POST a sandbox-relative output path to the viewer-handoff endpoint."""
-    page.goto(hub_url + "/")
-    page.wait_for_load_state("networkidle")
-    resp = page.evaluate(
-        """async (path) => {
-            const r = await fetch('/sandbox/api/viewer/output-root', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: path}),
-            });
-            const body = await r.text();
-            return {status: r.status, body};
-        }""",
-        output_rel,
-    )
-    assert resp["status"] == 200, (
-        f"viewer hand-off failed for {output_rel!r}: "
-        f"HTTP {resp['status']} body={resp['body']!r}"
-    )
+    bind_results_output(page, hub_url, output_rel)
 
 
 def _open_viewer_colony(page: Page, hub_url: str) -> None:

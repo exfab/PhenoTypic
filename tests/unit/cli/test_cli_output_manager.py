@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from pathlib import Path
 from unittest.mock import patch
 
@@ -29,11 +31,14 @@ from phenotypic.sdk_ import (
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
+    qc_review_state_path,
 )
+from phenotypic.sdk_._file_locking import exclusive_path_lock
 from phenotypic._cli._cli_output_manager import (
     _image_metadata_from_mirror,
     _collect_feature_headers,
     _load_pipeline_from_output_dir,
+    _reset_qc_review_state,
     aggregate_measurements,
     finalize_post_master_outputs,
     split_master_by_feature,
@@ -44,6 +49,35 @@ pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
     reason="CLI output manager uses POSIX atomic writes",
 )
+
+
+def test_review_state_reset_serializes_with_gui_writer(tmp_path: Path) -> None:
+    """CLI reset waits for the same interprocess boundary as GUI saves."""
+    output_dir = tmp_path / "out"
+    state_path = qc_review_state_path(output_dir)
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text('{"reviewed": true}', encoding="utf-8")
+    lock_path = state_path.with_name(f".{state_path.name}.lock")
+    lock_held = threading.Event()
+    release_lock = threading.Event()
+
+    def _hold_gui_writer_lock() -> None:
+        with exclusive_path_lock(lock_path):
+            lock_held.set()
+            assert release_lock.wait(timeout=5)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        writer = pool.submit(_hold_gui_writer_lock)
+        assert lock_held.wait(timeout=5)
+        reset = pool.submit(_reset_qc_review_state, output_dir)
+        with pytest.raises(TimeoutError):
+            reset.result(timeout=0.1)
+        assert state_path.exists()
+        release_lock.set()
+        writer.result(timeout=5)
+        reset.result(timeout=5)
+
+    assert not state_path.exists()
 
 
 def _make_master_df(pipeline: ImagePipeline) -> pl.DataFrame:

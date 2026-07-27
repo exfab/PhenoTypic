@@ -1,0 +1,162 @@
+"""Tests for the CLI's exact reserved GUI-log freshness exception."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from uuid import uuid4
+
+import pytest
+
+from phenotypic.phenotypicCLI import (
+    is_safe_gui_launch_state_entry,
+    is_safe_gui_log_entry,
+)
+from phenotypic.sdk_ import (
+    GUI_LAUNCH_OWNER_JSON,
+    RUN_LOG_DIRNAME,
+    STDOUT_LOG,
+    atomic_write_json,
+    progress_dir,
+)
+
+
+def test_stdout_only_gui_log_directory_is_safe(tmp_path: Path) -> None:
+    log_dir = tmp_path / RUN_LOG_DIRNAME
+    log_dir.mkdir()
+    (log_dir / STDOUT_LOG).write_text("", encoding="utf-8")
+
+    assert is_safe_gui_log_entry(log_dir)
+
+
+def test_empty_real_gui_log_directory_is_safe(tmp_path: Path) -> None:
+    log_dir = tmp_path / RUN_LOG_DIRNAME
+    log_dir.mkdir()
+
+    assert is_safe_gui_log_entry(log_dir)
+
+
+@pytest.mark.parametrize("child_name", ["stderr.log", "notes.txt"])
+def test_unrecognized_gui_log_file_is_not_safe(
+    tmp_path: Path, child_name: str
+) -> None:
+    log_dir = tmp_path / RUN_LOG_DIRNAME
+    log_dir.mkdir()
+    (log_dir / child_name).write_text("", encoding="utf-8")
+
+    assert not is_safe_gui_log_entry(log_dir)
+
+
+def test_nested_gui_log_directory_is_not_safe(tmp_path: Path) -> None:
+    log_dir = tmp_path / RUN_LOG_DIRNAME
+    (log_dir / "nested").mkdir(parents=True)
+
+    assert not is_safe_gui_log_entry(log_dir)
+
+
+def test_wrong_directory_name_is_not_safe(tmp_path: Path) -> None:
+    log_dir = tmp_path / ".other-log"
+    log_dir.mkdir()
+    (log_dir / STDOUT_LOG).write_text("", encoding="utf-8")
+
+    assert not is_safe_gui_log_entry(log_dir)
+
+
+def test_symlinked_gui_log_directory_is_not_safe(tmp_path: Path) -> None:
+    target = tmp_path / "real-log"
+    target.mkdir()
+    (target / STDOUT_LOG).write_text("", encoding="utf-8")
+    link = tmp_path / RUN_LOG_DIRNAME
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("directory symlinks are unavailable")
+
+    assert not is_safe_gui_log_entry(link)
+
+
+def test_symlinked_allowed_log_file_is_not_safe(tmp_path: Path) -> None:
+    target = tmp_path / "real.log"
+    target.write_text("", encoding="utf-8")
+    log_dir = tmp_path / RUN_LOG_DIRNAME
+    log_dir.mkdir()
+    link = log_dir / STDOUT_LOG
+    try:
+        link.symlink_to(target)
+    except (NotImplementedError, OSError):
+        pytest.skip("file symlinks are unavailable")
+
+    assert not is_safe_gui_log_entry(log_dir)
+
+
+def _write_launch_owner(output_dir: Path) -> Path:
+    owner = progress_dir(output_dir) / GUI_LAUNCH_OWNER_JSON
+    atomic_write_json(
+        owner,
+        {
+            "version": 1,
+            "run_id": "fresh",
+            "generation": str(uuid4()),
+            "mode": "local",
+            "output_dir": str(output_dir),
+            "rel_path": "fresh",
+            "status": "running",
+            "command_digest": "sha256:test",
+        },
+    )
+    return owner
+
+
+def test_exact_prelaunch_owner_state_is_safe(tmp_path: Path) -> None:
+    output_dir = tmp_path / "output"
+    owner = _write_launch_owner(output_dir)
+    owner.with_suffix(".lock").touch()
+
+    assert is_safe_gui_launch_state_entry(output_dir / ".phenotypic")
+
+
+@pytest.mark.parametrize(
+    ("relative_path", "contents"),
+    [
+        ("progress/job_metadata.json", "{}"),
+        ("processing_state.json", "{}"),
+        ("progress/run_completion.json", "{}"),
+    ],
+)
+def test_other_machine_state_is_not_fresh(
+    tmp_path: Path,
+    relative_path: str,
+    contents: str,
+) -> None:
+    output_dir = tmp_path / "output"
+    _write_launch_owner(output_dir)
+    extra = output_dir / ".phenotypic" / relative_path
+    extra.parent.mkdir(parents=True, exist_ok=True)
+    extra.write_text(contents, encoding="utf-8")
+
+    assert not is_safe_gui_launch_state_entry(output_dir / ".phenotypic")
+
+
+def test_owner_for_different_output_is_not_safe(tmp_path: Path) -> None:
+    output_dir = tmp_path / "output"
+    owner = _write_launch_owner(output_dir)
+    payload = owner.read_text(encoding="utf-8").replace(
+        str(output_dir),
+        str(tmp_path / "other"),
+    )
+    owner.write_text(payload, encoding="utf-8")
+
+    assert not is_safe_gui_launch_state_entry(output_dir / ".phenotypic")
+
+
+def test_symlinked_machine_state_is_not_safe(tmp_path: Path) -> None:
+    output_dir = tmp_path / "output"
+    real_output = tmp_path / "real-output"
+    _write_launch_owner(real_output)
+    output_dir.mkdir()
+    link = output_dir / ".phenotypic"
+    try:
+        link.symlink_to(real_output / ".phenotypic", target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("directory symlinks are unavailable")
+
+    assert not is_safe_gui_launch_state_entry(link)

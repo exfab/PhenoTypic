@@ -18,7 +18,10 @@ single-tool invocation does not need cross-tool state sharing.
 """
 from __future__ import annotations
 
+import atexit
 import logging
+import os
+from collections.abc import Callable
 from pathlib import Path
 
 import dash
@@ -39,12 +42,25 @@ from phenotypic.gui._url_prefix import configure_url_prefix_routing
 from phenotypic.gui.run_console._callbacks import register_callbacks
 from phenotypic.gui.run_console._layout import build_run_console_layout
 from phenotypic.gui.run_console._runner import LocalRunner
-from phenotypic.gui.shell._runs_registry import RunRegistry
+from phenotypic.gui.run_console._slurm import SlurmSubmitResult, submit_slurm
+from phenotypic.gui.run_console._slurm_observer import SlurmLifecycleObserver
+from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["create_app"]
+__all__ = ["SLURM_OBSERVER_EXTENSION", "create_app"]
+
+SLURM_OBSERVER_EXTENSION = "phenotypic_slurm_observer"
+
+
+def _bind_rehydrated_slurm_records(
+    observer: SlurmLifecycleObserver,
+    registry: RunRegistry,
+) -> None:
+    """Restore exact lifecycle bindings for nonterminal durable records."""
+    del registry  # The observer owns the shared registry instance.
+    observer.reconcile_durable_bindings()
 
 
 def create_app(
@@ -54,6 +70,11 @@ def create_app(
     server_url_prefix: str = DEFAULT_URL_PREFIX,
     registry: RunRegistry | None = None,
     runner: LocalRunner | None = None,
+    slurm_observer: SlurmLifecycleObserver | None = None,
+    slurm_submitter: Callable[..., SlurmSubmitResult] = submit_slurm,
+    slurm_canceller: Callable[..., object] | None = None,
+    action_acknowledgement_hook: Callable[[RunRecord], None] | None = None,
+    start_slurm_observer: bool | None = None,
 ) -> dash.Dash:
     """Build the Run console Dash app.
 
@@ -72,6 +93,17 @@ def create_app(
             ALWAYS pass a shared runner so a navigation-away does not
             kill in-flight subprocesses (the hub keeps the runner alive
             even when the Run console UI is released).
+        slurm_observer: Process-wide scheduler lifecycle observer. A fresh
+            observer is created for standalone use when omitted.
+        slurm_submitter: Submission dependency. Tests may inject a callable
+            that never invokes scheduler commands.
+        slurm_canceller: Optional cancellation dependency. Production uses
+            the shared lifecycle canceller; tests may inject a no-command
+            implementation.
+        action_acknowledgement_hook: Optional browser-test seam invoked after
+            durable launch handling and before callback acknowledgement.
+        start_slurm_observer: Whether to start the observer daemon. Defaults
+            to production-on and pytest-off.
 
     Returns:
         A configured :class:`dash.Dash` instance ready to mount under
@@ -83,6 +115,14 @@ def create_app(
 
     if runner is None:
         runner = LocalRunner()
+    if slurm_observer is None:
+        slurm_observer = SlurmLifecycleObserver(registry)
+    _bind_rehydrated_slurm_records(slurm_observer, registry)
+    if start_slurm_observer is None:
+        start_slurm_observer = "PYTEST_CURRENT_TEST" not in os.environ
+    if start_slurm_observer:
+        slurm_observer.start()
+        atexit.register(slurm_observer.stop)
 
     assets_folder = str(Path(__file__).parent / "_assets")
 
@@ -107,12 +147,17 @@ def create_app(
     # than threading it through every callback closure.
     app.server.config[CFG_RUNNER] = runner
     app.server.config[CFG_RUN_REGISTRY] = registry
+    app.server.extensions[SLURM_OBSERVER_EXTENSION] = slurm_observer
 
     register_callbacks(
         app,
         sandbox,
         registry=registry,
         runner=runner,
+        slurm_observer=slurm_observer,
+        slurm_submitter=slurm_submitter,
+        slurm_canceller=slurm_canceller,
+        action_acknowledgement_hook=action_acknowledgement_hook,
         server_url_prefix=server_url_prefix,
     )
 

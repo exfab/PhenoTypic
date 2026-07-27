@@ -208,6 +208,36 @@
   text-transform: uppercase;
 }
 
+.run-console-action-feedback {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.run-console-action-feedback--pending {
+  border-color: var(--color-blue);
+  color: var(--color-blue);
+}
+
+.run-console-action-feedback--ok {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.run-console-action-feedback--uncertain {
+  border-color: var(--color-warning);
+  color: var(--color-body);
+}
+
+.run-console-action-feedback--error {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
 .run-console-log-tail {
   background: transparent;
   color: #d1d5db;

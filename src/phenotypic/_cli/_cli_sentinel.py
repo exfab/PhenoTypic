@@ -1,11 +1,11 @@
 """SLURM sentinel job for monitoring pipeline progress.
 
 .. deprecated::
-    The standalone sentinel job has been replaced by checkpoint tasks
-    embedded in the array job scripts (``__PHENOTYPIC_MANIFEST__`` and
-    ``__PHENOTYPIC_FINALIZER__``). See :mod:`_cli_checkpoint_handler`
-    and :mod:`_cli_slurm_array_scripts`. This module is retained only
-    for in-flight runs that may still reference it.
+    The standalone sentinel job has been replaced by nonterminal checkpoint
+    tasks embedded in array scripts plus a scheduler-dependent terminal
+    finalizer. See :mod:`_cli_checkpoint_handler` and
+    :mod:`_cli_slurm_array_scripts`. This module is retained only for
+    in-flight runs that may still reference it.
 
 This Click command runs as a SLURM job, periodically rebuilding the progress
 manifest and resubmitting itself if work remains.
@@ -22,6 +22,7 @@ from pathlib import Path
 import click
 
 from ._dashboard import build_manifest
+from ._dashboard._manifest_builder import dataset_inventory_from_metadata
 from phenotypic.sdk_ import (
     JOB_METADATA_JSON,
     MANIFEST_JSON,
@@ -29,8 +30,26 @@ from phenotypic.sdk_ import (
     JobMetadataKey,
     sentinel_resubmitted_path,
 )
+from phenotypic.sdk_.slurm import sbatch_submission_environment
 
 logger = logging.getLogger(__name__)
+
+
+def _submit_sentinel_script(
+    sentinel_script: Path,
+) -> subprocess.CompletedProcess[str]:
+    """Resubmit a sentinel while preserving the caller's Python import path."""
+    return subprocess.run(
+        [
+            "sbatch",
+            "--parsable",
+            "--export=ALL",
+            str(sentinel_script),
+        ],
+        capture_output=True,
+        text=True,
+        env=sbatch_submission_environment(),
+    )
 
 
 @click.command()
@@ -94,7 +113,6 @@ def sentinel_main(
     datasets_info = job_metadata[JobMetadataKey.DATASETS]
     chunk_scripts = job_metadata.get(JobMetadataKey.CHUNK_SCRIPTS, [])
     chunk_job_ids = job_metadata.get(JobMetadataKey.CHUNK_JOB_IDS, {})
-    image_task_mapping = job_metadata.get(JobMetadataKey.IMAGE_TASK_MAPPING, {})
     input_path = job_metadata.get(JobMetadataKey.INPUT_PATH)
 
     # Build {dataset_name: total_images} mapping
@@ -123,6 +141,10 @@ def sentinel_main(
             slurm_job_ids=chunk_job_ids,
             chunk_scripts=chunk_scripts,
             input_path=input_path,
+            dataset_inventory=dataset_inventory_from_metadata(datasets_info),
+            processing_generation=job_metadata.get(
+                JobMetadataKey.PROCESSING_GENERATION
+            ),
         )
 
         # Update analysis sidecar data (partial results visible during run)
@@ -182,11 +204,7 @@ def sentinel_main(
     # If work remains and a sentinel script is available, resubmit
     if not is_complete and sentinel_script is not None:
         logger.info("Resubmitting sentinel via %s", sentinel_script)
-        result = subprocess.run(
-            ["sbatch", "--parsable", str(sentinel_script)],
-            capture_output=True,
-            text=True,
-        )
+        result = _submit_sentinel_script(sentinel_script)
         if result.returncode == 0:
             new_job_id = result.stdout.strip()
             logger.info("Sentinel resubmitted as SLURM job %s", new_job_id)

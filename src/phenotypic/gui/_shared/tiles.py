@@ -115,7 +115,7 @@ def _dim_outside_bbox(
     """
     if alpha <= 0.0:
         return canvas
-    out = canvas.astype(np.float32)
+    out: np.ndarray = canvas.astype(np.float32)
     mask = np.ones(canvas.shape[:2], dtype=bool)
     top, left, bottom, right = keep
     if bottom > top and right > left:
@@ -638,6 +638,7 @@ def register_crop_route(
 
     from phenotypic.gui._config import TILE_DIM_MAX, TILE_DIM_MIN
     from phenotypic.gui.results_viewer._filtered_state import (
+        KEY_DATASET,
         KEY_IMAGE_FILE,
         KEY_OBJECT_LABEL,
     )
@@ -735,7 +736,8 @@ def register_crop_route(
         try:
             row = (
                 output_root.master_df.filter(
-                    (pl.col(KEY_IMAGE_FILE).cast(pl.String) == stem)
+                    (pl.col(KEY_DATASET).cast(pl.String) == dataset)
+                    & (pl.col(KEY_IMAGE_FILE).cast(pl.String) == stem)
                     & (pl.col(KEY_OBJECT_LABEL).cast(pl.Int64) == label_int)
                 )
                 .select(select_cols)
@@ -776,6 +778,12 @@ def register_crop_route(
         # full-resolution HDF layer when ``results/`` is present, else the
         # baked overlay PNG (standalone deliverables bundle). ``None`` means
         # neither source exists -> 404.
+        if not output_root.snapshot_is_current():
+            return (
+                "conflict: processing sources changed; refresh the snapshot",
+                409,
+            )
+        source_token = output_root.bound_image_source_token(dataset, stem)
         try:
             png_bytes = crop_colony(
                 output_root,
@@ -800,6 +808,19 @@ def register_crop_route(
             )
             return ("internal error: crop generation failed", 500)
 
+        if (
+            not output_root.snapshot_is_current()
+            or not output_root.image_source_token_is_current(
+                dataset,
+                stem,
+                source_token,
+            )
+        ):
+            return (
+                "conflict: processing sources changed during crop read; "
+                "refresh the snapshot",
+                409,
+            )
         if png_bytes is None:
             return (
                 f"not found: no image source for {dataset!r}/{stem!r}",
