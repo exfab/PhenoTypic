@@ -12,9 +12,13 @@ Open the `Viewer` tab in the hub:
 ![Viewer tab in empty state.](../../_static/gui_images/view_results/01_viewer_empty.png)
 
 The hub viewer starts in **empty state**. Pick a CLI output directory in the
-sidebar and use the hand-off banner to bind it. Results and Analysis receive
-one coherent, read-only snapshot, so a failed or superseded refresh keeps the
-previous output visible rather than mixing two runs. Two other ways to get a
+sidebar and use the hand-off banner to bind it. The shared binding panel reports
+queued/discovery/publication progress and permits cancellation. Results and
+Analysis receive one coherent, read-only snapshot, so a failed, cancelled, or
+superseded bind keeps the previous output visible rather than mixing two runs.
+If the output-consistency report finds contradictory or incomplete terminal
+evidence, you may inspect it but mutation controls for QC, Error, curation,
+Analysis, rebuild, and publication stay disabled. Two other ways to get a
 populated viewer are:
 
 1. **Standalone launch** (recommended for now). Run
@@ -32,6 +36,8 @@ populated viewer are:
 
 The remaining screenshots come from the standalone launcher pointed at
 the output the [Run Locally](04_run_local.md) page produced.
+
+![Hub viewer after an asynchronous bind has atomically published the Results and Analysis snapshot.](../../_static/gui_images/view_results/05_hub_bound_snapshot.png)
 
 ## Loaded viewer
 

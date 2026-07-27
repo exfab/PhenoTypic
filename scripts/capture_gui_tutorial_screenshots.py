@@ -709,6 +709,58 @@ def _emit_empty_state_shot(
     page.close()
 
 
+def _bind_hub_results_asynchronously(page, base_url: str) -> None:
+    """Bind the tutorial output through the hub's asynchronous API.
+
+    This intentionally exercises the production bind-job contract instead of
+    relying on a standalone viewer for every loaded-state capture.  The output
+    was produced by :func:`run_cli_once`, so it has coherent terminal evidence;
+    the helper waits for the server's terminal job response before reloading the
+    Results mount that serves the atomically published snapshot.
+    """
+    submission = page.evaluate(
+        """async () => {
+            const response = await fetch('/sandbox/api/viewer/output-root', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path: 'results'}),
+            });
+            return {status: response.status, payload: await response.json()};
+        }"""
+    )
+    if submission["status"] != 202:
+        raise RuntimeError(f"hub Results bind was rejected: {submission!r}")
+    poll_path = submission["payload"].get("poll_path")
+    if not isinstance(poll_path, str) or not poll_path:
+        raise RuntimeError(f"hub Results bind omitted poll_path: {submission!r}")
+
+    terminal: dict[str, Any] | None = None
+    for _ in range(120):
+        poll = page.evaluate(
+            """async path => {
+                const response = await fetch(path);
+                return {status: response.status, payload: await response.json()};
+            }""",
+            poll_path,
+        )
+        if poll["status"] != 200:
+            raise RuntimeError(f"hub Results bind poll failed: {poll!r}")
+        payload = poll["payload"]
+        job = payload.get("job", {}) if isinstance(payload, dict) else {}
+        if job.get("terminal") is True:
+            terminal = payload
+            break
+        page.wait_for_timeout(250)
+    if terminal is None:
+        raise RuntimeError("hub Results bind did not reach a terminal state")
+    if terminal.get("status") != "succeeded":
+        raise RuntimeError(f"hub Results bind did not succeed: {terminal!r}")
+
+    page.goto(base_url + "/results/")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(800)
+
+
 # ---------------------------------------------------------------------------
 # Linear builder interaction helpers
 # ---------------------------------------------------------------------------
@@ -1391,18 +1443,21 @@ def _capture_run_slurm(context, base_url: str) -> None:
 # --- view results -------------------------------------------------------
 
 def _capture_view_results(context, base_url: str) -> None:
-    """Empty-state hub viewer screenshot only.
-
-    Loaded-viewer screenshots are captured separately by
-    :func:`capture_standalone_viewer_screenshots` after the hub is torn
-    down — the hub's viewer mount renders empty in v1 (rebuild-on-select
-    is not wired), so we boot the standalone viewer pointed at the real
-    CLI output for the populated screenshots.
-    """
-    _emit_empty_state_shot(
-            context, base_url, "/results/", "view_results", "01_viewer_empty.png",
-            log="[shot] workflow=view_results (empty state via hub)",
-    )
+    """Capture the empty, asynchronous-bind, and loaded hub Results states."""
+    print("[shot] workflow=view_results (hub async binding)")
+    page = _new_page(context, base_url, "/results/")
+    _save(page, "view_results", "01_viewer_empty.png")
+    _bind_hub_results_asynchronously(page, base_url)
+    page.wait_for_selector("#results-viewer-empty-state", state="detached", timeout=15_000)
+    snapshot_status = page.locator("#header-snapshot-status")
+    snapshot_status.wait_for(state="visible", timeout=15_000)
+    if snapshot_status.inner_text().strip() != "Current":
+        raise RuntimeError(
+            "hub Results bind did not publish a coherent mutation-enabled "
+            f"snapshot: {snapshot_status.inner_text()!r}"
+        )
+    _save(page, "view_results", "05_hub_bound_snapshot.png")
+    page.close()
 
 
 def _capture_pick_points(context, base_url: str) -> None:
@@ -1815,8 +1870,8 @@ def _capture_heatmap_exploration(context, base_url: str) -> None:
        ``Grid_ColNum`` are missing (the synthetic tutorial dataset
        does not run ``GridMeasureFeatures``).
     2. ``02_color_picker_open.png`` — the color column dropdown
-       open so the reader can see the measurement / QC severity
-       union the dropdown surfaces.
+       open so the reader can see the available measurement columns.
+       Outputs with QC data also contribute QC-derived options.
     """
     print("[shot] workflow=heatmap_exploration")
     page = _new_page(context, base_url, "/results/")
@@ -1832,8 +1887,8 @@ def _capture_heatmap_exploration(context, base_url: str) -> None:
             pass
     _save(page, "heatmap_exploration", "01_default_view.png")
 
-    # Open the color picker dropdown so the reader sees the union of
-    # measurement columns + QC severity columns.
+    # Open the color picker dropdown so the available columns are visible.
+    # This fixture need not contain a QC-derived option for every capture.
     color_picker = page.locator("#heatmap-color-picker")
     if color_picker.count() > 0:
         try:

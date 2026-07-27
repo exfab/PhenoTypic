@@ -35,12 +35,15 @@ These are bare *filenames*, not paths. The user-facing run artifacts
 under ``<output>/deliverables/`` — ``DELIVERABLES_DIRNAME`` (= ``"deliverables"``,
 backed by ``DIR_DELIVERABLES`` in :mod:`phenotypic.sdk_`). Join them via the
 ``phenotypic.sdk_`` path helpers (``deliverables_dir(output)``,
-``master_measurements_parquet_path(output)``, …). ``RESULTS_DIRNAME`` and
-``QC_DIRNAME`` are *not* deliverables and stay at the output-dir root; the
-machine-state sidecars ``PROGRESS_DIRNAME`` (``progress/``) and
+``master_measurements_parquet_path(output)``, …). ``RESULTS_DIRNAME`` is not
+a deliverable and stays at the output-dir root. ``QC_DIRNAME`` resolves below
+``deliverables/`` through ``qc_dir(output)``; legacy root-level QC reads go
+through the corresponding resolver. The machine-state sidecars
+``PROGRESS_DIRNAME`` (``progress/``) and
 ``processing_state.json`` now live under the hidden ``<output>/.phenotypic/``
 cache (``PHENOTYPIC_CACHE_DIRNAME``), resolved for legacy runs via
-``resolve_manifest_json_path``.
+``resolve_progress_dir`` / ``resolve_manifest_json_path`` and
+``resolve_processing_state_path``.
 """
 
 from __future__ import annotations
@@ -427,9 +430,10 @@ RAW_IMAGE_EXTS: frozenset[str] = frozenset(
 # generated HTML reports, README, and pipeline.json) now resolve under
 # ``<output>/deliverables/`` (DELIVERABLES_DIRNAME / DIR_DELIVERABLES) via the
 # phenotypic.sdk_ path helpers (deliverables_dir, master_measurements_parquet_path,
-# …). The per-image results dir and the qc dir stay at the output-dir root,
-# while machine-state (progress dir, processing_state.json, processing_events.log)
-# now lives under the hidden cache dir ``<output>/.phenotypic/``
+# …). The per-image results dir stays at the output-dir root; QC resolves
+# under ``<output>/deliverables/qc/`` (with a legacy root resolver). Machine
+# state (progress dir, processing_state.json, processing_events.log) lives
+# under the hidden cache dir ``<output>/.phenotypic/``
 # (PHENOTYPIC_CACHE_DIRNAME / DIR_PHENOTYPIC); resolve it via the
 # phenotypic.sdk_ helpers (progress_dir, resolve_manifest_json_path, …).
 #

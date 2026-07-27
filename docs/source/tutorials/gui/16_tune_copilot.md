@@ -60,8 +60,10 @@ also supplied — so a GUI-authored spec is always launchable:
 
 The search-space and scorer sections stay locked until a pipeline is
 present; the gate note confirms the selected pipeline and metadata once
-both are supplied. Pressing **Continue** writes a typed, path-backed
-authored spec under `<root>/.phenotypic-gui/presets/tune/` and advances you
+both are supplied. One revisioned Setup draft supplies the rendered fields,
+validation, Continue, spec write, copyable command, and Deploy request.
+Pressing **Continue** writes a typed, path-backed authored spec under
+`<root>/.phenotypic-gui/presets/tune/` and advances you
 to **Run**. Existing scorer/search-space/strategy/budget/storage values are
 preserved unless explicitly changed. Source, metadata, and authored-spec
 fingerprints prevent a moved or edited file from being silently reused. (You

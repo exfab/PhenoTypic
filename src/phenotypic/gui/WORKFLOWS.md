@@ -35,11 +35,11 @@ build.
 | ID             | Title                | Description                                                                | Capture function          | Tutorial page                            | Status     |
 | -------------- | -------------------- | -------------------------------------------------------------------------- | ------------------------- | ---------------------------------------- | ---------- |
 | setup          | Setup & landing      | First-launch home page tour: shell chrome, grouped tab nav (Home + Pipeline/Results dropdowns), sandbox label. | `_capture_setup`          | `gui/01_setup.md`            | ✅ shipping |
-| file_explorer  | File explorer        | Sidebar tree, capability badges, hidden + symlink toggles, refresh.        | `_capture_file_explorer`  | `gui/02_file_explorer.md`    | ✅ shipping |
+| file_explorer  | File explorer        | Sidebar tree, capability badges, hidden + symlink toggles, and one Refresh revision that retires stale Browse/Timeline state.        | `_capture_file_explorer`  | `gui/02_file_explorer.md`    | ✅ shipping |
 | build_pipeline | Build a pipeline     | Fixed linear port map with view-only zoom/fit controls, click-only palette insertion, green continuation target, side loader, Save / Load, and embedded-pipeline breadcrumbs. | `_capture_build_pipeline` | `gui/03_build_pipeline.md`   | ✅ shipping |
 | run_local      | Run locally          | Run console form, pipeline / input / output pickers, generation receipts, uncertain acknowledgement handling, terminal Cancel gating, and retained logs. | `_capture_run_local`      | `gui/04_run_local.md`        | ✅ shipping |
 | run_slurm      | Run on SLURM         | SLURM mode toggle, advanced config, `sbatch --export=ALL`, and durable generation-bound ordinary/staged lifecycle observation, logs, cancellation, publication, restart guidance. | `_capture_run_slurm`      | `gui/05_run_slurm.md`        | ✅ shipping |
-| view_results   | View results         | Empty-state hub mount, sidebar binding into coherent read-only Results/Analysis snapshots, populated standalone viewer, and measurement table. | `_capture_view_results`   | `gui/06_view_results.md`     | ✅ shipping |
+| view_results   | View results         | Empty-state hub mount, asynchronous sidebar binding with coherent read-only Results/Analysis snapshots and consistency diagnostics, populated hub/standalone viewers, and measurement table. | `_capture_view_results`   | `gui/06_view_results.md`     | ✅ shipping |
 | pick_points    | Manual point picker  | Pickable badge, picker modal, RGB / Input channel toggle, confirm round trip. | `_capture_pick_points`    | `gui/07_pick_points.md`      | ✅ shipping |
 | analysis       | Analysis sub-app     | `/analysis/` mount, pipeline header, post / filter / edge / model section authoring, opaque-analyzer preservation, and atomic guarded publication of class-named artifacts plus configured `PlotAnalysis` refresh. | `_capture_analysis` | `gui/08_analysis.md` | ✅ shipping |
 | aux_ports      | Fill aux op params | Op-typed side-loader rows render gold port buttons on the left; selecting a side target and clicking a compatible operation fills/replaces the hidden aux value, with clear/drill/help actions in the value row. | `_capture_aux_ports` | `gui/09_aux_ports.md`     | ✅ shipping |
@@ -58,10 +58,11 @@ build.
 > **`view_results` note.** The empty-state screenshot
 > (`view_results/01_viewer_empty.png`) is captured by
 > `_capture_view_results` while the hub is mounted with no
-> `output_root`. The populated screenshots
-> (`02_viewer_loaded.png`, `03_measurement_table.png`) come from
-> `capture_standalone_viewer_screenshots`, which spins up the
-> standalone viewer against a real CLI output. Both contribute to the
+> `output_root`. That same capture then binds the coherent synthetic output
+> asynchronously and records `05_hub_bound_snapshot.png`. The populated
+> standalone screenshots (`02_viewer_loaded.png`, `03_measurement_table.png`)
+> come from `capture_standalone_viewer_screenshots`, which spins up the
+> standalone viewer against the same real CLI output. All contribute to the
 > same `view_results/` folder; the validator only requires the primary
 > `_capture_view_results` to be defined + dispatched.
 

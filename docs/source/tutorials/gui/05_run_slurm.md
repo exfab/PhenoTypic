@@ -60,7 +60,7 @@ as cancelled.
 
 Key artifacts are:
 
-- `<output_dir>/progress/job_metadata.json` with the array primary job id
+- `<output_dir>/.phenotypic/progress/job_metadata.json` with the array primary job id
   and per-chunk job ids. The hub reads this file to surface the
   `slurm-<id>` row in Recent Runs — it does **not** parse Rich-formatted
   stdout (locale and terminal-width fragile).
@@ -72,8 +72,9 @@ Key artifacts are:
 Restarting the GUI does not cancel submitted work. On startup it rehydrates
 durable output records and reattaches only when it can prove the matching
 generation. If a restart occurs during submission, wait for scheduler metadata
-and use Refresh rather than launching the same output again. Keep `progress/`
-and staged-controller ledgers intact when redeploying the hub.
+and use Refresh rather than launching the same output again. Keep
+`.phenotypic/progress/` and staged-controller ledgers intact when redeploying
+the hub.
 
 For deeper SLURM operational detail (chunk sizing, recompile-on-resume,
 per-chunk cgroups), see [SLURM Pipelines](../../how_to/pages/slurm_pipelines.md).
