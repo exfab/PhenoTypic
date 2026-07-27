@@ -143,22 +143,32 @@ def test_source_reset_revision_changes_when_shared_refresh_changes() -> None:
     assert first[12] != refreshed[12]
 
 
-def test_source_revision_authority_retires_delayed_render() -> None:
+def test_source_revision_authority_isolates_browser_sessions() -> None:
     authority = SourceRevisionAuthority()
+    authority.ensure_session("tab-a")
+    authority.ensure_session("tab-b")
 
-    assert authority.is_current(None)
-    assert authority.authorize_grid(None, "initial-grid")
-    assert authority.grid_is_current("initial-grid")
-    authority.replace("refresh-1")
-    assert not authority.grid_is_current("initial-grid")
-    assert authority.is_current("refresh-1")
-    assert authority.authorize_grid("refresh-1", "refresh-1-grid")
-    authority.replace("refresh-2")
-    assert not authority.is_current("refresh-1")
-    assert not authority.authorize_grid("refresh-1", "delayed-grid")
-    assert not authority.grid_is_current("refresh-1-grid")
-    assert not authority.grid_is_current("delayed-grid")
-    assert authority.is_current("refresh-2")
+    assert authority.authorize_grid("tab-a", None, "tab-a-grid")
+    assert authority.authorize_grid("tab-b", None, "tab-b-grid")
+    generation = authority.begin_reset("tab-a")
+    assert authority.publish_reset("tab-a", generation, "tab-a-refresh")
+
+    assert not authority.grid_is_current("tab-a", "tab-a-grid")
+    assert authority.grid_is_current("tab-b", "tab-b-grid")
+    assert authority.is_current("tab-a", "tab-a-refresh")
+    assert authority.is_current("tab-b", None)
+
+
+def test_source_revision_authority_rejects_out_of_order_reset_and_recovers() -> None:
+    authority = SourceRevisionAuthority()
+    older = authority.begin_reset("tab-a")
+    newer = authority.begin_reset("tab-a")
+
+    assert authority.publish_reset("tab-a", newer, "refresh-2")
+    assert not authority.publish_reset("tab-a", older, "refresh-1")
+    assert authority.is_current("tab-a", "refresh-2")
+    assert authority.authorize_grid("tab-a", "refresh-2", "refresh-2-grid")
+    assert authority.grid_is_current("tab-a", "refresh-2-grid")
 
 
 def test_popout_event_is_revision_bound_and_current_source_contained(

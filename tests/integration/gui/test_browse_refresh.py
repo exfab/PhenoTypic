@@ -2,13 +2,17 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+import threading
 from typing import Any
 
 import dash
 import pytest
+from dash.exceptions import PreventUpdate
 
 from phenotypic.gui.browse import _ids as browse_ids
+from phenotypic.gui.browse import _callbacks as browse_callbacks
 from phenotypic.gui.browse._callbacks import register_callbacks
 from phenotypic.gui.shell._ids import (
     SHELL_CLASSIFIER_CACHE_STORE,
@@ -82,10 +86,70 @@ def test_timeline_reset_consumes_shared_refresh_revision(tmp_path: Path) -> None
         SHELL_SOURCE_IMAGE_ROOT_STORE,
         SHELL_CLASSIFIER_CACHE_STORE,
     }
-    first = reset_timeline({"version": 1}, 10)
-    refreshed = reset_timeline({"version": 1}, 11)
+    first = reset_timeline({"version": 1}, 10, "browser-1")
+    refreshed = reset_timeline({"version": 1}, 11, "browser-1")
     assert first[13] != refreshed[13]
     assert refreshed[10].children == "Loading current source…"
     assert refreshed[11] == []
     assert refreshed[14] is None
     assert browse_ids.BROWSE_TL_SOURCE_REVISION in str(metadata["output"])
+
+
+def test_out_of_order_timeline_reset_cannot_roll_back_and_next_reset_recovers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sandbox = SandboxRoot.from_path(tmp_path)
+    app = dash.Dash(__name__, suppress_callback_exceptions=True)
+    register_callbacks(app, sandbox)
+    reset_timeline, _metadata = _callback_named(
+        app,
+        "_reset_timeline_for_source",
+    )
+    original_reset = browse_callbacks.source_reset_values
+    older_started = threading.Event()
+    release_older = threading.Event()
+    call_lock = threading.Lock()
+    call_count = 0
+
+    def _ordered_reset(payload: object, revision: object) -> tuple[object, ...]:
+        nonlocal call_count
+        with call_lock:
+            call_count += 1
+            current_call = call_count
+        if current_call == 1:
+            older_started.set()
+            assert release_older.wait(timeout=5)
+        return original_reset(payload, revision)
+
+    monkeypatch.setattr(browse_callbacks, "source_reset_values", _ordered_reset)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        older = executor.submit(
+            reset_timeline,
+            {"relative_path": "older"},
+            20,
+            "browser-1",
+        )
+        assert older_started.wait(timeout=5)
+        newer = reset_timeline(
+            {"relative_path": "newer"},
+            21,
+            "browser-1",
+        )
+        release_older.set()
+        with pytest.raises(PreventUpdate):
+            older.result(timeout=5)
+
+    assert newer[13] == original_reset(
+        {"relative_path": "newer"},
+        21,
+    )[13]
+    recovered = reset_timeline(
+        {"relative_path": "recovered"},
+        22,
+        "browser-1",
+    )
+    assert recovered[13] == original_reset(
+        {"relative_path": "recovered"},
+        22,
+    )[13]

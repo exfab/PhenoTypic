@@ -12,7 +12,7 @@ import json
 import logging
 import threading
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from pathlib import PurePosixPath
 from typing import Any, Literal
@@ -97,6 +97,15 @@ class _AuthorizedTimelineRevision:
     source_root: Path
 
 
+@dataclass
+class _SourceRevisionState:
+    """Mutable server authority for one browser's source refresh lifecycle."""
+
+    generation: int = 0
+    revision: str | None = None
+    grid_revisions: set[str] = field(default_factory=set)
+
+
 class TimelineRevisionAuthority:
     """Thread-safe current Timeline revision authority keyed by browser session."""
 
@@ -148,36 +157,71 @@ class TimelineRevisionAuthority:
 
 
 class SourceRevisionAuthority:
-    """Thread-safe authority for the current Browse source refresh revision."""
+    """Thread-safe source refresh authority isolated by browser session."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._revision: str | None = None
-        self._grid_revisions: set[str] = set()
+        self._by_session: dict[str, _SourceRevisionState] = {}
 
-    def replace(self, revision: str) -> None:
-        """Retire every render that was computed for an older revision."""
+    def ensure_session(self, session_id: str) -> None:
+        """Create the initial, unrefreshed authority for ``session_id``."""
         with self._lock:
-            self._revision = revision
-            self._grid_revisions.clear()
+            self._by_session.setdefault(session_id, _SourceRevisionState())
 
-    def is_current(self, revision: str | None) -> bool:
-        """Return whether ``revision`` is the live source refresh revision."""
+    def begin_reset(self, session_id: str) -> int:
+        """Start a newer reset and immediately retire its session's grids."""
         with self._lock:
-            return self._revision == revision
+            current = self._by_session.setdefault(
+                session_id,
+                _SourceRevisionState(),
+            )
+            current.generation += 1
+            current.revision = None
+            current.grid_revisions.clear()
+            return current.generation
 
-    def authorize_grid(self, source_revision: str | None, grid_revision: str) -> bool:
-        """Publish a grid identity only while its source revision is current."""
+    def publish_reset(
+        self,
+        session_id: str,
+        generation: int,
+        revision: str,
+    ) -> bool:
+        """Publish only if no newer reset for this session has started."""
         with self._lock:
-            if self._revision != source_revision:
+            current = self._by_session.get(session_id)
+            if current is None or current.generation != generation:
                 return False
-            self._grid_revisions.add(grid_revision)
+            current.revision = revision
             return True
 
-    def grid_is_current(self, grid_revision: str) -> bool:
+    def is_current(self, session_id: str, revision: str | None) -> bool:
+        """Return whether ``revision`` is the live source refresh revision."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            return current is not None and current.revision == revision
+
+    def authorize_grid(
+        self,
+        session_id: str,
+        source_revision: str | None,
+        grid_revision: str,
+    ) -> bool:
+        """Publish a grid identity only while its source revision is current."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            if current is None or current.revision != source_revision:
+                return False
+            current.grid_revisions.add(grid_revision)
+            return True
+
+    def grid_is_current(self, session_id: str, grid_revision: str) -> bool:
         """Return whether a grid was published for the live source revision."""
         with self._lock:
-            return grid_revision in self._grid_revisions
+            current = self._by_session.get(session_id)
+            return (
+                current is not None
+                and grid_revision in current.grid_revisions
+            )
 
 
 # --------------------------------------------------------------------------
@@ -651,17 +695,27 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         Output(ids.BROWSE_TL_POPOUT_EVENT, "data"),
         Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
         Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
+        State(ids.BROWSE_TL_SESSION, "data"),
         prevent_initial_call=True,
     )
     def _reset_timeline_for_source(
         source_payload: object,
         refresh_revision: object,
+        session_id: object,
     ):
         # One callback response retires every source-derived authoring and
         # rendered value. Downstream callbacks may then build a fresh matrix,
         # but no old-source state remains authoritative in the interim.
+        if not isinstance(session_id, str) or not session_id:
+            raise dash.exceptions.PreventUpdate
+        reset_generation = source_revision_authority.begin_reset(session_id)
         values = source_reset_values(source_payload, refresh_revision)
-        source_revision_authority.replace(str(values[13]))
+        if not source_revision_authority.publish_reset(
+            session_id,
+            reset_generation,
+            str(values[13]),
+        ):
+            raise dash.exceptions.PreventUpdate
         return values
 
     @app.callback(
@@ -893,6 +947,7 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         Input(ids.BROWSE_TL_SOURCE_REVISION, "data"),
         Input(SHELL_METADATA_CSV_STORE, "data"),
         State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        State(ids.BROWSE_TL_SESSION, "data"),
     )
     def _render_grid(
         mode: str | None,
@@ -907,10 +962,17 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         source_revision: str | None,
         metadata_payload: object,
         source_payload: object,
+        session_id: object,
     ):
         if mode != "timeline":
             raise dash.exceptions.PreventUpdate
-        if not source_revision_authority.is_current(source_revision):
+        if not isinstance(session_id, str) or not session_id:
+            raise dash.exceptions.PreventUpdate
+        source_revision_authority.ensure_session(session_id)
+        if not source_revision_authority.is_current(
+            session_id,
+            source_revision,
+        ):
             raise dash.exceptions.PreventUpdate
         revision = timeline_revision_token(
             source_payload,
@@ -973,6 +1035,7 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
             records, display_size=display_size, prefix=prefix
         )
         if not source_revision_authority.authorize_grid(
+            session_id,
             source_revision,
             revision,
         ):
@@ -1063,9 +1126,16 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
             if isinstance(candidate, Mapping)
             else None
         )
+        candidate_session = (
+            candidate.get("session_id")
+            if isinstance(candidate, Mapping)
+            else None
+        )
         if (
             not isinstance(candidate_revision, str)
+            or not isinstance(candidate_session, str)
             or not source_revision_authority.grid_is_current(
+                candidate_session,
                 candidate_revision
             )
         ):

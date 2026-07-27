@@ -15,7 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import expect
+from playwright.sync_api import BrowserContext, expect
 
 from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
 from phenotypic.gui.shell._sandbox import SandboxRoot
@@ -746,3 +746,70 @@ def test_shared_refresh_rescans_selected_source_and_retires_timeline_state(
     finally:
         late_image.unlink(missing_ok=True)
         late_dataset.rmdir()
+
+
+def test_shared_refresh_authority_is_isolated_between_browser_tabs(
+    live_browse_timeline,
+    fake_sandbox: Path,
+    context: BrowserContext,
+    hub_url: str,
+) -> None:
+    """A refresh in one tab cannot retire another tab's authorized grid."""
+    from PIL import Image as PILImage
+
+    first_page = live_browse_timeline
+    second_page = context.new_page()
+    late_dataset = fake_sandbox / "plate1" / "tab-one-refresh"
+    late_image = late_dataset / "late.png"
+    try:
+        second_page.goto(hub_url + "/browse/")
+        second_page.click("text=Timeline")
+        second_page.wait_for_selector(".timeline-cell[data-src][data-ref]")
+        _wait_for_authorized_grid(first_page)
+        _wait_for_authorized_grid(second_page)
+        first_session = first_page.locator("#browse-tl-grid").get_attribute(
+            "data-session-id"
+        )
+        second_session = second_page.locator("#browse-tl-grid").get_attribute(
+            "data-session-id"
+        )
+        assert first_session
+        assert second_session
+        assert first_session != second_session
+        second_revision = second_page.locator(
+            "#browse-tl-grid"
+        ).get_attribute("data-grid-revision")
+
+        late_dataset.mkdir()
+        PILImage.new("RGB", (300, 200), (75, 50, 25)).save(late_image)
+        first_page.click("#shell-sidebar-refresh")
+        first_page.wait_for_selector(
+            '.timeline-cell[data-src][data-row="tab-one-refresh"][data-ref]',
+            timeout=10_000,
+        )
+        _wait_for_authorized_grid(first_page)
+
+        assert (
+            second_page.locator("#browse-tl-grid").get_attribute(
+                "data-grid-revision"
+            )
+            == second_revision
+        )
+        second_cell = second_page.locator(
+            ".timeline-cell[data-src][data-ref]"
+        ).first
+        second_cell.hover()
+        second_cell.locator(".timeline-cell-popout").click()
+        second_page.wait_for_function(
+            "() => { const d = document.getElementById("
+            "'browse-tl-popout-modal');"
+            " const m = d && d.closest('.modal');"
+            " return m && m.classList.contains('show'); }",
+            timeout=10_000,
+        )
+        expect(second_page.locator("#browse-tl-popout-title")).not_to_be_empty()
+    finally:
+        second_page.close()
+        late_image.unlink(missing_ok=True)
+        if late_dataset.exists():
+            late_dataset.rmdir()
