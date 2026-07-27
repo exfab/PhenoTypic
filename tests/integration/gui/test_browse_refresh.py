@@ -13,6 +13,7 @@ from dash.exceptions import PreventUpdate
 
 from phenotypic.gui.browse import _ids as browse_ids
 from phenotypic.gui.browse import _callbacks as browse_callbacks
+from phenotypic.gui.browse._source_render import encode_token
 from phenotypic.gui.browse._callbacks import (
     SourceRevisionAuthority,
     TimelineRevisionAuthority,
@@ -105,7 +106,16 @@ def test_out_of_order_timeline_reset_cannot_roll_back_and_next_reset_recovers(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "image.png").write_bytes(b"image")
     sandbox = SandboxRoot.from_path(tmp_path)
+    source_payload = source_payload_from_path(
+        sandbox,
+        source,
+        source="manual",
+    )
+    assert source_payload is not None
     app = dash.Dash(__name__, suppress_callback_exceptions=True)
     register_callbacks(app, sandbox)
     reset_timeline, _metadata = _callback_named(
@@ -113,6 +123,14 @@ def test_out_of_order_timeline_reset_cannot_roll_back_and_next_reset_recovers(
         "_reset_timeline_for_source",
     )
     render_grid, _render_metadata = _callback_named(app, "_render_grid")
+    authorize_revision, _authorize_metadata = _callback_named(
+        app,
+        "_authorize_revision",
+    )
+    approve_popout, _approve_metadata = _callback_named(
+        app,
+        "_approve_popout",
+    )
     original_reset = browse_callbacks.source_reset_values
     older_started = threading.Event()
     release_older = threading.Event()
@@ -155,25 +173,57 @@ def test_out_of_order_timeline_reset_cannot_roll_back_and_next_reset_recovers(
                 "browser-1",
             )
         newer = reset_timeline(
-            {"relative_path": "newer"},
+            source_payload,
             21,
             "browser-1",
         )
+        with app.server.test_request_context("/"):
+            _component, _warnings, new_grid_revision = render_grid(
+                "timeline",
+                "folder",
+                "exif",
+                None,
+                None,
+                None,
+                "",
+                [],
+                128,
+                newer[13],
+                None,
+                source_payload,
+                "browser-1",
+            )
+        authorized = authorize_revision(
+            {
+                "session_id": "browser-1",
+                "generation": 3,
+                "revision": new_grid_revision,
+            },
+            source_payload,
+        )
+        assert authorized["revision"] == new_grid_revision
         release_older.set()
         with pytest.raises(PreventUpdate):
             older.result(timeout=5)
 
-    assert newer[13] == original_reset(
-        {"relative_path": "newer"},
-        21,
-    )[13]
+    assert newer[13] == original_reset(source_payload, 21)[13]
+    approved = approve_popout(
+        {
+            "session_id": "browser-1",
+            "generation": 3,
+            "revision": new_grid_revision,
+            "sequence": 1,
+            "token": encode_token("source/image.png"),
+        }
+    )
+    assert approved["label"] == "source/image.png"
     recovered = reset_timeline(
-        {"relative_path": "recovered"},
+        source_payload,
         22,
         "browser-1",
     )
     assert recovered[13] == original_reset(
-        {"relative_path": "recovered"},
+        source_payload,
         22,
     )[13]
 

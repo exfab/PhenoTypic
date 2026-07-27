@@ -193,15 +193,30 @@ class SourceRevisionAuthority:
     def begin_reset(self, session_id: str) -> int:
         """Start a newer reset and immediately retire its session's grids."""
         with self._lock:
-            current = self._by_session.setdefault(
-                session_id,
-                _SourceRevisionState(),
-            )
-            current.generation += 1
-            current.revision = None
-            current.reset_in_progress = True
-            current.grid_revisions.clear()
-            return current.generation
+            return self._begin_reset_locked(session_id)
+
+    def begin_reset_and_retire(
+        self,
+        session_id: str,
+        revision_authority: TimelineRevisionAuthority,
+    ) -> int:
+        """Start a reset and retire popouts under one source-generation lock."""
+        with self._lock:
+            generation = self._begin_reset_locked(session_id)
+            revision_authority.retire(session_id)
+            return generation
+
+    def _begin_reset_locked(self, session_id: str) -> int:
+        """Begin a reset while ``self._lock`` is held."""
+        current = self._by_session.setdefault(
+            session_id,
+            _SourceRevisionState(),
+        )
+        current.generation += 1
+        current.revision = None
+        current.reset_in_progress = True
+        current.grid_revisions.clear()
+        return current.generation
 
     def publish_reset(
         self,
@@ -846,8 +861,10 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         # but no old-source state remains authoritative in the interim.
         if not isinstance(session_id, str) or not session_id:
             raise dash.exceptions.PreventUpdate
-        reset_generation = source_revision_authority.begin_reset(session_id)
-        revision_authority.retire(session_id)
+        reset_generation = source_revision_authority.begin_reset_and_retire(
+            session_id,
+            revision_authority,
+        )
         values = source_reset_values(source_payload, refresh_revision)
         if not source_revision_authority.publish_reset(
             session_id,
