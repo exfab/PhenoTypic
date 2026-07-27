@@ -366,6 +366,7 @@ def rebuild_qc_database(
         original_receipt_bytes = (
             receipt_path.read_bytes() if receipt_path.is_file() else None
         )
+        receipt_parent_existed = receipt_path.parent.exists()
 
         pipeline = ImagePipeline.from_json(
             layout.resolved_pipeline_config_path,
@@ -399,7 +400,13 @@ def rebuild_qc_database(
                     timestamp=timestamp,
                     source_fingerprint=current.source_fingerprint,
                 )
-                atomic_write_bytes(backup_path, original_bytes)
+                atomic_write_bytes(
+                    backup_path,
+                    original_bytes,
+                    pre_replace=lambda: _require_rebuild_publication(
+                        publication_guard
+                    ),
+                )
             runner(
                 measurements,
                 pipeline,
@@ -422,7 +429,13 @@ def rebuild_qc_database(
                 )
 
             _require_rebuild_publication(publication_guard)
-            atomic_write_bytes(target, database_bytes)
+            atomic_write_bytes(
+                target,
+                database_bytes,
+                pre_replace=lambda: _require_rebuild_publication(
+                    publication_guard
+                ),
+            )
             published = True
             _validate_database(target, enabled_ids)
             post_publish_source = preflight_qc_rebuild(layout)
@@ -450,7 +463,14 @@ def rebuild_qc_database(
                 ),
             }
             _require_rebuild_publication(publication_guard)
-            atomic_write_json(receipt_path, receipt, sort_keys=False)
+            atomic_write_json(
+                receipt_path,
+                receipt,
+                sort_keys=False,
+                pre_replace=lambda: _require_rebuild_publication(
+                    publication_guard
+                ),
+            )
             receipt_published = True
             receipt_boundary_source = preflight_qc_rebuild(layout)
             if (
@@ -480,6 +500,11 @@ def rebuild_qc_database(
                     else:
                         receipt_path.unlink(missing_ok=True)
                         receipt_path.parent.rmdir()
+                except OSError:
+                    pass
+            elif not receipt_parent_existed:
+                try:
+                    receipt_path.parent.rmdir()
                 except OSError:
                     pass
             if published:

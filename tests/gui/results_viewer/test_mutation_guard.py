@@ -33,6 +33,12 @@ from phenotypic.gui.results_viewer._mutation_guard import (
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._qc_tab import _ids as qc_ids
+from phenotypic.gui.results_viewer._qc_tab._rebuild import (
+    QcRebuildError,
+    preflight_qc_rebuild,
+    qc_publication_lock_path,
+    rebuild_qc_database,
+)
 from phenotypic.gui.results_viewer._qc_tab.review import _ids as review_ids
 from phenotypic.gui.results_viewer.colony_view._grid import build_grid
 from phenotypic.gui.results_viewer._viewer_card import (
@@ -338,6 +344,148 @@ def test_real_qc_writer_rechecks_after_build_and_preserves_all_artifacts(
     assert after_files.pop(owner_key)[0] == b"{malformed"
     before_files.pop(owner_key)
     assert after_files == before_files
+
+
+def test_real_qc_rebuild_rechecks_with_synced_temp_before_replace(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "qc-rebuild-race"
+    pipeline = ImagePipeline(name="qc-rebuild-race")
+    pipeline.set_qc(
+        [
+            QcRecipeEntry(
+                cls=ReplicateAgreement,
+                params={
+                    "on": "Size_Area",
+                    "groupby": ["MetadataExperiment_Dataset"],
+                    "min_replicates": 2,
+                },
+                instance_id="qc-SE-rebuild-race",
+                enabled=True,
+            )
+        ]
+    )
+    _seed_output(source, contradictory=False, pipeline=pipeline)
+    owner = gui_launch_owner_path(source)
+    owner.parent.mkdir(parents=True, exist_ok=True)
+    owner.write_text('{"status":"complete"}', encoding="utf-8")
+    output = _discover(source)
+    output.layout.qc_dir.mkdir(parents=True, exist_ok=True)
+    output.layout.qc_duckdb.write_bytes(b"prior generation")
+    owner.with_suffix(".lock").touch()
+    qc_publication_lock_path(output.layout.qc_duckdb).touch()
+    output = _discover(source)
+    guard = OutputMutationGuard(output, "generation-qc-rebuild")
+    preflight = preflight_qc_rebuild(output.layout)
+    assert preflight.ready
+    before_dirs, before_files = _tree_snapshot(source)
+    mutation_saw_synced_temp = False
+
+    def _interleaving_guard() -> bool:
+        nonlocal mutation_saw_synced_temp
+        temps = list(
+            output.layout.qc_dir.glob(
+                f".{output.layout.qc_duckdb.name}.*.tmp"
+            )
+        )
+        if temps and not mutation_saw_synced_temp:
+            assert len(temps) == 1
+            assert temps[0].stat().st_size > 0
+            mutation_saw_synced_temp = True
+            owner.write_text("{malformed", encoding="utf-8")
+        try:
+            guard.authorize(
+                "QC rebuild",
+                presented_generation="generation-qc-rebuild",
+            )
+        except OutputMutationBlocked:
+            return False
+        return True
+
+    with pytest.raises(QcRebuildError, match="snapshot changed"):
+        rebuild_qc_database(
+            output.layout,
+            expected_source_fingerprint=preflight.source_fingerprint,
+            publication_guard=_interleaving_guard,
+        )
+
+    after_dirs, after_files = _tree_snapshot(source)
+    owner_key = owner.relative_to(source).as_posix()
+    assert mutation_saw_synced_temp
+    assert after_dirs == before_dirs
+    assert after_files.pop(owner_key)[0] == b"{malformed"
+    before_files.pop(owner_key)
+    assert after_files == before_files
+    assert not list(source.rglob("*.tmp"))
+
+
+def test_real_qc_rebuild_rechecks_synced_receipt_before_replace(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "qc-rebuild-receipt-race"
+    pipeline = ImagePipeline(name="qc-rebuild-receipt-race")
+    pipeline.set_qc(
+        [
+            QcRecipeEntry(
+                cls=ReplicateAgreement,
+                params={
+                    "on": "Size_Area",
+                    "groupby": ["MetadataExperiment_Dataset"],
+                    "min_replicates": 2,
+                },
+                instance_id="qc-SE-receipt-race",
+                enabled=True,
+            )
+        ]
+    )
+    _seed_output(source, contradictory=False, pipeline=pipeline)
+    owner = gui_launch_owner_path(source)
+    owner.parent.mkdir(parents=True, exist_ok=True)
+    owner.write_text('{"status":"complete"}', encoding="utf-8")
+    output = _discover(source)
+    output.layout.qc_dir.mkdir(parents=True, exist_ok=True)
+    owner.with_suffix(".lock").touch()
+    qc_publication_lock_path(output.layout.qc_duckdb).touch()
+    output = _discover(source)
+    guard = OutputMutationGuard(output, "generation-qc-receipt")
+    preflight = preflight_qc_rebuild(output.layout)
+    assert preflight.ready
+    before_dirs, before_files = _tree_snapshot(source)
+    mutation_saw_synced_receipt = False
+
+    def _interleaving_guard() -> bool:
+        nonlocal mutation_saw_synced_receipt
+        receipt_dir = output.layout.qc_dir / ".rebuild_receipts"
+        temps = list(receipt_dir.glob(".*.tmp"))
+        if temps and not mutation_saw_synced_receipt:
+            assert len(temps) == 1
+            assert temps[0].stat().st_size > 0
+            mutation_saw_synced_receipt = True
+            owner.write_text("{malformed", encoding="utf-8")
+        try:
+            guard.authorize(
+                "QC rebuild",
+                presented_generation="generation-qc-receipt",
+            )
+        except OutputMutationBlocked:
+            return False
+        return True
+
+    with pytest.raises(QcRebuildError, match="snapshot changed"):
+        rebuild_qc_database(
+            output.layout,
+            expected_source_fingerprint=preflight.source_fingerprint,
+            publication_guard=_interleaving_guard,
+        )
+
+    after_dirs, after_files = _tree_snapshot(source)
+    owner_key = owner.relative_to(source).as_posix()
+    assert mutation_saw_synced_receipt
+    assert after_dirs == before_dirs
+    assert after_files.pop(owner_key)[0] == b"{malformed"
+    before_files.pop(owner_key)
+    assert after_files == before_files
+    assert not list(source.rglob("*.tmp"))
 
 
 def test_real_plot_writer_rechecks_after_render_and_preserves_generation(
