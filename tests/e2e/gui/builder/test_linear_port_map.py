@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import time
 
 from playwright.sync_api import Page, expect
 
@@ -147,28 +148,153 @@ def test_preview_running_renders_before_blocked_compute(
 
     compute_request_seen = threading.Event()
 
-    def abort_compute(route, request) -> None:  # noqa: ANN001
+    def delay_compute(route, request) -> None:  # noqa: ANN001
         payload = request.post_data_json
         if (
             isinstance(payload, dict)
             and payload.get("output") == "store-preview-result.data"
         ):
             compute_request_seen.set()
+            time.sleep(1.2)
+        route.continue_()
+
+    page.route("**/_dash-update-component", delay_compute)
+    _open_builder(page, hub_url)
+    _click_palette_button(page, "GaussianBlur")
+    page.evaluate(
+        """() => {
+            const status = document.querySelector("#preview-status");
+            window.__blockedPreviewHistory = [{
+                text: status.textContent,
+                at: performance.now(),
+            }];
+            new MutationObserver(() => {
+                window.__blockedPreviewHistory.push({
+                    text: status.textContent,
+                    at: performance.now(),
+                });
+            }).observe(status, {
+                childList: true,
+                characterData: true,
+                subtree: true,
+            });
+        }"""
+    )
+    page.locator("#btn-run-preview").click()
+
+    expect(page.locator("#preview-status")).to_contain_text(
+        "Preview complete",
+        timeout=20_000,
+    )
+    assert compute_request_seen.is_set()
+    history = page.evaluate("() => window.__blockedPreviewHistory")
+    running = next(item for item in history if "Preview running" in item["text"])
+    complete = next(item for item in history if "Preview complete" in item["text"])
+    assert complete["at"] - running["at"] >= 1_000
+
+
+def test_late_terminal_result_cannot_overwrite_newer_running_request(
+    page: Page, hub_url: str
+) -> None:
+    """The browser gate rejects A after B is already the current request."""
+
+    captured_requests: list[dict] = []
+
+    def capture_and_abort_compute(route, request) -> None:  # noqa: ANN001
+        payload = request.post_data_json
+        if (
+            isinstance(payload, dict)
+            and payload.get("output") == "store-preview-result.data"
+        ):
+            inputs = payload.get("inputs")
+            if isinstance(inputs, list):
+                work = next(
+                    (
+                        item.get("value")
+                        for item in inputs
+                        if item.get("id") == "store-preview-work"
+                    ),
+                    None,
+                )
+                if isinstance(work, dict):
+                    captured_requests.append(work)
             route.abort()
             return
         route.continue_()
 
-    page.route("**/_dash-update-component", abort_compute)
+    page.route("**/_dash-update-component", capture_and_abort_compute)
     _open_builder(page, hub_url)
     _click_palette_button(page, "GaussianBlur")
-    page.locator("#btn-run-preview").click()
 
-    expect(page.locator("#preview-status")).to_have_text(
-        "Preview running…",
-        timeout=10_000,
+    page.locator("#btn-run-preview").click()
+    for _ in range(20):
+        if len(captured_requests) >= 1:
+            break
+        page.wait_for_timeout(50)
+    assert len(captured_requests) == 1
+    page.locator("#btn-run-preview").click()
+    for _ in range(20):
+        if len(captured_requests) >= 2:
+            break
+        page.wait_for_timeout(50)
+    assert len(captured_requests) == 2
+    request_a, request_b = captured_requests
+    assert request_a["request_id"] != request_b["request_id"]
+
+    page.evaluate(
+        """(request) => {
+            window.dash_clientside.set_props("store-preview-status", {
+                data: {
+                    state: "running",
+                    message: "B remains authoritative",
+                    request_id: request.request_id,
+                    session_id: request.session_id,
+                    pipeline_revision: request.pipeline_revision,
+                },
+            });
+        }""",
+        request_b,
     )
-    assert compute_request_seen.is_set()
-    expect(page.locator("#btn-run-preview")).to_have_text("Preview running…")
+    expect(page.locator("#preview-status")).to_have_text(
+        "B remains authoritative"
+    )
+
+    def terminal(request: dict, message: str) -> dict:
+        return {
+            "schema_version": 1,
+            "request_id": request["request_id"],
+            "session_id": request["session_id"],
+            "pipeline_revision": request["pipeline_revision"],
+            "state": "error",
+            "message": message,
+            "intermediate_keys": None,
+            "preview_snapshot": None,
+        }
+
+    page.evaluate(
+        """(result) => {
+            window.dash_clientside.set_props(
+                "store-preview-result",
+                {data: result}
+            );
+        }""",
+        terminal(request_a, "STALE A MUST NOT RENDER"),
+    )
+    page.wait_for_timeout(250)
+    expect(page.locator("#preview-status")).to_have_text(
+        "B remains authoritative"
+    )
+
+    page.evaluate(
+        """(result) => {
+            window.dash_clientside.set_props(
+                "store-preview-result",
+                {data: result}
+            );
+        }""",
+        terminal(request_b, "B terminal accepted"),
+    )
+    expect(page.locator("#preview-status")).to_have_text("B terminal accepted")
 
 
 def test_preview_running_transitions_to_error(

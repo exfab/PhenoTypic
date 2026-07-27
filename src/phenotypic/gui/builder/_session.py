@@ -69,6 +69,16 @@ PreviewKey: TypeAlias = tuple[str, str, str, int]
 """Stable identity of one published preview in the single-process cache."""
 
 
+@dataclass(frozen=True)
+class PreviewGenerationReservation:
+    """Serializable identity reserved before a preview computation starts."""
+
+    session_id: str
+    pipeline_revision: str
+    request_id: str
+    request_sequence: int
+
+
 @dataclass
 class PreviewGenerationWriter:
     """Private staging area for one all-or-nothing preview publication.
@@ -83,6 +93,7 @@ class PreviewGenerationWriter:
         pipeline_revision: Canonical semantic revision baked by the caller.
         request_sequence: Cache-global monotonic token assigned before preview
             work.
+        request_id: Server-issued request identity bound to the reservation.
         max_intermediates: Per-session cache bound applied while staging.
         intermediates: Ordered staged payloads, never directly exposed live.
     """
@@ -90,10 +101,28 @@ class PreviewGenerationWriter:
     session_id: str
     pipeline_revision: str
     request_sequence: int
+    request_id: str
     max_intermediates: int
+    image: Optional["Image"] = None
+    image_path: Optional[str] = None
+    image_staged: bool = False
     intermediates: "OrderedDict[str, CachedPreview]" = field(
         default_factory=OrderedDict
     )
+
+    def set_image(
+        self,
+        session_id: str,
+        image: "Image",
+        path: Optional[str],
+    ) -> None:
+        """Stage the source image under the same publication fence."""
+
+        if session_id != self.session_id:
+            raise ValueError("preview writer used with a different session")
+        self.image = image
+        self.image_path = path
+        self.image_staged = True
 
     def set_intermediate(
         self, session_id: str, node_id: str, value: CachedPreview
@@ -149,6 +178,9 @@ class SessionData:
     pipeline_revision: Optional[str] = None
     preview_generation: int = 0
     preview_request_sequence: int = 0
+    preview_request_id: Optional[str] = None
+    preview_request_revision: Optional[str] = None
+    preview_request_claimed: bool = False
 
 
 class IntermediatesCache:
@@ -282,15 +314,63 @@ class IntermediatesCache:
     def begin_preview_generation(
         self, session_id: str, pipeline_revision: str
     ) -> PreviewGenerationWriter:
-        """Reserve a cache-global request token and return a detached writer."""
+        """Reserve and immediately claim a writer for compatibility callers."""
+
+        reservation = self.reserve_preview_generation(
+            session_id,
+            pipeline_revision,
+            request_id=f"direct-{self._preview_request_sequence + 1}",
+        )
+        writer = self.claim_preview_generation(reservation)
+        if writer is None:  # pragma: no cover - same locked cache owns both calls
+            raise RuntimeError("new preview reservation could not be claimed")
+        return writer
+
+    def reserve_preview_generation(
+        self,
+        session_id: str,
+        pipeline_revision: str,
+        *,
+        request_id: str,
+    ) -> PreviewGenerationReservation:
+        """Fence older work before publishing a browser running state."""
+
         with self._lock:
             data = self._ensure_session(session_id)
             self._preview_request_sequence += 1
             data.preview_request_sequence = self._preview_request_sequence
-            return PreviewGenerationWriter(
+            data.preview_request_id = request_id
+            data.preview_request_revision = pipeline_revision
+            data.preview_request_claimed = False
+            return PreviewGenerationReservation(
                 session_id=session_id,
                 pipeline_revision=pipeline_revision,
+                request_id=request_id,
                 request_sequence=self._preview_request_sequence,
+            )
+
+    def claim_preview_generation(
+        self,
+        reservation: PreviewGenerationReservation,
+    ) -> Optional[PreviewGenerationWriter]:
+        """Claim an exact reservation once, returning a detached writer."""
+
+        with self._lock:
+            data = self._sessions.get(reservation.session_id)
+            if (
+                data is None
+                or data.preview_request_sequence != reservation.request_sequence
+                or data.preview_request_id != reservation.request_id
+                or data.preview_request_revision != reservation.pipeline_revision
+                or data.preview_request_claimed
+            ):
+                return None
+            data.preview_request_claimed = True
+            return PreviewGenerationWriter(
+                session_id=reservation.session_id,
+                pipeline_revision=reservation.pipeline_revision,
+                request_id=reservation.request_id,
+                request_sequence=reservation.request_sequence,
                 max_intermediates=self._max_per_session,
             )
 
@@ -312,11 +392,18 @@ class IntermediatesCache:
             if (
                 data is None
                 or writer.request_sequence != data.preview_request_sequence
+                or writer.request_id != data.preview_request_id
+                or writer.pipeline_revision != data.preview_request_revision
+                or not data.preview_request_claimed
             ):
                 return None
+            if writer.image_staged:
+                data.image = writer.image
+                data.image_path = writer.image_path
             data.intermediates = OrderedDict(writer.intermediates)
             data.pipeline_revision = writer.pipeline_revision
             data.preview_generation += 1
+            data.preview_request_claimed = False
             return data.preview_generation
 
     def get_preview(self, key: PreviewKey) -> Optional[CachedPreview]:
@@ -427,6 +514,7 @@ def get_cache() -> IntermediatesCache:
 __all__ = [
     "SessionData",
     "IntermediatesCache",
+    "PreviewGenerationReservation",
     "PreviewGenerationWriter",
     "PreviewKey",
     "PreviewRenderError",

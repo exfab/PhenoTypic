@@ -50,6 +50,10 @@ STORE_PREVIEW_STATUS = "store-preview-status"
 #: status to the browser.
 STORE_PREVIEW_REQUEST = "store-preview-request"
 
+#: Browser-applied acknowledgement of a visible ``running`` state.  Preview
+#: computation consumes this phase store, never the launch request directly.
+STORE_PREVIEW_WORK = "store-preview-work"
+
 #: Detached result event from preview computation.  A short publication
 #: callback accepts it only when its request identity still matches
 #: :data:`STORE_PREVIEW_REQUEST`.

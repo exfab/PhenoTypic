@@ -45,6 +45,7 @@ from __future__ import annotations
 import json
 import hashlib
 import logging
+import math
 import time
 import uuid
 from copy import deepcopy
@@ -105,6 +106,7 @@ from phenotypic.gui.builder._modal_browser import (
 )
 from phenotypic.gui.builder._param_form import parse_widget_value
 from phenotypic.gui.builder._session import (
+    PreviewGenerationReservation,
     PreviewGenerationWriter,
     PreviewKey,
     PreviewRenderError,
@@ -3681,6 +3683,26 @@ def _new_preview_request(
     return request, status
 
 
+def _reserve_preview_request(
+    request_data: Dict[str, Any],
+    status_data: Dict[str, Any],
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Reserve the cache fence before the running state reaches the browser."""
+
+    identity = _preview_request_identity(request_data)
+    if identity is None:
+        raise ValueError("preview request identity is invalid")
+    request_id, session_id, pipeline_revision = identity
+    reservation = get_cache().reserve_preview_generation(
+        session_id,
+        pipeline_revision,
+        request_id=request_id,
+    )
+    reserved = dict(request_data)
+    reserved["cache_request_sequence"] = reservation.request_sequence
+    return reserved, status_data
+
+
 def _preview_request_identity(
     payload: object,
 ) -> Optional[Tuple[str, str, str]]:
@@ -3698,36 +3720,163 @@ def _preview_request_identity(
     return values  # type: ignore[return-value]
 
 
+def _preview_request_is_valid(payload: object) -> bool:
+    """Validate the complete server-issued preview work-request schema."""
+
+    if not isinstance(payload, dict):
+        return False
+    required = {
+        "schema_version",
+        "request_id",
+        "session_id",
+        "pipeline_revision",
+        "cache_request_sequence",
+        "kind",
+        "state_data",
+        "image_path",
+        "nrows",
+        "ncols",
+        "target",
+    }
+    if set(payload) != required or payload.get("schema_version") != 1:
+        return False
+    identity = _preview_request_identity(payload)
+    if identity is None:
+        return False
+    request_id, _session_id, pipeline_revision = identity
+    try:
+        if uuid.UUID(hex=request_id).hex != request_id:
+            return False
+    except ValueError:
+        return False
+    if (
+        len(pipeline_revision) != 64
+        or any(char not in "0123456789abcdef" for char in pipeline_revision)
+    ):
+        return False
+    sequence = payload.get("cache_request_sequence")
+    if type(sequence) is not int or sequence <= 0:
+        return False
+    state_data = payload.get("state_data")
+    if (
+        not isinstance(state_data, dict)
+        or _pipeline_revision(state_data) != pipeline_revision
+    ):
+        return False
+    image_path = payload.get("image_path")
+    if image_path is not None and not isinstance(image_path, str):
+        return False
+    for field_name in ("nrows", "ncols"):
+        value = payload.get(field_name)
+        if value is None:
+            continue
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or value <= 0
+        ):
+            return False
+    kind = payload.get("kind")
+    target = payload.get("target")
+    return (kind == "full" and target is None) or (
+        kind == "prefix" and _preview_prefix_target_is_valid(target)
+    )
+
+
+def _preview_prefix_target_is_valid(payload: object) -> bool:
+    """Validate the exact image-prefix target emitted by the linear map."""
+
+    if not isinstance(payload, dict) or set(payload) != {
+        "kind",
+        "scope_path",
+        "block_id",
+        "param",
+        "slot",
+    }:
+        return False
+    kind = payload.get("kind")
+    scope_path = payload.get("scope_path")
+    block_id = payload.get("block_id")
+    return (
+        kind in {"continuation", "image_output"}
+        and isinstance(scope_path, list)
+        and all(isinstance(part, str) and part for part in scope_path)
+        and payload.get("param") is None
+        and payload.get("slot") is None
+        and (
+            (kind == "continuation" and block_id is None)
+            or (
+                kind == "image_output"
+                and isinstance(block_id, str)
+                and bool(block_id)
+            )
+        )
+    )
+
+
+def _preview_result_schema_is_valid(payload: object) -> bool:
+    """Validate a complete/error result before any browser publication."""
+
+    if not isinstance(payload, dict):
+        return False
+    required = {
+        "schema_version",
+        "request_id",
+        "session_id",
+        "pipeline_revision",
+        "state",
+        "message",
+        "intermediate_keys",
+        "preview_snapshot",
+    }
+    if set(payload) != required or payload.get("schema_version") != 1:
+        return False
+    if _preview_request_identity(payload) is None:
+        return False
+    message = payload.get("message")
+    if not isinstance(message, str) or not message:
+        return False
+    state = payload.get("state")
+    if state == "error":
+        return (
+            payload.get("intermediate_keys") is None
+            and payload.get("preview_snapshot") is None
+        )
+    if state != "complete":
+        return False
+    snapshot = payload.get("preview_snapshot")
+    keys = payload.get("intermediate_keys")
+    if not isinstance(snapshot, dict) or set(snapshot) != {
+        "pipeline_revision",
+        "preview_generation",
+    }:
+        return False
+    generation = snapshot.get("preview_generation")
+    return (
+        snapshot.get("pipeline_revision") == payload.get("pipeline_revision")
+        and type(generation) is int
+        and generation > 0
+        and isinstance(keys, list)
+        and all(isinstance(key, str) and key for key in keys)
+    )
+
+
 def _preview_result_is_current(
     result_data: object,
     request_data: object,
 ) -> bool:
     """Return whether a terminal result belongs to the browser's request."""
 
+    if not _preview_request_is_valid(request_data):
+        return False
+    if not _preview_result_schema_is_valid(result_data):
+        return False
     result_identity = _preview_request_identity(result_data)
     request_identity = _preview_request_identity(request_data)
     if result_identity is None or result_identity != request_identity:
         return False
-    if not isinstance(result_data, dict):
-        return False
-    state = result_data.get("state")
-    if state == "error":
-        return True
-    if state != "complete":
-        return False
-    snapshot = result_data.get("preview_snapshot")
-    if not isinstance(snapshot, dict):
-        return False
-    generation = snapshot.get("preview_generation")
-    revision = snapshot.get("pipeline_revision")
-    keys = result_data.get("intermediate_keys")
-    return (
-        revision == result_identity[2]
-        and type(generation) is int
-        and generation > 0
-        and isinstance(keys, list)
-        and all(isinstance(key, str) for key in keys)
-    )
+    return True
 
 
 def _preview_result_event(
@@ -5806,7 +5955,7 @@ def register_callbacks(app: dash.Dash) -> None:
         if state_data is None:
             message = "No state to preview"
             return no_update, {"state": "error", "message": message}
-        return _new_preview_request(
+        request_data, status_data = _new_preview_request(
             kind="prefix",
             state_data=state_data,
             session_id=session_id,
@@ -5815,6 +5964,7 @@ def register_callbacks(app: dash.Dash) -> None:
             ncols=ncols,
             target=_linear_preview_target_payload_from_id(triggered),
         )
+        return _reserve_preview_request(request_data, status_data)
 
     @app.callback(
         Output(ids.STORE_PREVIEW_REQUEST, "data", allow_duplicate=True),
@@ -5840,7 +5990,7 @@ def register_callbacks(app: dash.Dash) -> None:
         if not n_clicks or state_data is None:
             message = "No state to preview"
             return no_update, {"state": "error", "message": message}
-        return _new_preview_request(
+        request_data, status_data = _new_preview_request(
             kind="full",
             state_data=state_data,
             session_id=session_id,
@@ -5848,31 +5998,40 @@ def register_callbacks(app: dash.Dash) -> None:
             nrows=nrows,
             ncols=ncols,
         )
+        return _reserve_preview_request(request_data, status_data)
 
     @app.callback(
         Output(ids.STORE_PREVIEW_RESULT, "data"),
-        Input(ids.STORE_PREVIEW_REQUEST, "data"),
+        Input(ids.STORE_PREVIEW_WORK, "data"),
         prevent_initial_call=True,
     )
     def compute_preview(request_data: object) -> Any:
         """Compute one request into a detached, identity-bearing result."""
 
-        identity = _preview_request_identity(request_data)
-        if identity is None or not isinstance(request_data, dict):
+        if not _preview_request_is_valid(request_data):
             return no_update
+        assert isinstance(request_data, dict)
+        identity = _preview_request_identity(request_data)
+        assert identity is not None
         _request_id, session_id, pipeline_revision = identity
         state_data = request_data.get("state_data")
         kind = request_data.get("kind")
-        if (
-            request_data.get("schema_version") != 1
-            or kind not in {"full", "prefix"}
-            or not isinstance(state_data, dict)
-            or _pipeline_revision(state_data) != pipeline_revision
-        ):
+        assert isinstance(state_data, dict)
+        assert kind in {"full", "prefix"}
+        sequence = request_data["cache_request_sequence"]
+        reservation = PreviewGenerationReservation(
+            session_id=session_id,
+            pipeline_revision=pipeline_revision,
+            request_id=_request_id,
+            request_sequence=sequence,
+        )
+        cache = get_cache()
+        staging = cache.claim_preview_generation(reservation)
+        if staging is None:
             return _preview_result_event(
                 request_data,
                 state="error",
-                message="Preview request failed integrity validation.",
+                message="Preview was superseded before computation.",
             )
 
         if kind == "full":
@@ -5889,11 +6048,6 @@ def register_callbacks(app: dash.Dash) -> None:
             from phenotypic.abc_ import GridOperation
 
             t0 = time.time()
-            cache = get_cache()
-            staging = cache.begin_preview_generation(
-                session_id,
-                pipeline_revision,
-            )
             state = state_from_json(state_data)
             preview_state = state
             if kind == "prefix":
@@ -5929,7 +6083,11 @@ def register_callbacks(app: dash.Dash) -> None:
                 request_data.get("ncols"),
             )
 
-            cache.set_image(session_id, image, str(image_path) if image_path else None)
+            staging.set_image(
+                session_id,
+                image,
+                str(image_path) if image_path else None,
+            )
 
             result = pipeline.apply_with_intermediates(image)
             generation = _bake_preview_cache(
@@ -5973,7 +6131,164 @@ def register_callbacks(app: dash.Dash) -> None:
                 message=message,
             )
 
-    @app.callback(
+    app.clientside_callback(
+        """
+        function(resultData, requestData) {
+            const no = window.dash_clientside.no_update;
+            const noops = [no, no, no, no, no, no, no, no, no, no];
+            const isObject = (value) => (
+                value !== null
+                && typeof value === "object"
+                && !Array.isArray(value)
+            );
+            const hasExactKeys = (value, expected) => {
+                if (!isObject(value)) return false;
+                const actual = Object.keys(value).sort();
+                const wanted = expected.slice().sort();
+                return (
+                    actual.length === wanted.length
+                    && actual.every((key, index) => key === wanted[index])
+                );
+            };
+            const requestKeys = [
+                "schema_version", "request_id", "session_id",
+                "pipeline_revision", "cache_request_sequence", "kind",
+                "state_data", "image_path", "nrows", "ncols", "target",
+            ];
+            const resultKeys = [
+                "schema_version", "request_id", "session_id",
+                "pipeline_revision", "state", "message",
+                "intermediate_keys", "preview_snapshot",
+            ];
+            const scalarDimension = (value) => (
+                value === null
+                || (
+                    typeof value === "number"
+                    && Number.isFinite(value)
+                    && value > 0
+                )
+            );
+            const validPrefixTarget = (target) => (
+                hasExactKeys(
+                    target,
+                    ["kind", "scope_path", "block_id", "param", "slot"]
+                )
+                && ["continuation", "image_output"].includes(target.kind)
+                && Array.isArray(target.scope_path)
+                && target.scope_path.every(
+                    (part) => typeof part === "string" && part.length > 0
+                )
+                && target.param === null
+                && target.slot === null
+                && (
+                    (
+                        target.kind === "continuation"
+                        && target.block_id === null
+                    )
+                    || (
+                        target.kind === "image_output"
+                        && typeof target.block_id === "string"
+                        && target.block_id.length > 0
+                    )
+                )
+            );
+            const validRequest = (
+                hasExactKeys(requestData, requestKeys)
+                && requestData.schema_version === 1
+                && typeof requestData.request_id === "string"
+                && /^[0-9a-f]{32}$/.test(requestData.request_id)
+                && typeof requestData.session_id === "string"
+                && requestData.session_id.length > 0
+                && typeof requestData.pipeline_revision === "string"
+                && /^[0-9a-f]{64}$/.test(requestData.pipeline_revision)
+                && Number.isInteger(requestData.cache_request_sequence)
+                && requestData.cache_request_sequence > 0
+                && isObject(requestData.state_data)
+                && (
+                    requestData.image_path === null
+                    || typeof requestData.image_path === "string"
+                )
+                && scalarDimension(requestData.nrows)
+                && scalarDimension(requestData.ncols)
+                && (
+                    (
+                        requestData.kind === "full"
+                        && requestData.target === null
+                    )
+                    || (
+                        requestData.kind === "prefix"
+                        && validPrefixTarget(requestData.target)
+                    )
+                )
+            );
+            const sameIdentity = (
+                isObject(resultData)
+                && validRequest
+                && resultData.request_id === requestData.request_id
+                && resultData.session_id === requestData.session_id
+                && resultData.pipeline_revision
+                    === requestData.pipeline_revision
+            );
+            const baseResult = (
+                hasExactKeys(resultData, resultKeys)
+                && resultData.schema_version === 1
+                && sameIdentity
+                && typeof resultData.message === "string"
+                && resultData.message.length > 0
+            );
+            let complete = false;
+            let error = false;
+            if (baseResult && resultData.state === "complete") {
+                const snapshot = resultData.preview_snapshot;
+                complete = (
+                    hasExactKeys(
+                        snapshot,
+                        ["pipeline_revision", "preview_generation"]
+                    )
+                    && snapshot.pipeline_revision
+                        === requestData.pipeline_revision
+                    && Number.isInteger(snapshot.preview_generation)
+                    && snapshot.preview_generation > 0
+                    && Array.isArray(resultData.intermediate_keys)
+                    && resultData.intermediate_keys.every(
+                        (key) => typeof key === "string" && key.length > 0
+                    )
+                );
+            } else if (baseResult && resultData.state === "error") {
+                error = (
+                    resultData.preview_snapshot === null
+                    && resultData.intermediate_keys === null
+                );
+            }
+            if (!complete && !error) return noops;
+
+            const status = {
+                state: resultData.state,
+                message: resultData.message,
+                request_id: resultData.request_id,
+                session_id: resultData.session_id,
+                pipeline_revision: resultData.pipeline_revision,
+            };
+            if (complete) {
+                status.preview_generation =
+                    resultData.preview_snapshot.preview_generation;
+            }
+            return [
+                complete ? resultData.intermediate_keys : no,
+                complete ? resultData.preview_snapshot : no,
+                status,
+                true,
+                resultData.message,
+                complete ? "primary" : "danger",
+                complete ? "Pipeline builder" : "Error",
+                resultData.message,
+                complete
+                    ? "small text-success mt-2"
+                    : "small text-danger mt-2",
+                "Run preview",
+            ];
+        }
+        """,
         Output(ids.STORE_INTERMEDIATE_KEYS, "data"),
         Output(ids.STORE_PREVIEW_SNAPSHOT, "data"),
         Output(ids.STORE_PREVIEW_STATUS, "data", allow_duplicate=True),
@@ -5981,72 +6296,70 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Output(ids.PREVIEW_STATUS, "children", allow_duplicate=True),
+        Output(ids.PREVIEW_STATUS, "className", allow_duplicate=True),
+        Output(ids.BTN_RUN_PREVIEW, "children", allow_duplicate=True),
         Input(ids.STORE_PREVIEW_RESULT, "data"),
-        State(ids.STORE_PREVIEW_REQUEST, "data"),
+        Input(ids.STORE_PREVIEW_REQUEST, "data"),
         prevent_initial_call=True,
     )
-    def publish_preview_result(
-        result_data: object,
-        request_data: object,
-    ) -> Tuple[Any, ...]:
-        """Atomically publish only the latest browser-requested result."""
-
-        if not _preview_result_is_current(result_data, request_data):
-            return (no_update,) * 7
-        assert isinstance(result_data, dict)
-        state = str(result_data["state"])
-        message = str(result_data.get("message", "Preview failed"))
-        snapshot = result_data.get("preview_snapshot")
-        raw_keys = result_data.get("intermediate_keys")
-        keys: Any = raw_keys if isinstance(raw_keys, list) else no_update
-        published_snapshot: Any = (
-            snapshot if isinstance(snapshot, dict) else no_update
-        )
-        status = {
-            "state": state,
-            "message": message,
-            "request_id": result_data["request_id"],
-            "session_id": result_data["session_id"],
-            "pipeline_revision": result_data["pipeline_revision"],
-        }
-        if state == "complete" and isinstance(snapshot, dict):
-            status["preview_generation"] = snapshot.get("preview_generation")
-        return (
-            keys,
-            published_snapshot,
-            status,
-            *_toast(message, ok=state == "complete"),
-        )
 
     @app.callback(
         Output(ids.PREVIEW_STATUS, "children"),
         Output(ids.PREVIEW_STATUS, "className"),
+        Output(ids.BTN_RUN_PREVIEW, "children"),
+        Output(ids.STORE_PREVIEW_WORK, "data"),
         Input(ids.STORE_PREVIEW_STATUS, "data"),
         Input(ids.STORE_BUILDER_STATE, "data"),
+        State(ids.STORE_PREVIEW_REQUEST, "data"),
+        State(ids.STORE_PREVIEW_WORK, "data"),
     )
     def render_preview_status(
         status_data: Optional[Dict[str, Any]],
         state_data: Optional[Dict[str, Any]],
-    ) -> Tuple[str, str]:
+        request_data: object,
+        work_data: object,
+    ) -> Tuple[str, str, str, Any]:
         """Render a persistent preview lifecycle message.
 
         The published status is interpreted against the current semantic
         pipeline revision so a successful generation becomes visibly stale
-        as soon as an operation changes.
+        as soon as an operation changes.  The exact request is acknowledged
+        as work only in the same browser-applied response that renders the
+        visible running status and button.
         """
 
-        return _preview_status_presentation(status_data, state_data)
-
-    @app.callback(
-        Output(ids.BTN_RUN_PREVIEW, "children"),
-        Input(ids.STORE_PREVIEW_STATUS, "data"),
-    )
-    def render_preview_button(status_data: object) -> str:
-        """Reflect the authoritative preview lifecycle on the launch button."""
-
-        if isinstance(status_data, dict) and status_data.get("state") == "running":
-            return "Preview running…"
-        return "Run preview"
+        message, class_name = _preview_status_presentation(
+            status_data,
+            state_data,
+        )
+        is_running = (
+            isinstance(status_data, dict)
+            and status_data.get("state") == "running"
+        )
+        button = "Preview running…" if is_running else "Run preview"
+        work: Any = no_update
+        if (
+            is_running
+            and isinstance(state_data, dict)
+            and _preview_request_is_valid(request_data)
+            and _preview_request_identity(status_data)
+            == _preview_request_identity(request_data)
+            and status_data.get("pipeline_revision")
+            == _pipeline_revision(state_data)
+            and _preview_request_identity(work_data)
+            != _preview_request_identity(request_data)
+        ):
+            work = request_data
+        elif (
+            isinstance(status_data, dict)
+            and status_data.get("state") in {"complete", "error"}
+            and _preview_request_identity(status_data)
+            == _preview_request_identity(request_data)
+            and message != "Preview stale - run again"
+        ):
+            return no_update, no_update, no_update, no_update
+        return message, class_name, button, work
 
     # ----------------------------------------------------------------------
     # 4. Inspector preview rendering

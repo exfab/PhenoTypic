@@ -220,6 +220,59 @@ def test_preview_generation_is_invisible_until_atomic_publish() -> None:
     )
 
 
+def test_launch_reservation_fences_image_and_intermediates_together() -> None:
+    """Superseded compute cannot mutate either half of the live snapshot."""
+
+    cache = IntermediatesCache()
+    original_image = object()
+    stale_image = object()
+    current_image = object()
+    cache.set_image("s1", original_image, "original.tiff")  # type: ignore[arg-type]
+
+    stale_reservation = cache.reserve_preview_generation(
+        "s1",
+        "revision-1",
+        request_id="request-a",
+    )
+    stale = cache.claim_preview_generation(stale_reservation)
+    assert stale is not None
+    stale.set_image("s1", stale_image, "stale.tiff")  # type: ignore[arg-type]
+    stale.set_intermediate("s1", "node-a", b"stale")
+
+    current_reservation = cache.reserve_preview_generation(
+        "s1",
+        "revision-2",
+        request_id="request-b",
+    )
+    current = cache.claim_preview_generation(current_reservation)
+    assert current is not None
+    current.set_image("s1", current_image, "current.tiff")  # type: ignore[arg-type]
+    current.set_intermediate("s1", "node-a", b"current")
+
+    assert cache.publish_preview_generation(stale) is None
+    assert cache.get_image("s1") == (original_image, "original.tiff")
+    generation = cache.publish_preview_generation(current)
+    assert generation == 1
+    assert cache.get_image("s1") == (current_image, "current.tiff")
+    assert cache.get_preview(
+        ("s1", "node-a", "revision-2", generation)
+    ) == b"current"
+
+
+def test_preview_reservation_can_be_claimed_only_once() -> None:
+    """Duplicate Dash work delivery cannot execute one request twice."""
+
+    cache = IntermediatesCache()
+    reservation = cache.reserve_preview_generation(
+        "s1",
+        "revision-1",
+        request_id="request-a",
+    )
+
+    assert cache.claim_preview_generation(reservation) is not None
+    assert cache.claim_preview_generation(reservation) is None
+
+
 def test_abandoned_preview_writer_cannot_mix_with_live_generation() -> None:
     cache = IntermediatesCache()
     published = cache.begin_preview_generation("s1", "revision-1")

@@ -4463,6 +4463,10 @@ def build_app_layout(
                 data=None,
             ),
             dcc.Store(
+                id=ids.STORE_PREVIEW_WORK,
+                data=None,
+            ),
+            dcc.Store(
                 id=ids.STORE_PREVIEW_RESULT,
                 data=None,
             ),
