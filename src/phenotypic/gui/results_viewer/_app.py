@@ -53,6 +53,9 @@ from phenotypic.gui._config import (
     TITLE_VIEWER,
     join_url_prefix,
 )
+from phenotypic.gui._async_binding_client import (
+    async_binding_callback_source,
+)
 from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui._binding_generation import (
     BindingRequestFence,
@@ -291,34 +294,11 @@ def _register_snapshot_refresh_callbacks(
         SANDBOX_API_VIEWER_OUTPUT_ROOT,
     )
     app.clientside_callback(
-        """
-        async function(n_clicks) {
-            if (!n_clicks) {
-                return window.dash_clientside.no_update;
-            }
-            try {
-                const resp = await fetch(
-                    "__PHENO_API_OUTPUT_ROOT__",
-                    {
-                        method: "POST",
-                        headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({refresh: true}),
-                    }
-                );
-                const data = await resp.json().catch(() => ({}));
-                if (!resp.ok) {
-                    return (data && data.error) || ("HTTP " + resp.status);
-                }
-                window.location.assign(__PHENO_VIEWER_PREFIX__);
-                return "";
-            } catch (err) {
-                return String(err);
-            }
-        }
-        """.replace(
-            "__PHENO_API_OUTPUT_ROOT__",
-            api_output_root,
-        ).replace("__PHENO_VIEWER_PREFIX__", repr(url_prefix)),
+        async_binding_callback_source(
+            api_url=api_output_root,
+            redirect_url=url_prefix,
+            selection_required=False,
+        ),
         Output(ids.HEADER_REFRESH_ERROR_ID, "children"),
         Input(ids.BTN_REFRESH_SNAPSHOT, "n_clicks"),
         prevent_initial_call=True,
@@ -451,33 +431,11 @@ def _register_empty_state_callbacks(
     api_output_root = join_url_prefix(api_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT)
 
     app.clientside_callback(
-        """
-        async function(n_clicks, selection) {
-            if (!n_clicks || !selection) {
-                return window.dash_clientside.no_update;
-            }
-            const path = selection.path;
-            if (!path) { return "No sidebar selection."; }
-            try {
-                const resp = await fetch(
-                    "__PHENO_API_OUTPUT_ROOT__",
-                    {
-                        method: "POST",
-                        headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({path: path}),
-                    }
-                );
-                const data = await resp.json().catch(() => ({}));
-                if (!resp.ok) {
-                    return (data && data.error) || ("HTTP " + resp.status);
-                }
-                window.location.assign(__PHENO_VIEWER_PREFIX__);
-                return "";
-            } catch (err) {
-                return String(err);
-            }
-        }
-        """.replace("__PHENO_API_OUTPUT_ROOT__", api_output_root).replace("__PHENO_VIEWER_PREFIX__", repr(url_prefix)),
+        async_binding_callback_source(
+            api_url=api_output_root,
+            redirect_url=url_prefix,
+            selection_required=True,
+        ),
         Output(ids.EMPTY_HANDOFF_ERROR, "children"),
         Input(ids.EMPTY_HANDOFF_OPEN_BUTTON, "n_clicks"),
         State(SHELL_SIDEBAR_SELECTION_STORE, "data"),

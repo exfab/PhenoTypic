@@ -203,6 +203,24 @@ class ResultsBindJobContext:
         """Raise if cancellation or a newer request fenced this job."""
         self._manager._require_active(self.job_id)
 
+    def commit_publication(
+        self,
+        commit: Callable[[], None],
+        *,
+        result: Mapping[str, Any],
+    ) -> None:
+        """Commit and acknowledge publication against cancellation atomically.
+
+        Args:
+            commit: Paired Results/Analysis session and binding-state CAS.
+            result: Successful publication descriptor retained for polling.
+        """
+        self._manager._commit_publication(
+            self.job_id,
+            commit,
+            result=result,
+        )
+
 
 class ResultsBindJobManager:
     """Run Results binding in a bounded worker set with latest-request wins.
@@ -479,6 +497,25 @@ class ResultsBindJobManager:
     def _require_active(self, job_id: str) -> None:
         with self._condition:
             self._require_running_locked(job_id)
+
+    def _commit_publication(
+        self,
+        job_id: str,
+        commit: Callable[[], None],
+        *,
+        result: Mapping[str, Any],
+    ) -> None:
+        """Linearize paired publication and success against ``cancel``."""
+        with self._condition:
+            job = self._require_running_locked(job_id)
+            commit()
+            now = _utc_now()
+            job.status = "succeeded"
+            job.phase = "complete"
+            job.detail = "Results and Analysis binding published."
+            job.updated_at = now
+            job.finished_at = now
+            job.result = dict(result)
 
     def _require_running_locked(self, job_id: str) -> _ResultsBindJob:
         job = self._jobs.get(job_id)

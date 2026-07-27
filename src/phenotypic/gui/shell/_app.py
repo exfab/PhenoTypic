@@ -400,14 +400,6 @@ def compose_hub(
             # Runs with both ToolSession locks held. This closes the final
             # candidate-build-to-publish gap and acts as the request CAS.
             def _publish_latest() -> None:
-                # commit_if_latest holds the coordinator's request lock.
-                # Check the lock-free cancellation event here rather than
-                # re-entering the job-manager lock in the inverse order.
-                context.cancellation.raise_if_cancelled()
-                candidate_root.require_session_snapshot_current(
-                    context="Shared Results/Analysis publish",
-                )
-                context.cancellation.raise_if_cancelled()
                 viewer_state.update(
                     {
                         "bound_path": selected,
@@ -424,6 +416,20 @@ def compose_hub(
                 context.ticket,
                 _publish_latest,
             )
+
+        snapshot = candidate_root.snapshot
+        publication_result = {
+            "abs_path": str(candidate_root.root),
+            "binding_generation": binding_generation,
+            "snapshot": {
+                "processing_fingerprint": snapshot.processing_fingerprint,
+                "consumed_state_fingerprint": (
+                    snapshot.consumed_state_fingerprint
+                ),
+                "captured_at": snapshot.captured_at.isoformat(),
+                "active_run": snapshot.active_run,
+            },
+        }
 
         # Discovery and both candidate constructors above intentionally run
         # outside this short publication lock. Only callback draining and the
@@ -442,31 +448,25 @@ def compose_hub(
                     old_fence.close_and_wait(
                         timeout_seconds=binding_drain_timeout_seconds,
                     )
-                    swap_tool_session_states(
-                        (
-                            (viewer_session, candidate_viewer),
-                            (analysis_session, candidate_analysis),
+                    candidate_root.require_session_snapshot_current(
+                        context="Shared Results/Analysis publish",
+                    )
+                    context.commit_publication(
+                        lambda: swap_tool_session_states(
+                            (
+                                (viewer_session, candidate_viewer),
+                                (analysis_session, candidate_analysis),
+                            ),
+                            commit=_commit_binding,
                         ),
-                        commit=_commit_binding,
+                        result=publication_result,
                     )
                 except Exception:
                     old_fence.reopen()
                     raise
         except OutputSnapshotChangedError as exc:
             raise ResultsBindJobFailure("stale", str(exc)) from exc
-        snapshot = candidate_root.snapshot
-        return {
-            "abs_path": str(candidate_root.root),
-            "binding_generation": binding_generation,
-            "snapshot": {
-                "processing_fingerprint": snapshot.processing_fingerprint,
-                "consumed_state_fingerprint": (
-                    snapshot.consumed_state_fingerprint
-                ),
-                "captured_at": snapshot.captured_at.isoformat(),
-                "active_run": snapshot.active_run,
-            },
-        }
+        return publication_result
 
     binding_jobs = ResultsBindJobManager(
         _bind_output,

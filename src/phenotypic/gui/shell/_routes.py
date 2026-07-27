@@ -281,7 +281,21 @@ def build_sandbox_api(
                 501,
             )
 
-        payload = request.get_json(silent=True) or {}
+        raw_payload = request.get_json(silent=True)
+        if raw_payload is None:
+            payload: dict[str, Any] = {}
+        elif not isinstance(raw_payload, dict):
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "error": "JSON body must be an object",
+                    }
+                ),
+                400,
+            )
+        else:
+            payload = raw_payload
         refresh = payload.get("refresh") is True
         rel = payload.get("path", "")
         if refresh and rel in ("", None):
