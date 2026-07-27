@@ -624,7 +624,7 @@ SENTINEL_RESUBMITTED_MARKER: Final[str] = "sentinel_resubmitted"
 CHUNK_LOCK: Final[str] = ".chunk_lock"
 
 #: Recompile task manifest JSON (one per recompile invocation; lives at
-#: ``<output>/progress/recompile/task_manifest.json``). Lists every per-image
+#: ``<output>/.phenotypic/progress/recompile/task_manifest.json``). Lists every per-image
 #: shard the recompile worker is responsible for; consumed by
 #: ``_cli_recompile_worker._main``.
 RECOMPILE_TASK_MANIFEST_JSON: Final[str] = "task_manifest.json"
@@ -637,7 +637,9 @@ RECOMPILE_TASK_MANIFEST_JSON: Final[str] = "task_manifest.json"
 #: ``<output>/results/`` — per-dataset subdirectories live below here.
 DIR_RESULTS: Final[str] = "results"
 
-#: ``<output>/progress/`` — sidecar JSON / JSONL state for in-flight runs.
+#: ``progress`` — directory-name segment for sidecar state under
+#: ``<output>/.phenotypic/progress/``. Legacy readers may resolve a root-level
+#: ``<output>/progress/`` directory.
 DIR_PROGRESS: Final[str] = "progress"
 
 #: Per-dataset measurements subdirectory: ``<output>/results/<ds>/measurements/``.
@@ -1719,7 +1721,7 @@ def resolve_execution_mode(job_meta: Optional[dict]) -> ExecutionMode:
     before calling this helper.
 
     Args:
-        job_meta: Parsed ``progress/job_metadata.json`` content, or
+        job_meta: Parsed ``.phenotypic/progress/job_metadata.json`` content, or
             :data:`None` when the file is absent.
 
     Returns:
@@ -1739,7 +1741,7 @@ def resolve_execution_mode(job_meta: Optional[dict]) -> ExecutionMode:
 
 
 class JobMetadataKey:
-    """Keys inside ``<output>/progress/job_metadata.json``.
+    """Keys inside ``<output>/.phenotypic/progress/job_metadata.json``.
 
     Writers (CLI execution strategies) and readers (recompile worker,
     sentinel, checkpoint handler, GUI runs registry) must reference
@@ -1773,7 +1775,7 @@ class JobMetadataKey:
 
 
 class DashboardManifestKey:
-    """Keys inside ``<output>/progress/manifest.json`` (dashboard manifest).
+    """Keys inside ``<output>/.phenotypic/progress/manifest.json``.
 
     The manifest is built by :func:`_cli._dashboard._manifest_builder.build_manifest`
     and consumed by both the dashboard JS and the GUI run-console's runs
@@ -1818,14 +1820,14 @@ class DashboardManifestSlurmInfoKey:
 
 
 class ChunkStateKey:
-    """Keys inside ``<output>/progress/chunk_state.json``."""
+    """Keys inside ``<output>/.phenotypic/progress/chunk_state.json``."""
 
     CHUNKED_FILES: Final[str] = "chunked_files"
     NEXT_CHUNK_ID: Final[str] = "next_chunk_id"
 
 
 class ProcessingStateKey:
-    """Keys inside ``<output>/processing_state.json`` (resume-state file).
+    """Keys inside ``<output>/.phenotypic/processing_state.json``.
 
     Distinct from :class:`JobMetadataKey` even where string values overlap
     (e.g. ``EXECUTION_MODE``, ``INPUT_PATH``) — these describe the
@@ -1854,7 +1856,7 @@ class ProcessingStateKey:
 
 
 class ChunkManifestKey:
-    """Keys inside ``<output>/progress/chunk_manifest.json``."""
+    """Keys inside ``<output>/.phenotypic/progress/chunk_manifest.json``."""
 
     CHUNKS: Final[str] = "chunks"
     ROWS: Final[str] = "rows"
