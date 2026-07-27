@@ -571,9 +571,33 @@ class TestDashboard:
         html = dashboard_html_path(tmp_dir).read_text()
         assert "<!DOCTYPE html>" in html
         assert "PhenoTypic" in html
-        assert "progress/manifest.json" in html
-        assert "progress/failures.jsonl" in html
+        assert "PROGRESS_PREFIX + 'manifest.json" in html
+        assert "PROGRESS_PREFIX + 'failures.jsonl" in html
         assert "setInterval" in html
+
+    def test_machine_state_urls_use_canonical_progress_prefix(self, tmp_dir):
+        """Generated pages fetch every machine-state asset from the hidden cache."""
+        generate_dashboard(tmp_dir)
+        dashboard = dashboard_html_path(tmp_dir).read_text()
+        analysis = analysis_html_path(tmp_dir).read_text()
+        pages = (dashboard, analysis)
+
+        canonical_prefix = (
+            'const PROGRESS_PREFIX = ROOT_PREFIX + ".phenotypic/progress/";'
+        )
+        assert all(canonical_prefix in page for page in pages)
+        assert all("ROOT_PREFIX + 'progress/" not in page for page in pages)
+
+        assert "PROGRESS_PREFIX + 'manifest.json" in dashboard
+        assert "PROGRESS_PREFIX + 'failures.jsonl" in dashboard
+        for asset in (
+            "manifest.json",
+            "plotly.min.js",
+            "hyparquet.min.js",
+            "analysis_full.parquet",
+            "analysis_stats.json",
+        ):
+            assert f"PROGRESS_PREFIX + '{asset}" in analysis
 
     def test_creates_dir_if_missing(self, tmp_dir):
         new_dir = tmp_dir / "new_output"
