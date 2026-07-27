@@ -36,7 +36,7 @@ import time
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Iterator, Literal, Sequence, cast
+from typing import Callable, Iterable, Iterator, Literal, Sequence, cast
 from uuid import UUID, uuid4
 
 from phenotypic.sdk_ import (
@@ -479,6 +479,41 @@ class RunRegistry:
                 return False
             self._records[run_id] = candidate
             self._revision += 1
+            return True
+
+    def publish_if_current_generation(
+        self,
+        run_id: str,
+        generation: UUID,
+        publisher: Callable[[], object],
+    ) -> bool:
+        """Publish an artifact only while memory and durable owner agree.
+
+        The registry lock and output owner lock remain held through
+        ``publisher``. Callers should prepare the complete payload first and
+        perform only the final atomic write inside the callback.
+
+        Args:
+            run_id: Stable registry identity.
+            generation: Exact launch generation allowed to publish.
+            publisher: Final atomic artifact writer.
+
+        Returns:
+            ``True`` when ``publisher`` ran, otherwise ``False`` for a stale or
+            missing in-memory/durable generation.
+        """
+        with self._lock:
+            current = self._records.get(run_id)
+            if current is None or current.generation != generation:
+                return False
+            with exclusive_path_lock(_owner_lock_path(current.output_dir)):
+                persisted = self._read_owner_record(
+                    current.output_dir,
+                    current.rel_path,
+                )
+                if persisted is None or persisted.generation != generation:
+                    return False
+                publisher()
             return True
 
     def observe_local_exit(

@@ -59,7 +59,10 @@ from phenotypic.gui.tune._command import (
     storage_url_preflight_issue,
 )
 from phenotypic.gui.tune._deploy import deploy_tune_run
-from phenotypic.gui.tune._export import export_best_from_run
+from phenotypic.gui.tune._export import (
+    prepare_best_from_run,
+    publish_prepared_export,
+)
 from phenotypic.gui.tune._monitor import (
     cancel_prompt,
     parse_run_receipt,
@@ -742,13 +745,23 @@ def export_monitor_best_pipeline(*, registry: object, receipt: object) -> Path:
     identity = parse_run_receipt(receipt)
     if identity is None:
         raise ValueError("No run selected.")
-    run_id, _generation = identity
+    run_id, generation = identity
     record = _record_for_monitor_receipt(registry, receipt)
     if record is None:
         raise ValueError(
             f"Selected run generation is no longer current: {run_id}"
         )
-    return export_best_from_run(record.output_dir)
+    prepared = prepare_best_from_run(record.output_dir)
+    published = registry.publish_if_current_generation(  # type: ignore[attr-defined]
+        run_id,
+        generation,
+        lambda: publish_prepared_export(prepared),
+    )
+    if not published:
+        raise ValueError(
+            f"Selected run generation is no longer current: {run_id}"
+        )
+    return prepared.path
 
 
 def active_view(trigger_id: str | None) -> ids.SubTabName:

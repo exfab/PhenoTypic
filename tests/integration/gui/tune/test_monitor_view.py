@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from uuid import UUID, uuid4
 
+import pytest
 from dash.development.base_component import Component
 
 from phenotypic import ImagePipeline
@@ -9,6 +10,7 @@ from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur
 from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
+from phenotypic.gui.tune import _callbacks as tune_callbacks
 from phenotypic.gui.tune import _ids as ids
 from phenotypic.gui.tune import create_app
 from phenotypic.gui.tune._callbacks import (
@@ -300,6 +302,65 @@ def test_monitor_export_uses_active_registry_run(tmp_path: Path):
     reloaded = ImagePipeline.from_json(written.read_text())
     ops = list(reloaded.get_ops().values())
     assert ops[0].sigma == 3.5
+
+
+def test_stale_export_cannot_replace_new_generation_artifact(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """Replacement B between preparation and publish leaves its artifact intact."""
+    output_dir = tmp_path / "run"
+    tuning_spec_path(output_dir).parent.mkdir(parents=True)
+    tuning_spec_path(output_dir).write_text(_spec(tmp_path).model_dump_json())
+    best_params_path(output_dir).write_text(
+        json.dumps({"params": {"0.sigma": 3.5}})
+    )
+    target = best_pipeline_path(output_dir)
+    replacement_payload = "generation B artifact"
+    target.write_text(replacement_payload)
+
+    registry = RunRegistry()
+    predecessor = RunRecord(
+        run_id="same-run",
+        mode="local",
+        output_dir=output_dir,
+        rel_path="run",
+        generation=uuid4(),
+        status="complete",
+    )
+    registry.register(predecessor)
+    stale_receipt = run_receipt(predecessor)
+    assert stale_receipt is not None
+    replacement = RunRecord(
+        run_id="same-run",
+        mode="local",
+        output_dir=output_dir,
+        rel_path="run",
+        generation=uuid4(),
+        status="running",
+    )
+    real_prepare = tune_callbacks.prepare_best_from_run
+
+    def _prepare_then_replace(path: Path):
+        prepared = real_prepare(path)
+        registry.register(replacement)
+        return prepared
+
+    monkeypatch.setattr(
+        tune_callbacks,
+        "prepare_best_from_run",
+        _prepare_then_replace,
+    )
+
+    with pytest.raises(ValueError, match="no longer current"):
+        export_monitor_best_pipeline(
+            registry=registry,
+            receipt=stale_receipt,
+        )
+
+    assert registry.get("same-run") is replacement
+    assert target.read_text() == replacement_payload
+    assert list(target.parent.glob(f".{target.name}.*.tmp")) == []
 
 
 def test_local_cancel_reconciles_already_exited_runner(tmp_path: Path):
