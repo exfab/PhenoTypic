@@ -288,6 +288,13 @@ Close the fixed linear target menu without changing selection.
 
 Add ``class_name`` at the selected fixed-linear target. Continuation/image-output/image-input targets insert on the image spine; parameter targets fill scalar or list aux ports. ``InputImage`` is rejected because each scope owns exactly one auto-seeded input. Unsupported linear shapes pause the edit and queue a warning toast.
 
+``linear_aux_replace_begin``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Payload schema:** ``{target: LinearTarget, source_block_id: str, nonce: str}``
+
+Stage an exact fixed-linear auxiliary replacement target before the next palette add. The dispatcher records the consumer block, parameter or list slot, current source, pipeline revision, and nonce. Missing or changed targets clear the pending replacement instead of falling back to top-level insertion.
+
 ``linear_delete_node_request``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

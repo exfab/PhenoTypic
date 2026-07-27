@@ -437,6 +437,20 @@ _DISPATCH_KINDS: List[Dict[str, Any]] = [
         ),
     },
     {
+        "kind": "linear_aux_replace_begin",
+        "group": "Fixed linear port map",
+        "payload": (
+            "``{target: LinearTarget, source_block_id: str, nonce: str}``"
+        ),
+        "notes": (
+            "Stage an exact fixed-linear auxiliary replacement target before "
+            "the next palette add. The dispatcher records the consumer block, "
+            "parameter or list slot, current source, pipeline revision, and "
+            "nonce. Missing or changed targets clear the pending replacement "
+            "instead of falling back to top-level insertion."
+        ),
+    },
+    {
         "kind": "linear_delete_node_request",
         "group": "Fixed linear port map",
         "payload": "``{block_id: str}``",

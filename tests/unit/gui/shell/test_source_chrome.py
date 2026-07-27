@@ -279,9 +279,9 @@ def test_shell_callback_map_shared_store_writers_are_explicit_actions_only(
 def test_repository_shared_store_writer_inventory_is_explicit() -> None:
     """Audit every production ``Output`` declaration for shared-store writes.
 
-    The Run and Tune entries are deliberately enumerated as deferred generic
-    writers. This test must be updated when R0/T1 remove them; it does not
-    mistake the Shell callback map for global shared-store authority.
+    Run controls are deliberately absent because typed Run paths are not
+    allowed to mutate shared Shell authority. Tune retains its explicit
+    image-source selection hand-off.
     """
     source_root = Path(__file__).parents[4] / "src" / "phenotypic" / "gui"
     target_names = {
@@ -349,16 +349,6 @@ def test_repository_shared_store_writer_inventory_is_explicit() -> None:
             "shell/_callbacks.py",
             "_confirm_metadata_picker",
             "SHELL_METADATA_CSV_STORE",
-        ),
-        (
-            "run_console/_callbacks.py",
-            "_action_control_outputs",
-            "SHELL_METADATA_CSV_STORE",
-        ),
-        (
-            "run_console/_callbacks.py",
-            "_mirror_input_dir_to_shared_source",
-            "SHELL_SOURCE_IMAGE_ROOT_STORE",
         ),
         (
             "tune/_callbacks.py",
