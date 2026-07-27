@@ -25,6 +25,7 @@ from phenotypic.gui.analysis._app import create_app
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.post import AppendString
 from phenotypic.schema import METADATA
+from phenotypic.sdk_ import resolve_manifest_json_path
 from tests._output_layout import seed_output_dir
 
 
@@ -48,6 +49,19 @@ def _seed_output(
         frame,
         mirror=frame,
         pipeline=pipeline or ImagePipeline(name="before"),
+    )
+    manifest = resolve_manifest_json_path(output)
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        json.dumps(
+            {
+                "is_complete": True,
+                "completed": 1,
+                "failed": 0,
+                "total_images": 1,
+            }
+        ),
+        encoding="utf-8",
     )
     return OutputRoot.discover(
         output,
@@ -148,9 +162,7 @@ def _post_reconciliation(app: Any, trigger: dict[str, Any]) -> Any:
                     "value": {},
                 }
             ],
-            "changedPropIds": [
-                f"{_ids.ANALYSIS_PIPELINE_STORE}.data"
-            ],
+            "changedPropIds": [f"{_ids.ANALYSIS_PIPELINE_STORE}.data"],
         },
     )
 
@@ -183,20 +195,22 @@ def _post_pattern_param(
     inputs: list[dict[str, Any]] = []
     for callback_input in callback["inputs"]:
         if widget_type in str(callback_input["id"]):
-            inputs.append({
-                "id": concrete_id,
-                "property": callback_input["property"],
-                "value": value,
-            })
+            inputs.append(
+                {
+                    "id": concrete_id,
+                    "property": callback_input["property"],
+                    "value": value,
+                }
+            )
         else:
-            inputs.append({
-                "id": callback_input["id"],
-                "property": callback_input["property"],
-                "value": [],
-            })
-    concrete_prop = (
-        f"{json.dumps(concrete_id, separators=(',', ':'))}.value"
-    )
+            inputs.append(
+                {
+                    "id": callback_input["id"],
+                    "property": callback_input["property"],
+                    "value": [],
+                }
+            )
+    concrete_prop = f"{json.dumps(concrete_id, separators=(',', ':'))}.value"
     return app.server.test_client().post(
         "/_dash-update-component",
         json={
@@ -518,11 +532,14 @@ def test_blocked_render_and_concurrent_mutation_are_revision_coherent(
 
     old_render = old_render_result["response"]
     assert old_render.status_code == 200
-    assert _response_value(
-        old_render,
-        _ids.ANALYSIS_FILTER_STACK,
-        "children",
-    ) == []
+    assert (
+        _response_value(
+            old_render,
+            _ids.ANALYSIS_FILTER_STACK,
+            "children",
+        )
+        == []
+    )
     assert "0 filters" in json.dumps(
         _response_value(
             old_render,
@@ -597,9 +614,7 @@ def test_rejected_model_callback_restores_authoritative_dropdown_and_state(
                 }
             ],
             "state": [],
-            "changedPropIds": [
-                f"{_ids.ANALYSIS_MODEL_DROPDOWN}.value"
-            ],
+            "changedPropIds": [f"{_ids.ANALYSIS_MODEL_DROPDOWN}.value"],
         },
     )
 
@@ -611,19 +626,25 @@ def test_rejected_model_callback_restores_authoritative_dropdown_and_state(
     )
     rendered = _post_reconciliation(app, trigger)
     assert rendered.status_code == 200
-    assert _response_value(
-        rendered,
-        _ids.ANALYSIS_MODEL_DROPDOWN,
-        "value",
-    ) == ""
+    assert (
+        _response_value(
+            rendered,
+            _ids.ANALYSIS_MODEL_DROPDOWN,
+            "value",
+        )
+        == ""
+    )
     assert json.loads(trigger["pipeline_json"]) == json.loads(original_bytes)
     assert recipe.pipeline.get_model() is None
     assert recipe.path.read_bytes() == original_bytes
 
     recipe.publication_guard = lambda: True
-    assert recipe.mutate_and_save(
-        lambda pipeline: setattr(pipeline, "name", "unrelated")
-    ) is True
+    assert (
+        recipe.mutate_and_save(
+            lambda pipeline: setattr(pipeline, "name", "unrelated")
+        )
+        is True
+    )
     saved = json.loads(recipe.path.read_text(encoding="utf-8"))
     assert saved["name"] == "unrelated"
     assert saved["model"] is None
@@ -662,9 +683,7 @@ def test_external_recipe_cas_reconciles_every_model_callback_output(
                 }
             ],
             "state": [],
-            "changedPropIds": [
-                f"{_ids.ANALYSIS_MODEL_DROPDOWN}.value"
-            ],
+            "changedPropIds": [f"{_ids.ANALYSIS_MODEL_DROPDOWN}.value"],
         },
     )
 
@@ -676,16 +695,22 @@ def test_external_recipe_cas_reconciles_every_model_callback_output(
     )
     rendered = _post_reconciliation(app, trigger)
     assert rendered.status_code == 200
-    assert _response_value(
-        rendered,
-        _ids.ANALYSIS_MODEL_DROPDOWN,
-        "value",
-    ) == "LinearLagModel"
-    assert _response_value(
-        rendered,
-        _ids.ANALYSIS_RUN_BUTTON,
-        "disabled",
-    ) is False
+    assert (
+        _response_value(
+            rendered,
+            _ids.ANALYSIS_MODEL_DROPDOWN,
+            "value",
+        )
+        == "LinearLagModel"
+    )
+    assert (
+        _response_value(
+            rendered,
+            _ids.ANALYSIS_RUN_BUTTON,
+            "disabled",
+        )
+        is False
+    )
     model_section = _response_value(
         rendered,
         _ids.ANALYSIS_MODEL_SECTION,
@@ -705,9 +730,12 @@ def test_external_recipe_cas_reconciles_every_model_callback_output(
         external_json
     )
 
-    assert recipe.mutate_and_save(
-        lambda pipeline: setattr(pipeline, "name", "external-unrelated")
-    ) is True
+    assert (
+        recipe.mutate_and_save(
+            lambda pipeline: setattr(pipeline, "name", "external-unrelated")
+        )
+        is True
+    )
     saved = json.loads(recipe.path.read_text(encoding="utf-8"))
     assert saved["name"] == "external-unrelated"
     assert saved["model"]["class"] == "LinearLagModel"
@@ -762,9 +790,7 @@ def test_external_recipe_cas_reconciles_add_stack_and_control(
                 }
             ],
             "state": [],
-            "changedPropIds": [
-                f"{_ids.ANALYSIS_FILTER_ADD_DROPDOWN}.value"
-            ],
+            "changedPropIds": [f"{_ids.ANALYSIS_FILTER_ADD_DROPDOWN}.value"],
         },
     )
 
@@ -776,21 +802,30 @@ def test_external_recipe_cas_reconciles_add_stack_and_control(
     )
     rendered = _post_reconciliation(app, trigger)
     assert rendered.status_code == 200
-    assert _response_value(
-        rendered,
-        _ids.ANALYSIS_FILTER_ADD_DROPDOWN,
-        "value",
-    ) is None
-    assert _response_value(
-        rendered,
-        _ids.ANALYSIS_POST_ADD_DROPDOWN,
-        "value",
-    ) is None
-    assert _response_value(
-        rendered,
-        _ids.ANALYSIS_EDGE_ADD_DROPDOWN,
-        "value",
-    ) is None
+    assert (
+        _response_value(
+            rendered,
+            _ids.ANALYSIS_FILTER_ADD_DROPDOWN,
+            "value",
+        )
+        is None
+    )
+    assert (
+        _response_value(
+            rendered,
+            _ids.ANALYSIS_POST_ADD_DROPDOWN,
+            "value",
+        )
+        is None
+    )
+    assert (
+        _response_value(
+            rendered,
+            _ids.ANALYSIS_EDGE_ADD_DROPDOWN,
+            "value",
+        )
+        is None
+    )
     post_stack = _response_value(
         rendered,
         _ids.ANALYSIS_POST_STACK,
@@ -824,16 +859,22 @@ def test_external_recipe_cas_reconciles_add_stack_and_control(
     assert "external_edge" in json.dumps(edge_stack)
     assert "LinearLagModel" in json.dumps(model_section)
     assert "external-add" in json.dumps(header)
-    assert _response_value(
-        rendered,
-        _ids.ANALYSIS_MODEL_DROPDOWN,
-        "value",
-    ) == "LinearLagModel"
-    assert _response_value(
-        rendered,
-        _ids.ANALYSIS_RUN_BUTTON,
-        "disabled",
-    ) is False
+    assert (
+        _response_value(
+            rendered,
+            _ids.ANALYSIS_MODEL_DROPDOWN,
+            "value",
+        )
+        == "LinearLagModel"
+    )
+    assert (
+        _response_value(
+            rendered,
+            _ids.ANALYSIS_RUN_BUTTON,
+            "disabled",
+        )
+        is False
+    )
     assert json.loads(trigger["pipeline_json"]) == json.loads(external_json)
     assert json.loads(recipe.path.read_text(encoding="utf-8")) == json.loads(
         external_json
@@ -907,16 +948,22 @@ def test_external_recipe_cas_reconciles_all_remove_stacks(
     )
     rendered = _post_reconciliation(app, trigger)
     assert rendered.status_code == 200
-    assert _response_value(
-        rendered,
-        _ids.ANALYSIS_POST_STACK,
-        "children",
-    ) == []
-    assert _response_value(
-        rendered,
-        _ids.ANALYSIS_EDGE_STACK,
-        "children",
-    ) == []
+    assert (
+        _response_value(
+            rendered,
+            _ids.ANALYSIS_POST_STACK,
+            "children",
+        )
+        == []
+    )
+    assert (
+        _response_value(
+            rendered,
+            _ids.ANALYSIS_EDGE_STACK,
+            "children",
+        )
+        == []
+    )
     filter_stack = _response_value(
         rendered,
         _ids.ANALYSIS_FILTER_STACK,

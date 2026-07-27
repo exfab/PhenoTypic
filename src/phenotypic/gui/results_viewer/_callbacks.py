@@ -69,7 +69,13 @@ from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._filtered_state import get_curated_frame
 from phenotypic.gui.results_viewer._error_tab import register_error_callbacks
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer._heatmap_tab import register_heatmap_callbacks
+from phenotypic.gui.results_viewer._mutation_guard import (
+    OutputMutationBlocked,
+    require_output_mutation,
+)
+from phenotypic.gui.results_viewer._heatmap_tab import (
+    register_heatmap_callbacks,
+)
 from phenotypic.gui.results_viewer._qc_tab import register_qc_callbacks
 from phenotypic.gui.results_viewer.colony_view import (
     _callbacks as _colony_callbacks,
@@ -133,6 +139,7 @@ def _register_plot_refresh_callback(
         if pipeline is None:
             return no_update
         try:
+            require_output_mutation("Measurement plot refresh")
             from phenotypic.gui._plot_refresh import refresh_measurement_plots
 
             measurements = get_curated_frame(
@@ -144,6 +151,9 @@ def _register_plot_refresh_callback(
                 output_root.layout,
                 measurements,
             )
+        except OutputMutationBlocked as exc:
+            logger.warning("%s", exc)
+            return no_update
         except Exception:  # noqa: BLE001 - curation remains authoritative
             logger.warning(
                 "GUI measurement plot refresh failed after curation",

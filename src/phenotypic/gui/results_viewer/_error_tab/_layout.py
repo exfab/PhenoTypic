@@ -18,6 +18,7 @@ Top-level shape (vertical stack):
 The containers ship empty; the recompute callback (Task 6) fills the
 chips / table / figure / badges. No data reads happen at build time.
 """
+
 from __future__ import annotations
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
@@ -43,7 +44,7 @@ from phenotypic.gui.results_viewer._output_root import OutputRoot
 # ---------------------------------------------------------------------------
 
 
-def _build_control_strip() -> Component:
+def _build_control_strip(*, mutations_disabled: bool = False) -> Component:
     """Build the control strip: chips, baseline toggle, badge, save button."""
     good_mode_toggle = dbc.RadioItems(
         id=ids.ERROR_GOOD_MODE_TOGGLE_ID,
@@ -68,6 +69,7 @@ def _build_control_strip() -> Component:
         color="primary",
         size="sm",
         n_clicks=0,
+        disabled=mutations_disabled,
     )
     chips = html.Div(
         id=ids.ERROR_CATEGORY_CHIPS_ID,
@@ -174,7 +176,11 @@ def _build_figure_block() -> Component:
     """Build the distribution graph + cutoff input + readout + filter spec."""
     figure = dcc.Graph(
         id=ids.ERROR_FIGURE_ID,
-        config={"editable": True, "edits": {"shapePosition": True}, "responsive": True},
+        config={
+            "editable": True,
+            "edits": {"shapePosition": True},
+            "responsive": True,
+        },
         style={"width": "100%", "height": "55vh"},
     )
     cutoff_input = html.Div(
@@ -202,7 +208,11 @@ def _build_figure_block() -> Component:
             ),
         ],
         className="error-cutoff-row",
-        style={"display": "flex", "alignItems": "center", "marginTop": "0.5rem"},
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "marginTop": "0.5rem",
+        },
     )
     filter_spec = html.Div(
         [
@@ -266,7 +276,10 @@ def _build_empty_state_card() -> Component:
                     "before the cutoff finder can rank measurements reliably.",
                     id=ids.ERROR_EMPTY_STATE_MSG_ID,
                     className="mb-0",
-                    style={"color": COLOR_MUTED, "fontSize": FONT_SIZE_BODY_SM},
+                    style={
+                        "color": COLOR_MUTED,
+                        "fontSize": FONT_SIZE_BODY_SM,
+                    },
                 ),
             ]
         ),
@@ -286,7 +299,12 @@ def _build_publish_toast() -> Component:
         duration=4000,
         is_open=False,
         dismissable=True,
-        style={"position": "fixed", "top": "1rem", "right": "1rem", "zIndex": 1080},
+        style={
+            "position": "fixed",
+            "top": "1rem",
+            "right": "1rem",
+            "zIndex": 1080,
+        },
     )
 
 
@@ -308,6 +326,8 @@ def _build_stores() -> Component:
 def build_error_tab_body(
     output_root: OutputRoot,
     schema: MeasurementSchema,
+    *,
+    mutations_disabled: bool = False,
 ) -> Component:
     """Build the Error-analysis tab body.
 
@@ -329,7 +349,7 @@ def build_error_tab_body(
     return html.Div(
         [
             _build_stores(),
-            _build_control_strip(),
+            _build_control_strip(mutations_disabled=mutations_disabled),
             _build_stale_banner(),
             _build_content_block(),
             _build_empty_state_card(),

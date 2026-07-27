@@ -10,6 +10,7 @@ dropdown instantiates it with sensible default parameters; tuning
 parameters from the GUI is deferred to v2 (the user can hand-edit
 ``pipeline.json`` in the meantime).
 """
+
 from __future__ import annotations
 
 import logging
@@ -44,7 +45,16 @@ from phenotypic.gui._config import (
     CFG_RECIPE_STATE,
 )
 from phenotypic.gui.results_viewer._filtered_state import KEY_IMAGE_FILE
-from phenotypic.gui._design import COLOR_MUTED, OI_GREEN_TEXT, OI_VERMILION_TEXT
+from phenotypic.gui.results_viewer._mutation_guard import (
+    OutputMutationBlocked,
+    output_mutations_disabled,
+    require_output_mutation,
+)
+from phenotypic.gui._design import (
+    COLOR_MUTED,
+    OI_GREEN_TEXT,
+    OI_VERMILION_TEXT,
+)
 from phenotypic.gui.analysis import _ids as ids
 from phenotypic.gui.analysis._layout import (
     build_section_stack,
@@ -66,28 +76,50 @@ _RECONCILIATION_CACHE_SIZE = 64
 # v1 placeholder defaults — users tune by editing pipeline.json until
 # per-section param forms ship in v2.
 _POST_DEFAULTS: dict[str, dict[str, Any]] = {
-    "PrependString": {"to_column": str(GENETIC_METADATA.STRAIN), "string": "strain_"},
-    "AppendString": {"to_column": str(GENETIC_METADATA.STRAIN), "string": "_x"},
-    "ExpandMetadata": {"on_column": KEY_IMAGE_FILE,
-                       "split_pattern": "_",
-                       "new_columns": ["A", "B"]},
+    "PrependString": {
+        "to_column": str(GENETIC_METADATA.STRAIN),
+        "string": "strain_",
+    },
+    "AppendString": {
+        "to_column": str(GENETIC_METADATA.STRAIN),
+        "string": "_x",
+    },
+    "ExpandMetadata": {
+        "on_column": KEY_IMAGE_FILE,
+        "split_pattern": "_",
+        "new_columns": ["A", "B"],
+    },
     "MergeMetadata": {"metadata_path": "metadata.csv", "on": KEY_IMAGE_FILE},
 }
 _FILTER_DEFAULTS: dict[str, dict[str, Any]] = {
-    "TukeyOutlierRemover": {"on": "Shape_Area", "groupby": [str(GENETIC_METADATA.STRAIN)]},
+    "TukeyOutlierRemover": {
+        "on": "Shape_Area",
+        "groupby": [str(GENETIC_METADATA.STRAIN)],
+    },
 }
 _EDGE_DEFAULTS: dict[str, dict[str, Any]] = {
-    "EdgeCorrector": {"on": "Shape_Area", "groupby": [str(GENETIC_METADATA.STRAIN)]},
+    "EdgeCorrector": {
+        "on": "Shape_Area",
+        "groupby": [str(GENETIC_METADATA.STRAIN)],
+    },
 }
 _MODEL_DEFAULTS: dict[str, dict[str, Any]] = {
-    "LogGrowthModel": {"on": "Shape_Area", "groupby": [str(GENETIC_METADATA.STRAIN)],
-                       "time_label": str(CULTURE_METADATA.TIME), "n_jobs": 1},
-    "LinearLagModel": {"on": "Shape_Area",
-                       "groupby": [str(GENETIC_METADATA.STRAIN)],
-                       "time_label": str(CULTURE_METADATA.TIME)},
-    "LinearCapAndLagModel": {"on": "Shape_Area",
-                       "groupby": [str(GENETIC_METADATA.STRAIN)],
-                       "time_label": str(CULTURE_METADATA.TIME)},
+    "LogGrowthModel": {
+        "on": "Shape_Area",
+        "groupby": [str(GENETIC_METADATA.STRAIN)],
+        "time_label": str(CULTURE_METADATA.TIME),
+        "n_jobs": 1,
+    },
+    "LinearLagModel": {
+        "on": "Shape_Area",
+        "groupby": [str(GENETIC_METADATA.STRAIN)],
+        "time_label": str(CULTURE_METADATA.TIME),
+    },
+    "LinearCapAndLagModel": {
+        "on": "Shape_Area",
+        "groupby": [str(GENETIC_METADATA.STRAIN)],
+        "time_label": str(CULTURE_METADATA.TIME),
+    },
 }
 
 
@@ -109,6 +141,8 @@ def register_callbacks(app: "dash.Dash") -> None:
     reconciliation_lock = threading.Lock()
     reconciliation_revision = 0
     reconciliation_snapshots: OrderedDict[int, Any] = OrderedDict()
+    output_root = server.config[CFG_OUTPUT_ROOT]
+    mutations_disabled = output_mutations_disabled(output_root)
 
     def _columns_provider(source: str) -> list:
         """Resolve a ColumnSource to columns from the live schema cache."""
@@ -135,6 +169,7 @@ def register_callbacks(app: "dash.Dash") -> None:
             recipe,
             columns_provider=_columns_provider,
             plot_prefs=plot_prefs,
+            mutations_disabled=mutations_disabled,
         )
 
     def _model_outputs(
@@ -150,14 +185,17 @@ def register_callbacks(app: "dash.Dash") -> None:
                 model,
                 columns_provider=_columns_provider,
                 plot_prefs=plot_prefs,
+                mutations_disabled=mutations_disabled,
             )
             if model is not None
-            else html.Span("No model configured.", style={"color": COLOR_MUTED})
+            else html.Span(
+                "No model configured.", style={"color": COLOR_MUTED}
+            )
         )
         return (
             section,
             _pipeline_summary(recipe),
-            model is None,
+            mutations_disabled or model is None,
             type(model).__name__ if model is not None else "",
         )
 
@@ -256,7 +294,9 @@ def register_callbacks(app: "dash.Dash") -> None:
             )
 
     @app.callback(
-        Output(ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True),
+        Output(
+            ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True
+        ),
         Input(ids.ANALYSIS_POST_ADD_DROPDOWN, "value"),
         prevent_initial_call=True,
     )
@@ -277,7 +317,9 @@ def register_callbacks(app: "dash.Dash") -> None:
         return _reconciliation_payload(recipe)
 
     @app.callback(
-        Output(ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True),
+        Output(
+            ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True
+        ),
         Input(ids.ANALYSIS_FILTER_ADD_DROPDOWN, "value"),
         prevent_initial_call=True,
     )
@@ -298,7 +340,9 @@ def register_callbacks(app: "dash.Dash") -> None:
         return _reconciliation_payload(recipe)
 
     @app.callback(
-        Output(ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True),
+        Output(
+            ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True
+        ),
         Input(ids.ANALYSIS_EDGE_ADD_DROPDOWN, "value"),
         prevent_initial_call=True,
     )
@@ -319,7 +363,9 @@ def register_callbacks(app: "dash.Dash") -> None:
         return _reconciliation_payload(recipe)
 
     @app.callback(
-        Output(ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True),
+        Output(
+            ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True
+        ),
         Input(ids.ANALYSIS_MODEL_DROPDOWN, "value"),
         prevent_initial_call=True,
     )
@@ -341,7 +387,9 @@ def register_callbacks(app: "dash.Dash") -> None:
         return _reconciliation_payload(recipe)
 
     @app.callback(
-        Output(ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True),
+        Output(
+            ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True
+        ),
         # ``ALL`` is Dash's pattern-matching wildcard; the strict Literal/int
         # signature on ``section_remove_button_id`` doesn't model it.
         Input(ids.section_remove_button_id(ALL, ALL), "n_clicks"),  # type: ignore[arg-type]
@@ -409,18 +457,31 @@ def register_callbacks(app: "dash.Dash") -> None:
     # node-uuid prefixes that may share the same widget types) fall
     # through as no-ops.
     @app.callback(
-        Output(ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True),
+        Output(
+            ids.ANALYSIS_PIPELINE_EVENT_STORE, "data", allow_duplicate=True
+        ),
         Input({"type": "param-bool", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-num", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-str", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-enum", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-list", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-tuple", "prefix": ALL, "name": ALL}, "value"),
-        Input({"type": "param-multi-tag", "prefix": ALL, "name": ALL}, "value"),
-        Input({"type": "param-multi-value", "prefix": ALL, "name": ALL}, "value"),
-        Input({"type": "param-column-scalar", "prefix": ALL, "name": ALL}, "value"),
-        Input({"type": "param-column-multi", "prefix": ALL, "name": ALL}, "value"),
-        Input({"type": "param-column-mode", "prefix": ALL, "name": ALL}, "value"),
+        Input(
+            {"type": "param-multi-tag", "prefix": ALL, "name": ALL}, "value"
+        ),
+        Input(
+            {"type": "param-multi-value", "prefix": ALL, "name": ALL}, "value"
+        ),
+        Input(
+            {"type": "param-column-scalar", "prefix": ALL, "name": ALL},
+            "value",
+        ),
+        Input(
+            {"type": "param-column-multi", "prefix": ALL, "name": ALL}, "value"
+        ),
+        Input(
+            {"type": "param-column-mode", "prefix": ALL, "name": ALL}, "value"
+        ),
         prevent_initial_call=True,
     )
     def _on_param_edit(*_values: Any):
@@ -508,7 +569,9 @@ def register_callbacks(app: "dash.Dash") -> None:
 
         node = _resolve_preview_node(recipe, kind, index)
         if node is None:
-            return _preview_error("Section no longer exists -- reload the page.")
+            return _preview_error(
+                "Section no longer exists -- reload the page."
+            )
 
         # Route through the layout's mirror path, never ``output_root.root``: a
         # standalone bundle's ``root`` IS the deliverables folder, so
@@ -522,7 +585,9 @@ def register_callbacks(app: "dash.Dash") -> None:
             frame = pd.read_parquet(measurements)
             node.analyze(frame)
         except Exception as exc:  # noqa: BLE001 - surfaced inline
-            logger.warning("Preview analyze() failed on %s", kind, exc_info=True)
+            logger.warning(
+                "Preview analyze() failed on %s", kind, exc_info=True
+            )
             return _preview_error(f"analyze(): {exc}")
 
         idx = index if isinstance(index, int) else 0
@@ -703,8 +768,7 @@ def _semantic_values_equal(left: Any, right: Any) -> bool:
         if left.keys() != right.keys():
             return False
         return all(
-            _semantic_values_equal(left[key], right[key])
-            for key in left
+            _semantic_values_equal(left[key], right[key]) for key in left
         )
     if isinstance(left, np.ndarray) or isinstance(right, np.ndarray):
         try:
@@ -791,7 +855,9 @@ def _pattern_input_key(name: str, prefix: str, type_: str) -> str:
 _ANALYZER_KWARG_ALIASES: dict[str, str] = {"num_workers": "n_jobs"}
 
 
-def _filter_kwargs_to_signature(cls: type, kwargs: dict[str, Any]) -> dict[str, Any]:
+def _filter_kwargs_to_signature(
+    cls: type, kwargs: dict[str, Any]
+) -> dict[str, Any]:
     """Return only ``kwargs`` entries that ``cls`` accepts as fields.
 
     Operations and analyzers are pydantic v2 ``BaseModel`` subclasses, so
@@ -808,7 +874,10 @@ def _filter_kwargs_to_signature(cls: type, kwargs: dict[str, Any]) -> dict[str, 
     for k, v in kwargs.items():
         if k in accepted:
             out[k] = v
-        elif k in _ANALYZER_KWARG_ALIASES and _ANALYZER_KWARG_ALIASES[k] in accepted:
+        elif (
+            k in _ANALYZER_KWARG_ALIASES
+            and _ANALYZER_KWARG_ALIASES[k] in accepted
+        ):
             out[_ANALYZER_KWARG_ALIASES[k]] = v
     return out
 
@@ -831,10 +900,14 @@ def _run_inline(recipe: Any, output_root: "OutputRoot") -> Any:
             style={"color": OI_VERMILION_TEXT},
         )
 
-    if not output_root.mutation_snapshot_is_safe():
+    try:
+        require_output_mutation(
+            "Analysis publication",
+            output_root=output_root,
+        )
+    except OutputMutationBlocked as exc:
         return html.Span(
-            "Analysis publication blocked: the output is active or changed "
-            "on disk. Refresh the shared snapshot.",
+            str(exc),
             style={"color": OI_VERMILION_TEXT},
         )
     recipe_snapshot = recipe.capture_analysis_snapshot()
@@ -853,10 +926,14 @@ def _run_inline(recipe: Any, output_root: "OutputRoot") -> Any:
     try:
         master_pl = pl.read_parquet(measurements)
     except Exception as exc:  # noqa: BLE001
-        return html.Span(f"Read failed: {exc}", style={"color": OI_VERMILION_TEXT})
+        return html.Span(
+            f"Read failed: {exc}", style={"color": OI_VERMILION_TEXT}
+        )
 
     output_dir = (
-        layout.output_root if layout.output_root is not None else layout.deliverables_base
+        layout.output_root
+        if layout.output_root is not None
+        else layout.deliverables_base
     )
     result = _emit_analysis_outputs(
         output_dir,
@@ -864,13 +941,13 @@ def _run_inline(recipe: Any, output_root: "OutputRoot") -> Any:
         analysis_pipeline,
         deliverables_base=layout.deliverables_base,
         publication_guard=lambda: (
-            output_root.mutation_snapshot_is_safe()
-            and recipe.source_revision_is_current(recipe_revision)
-            and paths_fingerprint(
-                (measurements,),
-                root=layout.deliverables_base,
+            _analysis_publication_is_current(
+                recipe=recipe,
+                recipe_revision=recipe_revision,
+                measurements=measurements,
+                layout=layout,
+                source_fingerprint=source_fingerprint,
             )
-            == source_fingerprint
         ),
     )
     duration = time.time() - start
@@ -881,13 +958,19 @@ def _run_inline(recipe: Any, output_root: "OutputRoot") -> Any:
             style={"color": OI_VERMILION_TEXT},
         )
 
-    written = result.artifacts.parquet if result.artifacts is not None else None
+    written = (
+        result.artifacts.parquet if result.artifacts is not None else None
+    )
     if written is None:
         return html.Span(
             "Analysis ran but its artifacts were not published.",
             style={"color": OI_VERMILION_TEXT},
         )
     try:
+        require_output_mutation(
+            "Analysis plot refresh",
+            output_root=output_root,
+        )
         from phenotypic.gui._plot_refresh import refresh_analysis_plots
 
         refresh_analysis_plots(
@@ -896,6 +979,8 @@ def _run_inline(recipe: Any, output_root: "OutputRoot") -> Any:
             master_pl.to_pandas(),
             result,
         )
+    except OutputMutationBlocked as exc:
+        logger.warning("%s", exc)
     except Exception:  # noqa: BLE001 - analysis artifact remains authoritative
         logger.warning(
             "GUI analysis plot refresh failed after publishing %s",
@@ -905,6 +990,29 @@ def _run_inline(recipe: Any, output_root: "OutputRoot") -> Any:
     return html.Span(
         f"Wrote {written.name} ({len(result.table)} rows · {duration:.1f}s)",
         style={"color": OI_GREEN_TEXT},
+    )
+
+
+def _analysis_publication_is_current(
+    *,
+    recipe: Any,
+    recipe_revision: Any,
+    measurements: Any,
+    layout: Any,
+    source_fingerprint: str,
+) -> bool:
+    """Reauthorize immediately before each transactional publication step."""
+    try:
+        require_output_mutation("Analysis publication")
+    except OutputMutationBlocked:
+        return False
+    return (
+        recipe.source_revision_is_current(recipe_revision)
+        and paths_fingerprint(
+            (measurements,),
+            root=layout.deliverables_base,
+        )
+        == source_fingerprint
     )
 
 

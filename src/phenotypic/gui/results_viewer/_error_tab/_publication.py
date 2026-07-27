@@ -322,12 +322,12 @@ def publish_error_analysis(
     lock_path = base / _LOCK_FILENAME
     replace = replace_file or _replace_file
     with exclusive_path_lock(lock_path, timeout=lock_timeout):
-        recover_error_publication(layout)
         _require_publication_current(
             layout,
             computation,
             mutation_is_safe=mutation_is_safe,
         )
+        recover_error_publication(layout)
 
         current = _read_json(base / _RECEIPT_FILENAME)
         if (
@@ -586,9 +586,7 @@ def _stage_generation(
         **PARQUET_WRITE_OPTIONS,
     )
     combined.write_csv(staging_dir / csv_name)
-    reports = {
-        item.category: item.result for item in computation.categories
-    }
+    reports = {item.category: item.result for item in computation.categories}
     (staging_dir / html_name).write_text(
         render_error_analysis_report(reports),
         encoding="utf-8",
@@ -677,7 +675,9 @@ def _validate_staged_generation(
         raise ErrorPublicationValidationError(
             "Error artifact row counts disagree with the manifest."
         )
-    names = [item.get("category") for item in categories if isinstance(item, dict)]
+    names = [
+        item.get("category") for item in categories if isinstance(item, dict)
+    ]
     if len(names) != len(set(names)):
         raise ErrorPublicationValidationError(
             "Error manifest contains duplicate category entries."
@@ -749,7 +749,11 @@ def _validate_canonical_generation(
 
 def _valid_category_manifest_item(item: object) -> bool:
     """Return whether one persisted category inventory item is well formed."""
-    if not isinstance(item, dict) or set(item) != {"category", "labels", "rows"}:
+    if not isinstance(item, dict) or set(item) != {
+        "category",
+        "labels",
+        "rows",
+    }:
         return False
     category = item.get("category")
     labels = item.get("labels")
@@ -896,9 +900,7 @@ def _restore_targets(
 
 def _restore_from_durable_backup(backup: Path, target: Path) -> None:
     """Atomically restore one target without consuming its crash backup."""
-    temporary = backup.with_name(
-        f".{target.name}.{uuid.uuid4().hex}.restore"
-    )
+    temporary = backup.with_name(f".{target.name}.{uuid.uuid4().hex}.restore")
     try:
         shutil.copy2(backup, temporary)
         _replace_file(temporary, target)
@@ -937,10 +939,7 @@ def _sweep_orphan_generations(base: Path) -> None:
         return
     for candidate in generations.iterdir():
         token = candidate.name
-        if (
-            candidate.is_dir()
-            and _is_lower_hex(token, length=32)
-        ):
+        if candidate.is_dir() and _is_lower_hex(token, length=32):
             shutil.rmtree(candidate, ignore_errors=True)
     _remove_empty_generations_dir(base)
 

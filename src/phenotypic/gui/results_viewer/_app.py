@@ -40,6 +40,7 @@ from phenotypic.gui._config import (
     CFG_FILTERED_STATE,
     CFG_MEASUREMENT_SCHEMA,
     CFG_OPERATION_REGISTRY,
+    CFG_OUTPUT_MUTATION_GUARD,
     CFG_OUTPUT_ROOT,
     CFG_QC_AUGMENTED_FRAME,
     CFG_QC_INSTANCES_CACHE,
@@ -60,11 +61,14 @@ from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui._binding_generation import (
     BindingRequestFence,
     binding_generation_hooks,
-    install_bound_output_callback_guard,
     install_binding_generation_guard,
 )
 from phenotypic.gui._schema_cache import MeasurementSchema
-from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
+from phenotypic.gui._design import (
+    COLOR_BLUE,
+    COLOR_SURFACE,
+    inject_design_tokens,
+)
 from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui._shared.tiles import register_crop_route
 from phenotypic.gui._snapshot_status import snapshot_refresh_status
@@ -83,8 +87,11 @@ from phenotypic.gui.results_viewer._layout import (
     build_app_layout,
     build_empty_state_layout,
 )
+from phenotypic.gui.results_viewer._mutation_guard import OutputMutationGuard
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer.colony_view import _crop_routes as colony_crop_routes
+from phenotypic.gui.results_viewer.colony_view import (
+    _crop_routes as colony_crop_routes,
+)
 from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
 from phenotypic.gui.shell._binding_ui import binding_error_text
 from phenotypic.gui.shell._ids import SHELL_RESULTS_BINDING_JOB_STORE
@@ -179,10 +186,9 @@ def create_app(
         context="Results session pre-read",
     )
     app.server.config[CFG_OUTPUT_ROOT] = output_root
-    install_bound_output_callback_guard(
-        app,
-        mutation_is_safe=output_root.mutation_snapshot_is_safe,
-        status_output_id=ids.HEADER_SNAPSHOT_STATUS_ID,
+    app.server.config[CFG_OUTPUT_MUTATION_GUARD] = OutputMutationGuard(
+        output_root=output_root,
+        binding_generation=binding_generation,
     )
     if output_root.snapshot.active_run:
         app.layout = build_active_snapshot_layout(
@@ -205,7 +211,9 @@ def create_app(
     _tile_routes.register(app, output_root)
     timeline_thumb_routes.register(app, output_root)
 
-    filtered_state = CurationLabels.load(output_root.layout, output_root.master_df)
+    filtered_state = CurationLabels.load(
+        output_root.layout, output_root.master_df
+    )
     app.server.config[CFG_FILTERED_STATE] = filtered_state
     colony_crop_routes.register(app, output_root)
     # QC Review tab serves the same centered crops under its own segment
@@ -217,8 +225,8 @@ def create_app(
     # clobber an existing instance e.g. when the analysis sub-app has
     # already populated the key.
     if app.server.config.get(CFG_MEASUREMENT_SCHEMA) is None:
-        app.server.config[CFG_MEASUREMENT_SCHEMA] = MeasurementSchema.from_layout(
-            output_root.layout
+        app.server.config[CFG_MEASUREMENT_SCHEMA] = (
+            MeasurementSchema.from_layout(output_root.layout)
         )
     # QC tab's augmented-frame cache starts empty; Wave E's QC writer
     # fills it on its first card refresh. The heatmap render callback
@@ -422,6 +430,7 @@ def _register_empty_state_callbacks(
        :class:`_ViewerProxy` serves the atomically published loaded viewer;
        on failure the JSON ``error`` is rendered into the inline error slot.
     """
+
     @app.callback(
         Output(ids.EMPTY_HANDOFF_BANNER, "style"),
         Output(ids.EMPTY_HANDOFF_LABEL, "children"),
@@ -439,7 +448,9 @@ def _register_empty_state_callbacks(
     # a full reload even though the URL is unchanged), which makes the
     # ``_ViewerProxy`` serve the newly published session. On failure the
     # JSON ``error`` is rendered into the inline error slot.
-    api_output_root = join_url_prefix(api_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT)
+    api_output_root = join_url_prefix(
+        api_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT
+    )
 
     app.clientside_callback(
         async_binding_callback_source(

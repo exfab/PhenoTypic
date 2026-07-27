@@ -10,6 +10,7 @@ stashed on ``app.server.config``, the layout assembled by
 :func:`._layout.build_empty_state_layout` when no output root is bound),
 and all callbacks registered via :func:`._callbacks.register_callbacks`.
 """
+
 from __future__ import annotations
 
 import logging
@@ -21,6 +22,7 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 
 from phenotypic.gui._config import (
     CFG_MEASUREMENT_SCHEMA,
+    CFG_OUTPUT_MUTATION_GUARD,
     CFG_OUTPUT_ROOT,
     CFG_RECIPE_STATE,
     CFG_URL_PREFIX,
@@ -36,7 +38,6 @@ from phenotypic.gui._async_binding_client import (
 from phenotypic.gui._binding_generation import (
     BindingRequestFence,
     binding_generation_hooks,
-    install_bound_output_callback_guard,
     install_binding_generation_guard,
 )
 from dash import Input, Output, State
@@ -63,6 +64,10 @@ from phenotypic.gui.analysis._layout import (
 from phenotypic.gui.analysis._recipe_state import RecipeState
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._mutation_guard import (
+    OutputMutationBlocked,
+    OutputMutationGuard,
+)
 from phenotypic.gui.shell._binding_ui import binding_error_text
 from phenotypic.gui.shell._ids import (
     SHELL_RESULTS_BINDING_JOB_STORE,
@@ -151,11 +156,11 @@ def create_app(
         context="Analysis session pre-read",
     )
     app.server.config[CFG_OUTPUT_ROOT] = output_root
-    install_bound_output_callback_guard(
-        app,
-        mutation_is_safe=output_root.mutation_snapshot_is_safe,
-        status_output_id=analysis_ids.ANALYSIS_SNAPSHOT_STATUS,
+    mutation_guard = OutputMutationGuard(
+        output_root=output_root,
+        binding_generation=binding_generation,
     )
+    app.server.config[CFG_OUTPUT_MUTATION_GUARD] = mutation_guard
     if output_root.snapshot.active_run:
         app.layout = build_active_snapshot_layout(
             output_root,
@@ -175,7 +180,19 @@ def create_app(
         return configure_url_prefix_routing(app, url_prefix)
 
     recipe = RecipeState.from_layout(output_root.layout)
-    recipe.publication_guard = output_root.mutation_snapshot_is_safe
+
+    def _analysis_recipe_mutation_is_safe() -> bool:
+        try:
+            mutation_guard.authorize("Analysis recipe save")
+        except OutputMutationBlocked:
+            logger.warning(
+                "Analysis recipe save rejected by the output mutation guard",
+                exc_info=True,
+            )
+            return False
+        return True
+
+    recipe.publication_guard = _analysis_recipe_mutation_is_safe
     schema = MeasurementSchema.from_layout(output_root.layout)
     app.server.config[CFG_RECIPE_STATE] = recipe
     app.server.config[CFG_MEASUREMENT_SCHEMA] = schema
@@ -324,7 +341,9 @@ def _register_empty_state_callbacks(
     def _populate_handoff_banner(selection):
         return _handoff_banner_state(selection)
 
-    api_output_root = join_url_prefix(api_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT)
+    api_output_root = join_url_prefix(
+        api_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT
+    )
 
     app.clientside_callback(
         async_binding_callback_source(

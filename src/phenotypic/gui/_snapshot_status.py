@@ -16,6 +16,11 @@ def snapshot_refresh_status(
     refresh_supported: bool,
 ) -> tuple[str, str, bool]:
     """Return the snapshot label, color, and Refresh disabled state."""
+    if output_root.consistency.is_read_only:
+        label = (
+            f"Read-only · {output_root.consistency.state} completion evidence"
+        )
+        return label, "danger", not refresh_supported
     if not refresh_supported:
         if output_root.active_run_is_currently_running():
             return (

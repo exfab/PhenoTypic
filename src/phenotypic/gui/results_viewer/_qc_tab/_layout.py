@@ -165,7 +165,9 @@ def _compatibility_source(recipe: QcRecipe):
     return recipe.source_path or recipe.path
 
 
-def _compatibility_store(report: OutputCompatibilityReport) -> dict[str, object]:
+def _compatibility_store(
+    report: OutputCompatibilityReport,
+) -> dict[str, object]:
     """Serialize the pure compatibility result for Dash memory state."""
     return {
         "status": report.status,
@@ -191,6 +193,7 @@ def _build_compatibility_panel(
     report: OutputCompatibilityReport,
     *,
     rebuild_ready: bool,
+    mutations_disabled: bool = False,
 ) -> Component:
     """Build explicit recipe-migration and QC-rebuild actions."""
     compatible = report.status == "compatible"
@@ -216,7 +219,9 @@ def _build_compatibility_panel(
                         outline=True,
                         size="sm",
                         n_clicks=0,
-                        disabled=report.status != "migratable",
+                        disabled=(
+                            mutations_disabled or report.status != "migratable"
+                        ),
                     ),
                     dbc.Button(
                         "Rebuild QC",
@@ -225,7 +230,7 @@ def _build_compatibility_panel(
                         outline=True,
                         size="sm",
                         n_clicks=0,
-                        disabled=not rebuild_ready,
+                        disabled=mutations_disabled or not rebuild_ready,
                     ),
                 ],
                 className="d-flex",
@@ -261,7 +266,7 @@ def _build_compatibility_panel(
     )
 
 
-def _build_qc_modal() -> dbc.Modal:
+def _build_qc_modal(*, mutations_disabled: bool = False) -> dbc.Modal:
     """Build the shared add / edit / duplicate modal.
 
     The class dropdown and param region are populated by callbacks on
@@ -313,6 +318,7 @@ def _build_qc_modal() -> dbc.Modal:
                 id=ids.QC_MODAL_SUBMIT_BTN_ID,
                 color="primary",
                 n_clicks=0,
+                disabled=mutations_disabled,
             ),
         ]
     )
@@ -349,7 +355,10 @@ def _build_subview_toggle() -> Component:
             dbc.RadioItems(
                 id=review_ids.QC_SUBVIEW_TOGGLE_ID,
                 options=[
-                    {"label": "Configure", "value": review_ids.QC_SUBVIEW_CONFIGURE},
+                    {
+                        "label": "Configure",
+                        "value": review_ids.QC_SUBVIEW_CONFIGURE,
+                    },
                     {"label": "Review", "value": review_ids.QC_SUBVIEW_REVIEW},
                 ],
                 value=review_ids.QC_SUBVIEW_CONFIGURE,
@@ -376,6 +385,8 @@ def _build_subview_toggle() -> Component:
 def _build_configure_view(
     recipe: QcRecipe,
     report: OutputCompatibilityReport,
+    *,
+    mutations_disabled: bool = False,
 ) -> Component:
     """Build the Configure sub-view: the existing per-check card editor."""
     return html.Div(
@@ -383,8 +394,13 @@ def _build_configure_view(
             _build_compatibility_panel(
                 report,
                 rebuild_ready=_initial_rebuild_ready(recipe),
+                mutations_disabled=mutations_disabled,
             ),
-            _build_top_strip(mutations_disabled=report.status != "compatible"),
+            _build_top_strip(
+                mutations_disabled=(
+                    mutations_disabled or report.status != "compatible"
+                )
+            ),
             html.Div(
                 children=_render_load_warnings(recipe.load_warnings),
                 id=ids.QC_LOAD_WARNING_BANNER_ID,
@@ -393,7 +409,9 @@ def _build_configure_view(
             html.Div(
                 children=_initial_cards(
                     recipe,
-                    mutations_disabled=report.status != "compatible",
+                    mutations_disabled=(
+                        mutations_disabled or report.status != "compatible"
+                    ),
                 ),
                 id=ids.QC_CARDS_CONTAINER_ID,
                 style={
@@ -403,7 +421,7 @@ def _build_configure_view(
                     "gap": "0.5rem",
                 },
             ),
-            _build_qc_modal(),
+            _build_qc_modal(mutations_disabled=mutations_disabled),
             dcc.Store(
                 id=ids.STORE_QC_EDITING_INSTANCE,
                 data=None,
@@ -414,7 +432,11 @@ def _build_configure_view(
     )
 
 
-def build_qc_tab_body(recipe: QcRecipe) -> Component:
+def build_qc_tab_body(
+    recipe: QcRecipe,
+    *,
+    mutations_disabled: bool = False,
+) -> Component:
     """Build the QC tab body: Configure | Review segmented sub-views.
 
     The tab hosts a segmented toggle that swaps between **Configure** (the
@@ -442,9 +464,15 @@ def build_qc_tab_body(recipe: QcRecipe) -> Component:
                 data=0,
                 storage_type="memory",
             ),
-            _build_configure_view(recipe, report),
+            _build_configure_view(
+                recipe,
+                report,
+                mutations_disabled=mutations_disabled,
+            ),
             html.Div(
-                children=build_review_view(),
+                children=build_review_view(
+                    mutations_disabled=mutations_disabled
+                ),
                 id=review_ids.QC_REVIEW_VIEW_ID,
                 # Hidden until the toggle flips to Review. No height cap:
                 # the Review view sizes to its content and the

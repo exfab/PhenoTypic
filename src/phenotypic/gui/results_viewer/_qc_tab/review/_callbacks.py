@@ -99,6 +99,11 @@ from phenotypic.gui.results_viewer._filtered_state import (
     KEY_OBJECT_LABEL,
     decode_removed_keys_payload,
 )
+from phenotypic.gui.results_viewer._mutation_guard import (
+    OutputMutationBlocked,
+    output_mutations_disabled,
+    require_output_mutation,
+)
 from phenotypic.schema import ErrorCategory, METADATA
 from phenotypic.gui.results_viewer._qc_tab import _ids as qc_tab_ids
 from phenotypic.gui.results_viewer._qc_tab.review import (
@@ -151,6 +156,11 @@ def _qc_mutations_allowed() -> bool:
     recipe = current_app.config.get(CFG_QC_RECIPE)
     if not isinstance(recipe, QcRecipe):
         return False
+    try:
+        require_output_mutation("QC review mutation")
+    except OutputMutationBlocked as exc:
+        logger.warning("%s", exc)
+        return False
     source = recipe.source_path or recipe.path
     return preflight_output_compatibility(source).status == "compatible"
 
@@ -196,6 +206,8 @@ _CORE_CATEGORY_TOKENS: frozenset[str] = frozenset(ErrorCategory.labels())
 
 def _review_radial_trigger_builder(
     category_of: dict[tuple[str, int], str],
+    *,
+    mutations_disabled: bool = False,
 ) -> Callable[[str, int, bool], list[Component]]:
     """Return a ``remove_button_builder`` that injects the QC radial trigger.
 
@@ -228,6 +240,7 @@ def _review_radial_trigger_builder(
                 current_category is not None
                 and current_category not in _CORE_CATEGORY_TOKENS
             ),
+            disabled=mutations_disabled,
         )
 
     return _build
@@ -592,7 +605,14 @@ def _render_faceted_gallery(
     """
     url_builder = functools.partial(_qc_crop_url, dim_alpha=dim_alpha)
     selected_keys = selected if selected is not None else set()
-    remove_button_builder = _review_radial_trigger_builder(category_of or {})
+    output_root = current_app.config.get(CFG_OUTPUT_ROOT)
+    mutations_disabled = output_root is None or output_mutations_disabled(
+        output_root
+    )
+    remove_button_builder = _review_radial_trigger_builder(
+        category_of or {},
+        mutations_disabled=mutations_disabled,
+    )
     rows: list[Component] = []
     single_facet = len(facets) == 1 and facets[0][0] is None
     for timepoint, keys in facets:
@@ -993,8 +1013,14 @@ def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
     """
     if output_root is None or pipeline is None:
         return False
+    try:
+        require_output_mutation("QC review recompute")
+    except OutputMutationBlocked as exc:
+        logger.warning("%s", exc)
+        return False
 
     from phenotypic.sdk_._qc_recipe._runner import run_qc
+
     frame = _data.build_recompute_frame(output_root, removed)
     try:
         # Write directly into the bundle's resolved qc dir so a standalone
@@ -1011,6 +1037,7 @@ def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
         )
         return False
     try:
+        require_output_mutation("QC plot refresh")
         from phenotypic.gui._plot_refresh import refresh_qc_plots
 
         refresh_qc_plots(
@@ -1019,6 +1046,8 @@ def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
             frame,
             successful,
         )
+    except OutputMutationBlocked as exc:
+        logger.warning("%s", exc)
     except Exception:  # noqa: BLE001 - QC database remains authoritative
         logger.warning(
             "GUI QC plot refresh failed after qc.duckdb rebuild",
@@ -1523,7 +1552,10 @@ def _crop_size_for(keys: list[tuple[str, str, int]], output_root) -> int:
     member_keys = {(im, lbl) for _ds, im, lbl in keys}
     subset = master.filter(
         pl.struct([str(METADATA.IMAGE_NAME), "Object_Label"]).map_elements(
-            lambda s: (str(s[str(METADATA.IMAGE_NAME)]), int(s["Object_Label"]))
+            lambda s: (
+                str(s[str(METADATA.IMAGE_NAME)]),
+                int(s["Object_Label"]),
+            )
             in member_keys,
             return_dtype=pl.Boolean,
         )
@@ -1825,6 +1857,12 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
         except (KeyError, TypeError, ValueError):
             return no_update, no_update, no_update
 
+        if not _qc_mutations_allowed():
+            return (
+                no_update,
+                "Output is read-only; refresh before editing.",
+                no_update,
+            )
         token, message = register_custom_category_safe(filtered, name)
         if token is None:
             return no_update, message, no_update
@@ -2069,6 +2107,11 @@ def _persist_review_before_transition(
     key_values: tuple[Any, ...],
 ) -> bool:
     """Persist review progress before recompute or selection advance."""
+    try:
+        require_output_mutation("QC review progress")
+    except OutputMutationBlocked as exc:
+        logger.warning("%s", exc)
+        return False
     return review_state.mark_reviewed(instance_id, key_values)
 
 

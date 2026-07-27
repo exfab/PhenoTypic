@@ -39,6 +39,7 @@ from phenotypic.sdk_ import (
     measurements_parquet_path,
     pipeline_json_path,
     qc_review_state_path,
+    resolve_manifest_json_path,
 )
 
 from tests._output_layout import (
@@ -121,6 +122,19 @@ def output_root(tmp_path: Path) -> OutputRoot:
 
     # Seed the qc/ artifact exactly as the CLI would.
     run_qc(master.to_pandas(), pipeline, tmp_path)
+    manifest = resolve_manifest_json_path(tmp_path)
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        json.dumps(
+            {
+                "is_complete": True,
+                "completed": 2,
+                "failed": 0,
+                "total_images": 2,
+            }
+        ),
+        encoding="utf-8",
+    )
 
     return OutputRoot.discover(
         tmp_path,
@@ -580,7 +594,9 @@ def test_disabling_all_checks_preserves_database_and_blocks_rebuild(
     preflight = preflight_qc_rebuild(output_root.layout)
 
     assert not preflight.ready
-    assert any("enabled QC recipe entry" in item for item in preflight.blockers)
+    assert any(
+        "enabled QC recipe entry" in item for item in preflight.blockers
+    )
     assert output_root.layout.qc_duckdb.read_bytes() == database_before
     assert _db.list_modules(output_root)
 

@@ -42,6 +42,7 @@ machine-state sidecars ``PROGRESS_DIRNAME`` (``progress/``) and
 cache (``PHENOTYPIC_CACHE_DIRNAME``), resolved for legacy runs via
 ``resolve_manifest_json_path``.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -94,6 +95,7 @@ __all__ = [
     "CFG_IMAGE_ROOT",
     "CFG_SANDBOX_ROOT",
     "CFG_OUTPUT_ROOT",
+    "CFG_OUTPUT_MUTATION_GUARD",
     "CFG_FILTERED_STATE",
     "CFG_RECIPE_STATE",
     "CFG_MEASUREMENT_SCHEMA",
@@ -268,6 +270,11 @@ CFG_SANDBOX_ROOT: str = "pheno_sandbox_root"
 #: a CLI output directory. Set when the results viewer is in loaded mode.
 CFG_OUTPUT_ROOT: str = "output_root"
 
+#: ``app.server.config[CFG_OUTPUT_MUTATION_GUARD]`` — bound Results/Analysis
+#: mutation authority. Every persistent callback obtains a fresh receipt from
+#: this one guard immediately before its first write.
+CFG_OUTPUT_MUTATION_GUARD: str = "pheno_output_mutation_guard"
+
 #: ``app.server.config[CFG_FILTERED_STATE]`` —
 #: :class:`FilteredMeasurements` for the loaded results viewer.
 CFG_FILTERED_STATE: str = "filtered_state"
@@ -363,6 +370,7 @@ def tune_presets_dir(sandbox_root: Path) -> Path:
         / SANDBOX_TUNE_PRESETS_SUBDIR
     )
 
+
 #: Hidden directory inside the results viewer's *output* directory
 #: holding cached DZI tiles.
 VIEWER_CACHE_DIRNAME: str = ".viewer_cache"
@@ -378,14 +386,27 @@ BROWSE_CACHE_TMP_SUBPATH: tuple[str, str] = ("phenotypic", "browse")
 # builder package. ``builder/_directory_browser`` re-exports IMAGE_EXTS.
 # ---------------------------------------------------------------------------
 IMAGE_EXTS: frozenset[str] = frozenset(
-    {".png", ".tif", ".tiff", ".jpg", ".jpeg", ".cr2", ".cr3", ".nef", ".arw", ".dng"}
+    {
+        ".png",
+        ".tif",
+        ".tiff",
+        ".jpg",
+        ".jpeg",
+        ".cr2",
+        ".cr3",
+        ".nef",
+        ".arw",
+        ".dng",
+    }
 )
 
 #: Camera-RAW subset of :data:`IMAGE_EXTS`. These require rawpy (absent on
 #: Windows) and decode through ``phenotypic.Image.imread`` — mirroring the
 #: core ``IO.RAW_FILE_EXTENSIONS`` decode set. Bare ``.raw`` is intentionally
 #: excluded (libraw can't reliably decode the ambiguous container).
-RAW_IMAGE_EXTS: frozenset[str] = frozenset({".cr2", ".cr3", ".nef", ".arw", ".dng"})
+RAW_IMAGE_EXTS: frozenset[str] = frozenset(
+    {".cr2", ".cr3", ".nef", ".arw", ".dng"}
+)
 
 # ---------------------------------------------------------------------------
 # Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.sdk_
@@ -447,7 +468,9 @@ DASHBOARD_FILENAME: str = DASHBOARD_HTML
 # ---------------------------------------------------------------------------
 
 #: Full Flask route for the sandbox API viewer output-root handoff endpoint.
-SANDBOX_API_VIEWER_OUTPUT_ROOT: str = f"{SANDBOX_API_PREFIX}/viewer/output-root"
+SANDBOX_API_VIEWER_OUTPUT_ROOT: str = (
+    f"{SANDBOX_API_PREFIX}/viewer/output-root"
+)
 
 #: URL prefix where the builder's DZI tile blueprint mounts on the Flask
 #: app — the path the Flask server sees AFTER the hub
@@ -794,6 +817,7 @@ THREAD_NAME_PREFIX: str = "phenotypic-gui"
 # ---------------------------------------------------------------------------
 # Launcher helpers
 # ---------------------------------------------------------------------------
+
 
 def normalize_url_prefix(value: str | None) -> str:
     """Return a canonical browser-visible path prefix.

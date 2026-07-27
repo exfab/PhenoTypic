@@ -61,6 +61,10 @@ from phenotypic.gui.results_viewer._error_tab._publication import (
     compute_gui_error_publication,
     publish_error_analysis,
 )
+from phenotypic.gui.results_viewer._mutation_guard import (
+    OutputMutationBlocked,
+    require_output_mutation,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
@@ -554,6 +558,7 @@ def register_error_callbacks(
             raise PreventUpdate
         mode = cast(GoodMode, good_mode or "all_unlabeled")
         try:
+            require_output_mutation("Error analysis publication")
             computation = compute_gui_error_publication(
                 output_root,
                 filtered_state=filtered_state,
@@ -562,8 +567,10 @@ def register_error_callbacks(
             published = publish_error_analysis(
                 output_root.layout,
                 computation,
-                mutation_is_safe=output_root.mutation_snapshot_is_safe,
+                mutation_is_safe=_error_publication_is_safe,
             )
+        except OutputMutationBlocked as exc:
+            return str(exc), "Publication blocked", "danger", True
         except ErrorPublicationConflict as exc:
             return str(exc), "Publication blocked", "danger", True
         except Exception as exc:  # noqa: BLE001 - surfaced without partial state
@@ -575,9 +582,7 @@ def register_error_callbacks(
                 True,
             )
         action = (
-            "Already current"
-            if published.already_published
-            else "Published"
+            "Already current" if published.already_published else "Published"
         )
         message = (
             f"{action} generation {published.generation[:12]} for "
@@ -587,6 +592,15 @@ def register_error_callbacks(
             f"{len(published.artifact_names)} checksummed artifacts."
         )
         return message, "All categories published", "success", True
+
+
+def _error_publication_is_safe() -> bool:
+    """Reauthorize immediately before each Error transaction write."""
+    try:
+        require_output_mutation("Error analysis publication")
+    except OutputMutationBlocked:
+        return False
+    return True
 
 
 __all__ = ["register_error_callbacks", "RecomputeResult"]

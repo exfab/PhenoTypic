@@ -57,13 +57,23 @@ from phenotypic.gui._design import (
     OI_ORANGE,
     OI_ORANGE_TEXT,
 )
-from phenotypic.gui.results_viewer import _filter_panel, _ids as ids, colony_view
+from phenotypic.gui.results_viewer import (
+    _filter_panel,
+    _ids as ids,
+    colony_view,
+)
 from phenotypic.gui.results_viewer._error_tab import build_error_tab_body
 from phenotypic.gui.results_viewer._heatmap_tab import build_heatmap_tab_body
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._mutation_guard import (
+    output_mutations_disabled,
+    output_read_only_diagnostic,
+)
 from phenotypic.gui.results_viewer._qc_tab import build_qc_tab_body
 from phenotypic.gui.results_viewer.colony_view import _layout as _colony_layout  # noqa: F401
-from phenotypic.gui.results_viewer.timeline_view import _layout as _timeline_layout
+from phenotypic.gui.results_viewer.timeline_view import (
+    _layout as _timeline_layout,
+)
 
 if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
@@ -237,11 +247,17 @@ def _build_header(
                 (
                     "Active run snapshot"
                     if output_root.snapshot.active_run
-                    else "Current"
+                    else (
+                        f"Read-only · {output_root.consistency.state}"
+                        if output_root.consistency.is_read_only
+                        else "Current"
+                    )
                 ),
                 id=ids.HEADER_SNAPSHOT_STATUS_ID,
                 color=(
-                    "warning"
+                    "danger"
+                    if output_root.consistency.is_read_only
+                    else "warning"
                     if output_root.snapshot.active_run
                     else "success"
                 ),
@@ -364,6 +380,18 @@ def _build_startup_banner(output_root: OutputRoot) -> Component:
             "background": "rgba(27,117,188,0.08)",
             "color": COLOR_BLUE,
         },
+    )
+
+
+def _build_read_only_diagnostic(output_root: OutputRoot) -> Component:
+    """Build a persistent warning without hiding read-only views."""
+    message = output_read_only_diagnostic(output_root)
+    return dbc.Alert(
+        message or "",
+        id=ids.READ_ONLY_DIAGNOSTIC_ID,
+        color="danger",
+        is_open=message is not None,
+        className="mx-3 mt-2 mb-0 small",
     )
 
 
@@ -567,7 +595,11 @@ def build_app_layout(
     banner = _build_startup_banner(output_root)
     sidebar = _filter_panel.layout(output_root)
     cards_column = _build_cards_column()
-    colony_tab_body = colony_view._layout.layout(output_root)
+    mutations_disabled = output_mutations_disabled(output_root)
+    colony_tab_body = colony_view._layout.layout(
+        output_root,
+        mutations_disabled=mutations_disabled,
+    )
 
     # Heatmap tab uses the measurement-schema cache; lazily attach it to
     # ``app.server.config`` here if ``create_app`` did not. The
@@ -575,8 +607,15 @@ def build_app_layout(
     # keeps the cache hits warm across tabs.
     schema = _resolve_measurement_schema(output_root)
     heatmap_tab_body = build_heatmap_tab_body(output_root, schema)
-    error_tab_body = build_error_tab_body(output_root, schema)
-    qc_tab_body = build_qc_tab_body(_resolve_qc_recipe(output_root))
+    error_tab_body = build_error_tab_body(
+        output_root,
+        schema,
+        mutations_disabled=mutations_disabled,
+    )
+    qc_tab_body = build_qc_tab_body(
+        _resolve_qc_recipe(output_root),
+        mutations_disabled=mutations_disabled,
+    )
     timeline_tab_body = _timeline_layout.layout(output_root)
     stores = _build_stores(filtered_state)
 
@@ -658,6 +697,7 @@ def build_app_layout(
             n_intervals=0,
         ),
         header,
+        _build_read_only_diagnostic(output_root),
         banner,
         body,
         filter_offcanvas,
@@ -787,25 +827,25 @@ def build_empty_state_layout(
     )
 
     children: list[Component] = [
-            html.Div(
-                [
-                    html.H2(
-                        "No output selected",
-                        className="results-viewer-empty-title",
-                    ),
-                    html.P(
-                        "Pick a CLI output directory in the sidebar, "
-                        "then click ↩ Open in viewer to load it. The "
-                        "viewer rebuilds in place once the chosen "
-                        "directory passes layout validation.",
-                        className="results-viewer-empty-body",
-                    ),
-                    handoff_banner,
-                    error_slot,
-                ],
-                className="results-viewer-empty-card",
-            ),
-        ]
+        html.Div(
+            [
+                html.H2(
+                    "No output selected",
+                    className="results-viewer-empty-title",
+                ),
+                html.P(
+                    "Pick a CLI output directory in the sidebar, "
+                    "then click ↩ Open in viewer to load it. The "
+                    "viewer rebuilds in place once the chosen "
+                    "directory passes layout validation.",
+                    className="results-viewer-empty-body",
+                ),
+                handoff_banner,
+                error_slot,
+            ],
+            className="results-viewer-empty-card",
+        ),
+    ]
     if binding_generation is not None:
         children.insert(
             0,

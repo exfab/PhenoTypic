@@ -59,6 +59,10 @@ from phenotypic.gui.results_viewer._filtered_state import (
     KEY_COLUMNS,
     get_curated_frame,
 )
+from phenotypic.gui.results_viewer._mutation_guard import (
+    output_mutations_disabled,
+    require_output_mutation,
+)
 from phenotypic.gui.results_viewer._compatibility import (
     migrate_output_recipe,
     preflight_output_compatibility,
@@ -173,7 +177,9 @@ def _render_summary_strip(summary_df: pd.DataFrame) -> str:
         metric_str = "nan"
     else:
         metric_str = f"{float(worst_metric_raw.max()):.2f}"
-    return f"groups: {groups} | flagged: {flagged} | worst metric: {metric_str}"
+    return (
+        f"groups: {groups} | flagged: {flagged} | worst metric: {metric_str}"
+    )
 
 
 def _worst_status(summary_df: pd.DataFrame) -> Literal["pass", "warn", "fail"]:
@@ -238,7 +244,9 @@ def _left_join_qc_columns(
     # columns when two checks emit overlapping severities.
     extra_cols = [c for c in right.columns if c not in left.columns]
     keep_cols = list(on) + extra_cols
-    right_subset = right[keep_cols].drop_duplicates(subset=list(on), keep="first")
+    right_subset = right[keep_cols].drop_duplicates(
+        subset=list(on), keep="first"
+    )
 
     right_pl = pl.from_pandas(right_subset)
     try:
@@ -333,6 +341,7 @@ def _gather_modal_raw_values(
         single widgets, a ``(tag, value)`` tuple for multi-union widgets,
         and a ``(mode, scalar)`` tuple for column-with-alt widgets.
     """
+
     def _in_scope(pair: tuple[Any, Any]) -> Iterator[tuple[str, str, Any]]:
         """Yield ``(prefix, name, value)`` for this modal's widgets in a pair.
 
@@ -346,14 +355,18 @@ def _gather_modal_raw_values(
                 continue
             prefix = id_dict.get("prefix", "")
             name = id_dict.get("name")
-            if not isinstance(prefix, str) or not prefix.startswith(prefix_marker):
+            if not isinstance(prefix, str) or not prefix.startswith(
+                prefix_marker
+            ):
                 continue
             if isinstance(name, str):
                 yield prefix, name, value
 
     def _selector_by_key(pair: tuple[Any, Any]) -> dict[tuple[str, str], Any]:
         """Index a two-id widget's selector values by ``(prefix, name)``."""
-        return {(prefix, name): value for prefix, name, value in _in_scope(pair)}
+        return {
+            (prefix, name): value for prefix, name, value in _in_scope(pair)
+        }
 
     raw_by_name: dict[str, Any] = {}
     for pair in simple:
@@ -370,7 +383,9 @@ def _gather_modal_raw_values(
     mode_by_key = _selector_by_key(column_modes)
     for prefix, name, value in _in_scope(column_scalars):
         key = (prefix, name)
-        raw_by_name[name] = (mode_by_key[key], value) if key in mode_by_key else value
+        raw_by_name[name] = (
+            (mode_by_key[key], value) if key in mode_by_key else value
+        )
 
     return raw_by_name
 
@@ -407,6 +422,7 @@ def _compatibility_payload(recipe: QcRecipe) -> dict[str, object]:
 
 def _require_compatible_recipe() -> None:
     """Refuse every QC mutation until explicit migration succeeds."""
+    require_output_mutation("QC configuration")
     if _compatibility_payload(_get_recipe())["status"] != "compatible":
         raise PreventUpdate
 
@@ -452,6 +468,7 @@ def _rebuild_qc_and_refresh_pipeline(
     expected_source_fingerprint: str,
 ) -> QcRebuildResult:
     """Rebuild QC and synchronize the pipeline used by later recomputes."""
+    require_output_mutation("QC database rebuild")
     result = rebuild_qc_database(
         output_root.layout,
         expected_source_fingerprint=expected_source_fingerprint,
@@ -482,6 +499,7 @@ def register_qc_callbacks(app: dash.Dash) -> None:
     Args:
         app: The Dash application that will own the callbacks.
     """
+
     @app.callback(
         Output(ids.QC_MIGRATE_CONFIRM_ID, "displayed"),
         Output(ids.QC_REBUILD_CONFIRM_ID, "displayed"),
@@ -496,7 +514,10 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         """Require a second explicit confirmation before either mutation."""
         if ctx.triggered_id == ids.QC_MIGRATE_RECIPE_BTN_ID and migrate_clicks:
             return True, no_update
-        if ctx.triggered_id == ids.QC_REBUILD_DATABASE_BTN_ID and rebuild_clicks:
+        if (
+            ctx.triggered_id == ids.QC_REBUILD_DATABASE_BTN_ID
+            and rebuild_clicks
+        ):
             return no_update, True
         raise PreventUpdate
 
@@ -536,6 +557,7 @@ def register_qc_callbacks(app: dash.Dash) -> None:
                 expected = str(
                     (compatibility_data or {}).get("source_fingerprint", "")
                 )
+                require_output_mutation("QC recipe migration")
                 migration_result = migrate_output_recipe(
                     output_root.layout,
                     expected_source_fingerprint=expected,
@@ -630,8 +652,12 @@ def register_qc_callbacks(app: dash.Dash) -> None:
     ) -> tuple[Any, Any, dict[str, str], bool, bool]:
         """Rebuild the cards-container children list on every revision tick."""
         recipe = _get_recipe()
-        blocked = (compatibility_data or {}).get("status") != "compatible"
         output_root = current_app.config.get(CFG_OUTPUT_ROOT)
+        blocked = (
+            (compatibility_data or {}).get("status") != "compatible"
+            or output_root is None
+            or output_mutations_disabled(output_root)
+        )
         rebuild_disabled = (
             blocked
             or output_root is None
@@ -695,7 +721,9 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         try:
             pandas_frame = augmented.to_pandas()
         except Exception as exc:  # noqa: BLE001
-            logger.warning("QC frame conversion failed: %s", exc, exc_info=True)
+            logger.warning(
+                "QC frame conversion failed: %s", exc, exc_info=True
+            )
             return (
                 [_error_figure(check_name="(frame)", message=str(exc))]
                 * len(ids_list),
@@ -733,7 +761,9 @@ def register_qc_callbacks(app: dash.Dash) -> None:
                     exc_info=True,
                 )
                 figures.append(
-                    _error_figure(check_name=type(check).__name__, message=str(exc))
+                    _error_figure(
+                        check_name=type(check).__name__, message=str(exc)
+                    )
                 )
                 summaries.append(f"error: {exc!s}")
                 badge_text.append("error")
@@ -751,7 +781,9 @@ def register_qc_callbacks(app: dash.Dash) -> None:
                 apply_theme(figure)
             except Exception as exc:  # noqa: BLE001
                 logger.warning("QC inspect() failed: %s", exc, exc_info=True)
-                figure = _error_figure(check_name=type(check).__name__, message=str(exc))
+                figure = _error_figure(
+                    check_name=type(check).__name__, message=str(exc)
+                )
 
             summary = cast(Any, check).summary()
             summaries.append(_render_summary_strip(summary))
@@ -762,7 +794,9 @@ def register_qc_callbacks(app: dash.Dash) -> None:
 
             augmented = _left_join_qc_columns(augmented, result)
 
-        current_app.config[CFG_QC_AUGMENTED_FRAME] = augmented if has_any else None
+        current_app.config[CFG_QC_AUGMENTED_FRAME] = (
+            augmented if has_any else None
+        )
 
         return figures, summaries, badge_text, badge_color, (aug_rev or 0) + 1
 
@@ -814,15 +848,25 @@ def register_qc_callbacks(app: dash.Dash) -> None:
             options = []
 
         # Edit -> pre-populate from the recipe.
-        if isinstance(triggered, dict) and triggered.get("type") == "qc-card-edit":
+        if (
+            isinstance(triggered, dict)
+            and triggered.get("type") == "qc-card-edit"
+        ):
             instance_id = str(triggered["index"])
             recipe = _get_recipe()
             entry = next(
-                (e for e in recipe.entries if e.instance_id == instance_id), None
+                (e for e in recipe.entries if e.instance_id == instance_id),
+                None,
             )
             if entry is None:  # pragma: no cover - defensive
                 raise PreventUpdate
-            return True, "Edit QC check", options, entry.cls.__name__, instance_id
+            return (
+                True,
+                "Edit QC check",
+                options,
+                entry.cls.__name__,
+                instance_id,
+            )
 
         # Default branch: Add. STORE_QC_EDITING_INSTANCE clears to None
         # so the submit callback dispatches to QcRecipe.add.
@@ -865,7 +909,11 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         if editing_instance_id:
             recipe = _get_recipe()
             entry = next(
-                (e for e in recipe.entries if e.instance_id == editing_instance_id),
+                (
+                    e
+                    for e in recipe.entries
+                    if e.instance_id == editing_instance_id
+                ),
                 None,
             )
             if entry is not None and entry.cls.__name__ == class_name:
@@ -882,7 +930,9 @@ def register_qc_callbacks(app: dash.Dash) -> None:
     # Callback E: modal submit
     # -----------------------------------------------------------------
     @app.callback(
-        Output(viewer_ids.STORE_QC_RECIPE_REVISION, "data", allow_duplicate=True),
+        Output(
+            viewer_ids.STORE_QC_RECIPE_REVISION, "data", allow_duplicate=True
+        ),
         Output(ids.QC_MODAL_ID, "is_open", allow_duplicate=True),
         Output(ids.STORE_QC_EDITING_INSTANCE, "data", allow_duplicate=True),
         Input(ids.QC_MODAL_SUBMIT_BTN_ID, "n_clicks"),
@@ -901,15 +951,30 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         State({"type": "param-list", "prefix": ALL, "name": ALL}, "id"),
         State({"type": "param-tuple", "prefix": ALL, "name": ALL}, "value"),
         State({"type": "param-tuple", "prefix": ALL, "name": ALL}, "id"),
-        State({"type": "param-column-scalar", "prefix": ALL, "name": ALL}, "value"),
-        State({"type": "param-column-scalar", "prefix": ALL, "name": ALL}, "id"),
-        State({"type": "param-column-multi", "prefix": ALL, "name": ALL}, "value"),
-        State({"type": "param-column-multi", "prefix": ALL, "name": ALL}, "id"),
-        State({"type": "param-column-mode", "prefix": ALL, "name": ALL}, "value"),
+        State(
+            {"type": "param-column-scalar", "prefix": ALL, "name": ALL},
+            "value",
+        ),
+        State(
+            {"type": "param-column-scalar", "prefix": ALL, "name": ALL}, "id"
+        ),
+        State(
+            {"type": "param-column-multi", "prefix": ALL, "name": ALL}, "value"
+        ),
+        State(
+            {"type": "param-column-multi", "prefix": ALL, "name": ALL}, "id"
+        ),
+        State(
+            {"type": "param-column-mode", "prefix": ALL, "name": ALL}, "value"
+        ),
         State({"type": "param-column-mode", "prefix": ALL, "name": ALL}, "id"),
-        State({"type": "param-multi-tag", "prefix": ALL, "name": ALL}, "value"),
+        State(
+            {"type": "param-multi-tag", "prefix": ALL, "name": ALL}, "value"
+        ),
         State({"type": "param-multi-tag", "prefix": ALL, "name": ALL}, "id"),
-        State({"type": "param-multi-value", "prefix": ALL, "name": ALL}, "value"),
+        State(
+            {"type": "param-multi-value", "prefix": ALL, "name": ALL}, "value"
+        ),
         State({"type": "param-multi-value", "prefix": ALL, "name": ALL}, "id"),
         prevent_initial_call=True,
     )
@@ -1011,7 +1076,9 @@ def register_qc_callbacks(app: dash.Dash) -> None:
     # Callback F: card actions (delete / duplicate / toggle)
     # -----------------------------------------------------------------
     @app.callback(
-        Output(viewer_ids.STORE_QC_RECIPE_REVISION, "data", allow_duplicate=True),
+        Output(
+            viewer_ids.STORE_QC_RECIPE_REVISION, "data", allow_duplicate=True
+        ),
         Input({"type": "qc-card-delete", "index": ALL}, "n_clicks"),
         Input({"type": "qc-card-duplicate", "index": ALL}, "n_clicks"),
         Input({"type": "qc-card-toggle", "index": ALL}, "n_clicks"),
@@ -1047,7 +1114,8 @@ def register_qc_callbacks(app: dash.Dash) -> None:
 
         if action_type == "qc-card-toggle":
             entry = next(
-                (e for e in recipe.entries if e.instance_id == instance_id), None
+                (e for e in recipe.entries if e.instance_id == instance_id),
+                None,
             )
             if entry is None:
                 raise PreventUpdate
@@ -1056,12 +1124,15 @@ def register_qc_callbacks(app: dash.Dash) -> None:
 
         if action_type == "qc-card-duplicate":
             entry = next(
-                (e for e in recipe.entries if e.instance_id == instance_id), None
+                (e for e in recipe.entries if e.instance_id == instance_id),
+                None,
             )
             if entry is None:
                 raise PreventUpdate
             try:
-                recipe.add(entry.cls, dict(entry.params), enabled=entry.enabled)
+                recipe.add(
+                    entry.cls, dict(entry.params), enabled=entry.enabled
+                )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("QC duplicate failed: %s", exc, exc_info=True)
                 raise PreventUpdate from exc
@@ -1147,7 +1218,9 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         return (
             configure_style,
             review_style,
-            review_ids.QC_SUBVIEW_REVIEW if review else review_ids.QC_SUBVIEW_CONFIGURE,
+            review_ids.QC_SUBVIEW_REVIEW
+            if review
+            else review_ids.QC_SUBVIEW_CONFIGURE,
         )
 
     # Review sub-view owns its own callback bundle (worklist, detail,

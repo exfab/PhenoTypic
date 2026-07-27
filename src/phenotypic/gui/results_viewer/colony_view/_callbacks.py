@@ -58,6 +58,11 @@ from phenotypic.gui.results_viewer._filtered_state import (
     decode_removed_keys_payload,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._mutation_guard import (
+    OutputMutationBlocked,
+    output_mutations_disabled,
+    require_output_mutation,
+)
 from phenotypic.gui.results_viewer.colony_view._grid import (
     build_grid,
     build_stack_popover_rows,
@@ -127,6 +132,15 @@ def register_callbacks(
     """
     df = output_root.master_df
     column_value_sets = output_root.column_value_sets
+    mutations_disabled = output_mutations_disabled(output_root)
+
+    def _curation_authorized(action: str) -> bool:
+        try:
+            require_output_mutation(action)
+        except OutputMutationBlocked as exc:
+            logger.warning("%s", exc)
+            return False
+        return True
 
     # ----------------------------------------------------------------------
     # 1. Render the grid
@@ -180,14 +194,18 @@ def register_callbacks(
             spec = FilterSpec.from_store(filter_payload)
             filtered_df = spec.apply_to(df)
         except Exception:
-            logger.exception("FilterSpec.apply_to failed in colony-view render.")
+            logger.exception(
+                "FilterSpec.apply_to failed in colony-view render."
+            )
             filtered_df = df
 
         max_size = compute_max_bbox_size(filtered_df)
         # Display size: clamp the stepper value into the stepper's own range
         # then cap at the server crop size so the browser never upscales
         # the PNG beyond its native resolution.
-        requested_size = int(tile_size) if tile_size else COLONY_TILE_SIZE_DEFAULT
+        requested_size = (
+            int(tile_size) if tile_size else COLONY_TILE_SIZE_DEFAULT
+        )
         requested_size = max(
             COLONY_TILE_SIZE_MIN,
             min(COLONY_TILE_SIZE_MAX, requested_size),
@@ -220,6 +238,7 @@ def register_callbacks(
             dim_alpha=alpha,
             category_of=category_of,
             layer=layer,
+            mutations_disabled=mutations_disabled,
         )
         info = (
             f"crop {max_size}px → {display_size}px "
@@ -245,7 +264,9 @@ def register_callbacks(
         filter_payload: Any,
         current_x: str | None,
         current_y: str | None,
-    ) -> tuple[list[dict[str, str]], list[dict[str, str]], str | None, str | None]:
+    ) -> tuple[
+        list[dict[str, str]], list[dict[str, str]], str | None, str | None
+    ]:
         """Refresh axis dropdown options when the filter spec changes.
 
         Preserves the current dropdown value when it's still valid;
@@ -318,6 +339,8 @@ def register_callbacks(
         )
         if decoded is None:
             raise PreventUpdate
+        if not _curation_authorized("Colony curation"):
+            raise PreventUpdate
         image_file, label, category = decoded
         payload = apply_wedge_mark(filtered_state, image_file, label, category)
         # ``STORE_REMOVED_KEYS`` is an ``allow_duplicate`` (multi-mode) output
@@ -368,7 +391,9 @@ def register_callbacks(
         Input(ids.STORE_COLONY_SELECTION, "data"),
         prevent_initial_call=True,
     )
-    def _bulk_bar_visibility(selection_payload: Any) -> tuple[dict[str, str], str]:
+    def _bulk_bar_visibility(
+        selection_payload: Any,
+    ) -> tuple[dict[str, str], str]:
         """Show the bulk-action bar iff at least one cell is selected."""
         selected: list[Any] = []
         if isinstance(selection_payload, dict):
@@ -412,8 +437,12 @@ def register_callbacks(
 
         selected: list[tuple[str, int]] = []
         if isinstance(selection_payload, dict):
-            selected = decode_removed_keys_payload(selection_payload.get("selected"))
+            selected = decode_removed_keys_payload(
+                selection_payload.get("selected")
+            )
         if not selected:
+            return no_update, no_update
+        if not _curation_authorized("Bulk colony curation"):
             return no_update, no_update
 
         if triggered == ids.COLONY_BULK_REMOVE_BTN_ID:
@@ -446,7 +475,9 @@ def register_callbacks(
         Output(ids.COLONY_BULK_MARK_DROPDOWN_ID, "options"),
         Input(ids.STORE_CATEGORY_VOCAB_REVISION, "data"),
     )
-    def _populate_bulk_mark_options(_revision: int | None) -> list[dict[str, str]]:
+    def _populate_bulk_mark_options(
+        _revision: int | None,
+    ) -> list[dict[str, str]]:
         """Refresh the bulk-mark dropdown options from the category vocabulary."""
         with filtered_state._lock:
             categories = filtered_state.categories()
@@ -474,8 +505,12 @@ def register_callbacks(
             return no_update, no_update, no_update
         selected: list[tuple[str, int]] = []
         if isinstance(selection_payload, dict):
-            selected = decode_removed_keys_payload(selection_payload.get("selected"))
+            selected = decode_removed_keys_payload(
+                selection_payload.get("selected")
+            )
         if not selected:
+            return no_update, no_update, None
+        if not _curation_authorized("Bulk colony category assignment"):
             return no_update, no_update, None
         try:
             payload = bulk_mark(filtered_state, selected, category)
@@ -588,15 +623,27 @@ def register_callbacks(
 
     @app.callback(
         Output(
-            {"type": "colony-cell-popover-body", "image_file": MATCH, "label": MATCH},
+            {
+                "type": "colony-cell-popover-body",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
             "children",
         ),
         Input(
-            {"type": "colony-cell-count-badge", "image_file": MATCH, "label": MATCH},
+            {
+                "type": "colony-cell-count-badge",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
             "n_clicks",
         ),
         State(
-            {"type": "colony-cell-popover-data", "image_file": MATCH, "label": MATCH},
+            {
+                "type": "colony-cell-popover-data",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
             "data",
         ),
         State(ids.STORE_REMOVED_KEYS, "data"),
@@ -683,7 +730,11 @@ def register_callbacks(
             "n_clicks",
         ),
         State(
-            {"type": "colony-radial-store", "image_file": MATCH, "label": MATCH},
+            {
+                "type": "colony-radial-store",
+                "image_file": MATCH,
+                "label": MATCH,
+            },
             "data",
         ),
         prevent_initial_call=True,
@@ -770,7 +821,9 @@ def register_callbacks(
             },
             "children",
         ),
-        Output(ids.STORE_CATEGORY_VOCAB_REVISION, "data", allow_duplicate=True),
+        Output(
+            ids.STORE_CATEGORY_VOCAB_REVISION, "data", allow_duplicate=True
+        ),
         Input(
             {
                 "type": "colony-radial-custom-submit",
@@ -827,6 +880,12 @@ def register_callbacks(
         except (KeyError, TypeError, ValueError):
             raise PreventUpdate
 
+        if not _curation_authorized("Custom curation category"):
+            return (
+                no_update,
+                "Output is read-only; refresh before editing.",
+                no_update,
+            )
         token, message = register_custom_category_safe(filtered_state, name)
         if token is None:
             # Validation failure: only the message updates.
@@ -876,7 +935,9 @@ def register_callbacks(
     )
     def _sync_colony_tile_size_readout(tile_size: int | None) -> str:
         """Render ``150 px`` into the tile-size readout from the store."""
-        size = COLONY_TILE_SIZE_DEFAULT if tile_size is None else int(tile_size)
+        size = (
+            COLONY_TILE_SIZE_DEFAULT if tile_size is None else int(tile_size)
+        )
         size = max(COLONY_TILE_SIZE_MIN, min(COLONY_TILE_SIZE_MAX, size))
         return f"{size} px"
 

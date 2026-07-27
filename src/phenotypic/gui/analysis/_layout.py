@@ -10,12 +10,14 @@ The page is a vertical stepper:
 6. Model section (single) — plot preview UX.
 7. Sticky run console (button + spinner + status).
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
+from dash.development.base_component import Component
 
 from phenotypic.gui._config import MOUNT_HOME
 from phenotypic.gui._design import (
@@ -39,10 +41,15 @@ from phenotypic.gui.analysis._plot_controls import plot_controls_form
 
 if TYPE_CHECKING:
     from phenotypic.gui.analysis._recipe_state import RecipeState
-    from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._mutation_guard import (
+    output_mutations_disabled,
+    output_read_only_diagnostic,
+)
 
 #: Type alias for the column-list provider plumbed into ``param_form``.
 ColumnsProvider = Callable[[str], list[str]]
+
 
 def _choices_for_category(category: str) -> list[str]:
     """Return sorted analyzer/post class names registered under ``category``.
@@ -52,7 +59,9 @@ def _choices_for_category(category: str) -> list[str]:
     discoverable in ``phenotypic.analysis`` / ``phenotypic.post`` is
     automatically offered in the analysis sub-app's add-dropdowns.
     """
-    return sorted(info.name for info in get_registry().get_by_category(category))
+    return sorted(
+        info.name for info in get_registry().get_by_category(category)
+    )
 
 
 #: Registry category whose analyzers render in the dedicated edge stack.
@@ -118,51 +127,69 @@ def build_app_layout(
     Returns:
         Top-level ``html.Div`` ready to drop into the shell's main pane.
     """
+    mutations_disabled = output_mutations_disabled(output_root)
     children: list[Any] = [
-            _build_output_header(
-                output_root,
-                url_prefix=url_prefix,
-                refresh_supported=refresh_supported,
-            ),
-            _build_pipeline_header(recipe),
-            _build_stale_banner(),
-            _build_load_warnings_banner(recipe),
-            _build_recompile_banner(),
-            _build_post_panel(recipe),
-            _build_filter_panel(recipe, columns_provider=columns_provider),
-            _build_edge_panel(recipe, columns_provider=columns_provider),
-            _build_model_panel(recipe, columns_provider=columns_provider),
-            _build_run_console(recipe),
-            dcc.Interval(
-                id=ids.ANALYSIS_SNAPSHOT_INTERVAL,
-                interval=10_000,
-                n_intervals=0,
-            ),
-            dcc.Store(
-                id=ids.ANALYSIS_PIPELINE_STORE,
-                data={
-                    "revision": 0,
-                    "pipeline_json": (
-                        recipe.last_json
-                        or recipe.pipeline.to_json()
-                        or "{}"
-                    ),
-                },
-            ),
-            dcc.Store(
-                id=ids.ANALYSIS_PIPELINE_EVENT_STORE,
-                data=None,
-            ),
-            dcc.Store(
-                id=ids.ANALYSIS_PIPELINE_GATE_ACK_STORE,
-                data=None,
-            ),
-            dcc.Store(
-                id=ids.ANALYSIS_PLOT_PREFS_STORE,
-                storage_type="session",
-                data={},
-            ),
-        ]
+        _build_output_header(
+            output_root,
+            url_prefix=url_prefix,
+            refresh_supported=refresh_supported,
+        ),
+        _build_pipeline_header(recipe),
+        _build_read_only_diagnostic(output_root),
+        _build_stale_banner(),
+        _build_load_warnings_banner(recipe),
+        _build_recompile_banner(),
+        _build_post_panel(
+            recipe,
+            mutations_disabled=mutations_disabled,
+        ),
+        _build_filter_panel(
+            recipe,
+            columns_provider=columns_provider,
+            mutations_disabled=mutations_disabled,
+        ),
+        _build_edge_panel(
+            recipe,
+            columns_provider=columns_provider,
+            mutations_disabled=mutations_disabled,
+        ),
+        _build_model_panel(
+            recipe,
+            columns_provider=columns_provider,
+            mutations_disabled=mutations_disabled,
+        ),
+        _build_run_console(
+            recipe,
+            mutations_disabled=mutations_disabled,
+        ),
+        dcc.Interval(
+            id=ids.ANALYSIS_SNAPSHOT_INTERVAL,
+            interval=10_000,
+            n_intervals=0,
+        ),
+        dcc.Store(
+            id=ids.ANALYSIS_PIPELINE_STORE,
+            data={
+                "revision": 0,
+                "pipeline_json": (
+                    recipe.last_json or recipe.pipeline.to_json() or "{}"
+                ),
+            },
+        ),
+        dcc.Store(
+            id=ids.ANALYSIS_PIPELINE_EVENT_STORE,
+            data=None,
+        ),
+        dcc.Store(
+            id=ids.ANALYSIS_PIPELINE_GATE_ACK_STORE,
+            data=None,
+        ),
+        dcc.Store(
+            id=ids.ANALYSIS_PLOT_PREFS_STORE,
+            storage_type="session",
+            data={},
+        ),
+    ]
     if binding_generation is not None:
         children.insert(
             0,
@@ -280,23 +307,23 @@ def build_empty_state_layout(
 
     children: list[Any] = [
         html.Div(
-                [
-                    html.H2(
-                        "No output selected",
-                        style={"color": COLOR_NAVY},
-                    ),
-                    html.P(
-                        "Pick a CLI output directory in the sidebar, "
-                        "then click ↩ Open in analysis to bind it. The "
-                        "binding is shared with the results viewer -- "
-                        "both tools rebuild against the chosen output "
-                        "in lock-step.",
-                    ),
-                    handoff_banner,
-                    error_slot,
-                ],
-            ),
-        ]
+            [
+                html.H2(
+                    "No output selected",
+                    style={"color": COLOR_NAVY},
+                ),
+                html.P(
+                    "Pick a CLI output directory in the sidebar, "
+                    "then click ↩ Open in analysis to bind it. The "
+                    "binding is shared with the results viewer -- "
+                    "both tools rebuild against the chosen output "
+                    "in lock-step.",
+                ),
+                handoff_banner,
+                error_slot,
+            ],
+        ),
+    ]
     if binding_generation is not None:
         children.insert(
             0,
@@ -316,6 +343,7 @@ def build_empty_state_layout(
 # ---------------------------------------------------------------------------
 # Section builders
 # ---------------------------------------------------------------------------
+
 
 def _build_output_header(
     output_root: "OutputRoot",
@@ -347,11 +375,17 @@ def _build_output_header(
                 (
                     "Active run snapshot"
                     if output_root.snapshot.active_run
-                    else "Current"
+                    else (
+                        f"Read-only · {output_root.consistency.state}"
+                        if output_root.consistency.is_read_only
+                        else "Current"
+                    )
                 ),
                 id=ids.ANALYSIS_SNAPSHOT_STATUS,
                 color=(
-                    "warning"
+                    "danger"
+                    if output_root.consistency.is_read_only
+                    else "warning"
                     if output_root.snapshot.active_run
                     else "success"
                 ),
@@ -425,9 +459,10 @@ def _build_recompile_banner() -> html.Div:
     return html.Div(
         [
             html.Span("ℹ "),
-            "Post edits change per-image measurement. Re-run the CLI "
-            "(",
-            html.Code("python -m phenotypic --mode recompile --output <output>"),
+            "Post edits change per-image measurement. Re-run the CLI (",
+            html.Code(
+                "python -m phenotypic --mode recompile --output <output>"
+            ),
             ") to apply post changes to ",
             html.Code("measurements.parquet"),
             " (",
@@ -450,6 +485,19 @@ def _build_stale_banner() -> html.Div:
         id=ids.ANALYSIS_STALE_BANNER,
         className="analysis-stale-banner",
         style={"display": "none"},
+    )
+
+
+def _build_read_only_diagnostic(output_root: "OutputRoot") -> Component:
+    """Show why persistent actions are disabled without hiding previews."""
+    message = output_read_only_diagnostic(output_root)
+    return dbc.Alert(
+        message or "",
+        id=ids.ANALYSIS_READ_ONLY_DIAGNOSTIC,
+        color="danger",
+        is_open=message is not None,
+        className="analysis-read-only-diagnostic",
+        style={"margin": "0.5rem 1rem"},
     )
 
 
@@ -508,7 +556,11 @@ def _build_load_warnings_banner(recipe: "RecipeState") -> html.Div:
     )
 
 
-def _build_post_panel(recipe: "RecipeState") -> html.Div:
+def _build_post_panel(
+    recipe: "RecipeState",
+    *,
+    mutations_disabled: bool = False,
+) -> html.Div:
     return _build_section_panel(
         title="Post operations (metadata transforms)",
         section_label="post",
@@ -516,6 +568,7 @@ def _build_post_panel(recipe: "RecipeState") -> html.Div:
         add_dropdown_id=ids.ANALYSIS_POST_ADD_DROPDOWN,
         stack_id=ids.ANALYSIS_POST_STACK,
         recipe=recipe,
+        mutations_disabled=mutations_disabled,
     )
 
 
@@ -523,6 +576,7 @@ def _build_filter_panel(
     recipe: "RecipeState",
     *,
     columns_provider: Optional[ColumnsProvider] = None,
+    mutations_disabled: bool = False,
 ) -> html.Div:
     return _build_section_panel(
         title="Filters",
@@ -532,6 +586,7 @@ def _build_filter_panel(
         stack_id=ids.ANALYSIS_FILTER_STACK,
         recipe=recipe,
         columns_provider=columns_provider,
+        mutations_disabled=mutations_disabled,
     )
 
 
@@ -539,6 +594,7 @@ def _build_edge_panel(
     recipe: "RecipeState",
     *,
     columns_provider: Optional[ColumnsProvider] = None,
+    mutations_disabled: bool = False,
 ) -> html.Div:
     return _build_section_panel(
         title="Edge Correction",
@@ -548,6 +604,7 @@ def _build_edge_panel(
         stack_id=ids.ANALYSIS_EDGE_STACK,
         recipe=recipe,
         columns_provider=columns_provider,
+        mutations_disabled=mutations_disabled,
     )
 
 
@@ -560,6 +617,7 @@ def _build_section_panel(
     stack_id: str,
     recipe: "RecipeState",
     columns_provider: Optional[ColumnsProvider] = None,
+    mutations_disabled: bool = False,
 ) -> html.Div:
     return html.Div(
         [
@@ -570,6 +628,7 @@ def _build_section_panel(
                     section_label,
                     recipe,
                     columns_provider=columns_provider,
+                    mutations_disabled=mutations_disabled,
                 ),
                 id=stack_id,
                 className=f"analysis-{section_label}-stack",
@@ -580,6 +639,7 @@ def _build_section_panel(
                         id=add_dropdown_id,
                         options=[{"label": c, "value": c} for c in choices],
                         placeholder=f"Add {section_label}…",
+                        disabled=mutations_disabled,
                         style={"width": "260px", "display": "inline-block"},
                     ),
                 ],
@@ -598,6 +658,7 @@ def build_section_stack(
     *,
     columns_provider: Optional[ColumnsProvider] = None,
     plot_prefs: Optional[dict] = None,
+    mutations_disabled: bool = False,
 ) -> list:
     """Build the list of section cards inside a stack.
 
@@ -628,12 +689,16 @@ def build_section_stack(
     for index, (name, instance) in enumerate(items):
         info = registry.get(type(instance).__name__)
         body: Any = (
-            _section_form(
-                info,
-                instance,
-                kind=kind,
-                index=index,
-                columns_provider=columns_provider,
+            html.Fieldset(
+                _section_form(
+                    info,
+                    instance,
+                    kind=kind,
+                    index=index,
+                    columns_provider=columns_provider,
+                ),
+                disabled=mutations_disabled,
+                style={"border": "0", "padding": "0", "margin": "0"},
             )
             if info is not None
             else html.Em(
@@ -649,7 +714,10 @@ def build_section_stack(
             body = [
                 body,
                 plot_controls_form(
-                    cast("ids.PlotSectionKind", kind), index, instance, plot_prefs
+                    cast("ids.PlotSectionKind", kind),
+                    index,
+                    instance,
+                    plot_prefs,
                 ),
             ]
         cards.append(
@@ -662,6 +730,7 @@ def build_section_stack(
                                 "×",
                                 id=ids.section_remove_button_id(kind, index),
                                 n_clicks=0,
+                                disabled=mutations_disabled,
                                 className="analysis-section-remove",
                                 style={
                                     "float": "right",
@@ -724,6 +793,7 @@ def _build_model_panel(
     *,
     columns_provider: Optional[ColumnsProvider] = None,
     plot_prefs: Optional[dict] = None,
+    mutations_disabled: bool = False,
 ) -> html.Div:
     pipeline = recipe.pipeline
     model = pipeline.get_model()
@@ -735,6 +805,7 @@ def _build_model_panel(
                     model,
                     columns_provider=columns_provider,
                     plot_prefs=plot_prefs,
+                    mutations_disabled=mutations_disabled,
                 )
                 if model is not None
                 else html.Span(
@@ -754,8 +825,11 @@ def _build_model_panel(
                                 for c in _choices_for_category("Model")
                             ),
                         ],
-                        value=type(model).__name__ if model is not None else "",
+                        value=type(model).__name__
+                        if model is not None
+                        else "",
                         clearable=False,
+                        disabled=mutations_disabled,
                         style={"width": "260px", "display": "inline-block"},
                     ),
                 ],
@@ -771,16 +845,21 @@ def _build_model_section(
     *,
     columns_provider: Optional[ColumnsProvider] = None,
     plot_prefs: Optional[dict] = None,
+    mutations_disabled: bool = False,
 ) -> html.Div:
     info = get_registry().get(type(model).__name__)
     body: Any
     if info is not None:
-        body = _section_form(
-            info,
-            model,
-            kind="model",
-            index=0,
-            columns_provider=columns_provider,
+        body = html.Fieldset(
+            _section_form(
+                info,
+                model,
+                kind="model",
+                index=0,
+                columns_provider=columns_provider,
+            ),
+            disabled=mutations_disabled,
+            style={"border": "0", "padding": "0", "margin": "0"},
         )
     else:
         body = html.Em(
@@ -802,7 +881,11 @@ def _build_model_section(
     )
 
 
-def _build_run_console(recipe: "RecipeState") -> html.Div:
+def _build_run_console(
+    recipe: "RecipeState",
+    *,
+    mutations_disabled: bool = False,
+) -> html.Div:
     has_model = recipe.pipeline.get_model() is not None
     return html.Div(
         [
@@ -810,7 +893,7 @@ def _build_run_console(recipe: "RecipeState") -> html.Div:
                 "Run analysis",
                 id=ids.ANALYSIS_RUN_BUTTON,
                 color="primary",
-                disabled=not has_model,
+                disabled=mutations_disabled or not has_model,
                 n_clicks=0,
             ),
             dcc.Loading(
@@ -833,5 +916,3 @@ def _build_run_console(recipe: "RecipeState") -> html.Div:
             "borderTop": f"1px solid {COLOR_BORDER}",
         },
     )
-
-

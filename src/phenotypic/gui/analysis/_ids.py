@@ -6,6 +6,7 @@ renames flow everywhere. IDs are unprefixed kebab-case in line with the
 builder/results-viewer convention; the shell uses ``"shell-"`` and
 mount middleware keeps the namespaces independent.
 """
+
 from __future__ import annotations
 
 from typing import Literal
@@ -70,6 +71,9 @@ ANALYSIS_STALE_BANNER = "analysis-stale-banner"
 #: so the user can manually re-add a replacement. Hidden when no
 #: warnings were collected during load.
 ANALYSIS_LOAD_WARNINGS_BANNER = "analysis-load-warnings-banner"
+
+#: Persistent diagnostic for a browsable but non-mutable output binding.
+ANALYSIS_READ_ONLY_DIAGNOSTIC = "analysis-read-only-diagnostic"
 
 # ---------------------------------------------------------------------------
 # Section stacks
