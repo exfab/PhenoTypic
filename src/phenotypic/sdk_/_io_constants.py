@@ -1500,22 +1500,22 @@ def run_completion_marker_path(output_dir: Path) -> Path:
 
 
 def failures_jsonl_path(output_dir: Path) -> Path:
-    """Return ``<output>/progress/failures.jsonl``."""
+    """Return ``<output>/.phenotypic/progress/failures.jsonl``."""
     return progress_dir(output_dir) / FAILURES_JSONL
 
 
 def manifest_json_path(output_dir: Path) -> Path:
-    """Return ``<output>/progress/manifest.json`` (dashboard manifest)."""
+    """Return ``<output>/.phenotypic/progress/manifest.json``."""
     return progress_dir(output_dir) / MANIFEST_JSON
 
 
 def chunk_manifest_path(output_dir: Path) -> Path:
-    """Return ``<output>/progress/chunk_manifest.json``."""
+    """Return ``<output>/.phenotypic/progress/chunk_manifest.json``."""
     return progress_dir(output_dir) / CHUNK_MANIFEST_JSON
 
 
 def chunk_state_path(output_dir: Path) -> Path:
-    """Return ``<output>/progress/chunk_state.json``."""
+    """Return ``<output>/.phenotypic/progress/chunk_state.json``."""
     return progress_dir(output_dir) / CHUNK_STATE_JSON
 
 
