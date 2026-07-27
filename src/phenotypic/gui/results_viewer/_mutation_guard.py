@@ -83,14 +83,25 @@ class OutputMutationGuard:
                 "binding. Reload before retrying."
             )
 
-        # The inventory check is the potentially expensive part. Inspect
-        # completion evidence afterward so the receipt closes over the latest
-        # owner/manifest generation immediately before the caller writes.
-        if not self.output_root.snapshot_is_current():
+        # A binding discovered from incomplete or contradictory evidence never
+        # gains write authority in place. It carries only bounded structural
+        # processing assurance and must be refreshed after completion evidence
+        # becomes coherent.
+        if self.output_root.consistency.is_read_only:
+            detail = "; ".join(self.output_root.consistency.reasons)
             raise OutputMutationBlocked(
-                f"{action} blocked: processing artifacts changed after this "
-                "snapshot was bound. Refresh Results and Analysis."
+                f"{action} blocked: output completion evidence is "
+                f"{self.output_root.consistency.state}. {detail}"
             )
+        if not self.output_root.has_exhaustive_processing_inventory:
+            raise OutputMutationBlocked(
+                f"{action} blocked: this read-only binding does not carry an "
+                "exhaustive processing inventory. Refresh Results and Analysis."
+            )
+
+        # Check completion evidence on both sides of the exhaustive inventory
+        # verification. This closes the mutation receipt over owner/manifest
+        # changes without making read-only bindings walk unrelated artifacts.
         fresh_consistency = inspect_output_consistency(self.output_root.layout)
         if fresh_consistency.state != "coherent":
             detail = "; ".join(fresh_consistency.reasons)
@@ -109,6 +120,25 @@ class OutputMutationGuard:
         if self.output_root.active_run_is_currently_running():
             raise OutputMutationBlocked(
                 f"{action} blocked: a nonterminal output owner is active."
+            )
+        if not self.output_root.snapshot_is_current():
+            raise OutputMutationBlocked(
+                f"{action} blocked: processing artifacts changed after this "
+                "snapshot was bound. Refresh Results and Analysis."
+            )
+        verified_consistency = inspect_output_consistency(
+            self.output_root.layout
+        )
+        if (
+            verified_consistency.state != "coherent"
+            or verified_consistency.evidence_fingerprint
+            != fresh_consistency.evidence_fingerprint
+            or verified_consistency.has_active_owner
+        ):
+            raise OutputMutationBlocked(
+                f"{action} blocked: completion evidence changed while "
+                "processing artifacts were verified. Refresh Results and "
+                "Analysis."
             )
         return OutputMutationReceipt(
             action=action,

@@ -17,6 +17,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
+from types import MappingProxyType
 
 import polars as pl
 
@@ -40,6 +41,7 @@ from phenotypic.gui.results_viewer._output_consistency import (
 )
 from phenotypic.gui.results_viewer._processing_inventory import (
     ProcessingInventory,
+    ProcessingInventoryAssurance,
     inventory_is_current,
     load_or_scan_processing_inventory,
 )
@@ -47,6 +49,7 @@ from phenotypic.gui.shell._runs_registry import run_status_is_nonterminal
 from phenotypic.sdk_ import (
     DIR_OVERLAYS,
     BundleLayout,
+    dataset_hdf_dir,
     gui_launch_owner_path,
     is_metadata_header,
     source_cache_key,
@@ -77,11 +80,10 @@ class OutputSnapshotChangedError(RuntimeError):
 class OutputSnapshotDescriptor:
     """Fingerprints that define one coherent Results binding.
 
-    ``processing_fingerprint`` covers the path, type, size, mtime, and ctime
-    inventory of immutable processing products used to render image content.
-    It is the cache identity and the only fingerprint that can invalidate an
-    already-bound tile request. Coherent terminal products are assumed not to
-    be modified while preserving all of those metadata fields.
+    ``processing_fingerprint`` covers either an exhaustive path/type/size/time
+    inventory for coherent terminal outputs or bounded structural anchors for
+    mutation-ineligible outputs. Pixel routes validate the exact HDF/overlay
+    source they serve when the bounded assurance mode is active.
 
     ``consumed_state_fingerprint`` covers mutable state read while constructing
     the Results and Analysis sessions: the measurements mirror, pipeline
@@ -98,6 +100,9 @@ class OutputSnapshotDescriptor:
             descriptor was captured.
         processing_inventory_cache_hit: Whether discovery reused a verified
             persistent processing inventory.
+        processing_inventory_assurance: Whether discovery captured an
+            exhaustive mutation-capable inventory or bounded read-only
+            structural anchors.
     """
 
     processing_fingerprint: str
@@ -105,6 +110,7 @@ class OutputSnapshotDescriptor:
     captured_at: datetime
     active_run: bool
     processing_inventory_cache_hit: bool = False
+    processing_inventory_assurance: ProcessingInventoryAssurance = "exhaustive"
 
 
 @dataclass(frozen=True)
@@ -168,6 +174,10 @@ class OutputRoot:
     #: :meth:`has_overlay` per-call ``stat`` so picker callbacks don't
     #: hit the filesystem on every render.
     overlay_index: frozenset[tuple[str, str]]
+    #: Per-image HDF/overlay identities captured during discovery. Read-only
+    #: bindings use these targeted tokens instead of revalidating every
+    #: unrelated processing artifact for each pixel request.
+    image_source_tokens: Mapping[tuple[str, str], str]
 
     @classmethod
     def discover(
@@ -386,7 +396,23 @@ class OutputRoot:
         column_value_sets = _build_column_value_sets(master_df)
 
         pipeline_summary = _read_pipeline_summary(layout.pipeline_config_path)
-        overlay_index = _scan_overlay_index(layout, datasets_with_overlays)
+        overlay_index = _scan_overlay_index(
+            layout,
+            datasets_with_overlays,
+            cancellation=cancellation,
+            progress_callback=progress_callback,
+        )
+        image_source_tokens = (
+            _capture_image_source_tokens(
+                layout,
+                clean_master_df,
+                overlay_index=overlay_index,
+                cancellation=cancellation,
+                progress_callback=progress_callback,
+            )
+            if inventory.assurance == "read_only_bounded"
+            else MappingProxyType({})
+        )
         report_discovery_progress(
             progress_callback,
             phase="verifying",
@@ -436,6 +462,7 @@ class OutputRoot:
             captured_at=datetime.now(timezone.utc),
             active_run=consistency.has_active_owner,
             processing_inventory_cache_hit=inventory.cache_hit,
+            processing_inventory_assurance=inventory.assurance,
         )
 
         output = cls(
@@ -450,6 +477,7 @@ class OutputRoot:
             processing_inventory=inventory,
             pipeline_summary=pipeline_summary,
             overlay_index=overlay_index,
+            image_source_tokens=image_source_tokens,
         )
         report_discovery_progress(
             progress_callback,
@@ -490,6 +518,11 @@ class OutputRoot:
     def consumed_state_fingerprint(self) -> str:
         """Fingerprint of state incorporated by an explicit Refresh."""
         return self.snapshot.consumed_state_fingerprint
+
+    @property
+    def has_exhaustive_processing_inventory(self) -> bool:
+        """Return whether this binding can support mutation authorization."""
+        return self.processing_inventory.assurance == "exhaustive"
 
     def snapshot_is_current(self) -> bool:
         """Return whether stable image-processing sources match this binding.
@@ -536,7 +569,9 @@ class OutputRoot:
         display contradictory outputs without authorizing writes.
         """
         return (
-            not self.active_run_is_currently_running()
+            self.has_exhaustive_processing_inventory
+            and not self.consistency.is_read_only
+            and not self.active_run_is_currently_running()
             and self.snapshot_is_current()
         )
 
@@ -596,6 +631,41 @@ class OutputRoot:
         return self.hdf_path(dataset, stem) is not None or self.has_overlay(
             dataset, stem
         )
+
+    def image_source_token(self, dataset: str, stem: str) -> str:
+        """Return a metadata identity for the pixel sources of one image.
+
+        The token is intentionally cheap: it fingerprints the HDF and overlay
+        path identities, not their bytes. This matches the exhaustive
+        inventory's replacement/change contract while keeping read-only pixel
+        requests independent of unrelated files in a large output.
+        """
+        return _image_source_token(
+            self.layout,
+            dataset,
+            stem,
+            has_overlay=self.has_overlay(dataset, stem),
+        )
+
+    def bound_image_source_token(self, dataset: str, stem: str) -> str:
+        """Return the source identity captured when this session was bound."""
+        if self.has_exhaustive_processing_inventory:
+            return self.image_source_token(dataset, stem)
+        # An image absent from the discovery snapshot has no authority to
+        # become visible merely because a matching file appeared later.
+        return self.image_source_tokens.get((dataset, stem), "")
+
+    def image_source_token_is_current(
+        self,
+        dataset: str,
+        stem: str,
+        token: str,
+    ) -> bool:
+        """Return whether one requested image retains its captured identity."""
+        try:
+            return self.image_source_token(dataset, stem) == token
+        except OSError:
+            return False
 
     def image_pairs(self, df: pl.DataFrame) -> list[tuple[str, str]]:
         """Extract unique ``(dataset, image_stem)`` pairs from a frame.
@@ -996,7 +1066,11 @@ def _ensure_required_columns(
 
 
 def _scan_overlay_index(
-    layout: BundleLayout, datasets_with_overlays: list[str]
+    layout: BundleLayout,
+    datasets_with_overlays: list[str],
+    *,
+    cancellation: OutputDiscoveryCancellation,
+    progress_callback: OutputDiscoveryProgressCallback | None,
 ) -> frozenset[tuple[str, str]]:
     """Snapshot every ``(dataset, stem)`` whose overlay PNG exists on disk.
 
@@ -1012,11 +1086,109 @@ def _scan_overlay_index(
         filename minus its ``.png`` suffix.
     """
     pairs: set[tuple[str, str]] = set()
+    completed = 0
     for dataset in datasets_with_overlays:
         for entry in layout.overlays_dir(dataset).iterdir():
+            cancellation.raise_if_cancelled()
             if entry.suffix.lower() == ".png" and entry.is_file():
                 pairs.add((dataset, entry.stem))
+            completed += 1
+            if completed % 256 == 0:
+                report_discovery_progress(
+                    progress_callback,
+                    phase="indexing",
+                    detail="Indexing available overlays.",
+                    completed=completed,
+                )
     return frozenset(pairs)
+
+
+def _capture_image_source_tokens(
+    layout: BundleLayout,
+    frame: pl.DataFrame,
+    *,
+    overlay_index: frozenset[tuple[str, str]],
+    cancellation: OutputDiscoveryCancellation,
+    progress_callback: OutputDiscoveryProgressCallback | None,
+) -> Mapping[tuple[str, str], str]:
+    """Capture targeted pixel-source identities for every discoverable image."""
+    pairs = set(overlay_index)
+    if KEY_DATASET in frame.columns and KEY_IMAGE_FILE in frame.columns:
+        pair_frame = (
+            frame.select(
+                pl.col(KEY_DATASET).cast(pl.String),
+                pl.col(KEY_IMAGE_FILE).cast(pl.String),
+            )
+            .drop_nulls()
+            .unique()
+        )
+        pairs.update(
+            (str(dataset), str(stem))
+            for dataset, stem in pair_frame.iter_rows()
+        )
+
+    captured: dict[tuple[str, str], str] = {}
+    total = len(pairs)
+    for index, (dataset, stem) in enumerate(sorted(pairs), start=1):
+        cancellation.raise_if_cancelled()
+        captured[(dataset, stem)] = _image_source_token(
+            layout,
+            dataset,
+            stem,
+            has_overlay=(dataset, stem) in overlay_index,
+        )
+        if index % 256 == 0:
+            report_discovery_progress(
+                progress_callback,
+                phase="indexing",
+                detail="Capturing per-image source identities.",
+                completed=index,
+                total=total,
+            )
+    return MappingProxyType(captured)
+
+
+def _image_source_token(
+    layout: BundleLayout,
+    dataset: str,
+    stem: str,
+    *,
+    has_overlay: bool,
+) -> str:
+    """Fingerprint the HDF and overlay metadata identity for one image."""
+    hdf_path = (
+        dataset_hdf_dir(layout.output_root, dataset) / f"{stem}.h5"
+        if layout.output_root is not None
+        else None
+    )
+    sources: tuple[tuple[str, Path | None], ...] = (
+        ("hdf", hdf_path),
+        (
+            "overlay",
+            layout.overlay_path(dataset, stem) if has_overlay else None,
+        ),
+    )
+    digest = hashlib.sha256()
+    for kind, path in sources:
+        digest.update(kind.encode("utf-8"))
+        digest.update(b"\0")
+        if path is None:
+            digest.update(b"missing\n")
+            continue
+        digest.update(str(path).encode("utf-8"))
+        digest.update(b"\0")
+        try:
+            stat = path.stat()
+        except OSError:
+            digest.update(b"missing\n")
+            continue
+        digest.update(
+            (
+                f"{stat.st_dev}\0{stat.st_ino}\0{stat.st_size}\0"
+                f"{stat.st_mtime_ns}\0{stat.st_ctime_ns}\n"
+            ).encode("ascii")
+        )
+    return f"sha256:{digest.hexdigest()}"
 
 
 def _all_parse_as_float(values: list[str]) -> bool:

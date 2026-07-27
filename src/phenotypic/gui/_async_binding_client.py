@@ -31,8 +31,13 @@ def async_binding_callback_source(
     Returns:
         JavaScript source for :meth:`dash.Dash.clientside_callback`.
     """
+    # Import lazily because ``shell._callbacks`` imports this module while
+    # ``shell`` itself is still being initialised.
+    from phenotypic.gui.shell._ids import SHELL_RESULTS_BINDING_JOB_STORE
+
     api_literal = json.dumps(api_url)
     redirect_literal = json.dumps(redirect_url)
+    binding_store_literal = json.dumps(SHELL_RESULTS_BINDING_JOB_STORE)
     signature = (
         "n_clicks, selection, current"
         if selection_required
@@ -73,6 +78,42 @@ def async_binding_callback_source(
         const previousActive = previousJob &&
             (previousJob.status === "queued" ||
              previousJob.status === "running");
+        const submissionTarget = (
+            typeof requestBody.path === "string" && requestBody.path
+        ) ? requestBody.path : (
+            previousJob && typeof previousJob.target === "string"
+                ? previousJob.target
+                : null
+        );
+        const pendingSubmission = previousActive
+            ? Object.assign({{}}, current, {{
+                submission_outcome: "pending",
+                submission_target: submissionTarget,
+                redirect_url: {redirect_literal},
+            }})
+            : {{
+                status: "submitting",
+                submission_outcome: "pending",
+                submission_target: submissionTarget,
+                redirect_url: {redirect_literal},
+                job: {{
+                    status: "submitting",
+                    phase: "submitting",
+                    detail: "Submitting the Results binding request.",
+                    target: submissionTarget,
+                    terminal: false,
+                    authoritative: false,
+                }},
+            }};
+        if (
+            window.dash_clientside &&
+            typeof window.dash_clientside.set_props === "function"
+        ) {{
+            window.dash_clientside.set_props(
+                {binding_store_literal},
+                {{data: pendingSubmission}}
+            );
+        }}
 
         const unknownSubmissionState = function(message) {{
             const uncertainty = {{

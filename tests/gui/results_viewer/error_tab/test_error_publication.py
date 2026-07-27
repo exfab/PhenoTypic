@@ -41,7 +41,11 @@ from phenotypic.sdk_._file_locking import (
     ArtifactLockTimeout,
     exclusive_path_lock,
 )
-from tests._output_layout import write_master, write_measurements_mirror
+from tests._output_layout import (
+    write_complete_manifest,
+    write_master,
+    write_measurements_mirror,
+)
 
 KEY_IMAGE_FILE = str(METADATA.IMAGE_NAME)
 
@@ -80,6 +84,7 @@ def publication_state(
     master = _master()
     write_master(tmp_path, master)
     write_measurements_mirror(tmp_path, master)
+    write_complete_manifest(tmp_path, total_images=1)
     from phenotypic.sdk_ import BundleLayout
 
     layout = BundleLayout.detect(tmp_path)

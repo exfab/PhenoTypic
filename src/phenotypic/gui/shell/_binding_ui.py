@@ -9,8 +9,10 @@ from typing import Any
 
 __all__ = ["BindingUiState", "binding_error_text", "binding_ui_state"]
 
-_ACTIVE_STATUSES = frozenset({"queued", "running"})
+_AUTHORITATIVE_ACTIVE_STATUSES = frozenset({"queued", "running"})
+_WORKING_STATUSES = _AUTHORITATIVE_ACTIVE_STATUSES | {"submitting"}
 _PHASE_LABELS = {
+    "submitting": "Submitting request",
     "queued": "Queued",
     "classifying": "Classifying output",
     "inventory": "Scanning processing inventory",
@@ -27,6 +29,7 @@ _PHASE_LABELS = {
     "submission_unknown": "Submission acknowledgement unavailable",
 }
 _STATUS_LABELS = {
+    "submitting": "Submitting",
     "queued": "Queued",
     "running": "Active",
     "succeeded": "Published",
@@ -78,13 +81,14 @@ def binding_ui_state(payload: object) -> BindingUiState:
     phase_key = str(job.get("phase") or status)
     completed = _optional_nonnegative_int(job.get("completed"))
     total = _optional_positive_int(job.get("total"))
-    active = status in _ACTIVE_STATUSES
+    authoritative_active = status in _AUTHORITATIVE_ACTIVE_STATUSES
+    working = status in _WORKING_STATUSES
 
     if total is not None:
         progress_max = total
         progress_value = min(completed or 0, total)
         progress_label = f"{progress_value} of {total}"
-    elif active:
+    elif working:
         progress_max = 1
         progress_value = None
         progress_label = "Working"
@@ -122,8 +126,8 @@ def binding_ui_state(payload: object) -> BindingUiState:
         progress_max=progress_max,
         progress_label=progress_label,
         diagnostic=diagnostic,
-        cancel_disabled=not active,
-        poll_disabled=not active,
+        cancel_disabled=not authoritative_active,
+        poll_disabled=not authoritative_active,
     )
 
 
@@ -159,6 +163,7 @@ def _diagnostic_text(
     target: str,
 ) -> str:
     notices: list[str] = []
+    submission_pending = payload.get("submission_outcome") == "pending"
     submission_unknown = payload.get("submission_outcome") == "unknown"
     if payload.get("deduplicated") is True:
         notices.append("Reused the active request.")
@@ -186,6 +191,12 @@ def _diagnostic_text(
         notices.append(
             "The latest submission could not be confirmed and may have been "
             f"accepted{detail}."
+        )
+    elif submission_pending and status in _AUTHORITATIVE_ACTIVE_STATUSES:
+        notices.append(
+            "A newer binding request is awaiting acknowledgement. Continuing "
+            "to monitor the previously acknowledged job until the new request "
+            "returns an authoritative job identifier."
         )
 
     if status == "succeeded":
@@ -272,7 +283,12 @@ def _diagnostic_text(
         notices.append(
             "A newer request won. The superseded candidate was not published."
         )
-    elif status in _ACTIVE_STATUSES:
+    elif status == "submitting":
+        notices.append(
+            "Waiting for an authoritative job identifier before polling or "
+            "cancellation becomes available."
+        )
+    elif status in _AUTHORITATIVE_ACTIVE_STATUSES:
         if submission_unknown:
             notices.append(
                 "Continuing to monitor the previously acknowledged job. Its "

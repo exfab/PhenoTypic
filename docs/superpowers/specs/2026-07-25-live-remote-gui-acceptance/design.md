@@ -704,3 +704,121 @@ No production output was modified. Interactive allocation `26749027` remains
 the sole active job. The copied Results bind failed with `HTTP 504` while
 leaving its key artifacts byte-identical; Analysis and all bound-view
 workflows remain blocked behind that bind.
+
+## 8. Re-acceptance attempt on 2026-07-27
+
+This section records the acceptance attempt against the production-file content
+published in `770ff7bbaa35437fd3c0b3c11afabb146587ea43`. The checklist state in
+Sections 4 through 7 remains the historical 2026-07-26 record and must not be
+interpreted as current evidence.
+
+### 8.1 Deployment and safety preflight
+
+- [!] **A01** The checkout is not clean or checked out at the required commit.
+  `/bigdata/exfab/anguy344/PhenoTypic` reports `HEAD=ab547d29f` with the
+  implementation present as modified and untracked files. A byte-for-byte
+  comparison of every changed production file under `src/phenotypic` found
+  zero differences from `770ff7bba`, but the live-test exact-source gate
+  correctly rejects this checkout identity. One tracked test file,
+  `tests/unit/tune/test_atomic_io.py`, is absent from the working tree.
+- [-] **A02** The updated Run controls and canonical typed extensions were not
+  revisited before the browser session wedged. Updated shared-path, Timeline,
+  and Results surfaces were observed separately.
+- [x] **A03** The scheduler preflight found one job:
+  interactive allocation `26751178` on `gpu12`. No acceptance batch job was
+  submitted or cancelled.
+- [!] **A04** The copied Results fixture remains contradictory and read-only,
+  so it does not satisfy the coherence precondition for mutation testing.
+  Before and after the attempted bind, sizes and mtimes were unchanged for
+  processing state, manifest, both pipeline copies, and both measurements
+  mirrors. SHA-256 values were also unchanged for processing state, manifest,
+  and both small pipeline copies.
+- [-] **A05** New live output namespaces were not created because A01 failed.
+- [-] **A06** The running compute-node process environment could not be read
+  from the login node, so the fake-GPU preload remains unverified.
+
+The canonical sandbox actually served by this deployment is
+`/bigdata/exfab/anguy344/projects/ucr_029_e_d_Maresca`. The originally recorded
+`/rhome/anguy344/bigdata_exfab/ucr_029_e_d_Maresca` path does not exist in this
+login environment and must not be used by the live harness.
+
+### 8.2 Locally safe scheduler gates
+
+- [x] 259 scheduler contract tests passed.
+- [x] All five fake-scheduler browser scenarios passed: generation-fenced
+  submit/cancel, ordinary array plus finalizer publication, process-mode
+  success and failure boundaries, and staged dependency retargeting.
+- [-] Ordinary live SLURM, cancellation, restart reconciliation, and Tune
+  SLURM remain blocked by A01. Staged SLURM is additionally blocked by A06.
+
+### 8.3 Live browser results
+
+- [x] **B01-B02** Home chrome, Help, and Settings worked.
+- [~] **B03** Explicit source selection and Clear worked. The V2 payload was
+  not inspected directly in this attempt.
+- [~] **B07 / [x] F-003 core** Shared Refresh retained the exact explicitly
+  selected one-image directory instead of authorizing its parent. Badge, open
+  picker, source-label, and page-input propagation were not all rechecked.
+- [x] **C01-C02** The one-image and eight-image sources loaded with correct
+  image names, dimensions, file sizes, EXIF values, and navigation bounds.
+- [~] **C03** Deep-zoom controls mounted, but pan, home, and full-page behavior
+  were not exercised in this attempt.
+- [~] **C04 / F-005** Compare rendered readable sandbox-relative image paths,
+  not encoded transport tokens. Linked pan/zoom was not rechecked.
+- [~] **C08 / [x] F-006 keyboard path** Enter on the focusable Timeline
+  viewport opened the deep-zoom modal; close and reopen both worked. The hover
+  trigger was not rechecked.
+- [~] **F-004 core** Clearing the source atomically retired the grid,
+  selection, Compare overlay, filename pattern, and axis state. A
+  source-to-source switch with authored state and C09 return-after-Refresh
+  were not rechecked.
+- [x] **F-007** The ordinary Browse metadata panel matched the legacy
+  `Metadata_ImageFileName` identity and rendered five matching metadata rows
+  for the first outlier image.
+- [!] **C05** Selecting `Filename pattern`, typing a pattern, and confirming it
+  did not update the preview or rebuild the grid. The DOM value changed, but
+  the preview remained `Enter a pattern to preview matches.`. Current browser
+  coverage injects this state with `dash_clientside.set_props` and therefore
+  does not cover the real typing path.
+- [!] **H01 / F-015** Clicking `Open in viewer` for
+  `data/results/2026-07-16-test-gui` did not return an immediate asynchronous
+  ticket or progress state. The browser interaction remained blocked for more
+  than five minutes, and subsequent control requests to that in-app browser
+  session also timed out. A separate HTTP health request to the GUI root still
+  returned `302` in 0.2 seconds, so the failure is specific to the bind/browser
+  request path rather than a total server outage.
+- [-] **H02-H10, I-K** The Results bind never published, so downstream Results,
+  QC, Error, and Analysis acceptance remains blocked. The fixture was not
+  mutated.
+- [-] **D, E, F, G, L** Remaining live Builder, Tune, Run, scheduler, and final
+  cross-app checks were stopped after the bind wedged the browser session.
+
+### 8.4 Major issues from this attempt
+
+1. **P0 acceptance blocker: non-reproducible deployed checkout.** Production
+   files match the target content, but Git identity is still `ab547d29f` with
+   a large dirty overlay. Live safety harnesses cannot prove the code they are
+   executing and correctly fail closed.
+2. **P1 Results blocker: the asynchronous large-bind contract is not active in
+   the deployed behavior.** The bind request still blocks for minutes with no
+   visible ticket, phase, progress, cancellation, or supersession control.
+3. **P1 Browse workflow failure: typed Timeline patterns do not propagate.**
+   The current automated browser test bypasses user input by writing component
+   state directly and missed the live interaction failure.
+
+No production output or scheduler job was changed during this attempt.
+
+### 8.5 F-015 remediation prepared locally
+
+The follow-up implementation preserves exhaustive processing inventories for
+coherent, mutation-capable outputs. Active, incomplete, and contradictory
+outputs now bind with a bounded structural inventory, remain permanently
+read-only for that binding generation, and validate only the HDF or overlay
+used by each pixel request. The bind UI also publishes a non-authoritative
+Submitting state synchronously, before awaiting the POST acknowledgement, so
+a slow proxy or server acknowledgement cannot leave the page apparently idle.
+
+Local unit, integration, targeted pixel-route, and real-click browser
+regressions cover the new split. Remote H01-H10 acceptance remains pending a
+clean deployment of the follow-up commit; this section does not change the
+failed/blocked states recorded above.

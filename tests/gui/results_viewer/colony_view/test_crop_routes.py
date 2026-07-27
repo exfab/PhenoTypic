@@ -122,13 +122,18 @@ def test_crop_route_rejects_unknown_dataset(app_client) -> None:
 def test_overlay_replacement_stales_colony_and_qc_crop_routes(crop_app) -> None:
     """Both shared crop namespaces reject a replaced overlay generation."""
     client, output_root, overlay_path, _hdf_path = crop_app
+    bound_token = output_root.bound_image_source_token("d1", "img-1")
     replacement = overlay_path.with_name("replacement.png")
     PILImage.new("RGB", (100, 100), (0, 255, 0)).save(
         replacement,
         format="PNG",
     )
     replacement.replace(overlay_path)
-    assert output_root.snapshot_is_current() is False
+    assert not output_root.image_source_token_is_current(
+        "d1",
+        "img-1",
+        bound_token,
+    )
 
     for segment in ("crops", QC_CROPS_URL_SEGMENT):
         response = client.get(f"/{segment}/d1/img-1/7.png?size=20")
@@ -138,6 +143,7 @@ def test_overlay_replacement_stales_colony_and_qc_crop_routes(crop_app) -> None:
 def test_hdf_replacement_stales_colony_and_qc_crop_routes(crop_app) -> None:
     """Both shared crop namespaces reject a replaced HDF generation."""
     client, output_root, _overlay_path, hdf_path = crop_app
+    bound_token = output_root.bound_image_source_token("d1", "img-1")
     replacement = hdf_path.with_name("replacement.h5")
     with h5py.File(replacement, "w") as handle:
         layers = handle.create_group("layers")
@@ -146,7 +152,11 @@ def test_hdf_replacement_stales_colony_and_qc_crop_routes(crop_app) -> None:
             data=np.full((100, 100, 3), (0, 255, 0), dtype=np.uint8),
         )
     replacement.replace(hdf_path)
-    assert output_root.snapshot_is_current() is False
+    assert not output_root.image_source_token_is_current(
+        "d1",
+        "img-1",
+        bound_token,
+    )
 
     for segment in ("crops", QC_CROPS_URL_SEGMENT):
         response = client.get(f"/{segment}/d1/img-1/7.png?size=20")
@@ -161,6 +171,7 @@ def test_crop_route_rechecks_snapshot_after_pixel_read(
 ) -> None:
     """A processing replacement during the read is rejected after cropping."""
     client, output_root, overlay_path, _hdf_path = crop_app
+    bound_token = output_root.bound_image_source_token("d1", "img-1")
     real_crop = tiles.crop_colony
 
     def _crop_then_replace(*args, **kwargs):
@@ -178,4 +189,8 @@ def test_crop_route_rechecks_snapshot_after_pixel_read(
     response = client.get(f"/{segment}/d1/img-1/7.png?size=20")
 
     assert response.status_code == 409
-    assert output_root.snapshot_is_current() is False
+    assert not output_root.image_source_token_is_current(
+        "d1",
+        "img-1",
+        bound_token,
+    )

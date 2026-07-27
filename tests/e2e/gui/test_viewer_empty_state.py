@@ -43,6 +43,131 @@ def test_each_mount_injects_its_own_prefix(page: Page, hub_url: str) -> None:
     assert run_prefix is None
 
 
+def test_open_click_shows_submission_before_post_acknowledgement(
+    page: Page,
+    hub_url: str,
+) -> None:
+    """A real click renders non-authoritative progress while POST is pending."""
+    job_path = "/sandbox/api/viewer/output-root/jobs/delayed-ack"
+
+    page.add_init_script(
+        """
+        (() => {
+            const originalFetch = window.fetch.bind(window);
+            const gate = {
+                intercepted: false,
+                released: false,
+                release: null,
+            };
+            window.__bindingPostGate = gate;
+            window.fetch = (...args) => {
+                const input = args[0];
+                const options = args[1] || {};
+                const url = typeof input === "string" ? input : input.url;
+                const method = String(
+                    options.method ||
+                    (typeof input === "string" ? "GET" : input.method) ||
+                    "GET"
+                ).toUpperCase();
+                if (
+                    method !== "POST" ||
+                    !url.endsWith("/sandbox/api/viewer/output-root") ||
+                    gate.intercepted
+                ) {
+                    return originalFetch(...args);
+                }
+                gate.intercepted = true;
+                const response = originalFetch(...args);
+                return new Promise((resolve, reject) => {
+                    gate.release = () => {
+                        gate.released = true;
+                        response.then(resolve, reject);
+                    };
+                });
+            };
+        })();
+        """
+    )
+
+    poll_gets = {"count": 0}
+
+    def _binding_route(route) -> None:
+        if route.request.method == "POST":
+            route.fulfill(
+                status=202,
+                content_type="application/json",
+                body=(
+                    '{"status":"queued","job_id":"delayed-ack",'
+                    f'"poll_path":"{job_path}","cancel_path":"{job_path}",'
+                    '"deduplicated":false,"job":{'
+                    '"job_id":"delayed-ack","status":"queued",'
+                    '"phase":"queued","detail":"Waiting for a worker.",'
+                    '"terminal":false,'
+                    '"target":"/sandbox/results/CliOutputExample"}}'
+                ),
+            )
+        else:
+            poll_gets["count"] += 1
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=(
+                    '{"status":"running","job_id":"delayed-ack",'
+                    f'"poll_path":"{job_path}","cancel_path":"{job_path}",'
+                    '"job":{"job_id":"delayed-ack","status":"running",'
+                    '"phase":"inventory","detail":"Scanning files.",'
+                    '"completed":1,"total":100,"terminal":false,'
+                    '"target":"/sandbox/results/CliOutputExample"}}'
+                ),
+            )
+
+    page.route("**/sandbox/api/viewer/output-root**", _binding_route)
+    page.goto(hub_url + "/results/")
+    page.wait_for_selector("#results-viewer-empty-state", timeout=10_000)
+    page.click(
+        'button[id*="\\"path\\":\\"results\\""][id*="shell-sidebar-entry"]'
+    )
+    page.wait_for_selector(
+        'button[id*="\\"path\\":\\"results/CliOutputExample\\""'
+        '][id*="shell-sidebar-entry"]',
+        timeout=5_000,
+    )
+    page.click(
+        'button[id*="\\"path\\":\\"results/CliOutputExample\\""'
+        '][id*="shell-sidebar-entry"]'
+    )
+    expect(page.locator("#results-viewer-empty-handoff-open")).to_be_enabled()
+
+    page.click("#results-viewer-empty-handoff-open")
+    page.wait_for_function("() => window.__bindingPostGate.intercepted")
+
+    expect(page.locator("#shell-results-binding-panel")).to_be_visible(
+        timeout=1_000
+    )
+    expect(page.locator("#shell-results-binding-status")).to_have_text(
+        "Submitting"
+    )
+    expect(page.locator("#shell-results-binding-phase")).to_have_text(
+        "Submitting request"
+    )
+    expect(page.locator("#shell-results-binding-progress-label")).to_have_text(
+        "Working"
+    )
+    expect(page.locator("#shell-results-binding-cancel")).to_be_disabled()
+    assert poll_gets["count"] == 0
+
+    page.evaluate("() => window.__bindingPostGate.release()")
+    expect(page.locator("#shell-results-binding-status")).to_have_text(
+        "Active",
+        timeout=5_000,
+    )
+    expect(page.locator("#shell-results-binding-phase")).to_have_text(
+        "Scanning processing inventory"
+    )
+    expect(page.locator("#shell-results-binding-cancel")).to_be_enabled()
+    assert poll_gets["count"] >= 1
+
+
 def test_binding_progress_and_cancel_are_visible_in_shared_sidebar(
     page: Page,
     hub_url: str,

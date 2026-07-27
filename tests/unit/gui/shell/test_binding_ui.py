@@ -10,6 +10,63 @@ from phenotypic.gui.shell._binding_ui import (
 )
 
 
+def test_pending_submission_is_visible_but_not_yet_actionable() -> None:
+    """An optimistic submission never invents poll or cancellation authority."""
+    state = binding_ui_state(
+        {
+            "status": "submitting",
+            "submission_outcome": "pending",
+            "submission_target": "results/large-output",
+            "job": {
+                "status": "submitting",
+                "phase": "submitting",
+                "detail": "Submitting the Results binding request.",
+                "target": "results/large-output",
+                "terminal": False,
+                "authoritative": False,
+            },
+        }
+    )
+
+    assert state.status == "Submitting"
+    assert state.phase == "Submitting request"
+    assert state.progress_value is None
+    assert state.progress_label == "Working"
+    assert state.cancel_disabled is True
+    assert state.poll_disabled is True
+    assert "authoritative job identifier" in state.diagnostic
+    assert "publication is unchanged" not in state.diagnostic
+
+
+def test_pending_retry_retains_prior_authoritative_monitor() -> None:
+    """A new unacknowledged request does not displace known job controls."""
+    state = binding_ui_state(
+        {
+            "submission_outcome": "pending",
+            "submission_target": "results/new-output",
+            "job_id": "known-job",
+            "poll_path": "/jobs/known-job",
+            "cancel_path": "/jobs/known-job",
+            "job": {
+                "job_id": "known-job",
+                "status": "running",
+                "phase": "inventory",
+                "completed": 40,
+                "total": 100,
+                "terminal": False,
+            },
+        }
+    )
+
+    assert state.status == "Active"
+    assert state.progress_label == "40 of 100"
+    assert state.cancel_disabled is False
+    assert state.poll_disabled is False
+    assert "newer binding request is awaiting acknowledgement" in (
+        state.diagnostic
+    )
+
+
 def test_active_progress_surfaces_phase_counts_and_deduplication() -> None:
     """A running job produces an enabled, pollable progress card."""
     state = binding_ui_state(

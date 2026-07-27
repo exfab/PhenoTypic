@@ -95,11 +95,19 @@ def _stable_overlay_snapshot(
     """Copy one verified overlay revision into the external content cache."""
     if not output_root.snapshot_is_current():
         raise FileNotFoundError("bound output snapshot changed")
+    source_token = output_root.bound_image_source_token(dataset, stem)
     try:
         source_bytes = overlay.read_bytes()
     except OSError as exc:
         raise FileNotFoundError(overlay) from exc
-    if not output_root.snapshot_is_current():
+    if (
+        not output_root.snapshot_is_current()
+        or not output_root.image_source_token_is_current(
+            dataset,
+            stem,
+            source_token,
+        )
+    ):
         raise FileNotFoundError("bound output snapshot changed")
 
     digest = bytes_fingerprint(source_bytes).removeprefix("sha256:")

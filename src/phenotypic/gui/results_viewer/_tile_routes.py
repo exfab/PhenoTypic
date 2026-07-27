@@ -53,6 +53,7 @@ _OVERLAY_LAYER = "overlay"
 #: Every ``?layer=`` value the DZI route accepts: the displayable HDF layers
 #: (:data:`phenotypic.gui._shared.tiles.LayerName`) plus the overlay sentinel.
 _VALID_DZI_LAYERS: tuple[str, ...] = (*get_args(LayerName), _OVERLAY_LAYER)
+_SOURCE_TOKEN_FILENAME = ".source-token"
 
 
 class _SourceSnapshotChanged(RuntimeError):
@@ -195,6 +196,7 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
                 "source snapshot changed; refresh Results before viewing",
                 409,
             )
+        source_token = output_root.bound_image_source_token(dataset, stem)
 
         cache_dir = _dzi_cache_dir_for(
             output_root.cache_dir, dataset, stem, layer
@@ -208,6 +210,7 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
                 layer=layer,
                 h5=h5,
                 cache_dir=cache_dir,
+                source_token=source_token,
             )
         except _SourceSnapshotChanged:
             return _json_error(
@@ -231,6 +234,15 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         if not output_root.snapshot_is_current():
             return _json_error(
                 "source snapshot changed; refresh Results before viewing",
+                409,
+            )
+        if not output_root.image_source_token_is_current(
+            dataset,
+            stem,
+            source_token,
+        ):
+            return _json_error(
+                "image source changed; refresh Results before viewing",
                 409,
             )
         return send_from_directory(
@@ -291,6 +303,18 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
             return _json_error(
                 f"tile cache missing for {dataset!r}/{stem!r}", 404
             )
+        source_token = output_root.bound_image_source_token(dataset, stem)
+        if not _cache_source_token_is_current(
+            output_root,
+            dataset=dataset,
+            stem=stem,
+            cache_dir=cache_dir,
+            source_token=source_token,
+        ):
+            return _json_error(
+                "image source changed; reload its manifest before viewing",
+                409,
+            )
 
         return send_from_directory(tile_dir, filename, mimetype="image/png")
 
@@ -309,17 +333,31 @@ def _publish_dzi_cache(
     layer: str,
     h5: Path | None,
     cache_dir: Path,
+    source_token: str,
 ) -> None:
     """Publish one complete DZI generation only for the bound source revision."""
     cache_dir.parent.mkdir(parents=True, exist_ok=True)
     lock_path = cache_dir.with_name(f".{cache_dir.name}.publish.lock")
     with exclusive_path_lock(lock_path):
         manifest_path = cache_dir / f"{stem}.dzi"
-        if manifest_path.is_file():
+        if manifest_path.is_file() and _cache_source_token_is_current(
+            output_root,
+            dataset=dataset,
+            stem=stem,
+            cache_dir=cache_dir,
+            source_token=source_token,
+        ):
             if not output_root.snapshot_is_current():
                 raise _SourceSnapshotChanged
             return
-        if not output_root.snapshot_is_current():
+        if (
+            not output_root.snapshot_is_current()
+            or not output_root.image_source_token_is_current(
+                dataset,
+                stem,
+                source_token,
+            )
+        ):
             raise _SourceSnapshotChanged
 
         staging_dir = Path(
@@ -338,7 +376,18 @@ def _publish_dzi_cache(
                 h5=h5,
                 staging_dir=staging_dir,
             )
-            if not output_root.snapshot_is_current():
+            (staging_dir / _SOURCE_TOKEN_FILENAME).write_text(
+                source_token,
+                encoding="ascii",
+            )
+            if (
+                not output_root.snapshot_is_current()
+                or not output_root.image_source_token_is_current(
+                    dataset,
+                    stem,
+                    source_token,
+                )
+            ):
                 raise _SourceSnapshotChanged
             if cache_dir.exists():
                 shutil.rmtree(cache_dir)
@@ -346,6 +395,31 @@ def _publish_dzi_cache(
         finally:
             if staging_dir.exists():
                 shutil.rmtree(staging_dir)
+
+
+def _cache_source_token_is_current(
+    output_root: OutputRoot,
+    *,
+    dataset: str,
+    stem: str,
+    cache_dir: Path,
+    source_token: str,
+) -> bool:
+    """Return whether a DZI cache belongs to the current requested source."""
+    try:
+        cached_token = (cache_dir / _SOURCE_TOKEN_FILENAME).read_text(
+            encoding="ascii"
+        )
+    except OSError:
+        return False
+    return (
+        cached_token == source_token
+        and output_root.image_source_token_is_current(
+            dataset,
+            stem,
+            source_token,
+        )
+    )
 
 
 def _generate_dzi_stage(

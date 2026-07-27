@@ -454,6 +454,9 @@ def compose_hub(
             "binding_generation": binding_generation,
             "snapshot": {
                 "processing_fingerprint": snapshot.processing_fingerprint,
+                "processing_inventory_assurance": (
+                    snapshot.processing_inventory_assurance
+                ),
                 "consumed_state_fingerprint": (
                     snapshot.consumed_state_fingerprint
                 ),

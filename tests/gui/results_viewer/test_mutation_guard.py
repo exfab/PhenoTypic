@@ -207,12 +207,18 @@ def test_coherent_guard_issues_fresh_receipt_and_rejects_stale_generation(
 
 def test_contradictory_large_fixture_is_read_only_without_any_repair(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source = tmp_path / "contradictory-large"
     _seed_output(source, contradictory=True, overlay_count=512)
     output = _discover(source)
     before = _tree_snapshot(source)
     guard = OutputMutationGuard(output, "generation-2")
+
+    def _unexpected_inventory_walk(_self: OutputRoot) -> bool:
+        raise AssertionError("read-only mutation attempted inventory validation")
+
+    monkeypatch.setattr(OutputRoot, "snapshot_is_current", _unexpected_inventory_walk)
 
     with pytest.raises(
         OutputMutationBlocked,

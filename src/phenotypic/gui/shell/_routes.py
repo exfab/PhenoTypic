@@ -411,6 +411,9 @@ def build_sandbox_api(
                 "abs_path": str(resolved_target),
                 "snapshot": {
                     "processing_fingerprint": snapshot.processing_fingerprint,
+                    "processing_inventory_assurance": (
+                        snapshot.processing_inventory_assurance
+                    ),
                     "consumed_state_fingerprint": (
                         snapshot.consumed_state_fingerprint
                     ),

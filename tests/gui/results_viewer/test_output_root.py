@@ -26,7 +26,7 @@ from phenotypic.sdk_ import (
     measurements_parquet_path,
 )
 
-from tests._output_layout import write_pipeline_json
+from tests._output_layout import write_complete_manifest, write_pipeline_json
 from phenotypic.schema import METADATA
 
 
@@ -102,6 +102,7 @@ def _make_minimal_output(
     )
     if write_master:
         _write_master_parquet(root, df)
+        write_complete_manifest(root, total_images=2)
     if with_overlays:
         overlays = root / "deliverables" / "overlays" / dataset
         overlays.mkdir(parents=True, exist_ok=True)
@@ -313,6 +314,7 @@ def test_legacy_backfill_parquets_are_part_of_snapshot_revision(
         tmp_path,
         pl.DataFrame({str(METADATA.IMAGE_NAME): ["a"], "Size_Area": [100.0]}),
     )
+    write_complete_manifest(tmp_path, total_images=1)
 
     output = _discover(tmp_path)
     legacy_parquet.write_bytes(b"second")

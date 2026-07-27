@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import os
+import stat as stat_module
 import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -32,6 +33,7 @@ _PROGRESS_INTERVAL = 256
 logger = logging.getLogger(__name__)
 
 InventoryEntryKind = Literal["file", "directory", "missing"]
+ProcessingInventoryAssurance = Literal["exhaustive", "read_only_bounded"]
 
 
 @dataclass(frozen=True)
@@ -52,6 +54,7 @@ class ProcessingInventory:
     entries: tuple[ProcessingInventoryEntry, ...]
     fingerprint: str
     cache_hit: bool
+    assurance: ProcessingInventoryAssurance = "exhaustive"
 
 
 def processing_inventory_cache_path(
@@ -115,18 +118,30 @@ def load_or_scan_processing_inventory(
                 entries=cached.entries,
                 fingerprint=cached.fingerprint,
                 cache_hit=True,
+                assurance="exhaustive",
             )
 
-    entries = _scan_processing_inventory(
-        layout,
-        source_root=source_root,
-        cancellation=cancellation,
-        progress=progress,
-    )
+    if consistency.is_read_only:
+        entries = _scan_read_only_inventory(
+            layout,
+            source_root=source_root,
+            cancellation=cancellation,
+            progress=progress,
+        )
+        assurance: ProcessingInventoryAssurance = "read_only_bounded"
+    else:
+        entries = _scan_processing_inventory(
+            layout,
+            source_root=source_root,
+            cancellation=cancellation,
+            progress=progress,
+        )
+        assurance = "exhaustive"
     inventory = ProcessingInventory(
         entries=entries,
-        fingerprint=_inventory_fingerprint(entries),
+        fingerprint=_inventory_fingerprint(entries, assurance=assurance),
         cache_hit=False,
+        assurance=assurance,
     )
     cancellation.raise_if_cancelled()
     if consistency.cache_reusable:
@@ -213,7 +228,7 @@ def _scan_processing_inventory(
     ):
         cancellation.raise_if_cancelled()
         try:
-            stat = path.stat()
+            stat_result = path.stat()
         except OSError:
             entries.append(
                 ProcessingInventoryEntry(
@@ -226,15 +241,17 @@ def _scan_processing_inventory(
             )
             continue
         kind: InventoryEntryKind = (
-            "directory" if path.is_dir() else "file"
+            "directory"
+            if stat_module.S_ISDIR(stat_result.st_mode)
+            else "file"
         )
         entries.append(
             ProcessingInventoryEntry(
                 relative_path=relative_path,
                 kind=kind,
-                size=stat.st_size,
-                mtime_ns=stat.st_mtime_ns,
-                ctime_ns=stat.st_ctime_ns,
+                size=stat_result.st_size,
+                mtime_ns=stat_result.st_mtime_ns,
+                ctime_ns=stat_result.st_ctime_ns,
             )
         )
         if index % _PROGRESS_INTERVAL == 0:
@@ -255,6 +272,122 @@ def _scan_processing_inventory(
     return tuple(entries)
 
 
+def _scan_read_only_inventory(
+    layout: BundleLayout,
+    *,
+    source_root: Path,
+    cancellation: OutputDiscoveryCancellation,
+    progress: OutputDiscoveryProgressCallback | None,
+) -> tuple[ProcessingInventoryEntry, ...]:
+    """Capture bounded structural anchors for a mutation-ineligible output.
+
+    Incomplete, active, and contradictory outputs cannot authorize writes.
+    Recursively inventorying every unrelated HDF and per-image parquet would
+    therefore add no mutation safety, while making large read-only outputs
+    impractical to inspect. The files actually used by a pixel request are
+    checked separately at that request boundary.
+    """
+    candidates: dict[str, Path] = {}
+    source_anchor = source_root.resolve()
+
+    def _add(path: Path) -> None:
+        cancellation.raise_if_cancelled()
+        resolved = path.resolve(strict=False)
+        try:
+            relative = resolved.relative_to(source_anchor)
+        except ValueError:
+            relative = Path(os.path.relpath(path, source_root))
+        candidates[relative.as_posix()] = path
+
+    _add(layout.master_parquet)
+    overlays_root = layout.deliverables_base / DIR_OVERLAYS
+    _add(overlays_root)
+    if overlays_root.is_dir():
+        for dataset_dir in overlays_root.iterdir():
+            cancellation.raise_if_cancelled()
+            if dataset_dir.is_dir():
+                _add(dataset_dir)
+
+    results_root = (
+        layout.output_root / DIR_RESULTS
+        if layout.output_root is not None
+        else None
+    )
+    if results_root is not None:
+        _add(results_root)
+        if results_root.is_dir():
+            for dataset_dir in results_root.iterdir():
+                cancellation.raise_if_cancelled()
+                if dataset_dir.is_dir():
+                    _add(dataset_dir)
+
+    report_discovery_progress(
+        progress,
+        phase="inventory",
+        detail="Capturing bounded read-only processing anchors.",
+        completed=0,
+        total=len(candidates),
+    )
+    entries = _stat_inventory_candidates(
+        candidates,
+        cancellation=cancellation,
+        progress=progress,
+        detail="Read-only processing anchors captured.",
+        track_directory_metadata=False,
+    )
+    return entries
+
+
+def _stat_inventory_candidates(
+    candidates: dict[str, Path],
+    *,
+    cancellation: OutputDiscoveryCancellation,
+    progress: OutputDiscoveryProgressCallback | None,
+    detail: str,
+    track_directory_metadata: bool = True,
+) -> tuple[ProcessingInventoryEntry, ...]:
+    """Stat sorted inventory candidates and report bounded progress."""
+    entries: list[ProcessingInventoryEntry] = []
+    for relative_path, path in sorted(candidates.items()):
+        cancellation.raise_if_cancelled()
+        try:
+            stat_result = path.stat()
+        except OSError:
+            entries.append(
+                ProcessingInventoryEntry(
+                    relative_path=relative_path,
+                    kind="missing",
+                    size=0,
+                    mtime_ns=0,
+                    ctime_ns=0,
+                )
+            )
+            continue
+        kind: InventoryEntryKind = (
+            "directory"
+            if stat_module.S_ISDIR(stat_result.st_mode)
+            else "file"
+        )
+        track_metadata = kind != "directory" or track_directory_metadata
+        entries.append(
+            ProcessingInventoryEntry(
+                relative_path=relative_path,
+                kind=kind,
+                size=stat_result.st_size if track_metadata else 0,
+                mtime_ns=stat_result.st_mtime_ns if track_metadata else 0,
+                ctime_ns=stat_result.st_ctime_ns if track_metadata else 0,
+            )
+        )
+    report_discovery_progress(
+        progress,
+        phase="inventory",
+        detail=detail,
+        completed=len(entries),
+        total=len(entries),
+    )
+    return tuple(entries)
+
+
 def _inventory_is_current(
     inventory: ProcessingInventory,
     *,
@@ -268,7 +401,7 @@ def _inventory_is_current(
         cancellation.raise_if_cancelled()
         path = source_root / entry.relative_path
         try:
-            stat = path.stat()
+            stat_result = path.stat()
         except OSError:
             if entry.kind == "missing":
                 continue
@@ -276,13 +409,22 @@ def _inventory_is_current(
         if entry.kind == "missing":
             return False
         kind: InventoryEntryKind = (
-            "directory" if path.is_dir() else "file"
+            "directory"
+            if stat_module.S_ISDIR(stat_result.st_mode)
+            else "file"
         )
         if (
+            inventory.assurance == "read_only_bounded"
+            and entry.kind == "directory"
+        ):
+            if kind != "directory":
+                return False
+            continue
+        if (
             kind != entry.kind
-            or stat.st_size != entry.size
-            or stat.st_mtime_ns != entry.mtime_ns
-            or stat.st_ctime_ns != entry.ctime_ns
+            or stat_result.st_size != entry.size
+            or stat_result.st_mtime_ns != entry.mtime_ns
+            or stat_result.st_ctime_ns != entry.ctime_ns
         ):
             return False
         if index % _PROGRESS_INTERVAL == 0:
@@ -299,8 +441,11 @@ def _inventory_is_current(
 
 def _inventory_fingerprint(
     entries: tuple[ProcessingInventoryEntry, ...],
+    *,
+    assurance: ProcessingInventoryAssurance = "exhaustive",
 ) -> str:
     digest = hashlib.sha256()
+    digest.update(f"assurance:{assurance}\n".encode())
     for entry in entries:
         payload = (
             f"{entry.relative_path}\0{entry.kind}\0"
@@ -345,7 +490,10 @@ def _load_cached_inventory(
         fingerprint = payload.get("fingerprint")
         if (
             not isinstance(fingerprint, str)
-            or fingerprint != _inventory_fingerprint(entries)
+            or fingerprint != _inventory_fingerprint(
+                entries,
+                assurance="exhaustive",
+            )
         ):
             return None
     except (OSError, ValueError, TypeError, json.JSONDecodeError, KeyError):
@@ -354,6 +502,7 @@ def _load_cached_inventory(
         entries=entries,
         fingerprint=fingerprint,
         cache_hit=True,
+        assurance="exhaustive",
     )
 
 

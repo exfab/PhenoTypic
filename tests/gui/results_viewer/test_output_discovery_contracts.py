@@ -373,6 +373,7 @@ def test_incomplete_and_contradictory_outputs_never_persist_inventory(
         cache_root=cache_root,
     )
     assert incomplete.consistency.state == "incomplete"
+    assert incomplete.processing_inventory.assurance == "read_only_bounded"
     assert not processing_inventory_cache_path(
         incomplete_source,
         cache_root=cache_root,
@@ -409,9 +410,8 @@ def test_incomplete_and_contradictory_outputs_never_persist_inventory(
         cache_root=cache_root,
     )
     assert contradictory.consistency.state == "contradictory"
-    # O4 must combine these independent predicates at every mutation seam.
-    # Snapshot stability alone intentionally does not authorize a write.
-    assert contradictory.mutation_snapshot_is_safe() is True
+    assert contradictory.processing_inventory.assurance == "read_only_bounded"
+    assert contradictory.mutation_snapshot_is_safe() is False
     assert contradictory.consistency.is_read_only is True
     assert contradictory.master_df.height == 2
     assert not processing_inventory_cache_path(
@@ -432,12 +432,78 @@ def test_incomplete_and_contradictory_outputs_never_persist_inventory(
     assert active_contradiction.snapshot.active_run is True
 
 
+def test_read_only_inventory_never_walks_nested_processing_tree(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Read-only bind work scales with visible images, not artifact entries."""
+    source = tmp_path / "large-incomplete"
+    cache_root = tmp_path / "sandbox" / ".phenotypic-gui" / "viewer_cache"
+    _seed_output(source)
+    image_count = 256
+    frame = pl.DataFrame(
+        {
+            "MetadataExperiment_Dataset": ["plate"] * image_count,
+            str(METADATA.IMAGE_NAME): [
+                f"image-{index}" for index in range(image_count)
+            ],
+            "Size_Area": [float(index) for index in range(image_count)],
+        }
+    )
+    frame.write_parquet(master_measurements_parquet_path(source))
+    frame.write_parquet(measurements_parquet_path(source))
+    nested_results = source / "results"
+    deep = nested_results / "plate" / "unrelated" / "deep"
+    deep.mkdir(parents=True)
+    for index in range(32):
+        (deep / f"artifact-{index}.bin").write_bytes(b"unused")
+
+    real_rglob = Path.rglob
+    real_stat = Path.stat
+    stat_calls = 0
+
+    def _reject_results_walk(path: Path, pattern: str):
+        if path == nested_results:
+            raise AssertionError("read-only binding recursively walked results/")
+        return real_rglob(path, pattern)
+
+    def _count_stat(path: Path, *args, **kwargs):
+        nonlocal stat_calls
+        stat_calls += 1
+        return real_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "rglob", _reject_results_walk)
+    monkeypatch.setattr(Path, "stat", _count_stat)
+
+    output = OutputRoot.discover(source, cache_root=cache_root)
+
+    assert output.consistency.is_read_only
+    assert output.processing_inventory.assurance == "read_only_bounded"
+    assert len(output.processing_inventory.entries) <= 5
+    assert stat_calls <= image_count * 4 + 100
+    before_lookup = stat_calls
+    assert output.bound_image_source_token("plate", "image-0")
+    assert stat_calls == before_lookup
+
+    unrelated_overlay = (
+        source
+        / "deliverables"
+        / "overlays"
+        / "plate"
+        / "unrelated-new-overlay.png"
+    )
+    unrelated_overlay.parent.mkdir(parents=True, exist_ok=True)
+    unrelated_overlay.write_bytes(b"unrelated")
+    assert output.snapshot_is_current() is True
+
+
 def test_discovery_reports_phases_and_can_cancel_during_inventory(
     tmp_path: Path,
 ) -> None:
     source = tmp_path / "output"
     cache_root = tmp_path / "sandbox" / ".phenotypic-gui" / "viewer_cache"
     _seed_output(source, overlay_count=300)
+    _publish_coherent_manifest(source)
     cancellation = OutputDiscoveryCancellation()
     updates: list[OutputDiscoveryProgress] = []
 
