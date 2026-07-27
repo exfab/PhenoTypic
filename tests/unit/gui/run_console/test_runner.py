@@ -21,6 +21,7 @@ from phenotypic.gui.run_console._runner import (
     LocalRunHandle,
     LocalRunner,
 )
+from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 
 
 @pytest.fixture()
@@ -140,6 +141,45 @@ def test_exit_callback_observes_immediate_success_and_retains_handle(
     assert handle.finished_at is not None
     assert runner.get("instant", generation=generation) is handle
     assert runner.snapshot_log("instant", generation=generation) == []
+
+
+def test_child_receives_only_exact_generation_addition_to_explicit_env(
+    runner: LocalRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    generation = uuid4()
+    monkeypatch.setenv("PARENT_ONLY_SENTINEL", "must-not-be-merged")
+    handle = runner.start(
+        run_id="generation-env",
+        argv=[
+            sys.executable,
+            "-c",
+            (
+                "import os; "
+                f"print(os.environ[{GUI_RECORD_GENERATION_ENV_VAR!r}]); "
+                "print(os.environ['EXPLICIT_SENTINEL']); "
+                "print('PARENT_ONLY_SENTINEL' in os.environ)"
+            ),
+        ],
+        output_dir=tmp_path,
+        env={"EXPLICIT_SENTINEL": "preserved"},
+        generation=generation,
+    )
+    handle.process.wait(timeout=5.0)
+    assert _wait_until(
+        lambda: len(
+            runner.snapshot_log("generation-env", generation=generation)
+        )
+        >= 3
+    )
+    observed = [
+        line.strip()
+        for line in runner.snapshot_log(
+            "generation-env", generation=generation
+        )[-3:]
+    ]
+    assert observed == [str(generation), "preserved", "False"]
 
 
 def test_exit_callback_observes_nonzero_returncode(

@@ -104,11 +104,6 @@ _TERMINAL_STATUSES: frozenset[str] = frozenset(
 _OWNER_RECORD_VERSION = 1
 _UNSET = object()
 _BACKUP_NAME_SUFFIXES = ("-backup", "_backup", ".backup")
-# Local manifests serialize their naive-local start timestamp to millisecond
-# precision. Permit only that sub-millisecond truncation when comparing it to
-# the owner's epoch timestamp; a wider allowance could let a prior run's
-# terminal manifest satisfy a replacement generation.
-_LOCAL_START_TIME_TOLERANCE_SECONDS = 0.001
 
 
 def run_status_is_nonterminal(status: object) -> bool:
@@ -547,11 +542,8 @@ class RunRegistry:
         process return code is authoritative. A real local run may report
         return code zero even when final dashboard publication failed; it is
         complete only when the canonical manifest proves that this launch
-        published a successful terminal inventory. Local manifests do not
-        currently carry a GUI generation, so their canonical ``start_time``
-        is compared with the durable owner's ``started_at`` as the strongest
-        available replacement-generation fence. A generation-bearing
-        completion marker, when present, must also match.
+        published a successful terminal inventory and the CLI's atomic
+        completion marker carries the exact durable GUI generation.
         """
         with self._lock:
             record = self._records.get(run_id)
@@ -619,32 +611,6 @@ class RunRegistry:
                 "mode does not match the current local generation"
             )
 
-        raw_start = payload.get(DashboardManifestKey.START_TIME)
-        try:
-            if not isinstance(raw_start, str) or not raw_start:
-                raise TypeError("start_time is missing or not a string")
-            manifest_start = datetime.fromisoformat(raw_start)
-            # The local CLI writes a naive timestamp in the host's local
-            # timezone. ``astimezone()`` applies the correct offset for that
-            # wall time, including daylight-saving transitions. Aware inputs
-            # retain their explicit offset.
-            manifest_start_epoch = manifest_start.astimezone(
-                timezone.utc
-            ).timestamp()
-        except (TypeError, ValueError, OverflowError) as exc:
-            return (
-                "local process exited successfully but terminal publication "
-                f"has an invalid start_time: {exc}"
-            )
-        if (
-            manifest_start_epoch + _LOCAL_START_TIME_TOLERANCE_SECONDS
-            < record.started_at
-        ):
-            return (
-                "local process exited successfully but terminal publication "
-                "predates the current launch generation"
-            )
-
         completed = payload.get(DashboardManifestKey.COMPLETED)
         failed = payload.get(DashboardManifestKey.FAILED)
         total = payload.get(DashboardManifestKey.TOTAL_IMAGES)
@@ -664,34 +630,39 @@ class RunRegistry:
             )
 
         marker_path = run_completion_marker_path(record.output_dir)
-        if marker_path.exists():
-            try:
-                marker = json.loads(marker_path.read_text(encoding="utf-8"))
-                if not isinstance(marker, dict):
-                    raise TypeError("completion marker is not an object")
-            except (
-                OSError,
-                UnicodeDecodeError,
-                json.JSONDecodeError,
-                TypeError,
-            ) as exc:
-                return (
-                    "local process exited successfully but its completion "
-                    f"marker is unreadable at {marker_path}: {exc}"
-                )
-            if marker.get("generation") != str(record.generation):
-                return (
-                    "local process exited successfully but completion "
-                    "evidence belongs to a different launch generation"
-                )
-            if (
-                marker.get("status") != "complete"
-                or marker.get("finalizer_succeeded") is not True
-            ):
-                return (
-                    "local process exited successfully but its generation "
-                    "completion marker is not successful"
-                )
+        if not marker_path.is_file():
+            return (
+                "local process exited successfully but has no exact "
+                f"generation completion evidence at {marker_path}"
+            )
+        try:
+            marker = json.loads(marker_path.read_text(encoding="utf-8"))
+            if not isinstance(marker, dict):
+                raise TypeError("completion marker is not an object")
+        except (
+            OSError,
+            UnicodeDecodeError,
+            json.JSONDecodeError,
+            TypeError,
+        ) as exc:
+            return (
+                "local process exited successfully but its completion "
+                f"marker is unreadable at {marker_path}: {exc}"
+            )
+        if marker.get("generation") != str(record.generation):
+            return (
+                "local process exited successfully but completion "
+                "evidence belongs to a different launch generation"
+            )
+        if (
+            marker.get("mode") != "local"
+            or marker.get("status") != "complete"
+            or marker.get("finalizer_succeeded") is not True
+        ):
+            return (
+                "local process exited successfully but its generation "
+                "completion marker is not a successful local publication"
+            )
         return None
 
     def remove(self, run_id: str) -> bool:

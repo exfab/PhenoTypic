@@ -1,6 +1,7 @@
 """End-to-end process-mode CLI run: mirrored layer files + manifest, no suite."""
 
 import json
+from uuid import uuid4
 
 import numpy as np
 import tifffile
@@ -14,11 +15,20 @@ from phenotypic.sdk_ import (
     processing_state_path,
     rembi_manifest_path,
     results_dir,
+    run_completion_marker_path,
 )
+from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 
 
-def test_process_only_end_to_end(tmp_path, synth_one_level_input, simple_pipeline_json):
+def test_process_only_end_to_end(
+    tmp_path,
+    synth_one_level_input,
+    simple_pipeline_json,
+    monkeypatch,
+):
     out = tmp_path / "out"
+    generation = uuid4()
+    monkeypatch.setenv(GUI_RECORD_GENERATION_ENV_VAR, str(generation))
     r = CliRunner().invoke(
         phenotypic_cli,
         [
@@ -41,6 +51,11 @@ def test_process_only_end_to_end(tmp_path, synth_one_level_input, simple_pipelin
     # detect_mat float TIFF (imsave, full precision)
     assert np.issubdtype(tifffile.imread(tiffs[0]).dtype, np.floating)
     assert manifest_json_path(out).is_file()  # run-console visibility
+    completion = json.loads(
+        run_completion_marker_path(out).read_text(encoding="utf-8")
+    )
+    assert completion["generation"] == str(generation)
+    assert completion["mode"] == "local"
     assert phenotypic_cache_dir(out).is_dir()
     state = json.loads(processing_state_path(out).read_text(encoding="utf-8"))
     assert state["config"]["process_only_layer"] == "detect_mat"

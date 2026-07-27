@@ -555,6 +555,11 @@ JOB_METADATA_JSON: Final[str] = "job_metadata.json"
 #: GUI launch-generation ownership record written before execution starts.
 GUI_LAUNCH_OWNER_JSON: Final[str] = "gui_launch_owner.json"
 
+#: Private child-process environment binding for a GUI launch generation.
+GUI_RECORD_GENERATION_ENV_VAR: Final[str] = (
+    "PHENOTYPIC_GUI_RECORD_GENERATION"
+)
+
 #: Generation- and mode-bearing terminal publication marker.
 RUN_COMPLETION_JSON: Final[str] = "run_completion.json"
 

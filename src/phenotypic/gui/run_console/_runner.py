@@ -37,6 +37,7 @@ from typing import IO, Callable, Iterable
 from uuid import UUID
 
 from phenotypic.gui._config import RUN_LOG_DIRNAME, STDOUT_LOG
+from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 
 logger = logging.getLogger(__name__)
 
@@ -214,12 +215,17 @@ class LocalRunner:
             log_dir.mkdir(parents=True, exist_ok=True)
             log_path = log_dir / STDOUT_LOG
 
+            child_env = dict(os.environ if env is None else env)
+            # The token is the only GUI-owned value added to the inherited
+            # child environment. It is never logged, and an explicitly
+            # supplied test/worker environment remains otherwise unchanged.
+            child_env[GUI_RECORD_GENERATION_ENV_VAR] = str(generation)
             process = subprocess.Popen(
                 argv,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,  # merge so dashboard sees both
                 cwd=str(cwd or output_dir),
-                env=env,
+                env=child_env,
                 # ``bufsize=0`` (unbuffered binary) so ``readline``
                 # returns full lines as the subprocess flushes them.
                 bufsize=0,

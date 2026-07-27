@@ -1777,6 +1777,12 @@ def phenotypic_cli(
         # or deliverables. The strategy already wrote the mirrored layers and
         # the manifest; print a focused summary and exit.
         if config.process_only_layer:
+            if results.total_failed == 0:
+                from phenotypic._cli._cli_gui_lifecycle import (
+                    publish_local_gui_completion,
+                )
+
+                publish_local_gui_completion(output_dir)
             click.echo("\n" + "=" * 60)
             click.echo("PROCESS-ONLY COMPLETE")
             click.echo("=" * 60)
@@ -1912,6 +1918,13 @@ def phenotypic_cli(
                 err=True,
             )
             sys.exit(1)
+
+        if finalization_succeeded and results.total_failed == 0:
+            from phenotypic._cli._cli_gui_lifecycle import (
+                publish_local_gui_completion,
+            )
+
+            publish_local_gui_completion(output_dir)
 
         # Print summary
         click.echo("\n" + "=" * 60)

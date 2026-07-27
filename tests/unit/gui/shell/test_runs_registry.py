@@ -52,7 +52,7 @@ def _write_master_marker(out: Path) -> None:
 def _write_local_terminal_manifest(
     output: Path,
     *,
-    start_time: float,
+    start_time: float | str,
     is_complete: bool = True,
     completed: int = 1,
     failed: int = 0,
@@ -62,13 +62,18 @@ def _write_local_terminal_manifest(
     """Write canonical local publication evidence for lifecycle tests."""
     path = manifest_json_path(output)
     path.parent.mkdir(parents=True, exist_ok=True)
+    start_text = (
+        start_time
+        if isinstance(start_time, str)
+        else datetime.fromtimestamp(start_time).isoformat(
+            timespec="milliseconds"
+        )
+    )
     path.write_text(
         json.dumps(
             {
                 "execution_mode": execution_mode,
-                "start_time": datetime.fromtimestamp(
-                    start_time
-                ).isoformat(timespec="milliseconds"),
+                "start_time": start_text,
                 "is_complete": is_complete,
                 "completed": completed,
                 "failed": failed,
@@ -858,6 +863,23 @@ def test_observe_local_zero_exit_fails_without_canonical_manifest(
     )
 
 
+def _write_local_completion_marker(output: Path, generation: object) -> None:
+    """Write exact successful local generation evidence."""
+    path = run_completion_marker_path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "generation": str(generation),
+                "mode": "local",
+                "status": "complete",
+                "finalizer_succeeded": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_observe_local_zero_exit_ignores_legacy_shadow_manifest(
     tmp_path: Path,
 ) -> None:
@@ -933,6 +955,11 @@ def test_observe_local_zero_exit_rejects_preexisting_complete_manifest(
     """A prior run's complete manifest cannot terminalize a new generation."""
     reg = RunRegistry()
     output = tmp_path / "run"
+    _write_local_terminal_manifest(
+        output,
+        start_time=datetime.now().timestamp() - 60.0,
+    )
+    _write_local_completion_marker(output, uuid4())
     record = reg.allocate(
         mode="local",
         output_dir=output,
@@ -941,18 +968,72 @@ def test_observe_local_zero_exit_rejects_preexisting_complete_manifest(
         status="running",
     )
     assert record.generation is not None
-    _write_local_terminal_manifest(
-        output,
-        start_time=record.started_at - 60.0,
-    )
 
     assert reg.observe_local_exit("run", record.generation, 0)
     updated = reg.get("run")
     assert updated is not None
     assert updated.status == "failed"
-    assert "predates the current launch generation" in (
+    assert "different launch generation" in (
         updated.status_detail or ""
     )
+
+
+@pytest.mark.parametrize(
+    "fold_timestamp",
+    [
+        "2025-11-02T01:30:00-07:00",
+        "2025-11-02T01:30:00-08:00",
+    ],
+)
+def test_exact_generation_evidence_is_dst_fold_independent(
+    tmp_path: Path,
+    fold_timestamp: str,
+) -> None:
+    """Both repeated wall times accept the same exact-generation contract."""
+    reg = RunRegistry()
+    output = tmp_path / fold_timestamp[-6:].replace(":", "")
+    record = reg.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path=output.name,
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+    _write_local_terminal_manifest(output, start_time=fold_timestamp)
+    _write_local_completion_marker(output, record.generation)
+
+    assert reg.observe_local_exit(record.run_id, record.generation, 0)
+    updated = reg.get(record.run_id)
+    assert updated is not None
+    assert updated.status == "complete"
+
+
+def test_cross_timezone_future_manifest_cannot_satisfy_new_generation(
+    tmp_path: Path,
+) -> None:
+    """A copied artifact's wall time cannot override its stale generation."""
+    reg = RunRegistry()
+    output = tmp_path / "run"
+    _write_local_terminal_manifest(
+        output,
+        start_time="2099-01-01T00:00:00+14:00",
+    )
+    _write_local_completion_marker(output, uuid4())
+    record = reg.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+
+    assert reg.observe_local_exit("run", record.generation, 0)
+    updated = reg.get("run")
+    assert updated is not None
+    assert updated.status == "failed"
+    assert "different launch generation" in (updated.status_detail or "")
 
 
 def test_observe_local_zero_exit_rejects_mismatched_completion_marker(
@@ -972,18 +1053,7 @@ def test_observe_local_zero_exit_rejects_mismatched_completion_marker(
         output,
         start_time=record.started_at + 1.0,
     )
-    marker = run_completion_marker_path(output)
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text(
-        json.dumps(
-            {
-                "generation": str(uuid4()),
-                "status": "complete",
-                "finalizer_succeeded": True,
-            }
-        ),
-        encoding="utf-8",
-    )
+    _write_local_completion_marker(output, uuid4())
 
     assert reg.observe_local_exit("run", record.generation, 0)
     updated = reg.get("run")
@@ -992,7 +1062,7 @@ def test_observe_local_zero_exit_rejects_mismatched_completion_marker(
     assert "different launch generation" in (updated.status_detail or "")
 
 
-def test_observe_local_zero_exit_accepts_current_canonical_manifest(
+def test_observe_local_zero_exit_rejects_manifest_without_exact_generation(
     tmp_path: Path,
 ) -> None:
     reg = RunRegistry()
@@ -1013,9 +1083,11 @@ def test_observe_local_zero_exit_accepts_current_canonical_manifest(
     assert reg.observe_local_exit("run", record.generation, 0)
     updated = reg.get("run")
     assert updated is not None
-    assert updated.status == "complete"
+    assert updated.status == "failed"
     assert updated.returncode == 0
-    assert updated.status_detail is None
+    assert "no exact generation completion evidence" in (
+        updated.status_detail or ""
+    )
 
 
 def test_observe_local_zero_exit_accepts_matching_completion_marker(
@@ -1035,18 +1107,7 @@ def test_observe_local_zero_exit_accepts_matching_completion_marker(
         output,
         start_time=record.started_at + 1.0,
     )
-    marker = run_completion_marker_path(output)
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text(
-        json.dumps(
-            {
-                "generation": str(record.generation),
-                "status": "complete",
-                "finalizer_succeeded": True,
-            }
-        ),
-        encoding="utf-8",
-    )
+    _write_local_completion_marker(output, record.generation)
 
     assert reg.observe_local_exit("run", record.generation, 0)
     updated = reg.get("run")
@@ -1087,6 +1148,7 @@ def test_stale_local_exit_cannot_terminalize_replacement_generation(
         output,
         start_time=replacement.started_at + 1.0,
     )
+    _write_local_completion_marker(output, replacement.generation)
 
     assert reg.observe_local_exit("run", first.generation, 0) is False
     current = reg.get("run")
