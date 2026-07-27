@@ -260,7 +260,7 @@ def test_launch_reservation_fences_image_and_intermediates_together() -> None:
 
 
 def test_preview_reservation_can_be_claimed_only_once() -> None:
-    """Duplicate Dash work delivery cannot execute one request twice."""
+    """A reservation stays consumed before and after atomic publication."""
 
     cache = IntermediatesCache()
     reservation = cache.reserve_preview_generation(
@@ -269,8 +269,17 @@ def test_preview_reservation_can_be_claimed_only_once() -> None:
         request_id="request-a",
     )
 
-    assert cache.claim_preview_generation(reservation) is not None
+    writer = cache.claim_preview_generation(reservation)
+    assert writer is not None
     assert cache.claim_preview_generation(reservation) is None
+    writer.set_intermediate("s1", "node-a", b"generation-1")
+    assert cache.publish_preview_generation(writer) == 1
+
+    assert cache.claim_preview_generation(reservation) is None
+    assert cache.preview_descriptor("s1") == ("revision-1", 1)
+    assert cache.get_preview(
+        ("s1", "node-a", "revision-1", 1)
+    ) == b"generation-1"
 
 
 def test_abandoned_preview_writer_cannot_mix_with_live_generation() -> None:

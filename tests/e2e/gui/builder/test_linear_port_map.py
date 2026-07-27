@@ -297,6 +297,115 @@ def test_late_terminal_result_cannot_overwrite_newer_running_request(
     expect(page.locator("#preview-status")).to_have_text("B terminal accepted")
 
 
+def test_same_preview_work_is_consumed_once_with_reversed_responses(
+    page: Page, hub_url: str
+) -> None:
+    """Duplicate WORK returns first but cannot publish a second generation."""
+
+    captured_payloads: list[dict] = []
+
+    def capture_initial_work(route, request) -> None:  # noqa: ANN001
+        payload = request.post_data_json
+        if (
+            isinstance(payload, dict)
+            and payload.get("output") == "store-preview-result.data"
+            and any(
+                isinstance(item.get("value"), dict)
+                for item in payload.get("inputs", [])
+            )
+        ):
+            captured_payloads.append(payload)
+            route.abort()
+            return
+        route.continue_()
+
+    page.route("**/_dash-update-component", capture_initial_work)
+    _open_builder(page, hub_url)
+    _click_palette_button(page, "GaussianBlur")
+    page.locator("#btn-run-preview").click()
+    for _ in range(20):
+        if captured_payloads:
+            break
+        page.wait_for_timeout(50)
+    assert len(captured_payloads) == 1
+    request_payload = captured_payloads[0]
+    work_request = request_payload["inputs"][0]["value"]
+    page.unroute("**/_dash-update-component", capture_initial_work)
+
+    responses = page.evaluate(
+        """async (payload) => {
+            const endpoint = new URL(
+                "_dash-update-component",
+                window.location.href
+            ).toString();
+            const send = async () => {
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(payload),
+                });
+                return {
+                    at: performance.now(),
+                    body: await response.json(),
+                };
+            };
+            const first = send();
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            const duplicate = send();
+            return Promise.all([first, duplicate]);
+        }""",
+        request_payload,
+    )
+    first, duplicate = responses
+    assert duplicate["at"] < first["at"]
+    assert duplicate["body"] == {"multi": True, "response": {}}
+    result = first["body"]["response"]["store-preview-result"]["data"]
+    assert result["state"] == "complete"
+    assert result["preview_snapshot"]["preview_generation"] == 1
+
+    page.evaluate(
+        """(result) => {
+            window.dash_clientside.set_props(
+                "store-preview-result",
+                {data: result}
+            );
+        }""",
+        result,
+    )
+    expect(page.locator("#preview-status")).to_contain_text("Preview complete")
+    expect(page.locator("#inspector-preview img")).to_have_count(1)
+    terminal_text = page.locator("#preview-status").inner_text()
+
+    page.evaluate(
+        """() => {
+            window.dash_clientside.set_props(
+                "store-preview-work",
+                {data: null}
+            );
+        }"""
+    )
+    page.wait_for_timeout(100)
+    page.evaluate(
+        """(request) => {
+            window.dash_clientside.set_props(
+                "store-preview-work",
+                {data: request}
+            );
+        }""",
+        work_request,
+    )
+    page.wait_for_timeout(300)
+    expect(page.locator("#preview-status")).to_have_text(terminal_text)
+
+    page.locator(
+        "button.linear-node-title-button", has_text="InputImage"
+    ).click()
+    page.locator(
+        "button.linear-node-title-button", has_text="GaussianBlur"
+    ).click()
+    expect(page.locator("#inspector-preview img")).to_have_count(1)
+
+
 def test_preview_running_transitions_to_error(
     page: Page, hub_url: str
 ) -> None:
@@ -304,6 +413,15 @@ def test_preview_running_transitions_to_error(
 
     _open_builder(page, hub_url)
     _click_palette_button(page, "GaussianBlur")
+    page.locator("#btn-run-preview").click()
+    expect(page.locator("#preview-status")).to_contain_text(
+        "Preview complete",
+        timeout=20_000,
+    )
+    preview_image = page.locator("#inspector-preview img")
+    expect(preview_image).to_have_count(1)
+    published_src = preview_image.get_attribute("src")
+    assert published_src
     page.evaluate(
         """() => {
             const status = document.querySelector("#preview-status");
@@ -340,6 +458,7 @@ def test_preview_running_transitions_to_error(
         and i > running_index
     )
     assert running_index < error_index
+    expect(preview_image).to_have_attribute("src", published_src)
 
 
 def test_linear_map_source_and_connectors_align(page: Page, hub_url: str) -> None:

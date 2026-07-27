@@ -403,7 +403,6 @@ class IntermediatesCache:
             data.intermediates = OrderedDict(writer.intermediates)
             data.pipeline_revision = writer.pipeline_revision
             data.preview_generation += 1
-            data.preview_request_claimed = False
             return data.preview_generation
 
     def get_preview(self, key: PreviewKey) -> Optional[CachedPreview]:

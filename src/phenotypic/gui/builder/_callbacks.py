@@ -6028,11 +6028,7 @@ def register_callbacks(app: dash.Dash) -> None:
         cache = get_cache()
         staging = cache.claim_preview_generation(reservation)
         if staging is None:
-            return _preview_result_event(
-                request_data,
-                state="error",
-                message="Preview was superseded before computation.",
-            )
+            return no_update
 
         if kind == "full":
             errors = _filter_blocking_issues(state_data)
