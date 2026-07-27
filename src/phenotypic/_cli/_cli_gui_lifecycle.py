@@ -6,7 +6,7 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Mapping
+from typing import Literal, Mapping
 from uuid import UUID
 
 from phenotypic.sdk_ import (
@@ -16,6 +16,12 @@ from phenotypic.sdk_ import (
     run_completion_marker_path,
 )
 from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
+
+LocalManifestCompletionProblem = Literal[
+    "non_local",
+    "wrong_generation",
+    "incomplete",
+]
 
 
 def gui_record_generation_from_environment(
@@ -33,6 +39,33 @@ def gui_record_generation_from_environment(
         raise RuntimeError(
             f"{GUI_RECORD_GENERATION_ENV_VAR} is not a valid UUID"
         ) from exc
+
+
+def local_manifest_completion_problem(
+    payload: Mapping[str, object],
+    generation: str,
+) -> LocalManifestCompletionProblem | None:
+    """Classify why a manifest cannot complete one local GUI generation."""
+    if payload.get(DashboardManifestKey.EXECUTION_MODE) != "local":
+        return "non_local"
+    if payload.get(DashboardManifestKey.GUI_RECORD_GENERATION) != generation:
+        return "wrong_generation"
+
+    completed = payload.get(DashboardManifestKey.COMPLETED)
+    failed = payload.get(DashboardManifestKey.FAILED)
+    total = payload.get(DashboardManifestKey.TOTAL_IMAGES)
+    counts_are_ints = all(
+        isinstance(value, int) and not isinstance(value, bool)
+        for value in (completed, failed, total)
+    )
+    if (
+        payload.get(DashboardManifestKey.IS_COMPLETE) is not True
+        or not counts_are_ints
+        or failed != 0
+        or completed != total
+    ):
+        return "incomplete"
+    return None
 
 
 def publish_local_gui_completion(output_dir: Path) -> bool:
@@ -74,22 +107,7 @@ def publish_local_gui_completion(output_dir: Path) -> bool:
             f"canonical manifest at {path}"
         ) from exc
 
-    completed = payload.get(DashboardManifestKey.COMPLETED)
-    failed = payload.get(DashboardManifestKey.FAILED)
-    total = payload.get(DashboardManifestKey.TOTAL_IMAGES)
-    counts_are_ints = all(
-        isinstance(value, int) and not isinstance(value, bool)
-        for value in (completed, failed, total)
-    )
-    if (
-        payload.get(DashboardManifestKey.EXECUTION_MODE) != "local"
-        or payload.get(DashboardManifestKey.GUI_RECORD_GENERATION)
-        != generation
-        or payload.get(DashboardManifestKey.IS_COMPLETE) is not True
-        or not counts_are_ints
-        or failed != 0
-        or completed != total
-    ):
+    if local_manifest_completion_problem(payload, generation) is not None:
         raise RuntimeError(
             "Cannot publish GUI local completion for a stale-generation, "
             "incomplete, failed, or non-local canonical manifest"
@@ -113,5 +131,6 @@ def publish_local_gui_completion(output_dir: Path) -> bool:
 
 __all__ = [
     "gui_record_generation_from_environment",
+    "local_manifest_completion_problem",
     "publish_local_gui_completion",
 ]

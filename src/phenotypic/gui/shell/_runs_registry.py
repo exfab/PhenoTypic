@@ -39,6 +39,9 @@ from pathlib import Path
 from typing import Callable, Iterable, Iterator, Literal, Sequence, cast
 from uuid import UUID, uuid4
 
+from phenotypic._cli._cli_gui_lifecycle import (
+    local_manifest_completion_problem,
+)
 from phenotypic.sdk_ import (
     BundleLayout,
     DashboardManifestKey,
@@ -605,32 +608,21 @@ class RunRegistry:
                 f"publication manifest is unreadable at {path}: {exc}"
             )
 
-        if payload.get(DashboardManifestKey.EXECUTION_MODE) != "local":
+        manifest_problem = local_manifest_completion_problem(
+            payload,
+            str(record.generation),
+        )
+        if manifest_problem == "non_local":
             return (
                 "local process exited successfully but terminal publication "
                 "mode does not match the current local generation"
             )
-        if payload.get(DashboardManifestKey.GUI_RECORD_GENERATION) != str(
-            record.generation
-        ):
+        if manifest_problem == "wrong_generation":
             return (
                 "local process exited successfully but its canonical "
                 "manifest belongs to a different launch generation"
             )
-
-        completed = payload.get(DashboardManifestKey.COMPLETED)
-        failed = payload.get(DashboardManifestKey.FAILED)
-        total = payload.get(DashboardManifestKey.TOTAL_IMAGES)
-        counts_are_ints = all(
-            isinstance(value, int) and not isinstance(value, bool)
-            for value in (completed, failed, total)
-        )
-        if (
-            payload.get(DashboardManifestKey.IS_COMPLETE) is not True
-            or not counts_are_ints
-            or failed != 0
-            or completed != total
-        ):
+        if manifest_problem == "incomplete":
             return (
                 "local process exited successfully but terminal publication "
                 "is incomplete, failed, or has invalid inventory counts"

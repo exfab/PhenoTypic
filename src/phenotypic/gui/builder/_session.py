@@ -69,6 +69,30 @@ PreviewKey: TypeAlias = tuple[str, str, str, int]
 """Stable identity of one published preview in the single-process cache."""
 
 
+def _store_bounded_preview(
+    previews: "OrderedDict[str, CachedPreview]",
+    node_id: str,
+    value: CachedPreview,
+    *,
+    limit: int,
+) -> None:
+    """Insert one preview at the MRU end and enforce ``limit``."""
+    previews.pop(node_id, None)
+    previews[node_id] = value
+    while len(previews) > limit:
+        previews.popitem(last=False)
+
+
+def _touch_preview(
+    previews: "OrderedDict[str, CachedPreview]",
+    node_id: str,
+) -> CachedPreview:
+    """Move an existing preview to the MRU end and return it."""
+    value = previews.pop(node_id)
+    previews[node_id] = value
+    return value
+
+
 @dataclass(frozen=True)
 class PreviewGenerationReservation:
     """Serializable identity reserved before a preview computation starts."""
@@ -130,11 +154,12 @@ class PreviewGenerationWriter:
         """Stage one preview payload using the cache-compatible write API."""
         if session_id != self.session_id:
             raise ValueError("preview writer used with a different session")
-        if node_id in self.intermediates:
-            self.intermediates.pop(node_id)
-        self.intermediates[node_id] = value
-        while len(self.intermediates) > self.max_intermediates:
-            self.intermediates.popitem(last=False)
+        _store_bounded_preview(
+            self.intermediates,
+            node_id,
+            value,
+            limit=self.max_intermediates,
+        )
 
     def known_intermediate_keys(self, session_id: str) -> list[str]:
         """Return staged node ids for cache-compatible callers."""
@@ -231,12 +256,6 @@ class IntermediatesCache:
         while len(self._sessions) > self._max_sessions:
             self._sessions.popitem(last=False)
 
-    def _evict_oldest_intermediates(self, data: SessionData) -> None:
-        """Drop oldest intermediates until count <= ``self._max_per_session``."""
-
-        while len(data.intermediates) > self._max_per_session:
-            data.intermediates.popitem(last=False)
-
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -306,10 +325,12 @@ class IntermediatesCache:
 
         with self._lock:
             data = self._ensure_session(session_id)
-            if node_id in data.intermediates:
-                data.intermediates.pop(node_id)
-            data.intermediates[node_id] = value
-            self._evict_oldest_intermediates(data)
+            _store_bounded_preview(
+                data.intermediates,
+                node_id,
+                value,
+                limit=self._max_per_session,
+            )
 
     def begin_preview_generation(
         self, session_id: str, pipeline_revision: str
@@ -417,9 +438,7 @@ class IntermediatesCache:
                 or node_id not in data.intermediates
             ):
                 return None
-            value = data.intermediates.pop(node_id)
-            data.intermediates[node_id] = value
-            return value
+            return _touch_preview(data.intermediates, node_id)
 
     def preview_descriptor(
         self, session_id: str
@@ -451,9 +470,7 @@ class IntermediatesCache:
             data = self._sessions.get(session_id)
             if data is None or node_id not in data.intermediates:
                 return None
-            value = data.intermediates.pop(node_id)
-            data.intermediates[node_id] = value  # bump to MRU end
-            return value
+            return _touch_preview(data.intermediates, node_id)
 
     def clear(self, session_id: str) -> None:
         """Drop the entire cache entry for *session_id*.
