@@ -235,7 +235,13 @@ def _diagnostic_text(
             )
     elif status == "failed":
         kind = str(job.get("error_kind") or payload.get("error_kind") or "")
-        if kind == "invalid":
+        if submission_unknown:
+            notices.append(
+                "The previously acknowledged job failed, but the "
+                "unacknowledged request may still have published. The "
+                "current Results + Analysis publication cannot be inferred."
+            )
+        elif kind == "invalid":
             notices.append(
                 "Compatibility validation failed. The previous Results + "
                 "Analysis publication is unchanged."
@@ -251,10 +257,17 @@ def _diagnostic_text(
                 "publication is unchanged."
             )
     elif status == "cancelled":
-        notices.append(
-            "Cancelled before publication. The previous Results + Analysis "
-            "publication is unchanged."
-        )
+        if submission_unknown:
+            notices.append(
+                "The previously acknowledged job was cancelled, but the "
+                "unacknowledged request may still have published. The "
+                "current Results + Analysis publication cannot be inferred."
+            )
+        else:
+            notices.append(
+                "Cancelled before publication. The previous Results + "
+                "Analysis publication is unchanged."
+            )
     elif status == "superseded":
         notices.append(
             "A newer request won. The superseded candidate was not published."

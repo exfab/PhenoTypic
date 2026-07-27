@@ -113,6 +113,43 @@ def test_unknown_retry_keeps_prior_active_progress_and_warns() -> None:
 
 
 @pytest.mark.parametrize(
+    ("status", "detail"),
+    [
+        ("failed", "The previously acknowledged job failed"),
+        ("cancelled", "The previously acknowledged job was cancelled"),
+    ],
+)
+def test_unknown_retry_never_claims_preservation_after_prior_job_terminal(
+    status: str,
+    detail: str,
+) -> None:
+    """A retained job's terminal state cannot resolve an uncertain retry."""
+
+    state = binding_ui_state(
+        {
+            "submission_outcome": "unknown",
+            "submission_error": "response lost",
+            "job_id": "prior-job",
+            "job": {
+                "job_id": "prior-job",
+                "status": status,
+                "phase": status,
+                "detail": f"Prior job {status}.",
+                "terminal": True,
+            },
+        }
+    )
+
+    assert detail in state.diagnostic
+    assert "unacknowledged request may still have published" in (
+        state.diagnostic
+    )
+    assert "publication cannot be inferred" in state.diagnostic
+    assert "publication is unchanged" not in state.diagnostic
+    assert "not published" not in state.diagnostic
+
+
+@pytest.mark.parametrize(
     ("kind", "expected"),
     [
         ("invalid", "Compatibility validation failed"),
