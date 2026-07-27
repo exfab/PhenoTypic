@@ -16,7 +16,7 @@ from phenotypic.gui.run_console._request_safety import (
 )
 from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
 from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA, header_to_module
 
 
 def _one_image_source(root: Path, *, stem: str = "plate_a") -> Path:
@@ -289,6 +289,48 @@ def test_preflight_never_calls_measurement_level_join_keys_compatible(
         "production join will use" in warning
         for warning in preflight.warnings
     )
+
+
+@pytest.mark.parametrize(
+    "custom_key",
+    ["ExternalMeasure_BatchKey", "Metadata_CustomBatchKey"],
+)
+def test_preflight_warns_for_unregistered_custom_measurement_key(
+    tmp_path: Path,
+    custom_key: str,
+) -> None:
+    """An external qualified key can join even when absent from the schema."""
+    source = _one_image_source(tmp_path)
+    metadata = tmp_path / "metadata.csv"
+    image_key = str(METADATA.IMAGE_NAME)
+    assert custom_key not in header_to_module()
+    metadata.write_text(
+        f"{image_key},{custom_key},Treatment\n"
+        "plate_a,metadata-value,control\n",
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+
+    preflight = build_metadata_preflight(
+        sandbox,
+        str(source),
+        metadata_payload_from_path(sandbox, metadata),
+    )
+    production_result = join_metadata(
+        pl.DataFrame(
+            {
+                image_key: ["plate_a"],
+                custom_key: ["measurement-value"],
+                "Shape_Area": [1.0],
+            }
+        ),
+        metadata,
+    )
+
+    assert preflight.matched_source_count == 1
+    assert preflight.compatibility == "warning"
+    assert preflight.unverified_join_columns == (custom_key,)
+    assert production_result.height == 0
 
 
 @pytest.mark.parametrize("changed_input", ["source", "metadata"])

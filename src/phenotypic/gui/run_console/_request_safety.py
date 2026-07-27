@@ -25,8 +25,6 @@ from phenotypic.gui.shell._source_context import sandbox_fingerprint
 from phenotypic.schema import (
     EXPERIMENT_METADATA,
     METADATA,
-    REMBI_MODULE,
-    header_to_module,
 )
 
 __all__ = [
@@ -356,19 +354,21 @@ def _unverified_measurement_join_columns(
     metadata_columns: list[str],
     source_columns: list[str],
 ) -> tuple[str, ...]:
-    """Return metadata columns that may join only after measurement."""
-    modules = header_to_module()
-    framework_image_headers = set(METADATA.get_headers())
+    """Return non-source columns that may remain production join keys.
+
+    Every qualified name (``Prefix_Label``) is conservative join-key
+    territory because a built-in or external operation may emit that exact
+    column. This deliberately does not depend on the registered schema.
+    Unqualified bare labels are excluded because, when they are not common,
+    ``join_metadata`` prefixes them as metadata attributes.
+    """
     source_set = set(source_columns)
     return tuple(
         sorted(
             column
             for column in metadata_columns
             if column not in source_set
-            and (
-                modules.get(column) == REMBI_MODULE.ANALYZED_DATA
-                or column in framework_image_headers
-            )
+            and "_" in column
         )
     )
 
