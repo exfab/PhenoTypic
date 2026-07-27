@@ -311,7 +311,8 @@ def inspect_output_consistency(layout: BundleLayout) -> OutputConsistencyReport:
     processing_payload, processing_readable = _read_json(processing_path)
     event_log_path = resolve_event_log_path(output_root)
     processing_events, event_log_readable = _read_processing_events(
-        event_log_path
+        event_log_path,
+        processing_payload=processing_payload,
     )
 
     processing_counts = (
@@ -449,12 +450,42 @@ def _processing_counts(
 
 def _read_processing_events(
     path: Path,
+    *,
+    processing_payload: dict[str, object] | None,
 ) -> tuple[dict[str, tuple[set[str], set[str]]] | None, bool]:
     """Read the append-only lifecycle ledger without modifying the output."""
     if not path.is_file():
         return None, True
+    inventory: dict[str, set[str]] | None = None
+    generation: str | None = None
+    if processing_payload is not None:
+        raw_datasets = processing_payload.get(ProcessingStateKey.DATASETS)
+        if isinstance(raw_datasets, dict):
+            candidate_inventory: dict[str, set[str]] = {}
+            for dataset, raw_state in raw_datasets.items():
+                if not isinstance(raw_state, dict):
+                    candidate_inventory = {}
+                    break
+                images = _string_list(
+                    raw_state.get(ProcessingStateKey.INITIAL_IMAGES)
+                )
+                if images is None:
+                    candidate_inventory = {}
+                    break
+                candidate_inventory[str(dataset)] = images
+            if len(candidate_inventory) == len(raw_datasets):
+                inventory = candidate_inventory
+        raw_config = processing_payload.get(ProcessingStateKey.CONFIG)
+        if isinstance(raw_config, dict):
+            raw_generation = raw_config.get("processing_generation")
+            if isinstance(raw_generation, str) and raw_generation:
+                generation = raw_generation
     try:
-        aggregated = aggregate_state_from_events(path)
+        aggregated = aggregate_state_from_events(
+            path,
+            inventory=inventory,
+            generation=generation,
+        )
     except (OSError, UnicodeDecodeError, RuntimeError):
         return None, False
     return (

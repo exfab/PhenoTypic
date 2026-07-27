@@ -80,6 +80,7 @@ from phenotypic.gui.run_console._request_safety import (
 )
 from phenotypic.gui.run_console._runner import LocalRunner
 from phenotypic.gui.run_console._slurm_observer import (
+    discover_log_files,
     IncrementalLogReader,
     SchedulerGenerationBinding,
     SlurmLifecycleObserver,
@@ -784,12 +785,17 @@ class _SlurmLogTailCache:
                 or key in active_generations
             )
         )
+        log_paths = discover_log_files(
+            record.output_dir,
+            record.log_paths,
+            record_generation=record.generation,
+        )
         labelled_paths = {
             (
                 f"{'GUI submitter' if 'gui' in path.parts else 'SLURM'}: "
                 f"{path.name}"
             ): path
-            for path in record.log_paths
+            for path in log_paths
         }
         with self._lock:
             self._prune_inactive_locked(active_generations)

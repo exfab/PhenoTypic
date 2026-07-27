@@ -138,6 +138,8 @@ class ExecutionConfig:
     staged_resume_phase: Optional[str] = None
     staged_finalizer_only: bool = False
     staged_stage3_markers: bool = True
+    # Durable event-log generation. Resume reuses it; restart creates a new one.
+    processing_generation: str | None = None
 
     # Metadata join
     metadata_csv: Optional[Path] = None

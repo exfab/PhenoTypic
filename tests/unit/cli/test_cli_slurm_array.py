@@ -205,6 +205,7 @@ class TestArrayJobScriptGeneration:
     def test_generate_array_job_script_basic(self, dataset, config, tmp_path):
         """Test basic array job script generation."""
         output_dir = tmp_path / "output"
+        config.processing_generation = "generation-123"
         script_path = generate_array_job_script(
             dataset=dataset,
             array_indices=(0, 10),
@@ -228,6 +229,10 @@ class TestArrayJobScriptGeneration:
         assert "#SBATCH --partition=short" in content
         assert "#SBATCH --mem=16G" in content
         assert "#SBATCH --time=01:00:00" in content
+        assert (
+            "export PHENOTYPIC_PROCESSING_GENERATION=generation-123"
+            in content
+        )
 
         # Check image list
         for i in range(10):

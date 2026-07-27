@@ -22,6 +22,7 @@ from phenotypic._cli._cli_staged_orchestration import (
 )
 from phenotypic._cli._cli_staged_resume import write_stage3_completion_marker
 from phenotypic.gui.run_console._slurm_observer import (
+    discover_log_files,
     IncrementalLogReader,
     SchedulerCommentQueryResult,
     SchedulerQueryResult,
@@ -1179,3 +1180,26 @@ def test_incremental_logs_handle_multiple_sources_and_rotation(
     assert gui_log in rotated.reset_paths
     assert "cursor reset" in rotated.text
     assert "rotated" in rotated.text
+
+
+def test_log_discovery_fences_generation_scoped_submitter_logs(
+    tmp_path: Path,
+) -> None:
+    current = uuid4()
+    previous = uuid4()
+    gui_dir = tmp_path / ".phenotypic" / "logs" / "gui"
+    gui_dir.mkdir(parents=True)
+    current_log = gui_dir / f"submitter.{current.hex}.stdout.log"
+    previous_log = gui_dir / f"submitter.{previous.hex}.stdout.log"
+    legacy_log = gui_dir / "submitter.stdout.log"
+    for path in (current_log, previous_log, legacy_log):
+        path.write_text(path.name, encoding="utf-8")
+
+    discovered = discover_log_files(
+        tmp_path,
+        record_generation=current,
+    )
+
+    assert current_log in discovered
+    assert legacy_log in discovered
+    assert previous_log not in discovered

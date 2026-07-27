@@ -236,8 +236,15 @@ class TestRunFinalizeCoercion:
             _run_finalize(output_dir, progress_dir)
 
         mock_wait.assert_called_once()
-        wait_total = mock_wait.call_args.args[1]
+        wait_total = mock_wait.call_args.kwargs["total_expected"]
         assert wait_total == sum(EXPECTED_TOTALS.values())
+        if datasets_field is NESTED_DATASETS:
+            assert mock_wait.call_args.kwargs["inventory"] == {
+                "ds1": frozenset({"a.tif", "b.tif", "c.tif"}),
+                "ds2": frozenset({"x.tif", "y.tif"}),
+            }
+        else:
+            assert mock_wait.call_args.kwargs["inventory"] is None
 
         mock_aggregate.assert_called_once()
         aggregate_kwargs = mock_aggregate.call_args.kwargs

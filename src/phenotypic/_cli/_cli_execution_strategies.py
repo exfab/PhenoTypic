@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 from ._cli_types import (
     Dataset,
     DatasetResults,
+    DatasetState,
     ExecutionConfig,
     ExecutionResults,
     ImageFailure,
@@ -239,7 +240,17 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         # Generate progress manifest and dashboard (local mode — runs once)
         try:
-            datasets_totals = {ds.name: len(ds.images) for ds in datasets}
+            datasets_inventory = (
+                self.config.full_dataset_inventory
+                or {
+                    ds.name: [image.name for image in ds.images]
+                    for ds in datasets
+                }
+            )
+            datasets_totals = {
+                name: len(images)
+                for name, images in datasets_inventory.items()
+            }
             start_iso = start_time.isoformat(timespec="milliseconds")
             if self.config.process_only_layer:
                 # Manifest only — no dashboard HTML, no aggregation (D13).
@@ -255,6 +266,8 @@ class LocalParallelStrategy(ExecutionStrategy):
                     gui_record_generation=os.environ.get(
                         GUI_RECORD_GENERATION_ENV_VAR
                     ),
+                    dataset_inventory=datasets_inventory,
+                    processing_generation=self.config.processing_generation,
                 )
             else:
                 local_job_meta: dict = {
@@ -264,9 +277,18 @@ class LocalParallelStrategy(ExecutionStrategy):
                     JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(
                         GUI_RECORD_GENERATION_ENV_VAR
                     ),
+                    JobMetadataKey.PROCESSING_GENERATION: (
+                        self.config.processing_generation
+                    ),
+                    JobMetadataKey.DATASETS: {
+                        name: {"total": len(images), "images": images}
+                        for name, images in datasets_inventory.items()
+                    },
                 }
                 regenerate_dashboard_artifacts(
-                    output_dir, local_job_meta, datasets_totals
+                    output_dir,
+                    local_job_meta,
+                    datasets_totals,
                 )
         except Exception:
             logger.debug("Failed to generate progress dashboard", exc_info=True)
@@ -558,7 +580,7 @@ class LocalParallelStrategy(ExecutionStrategy):
             Dictionary mapping dataset names to DatasetResults
         """
         # Initialize result containers
-        dataset_results = {}
+        dataset_results: dict[str, dict[str, Any]] = {}
         for dataset in datasets:
             dataset_results[dataset.name] = {
                 "total": len(dataset.images),
@@ -771,11 +793,17 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             ),
             JobMetadataKey.EXECUTION_MODE: "slurm",
             JobMetadataKey.DATASETS: {
-                ds.name: {
-                    "total": len(ds.images),
-                    "images": [img.name for img in ds.images],
+                name: {
+                    "total": len(images),
+                    "images": images,
                 }
-                for ds in datasets
+                for name, images in (
+                    self.config.full_dataset_inventory
+                    or {
+                        ds.name: [img.name for img in ds.images]
+                        for ds in datasets
+                    }
+                ).items()
             },
             JobMetadataKey.CHUNK_SCRIPTS: [str(s) for s in flat_scripts],
             JobMetadataKey.CHUNK_JOB_IDS: {},
@@ -792,6 +820,9 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
             JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(
                 "PHENOTYPIC_GUI_RECORD_GENERATION"
+            ),
+            JobMetadataKey.PROCESSING_GENERATION: (
+                self.config.processing_generation
             ),
             "slurm_metadata_version": 2,
             "slurm_generation": generation,
@@ -920,12 +951,23 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         start_time = datetime.now()
 
         total_images = sum(len(d.images) for d in datasets)
+        inventory = (
+            self.config.full_dataset_inventory
+            or {
+                dataset.name: [image.name for image in dataset.images]
+                for dataset in datasets
+            }
+        )
         last_completed = 0
 
         try:
             while True:
                 # Aggregate latest events
-                datasets_state = aggregate_state_from_events(event_log)
+                datasets_state = aggregate_state_from_events(
+                    event_log,
+                    inventory=inventory,
+                    generation=self.config.processing_generation,
+                )
 
                 # Count completed and failed
                 total_completed = sum(
@@ -959,7 +1001,11 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
 
         # Build final results
         end_time = datetime.now()
-        datasets_state = aggregate_state_from_events(event_log)
+        datasets_state = aggregate_state_from_events(
+            event_log,
+            inventory=inventory,
+            generation=self.config.processing_generation,
+        )
 
         # Enrich with structured failure data from failures.jsonl
         prog_dir = progress_dir(output_dir)
@@ -972,13 +1018,11 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         # Convert to DatasetResults
         dataset_results = {}
         for dataset in datasets:
-            ds_state = datasets_state.get(
-                dataset.name, {"completed": set(), "failed": set(), "errors": {}}
-            )
+            ds_state = datasets_state.get(dataset.name, DatasetState())
 
             failures = []
-            for img_name in ds_state.get("failed", set()):
-                error_msg = ds_state.get("errors", {}).get(img_name, "Unknown error")
+            for img_name in ds_state.failed:
+                error_msg = ds_state.errors.get(img_name, "Unknown error")
                 rec = failure_lookup.get((dataset.name, img_name), {})
                 failures.append(
                     ImageFailure(
@@ -994,8 +1038,8 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             dataset_results[dataset.name] = DatasetResults(
                 name=dataset.name,
                 total=len(dataset.images),
-                completed=len(ds_state.get("completed", set())),
-                failed=len(ds_state.get("failed", set())),
+                completed=len(ds_state.completed),
+                failed=len(ds_state.failed),
                 failures=failures,
             )
 

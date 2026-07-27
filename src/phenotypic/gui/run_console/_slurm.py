@@ -10,15 +10,18 @@ from __future__ import annotations
 import json
 import logging
 import os
+import signal
 import subprocess
 import sys
+import threading
 import time
-from collections import defaultdict
+from collections import defaultdict, deque
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from uuid import NAMESPACE_URL, UUID, uuid5
+from typing import IO, Any
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from phenotypic._cli._cli_slurm_lifecycle import (
     SchedulerQueryUnavailable,
@@ -61,6 +64,12 @@ _PRIMARY_ROLE_ORDER = (
     "recovery",
     "unknown",
 )
+_SUBMITTER_TAIL_CHARS = 128 * 1024
+_SUBMITTER_READ_CHARS = 8 * 1024
+_SUBMITTER_TAIL_CHUNKS = (
+    _SUBMITTER_TAIL_CHARS // _SUBMITTER_READ_CHARS
+)
+_SUBMITTER_TERM_GRACE_SECONDS = 2.0
 
 
 class SlurmSubmitError(RuntimeError):
@@ -131,6 +140,17 @@ class SlurmSubmitResult:
     returncode: int
     submitted_jobs: SubmittedJobSet | None = None
     reconciled: bool = False
+
+
+@dataclass(frozen=True)
+class _StreamedProcessResult:
+    """Bounded result of one live-tee submitter subprocess."""
+
+    stdout: str
+    stderr: str
+    returncode: int
+    timed_out: bool = False
+    stream_error: str | None = None
 
 
 @dataclass(frozen=True)
@@ -410,17 +430,213 @@ def read_submitted_job_set(
     )
 
 
-def _write_submitter_logs(
-    output_dir: Path, stdout: str, stderr: str
+def _submitter_log_paths(
+    output_dir: Path,
+    generation: UUID,
 ) -> tuple[Path, Path]:
-    """Persist bounded-source submitter output beside scheduler logs."""
+    """Return generation-specific GUI submitter log paths."""
     log_dir = output_dir / ".phenotypic" / "logs" / "gui"
     log_dir.mkdir(parents=True, exist_ok=True)
-    stdout_path = log_dir / "submitter.stdout.log"
-    stderr_path = log_dir / "submitter.stderr.log"
-    stdout_path.write_text(stdout, encoding="utf-8")
-    stderr_path.write_text(stderr, encoding="utf-8")
-    return stdout_path, stderr_path
+    token = generation.hex
+    return (
+        log_dir / f"submitter.{token}.stdout.log",
+        log_dir / f"submitter.{token}.stderr.log",
+    )
+
+
+def _tee_submitter_stream(
+    stream: IO[str],
+    path: Path,
+    tail: deque[str],
+    tail_lock: threading.Lock,
+    errors: list[str],
+    errors_lock: threading.Lock,
+) -> None:
+    """Drain one child pipe to disk and a bounded in-memory line tail."""
+    handle: IO[str] | None = None
+    try:
+        try:
+            handle = path.open("w", encoding="utf-8")
+        except OSError as error:
+            with errors_lock:
+                errors.append(f"{path.name}: {error}")
+        for chunk in iter(
+            lambda: stream.readline(_SUBMITTER_READ_CHARS),
+            "",
+        ):
+            if handle is not None:
+                try:
+                    handle.write(chunk)
+                    handle.flush()
+                except OSError as error:
+                    with errors_lock:
+                        errors.append(f"{path.name}: {error}")
+                    try:
+                        handle.close()
+                    except OSError:
+                        pass
+                    handle = None
+            with tail_lock:
+                tail.append(chunk)
+    except OSError as error:
+        with errors_lock:
+            errors.append(f"{path.name} stream: {error}")
+    finally:
+        if handle is not None:
+            try:
+                handle.close()
+            except OSError:
+                pass
+        try:
+            stream.close()
+        except OSError:
+            pass
+
+
+def _bounded_tail_text(
+    lines: deque[str],
+    *,
+    lock: threading.Lock,
+) -> str:
+    """Join a line tail while enforcing a final character bound."""
+    with lock:
+        return "".join(lines)[-_SUBMITTER_TAIL_CHARS:]
+
+
+def _run_submitter_streamed(
+    argv: list[str],
+    *,
+    output_dir: Path,
+    log_generation: UUID,
+    cwd: Path,
+    env: dict[str, str],
+    timeout: float,
+) -> _StreamedProcessResult:
+    """Run the CLI submitter while teeing stdout and stderr as they arrive."""
+    stdout_path, stderr_path = _submitter_log_paths(
+        output_dir,
+        log_generation,
+    )
+    stdout_tail: deque[str] = deque(maxlen=_SUBMITTER_TAIL_CHUNKS)
+    stderr_tail: deque[str] = deque(maxlen=_SUBMITTER_TAIL_CHUNKS)
+    stdout_tail_lock = threading.Lock()
+    stderr_tail_lock = threading.Lock()
+    stream_errors: list[str] = []
+    stream_errors_lock = threading.Lock()
+    popen_kwargs: dict[str, Any] = {}
+    if os.name == "nt":
+        popen_kwargs["creationflags"] = getattr(
+            subprocess,
+            "CREATE_NEW_PROCESS_GROUP",
+            0,
+        )
+    else:
+        popen_kwargs["start_new_session"] = True
+    process = subprocess.Popen(
+        argv,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        bufsize=1,
+        cwd=str(cwd),
+        env=env,
+        **popen_kwargs,
+    )
+    assert process.stdout is not None
+    assert process.stderr is not None
+    readers = (
+        threading.Thread(
+            target=_tee_submitter_stream,
+            args=(
+                process.stdout,
+                stdout_path,
+                stdout_tail,
+                stdout_tail_lock,
+                stream_errors,
+                stream_errors_lock,
+            ),
+            daemon=True,
+            name=f"phenotypic-submit-stdout-{log_generation.hex[:8]}",
+        ),
+        threading.Thread(
+            target=_tee_submitter_stream,
+            args=(
+                process.stderr,
+                stderr_path,
+                stderr_tail,
+                stderr_tail_lock,
+                stream_errors,
+                stream_errors_lock,
+            ),
+            daemon=True,
+            name=f"phenotypic-submit-stderr-{log_generation.hex[:8]}",
+        ),
+    )
+    for reader in readers:
+        reader.start()
+
+    timed_out = False
+    try:
+        returncode = process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        _signal_submitter_tree(process, force=False)
+        try:
+            returncode = process.wait(timeout=_SUBMITTER_TERM_GRACE_SECONDS)
+        except subprocess.TimeoutExpired:
+            _signal_submitter_tree(process, force=True)
+            returncode = process.wait()
+        if os.name != "nt":
+            # The direct CLI may exit on SIGTERM while a pipe-inheriting
+            # descendant ignores it. Kill the isolated group once more so
+            # resistant descendants cannot survive or pin the reader pipes.
+            _signal_submitter_tree(process, force=True)
+    streams = (process.stdout, process.stderr)
+    for reader, stream in zip(readers, streams, strict=True):
+        reader.join(timeout=_SUBMITTER_TERM_GRACE_SECONDS)
+        if reader.is_alive():
+            try:
+                os.close(stream.fileno())
+            except OSError:
+                pass
+            reader.join(timeout=_SUBMITTER_TERM_GRACE_SECONDS)
+        if reader.is_alive():
+            with stream_errors_lock:
+                stream_errors.append(
+                    f"{reader.name} did not stop after pipe closure"
+                )
+    with stream_errors_lock:
+        stream_error = "; ".join(stream_errors) or None
+    return _StreamedProcessResult(
+        stdout=_bounded_tail_text(stdout_tail, lock=stdout_tail_lock),
+        stderr=_bounded_tail_text(stderr_tail, lock=stderr_tail_lock),
+        returncode=returncode,
+        timed_out=timed_out,
+        stream_error=stream_error,
+    )
+
+
+def _signal_submitter_tree(
+    process: subprocess.Popen[str],
+    *,
+    force: bool,
+) -> None:
+    """Signal the isolated submitter process tree after a timeout."""
+    if os.name != "nt":
+        try:
+            os.killpg(
+                process.pid,
+                signal.SIGKILL if force else signal.SIGTERM,
+            )
+            return
+        except ProcessLookupError:
+            return
+    if force:
+        process.kill()
+    else:
+        process.terminate()
 
 
 def _reconcile_submission(
@@ -569,42 +785,55 @@ def submit_slurm(
     returncode = 0
     ambiguous_error: BaseException | None = None
     env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
     if record_generation is not None:
         env["PHENOTYPIC_GUI_RECORD_GENERATION"] = str(record_generation)
+    log_generation = record_generation or uuid4()
     try:
-        completed = subprocess.run(
+        completed = _run_submitter_streamed(
             argv,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            cwd=str(sandbox_root),
-            check=False,
+            output_dir=output_dir,
+            log_generation=log_generation,
+            cwd=sandbox_root,
             env=env,
+            timeout=timeout,
         )
         stdout = completed.stdout or ""
         stderr = completed.stderr or ""
-        returncode = completed.returncode
-        if returncode != 0:
+        if completed.stream_error is not None:
+            stream_diagnostic = (
+                "Submitter log streaming failed: "
+                f"{completed.stream_error}"
+            )
+            stderr = (
+                f"{stderr.rstrip()}\n{stream_diagnostic}"
+                if stderr
+                else stream_diagnostic
+            )
+        returncode = -1 if completed.timed_out else completed.returncode
+        if completed.timed_out:
+            ambiguous_error = SlurmSubmitError(
+                f"SLURM submission timed out after {timeout:.1f}s. "
+                f"stderr:\n{stderr or '<empty>'}\n"
+                f"stdout:\n{stdout or '<empty>'}"
+            )
+        elif completed.stream_error is not None:
+            ambiguous_error = SlurmSubmitError(
+                "SLURM submitter logging failed, so submission status is "
+                f"ambiguous. stderr:\n{stderr or '<empty>'}\n"
+                f"stdout:\n{stdout or '<empty>'}"
+            )
+        elif returncode != 0:
             ambiguous_error = SlurmSubmitError(
                 "SLURM submission subprocess exited with code "
                 f"{returncode}. stderr:\n{stderr or '<empty>'}\n"
                 f"stdout:\n{stdout or '<empty>'}"
             )
-    except subprocess.TimeoutExpired as err:
-        stdout = err.stdout if isinstance(err.stdout, str) else ""
-        stderr = err.stderr if isinstance(err.stderr, str) else ""
-        returncode = -1
-        ambiguous_error = SlurmSubmitError(
-            f"SLURM submission timed out after {timeout:.1f}s. "
-            f"stderr:\n{stderr or '<empty>'}\n"
-            f"stdout:\n{stdout or '<empty>'}"
-        )
     except FileNotFoundError as err:
         raise SlurmSubmitError(
             f"Failed to launch SLURM submitter subprocess: {err}"
         ) from err
 
-    _write_submitter_logs(output_dir, stdout, stderr)
     jobs = read_submitted_job_set(output_dir)
     reconciliation = (
         _reconcile_submission(output_dir)

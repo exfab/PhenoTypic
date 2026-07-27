@@ -32,6 +32,7 @@ from phenotypic._cli._cli_update_state import (
     append_completion_event,
     parse_event_line,
     aggregate_state_from_events,
+    aggregate_state_from_events_with_diagnostics,
 )
 from phenotypic._cli._cli_failure_tracker import (
     append_failure,
@@ -210,7 +211,7 @@ class TestAggregateState:
 
         state = aggregate_state_from_events(event_log)
         ds = state["plate1"]
-        assert "img001.tif" in ds.started
+        assert "img001.tif" not in ds.started
         assert "img002.tif" in ds.started
         assert "img001.tif" in ds.completed
         assert ds.in_progress == {"img002.tif"}
@@ -231,6 +232,59 @@ class TestAggregateState:
     def test_empty_log(self, event_log):
         state = aggregate_state_from_events(event_log)
         assert state == {}
+
+    def test_inventory_and_generation_exclude_stale_events(self, event_log):
+        append_event(
+            event_log,
+            "plate1",
+            "old.tif",
+            "completed",
+            generation="current",
+        )
+        append_event(
+            event_log,
+            "plate1",
+            "a.tif",
+            "completed",
+            generation="previous",
+        )
+        append_event(
+            event_log,
+            "plate1",
+            "a.tif",
+            "started",
+            generation="current",
+        )
+        append_event(
+            event_log,
+            "plate1",
+            "b.tif",
+            "failed",
+            generation="current",
+        )
+
+        aggregated = aggregate_state_from_events_with_diagnostics(
+            event_log,
+            inventory={"plate1": {"a.tif", "b.tif"}},
+            generation="current",
+        )
+
+        assert aggregated.datasets["plate1"].in_progress == {"a.tif"}
+        assert aggregated.datasets["plate1"].failed == {"b.tif"}
+        assert aggregated.diagnostics.unknown_image_events == 1
+        assert aggregated.diagnostics.other_generation_events == 1
+
+    def test_generationless_events_remain_inventory_filtered(self, event_log):
+        append_event(event_log, "plate1", "legacy.tif", "completed")
+        append_event(event_log, "plate1", "unknown.tif", "completed")
+
+        state = aggregate_state_from_events(
+            event_log,
+            inventory={"plate1": {"legacy.tif"}},
+            generation="new-generation",
+        )
+
+        assert state["plate1"].completed == {"legacy.tif"}
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -396,6 +450,91 @@ class TestManifestBuilder:
         assert manifest["is_complete"] is True
         assert manifest["completed"] == 1
         assert manifest["success_rate"] == 1.0
+
+    def test_manifest_filters_historical_images_and_reports_them(
+        self,
+        tmp_dir,
+    ):
+        event_log = tmp_dir / "processing_events.log"
+        progress_dir = tmp_dir / "progress"
+        progress_dir.mkdir()
+        append_event(event_log, "plate1", "old-1.tif", "completed")
+        append_event(event_log, "plate1", "a.tif", "completed")
+        append_failure(
+            progress_dir,
+            dataset="plate1",
+            image="old-1.tif",
+            error_type="HistoricalError",
+            error_message="stale",
+        )
+
+        build_manifest(
+            output_dir=tmp_dir,
+            progress_dir=progress_dir,
+            datasets={"plate1": 2},
+            dataset_inventory={"plate1": {"a.tif", "b.tif"}},
+            execution_mode="local",
+            start_time=datetime.now().isoformat(timespec="milliseconds"),
+            processing_generation="current",
+        )
+
+        manifest = json.loads((progress_dir / "manifest.json").read_text())
+        assert manifest["completed"] == 1
+        assert manifest["failed"] == 0
+        assert manifest["pending"] == 1
+        assert manifest["processing_generation"] == "current"
+        assert manifest["event_diagnostics"]["unknown_image_events"] == 1
+        assert "HistoricalError" not in manifest["failure_categories"]
+
+    def test_manifest_categories_only_latest_current_failures(self, tmp_dir):
+        event_log = tmp_dir / "processing_events.log"
+        progress_dir = tmp_dir / "progress"
+        progress_dir.mkdir()
+
+        append_event(event_log, "plate1", "recovered.tif", "failed")
+        append_failure(
+            progress_dir,
+            dataset="plate1",
+            image="recovered.tif",
+            error_type="RecoveredError",
+            error_message="first attempt",
+        )
+        append_event(event_log, "plate1", "recovered.tif", "started")
+        append_event(event_log, "plate1", "recovered.tif", "completed")
+
+        append_event(event_log, "plate1", "failed.tif", "failed")
+        append_failure(
+            progress_dir,
+            dataset="plate1",
+            image="failed.tif",
+            error_type="EarlierError",
+            error_message="earlier attempt",
+        )
+        append_event(event_log, "plate1", "failed.tif", "started")
+        append_event(event_log, "plate1", "failed.tif", "failed")
+        append_failure(
+            progress_dir,
+            dataset="plate1",
+            image="failed.tif",
+            error_type="CurrentError",
+            error_message="current attempt",
+        )
+
+        build_manifest(
+            output_dir=tmp_dir,
+            progress_dir=progress_dir,
+            datasets={"plate1": 2},
+            dataset_inventory={
+                "plate1": {"recovered.tif", "failed.tif"}
+            },
+            execution_mode="local",
+            start_time=datetime.now().isoformat(timespec="milliseconds"),
+        )
+
+        manifest = json.loads((progress_dir / "manifest.json").read_text())
+        assert manifest["completed"] == 1
+        assert manifest["failed"] == 1
+        assert manifest["failure_categories"] == {"CurrentError": 1}
 
     def test_manifest_multiple_datasets(self, tmp_dir):
         event_log = tmp_dir / "processing_events.log"

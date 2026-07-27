@@ -133,7 +133,10 @@ def _run_manifest(output_dir: Path, progress_dir: Path) -> None:
         logger.warning("No job_metadata.json found -- skipping manifest build")
         return
 
-    from ._dashboard._manifest_builder import build_manifest
+    from ._dashboard._manifest_builder import (
+        build_manifest,
+        dataset_inventory_from_metadata,
+    )
 
     datasets_raw = job_metadata.get(JobMetadataKey.DATASETS, {}) or {}
     datasets_totals: dict[str, int] = {
@@ -150,6 +153,10 @@ def _run_manifest(output_dir: Path, progress_dir: Path) -> None:
         slurm_job_ids=job_metadata.get(JobMetadataKey.CHUNK_JOB_IDS),
         chunk_scripts=job_metadata.get(JobMetadataKey.CHUNK_SCRIPTS),
         input_path=job_metadata.get(JobMetadataKey.INPUT_PATH),
+        dataset_inventory=dataset_inventory_from_metadata(datasets_raw),
+        processing_generation=job_metadata.get(
+            JobMetadataKey.PROCESSING_GENERATION
+        ),
     )
 
     # Process/export runs use a scheduler-dependent manifest finalizer after
@@ -210,11 +217,24 @@ def _run_finalize(
         name: (info["total"] if isinstance(info, dict) else int(info))
         for name, info in datasets_raw.items()
     }
+    from ._dashboard._manifest_builder import (
+        dataset_inventory_from_metadata,
+    )
+
+    dataset_inventory = dataset_inventory_from_metadata(datasets_raw)
     total_expected = sum(datasets_totals.values())
 
     # Wait for all images to complete (or fail)
     if epoch is None:
-        _wait_for_completion(progress_dir, total_expected, timeout=600)
+        _wait_for_completion(
+            progress_dir,
+            inventory=dataset_inventory,
+            total_expected=total_expected,
+            generation=job_metadata.get(
+                JobMetadataKey.PROCESSING_GENERATION
+            ),
+            timeout=600,
+        )
 
     # Final aggregation
     from ._cli_output_manager import aggregate_measurements
@@ -272,7 +292,10 @@ def _run_finalize(
         logger.warning("Analysis sidecar write failed", exc_info=True)
 
     # Final manifest
-    from ._dashboard._manifest_builder import build_manifest
+    from ._dashboard._manifest_builder import (
+        build_manifest,
+        dataset_inventory_from_metadata,
+    )
 
     build_manifest(
         output_dir=output_dir,
@@ -283,6 +306,10 @@ def _run_finalize(
         slurm_job_ids=job_metadata.get(JobMetadataKey.CHUNK_JOB_IDS),
         chunk_scripts=job_metadata.get(JobMetadataKey.CHUNK_SCRIPTS),
         input_path=job_metadata.get(JobMetadataKey.INPUT_PATH),
+        dataset_inventory=dataset_inventory,
+        processing_generation=job_metadata.get(
+            JobMetadataKey.PROCESSING_GENERATION
+        ),
     )
     _check_epoch()
 
@@ -438,7 +465,16 @@ def _publish_staged_report_and_readme(
     from ._cli_update_state import aggregate_state_from_events
 
     datasets_raw = job_metadata.get(JobMetadataKey.DATASETS, {}) or {}
-    states = aggregate_state_from_events(event_log_path(output_dir))
+    inventory = {
+        name: list(raw.get("images", []))
+        for name, raw in datasets_raw.items()
+        if isinstance(raw, dict)
+    }
+    states = aggregate_state_from_events(
+        event_log_path(output_dir),
+        inventory=inventory,
+        generation=job_metadata.get(JobMetadataKey.PROCESSING_GENERATION),
+    )
     dataset_results: dict[str, DatasetResults] = {}
     datasets: list[Dataset] = []
     for name, raw in datasets_raw.items():
@@ -515,14 +551,22 @@ def _publish_staged_report_and_readme(
 
 
 def _wait_for_completion(
-    progress_dir: Path, total_expected: int, timeout: int = 600
+    progress_dir: Path,
+    *,
+    inventory: dict[str, frozenset[str]] | None,
+    total_expected: int,
+    generation: str | None,
+    timeout: int = 600,
 ) -> None:
     """Poll event log until all images are done or timeout.
 
     Args:
         progress_dir: Progress directory (the event log is at
             ``progress_dir.parent / "processing_events.log"``).
-        total_expected: Total number of images expected.
+        inventory: Authorized current-generation image names by dataset, or
+            ``None`` for legacy count-only metadata.
+        total_expected: Total number of expected images.
+        generation: Durable processing generation.
         timeout: Maximum seconds to wait.
     """
     from ._cli_update_state import aggregate_state_from_events
@@ -531,7 +575,11 @@ def _wait_for_completion(
     deadline = time.monotonic() + timeout
     done = 0
     while time.monotonic() < deadline:
-        dataset_states = aggregate_state_from_events(event_log)
+        dataset_states = aggregate_state_from_events(
+            event_log,
+            inventory=inventory,
+            generation=generation,
+        )
         completed = sum(len(ds.completed) for ds in dataset_states.values())
         failed = sum(len(ds.failed) for ds in dataset_states.values())
         done = completed + failed

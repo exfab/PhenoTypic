@@ -99,6 +99,7 @@ def test_resume_rejects_process_only_layer_change(tmp_path: Path) -> None:
 
 def test_event_refresh_preserves_original_image_inventory(tmp_path: Path) -> None:
     state = _make_state(tmp_path)
+    state.config["processing_generation"] = "current"
     state.datasets["plate"] = DatasetState(
         initial_images={"a.tif", "b.tif"}
     )
@@ -107,12 +108,22 @@ def test_event_refresh_preserves_original_image_inventory(tmp_path: Path) -> Non
         "plate",
         "a.tif",
         "completed",
+        generation="previous",
+    )
+    append_completion_event(
+        event_log_path(tmp_path),
+        "plate",
+        "a.tif",
+        "completed",
         stage="stage1",
+        generation="current",
     )
 
     refreshed = update_state_from_events(state, tmp_path)
 
     assert refreshed.datasets["plate"].initial_images == {"a.tif", "b.tif"}
+    assert refreshed.datasets["plate"].completed == set()
+    assert refreshed.datasets["plate"].in_progress == {"a.tif"}
     save_processing_state(refreshed, tmp_path)
     loaded = load_processing_state(tmp_path)
     assert loaded is not None

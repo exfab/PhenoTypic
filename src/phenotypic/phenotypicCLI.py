@@ -129,11 +129,12 @@ SLURM Execution (Autonomous HPC Cluster Processing):
 
 import json
 import logging
+import os
 import shutil
 import sys
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import click
 import yaml  # type: ignore[import-untyped]
@@ -170,6 +171,9 @@ from phenotypic._cli._cli_staged_resume import (
     reconcile_stage3_publications,
 )
 from phenotypic._cli._cli_types import Dataset, ExecutionConfig
+from phenotypic._cli._cli_update_state import (
+    PROCESSING_GENERATION_ENV_VAR,
+)
 from phenotypic._cli._cli_utils import (
     normalize_extension,
     parse_slurm_args,
@@ -1643,6 +1647,13 @@ def phenotypic_cli(
             if config.resume:
                 assert resume_state is not None
                 state = update_state_from_events(resume_state, output_dir)
+                processing_generation = state.config.get(
+                    "processing_generation"
+                )
+                if not isinstance(processing_generation, str) or not (
+                    processing_generation
+                ):
+                    processing_generation = uuid4().hex
                 state.execution_mode = (
                     "slurm" if config.is_slurm_mode() else "local"
                 )
@@ -1666,11 +1677,20 @@ def phenotypic_cli(
                     "staged_stage3_markers": config.staged_stage3_markers,
                     "include_dataset_column": config.include_dataset_column,
                     "overlay_alpha": config.overlay_alpha,
+                    "processing_generation": processing_generation,
                 }
             else:
                 state = create_initial_state(config, datasets, output_dir)
                 state.config["save_overlays"] = config.save_overlays
             save_processing_state(state, output_dir)
+            config.processing_generation = str(
+                state.config["processing_generation"]
+            )
+        else:
+            config.processing_generation = uuid4().hex
+        os.environ[PROCESSING_GENERATION_ENV_VAR] = (
+            config.processing_generation
+        )
 
         # Create output manager
         output_manager = OutputManager.from_config(

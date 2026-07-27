@@ -19,6 +19,9 @@ Design Note - Race Condition Tradeoff:
 from __future__ import annotations
 
 import logging
+import os
+from collections.abc import Collection, Mapping
+
 import click
 from pathlib import Path
 from typing import Dict, Set
@@ -32,6 +35,9 @@ from phenotypic.sdk_.typing_ import ProcessingStatus
 
 logger = logging.getLogger(__name__)
 
+PROCESSING_GENERATION_ENV_VAR = "PHENOTYPIC_PROCESSING_GENERATION"
+_DIAGNOSTIC_SAMPLE_LIMIT = 20
+
 
 @dataclass
 class ProcessingEvent:
@@ -44,6 +50,25 @@ class ProcessingEvent:
     slurm_job_id: str = ""
     slurm_array_task_id: str = ""
     stage: StageTag | None = None
+    generation: str | None = None
+
+
+@dataclass(frozen=True)
+class EventAggregationDiagnostics:
+    """Events excluded from an inventory- and generation-scoped aggregate."""
+
+    malformed_events: int = 0
+    unknown_image_events: int = 0
+    other_generation_events: int = 0
+    samples: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class EventAggregation:
+    """Current dataset state plus bounded diagnostics for ignored events."""
+
+    datasets: Dict[str, DatasetState]
+    diagnostics: EventAggregationDiagnostics
 
 
 def append_event(
@@ -55,17 +80,19 @@ def append_event(
     slurm_job_id: str = "",
     slurm_array_task_id: str = "",
     stage: str | None = None,
+    generation: str | None = None,
 ) -> None:
     """
     Atomically append a processing event to the event log.
 
-    Event format: ``timestamp|dataset|image|status|error_msg|slurm_job_id|slurm_array_task_id|stage``
+    Event format: ``timestamp|dataset|image|status|error_msg|slurm_job_id|slurm_array_task_id|stage|generation``
 
     Trailing SLURM fields are omitted when empty for backward compatibility.
     Old lines with 4-5 fields still parse correctly. The optional ``stage``
     (``"stage1"``/``"stage2"``/``"stage3"`` for the staged GPU engine) is field 8;
     when present, the SLURM fields 6-7 are always emitted (possibly empty) so the
-    positional parser can locate it. ``status`` stays the closed 3-value set.
+    positional parser can locate it. The optional durable processing generation
+    is field 9. ``status`` stays the closed 3-value set.
 
     This operation uses file locking to ensure thread-safety and process-safety
     across parallel workers (local joblib and distributed SLURM jobs) on HPC
@@ -79,8 +106,13 @@ def append_event(
         error_msg: Error message if status is ``"failed"``.
         slurm_job_id: SLURM job ID (from ``$SLURM_JOB_ID``).
         slurm_array_task_id: SLURM array task ID (from ``$SLURM_ARRAY_TASK_ID``).
+        generation: Durable processing generation. Defaults to the
+            ``PHENOTYPIC_PROCESSING_GENERATION`` environment variable.
     """
     validated_stage = validate_stage_tag(stage)
+    event_generation = generation or os.environ.get(
+        PROCESSING_GENERATION_ENV_VAR
+    )
 
     event_log.parent.mkdir(parents=True, exist_ok=True)
 
@@ -94,11 +126,18 @@ def append_event(
     # placeholder fields 6-7 present). Old 4-5 field lines and 7-field SLURM
     # lines still parse.
     parts = [timestamp, dataset, image, status, error_msg_safe]
-    if slurm_job_id or slurm_array_task_id or validated_stage is not None:
+    if (
+        slurm_job_id
+        or slurm_array_task_id
+        or validated_stage is not None
+        or event_generation
+    ):
         parts.append(slurm_job_id)
         parts.append(slurm_array_task_id)
-    if validated_stage is not None:
-        parts.append(validated_stage)
+    if validated_stage is not None or event_generation:
+        parts.append(validated_stage or "")
+    if event_generation:
+        parts.append(event_generation)
     event_line = "|".join(parts) + "\n"
 
     try:
@@ -122,6 +161,7 @@ def append_completion_event(
     status: ProcessingStatus,
     error_msg: str = "",
     stage: str | None = None,
+    generation: str | None = None,
 ) -> None:
     """
     Atomically append a completion event to the processing log.
@@ -135,9 +175,16 @@ def append_completion_event(
         status: ``"completed"`` or ``"failed"``.
         error_msg: Error message if status is ``"failed"``.
         stage: Optional staged-engine stage tag (``"stage1"``/``"stage2"``/``"stage3"``).
+        generation: Optional durable processing generation.
     """
     append_event(
-        event_log, dataset, image, status, error_msg=error_msg, stage=stage
+        event_log,
+        dataset,
+        image,
+        status,
+        error_msg=error_msg,
+        stage=stage,
+        generation=generation,
     )
 
 
@@ -146,8 +193,8 @@ def parse_event_line(line: str) -> ProcessingEvent:
     Parse a single event log line into a ProcessingEvent.
 
     Supports the old 4-5 field format, the 7-field format with SLURM fields,
-    and the 8-field staged format (field 8 = ``stage``). Missing trailing
-    fields default to empty / ``None``.
+    the 8-field staged format (field 8 = ``stage``), and the 9-field
+    generation format. Missing trailing fields default to empty / ``None``.
 
     Args:
         line: Raw line from event log.
@@ -171,6 +218,7 @@ def parse_event_line(line: str) -> ProcessingEvent:
     slurm_job_id = parts[5] if len(parts) > 5 else ""
     slurm_array_task_id = parts[6] if len(parts) > 6 else ""
     stage = validate_stage_tag(parts[7] if len(parts) > 7 and parts[7] else None)
+    generation = parts[8] if len(parts) > 8 and parts[8] else None
 
     # Validate + narrow to ProcessingStatus literal
     if status_raw not in ("started", "completed", "failed"):
@@ -198,10 +246,16 @@ def parse_event_line(line: str) -> ProcessingEvent:
         slurm_job_id=slurm_job_id,
         slurm_array_task_id=slurm_array_task_id,
         stage=stage,
+        generation=generation,
     )
 
 
-def aggregate_state_from_events(event_log: Path) -> Dict[str, DatasetState]:
+def aggregate_state_from_events(
+    event_log: Path,
+    *,
+    inventory: Mapping[str, Collection[str]] | None = None,
+    generation: str | None = None,
+) -> Dict[str, DatasetState]:
     """
     Read event log and build complete processing state.
 
@@ -210,17 +264,48 @@ def aggregate_state_from_events(event_log: Path) -> Dict[str, DatasetState]:
     The most recent status for each image is used.
 
     Args:
-        event_log: Path to processing_events.log file
+        event_log: Path to processing_events.log file.
+        inventory: Authorized image names for the current generation.
+        generation: Current durable processing generation. Tagged events from
+            other generations are ignored. Legacy generationless events remain
+            eligible and are fenced by ``inventory``.
 
     Returns:
         Dictionary mapping dataset names to their current state
     """
-    def _parse_event_log(content: str) -> Dict[str, DatasetState]:
+    return aggregate_state_from_events_with_diagnostics(
+        event_log,
+        inventory=inventory,
+        generation=generation,
+    ).datasets
+
+
+def aggregate_state_from_events_with_diagnostics(
+    event_log: Path,
+    *,
+    inventory: Mapping[str, Collection[str]] | None = None,
+    generation: str | None = None,
+) -> EventAggregation:
+    """Aggregate latest per-image status and report excluded log records."""
+    authorized = (
+        {dataset: frozenset(images) for dataset, images in inventory.items()}
+        if inventory is not None
+        else None
+    )
+
+    def _parse_event_log(content: str) -> EventAggregation:
         """Inner parser function that processes event log content."""
         datasets: Dict[str, DatasetState] = {}
+        malformed_events = 0
+        unknown_image_events = 0
+        other_generation_events = 0
+        samples: list[str] = []
 
         if not content:
-            return datasets
+            return EventAggregation(
+                datasets=datasets,
+                diagnostics=EventAggregationDiagnostics(),
+            )
 
         for line_num, line in enumerate(content.splitlines(), 1):
             if not line.strip():
@@ -229,9 +314,32 @@ def aggregate_state_from_events(event_log: Path) -> Dict[str, DatasetState]:
             try:
                 event = parse_event_line(line)
             except ValueError as e:
+                malformed_events += 1
                 logger.debug(
                     f"Skipping malformed line {line_num}: {e}"
                 )
+                if len(samples) < _DIAGNOSTIC_SAMPLE_LIMIT:
+                    samples.append(f"malformed line {line_num}")
+                continue
+            if (
+                generation is not None
+                and event.generation is not None
+                and event.generation != generation
+            ):
+                other_generation_events += 1
+                if len(samples) < _DIAGNOSTIC_SAMPLE_LIMIT:
+                    samples.append(
+                        f"other generation: {event.dataset}/{event.image}"
+                    )
+                continue
+            if authorized is not None and event.image not in authorized.get(
+                event.dataset, ()
+            ):
+                unknown_image_events += 1
+                if len(samples) < _DIAGNOSTIC_SAMPLE_LIMIT:
+                    samples.append(
+                        f"unknown image: {event.dataset}/{event.image}"
+                    )
                 continue
 
             # Initialize dataset state if needed
@@ -254,24 +362,38 @@ def aggregate_state_from_events(event_log: Path) -> Dict[str, DatasetState]:
             # Update state based on event
             if event.status == "started":
                 ds.started.add(event.image)
+                ds.completed.discard(event.image)
+                ds.failed.discard(event.image)
+                ds.errors.pop(event.image, None)
             elif event.status == "completed":
                 if intermediate_stage:
                     ds.started.add(event.image)  # progressing, not done
+                    ds.completed.discard(event.image)
                 else:
                     ds.completed.add(event.image)
+                    ds.started.discard(event.image)
                 # Remove from failed if it was previously failed (retry success)
                 ds.failed.discard(event.image)
                 # Remove error if present
                 ds.errors.pop(event.image, None)
             elif event.status == "failed":
                 ds.failed.add(event.image)
+                ds.started.discard(event.image)
                 # Remove from completed if it was previously completed (shouldn't happen)
                 ds.completed.discard(event.image)
                 # Store error message
                 if event.error_msg:
                     ds.errors[event.image] = event.error_msg
 
-        return datasets
+        return EventAggregation(
+            datasets=datasets,
+            diagnostics=EventAggregationDiagnostics(
+                malformed_events=malformed_events,
+                unknown_image_events=unknown_image_events,
+                other_generation_events=other_generation_events,
+                samples=tuple(samples),
+            ),
+        )
 
     # Use atomic read with file locking
     try:

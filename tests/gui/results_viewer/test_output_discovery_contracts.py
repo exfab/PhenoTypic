@@ -286,6 +286,55 @@ def test_terminal_event_log_supersedes_stale_processing_snapshot(
     } == selected_before
 
 
+def test_consistency_ignores_same_name_events_from_prior_generation(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "output"
+    _seed_output(source)
+    _publish_coherent_manifest(source)
+    state_path = processing_state_path(source)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                ProcessingStateKey.CONFIG: {
+                    "processing_generation": "current",
+                },
+                ProcessingStateKey.DATASETS: {
+                    "plate": {
+                        ProcessingStateKey.INITIAL_IMAGES: ["a", "b"],
+                        ProcessingStateKey.COMPLETED: [],
+                        ProcessingStateKey.FAILED: [],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    log_path = event_log_path(source)
+    for image_name in ("a", "b"):
+        append_event(
+            log_path,
+            "plate",
+            image_name,
+            "completed",
+            generation="previous",
+        )
+        append_event(
+            log_path,
+            "plate",
+            image_name,
+            "started",
+            generation="current",
+        )
+
+    report = inspect_output_consistency(BundleLayout.detect(source))
+
+    assert report.evidence.processing_completed == 0
+    assert report.evidence.processing_unfinished == 2
+    assert report.state == "contradictory"
+
+
 def test_unreadable_processing_event_log_stays_read_only(
     tmp_path: Path,
 ) -> None:

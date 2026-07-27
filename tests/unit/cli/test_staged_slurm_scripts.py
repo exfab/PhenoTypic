@@ -97,6 +97,7 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
         n_shards=2,
         epoch="epoch-1",
         overlay_alpha=0.65,
+        processing_generation="generation-123",
     )
     assert set(scripts) == {
         "stage1",
@@ -125,6 +126,11 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
     assert "--overlay-alpha" not in s1 and "--overlay-alpha" not in s2
     # Stage 2 invokes the shard worker
     assert "_cli_staged_slurm_worker" in s2
+    for worker_script in (s1, s2, s3):
+        assert (
+            "export PHENOTYPIC_PROCESSING_GENERATION=generation-123"
+            in worker_script
+        )
     assert "_cli_checkpoint_handler" in finalizer
     assert "--checkpoint-type finalize" in finalizer
     assert "--epoch epoch-1" in finalizer
@@ -396,6 +402,7 @@ def test_staged_job_metadata_supports_canonical_finalizer(
         nrows=None,
         ncols=None,
         full_dataset_inventory={"plate": [image.name for image in images]},
+        processing_generation="generation-123",
     )
 
     metadata_path = _write_staged_job_metadata(
@@ -416,3 +423,4 @@ def test_staged_job_metadata_supports_canonical_finalizer(
     assert metadata["no_qc"] is True
     assert metadata["image_task_mapping"] == {}
     assert metadata["gui_record_generation"] == gui_generation
+    assert metadata["processing_generation"] == "generation-123"

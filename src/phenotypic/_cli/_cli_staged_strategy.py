@@ -189,16 +189,28 @@ class StagedGpuStrategy(ExecutionStrategy):
         try:
             from ._dashboard._manifest_builder import build_manifest
 
+            datasets_inventory = (
+                cfg.full_dataset_inventory
+                or {
+                    dataset.name: [image.name for image in dataset.images]
+                    for dataset in datasets
+                }
+            )
             build_manifest(
                 output_dir=output_dir,
                 progress_dir=progress_dir(output_dir),
-                datasets={dataset.name: len(dataset.images) for dataset in datasets},
+                datasets={
+                    name: len(images)
+                    for name, images in datasets_inventory.items()
+                },
                 execution_mode="local",
                 start_time=start.isoformat(timespec="milliseconds"),
                 input_path=cfg.input_path.stem,
                 gui_record_generation=os.environ.get(
                     GUI_RECORD_GENERATION_ENV_VAR
                 ),
+                dataset_inventory=datasets_inventory,
+                processing_generation=cfg.processing_generation,
             )
         except Exception:
             # Match the ordinary local strategy: process results remain

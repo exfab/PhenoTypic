@@ -22,6 +22,7 @@ from pathlib import Path
 import click
 
 from ._dashboard import build_manifest
+from ._dashboard._manifest_builder import dataset_inventory_from_metadata
 from phenotypic.sdk_ import (
     JOB_METADATA_JSON,
     MANIFEST_JSON,
@@ -140,6 +141,10 @@ def sentinel_main(
             slurm_job_ids=chunk_job_ids,
             chunk_scripts=chunk_scripts,
             input_path=input_path,
+            dataset_inventory=dataset_inventory_from_metadata(datasets_info),
+            processing_generation=job_metadata.get(
+                JobMetadataKey.PROCESSING_GENERATION
+            ),
         )
 
         # Update analysis sidecar data (partial results visible during run)

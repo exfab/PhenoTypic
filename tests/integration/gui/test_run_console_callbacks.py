@@ -975,14 +975,9 @@ def test_slurm_log_callback_reads_incrementally(
         output_dir=output_dir,
         rel_path="out",
         command_digest="digest",
-        status="running",
+        status="submitting",
     )
     assert record.generation is not None
-    registry.compare_and_set(
-        record.run_id,
-        record.generation,
-        log_paths=(log_path,),
-    )
     app = create_app(sandbox, registry=registry)
     callback = _callback_by_name(app, "update_log_tail")
 

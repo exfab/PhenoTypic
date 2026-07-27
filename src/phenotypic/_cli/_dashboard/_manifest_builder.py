@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import subprocess
+from collections.abc import Collection, Mapping
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -20,7 +21,11 @@ from .._cli_failure_tracker import (
     categorize_failures,
     read_failures,
 )
-from .._cli_update_state import aggregate_state_from_events, append_event
+from .._cli_update_state import (
+    aggregate_state_from_events,
+    aggregate_state_from_events_with_diagnostics,
+    append_event,
+)
 from phenotypic.sdk_ import (
     MANIFEST_JSON,
     DashboardManifestKey,
@@ -267,16 +272,16 @@ def query_sacct_chunk_states(
 
     for chunk_idx_str, job_id in numeric_chunk_job_ids.items():
         chunk_idx = int(chunk_idx_str)
-        task_states = all_results.get(job_id)
+        chunk_states = all_results.get(job_id)
 
-        if task_states is None:
+        if chunk_states is None:
             continue
 
-        if not task_states:
+        if not chunk_states:
             pending.append(chunk_idx)
             continue
 
-        state_values = set(task_states.values())
+        state_values = set(chunk_states.values())
 
         if "RUNNING" in state_values:
             active.append(chunk_idx)
@@ -362,27 +367,28 @@ def detect_silent_failures(
 
     for ds_name, images in in_progress_images.items():
         for image in images:
-            task_id = image_to_task.get((ds_name, image))
-            if task_id is None:
+            mapped_task_id = image_to_task.get((ds_name, image))
+            if mapped_task_id is None:
                 continue
 
-            state = all_task_states.get(task_id)
-            if state is None:
+            task_state = all_task_states.get(mapped_task_id)
+            if task_state is None:
                 continue
 
-            if state in ("RUNNING", "PENDING"):
+            if task_state in ("RUNNING", "PENDING"):
                 # Still in progress -- not a silent failure.
                 continue
 
-            if state not in _FAILURE_STATES:
+            if task_state not in _FAILURE_STATES:
                 # COMPLETED but we never saw a completion event -- unusual
                 # but not necessarily a silent failure we can categorise.
                 continue
 
             # Determine error type from SLURM state.
-            error_type = state  # e.g. "OUT_OF_MEMORY", "TIMEOUT", etc.
+            error_type = task_state
             error_message = (
-                f"SLURM task {task_id} terminated with state {state}"
+                f"SLURM task {mapped_task_id} terminated with state "
+                f"{task_state}"
             )
 
             # Write a synthetic "failed" event to the event log.
@@ -401,7 +407,7 @@ def detect_silent_failures(
                 image=image,
                 error_type=error_type,
                 error_message=error_message,
-                slurm_job_id=task_id,
+                slurm_job_id=mapped_task_id,
                 failure_source="slurm",
             )
 
@@ -410,7 +416,7 @@ def detect_silent_failures(
                 "image": image,
                 "error_type": error_type,
                 "error_message": error_message,
-                "slurm_task_id": task_id,
+                "slurm_task_id": mapped_task_id,
             }
             detected_failures.append(record)
             logger.warning(
@@ -418,7 +424,7 @@ def detect_silent_failures(
                 ds_name,
                 image,
                 error_type,
-                task_id,
+                mapped_task_id,
             )
 
     return detected_failures
@@ -452,6 +458,25 @@ def _get_analysis_data_version(progress_dir: Path) -> int:
 # ---------------------------------------------------------------------------
 
 
+def dataset_inventory_from_metadata(
+    datasets_raw: object,
+) -> dict[str, frozenset[str]] | None:
+    """Extract a complete image inventory from versioned job metadata."""
+    if not isinstance(datasets_raw, Mapping):
+        return None
+    inventory: dict[str, frozenset[str]] = {}
+    for dataset, raw in datasets_raw.items():
+        if not isinstance(dataset, str) or not isinstance(raw, Mapping):
+            return None
+        images = raw.get("images")
+        if not isinstance(images, list) or not all(
+            isinstance(image, str) for image in images
+        ):
+            return None
+        inventory[dataset] = frozenset(images)
+    return inventory
+
+
 def build_manifest(
     output_dir: Path,
     progress_dir: Path,
@@ -462,6 +487,8 @@ def build_manifest(
     chunk_scripts: Optional[List[str]] = None,
     input_path: Optional[str] = None,
     gui_record_generation: str | None = None,
+    dataset_inventory: Mapping[str, Collection[str]] | None = None,
+    processing_generation: str | None = None,
 ) -> None:
     """Build ``progress/manifest.json`` for the live dashboard.
 
@@ -486,15 +513,60 @@ def build_manifest(
             can show which input is being processed.
         gui_record_generation: Exact private GUI launch generation. Written
             only for local GUI publications; omitted otherwise.
+        dataset_inventory: Complete authorized image-name inventory for each
+            dataset. Historical and unknown event-log images are excluded.
+        processing_generation: Durable processing generation. Tagged events
+            from other generations are excluded.
     """
     event_log = resolve_event_log_path(output_dir)
+    if dataset_inventory is not None:
+        inventory_totals = {
+            dataset: len(frozenset(images))
+            for dataset, images in dataset_inventory.items()
+        }
+        if inventory_totals != datasets:
+            raise ValueError(
+                "Dataset totals must exactly match the authorized image "
+                f"inventory: totals={datasets!r}, "
+                f"inventory_totals={inventory_totals!r}"
+            )
 
     # 1. Aggregate state from the event log.
-    dataset_states = aggregate_state_from_events(event_log)
+    aggregation = aggregate_state_from_events_with_diagnostics(
+        event_log,
+        inventory=dataset_inventory,
+        generation=processing_generation,
+    )
+    dataset_states = aggregation.datasets
+    diagnostics = aggregation.diagnostics
+    if (
+        diagnostics.malformed_events
+        or diagnostics.unknown_image_events
+        or diagnostics.other_generation_events
+    ):
+        logger.warning(
+            "Ignored processing events while building manifest: malformed=%d, "
+            "unknown_images=%d, other_generations=%d, samples=%s",
+            diagnostics.malformed_events,
+            diagnostics.unknown_image_events,
+            diagnostics.other_generation_events,
+            diagnostics.samples,
+        )
 
     # 2. Read and categorise failures.
-    failures = read_failures(progress_dir)
-    failure_categories = categorize_failures(failures)
+    latest_current_failures: dict[tuple[str, str], dict] = {}
+    for failure in read_failures(progress_dir):
+        dataset = str(failure.get("dataset", ""))
+        image = str(failure.get("image", ""))
+        dataset_state = dataset_states.get(dataset)
+        if dataset_state is None or image not in dataset_state.failed:
+            continue
+        # Failure records are append-only. Replacing the mapping entry keeps
+        # only the diagnostic associated with the image's latest failed state.
+        latest_current_failures[(dataset, image)] = failure
+    failure_categories = categorize_failures(
+        list(latest_current_failures.values())
+    )
 
     # 3-4. SLURM-specific queries.
     is_slurm = execution_mode == "slurm"
@@ -551,6 +623,18 @@ def build_manifest(
             ds_failed = len(ds_state.failed)
             ds_in_progress = len(ds_state.in_progress)
             ds_pending = ds_total - ds_completed - ds_failed - ds_in_progress
+            if (
+                ds_completed > ds_total
+                or ds_failed > ds_total
+                or ds_completed + ds_failed > ds_total
+                or ds_pending < 0
+            ):
+                raise RuntimeError(
+                    "Refusing to publish impossible progress counts for "
+                    f"{ds_name!r}: total={ds_total}, completed={ds_completed}, "
+                    f"failed={ds_failed}, started={ds_in_progress}, "
+                    f"pending={ds_pending}"
+                )
 
             per_dataset[ds_name] = {
                 "total": ds_total,
@@ -594,7 +678,17 @@ def build_manifest(
         DashboardManifestKey.ANALYSIS_DATA_VERSION: _get_analysis_data_version(
             progress_dir
         ),
+        DashboardManifestKey.EVENT_DIAGNOSTICS: {
+            "malformed_events": diagnostics.malformed_events,
+            "unknown_image_events": diagnostics.unknown_image_events,
+            "other_generation_events": diagnostics.other_generation_events,
+            "samples": list(diagnostics.samples),
+        },
     }
+    if processing_generation is not None:
+        manifest[DashboardManifestKey.PROCESSING_GENERATION] = (
+            processing_generation
+        )
     if not is_slurm and gui_record_generation is not None:
         manifest[DashboardManifestKey.GUI_RECORD_GENERATION] = (
             gui_record_generation

@@ -125,7 +125,10 @@ def regenerate_dashboard_artifacts(
         datasets: Mapping of dataset name to total image count.
     """
     from phenotypic.sdk_ import JobMetadataKey, progress_dir, resolve_execution_mode
-    from ._manifest_builder import build_manifest
+    from ._manifest_builder import (
+        build_manifest,
+        dataset_inventory_from_metadata,
+    )
 
     prog_dir = progress_dir(output_dir)
     execution_mode = resolve_execution_mode(job_meta)
@@ -133,6 +136,9 @@ def regenerate_dashboard_artifacts(
         (job_meta or {}).get(JobMetadataKey.GUI_RECORD_GENERATION)
         if execution_mode == "local"
         else None
+    )
+    dataset_inventory = dataset_inventory_from_metadata(
+        (job_meta or {}).get(JobMetadataKey.DATASETS)
     )
 
     build_manifest(
@@ -144,6 +150,10 @@ def regenerate_dashboard_artifacts(
         slurm_job_ids=(job_meta or {}).get(JobMetadataKey.CHUNK_JOB_IDS),
         chunk_scripts=(job_meta or {}).get(JobMetadataKey.CHUNK_SCRIPTS),
         input_path=(job_meta or {}).get(JobMetadataKey.INPUT_PATH),
+        dataset_inventory=dataset_inventory,
+        processing_generation=(job_meta or {}).get(
+            JobMetadataKey.PROCESSING_GENERATION
+        ),
     )
     generate_dashboard(output_dir, execution_mode=execution_mode)
     if isinstance(gui_record_generation, str) and gui_record_generation:

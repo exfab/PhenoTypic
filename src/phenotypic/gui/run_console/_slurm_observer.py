@@ -537,7 +537,11 @@ class SlurmLifecycleObserver:
         binding = self._bindings.get((record.run_id, record.generation))
         if binding is None and self.reconcile_durable_binding(record):
             binding = self._bindings.get((record.run_id, record.generation))
-        logs = discover_log_files(record.output_dir, record.log_paths)
+        logs = discover_log_files(
+            record.output_dir,
+            record.log_paths,
+            record_generation=record.generation,
+        )
         if binding is None:
             if record.status in {"submitting", "cancelling"}:
                 return _Observation(
@@ -892,7 +896,10 @@ class SlurmLifecycleObserver:
 
 
 def discover_log_files(
-    output_dir: Path, existing: Sequence[Path] = ()
+    output_dir: Path,
+    existing: Sequence[Path] = (),
+    *,
+    record_generation: UUID | None = None,
 ) -> tuple[Path, ...]:
     """Return GUI submitter and scheduler logs in deterministic role order."""
     paths: list[Path] = [Path(path) for path in existing]
@@ -906,7 +913,35 @@ def discover_log_files(
             )
         except OSError:
             continue
-    return tuple(dict.fromkeys(paths))
+    if record_generation is None:
+        return tuple(dict.fromkeys(paths))
+    generation_token = record_generation.hex
+    return tuple(
+        dict.fromkeys(
+            path
+            for path in paths
+            if not (
+                _is_generation_scoped_submitter_log(path)
+                and generation_token not in path.name
+            )
+        )
+    )
+
+
+def _is_generation_scoped_submitter_log(path: Path) -> bool:
+    """Return whether a GUI log name embeds a launch-generation token."""
+    parts = path.name.split(".")
+    if (
+        len(parts) != 4
+        or parts[0] != "submitter"
+        or parts[2] not in {"stdout", "stderr"}
+        or parts[3] != "log"
+    ):
+        return False
+    token = parts[1]
+    return len(token) == 32 and all(
+        character in "0123456789abcdef" for character in token.lower()
+    )
 
 
 def _read_incremental_logs(

@@ -1768,6 +1768,7 @@ class JobMetadataKey:
     #: Together with ``slurm_generation`` this is the durable restart-safe
     #: binding between GUI identity and the CLI lifecycle epoch.
     GUI_RECORD_GENERATION: Final[str] = "gui_record_generation"
+    PROCESSING_GENERATION: Final[str] = "processing_generation"
     PIPELINE_PATH: Final[str] = "pipeline_path"
     IMAGE_TYPE: Final[str] = "image_type"
     NROWS: Final[str] = "nrows"
@@ -1797,6 +1798,8 @@ class DashboardManifestKey:
     #: Exact GUI generation that published this canonical local manifest.
     #: Omitted from non-GUI and scheduler manifests for compatibility.
     GUI_RECORD_GENERATION: Final[str] = "gui_record_generation"
+    PROCESSING_GENERATION: Final[str] = "processing_generation"
+    EVENT_DIAGNOSTICS: Final[str] = "event_diagnostics"
     INPUT_PATH: Final[str] = "input_path"
     DATASETS: Final[str] = "datasets"
     FAILURE_CATEGORIES: Final[str] = "failure_categories"
