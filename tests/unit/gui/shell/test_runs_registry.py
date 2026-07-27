@@ -34,6 +34,7 @@ from phenotypic.sdk_ import (
     event_log_path,
     manifest_json_path,
     processing_state_path,
+    run_completion_marker_path,
 )
 
 
@@ -46,6 +47,36 @@ def _write_master_marker(out: Path) -> None:
     deliverables = out / DELIVERABLES_DIRNAME
     deliverables.mkdir(parents=True, exist_ok=True)
     (deliverables / "master_measurements.parquet").write_bytes(b"")
+
+
+def _write_local_terminal_manifest(
+    output: Path,
+    *,
+    start_time: float,
+    is_complete: bool = True,
+    completed: int = 1,
+    failed: int = 0,
+    total: int = 1,
+    execution_mode: str = "local",
+) -> None:
+    """Write canonical local publication evidence for lifecycle tests."""
+    path = manifest_json_path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "execution_mode": execution_mode,
+                "start_time": datetime.fromtimestamp(
+                    start_time
+                ).isoformat(timespec="milliseconds"),
+                "is_complete": is_complete,
+                "completed": completed,
+                "failed": failed,
+                "total_images": total,
+            }
+        ),
+        encoding="utf-8",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -759,7 +790,7 @@ def test_compare_and_set_honors_expected_record_revision(
     assert record.record_revision == 0
 
 
-def test_observe_local_exit_maps_returncode_and_rejects_stale_generation(
+def test_observe_local_exit_maps_nonzero_and_rejects_stale_generation(
     tmp_path: Path,
 ) -> None:
     reg = RunRegistry()
@@ -780,6 +811,294 @@ def test_observe_local_exit_maps_returncode_and_rejects_stale_generation(
     assert updated.returncode == 3
     assert updated.terminal_at is not None
     assert updated.status_detail == "local process exited with status 3"
+
+
+def test_observe_validate_zero_exit_completes_without_publication(
+    tmp_path: Path,
+) -> None:
+    """A dry-run validates configuration and intentionally publishes no output."""
+    reg = RunRegistry()
+    record = reg.allocate(
+        mode="validate",
+        output_dir=tmp_path / "validate",
+        rel_path="validate",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+
+    assert reg.observe_local_exit("validate", record.generation, 0)
+    updated = reg.get("validate")
+    assert updated is not None
+    assert updated.status == "complete"
+    assert updated.returncode == 0
+    assert updated.status_detail is None
+
+
+def test_observe_local_zero_exit_fails_without_canonical_manifest(
+    tmp_path: Path,
+) -> None:
+    reg = RunRegistry()
+    record = reg.allocate(
+        mode="local",
+        output_dir=tmp_path / "run",
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+
+    assert reg.observe_local_exit("run", record.generation, 0)
+    updated = reg.get("run")
+    assert updated is not None
+    assert updated.status == "failed"
+    assert updated.returncode == 0
+    assert "no canonical terminal publication evidence" in (
+        updated.status_detail or ""
+    )
+
+
+def test_observe_local_zero_exit_ignores_legacy_shadow_manifest(
+    tmp_path: Path,
+) -> None:
+    """A legacy manifest cannot shadow missing current-generation evidence."""
+    reg = RunRegistry()
+    output = tmp_path / "run"
+    record = reg.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+    legacy_path = output / "progress" / "manifest.json"
+    legacy_path.parent.mkdir(parents=True, exist_ok=True)
+    legacy_path.write_text(
+        json.dumps(
+            {
+                "execution_mode": "local",
+                "start_time": datetime.fromtimestamp(
+                    record.started_at + 1.0
+                ).isoformat(timespec="milliseconds"),
+                "is_complete": True,
+                "completed": 1,
+                "failed": 0,
+                "total_images": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert reg.observe_local_exit("run", record.generation, 0)
+    updated = reg.get("run")
+    assert updated is not None
+    assert updated.status == "failed"
+    assert "no canonical terminal publication evidence" in (
+        updated.status_detail or ""
+    )
+
+
+def test_observe_local_zero_exit_rejects_incomplete_manifest(
+    tmp_path: Path,
+) -> None:
+    reg = RunRegistry()
+    output = tmp_path / "run"
+    record = reg.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+    _write_local_terminal_manifest(
+        output,
+        start_time=record.started_at + 1.0,
+        is_complete=False,
+        completed=0,
+        total=1,
+    )
+
+    assert reg.observe_local_exit("run", record.generation, 0)
+    updated = reg.get("run")
+    assert updated is not None
+    assert updated.status == "failed"
+    assert "publication is incomplete" in (updated.status_detail or "")
+
+
+def test_observe_local_zero_exit_rejects_preexisting_complete_manifest(
+    tmp_path: Path,
+) -> None:
+    """A prior run's complete manifest cannot terminalize a new generation."""
+    reg = RunRegistry()
+    output = tmp_path / "run"
+    record = reg.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+    _write_local_terminal_manifest(
+        output,
+        start_time=record.started_at - 60.0,
+    )
+
+    assert reg.observe_local_exit("run", record.generation, 0)
+    updated = reg.get("run")
+    assert updated is not None
+    assert updated.status == "failed"
+    assert "predates the current launch generation" in (
+        updated.status_detail or ""
+    )
+
+
+def test_observe_local_zero_exit_rejects_mismatched_completion_marker(
+    tmp_path: Path,
+) -> None:
+    reg = RunRegistry()
+    output = tmp_path / "run"
+    record = reg.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+    _write_local_terminal_manifest(
+        output,
+        start_time=record.started_at + 1.0,
+    )
+    marker = run_completion_marker_path(output)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(
+        json.dumps(
+            {
+                "generation": str(uuid4()),
+                "status": "complete",
+                "finalizer_succeeded": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert reg.observe_local_exit("run", record.generation, 0)
+    updated = reg.get("run")
+    assert updated is not None
+    assert updated.status == "failed"
+    assert "different launch generation" in (updated.status_detail or "")
+
+
+def test_observe_local_zero_exit_accepts_current_canonical_manifest(
+    tmp_path: Path,
+) -> None:
+    reg = RunRegistry()
+    output = tmp_path / "run"
+    record = reg.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+    _write_local_terminal_manifest(
+        output,
+        start_time=record.started_at + 1.0,
+    )
+
+    assert reg.observe_local_exit("run", record.generation, 0)
+    updated = reg.get("run")
+    assert updated is not None
+    assert updated.status == "complete"
+    assert updated.returncode == 0
+    assert updated.status_detail is None
+
+
+def test_observe_local_zero_exit_accepts_matching_completion_marker(
+    tmp_path: Path,
+) -> None:
+    reg = RunRegistry()
+    output = tmp_path / "run"
+    record = reg.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    assert record.generation is not None
+    _write_local_terminal_manifest(
+        output,
+        start_time=record.started_at + 1.0,
+    )
+    marker = run_completion_marker_path(output)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(
+        json.dumps(
+            {
+                "generation": str(record.generation),
+                "status": "complete",
+                "finalizer_succeeded": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert reg.observe_local_exit("run", record.generation, 0)
+    updated = reg.get("run")
+    assert updated is not None
+    assert updated.status == "complete"
+    assert updated.returncode == 0
+    assert updated.status_detail is None
+
+
+def test_stale_local_exit_cannot_terminalize_replacement_generation(
+    tmp_path: Path,
+) -> None:
+    reg = RunRegistry()
+    output = tmp_path / "run"
+    first = reg.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="first",
+        status="running",
+    )
+    assert first.generation is not None
+    assert reg.compare_and_set(
+        "run",
+        first.generation,
+        expected_statuses={"running"},
+        status="failed",
+    )
+    replacement = reg.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="replacement",
+        status="running",
+    )
+    assert replacement.generation is not None
+    _write_local_terminal_manifest(
+        output,
+        start_time=replacement.started_at + 1.0,
+    )
+
+    assert reg.observe_local_exit("run", first.generation, 0) is False
+    current = reg.get("run")
+    assert current is not None
+    assert current.generation == replacement.generation
+    assert current.status == "running"
+
+    assert reg.observe_local_exit("run", replacement.generation, 0)
+    completed = reg.get("run")
+    assert completed is not None
+    assert completed.generation == replacement.generation
+    assert completed.status == "complete"
 
 
 def test_observe_local_exit_preserves_cancelled_status(tmp_path: Path) -> None:

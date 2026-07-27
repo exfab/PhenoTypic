@@ -45,9 +45,11 @@ from phenotypic.sdk_ import (
     DashboardManifestSlurmInfoKey,
     atomic_write_json,
     gui_launch_owner_path,
+    manifest_json_path,
     resolve_event_log_path,
     resolve_manifest_json_path,
     resolve_processing_state_path,
+    run_completion_marker_path,
 )
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 
@@ -102,6 +104,11 @@ _TERMINAL_STATUSES: frozenset[str] = frozenset(
 _OWNER_RECORD_VERSION = 1
 _UNSET = object()
 _BACKUP_NAME_SUFFIXES = ("-backup", "_backup", ".backup")
+# Local manifests serialize their naive-local start timestamp to millisecond
+# precision. Permit only that sub-millisecond truncation when comparing it to
+# the owner's epoch timestamp; a wider allowance could let a prior run's
+# terminal manifest satisfy a replacement generation.
+_LOCAL_START_TIME_TOLERANCE_SECONDS = 0.001
 
 
 def run_status_is_nonterminal(status: object) -> bool:
@@ -534,25 +541,47 @@ class RunRegistry:
         generation: UUID,
         returncode: int,
     ) -> bool:
-        """Record generation-matched local terminal evidence."""
+        """Record generation-matched local terminal evidence.
+
+        A validation dry-run has no output publication contract, so its
+        process return code is authoritative. A real local run may report
+        return code zero even when final dashboard publication failed; it is
+        complete only when the canonical manifest proves that this launch
+        published a successful terminal inventory. Local manifests do not
+        currently carry a GUI generation, so their canonical ``start_time``
+        is compared with the durable owner's ``started_at`` as the strongest
+        available replacement-generation fence. A generation-bearing
+        completion marker, when present, must also match.
+        """
         with self._lock:
             record = self._records.get(run_id)
             if record is None or record.generation != generation:
                 return False
             candidate = replace(record)
             status: RunStatus
+            detail: str | None
             if record.status in {"cancelling", "cancelled"}:
                 status = "cancelled"
+                detail = None
+            elif returncode != 0:
+                status = "failed"
+                detail = f"local process exited with status {returncode}"
+            elif record.mode == "validate":
+                status = "complete"
+                detail = None
+            elif record.mode == "local":
+                detail = self._local_completion_evidence_conflict(record)
+                status = "failed" if detail is not None else "complete"
             else:
-                status = "complete" if returncode == 0 else "failed"
+                status = "failed"
+                detail = (
+                    "local exit observer received unsupported run mode "
+                    f"{record.mode!r}"
+                )
             candidate.status = status
             candidate.returncode = returncode
             candidate.terminal_at = datetime.now(timezone.utc)
-            candidate.status_detail = (
-                None
-                if returncode == 0 or status == "cancelled"
-                else f"local process exited with status {returncode}"
-            )
+            candidate.status_detail = detail
             candidate.record_revision += 1
             if not self._persist_candidate_if_current_locked(
                 current=record,
@@ -562,6 +591,108 @@ class RunRegistry:
             self._records[run_id] = candidate
             self._revision += 1
             return True
+
+    @staticmethod
+    def _local_completion_evidence_conflict(
+        record: RunRecord,
+    ) -> str | None:
+        """Return why a zero-exit local generation cannot publish complete."""
+        path = manifest_json_path(record.output_dir)
+        if not path.is_file():
+            return (
+                "local process exited successfully but the current generation "
+                f"has no canonical terminal publication evidence at {path}"
+            )
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                raise TypeError("manifest is not an object")
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, TypeError) as exc:
+            return (
+                "local process exited successfully but its canonical "
+                f"publication manifest is unreadable at {path}: {exc}"
+            )
+
+        if payload.get(DashboardManifestKey.EXECUTION_MODE) != "local":
+            return (
+                "local process exited successfully but terminal publication "
+                "mode does not match the current local generation"
+            )
+
+        raw_start = payload.get(DashboardManifestKey.START_TIME)
+        try:
+            if not isinstance(raw_start, str) or not raw_start:
+                raise TypeError("start_time is missing or not a string")
+            manifest_start = datetime.fromisoformat(raw_start)
+            # The local CLI writes a naive timestamp in the host's local
+            # timezone. ``astimezone()`` applies the correct offset for that
+            # wall time, including daylight-saving transitions. Aware inputs
+            # retain their explicit offset.
+            manifest_start_epoch = manifest_start.astimezone(
+                timezone.utc
+            ).timestamp()
+        except (TypeError, ValueError, OverflowError) as exc:
+            return (
+                "local process exited successfully but terminal publication "
+                f"has an invalid start_time: {exc}"
+            )
+        if (
+            manifest_start_epoch + _LOCAL_START_TIME_TOLERANCE_SECONDS
+            < record.started_at
+        ):
+            return (
+                "local process exited successfully but terminal publication "
+                "predates the current launch generation"
+            )
+
+        completed = payload.get(DashboardManifestKey.COMPLETED)
+        failed = payload.get(DashboardManifestKey.FAILED)
+        total = payload.get(DashboardManifestKey.TOTAL_IMAGES)
+        counts_are_ints = all(
+            isinstance(value, int) and not isinstance(value, bool)
+            for value in (completed, failed, total)
+        )
+        if (
+            payload.get(DashboardManifestKey.IS_COMPLETE) is not True
+            or not counts_are_ints
+            or failed != 0
+            or completed != total
+        ):
+            return (
+                "local process exited successfully but terminal publication "
+                "is incomplete, failed, or has invalid inventory counts"
+            )
+
+        marker_path = run_completion_marker_path(record.output_dir)
+        if marker_path.exists():
+            try:
+                marker = json.loads(marker_path.read_text(encoding="utf-8"))
+                if not isinstance(marker, dict):
+                    raise TypeError("completion marker is not an object")
+            except (
+                OSError,
+                UnicodeDecodeError,
+                json.JSONDecodeError,
+                TypeError,
+            ) as exc:
+                return (
+                    "local process exited successfully but its completion "
+                    f"marker is unreadable at {marker_path}: {exc}"
+                )
+            if marker.get("generation") != str(record.generation):
+                return (
+                    "local process exited successfully but completion "
+                    "evidence belongs to a different launch generation"
+                )
+            if (
+                marker.get("status") != "complete"
+                or marker.get("finalizer_succeeded") is not True
+            ):
+                return (
+                    "local process exited successfully but its generation "
+                    "completion marker is not successful"
+                )
+        return None
 
     def remove(self, run_id: str) -> bool:
         """Drop ``run_id`` from the registry."""
