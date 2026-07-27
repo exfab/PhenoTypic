@@ -6,6 +6,7 @@ These tests inject both scheduler-facing dependencies. They never call
 
 from __future__ import annotations
 
+import re
 import subprocess
 import time
 from collections.abc import Sequence
@@ -19,6 +20,7 @@ import phenotypic.gui.builder as builder_package
 import phenotypic.gui.run_console as run_console_package
 from phenotypic._cli import _cli_preload
 from phenotypic._cli._cli_slurm_lifecycle import (
+    CancellationResult,
     append_lifecycle_entry,
     initialize_slurm_lifecycle,
 )
@@ -73,14 +75,76 @@ class InMemoryScheduler:
         return SchedulerCommentQueryResult(matches={})
 
 
-def _callback_by_name(app: Any, name: str) -> Any:
-    """Return one unwrapped Dash callback by Python function name."""
+def _callback_spec_by_name(
+    app: Any,
+    name: str,
+) -> tuple[str, dict[str, Any]]:
+    """Return a callback-map key and spec by Python function name."""
     return next(
-        callback.__wrapped__
-        for spec in app.callback_map.values()
+        (key, spec)
+        for key, spec in app.callback_map.items()
         if (callback := spec.get("callback")) is not None
         and callback.__wrapped__.__name__ == name
     )
+
+
+def _outputs_from_key(output_key: str) -> list[dict[str, str]]:
+    """Decode Dash's hashed multi-output callback key."""
+    outputs: list[dict[str, str]] = []
+    for segment in re.split(r"\.\.\.", output_key.strip(".")):
+        component_property = segment.strip(".").split("@", 1)[0]
+        component_id, prop = component_property.rsplit(".", 1)
+        outputs.append({"id": component_id, "property": prop})
+    return outputs
+
+
+def _post_callback(
+    shell_app: Any,
+    run_app: Any,
+    *,
+    callback_name: str,
+    input_values: Sequence[object],
+    state_values: Sequence[object],
+    changed_property: str,
+) -> Any:
+    """Dispatch one callback through the mounted Dash HTTP endpoint."""
+    output_key, spec = _callback_spec_by_name(run_app, callback_name)
+    assert len(spec["inputs"]) == len(input_values)
+    assert len(spec["state"]) == len(state_values)
+    response = shell_app.server.test_client().post(
+        "/run/_dash-update-component",
+        json={
+            "output": output_key,
+            "outputs": _outputs_from_key(output_key),
+            "inputs": [
+                {
+                    "id": dependency["id"],
+                    "property": dependency["property"],
+                    "value": value,
+                }
+                for dependency, value in zip(
+                    spec["inputs"],
+                    input_values,
+                    strict=True,
+                )
+            ],
+            "state": [
+                {
+                    "id": dependency["id"],
+                    "property": dependency["property"],
+                    "value": value,
+                }
+                for dependency, value in zip(
+                    spec["state"],
+                    state_values,
+                    strict=True,
+                )
+            ],
+            "changedPropIds": [changed_property],
+        },
+    )
+    assert response.status_code == 200, response.get_data(as_text=True)
+    return response.get_json()["response"]
 
 
 def _slurm_action_controls(
@@ -208,6 +272,7 @@ def test_hub_preloads_and_wires_generation_fenced_scheduler_actions(
     startup_events: list[str] = []
     command_invocations: list[Sequence[str]] = []
     submitted_record_generations: list[UUID] = []
+    cancellation_calls: list[tuple[Path, str]] = []
     captured_run_apps: list[Any] = []
     scheduler = InMemoryScheduler()
 
@@ -250,6 +315,13 @@ def test_hub_preloads_and_wires_generation_fenced_scheduler_actions(
             job_id=job_id,
         )
 
+    def mock_canceller(
+        output_dir: Path,
+        scheduler_epoch: str,
+    ) -> CancellationResult:
+        cancellation_calls.append((output_dir, scheduler_epoch))
+        return CancellationResult((job_id,), (), False)
+
     monkeypatch.setattr(
         _cli_preload,
         "preload_custom_operation_modules",
@@ -273,6 +345,7 @@ def test_hub_preloads_and_wires_generation_fenced_scheduler_actions(
         start_slurm_observer=False,
         slurm_scheduler=scheduler,
         slurm_submitter=mock_submitter,
+        slurm_canceller=mock_canceller,
     )
 
     assert startup_events == ["preload"]
@@ -284,19 +357,28 @@ def test_hub_preloads_and_wires_generation_fenced_scheduler_actions(
     assert observer.registry is registry
     assert observer.scheduler is scheduler
 
-    click_action = _callback_by_name(captured_run_apps[0], "click_action")
-    response = click_action(
-        0,
-        1,
-        *_slurm_action_controls(
-            sandbox,
-            pipeline=pipeline,
-            images=images,
-            output=output,
+    action_response = _post_callback(
+        shell_app,
+        captured_run_apps[0],
+        callback_name="click_action",
+        input_values=(0, 1),
+        state_values=(
+            *_slurm_action_controls(
+                sandbox,
+                pipeline=pipeline,
+                images=images,
+                output=output,
+            ),
+            0,
         ),
-        0,
+        changed_property="rc-btn-run.n_clicks",
     )
-    run_id = response[4]
+    receipt = action_response["rc-store-active-run-receipt"]["data"]
+    action_result = action_response["rc-store-action-result"]["data"]
+    run_id = receipt["run_id"]
+    assert action_result["outcome"] == "accepted"
+    assert action_result["receipt"] == receipt
+
     deadline = time.monotonic() + 5.0
     while time.monotonic() < deadline:
         record = registry.get(run_id)
@@ -309,7 +391,7 @@ def test_hub_preloads_and_wires_generation_fenced_scheduler_actions(
     assert isinstance(record, RunRecord)
     assert record.generation is not None
     assert submitted_record_generations == [record.generation]
-    assert response[6]["generation"] == str(record.generation)
+    assert receipt["generation"] == str(record.generation)
     binding = observer.proven_binding(record)
     assert binding is not None
     assert binding.record_generation == record.generation
@@ -324,4 +406,44 @@ def test_hub_preloads_and_wires_generation_fenced_scheduler_actions(
     assert running.status == "running"
     assert running.scheduler_ids == (job_id,)
     assert scheduler.queries == [(job_id,)]
+
+    cancel_response = _post_callback(
+        shell_app,
+        captured_run_apps[0],
+        callback_name="click_cancel",
+        input_values=(1,),
+        state_values=(receipt, 0),
+        changed_property="rc-btn-cancel.n_clicks",
+    )
+    assert cancel_response["rc-store-recents-refresh"]["data"] == 1
+    cancelling = registry.get(run_id)
+    assert cancelling is not None
+    assert cancelling.generation == record.generation
+    assert cancelling.status == "cancelling"
+    assert cancellation_calls == [(output, binding.scheduler_epoch)]
+
+    replacement = RunRecord(
+        run_id=run_id,
+        generation=uuid4(),
+        mode="slurm",
+        output_dir=output,
+        rel_path=output.name,
+        status="running",
+        command_digest="replacement-generation",
+    )
+    registry.register(replacement, persist=False)
+    stale_response = _post_callback(
+        shell_app,
+        captured_run_apps[0],
+        callback_name="click_cancel",
+        input_values=(2,),
+        state_values=(receipt, 1),
+        changed_property="rc-btn-cancel.n_clicks",
+    )
+    assert (
+        "no longer current"
+        in stale_response["rc-toast"]["children"].lower()
+    )
+    assert registry.get(run_id) is replacement
+    assert cancellation_calls == [(output, binding.scheduler_epoch)]
     assert command_invocations == []

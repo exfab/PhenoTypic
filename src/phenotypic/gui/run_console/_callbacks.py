@@ -886,6 +886,7 @@ def _complete_slurm_submission(
     run_id: str,
     generation: UUID,
     observer: SlurmLifecycleObserver,
+    slurm_canceller: Callable[..., Any] | None = None,
 ) -> None:
     """Reconcile one submitter future independently of browser page state."""
     key = (run_id, generation)
@@ -910,7 +911,11 @@ def _complete_slurm_submission(
         if record is None or record.generation != generation:
             completion = None
         elif record.status == "cancelling" and binding is not None:
-            _cancel_bound_generation(record, binding)
+            _cancel_bound_generation(
+                record,
+                binding,
+                slurm_canceller=slurm_canceller,
+            )
             completion = _SlurmCompletion(pending=str(exc))
         elif record.status == "cancelling":
             completion = _SlurmCompletion(pending=str(exc))
@@ -1009,7 +1014,11 @@ def _complete_slurm_submission(
                     and record.generation == generation
                     and record.status == "cancelling"
                 ):
-                    _cancel_bound_generation(record, binding)
+                    _cancel_bound_generation(
+                        record,
+                        binding,
+                        slurm_canceller=slurm_canceller,
+                    )
                     completion = _SlurmCompletion(result=result)
                 else:
                     updated = registry.compare_and_set(
@@ -1048,6 +1057,7 @@ def _track_pending_slurm(
     *,
     registry: RunRegistry,
     observer: SlurmLifecycleObserver,
+    slurm_canceller: Callable[..., Any] | None = None,
 ) -> None:
     """Track a future and immediately attach its generation-matched callback."""
     key = (run_id, generation)
@@ -1060,6 +1070,7 @@ def _track_pending_slurm(
             run_id=run_id,
             generation=generation,
             observer=observer,
+            slurm_canceller=slurm_canceller,
         )
     )
 
@@ -1089,9 +1100,14 @@ def _cancel_pending_slurm(run_id: str, generation: UUID) -> bool:
 def _cancel_bound_generation(
     record: RunRecord,
     binding: SchedulerGenerationBinding,
+    *,
+    slurm_canceller: Callable[..., Any] | None = None,
 ) -> tuple[str, ...]:
     """Fence and cancel every scheduler job while retaining ``cancelling``."""
-    from phenotypic._cli._cli_slurm_lifecycle import cancel_generation
+    if slurm_canceller is None:
+        from phenotypic._cli._cli_slurm_lifecycle import cancel_generation
+
+        slurm_canceller = cancel_generation
 
     if (
         record.generation is None
@@ -1100,7 +1116,7 @@ def _cancel_bound_generation(
         or record.lifecycle_epoch != binding.scheduler_epoch
     ):
         return ()
-    result = cancel_generation(
+    result = slurm_canceller(
         record.output_dir,
         binding.scheduler_epoch,
     )
@@ -1144,6 +1160,7 @@ def register_callbacks(
     runner: LocalRunner,
     slurm_observer: SlurmLifecycleObserver,
     slurm_submitter: Callable[..., SlurmSubmitResult] = submit_slurm,
+    slurm_canceller: Callable[..., Any] | None = None,
     action_acknowledgement_hook: Callable[[RunRecord], None] | None = None,
     server_url_prefix: str = DEFAULT_URL_PREFIX,
 ) -> None:
@@ -1165,6 +1182,9 @@ def register_callbacks(
             bind exact scheduler epochs to GUI record generations.
         slurm_submitter: Submission dependency. Production uses
             :func:`submit_slurm`; browser tests inject a no-scheduler seam.
+        slurm_canceller: Cancellation dependency. Production resolves the
+            shared lifecycle ``cancel_generation`` implementation lazily;
+            tests inject an in-memory generation-fenced seam.
         action_acknowledgement_hook: Optional test seam invoked after a
             generation is durable and its launch attempt has completed, but
             before the callback response is returned.
@@ -2079,6 +2099,7 @@ def register_callbacks(
                 future,
                 registry=registry,
                 observer=slurm_observer,
+                slurm_canceller=slurm_canceller,
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("SLURM submitter startup failed")
@@ -2231,6 +2252,7 @@ def register_callbacks(
                 cancelled_jobs = _cancel_bound_generation(
                     record,
                     binding,
+                    slurm_canceller=slurm_canceller,
                 )
                 return (
                     *_toast(

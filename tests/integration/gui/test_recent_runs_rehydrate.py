@@ -266,6 +266,38 @@ def test_scan_keeps_backup_named_run_with_valid_generation_owner(
     assert [row.rel_path for row in rows] == ["intentional-backup"]
 
 
+def test_scan_excludes_backup_shaped_sandbox_output_root(
+    tmp_path: Path,
+) -> None:
+    """Canonicalizing ``deliverables`` cannot reintroduce a backup as ``.``."""
+    output = _make_run(tmp_path, "sandbox-backup")
+
+    rows = scan_recent_runs(SandboxRoot.from_path(output), max_depth=2)
+
+    assert rows == []
+
+
+def test_scan_keeps_owned_backup_shaped_sandbox_output_root(
+    tmp_path: Path,
+) -> None:
+    """A valid depth-zero generation owner still overrides its backup name."""
+    output = _make_run(tmp_path, "sandbox-backup")
+    registry = RunRegistry()
+    owned = registry.allocate(
+        mode="local",
+        output_dir=output,
+        rel_path=".",
+        run_id=".",
+        command_digest="owned-root",
+        status="complete",
+    )
+
+    rows = scan_recent_runs(SandboxRoot.from_path(output), max_depth=2)
+
+    assert owned.generation is not None
+    assert [row.rel_path for row in rows] == ["."]
+
+
 def test_scan_prunes_private_backup_when_sandbox_root_is_output(
     tmp_path: Path,
 ) -> None:

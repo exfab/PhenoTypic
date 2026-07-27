@@ -213,6 +213,7 @@ def compose_hub(
     start_slurm_observer: bool | None = None,
     slurm_scheduler: "SchedulerClient | None" = None,
     slurm_submitter: "Callable[..., SlurmSubmitResult] | None" = None,
+    slurm_canceller: "Callable[..., object] | None" = None,
     action_acknowledgement_hook: "Callable[[RunRecord], None] | None" = None,
     binding_drain_timeout_seconds: float = 5.0,
     progress: Callable[[str], None] | None = None,
@@ -243,6 +244,9 @@ def compose_hub(
             no scheduler command can run.
         slurm_submitter: Optional submission dependency forwarded to the Run
             console. Production leaves this unset and uses ``submit_slurm``.
+        slurm_canceller: Optional cancellation dependency forwarded to the
+            Run console. Production leaves this unset and resolves the shared
+            lifecycle canceller lazily.
         action_acknowledgement_hook: Optional action-response test seam
             forwarded to the Run console.
         binding_drain_timeout_seconds: Maximum time an output Refresh waits
@@ -573,6 +577,7 @@ def compose_hub(
             else start_slurm_observer
         ),
         "action_acknowledgement_hook": action_acknowledgement_hook,
+        "slurm_canceller": slurm_canceller,
     }
     if slurm_submitter is not None:
         run_app_kwargs["slurm_submitter"] = slurm_submitter
@@ -680,6 +685,7 @@ def create_app(
     start_slurm_observer: bool | None = None,
     slurm_scheduler: "SchedulerClient | None" = None,
     slurm_submitter: "Callable[..., SlurmSubmitResult] | None" = None,
+    slurm_canceller: "Callable[..., object] | None" = None,
     action_acknowledgement_hook: "Callable[[RunRecord], None] | None" = None,
     progress: Callable[[str], None] | None = None,
 ) -> dash.Dash:
@@ -719,6 +725,8 @@ def create_app(
             :func:`compose_hub`.
         slurm_submitter: Optional submission dependency forwarded to
             :func:`compose_hub`.
+        slurm_canceller: Optional cancellation dependency forwarded to
+            :func:`compose_hub`.
         action_acknowledgement_hook: Optional Run action test seam forwarded
             to :func:`compose_hub`.
         progress: Optional per-sub-app progress callback forwarded to
@@ -752,6 +760,7 @@ def create_app(
         start_slurm_observer=start_slurm_observer,
         slurm_scheduler=slurm_scheduler,
         slurm_submitter=slurm_submitter,
+        slurm_canceller=slurm_canceller,
         action_acknowledgement_hook=action_acknowledgement_hook,
         progress=progress,
     )

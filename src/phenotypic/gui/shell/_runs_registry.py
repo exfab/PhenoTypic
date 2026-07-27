@@ -680,6 +680,17 @@ class RunRegistry:
         limitation of the conventional dotfile-as-hidden semantic.
         """
         root = sandbox.root
+
+        def _has_valid_owner(path: Path) -> bool:
+            try:
+                rel_path = str(path.relative_to(root))
+            except ValueError:
+                return False
+            return bool(
+                _owner_record_path(path).is_file()
+                and self._read_owner_record(path, rel_path) is not None
+            )
+
         stack: list[tuple[Path, int]] = [(root, 0)]
         seen_output_dirs: set[Path] = set()
         while stack:
@@ -697,15 +708,7 @@ class RunRegistry:
             for child in children:
                 if not child.is_dir():
                     continue
-                try:
-                    child_rel = str(child.relative_to(sandbox.root))
-                except ValueError:
-                    child_rel = ""
-                owner_is_valid = bool(
-                    child_rel
-                    and _owner_record_path(child).is_file()
-                    and self._read_owner_record(child, child_rel) is not None
-                )
+                owner_is_valid = _has_valid_owner(child)
                 if (
                     _is_recognized_backup_artifact_name(child.name)
                     and not owner_is_valid
@@ -725,6 +728,16 @@ class RunRegistry:
                 elif caps.is_process_only_output:
                     output_dir = child
 
+                if output_dir is not None:
+                    if (
+                        _is_recognized_backup_artifact_name(output_dir.name)
+                        and not _has_valid_owner(output_dir)
+                    ):
+                        # A promoted ``deliverables/`` child can canonicalize
+                        # to the sandbox root. Reapply the same owner-aware
+                        # exclusion after canonicalization so a depth-zero
+                        # ``*-backup`` root cannot leak back in as ``"."``.
+                        output_dir = None
                 if output_dir is not None:
                     key = output_dir.resolve()
                     if key not in seen_output_dirs:

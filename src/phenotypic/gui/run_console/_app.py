@@ -72,6 +72,7 @@ def create_app(
     runner: LocalRunner | None = None,
     slurm_observer: SlurmLifecycleObserver | None = None,
     slurm_submitter: Callable[..., SlurmSubmitResult] = submit_slurm,
+    slurm_canceller: Callable[..., object] | None = None,
     action_acknowledgement_hook: Callable[[RunRecord], None] | None = None,
     start_slurm_observer: bool | None = None,
 ) -> dash.Dash:
@@ -96,6 +97,9 @@ def create_app(
             observer is created for standalone use when omitted.
         slurm_submitter: Submission dependency. Tests may inject a callable
             that never invokes scheduler commands.
+        slurm_canceller: Optional cancellation dependency. Production uses
+            the shared lifecycle canceller; tests may inject a no-command
+            implementation.
         action_acknowledgement_hook: Optional browser-test seam invoked after
             durable launch handling and before callback acknowledgement.
         start_slurm_observer: Whether to start the observer daemon. Defaults
@@ -152,6 +156,7 @@ def create_app(
         runner=runner,
         slurm_observer=slurm_observer,
         slurm_submitter=slurm_submitter,
+        slurm_canceller=slurm_canceller,
         action_acknowledgement_hook=action_acknowledgement_hook,
         server_url_prefix=server_url_prefix,
     )
