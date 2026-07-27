@@ -33,9 +33,9 @@ class GridAligner(GridCorrector):
           assignment accurate.
 
     Consider Also:
-        - :class:`ImagePadder` for adding safety margins before rotation so
+        - :class:`PadImage` for adding safety margins before rotation so
           corner colonies are not clipped by the rotation fill.
-        - :class:`ImageCropper` to remove the fill border introduced after
+        - :class:`CropImage` to remove the fill border introduced after
           alignment.
         - :class:`RefineBySineFit` when the grid periodicity itself needs
           correction rather than a global rotation.
@@ -98,9 +98,11 @@ class GridAligner(GridCorrector):
         grid_info = image.grid.info()
 
         # Collect aligned X positions of the vertices
-        grouped = (grid_info.groupby(x_group, observed=True)[x_val]
-                   .agg(["min", "max"])
-                   .to_numpy())
+        grouped = (
+            grid_info.groupby(x_group, observed=True)[x_val]
+            .agg(["min", "max"])
+            .to_numpy()
+        )
 
         # Collect the X position of the vertices
         x_min = grouped[:, 0]
@@ -122,20 +124,20 @@ class GridAligner(GridCorrector):
         # An array containing the x & y coordinates of the upper ray endpoint
         xy_upper_ray = np.vstack([x_max, y_1]).T
 
-        # Function to find the euclidead distance between two points within 
+        # Function to find the euclidead distance between two points within
         # two xy arrays stacked column-wise
 
         # Get the size of each hypotenuse
         hyp_dist = np.apply_along_axis(
-                func1d=self._find_hyp_dist,
-                axis=1,
-                arr=np.column_stack([xy_vertices, xy_upper_ray]),
+            func1d=self._find_hyp_dist,
+            axis=1,
+            arr=np.column_stack([xy_vertices, xy_upper_ray]),
         )
 
         adj_dist = x_max - x_min
 
         adj_over_hyp = np.divide(
-                adj_dist, hyp_dist, where=(hyp_dist != 0) | (adj_dist != 0)
+            adj_dist, hyp_dist, where=(hyp_dist != 0) | (adj_dist != 0)
         )
 
         # Find the angle of rotation from horizon in degrees
@@ -143,13 +145,15 @@ class GridAligner(GridCorrector):
 
         # Adds the correct orientation to the angle
         theta_sign = y_0 - y_1
-        theta = theta * (np.divide(theta_sign, abs(theta_sign), where=theta_sign != 0))
+        theta = theta * (
+            np.divide(theta_sign, abs(theta_sign), where=theta_sign != 0)
+        )
 
         largest_angle = np.abs(theta).max()
         optimal_angle = minimize_scalar(
-                fun=self._find_angle_of_rot,
-                bounds=(-largest_angle, largest_angle),
-                args=theta
+            fun=self._find_angle_of_rot,
+            bounds=(-largest_angle, largest_angle),
+            args=theta,
         )
 
         image.rotate(angle_of_rotation=optimal_angle.x, mode=self.mode)
@@ -157,7 +161,7 @@ class GridAligner(GridCorrector):
 
     def _find_angle_of_rot(self, X, theta):
         new_theta = theta + X
-        err = np.mean(new_theta ** 2)
+        err = np.mean(new_theta**2)
         return err
 
     @staticmethod

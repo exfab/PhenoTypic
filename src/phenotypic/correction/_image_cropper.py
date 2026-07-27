@@ -12,7 +12,7 @@ from phenotypic.abc_ import ImageCorrector
 from phenotypic.sdk_.typing_ import TuneSpec
 
 
-class ImageCropper(ImageCorrector):
+class CropImage(ImageCorrector):
     """Remove pixels from image edges by specifying per-edge crop margins.
 
     Crops all image components (rgb, gray, detect_mat, objmask, objmap)
@@ -34,7 +34,7 @@ class ImageCropper(ImageCorrector):
           analysis.
 
     Consider Also:
-        - :class:`ImagePadder` for extending image dimensions rather than
+        - :class:`PadImage` for extending image dimensions rather than
           reducing them.
         - :class:`RemoveBorderObjects` when the goal is to exclude
           edge-touching colonies from analysis without altering image
@@ -79,7 +79,7 @@ class ImageCropper(ImageCorrector):
     @field_validator("left", "right", "top", "bottom")
     @classmethod
     def _reject_negative_margin(
-            cls, value: int | None, info: ValidationInfo
+        cls, value: int | None, info: ValidationInfo
     ) -> int | None:
         """Reject a negative crop margin, preserving the legacy message.
 
@@ -118,9 +118,9 @@ class ImageCropper(ImageCorrector):
             Basic cropping of a loaded image:
 
             >>> from phenotypic import Image
-            >>> from phenotypic.correction import ImageCropper
+            >>> from phenotypic.correction import CropImage
             >>> image = Image.imread('plate.jpg')  # doctest: +SKIP
-            >>> cropper = ImageCropper(top=50, bottom=50, left=40, right=40)
+            >>> cropper = CropImage(top=50, bottom=50, left=40, right=40)
             >>> # Returns new cropped Image; original is unchanged
             >>> cropped = cropper.apply(image)  # doctest: +SKIP
             >>> print(f"Original shape: {image.shape}")  # doctest: +SKIP
@@ -129,11 +129,11 @@ class ImageCropper(ImageCorrector):
             Cropping a GridImage preserves grid settings:
 
             >>> from phenotypic import GridImage
-            >>> from phenotypic.correction import ImageCropper
+            >>> from phenotypic.correction import CropImage
             >>> # Load plate image with scanner border
             >>> grid_img = GridImage('plate_with_border.tiff', nrows=8, ncols=12)  # doctest: +SKIP
             >>> # Remove scanner border
-            >>> cropper = ImageCropper(left=50, right=50, top=50, bottom=50)
+            >>> cropper = CropImage(left=50, right=50, top=50, bottom=50)
             >>> cropped = cropper.apply(grid_img)  # doctest: +SKIP
             >>> # GridImage type and settings preserved
             >>> assert isinstance(cropped, GridImage)  # doctest: +SKIP
@@ -157,14 +157,14 @@ class ImageCropper(ImageCorrector):
         if isinstance(image, GridImage):
             # Convert the cropped Image to GridImage with preserved settings
             cropped = GridImage(
-                    arr=cropped,  # Pass the Image instance
-                    name=image.name,  # Preserve original image's name
-                    grid_finder=image.grid_finder,  # Preserve grid_finder instance
-                    nrows=image.nrows,
-                    ncols=image.ncols,
-                    bit_depth=cropped.bit_depth,
-                    illuminant=cropped.illuminant,
-                    gamma=cropped.gamma,
+                arr=cropped,  # Pass the Image instance
+                name=image.name,  # Preserve original image's name
+                grid_finder=image.grid_finder,  # Preserve grid_finder instance
+                nrows=image.nrows,
+                ncols=image.ncols,
+                bit_depth=cropped.bit_depth,
+                illuminant=cropped.illuminant,
+                gamma=cropped.gamma,
             )
 
         result = self._cpy_new_arrs(image, cropped)
@@ -177,8 +177,9 @@ class ImageCropper(ImageCorrector):
         return result
 
     @staticmethod
-    def _cpy_new_arrs(img: Image | GridImage,
-                      new_img: Image | GridImage) -> Image | GridImage:
+    def _cpy_new_arrs(
+        img: Image | GridImage, new_img: Image | GridImage
+    ) -> Image | GridImage:
         """Copies the array data over. This is needed due to needing to make changes to
         the image in-place."""
         img.set_image(new_img)
@@ -222,10 +223,10 @@ class ImageCropper(ImageCorrector):
             Understanding slice indices from crop parameters:
 
             >>> from phenotypic import Image
-            >>> from phenotypic.correction import ImageCropper
+            >>> from phenotypic.correction import CropImage
             >>> # Example: 1000x1200 image, crop 50 from all edges
             >>> image = Image.imread('large_plate.tiff')  # doctest: +SKIP
-            >>> cropper = ImageCropper(top=50, bottom=50, left=50, right=50)
+            >>> cropper = CropImage(top=50, bottom=50, left=50, right=50)
             >>> # Internal calculation:
             >>> # height=1000, width=1200
             >>> # top_idx = 0 + 50 = 50
@@ -244,13 +245,15 @@ class ImageCropper(ImageCorrector):
         bottom_idx = height - bottom
         if top > bottom_idx:
             raise ValueError(
-                    f"top index ({top}) cannot be > bottom index ({bottom_idx}).")
+                f"top index ({top}) cannot be > bottom index ({bottom_idx})."
+            )
 
         left = 0 if self.left is None else self.left
         right = 0 if self.right is None else self.right
         right_idx = width - right
         if left > right_idx:
             raise ValueError(
-                    f"left index ({left}) cannot be > right index ({right_idx}).")
+                f"left index ({left}) cannot be > right index ({right_idx})."
+            )
 
         return top, bottom_idx, left, right_idx

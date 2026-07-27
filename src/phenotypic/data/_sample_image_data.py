@@ -21,9 +21,9 @@ if TYPE_CHECKING:
 
 
 def _image_loader(
-        filepath,
-        mode: Literal["array", "Image", "GridImage", "filepath"],
-        **kwargs
+    filepath,
+    mode: Literal["array", "Image", "GridImage", "filepath"],
+    **kwargs,
 ) -> Union[np.ndarray, Image, GridImage]:
     from phenotypic import Image, GridImage
 
@@ -41,35 +41,35 @@ def _image_loader(
 
 
 def load_plate_12hr(
-        mode: Literal["array", "Image", "GridImage"] = "array",
+    mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Returns a plate image of a K. Marxianus colony 96 array plate at 12 hrs"""
     return _image_loader(__current_file_dir / "StandardDay1.jpg", mode)
 
 
 def load_plate_72hr(
-        mode: Literal["array", "Image", "GridImage"] = "array",
+    mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Return a image of a k. marxianus colony 96 array plate at 72 hrs"""
     return _image_loader(__current_file_dir / "StandardDay6.jpg", mode)
 
 
 def load_early_colony(
-        mode: Literal["array", "Image", "GridImage"] = "array",
+    mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Returns a colony image array of K. Marxianus at 12 hrs"""
     return _image_loader(__current_file_dir / "early_colony.png", mode)
 
 
 def load_faint_early_colony(
-        mode: Literal["array", "Image", "GridImage"] = "array",
+    mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Returns a faint colony image array of K. Marxianus at 12 hrs"""
     return _image_loader(__current_file_dir / "early_colony_faint.png", mode)
 
 
 def load_colony(
-        mode: Literal["array", "Image", "GridImage"] = "array",
+    mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Returns a colony image array of K. Marxianus at 72 hrs"""
     return _image_loader(__current_file_dir / "later_colony.png", mode)
@@ -96,7 +96,7 @@ def load_area_meas() -> pd.DataFrame:
 
 
 def load_yeast_plate(
-        mode: Literal["array", "Image", "GridImage"] = "GridImage",
+    mode: Literal["array", "Image", "GridImage"] = "GridImage",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Load an image Neurospora filamentous fungi 96-well plate image cropped to the center.
 
@@ -111,16 +111,16 @@ def load_yeast_plate(
         The plate image in the requested format.
     """
     return _image_loader(
-            __current_file_dir / "snp-imager-samples/"
-                                 "RhodotorulaYeastCenterCrop.png",
-            mode=mode,
-            nrows=2,
-            ncols=4
+        __current_file_dir / "snp-imager-samples/"
+        "RhodotorulaYeastCenterCrop.png",
+        mode=mode,
+        nrows=2,
+        ncols=4,
     )
 
 
 def load_yeast_plate_large(
-        mode: Literal["array", "Image", "GridImage"] = "GridImage",
+    mode: Literal["array", "Image", "GridImage"] = "GridImage",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Load a cropped Rhodotorula yeast 96-well plate image.
 
@@ -135,13 +135,11 @@ def load_yeast_plate_large(
     Returns:
         The plate image in the requested format.
     """
-    return _image_loader(
-            fetch_snp("RhodotorulaYeastCropped.png"), mode
-    )
+    return _image_loader(fetch_snp("RhodotorulaYeastCropped.png"), mode)
 
 
 def load_fungi_plate(
-        mode: Literal["array", "Image", "GridImage"] = "GridImage",
+    mode: Literal["array", "Image", "GridImage"] = "GridImage",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Load an image Neurospora filamentous fungi 96-well plate image cropped to the center.
 
@@ -156,16 +154,16 @@ def load_fungi_plate(
         The plate image in the requested format.
     """
     return _image_loader(
-            __current_file_dir / "snp-imager-samples/"
-                                 "NeurosporaFilamentousFungiCenterCrop.png",
-            mode=mode,
-            nrows=2,
-            ncols=4
+        __current_file_dir / "snp-imager-samples/"
+        "NeurosporaFilamentousFungiCenterCrop.png",
+        mode=mode,
+        nrows=2,
+        ncols=4,
     )
 
 
 def load_fungi_plate_large(
-        mode: Literal["array", "Image", "GridImage"] = "GridImage",
+    mode: Literal["array", "Image", "GridImage"] = "GridImage",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Load a cropped Neurospora filamentous fungi 96-well plate image.
 
@@ -180,21 +178,21 @@ def load_fungi_plate_large(
         The plate image in the requested format.
     """
     return _image_loader(
-            fetch_snp("NeurosporaFilamentousFungiCropped.png"),
-            mode,
-            nrows=6,
-            ncols=10
+        fetch_snp("NeurosporaFilamentousFungiCropped.png"),
+        mode,
+        nrows=6,
+        ncols=10,
     )
 
 
 def load_yeast_plate_full(
-        mode: Literal["array", "Image", "GridImage"] = "Image",
+    mode: Literal["array", "Image", "GridImage"] = "Image",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Load a full (uncropped) Rhodotorula yeast plate image with color checker.
 
     Returns the full plate image including scanner margins and a color checker
     target. Use for tutorials and how-to guides that demonstrate cropping
-    (``ImageCropper``), padding (``ImagePadder``), vignetting correction
+    (``CropImage``), padding (``PadImage``), vignetting correction
     (``VignetteCorrector``), or color correction (``ColorCorrector``).
 
     Args:
@@ -203,13 +201,11 @@ def load_yeast_plate_full(
     Returns:
         The full plate image in the requested format.
     """
-    return _image_loader(
-            fetch_snp("RhodotorulaYeastFullPlate.png"), mode
-    )
+    return _image_loader(fetch_snp("RhodotorulaYeastFullPlate.png"), mode)
 
 
 def load_fungi_plate_full(
-        mode: Literal["array", "Image", "GridImage"] = "GridImage",
+    mode: Literal["array", "Image", "GridImage"] = "GridImage",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Load a full (uncropped) Neurospora filamentous fungi plate image with color checker.
 
@@ -223,7 +219,8 @@ def load_fungi_plate_full(
         The full plate image in the requested format.
     """
     return _image_loader(
-            fetch_snp("NeurosporaFilamentousFungiFullPlate.png"),
-            mode,
-            nrows=6, ncols=10
+        fetch_snp("NeurosporaFilamentousFungiFullPlate.png"),
+        mode,
+        nrows=6,
+        ncols=10,
     )

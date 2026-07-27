@@ -2,7 +2,8 @@
 
 - **Date:** 2026-07-03
 - **Status:** Draft for discussion
-- **Related report:** `docs/superpowers/reports/2026-07-02-dedupe-simplification-audit.md`
+- **Related report:**
+  `docs/superpowers/reports/2026-07-02-dedupe-simplification-audit.md`
 - **Topic:** Behavior-safe extraction of the highest-priority duplication found in
   detection, staged CLI state, CLI measurement-source discovery, and GUI URL
   prefix handling.
@@ -52,28 +53,28 @@ semantics stable.
 
 ### Files Added
 
-| File | Purpose |
-|---|---|
+| File                                              | Purpose                                                                                                 |
+|---------------------------------------------------|---------------------------------------------------------------------------------------------------------|
 | `src/phenotypic/detect/_thresholding_registry.py` | Private `ThresholdingRegistry` for method validation, threshold computation, and reusable mask helpers. |
-| `src/phenotypic/detect/_grid_peak_common.py` | Private grid-peak workflow helpers with no pydantic fields. |
-| `src/phenotypic/_cli/_measurement_sources.py` | Deterministic measurement parquet discovery and filename-to-image-name normalization. |
-| `src/phenotypic/_cli/_stages.py` | Internal staged-GPU stage tag constants, type alias, and validation. |
-| `tests/unit/detect/test_thresholding_registry.py` | Unit tests for `ThresholdingRegistry` and invalid-method behavior. |
-| `tests/unit/detect/test_grid_peak_common.py` | Unit tests for grid-peak helper behavior where direct helper tests are useful. |
-| `tests/unit/cli/test_measurement_sources.py` | Unit tests for measurement parquet source discovery and normalization. |
-| `tests/unit/cli/test_stage_tags.py` | Unit tests for stage tag validation and event parsing. |
-| `tests/unit/gui/test_url_prefix_index.py` | Unit tests for Dash index-string prefix injection and escaping. |
+| `src/phenotypic/detect/_grid_peak_common.py`      | Private grid-peak workflow helpers with no pydantic fields.                                             |
+| `src/phenotypic/_cli/_measurement_sources.py`     | Deterministic measurement parquet discovery and filename-to-image-name normalization.                   |
+| `src/phenotypic/_cli/_stages.py`                  | Internal staged-GPU stage tag constants, type alias, and validation.                                    |
+| `tests/unit/detect/test_thresholding_registry.py` | Unit tests for `ThresholdingRegistry` and invalid-method behavior.                                      |
+| `tests/unit/detect/test_grid_peak_common.py`      | Unit tests for grid-peak helper behavior where direct helper tests are useful.                          |
+| `tests/unit/cli/test_measurement_sources.py`      | Unit tests for measurement parquet source discovery and normalization.                                  |
+| `tests/unit/cli/test_stage_tags.py`               | Unit tests for stage tag validation and event parsing.                                                  |
+| `tests/unit/gui/test_url_prefix_index.py`         | Unit tests for Dash index-string prefix injection and escaping.                                         |
 
 ### Files Touched
 
-| Area | Files |
-|---|---|
+| Area                         | Files                                                                                                                                                                       |
+|------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Detection threshold dispatch | `src/phenotypic/detect/_otsu_detector.py`, `_minimum_detector.py`, `_hysteresis_detector.py`, `_round_peaks_detector.py`, `_sine_peak_detector.py`, `_inoculum_detector.py` |
-| Grid-peak workflow | `src/phenotypic/detect/_round_peaks_detector.py`, `_sine_peak_detector.py`, `_inoculum_detector.py` |
-| CLI measurement sources | `src/phenotypic/_cli/_cli_output_manager.py`, `_dashboard/_analysis_data.py`, `_cli_recompile_slurm_scripts.py` |
-| Staged-GPU events | `src/phenotypic/_cli/_cli_staged_strategy.py`, `_cli_staged_slurm_worker.py`, `_cli_staged_workers.py`, `_cli_update_state.py` |
-| GUI URL prefix | `src/phenotypic/gui/_url_prefix.py`, `gui/builder/_app.py`, `gui/results_viewer/_app.py`, `gui/browse/_app.py` |
-| Tests | Existing related tests under `tests/unit/detect/`, `tests/integration/cli/`, and `tests/unit/gui/` |
+| Grid-peak workflow           | `src/phenotypic/detect/_round_peaks_detector.py`, `_sine_peak_detector.py`, `_inoculum_detector.py`                                                                         |
+| CLI measurement sources      | `src/phenotypic/_cli/_cli_output_manager.py`, `_dashboard/_analysis_data.py`, `_cli_recompile_slurm_scripts.py`                                                             |
+| Staged-GPU events            | `src/phenotypic/_cli/_cli_staged_strategy.py`, `_cli_staged_slurm_worker.py`, `_cli_staged_workers.py`, `_cli_update_state.py`                                              |
+| GUI URL prefix               | `src/phenotypic/gui/_url_prefix.py`, `gui/builder/_app.py`, `gui/results_viewer/_app.py`, `gui/browse/_app.py`                                                              |
+| Tests                        | Existing related tests under `tests/unit/detect/`, `tests/integration/cli/`, and `tests/unit/gui/`                                                                          |
 
 ## 4. Design
 
@@ -280,7 +281,7 @@ Preferred shape:
 Proposed helper responsibilities:
 
 ```python
-def grid_peak_background_kernel(
+def _grid_peak_background_kernel(
     matrix_shape: tuple[int, int],
     *,
     footprint_width: int,
@@ -288,7 +289,7 @@ def grid_peak_background_kernel(
     ncols: int | None,
 ) -> np.ndarray: ...
 
-def grid_peak_threshold_mask(
+def _grid_peak_threshold_mask(
     matrix: np.ndarray,
     *,
     thresh_method: str,

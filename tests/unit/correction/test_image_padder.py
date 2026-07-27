@@ -1,5 +1,5 @@
 """
-Focused tests for ImagePadder parameter validation and padding logic.
+Focused tests for PadImage parameter validation and padding logic.
 
 Tests focus on parameter validation, padding correctness, and edge cases.
 Basic initialization and apply() are covered by smoke tests in test_operation.py.
@@ -9,43 +9,43 @@ import pytest
 import numpy as np
 
 from phenotypic import Image, GridImage
-from phenotypic.correction import ImagePadder
+from phenotypic.correction import PadImage
 
 
 class TestImagePadderParameterValidation:
-    """Test ImagePadder parameter validation and error handling."""
+    """Test PadImage parameter validation and error handling."""
 
     def test_negative_left_raises_error(self):
         """Test that negative left parameter raises ValueError."""
         with pytest.raises(ValueError, match="left cannot be negative"):
-            ImagePadder(left=-10)
+            PadImage(left=-10)
 
     def test_negative_right_raises_error(self):
         """Test that negative right parameter raises ValueError."""
         with pytest.raises(ValueError, match="right cannot be negative"):
-            ImagePadder(right=-5)
+            PadImage(right=-5)
 
     def test_negative_top_raises_error(self):
         """Test that negative top parameter raises ValueError."""
         with pytest.raises(ValueError, match="top cannot be negative"):
-            ImagePadder(top=-15)
+            PadImage(top=-15)
 
     def test_negative_bottom_raises_error(self):
         """Test that negative bottom parameter raises ValueError."""
         with pytest.raises(ValueError, match="bottom cannot be negative"):
-            ImagePadder(bottom=-20)
+            PadImage(bottom=-20)
 
     def test_multiple_negative_parameters(self):
         """Test that the first negative parameter detected raises error."""
         with pytest.raises(ValueError, match="cannot be negative"):
-            ImagePadder(left=-5, right=-10)
+            PadImage(left=-5, right=-10)
 
     def test_invalid_mode_raises_error(self):
         """Test that invalid padding mode raises ValueError."""
         # ``mode`` is a ``Literal`` field post-pydantic-migration; an
         # out-of-set value raises ``ValidationError`` (a ``ValueError``).
         with pytest.raises(ValueError, match="mode"):
-            ImagePadder(mode="invalid_mode")
+            PadImage(mode="invalid_mode")
 
 
 class TestImagePadderPaddingLogic:
@@ -56,7 +56,7 @@ class TestImagePadderPaddingLogic:
         arr = np.ones((200, 300, 3), dtype=np.uint8)
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=50, right=75, top=100, bottom=25)
+        padder = PadImage(left=50, right=75, top=100, bottom=25)
         padded = padder.apply(image)
 
         # Height: 200 + 100 (top) + 25 (bottom) = 325
@@ -68,7 +68,7 @@ class TestImagePadderPaddingLogic:
         arr = np.ones((500, 600, 3), dtype=np.uint8)
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=100, right=150, top=80, bottom=120)
+        padder = PadImage(left=100, right=150, top=80, bottom=120)
         padded = padder.apply(image)
 
         # Height: 500 + 80 + 120 = 700
@@ -80,7 +80,7 @@ class TestImagePadderPaddingLogic:
         arr = np.ones((300, 400, 3), dtype=np.uint8)
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=0, right=0, top=0, bottom=0)
+        padder = PadImage(left=0, right=0, top=0, bottom=0)
         padded = padder.apply(image)
 
         assert padded.shape == image.shape
@@ -90,7 +90,7 @@ class TestImagePadderPaddingLogic:
         arr = np.ones((300, 400, 3), dtype=np.uint8)
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=50, right=None, top=40, bottom=None)
+        padder = PadImage(left=50, right=None, top=40, bottom=None)
         padded = padder.apply(image)
 
         # Only left and top should be padded
@@ -103,7 +103,14 @@ class TestImagePadderPaddingLogic:
         arr = np.ones((100, 100, 3), dtype=np.uint8) * 200
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=20, right=20, top=20, bottom=20, mode='constant', constant_value=0)
+        padder = PadImage(
+            left=20,
+            right=20,
+            top=20,
+            bottom=20,
+            mode="constant",
+            constant_value=0,
+        )
         padded = padder.apply(image)
 
         # Check that all edges are 0 (black)
@@ -120,7 +127,14 @@ class TestImagePadderPaddingLogic:
         arr = np.ones((100, 100, 3), dtype=np.uint8) * 100
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=15, right=15, top=15, bottom=15, mode='constant', constant_value=255)
+        padder = PadImage(
+            left=15,
+            right=15,
+            top=15,
+            bottom=15,
+            mode="constant",
+            constant_value=255,
+        )
         padded = padder.apply(image)
 
         # Check that all edges are 255 (white)
@@ -136,7 +150,7 @@ class TestImagePadderPaddingLogic:
         arr[:, :, 0] = 200  # Uniform red value for simplicity
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=20, right=20, top=20, bottom=20, mode='edge')
+        padder = PadImage(left=20, right=20, top=20, bottom=20, mode="edge")
         padded = padder.apply(image)
 
         # Edge mode should extend the boundary pixels, so padded top should match top row
@@ -149,7 +163,7 @@ class TestImagePadderPaddingLogic:
         arr[0:5, 0:5, 0] = 10  # Distinct corner value
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=20, right=20, top=20, bottom=20, mode='reflect')
+        padder = PadImage(left=20, right=20, top=20, bottom=20, mode="reflect")
         padded = padder.apply(image)
 
         # Reflect mode should create a mirrored copy at the edges
@@ -166,10 +180,17 @@ class TestImagePadderDataPreservation:
         arr = np.zeros((200, 300, 3), dtype=np.uint8)
         arr[:, :, 0] = 255  # Red channel
         arr[:, :, 1] = 128  # Green channel
-        arr[:, :, 2] = 64   # Blue channel
+        arr[:, :, 2] = 64  # Blue channel
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=50, right=50, top=50, bottom=50, mode='constant', constant_value=0)
+        padder = PadImage(
+            left=50,
+            right=50,
+            top=50,
+            bottom=50,
+            mode="constant",
+            constant_value=0,
+        )
         padded = padder.apply(image)
 
         # Check that central region has original values for each channel
@@ -182,7 +203,7 @@ class TestImagePadderDataPreservation:
         arr = np.ones((100, 100, 3), dtype=np.uint8)
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=20, right=20, top=20, bottom=20)
+        padder = PadImage(left=20, right=20, top=20, bottom=20)
         padded = padder.apply(image)
 
         # Shape should be (140, 140, 3) - NOT (140, 140, 3+pad)
@@ -196,7 +217,14 @@ class TestImagePadderDataPreservation:
         arr[50:150, 75:225, :] = 100
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=50, right=50, top=50, bottom=50, mode='constant', constant_value=0)
+        padder = PadImage(
+            left=50,
+            right=50,
+            top=50,
+            bottom=50,
+            mode="constant",
+            constant_value=0,
+        )
         padded = padder.apply(image)
 
         # Central content should be preserved at shifted position
@@ -208,7 +236,14 @@ class TestImagePadderDataPreservation:
         arr = np.random.randint(0, 256, (200, 300), dtype=np.uint8)
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=50, right=50, top=60, bottom=60, mode='constant', constant_value=50)
+        padder = PadImage(
+            left=50,
+            right=50,
+            top=60,
+            bottom=60,
+            mode="constant",
+            constant_value=50,
+        )
         padded = padder.apply(image)
 
         assert padded.shape == (320, 400)
@@ -226,7 +261,7 @@ class TestImagePadderDataPreservation:
         objmap[120:150, 120:150] = 2  # Another object
         image.objmap[:] = objmap
 
-        padder = ImagePadder(left=30, right=30, top=30, bottom=30)
+        padder = PadImage(left=30, right=30, top=30, bottom=30)
         padded = padder.apply(image)
 
         # Objects should be shifted by padding amount
@@ -252,7 +287,7 @@ class TestImagePadderObjmapHandling:
         image.objmap[:] = objmap
 
         # Pad with reflect mode (user wants reflection, but objmap should still use constant 0)
-        padder = ImagePadder(left=20, right=20, top=20, bottom=20, mode='reflect')
+        padder = PadImage(left=20, right=20, top=20, bottom=20, mode="reflect")
         padded = padder.apply(image)
 
         # objmap edges must be 0 (constant), NOT reflected
@@ -273,7 +308,7 @@ class TestImagePadderObjmapHandling:
         objmap[40:60, 40:60] = 3
         image.objmap[:] = objmap
 
-        padder = ImagePadder(left=25, right=25, top=25, bottom=25, mode='edge')
+        padder = PadImage(left=25, right=25, top=25, bottom=25, mode="edge")
         padded = padder.apply(image)
 
         # Padded regions should be 0, not edge-extended
@@ -290,7 +325,7 @@ class TestImagePadderObjmapHandling:
         objmap[100:110, 100:110] = 3
         image.objmap[:] = objmap
 
-        padder = ImagePadder(left=50, right=50, top=50, bottom=50, mode='reflect')
+        padder = PadImage(left=50, right=50, top=50, bottom=50, mode="reflect")
         padded = padder.apply(image)
 
         # Check that all labels are still unique and present
@@ -303,14 +338,14 @@ class TestImagePadderObjmapHandling:
 
 
 class TestImagePadderGridImageHandling:
-    """Test ImagePadder behavior with GridImage instances."""
+    """Test PadImage behavior with GridImage instances."""
 
     def test_pad_grid_image_preserves_type(self):
         """Test that padding a GridImage returns a GridImage."""
         arr = np.random.randint(0, 256, (800, 1000, 3), dtype=np.uint8)
         grid_img = GridImage(arr=arr, nrows=8, ncols=12)
 
-        padder = ImagePadder(left=100, right=100, top=100, bottom=100)
+        padder = PadImage(left=100, right=100, top=100, bottom=100)
         padded = padder.apply(grid_img)
 
         assert isinstance(padded, GridImage)
@@ -321,7 +356,7 @@ class TestImagePadderGridImageHandling:
         arr = np.ones((1000, 1200, 3), dtype=np.uint8) * 128
         grid_img = GridImage(arr=arr, nrows=16, ncols=24)
 
-        padder = ImagePadder(left=50, right=50, top=50, bottom=50)
+        padder = PadImage(left=50, right=50, top=50, bottom=50)
         padded = padder.apply(grid_img)
 
         assert isinstance(padded, GridImage)
@@ -335,7 +370,7 @@ class TestImagePadderGridImageHandling:
 
         original_grid_finder = grid_img.grid_finder
 
-        padder = ImagePadder(left=50, right=50, top=50, bottom=50)
+        padder = PadImage(left=50, right=50, top=50, bottom=50)
         padded = padder.apply(grid_img)
 
         # grid_finder should be preserved
@@ -350,7 +385,7 @@ class TestImagePadderEdgeCases:
         arr = np.ones((200, 200, 3), dtype=np.uint8) * 100
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=50, right=50, top=50, bottom=50)
+        padder = PadImage(left=50, right=50, top=50, bottom=50)
         padded = padder.apply(image)
 
         assert padded.shape == (300, 300, 3)
@@ -360,7 +395,7 @@ class TestImagePadderEdgeCases:
         arr = np.ones((100, 800, 3), dtype=np.uint8)
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=200, right=200, top=25, bottom=25)
+        padder = PadImage(left=200, right=200, top=25, bottom=25)
         padded = padder.apply(image)
 
         assert padded.shape == (150, 1200, 3)
@@ -370,7 +405,7 @@ class TestImagePadderEdgeCases:
         arr = np.ones((800, 100, 3), dtype=np.uint8)
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=25, right=25, top=200, bottom=200)
+        padder = PadImage(left=25, right=25, top=200, bottom=200)
         padded = padder.apply(image)
 
         assert padded.shape == (1200, 150, 3)
@@ -381,12 +416,12 @@ class TestImagePadderEdgeCases:
         image = Image(arr=arr)
 
         # First pad
-        padder1 = ImagePadder(left=50, right=50, top=50, bottom=50)
+        padder1 = PadImage(left=50, right=50, top=50, bottom=50)
         padded1 = padder1.apply(image)
         assert padded1.shape == (300, 300, 3)
 
         # Second pad on result
-        padder2 = ImagePadder(left=25, right=25, top=25, bottom=25)
+        padder2 = PadImage(left=25, right=25, top=25, bottom=25)
         padded2 = padder2.apply(padded1)
         assert padded2.shape == (350, 350, 3)
 
@@ -395,7 +430,7 @@ class TestImagePadderEdgeCases:
         arr = np.ones((100, 100, 3), dtype=np.uint8)
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=200, right=200, top=200, bottom=200)
+        padder = PadImage(left=200, right=200, top=200, bottom=200)
         padded = padder.apply(image)
 
         assert padded.shape == (500, 500, 3)
@@ -405,7 +440,7 @@ class TestImagePadderEdgeCases:
         arr = np.ones((100, 100, 3), dtype=np.uint8)
         image = Image(arr=arr)
 
-        padder = ImagePadder(left=5, right=200, top=300, bottom=10)
+        padder = PadImage(left=5, right=200, top=300, bottom=10)
         padded = padder.apply(image)
 
         assert padded.shape == (410, 305, 3)
@@ -415,7 +450,7 @@ class TestImagePadderEdgeCases:
         arr = np.ones((200, 300, 3), dtype=np.uint8)
         image = Image(arr=arr)
 
-        padder = ImagePadder(top=100)
+        padder = PadImage(top=100)
         padded = padder.apply(image)
 
         assert padded.shape == (300, 300, 3)
@@ -426,13 +461,21 @@ class TestImagePadderEdgeCases:
         image = Image(arr=arr)
 
         # Pad with specific value
-        padder = ImagePadder(left=50, right=50, top=60, bottom=60, mode='constant', constant_value=200)
+        padder = PadImage(
+            left=50,
+            right=50,
+            top=60,
+            bottom=60,
+            mode="constant",
+            constant_value=200,
+        )
         padded = padder.apply(image)
         assert padded.shape == (320, 400, 3)
 
         # Now simulate crop to undo the padding
-        from phenotypic.correction import ImageCropper
-        cropper = ImageCropper(left=50, right=50, top=60, bottom=60)
+        from phenotypic.correction import CropImage
+
+        cropper = CropImage(left=50, right=50, top=60, bottom=60)
         unpadded = cropper.apply(padded)
 
         # Central region should match original (approximately due to potential type conversions)

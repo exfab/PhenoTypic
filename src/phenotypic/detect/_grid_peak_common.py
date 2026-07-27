@@ -1,4 +1,5 @@
 """Shared helpers for grid-peak detector preprocessing."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -15,7 +16,7 @@ def _round_odd(n: int) -> int:
     return n if n % 2 == 1 else n + 1
 
 
-def grid_peak_background_kernel(
+def _grid_peak_background_kernel(
     matrix_shape: tuple[int, int],
     *,
     footprint_width: int,
@@ -33,7 +34,7 @@ def grid_peak_background_kernel(
     return morphology.footprint_rectangle((dim, dim))
 
 
-def grid_peak_threshold_mask(
+def _grid_peak_threshold_mask(
     matrix: np.ndarray,
     *,
     thresh_method: str,
@@ -44,7 +45,7 @@ def grid_peak_threshold_mask(
     round_odd: Callable[[int], int] = _round_odd,
 ) -> np.ndarray:
     """Threshold a grid-peak detection matrix without mutating the input."""
-    kernel = grid_peak_background_kernel(
+    kernel = _grid_peak_background_kernel(
         matrix.shape,
         footprint_width=footprint_width,
         nrows=nrows,

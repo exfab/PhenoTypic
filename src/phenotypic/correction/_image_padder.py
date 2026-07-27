@@ -31,7 +31,7 @@ PadMode = Literal[
 ]
 
 
-class ImagePadder(ImageCorrector):
+class PadImage(ImageCorrector):
     """Extend image dimensions by adding pixels to any combination of edges.
 
     Pads the image on the left, right, top, and/or bottom using a
@@ -54,7 +54,7 @@ class ImagePadder(ImageCorrector):
           boundary artefacts on tight image borders.
 
     Consider Also:
-        - :class:`ImageCropper` when the goal is to reduce image dimensions
+        - :class:`CropImage` when the goal is to reduce image dimensions
           rather than extend them.
         - :class:`GridAligner` for correcting plate rotation, which is
           typically paired with padding to protect corner colonies.
@@ -107,7 +107,7 @@ class ImagePadder(ImageCorrector):
     @field_validator("left", "right", "top", "bottom")
     @classmethod
     def _reject_negative_margin(
-            cls, value: int | None, info: ValidationInfo
+        cls, value: int | None, info: ValidationInfo
     ) -> int | None:
         """Reject a negative padding margin, preserving the legacy message.
 
@@ -129,7 +129,7 @@ class ImagePadder(ImageCorrector):
             Tuple of ((top, bottom), (left, right)) for np.pad.
 
         Examples:
-            >>> padder = ImagePadder(left=10, right=20, top=30, bottom=40)
+            >>> padder = PadImage(left=10, right=20, top=30, bottom=40)
             >>> padder._get_pad_width_2d()
             ((30, 40), (10, 20))
         """
@@ -140,7 +140,9 @@ class ImagePadder(ImageCorrector):
 
         return ((top, bottom), (left, right))
 
-    def _get_pad_width_3d(self) -> Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int]]:
+    def _get_pad_width_3d(
+        self,
+    ) -> Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int]]:
         """Calculate pad_width tuple for 3D arrays (RGB).
 
         Returns pad_width for RGB arrays where spatial dimensions (height, width) are
@@ -151,7 +153,7 @@ class ImagePadder(ImageCorrector):
             The third dimension (channels) has (0, 0) padding.
 
         Examples:
-            >>> padder = ImagePadder(left=10, right=20, top=30, bottom=40)
+            >>> padder = PadImage(left=10, right=20, top=30, bottom=40)
             >>> padder._get_pad_width_3d()
             ((30, 40), (10, 20), (0, 0))
         """
@@ -187,9 +189,9 @@ class ImagePadder(ImageCorrector):
             Basic padding of a loaded image:
 
             >>> from phenotypic import Image
-            >>> from phenotypic.correction import ImagePadder
+            >>> from phenotypic.correction import PadImage
             >>> image = Image.imread('plate.jpg')  # doctest: +SKIP
-            >>> padder = ImagePadder(left=50, right=50, top=50, bottom=50)
+            >>> padder = PadImage(left=50, right=50, top=50, bottom=50)
             >>> # Returns new padded Image; original is unchanged
             >>> padded = padder.apply(image)  # doctest: +SKIP
             >>> print(f"Original shape: {image.shape}")  # doctest: +SKIP
@@ -198,11 +200,11 @@ class ImagePadder(ImageCorrector):
             Padding a GridImage preserves grid settings:
 
             >>> from phenotypic import GridImage
-            >>> from phenotypic.correction import ImagePadder
+            >>> from phenotypic.correction import PadImage
             >>> # Load plate image
             >>> grid_img = GridImage('plate.tiff', nrows=8, ncols=12)  # doctest: +SKIP
             >>> # Add safety margin
-            >>> padder = ImagePadder(left=50, right=50, top=50, bottom=50)
+            >>> padder = PadImage(left=50, right=50, top=50, bottom=50)
             >>> padded = padder.apply(grid_img)  # doctest: +SKIP
             >>> # GridImage type and settings preserved
             >>> assert isinstance(padded, GridImage)  # doctest: +SKIP
@@ -215,8 +217,8 @@ class ImagePadder(ImageCorrector):
 
         # Prepare kwargs for np.pad
         pad_kwargs: dict[str, Any] = {}
-        if self.mode == 'constant':
-            pad_kwargs['constant_values'] = self.constant_value
+        if self.mode == "constant":
+            pad_kwargs["constant_values"] = self.constant_value
 
         # Pad RGB if it exists (3D array, spatial dims only)
         if not image.rgb.isempty():
@@ -224,7 +226,7 @@ class ImagePadder(ImageCorrector):
                 image._data.rgb,
                 pad_width=pad_width_3d,
                 mode=self.mode,
-                **pad_kwargs
+                **pad_kwargs,
             )
 
         # Pad gray (2D array)
@@ -232,7 +234,7 @@ class ImagePadder(ImageCorrector):
             image._data.gray,
             pad_width=pad_width_2d,
             mode=self.mode,
-            **pad_kwargs
+            **pad_kwargs,
         )
 
         # Pad detect_mat (2D array)
@@ -240,7 +242,7 @@ class ImagePadder(ImageCorrector):
             image._data.detect_mat,
             pad_width=pad_width_2d,
             mode=self.mode,
-            **pad_kwargs
+            **pad_kwargs,
         )
 
         # CRITICAL: Pad objmap with constant mode and value 0 ALWAYS
@@ -249,8 +251,8 @@ class ImagePadder(ImageCorrector):
         padded_objmap = np.pad(
             image._data.sparse_object_map.toarray(),
             pad_width=pad_width_2d,
-            mode='constant',
-            constant_values=0
+            mode="constant",
+            constant_values=0,
         )
         # Convert back to sparse and update
         image._data.sparse_object_map = csr_matrix(padded_objmap)
