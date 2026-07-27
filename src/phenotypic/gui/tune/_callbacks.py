@@ -614,6 +614,8 @@ def cancel_monitor_run(
         return f"Run not found: {run_id}"
     if record.mode != "local":
         return "SLURM cancellation is not supported in v1."
+    if record.generation is None:
+        return f"Local run has no controllable launch generation: {run_id}"
     if not confirmed:
         return cancel_prompt(record.run_id, record.mode)
     reconciled = reconcile_local_run_status(
@@ -624,10 +626,18 @@ def cancel_monitor_run(
     if reconciled in {"complete", "failed"}:
         return f"Local run already exited: {run_id} ({reconciled})."
     cancel_prompt(record.run_id, record.mode)
-    stopped = runner.stop(run_id)  # type: ignore[attr-defined]
+    stopped = runner.stop(  # type: ignore[attr-defined]
+        run_id,
+        generation=record.generation,
+    )
     if not stopped:
         return f"Local run is not active: {run_id}"
-    registry.update_status(run_id, "cancelled")  # type: ignore[attr-defined]
+    registry.compare_and_set(  # type: ignore[attr-defined]
+        run_id,
+        record.generation,
+        expected_statuses={"running", "submitting"},
+        status="cancelled",
+    )
     return f"Cancelled Local run: {run_id}"
 
 
@@ -641,23 +651,32 @@ def reconcile_run_status(
     record = registry.get(run_id)  # type: ignore[attr-defined]
     if (
         record is None
+        or record.generation is None
         or record.mode not in {"local", "slurm"}
         or record.status not in {"running", "submitting"}
     ):
         return None
     is_running = getattr(runner, "is_running", None)
-    if callable(is_running) and is_running(run_id):
+    if callable(is_running) and is_running(
+        run_id,
+        generation=record.generation,
+    ):
         return str(record.status)
     reap = getattr(runner, "reap", None)
     if not callable(reap):
         return None
-    returncode = reap(run_id)
+    returncode = reap(run_id, generation=record.generation)
     if returncode is None:
         return None
     status = "running" if record.mode == "slurm" and returncode == 0 else (
         "complete" if returncode == 0 else "failed"
     )
-    registry.update_status(run_id, status)  # type: ignore[attr-defined]
+    registry.compare_and_set(  # type: ignore[attr-defined]
+        run_id,
+        record.generation,
+        expected_statuses={"running", "submitting"},
+        status=status,
+    )
     return status
 
 
@@ -1713,11 +1732,19 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         local_text = ""
         slurm_text = ""
         if active_item is not None and active_item.mode == "local":
-            lines = (
-                runner.snapshot_log(active_item.run_id, tail=40)
-                if runner is not None
-                else []
+            active_record = registry.get(active_item.run_id)
+            generation = (
+                active_record.generation
+                if active_record is not None
+                else None
             )
+            lines = []
+            if runner is not None and generation is not None:
+                lines = runner.snapshot_log(
+                    active_item.run_id,
+                    generation=generation,
+                    tail=40,
+                )
             local_text = "\n".join(lines) if lines else "No local log lines yet."
         elif active_item is not None:
             slurm_text = (

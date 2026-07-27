@@ -7,8 +7,11 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Callable
 
 import pytest
 from dash import dcc, html
@@ -17,6 +20,7 @@ from werkzeug.serving import make_server
 
 from phenotypic.gui.run_console._app import create_app
 from phenotypic.gui.run_console._slurm import SlurmSubmitError
+from phenotypic.gui.shell._runs_registry import RunRecord
 from phenotypic.gui.shell._ids import (
     SHELL_METADATA_CSV_STORE,
     SHELL_SOURCE_IMAGE_ROOT_STORE,
@@ -35,10 +39,14 @@ def _mock_submit_failure(*_args: object, **_kwargs: object) -> None:
     raise SlurmSubmitError("mock submit seam rejected the request")
 
 
-@pytest.fixture()
-def action_hub(tmp_path: Path) -> Iterator[tuple[str, Path]]:
-    """Serve a standalone Run app with a no-scheduler submit dependency."""
-    sandbox = tmp_path / "sandbox"
+@contextmanager
+def _serve_action_hub(
+    root: Path,
+    *,
+    action_acknowledgement_hook: Callable[[RunRecord], None] | None = None,
+) -> Iterator[tuple[str, Path]]:
+    """Serve one standalone Run app with injectable acknowledgement timing."""
+    sandbox = root / "sandbox"
     sandbox.mkdir()
     plate = sandbox / "plate1"
     plate.mkdir()
@@ -46,6 +54,7 @@ def action_hub(tmp_path: Path) -> Iterator[tuple[str, Path]]:
     app = create_app(
         SandboxRoot.from_path(sandbox),
         slurm_submitter=_mock_submit_failure,
+        action_acknowledgement_hook=action_acknowledgement_hook,
         start_slurm_observer=False,
     )
     app.layout = html.Div(
@@ -73,6 +82,27 @@ def action_hub(tmp_path: Path) -> Iterator[tuple[str, Path]]:
         server.shutdown()
         thread.join(timeout=5)
         server.server_close()
+
+
+@pytest.fixture()
+def action_hub(tmp_path: Path) -> Iterator[tuple[str, Path]]:
+    """Serve a standalone Run app with a no-scheduler submit dependency."""
+    with _serve_action_hub(tmp_path) as served:
+        yield served
+
+
+@pytest.fixture()
+def slow_ack_action_hub(tmp_path: Path) -> Iterator[tuple[str, Path]]:
+    """Delay a post-launch response long enough to exercise uncertainty."""
+
+    def _delay_acknowledgement(_record: RunRecord) -> None:
+        time.sleep(6.5)
+
+    with _serve_action_hub(
+        tmp_path,
+        action_acknowledgement_hook=_delay_acknowledgement,
+    ) as served:
+        yield served
 
 
 def _capture_browser_failures(
@@ -204,37 +234,19 @@ def test_fresh_page_mock_submit_seam_records_failed_generation(
     assert all(status < 400 for status in callback_statuses)
 
 
-def test_local_action_callback_network_failure_becomes_visible(
+def test_slow_local_action_acknowledgement_is_uncertain_then_receipted(
     page: Page,
-    action_hub: tuple[str, Path],
+    slow_ack_action_hub: tuple[str, Path],
 ) -> None:
-    """A dropped action callback cannot leave a silent enabled-button no-op."""
-    hub_url, sandbox = action_hub
-    page_errors, failed_callbacks, _callback_statuses = (
+    """A slow response warns against duplicates without denying the launch."""
+    hub_url, sandbox = slow_ack_action_hub
+    page_errors, failed_callbacks, callback_statuses = (
         _capture_browser_failures(page)
     )
     pipeline, input_dir, output_dir = _prepare_action_paths(
         sandbox,
-        name="DroppedLocalAction",
+        name="SlowLocalAction",
     )
-    aborted = False
-
-    def _abort_action_callback(route: Route) -> None:
-        nonlocal aborted
-        request = route.request
-        payload = request.post_data_json if request.post_data else {}
-        output = json.dumps(payload.get("output", ""))
-        if (
-            not aborted
-            and request.method == "POST"
-            and "rc-store-action-result.data" in output
-        ):
-            aborted = True
-            route.abort("failed")
-            return
-        route.continue_()
-
-    page.route("**/_dash-update-component", _abort_action_callback)
     page.goto(hub_url + "/")
     page.wait_for_selector("#rc-btn-run")
     _set_action_controls(
@@ -247,10 +259,76 @@ def test_local_action_callback_network_failure_becomes_visible(
     page.locator("#rc-btn-run").click()
 
     expect(page.locator("#rc-action-feedback")).to_contain_text(
-        "callback request failed",
+        "launch outcome is unknown; do not submit again",
         timeout=10_000,
     )
+    owner = _wait_for_owner_status(output_dir, terminal=True)
+    expect(page.locator("#rc-action-feedback")).to_contain_text(
+        str(owner["generation"]),
+        timeout=10_000,
+    )
+    assert page_errors == []
+    assert failed_callbacks == []
+    assert callback_statuses
+    assert all(status < 400 for status in callback_statuses)
+
+
+def test_local_action_response_lost_after_launch_is_uncertain(
+    page: Page,
+    action_hub: tuple[str, Path],
+) -> None:
+    """A post-launch lost response never invites a duplicate retry."""
+    hub_url, sandbox = action_hub
+    page_errors, failed_callbacks, _callback_statuses = (
+        _capture_browser_failures(page)
+    )
+    pipeline, input_dir, output_dir = _prepare_action_paths(
+        sandbox,
+        name="LostResponseLocalAction",
+    )
+    aborted = False
+
+    def _drop_action_response_after_fetch(route: Route) -> None:
+        nonlocal aborted
+        request = route.request
+        payload = request.post_data_json if request.post_data else {}
+        output = json.dumps(payload.get("output", ""))
+        if (
+            not aborted
+            and request.method == "POST"
+            and "rc-store-action-result.data" in output
+        ):
+            route.fetch()
+            aborted = True
+            route.abort("failed")
+            return
+        route.continue_()
+
+    page.route(
+        "**/_dash-update-component",
+        _drop_action_response_after_fetch,
+    )
+    page.goto(hub_url + "/")
+    page.wait_for_selector("#rc-btn-run")
+    _set_action_controls(
+        page,
+        pipeline=pipeline,
+        input_dir=input_dir,
+        output_dir=output_dir,
+        modes=["local"],
+    )
+    page.locator("#rc-btn-run").click()
+    page.wait_for_timeout(1_000)
+
+    owner = _wait_for_owner_status(output_dir, terminal=True)
+    expect(page.locator("#rc-action-feedback")).to_contain_text(
+        "launch outcome is unknown; do not submit again",
+        timeout=10_000,
+    )
+    feedback = page.locator("#rc-action-feedback").inner_text()
+    assert "retry" not in feedback.lower()
+    assert owner["generation"]
+    assert gui_launch_owner_path(output_dir).exists()
     assert aborted is True
-    assert not gui_launch_owner_path(output_dir).exists()
     assert page_errors == []
     assert any("_dash-update-component" in url for url in failed_callbacks)

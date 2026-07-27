@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from uuid import UUID, uuid4
 
 from dash.development.base_component import Component
 
@@ -51,14 +52,14 @@ class _Runner:
         self.running = True
         self.returncode = None
 
-    def stop(self, run_id):
-        self.stopped.append(run_id)
+    def stop(self, run_id, *, generation: UUID):
+        self.stopped.append((run_id, generation))
         return self.running
 
-    def is_running(self, run_id):
+    def is_running(self, run_id, *, generation: UUID):
         return self.running
 
-    def reap(self, run_id):
+    def reap(self, run_id, *, generation: UUID):
         return self.returncode
 
 
@@ -100,6 +101,7 @@ def test_local_cancel_stops_runner_and_updates_registry(tmp_path: Path):
             mode="local",
             output_dir=tmp_path,
             rel_path="local-run",
+            generation=uuid4(),
             status="running",
         )
     )
@@ -110,7 +112,9 @@ def test_local_cancel_stops_runner_and_updates_registry(tmp_path: Path):
         run_id="local-run",
     )
 
-    assert runner.stopped == ["local-run"]
+    record = registry.get("local-run")
+    assert record is not None
+    assert runner.stopped == [("local-run", record.generation)]
     assert "cancelled" in note.lower()
     assert registry.get("local-run").status == "cancelled"  # type: ignore[union-attr]
 
@@ -126,6 +130,7 @@ def test_local_cancel_can_return_confirmation_prompt_without_stopping(
             mode="local",
             output_dir=tmp_path,
             rel_path="local-run",
+            generation=uuid4(),
             status="running",
         )
     )
@@ -151,6 +156,7 @@ def test_slurm_cancel_is_not_supported(tmp_path: Path):
             mode="slurm",
             output_dir=Path(tmp_path),
             rel_path="slurm-run",
+            generation=uuid4(),
             status="running",
         )
     )
@@ -188,6 +194,7 @@ def test_monitor_export_uses_active_registry_run(tmp_path: Path):
             mode="local",
             output_dir=output_dir,
             rel_path="local-run",
+            generation=uuid4(),
             status="complete",
         )
     )
@@ -211,6 +218,7 @@ def test_local_cancel_reconciles_already_exited_runner(tmp_path: Path):
             mode="local",
             output_dir=tmp_path,
             rel_path="local-run",
+            generation=uuid4(),
             status="running",
         )
     )
@@ -237,6 +245,7 @@ def test_slurm_submitter_reap_marks_successful_submit_as_running(tmp_path: Path)
             mode="slurm",
             output_dir=tmp_path,
             rel_path="slurm-run",
+            generation=uuid4(),
             status="submitting",
         )
     )
@@ -262,6 +271,7 @@ def test_slurm_submitter_reap_marks_failed_submitter_failed(tmp_path: Path):
             mode="slurm",
             output_dir=tmp_path,
             rel_path="slurm-run",
+            generation=uuid4(),
             status="submitting",
         )
     )

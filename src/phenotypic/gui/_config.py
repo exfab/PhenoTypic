@@ -178,7 +178,7 @@ __all__ = [
     # Tunables
     "DEFAULT_IDLE_RELEASE_SECONDS",
     "RSS_INTERVAL_MS",
-    "RUN_ACTION_CALLBACK_TIMEOUT_MS",
+    "RUN_ACTION_ACK_UNCERTAIN_MS",
     # Branding
     "TITLE_HUB",
     "TITLE_BUILDER",
@@ -763,9 +763,9 @@ DEFAULT_IDLE_RELEASE_SECONDS: float = 15 * 60.0
 #: ``psutil.Process().memory_info().rss``.
 RSS_INTERVAL_MS: int = 5_000
 
-#: Maximum time the browser waits for a Validate/Run callback acknowledgement
-#: before replacing the pending notice with a visible callback-network error.
-RUN_ACTION_CALLBACK_TIMEOUT_MS: int = 5_000
+#: Time before an unacknowledged Validate/Run request is labelled uncertain.
+#: This is presentation-only: it cannot determine whether the server launched.
+RUN_ACTION_ACK_UNCERTAIN_MS: int = 5_000
 
 # ---------------------------------------------------------------------------
 # Branding strings

@@ -157,26 +157,42 @@ def test_local_runner_reap_unblocks_rerun(
 ) -> None:
     """Reaping a completed handle drops it so the same run_id can re-start.
 
-    Without the reap call, ``runner.start(run_id, ...)`` raises
-    ``RuntimeError: run_id already running``. The Phase 6 fix calls
-    ``runner.reap(run_id)`` in the Run callback before ``start``.
+    Reap must present the retained generation, so a stale caller cannot drop
+    a later same-id handle before the replacement starts.
     """
     output_dir = tmp_path / "out"
     output_dir.mkdir()
     argv = [sys.executable, "-c", "print('first')"]
-    handle = runner.start("plate-0", argv, output_dir=output_dir)
+    first_generation = uuid4()
+    handle = runner.start(
+        "plate-0",
+        argv,
+        output_dir=output_dir,
+        generation=first_generation,
+    )
     handle.process.wait(timeout=5.0)
 
     # Without reap, start() would refuse the second invocation.
     with pytest.raises(RuntimeError):
-        runner.start("plate-0", argv, output_dir=output_dir)
+        runner.start(
+            "plate-0",
+            argv,
+            output_dir=output_dir,
+            generation=first_generation,
+        )
 
     # Reaping drops the prior handle.
-    rc = runner.reap("plate-0")
+    rc = runner.reap("plate-0", generation=first_generation)
     assert rc == 0
-    handle2 = runner.start("plate-0", argv, output_dir=output_dir)
+    second_generation = uuid4()
+    handle2 = runner.start(
+        "plate-0",
+        argv,
+        output_dir=output_dir,
+        generation=second_generation,
+    )
     handle2.process.wait(timeout=5.0)
-    runner.reap("plate-0")
+    runner.reap("plate-0", generation=second_generation)
 
 
 # ---------------------------------------------------------------------------
@@ -195,11 +211,12 @@ def test_local_run_active_excludes_validate_records(
     """
     output_dir = tmp_path / "out"
     output_dir.mkdir()
-    # Long-lived subprocess to act as the in-flight validation.
+    validate_generation = uuid4()
     handle = runner.start(
         "validate-1",
         [sys.executable, "-c", "import time; time.sleep(2)"],
         output_dir=output_dir,
+        generation=validate_generation,
     )
     registry.register(
         RunRecord(
@@ -207,41 +224,48 @@ def test_local_run_active_excludes_validate_records(
             mode="validate",
             output_dir=output_dir,
             rel_path="out",
+            generation=validate_generation,
             status="running",
         )
     )
+    local_generation = uuid4()
     try:
-        # The validate record is alive but ``_local_run_active`` returns False.
-        assert runner.is_running("validate-1") is True
+        assert runner.is_running(
+            "validate-1",
+            generation=validate_generation,
+        ) is True
         assert _local_run_active(runner, registry) is False
-
-        # A real Local record DOES make ``_local_run_active`` return True.
         registry.register(
             RunRecord(
                 run_id="local-1",
                 mode="local",
                 output_dir=output_dir,
                 rel_path="out",
+                generation=local_generation,
                 status="running",
             )
         )
-        # No actual subprocess for local-1 yet, so ``runner.is_running``
-        # returns False — the cap is False until a runner-tracked process
-        # exists.
         assert _local_run_active(runner, registry) is False
-
-        # Spawn a real subprocess for local-1.
         runner.start(
             "local-1",
             [sys.executable, "-c", "import time; time.sleep(2)"],
             output_dir=output_dir,
+            generation=local_generation,
         )
         assert _local_run_active(runner, registry) is True
     finally:
-        runner.stop("validate-1", grace_seconds=0.1)
-        runner.stop("local-1", grace_seconds=0.1)
-        runner.reap("validate-1")
-        runner.reap("local-1")
+        runner.stop(
+            "validate-1",
+            generation=validate_generation,
+            grace_seconds=0.1,
+        )
+        runner.stop(
+            "local-1",
+            generation=local_generation,
+            grace_seconds=0.1,
+        )
+        runner.reap("validate-1", generation=validate_generation)
+        runner.reap("local-1", generation=local_generation)
         del handle
 
 

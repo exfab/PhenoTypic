@@ -228,6 +228,11 @@
   color: var(--color-success);
 }
 
+.run-console-action-feedback--uncertain {
+  border-color: var(--color-warning);
+  color: var(--color-body);
+}
+
 .run-console-action-feedback--error {
   border-color: var(--color-danger);
   color: var(--color-danger);

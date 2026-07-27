@@ -53,7 +53,7 @@ from phenotypic.gui._config import (
     DEFAULT_URL_PREFIX,
     DELIVERABLES_DIRNAME,
     IMAGE_EXTS,
-    RUN_ACTION_CALLBACK_TIMEOUT_MS,
+    RUN_ACTION_ACK_UNCERTAIN_MS,
     RUNS_BLUEPRINT_PREFIX,
     SANDBOX_GUI_DIRNAME,
     SANDBOX_PRESETS_SUBDIR,
@@ -517,7 +517,7 @@ def _record_for_receipt(
     return record
 
 
-def _action_result(
+def _build_action_result(
     action: str,
     click: int,
     *,
@@ -677,7 +677,7 @@ def _local_run_active(runner: LocalRunner, registry: RunRegistry) -> bool:
     the Run button.
     """
     for record in registry.list():
-        if record.mode != "local":
+        if record.mode != "local" or record.generation is None:
             continue
         if runner.is_running(record.run_id, generation=record.generation):
             return True
@@ -1144,6 +1144,7 @@ def register_callbacks(
     runner: LocalRunner,
     slurm_observer: SlurmLifecycleObserver,
     slurm_submitter: Callable[..., SlurmSubmitResult] = submit_slurm,
+    action_acknowledgement_hook: Callable[[RunRecord], None] | None = None,
     server_url_prefix: str = DEFAULT_URL_PREFIX,
 ) -> None:
     """Register every Run console callback on ``app``.
@@ -1164,10 +1165,30 @@ def register_callbacks(
             bind exact scheduler epochs to GUI record generations.
         slurm_submitter: Submission dependency. Production uses
             :func:`submit_slurm`; browser tests inject a no-scheduler seam.
+        action_acknowledgement_hook: Optional test seam invoked after a
+            generation is durable and its launch attempt has completed, but
+            before the callback response is returned.
         server_url_prefix: Browser-visible base prefix for shell-level
             Flask routes such as ``/runs``.
     """
     slurm_log_cache = _SlurmLogTailCache(registry)
+
+    def _action_result(
+        action: str,
+        click: int,
+        *,
+        message: str,
+        record: RunRecord | None = None,
+    ) -> dict[str, Any]:
+        """Build a result after an optional post-launch acknowledgement hook."""
+        if record is not None and action_acknowledgement_hook is not None:
+            action_acknowledgement_hook(record)
+        return _build_action_result(
+            action,
+            click,
+            message=message,
+            record=record,
+        )
 
     app.clientside_callback(
         """
@@ -1198,36 +1219,30 @@ def register_callbacks(
 
     app.clientside_callback(
         f"""
-        function(attempt, result, _tick) {{
+        function(attempt, _tick) {{
             const base = "run-console-action-feedback";
             if (!attempt || !attempt.action || !attempt.click) {{
                 return ["No action requested.", base, {{display: "none"}}];
             }}
+            const result = window.phenotypicRunActionResult;
             const matched = result
                 && result.action === attempt.action
                 && result.click === attempt.click;
-            if (matched && result.outcome === "accepted" && result.receipt) {{
-                const receipt = result.receipt;
-                return [
-                    `${{attempt.action}} accepted | run_id=${{receipt.run_id}}`
-                    + ` | generation=${{receipt.generation}}`,
-                    base + " run-console-action-feedback--ok",
-                    {{display: "block"}}
-                ];
-            }}
             if (matched) {{
                 return [
-                    `${{attempt.action}} error | ${{result.message}}`,
-                    base + " run-console-action-feedback--error",
-                    {{display: "block"}}
+                    window.dash_clientside.no_update,
+                    window.dash_clientside.no_update,
+                    window.dash_clientside.no_update
                 ];
             }}
             if (Date.now() - Number(attempt.started_at_ms || 0)
-                    >= {RUN_ACTION_CALLBACK_TIMEOUT_MS}) {{
+                    >= {RUN_ACTION_ACK_UNCERTAIN_MS}) {{
                 return [
-                    `${{attempt.action}} error | callback request failed before`
-                    + " a durable generation was confirmed; retry the action.",
-                    base + " run-console-action-feedback--error",
+                    `${{attempt.action}} acknowledgement delayed | launch`
+                    + " outcome is unknown; do not submit again. Check Recent"
+                    + " Runs and the selected output before taking further"
+                    + " action.",
+                    base + " run-console-action-feedback--uncertain",
                     {{display: "block"}}
                 ];
             }}
@@ -1242,8 +1257,42 @@ def register_callbacks(
         Output(ids.RC_ACTION_FEEDBACK, "className"),
         Output(ids.RC_ACTION_FEEDBACK, "style"),
         Input(ids.RC_STORE_ACTION_ATTEMPT, "data"),
-        Input(ids.RC_STORE_ACTION_RESULT, "data"),
         Input(ids.RC_INTERVAL_ACTION_WATCHDOG, "n_intervals"),
+    )
+
+    app.clientside_callback(
+        """
+        function(result) {
+            if (!result || !result.action || !result.click) {
+                return [
+                    window.dash_clientside.no_update,
+                    window.dash_clientside.no_update,
+                    window.dash_clientside.no_update
+                ];
+            }
+            window.phenotypicRunActionResult = result;
+            const base = "run-console-action-feedback";
+            if (result.outcome === "accepted" && result.receipt) {
+                const receipt = result.receipt;
+                return [
+                    `${result.action} accepted | run_id=${receipt.run_id}`
+                    + ` | generation=${receipt.generation}`,
+                    base + " run-console-action-feedback--ok",
+                    {display: "block"}
+                ];
+            }
+            return [
+                `${result.action} error | ${result.message}`,
+                base + " run-console-action-feedback--error",
+                {display: "block"}
+            ];
+        }
+        """,
+        Output(ids.RC_ACTION_FEEDBACK, "children", allow_duplicate=True),
+        Output(ids.RC_ACTION_FEEDBACK, "className", allow_duplicate=True),
+        Output(ids.RC_ACTION_FEEDBACK, "style", allow_duplicate=True),
+        Input(ids.RC_STORE_ACTION_RESULT, "data"),
+        prevent_initial_call=True,
     )
 
     # ----------------------------------------------------------------------

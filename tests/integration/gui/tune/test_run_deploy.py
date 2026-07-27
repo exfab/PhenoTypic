@@ -20,13 +20,9 @@ class _Handle:
 class _Runner:
     def __init__(self):
         self.started = []
-        self.reaped = []
 
-    def reap(self, run_id):
-        self.reaped.append(run_id)
-
-    def start(self, run_id, argv, *, output_dir):
-        self.started.append((run_id, argv, output_dir))
+    def start(self, run_id, argv, *, output_dir, generation):
+        self.started.append((run_id, argv, output_dir, generation))
         return _Handle()
 
 
@@ -52,6 +48,7 @@ def test_deploy_local_registers_run_and_starts_runner(tmp_path: Path):
     assert record.mode == "local"
     assert record.status == "running"
     assert record.pid == 1234
+    assert runner.started[0][3] == record.generation
 
 
 def test_deploy_resolves_relative_output_inside_sandbox(tmp_path: Path):

@@ -52,6 +52,7 @@ def test_start_spawns_subprocess_and_streams_stdout(
             "for i in range(3): print(f'line {i}', flush=True)",
         ],
         output_dir=tmp_path,
+        generation=uuid4(),
     )
     assert isinstance(handle, LocalRunHandle)
     assert handle.process.pid > 0
@@ -59,9 +60,13 @@ def test_start_spawns_subprocess_and_streams_stdout(
     # Wait for the subprocess to exit + tee thread to drain.
     handle.process.wait(timeout=5.0)
     assert _wait_until(
-        lambda: len(runner.snapshot_log("hello")) >= 3, timeout=2.0
+        lambda: len(
+            runner.snapshot_log("hello", generation=handle.generation)
+        )
+        >= 3,
+        timeout=2.0,
     )
-    snap = runner.snapshot_log("hello")
+    snap = runner.snapshot_log("hello", generation=handle.generation)
     assert any("line 0" in line for line in snap)
     assert any("line 2" in line for line in snap)
 
@@ -76,31 +81,38 @@ def test_start_spawns_subprocess_and_streams_stdout(
 def test_start_rejects_duplicate_run_id(
     runner: LocalRunner, tmp_path: Path,
 ) -> None:
+    generation = uuid4()
     runner.start(
         run_id="dup",
         argv=[sys.executable, "-c", "import time; time.sleep(0.5)"],
         output_dir=tmp_path,
+        generation=generation,
     )
     with pytest.raises(RuntimeError):
         runner.start(
             run_id="dup",
             argv=[sys.executable, "-c", "pass"],
             output_dir=tmp_path,
+            generation=uuid4(),
         )
-    runner.stop("dup")
+    runner.stop("dup", generation=generation)
 
 
 def test_is_running_tracks_subprocess_state(
     runner: LocalRunner, tmp_path: Path,
 ) -> None:
-    runner.start(
+    handle = runner.start(
         run_id="r",
         argv=[sys.executable, "-c", "import time; time.sleep(0.5)"],
         output_dir=tmp_path,
+        generation=uuid4(),
     )
-    assert runner.is_running("r") is True
-    runner.get("r").process.wait(timeout=5.0)  # type: ignore[union-attr]
-    assert _wait_until(lambda: not runner.is_running("r"), timeout=2.0)
+    assert runner.is_running("r", generation=handle.generation) is True
+    handle.process.wait(timeout=5.0)
+    assert _wait_until(
+        lambda: not runner.is_running("r", generation=handle.generation),
+        timeout=2.0,
+    )
 
 
 def test_exit_callback_observes_immediate_success_and_retains_handle(
@@ -126,14 +138,15 @@ def test_exit_callback_observes_immediate_success_and_retains_handle(
     assert observed == [(handle, 0)]
     assert handle.generation == generation
     assert handle.finished_at is not None
-    assert runner.get("instant") is handle
-    assert runner.snapshot_log("instant") == []
+    assert runner.get("instant", generation=generation) is handle
+    assert runner.snapshot_log("instant", generation=generation) == []
 
 
 def test_exit_callback_observes_nonzero_returncode(
     runner: LocalRunner,
     tmp_path: Path,
 ) -> None:
+    generation = uuid4()
     observed: list[int] = []
     callback_done = threading.Event()
 
@@ -145,11 +158,12 @@ def test_exit_callback_observes_nonzero_returncode(
         run_id="failure",
         argv=[sys.executable, "-c", "raise SystemExit(7)"],
         output_dir=tmp_path,
+        generation=generation,
         on_exit=_on_exit,
     )
     assert callback_done.wait(timeout=5.0)
     assert observed == [7]
-    assert runner.get("failure") is not None
+    assert runner.get("failure", generation=generation) is not None
 
 
 def test_exit_callback_does_not_wait_for_descendant_inherited_stdout(
@@ -171,6 +185,7 @@ def test_exit_callback_does_not_wait_for_descendant_inherited_stdout(
             ),
         ],
         output_dir=tmp_path,
+        generation=uuid4(),
         on_exit=lambda _handle, _returncode: callback_done.set(),
     )
 
@@ -186,7 +201,33 @@ def test_exit_callback_does_not_wait_for_descendant_inherited_stdout(
 
 
 def test_stop_returns_false_if_run_id_unknown(runner: LocalRunner) -> None:
-    assert runner.stop("missing") is False
+    assert runner.stop("missing", generation=uuid4()) is False
+
+
+def test_lifecycle_apis_require_generation(
+    runner: LocalRunner,
+    tmp_path: Path,
+) -> None:
+    """No public lifecycle or mutation path accepts an unfenced run id."""
+    calls = (
+        lambda: runner.start(  # type: ignore[call-arg]
+            "missing-generation",
+            [sys.executable, "-c", "pass"],
+            output_dir=tmp_path,
+        ),
+        lambda: runner.get("missing-generation"),  # type: ignore[call-arg]
+        lambda: runner.is_running(  # type: ignore[call-arg]
+            "missing-generation"
+        ),
+        lambda: runner.stop("missing-generation"),  # type: ignore[call-arg]
+        lambda: runner.snapshot_log(  # type: ignore[call-arg]
+            "missing-generation"
+        ),
+        lambda: runner.reap("missing-generation"),  # type: ignore[call-arg]
+    )
+    for call in calls:
+        with pytest.raises(TypeError):
+            call()
 
 
 def test_stop_and_log_reads_reject_wrong_generation(
@@ -229,6 +270,7 @@ def test_log_directory_failure_releases_reservation(
             run_id="log-failure",
             argv=[sys.executable, "-c", "pass"],
             output_dir=output_file,
+            generation=uuid4(),
         )
     assert "log-failure" not in runner.list_run_ids()
 
@@ -242,6 +284,7 @@ def test_popen_failure_releases_reservation(
             run_id="popen-failure",
             argv=[str(tmp_path / "missing-executable")],
             output_dir=tmp_path,
+            generation=uuid4(),
         )
     assert "popen-failure" not in runner.list_run_ids()
 
@@ -274,6 +317,7 @@ def test_exit_observer_start_failure_terminates_reaps_and_releases(
                 "import time; time.sleep(30)",
             ],
             output_dir=tmp_path,
+            generation=uuid4(),
         )
     assert len(captured) == 1
     assert captured[0].process.poll() is not None
@@ -303,6 +347,7 @@ def test_tee_start_failure_terminates_reaps_and_releases(
                 "import time; time.sleep(30)",
             ],
             output_dir=tmp_path,
+            generation=uuid4(),
         )
     assert captured[0].process.poll() is not None
     assert "tee-failure" not in runner.list_run_ids()
@@ -330,18 +375,29 @@ def test_stop_sigterm_then_sigkill(runner: LocalRunner, tmp_path: Path) -> None:
         "print('ready', flush=True)\n"
         "time.sleep(30)\n"
     )
-    runner.start(
+    handle = runner.start(
         run_id="stubborn",
         argv=[sys.executable, "-c", code],
         output_dir=tmp_path,
+        generation=uuid4(),
     )
     # Wait for the child to install its handler.
     assert _wait_until(
-        lambda: any("ready" in line for line in runner.snapshot_log("stubborn")),
+        lambda: any(
+            "ready" in line
+            for line in runner.snapshot_log(
+                "stubborn",
+                generation=handle.generation,
+            )
+        ),
         timeout=3.0,
     )
-    assert runner.stop("stubborn", grace_seconds=0.2) is True
-    rc = runner.reap("stubborn")
+    assert runner.stop(
+        "stubborn",
+        generation=handle.generation,
+        grace_seconds=0.2,
+    ) is True
+    rc = runner.reap("stubborn", generation=handle.generation)
     assert rc is not None
     # On POSIX, SIGKILL surfaces as -SIGKILL = -9.
     assert rc < 0
@@ -350,13 +406,17 @@ def test_stop_sigterm_then_sigkill(runner: LocalRunner, tmp_path: Path) -> None:
 def test_stop_returns_quickly_when_subprocess_already_exited(
     runner: LocalRunner, tmp_path: Path,
 ) -> None:
-    runner.start(
+    handle = runner.start(
         run_id="quick",
         argv=[sys.executable, "-c", "print('done')"],
         output_dir=tmp_path,
+        generation=uuid4(),
     )
-    runner.get("quick").process.wait(timeout=5.0)  # type: ignore[union-attr]
-    assert runner.stop("quick") is False  # already exited
+    handle.process.wait(timeout=5.0)
+    assert runner.stop(
+        "quick",
+        generation=handle.generation,
+    ) is False  # already exited
 
 
 # ---------------------------------------------------------------------------
@@ -384,6 +444,7 @@ def test_ring_buffer_drops_oldest_under_flood(
             "for i in range(6000): print(i, flush=True)",
         ],
         output_dir=tmp_path,
+        generation=uuid4(),
     )
     handle.process.wait(timeout=15.0)
     # process.wait() only signals subprocess exit; the OS pipe may still
@@ -394,7 +455,7 @@ def test_ring_buffer_drops_oldest_under_flood(
     assert handle.tee_thread is not None
     handle.tee_thread.join(timeout=5.0)
     assert not handle.tee_thread.is_alive()
-    snap = runner.snapshot_log("flood")
+    snap = runner.snapshot_log("flood", generation=handle.generation)
     assert handle.buffer.maxlen == 5000
     assert len(snap) == 5000  # exactly bounded by maxlen
     # Most recent line is preserved.
@@ -404,7 +465,7 @@ def test_ring_buffer_drops_oldest_under_flood(
 
 
 def test_snapshot_log_tail_clamps(runner: LocalRunner, tmp_path: Path) -> None:
-    runner.start(
+    handle = runner.start(
         run_id="tailed",
         argv=[
             sys.executable,
@@ -412,12 +473,21 @@ def test_snapshot_log_tail_clamps(runner: LocalRunner, tmp_path: Path) -> None:
             "for i in range(20): print(i, flush=True)",
         ],
         output_dir=tmp_path,
+        generation=uuid4(),
     )
-    runner.get("tailed").process.wait(timeout=5.0)  # type: ignore[union-attr]
+    handle.process.wait(timeout=5.0)
     assert _wait_until(
-        lambda: len(runner.snapshot_log("tailed")) >= 20, timeout=2.0
+        lambda: len(
+            runner.snapshot_log("tailed", generation=handle.generation)
+        )
+        >= 20,
+        timeout=2.0,
     )
-    last3 = runner.snapshot_log("tailed", tail=3)
+    last3 = runner.snapshot_log(
+        "tailed",
+        generation=handle.generation,
+        tail=3,
+    )
     assert len(last3) == 3
     assert any("19" in line for line in last3)
 
@@ -425,7 +495,7 @@ def test_snapshot_log_tail_clamps(runner: LocalRunner, tmp_path: Path) -> None:
 def test_buffer_is_thread_safe_under_concurrent_snapshot(
     runner: LocalRunner, tmp_path: Path,
 ) -> None:
-    runner.start(
+    handle = runner.start(
         run_id="rs",
         argv=[
             sys.executable,
@@ -433,18 +503,26 @@ def test_buffer_is_thread_safe_under_concurrent_snapshot(
             "for i in range(500): print(i, flush=True)",
         ],
         output_dir=tmp_path,
+        generation=uuid4(),
     )
     snapshots: list[int] = []
 
     def _reader() -> None:
         for _ in range(50):
-            snapshots.append(len(runner.snapshot_log("rs")))
+            snapshots.append(
+                len(
+                    runner.snapshot_log(
+                        "rs",
+                        generation=handle.generation,
+                    )
+                )
+            )
             time.sleep(0.001)
 
     threads = [threading.Thread(target=_reader) for _ in range(4)]
     for t in threads:
         t.start()
-    runner.get("rs").process.wait(timeout=5.0)  # type: ignore[union-attr]
+    handle.process.wait(timeout=5.0)
     for t in threads:
         t.join()
     # Every snapshot is monotonically non-decreasing OR bounded — the
@@ -460,22 +538,24 @@ def test_buffer_is_thread_safe_under_concurrent_snapshot(
 def test_reap_returns_exit_code_then_drops_handle(
     runner: LocalRunner, tmp_path: Path,
 ) -> None:
-    runner.start(
+    handle = runner.start(
         run_id="z",
         argv=[sys.executable, "-c", "import sys; sys.exit(7)"],
         output_dir=tmp_path,
+        generation=uuid4(),
     )
-    runner.get("z").process.wait(timeout=5.0)  # type: ignore[union-attr]
-    rc = runner.reap("z")
+    handle.process.wait(timeout=5.0)
+    rc = runner.reap("z", generation=handle.generation)
     assert rc == 7
-    assert runner.get("z") is None
-    assert runner.reap("z") is None  # idempotent
+    assert runner.get("z", generation=handle.generation) is None
+    assert runner.reap("z", generation=handle.generation) is None
 
 
-def test_new_generation_replaces_finished_same_output_handle(
+def test_stale_generation_cannot_read_reap_or_stop_replacement(
     runner: LocalRunner,
     tmp_path: Path,
 ) -> None:
+    """A retained predecessor cannot control its live same-id replacement."""
     first = runner.start(
         run_id="same-output",
         argv=[sys.executable, "-c", "pass"],
@@ -487,13 +567,48 @@ def test_new_generation_replaces_finished_same_output_handle(
 
     second = runner.start(
         run_id="same-output",
-        argv=[sys.executable, "-c", "pass"],
+        argv=[
+            sys.executable,
+            "-c",
+            "import time; print('replacement', flush=True); time.sleep(30)",
+        ],
         output_dir=tmp_path,
         generation=uuid4(),
     )
-    second.process.wait(timeout=5.0)
-    assert runner.get("same-output") is second
+    assert runner.get(
+        "same-output",
+        generation=second.generation,
+    ) is second
     assert second.generation != first.generation
+    try:
+        assert runner.get(
+            "same-output",
+            generation=first.generation,
+        ) is None
+        assert runner.snapshot_log(
+            "same-output",
+            generation=first.generation,
+        ) == []
+        assert runner.is_running(
+            "same-output",
+            generation=first.generation,
+        ) is False
+        assert runner.reap(
+            "same-output",
+            generation=first.generation,
+        ) is None
+        assert runner.stop(
+            "same-output",
+            generation=first.generation,
+        ) is False
+        assert second.process.poll() is None
+    finally:
+        runner.stop(
+            "same-output",
+            generation=second.generation,
+            grace_seconds=0.1,
+        )
+        runner.reap("same-output", generation=second.generation)
 
 
 def test_finished_handle_retention_is_bounded(tmp_path: Path) -> None:
@@ -502,6 +617,7 @@ def test_finished_handle_retention_is_bounded(tmp_path: Path) -> None:
         run_id="first",
         argv=[sys.executable, "-c", "pass"],
         output_dir=tmp_path / "first",
+        generation=uuid4(),
     )
     assert _wait_until(lambda: first.finished_at is not None)
 
@@ -509,10 +625,11 @@ def test_finished_handle_retention_is_bounded(tmp_path: Path) -> None:
         run_id="second",
         argv=[sys.executable, "-c", "pass"],
         output_dir=tmp_path / "second",
+        generation=uuid4(),
     )
     assert _wait_until(lambda: second.finished_at is not None)
     assert runner.list_run_ids() == ["second"]
-    assert runner.get("second") is second
+    assert runner.get("second", generation=second.generation) is second
 
 
 def test_atexit_hook_only_registered_once() -> None:
@@ -539,6 +656,7 @@ def test_buffer_default_maxlen_is_5000() -> None:
         output_dir=Path("/tmp"),
         process=None,  # type: ignore[arg-type]
         stdout_log_path=Path("/tmp/x"),
+        generation=uuid4(),
     )
     assert isinstance(handle.buffer, deque)
     assert handle.buffer.maxlen == 5000
@@ -552,7 +670,7 @@ def test_snapshot_log_tail_zero_returns_empty(
     Regression for L7: ``-0`` is ``0`` in Python, so the naive
     ``lines[-tail:]`` returned everything when callers expected nothing.
     """
-    runner.start(
+    handle = runner.start(
         run_id="t0",
         argv=[
             sys.executable,
@@ -560,14 +678,27 @@ def test_snapshot_log_tail_zero_returns_empty(
             "for i in range(5): print(i, flush=True)",
         ],
         output_dir=tmp_path,
+        generation=uuid4(),
     )
-    runner.get("t0").process.wait(timeout=5.0)  # type: ignore[union-attr]
+    handle.process.wait(timeout=5.0)
     assert _wait_until(
-        lambda: len(runner.snapshot_log("t0")) >= 5, timeout=2.0
+        lambda: len(
+            runner.snapshot_log("t0", generation=handle.generation)
+        )
+        >= 5,
+        timeout=2.0,
     )
-    assert runner.snapshot_log("t0", tail=0) == []
+    assert runner.snapshot_log(
+        "t0",
+        generation=handle.generation,
+        tail=0,
+    ) == []
     # Negative tail also returns nothing (defensive bound).
-    assert runner.snapshot_log("t0", tail=-1) == []
+    assert runner.snapshot_log(
+        "t0",
+        generation=handle.generation,
+        tail=-1,
+    ) == []
 
 
 def test_concurrent_start_with_same_run_id_only_one_succeeds(
@@ -582,11 +713,13 @@ def test_concurrent_start_with_same_run_id_only_one_succeeds(
     runner = LocalRunner()
     barrier = threading.Barrier(12)
     successes: list[int] = []
+    winning_generations = []
     failures: list[BaseException] = []
     lock = threading.Lock()
 
     def _worker() -> None:
         barrier.wait()
+        generation = uuid4()
         try:
             runner.start(
                 run_id="race",
@@ -596,9 +729,11 @@ def test_concurrent_start_with_same_run_id_only_one_succeeds(
                     "import time; time.sleep(0.5)",
                 ],
                 output_dir=tmp_path,
+                generation=generation,
             )
             with lock:
                 successes.append(1)
+                winning_generations.append(generation)
         except RuntimeError as exc:
             with lock:
                 failures.append(exc)
@@ -612,5 +747,6 @@ def test_concurrent_start_with_same_run_id_only_one_succeeds(
         assert len(successes) == 1
         assert len(failures) == 11
     finally:
-        runner.stop("race")
-        runner.reap("race")
+        generation = winning_generations[0]
+        runner.stop("race", generation=generation)
+        runner.reap("race", generation=generation)

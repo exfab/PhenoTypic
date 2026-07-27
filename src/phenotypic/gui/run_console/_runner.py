@@ -83,7 +83,8 @@ class LocalRunHandle:
         buffer_lock: Guards the deque against concurrent
             ``append`` (tee thread) and ``snapshot`` (Dash callback)
             calls.
-        generation: Durable launch generation used by the exit callback.
+        generation: Durable launch generation used by every lifecycle access
+            and the exit callback.
         exit_thread: Observer that waits for process termination.
         finished_at: Monotonic completion timestamp used for bounded eviction.
     """
@@ -92,7 +93,7 @@ class LocalRunHandle:
     output_dir: Path
     process: subprocess.Popen[bytes]
     stdout_log_path: Path
-    generation: UUID | None = None
+    generation: UUID
     buffer: "deque[str]" = field(default_factory=lambda: deque(maxlen=_LOG_BUFFER_MAXLEN))
     buffer_lock: threading.Lock = field(default_factory=threading.Lock)
     #: Daemon thread teeing ``process.stdout`` into ``buffer`` and disk.
@@ -157,7 +158,7 @@ class LocalRunner:
         output_dir: Path,
         cwd: Path | None = None,
         env: dict[str, str] | None = None,
-        generation: UUID | None = None,
+        generation: UUID,
         on_exit: ExitCallback | None = None,
     ) -> LocalRunHandle:
         """Spawn ``argv`` and tee its stdout.
@@ -172,7 +173,8 @@ class LocalRunner:
             cwd: Subprocess working directory. Defaults to ``output_dir``.
             env: Subprocess environment. Defaults to inheriting the
                 parent's full environment.
-            generation: Durable launch generation carried to ``on_exit``.
+            generation: Required durable launch generation. Every later
+                lifecycle access must present the same value.
             on_exit: Callback invoked exactly once by the lifecycle observer
                 after the process exits. It receives the retained handle and
                 integer return code.
@@ -195,8 +197,6 @@ class LocalRunner:
                 can_replace_generation = (
                     existing is not None
                     and existing.process.poll() is not None
-                    and generation is not None
-                    and existing.generation is not None
                     and generation != existing.generation
                 )
                 if not can_replace_generation:
@@ -274,17 +274,18 @@ class LocalRunner:
         logger.debug("LocalRunner.start: run_id=%s pid=%d", run_id, process.pid)
         return handle
 
-    def get(self, run_id: str) -> LocalRunHandle | None:
-        """Return the handle for ``run_id``, or ``None`` if absent.
+    def get(self, run_id: str, *, generation: UUID) -> LocalRunHandle | None:
+        """Return the exact generation handle, or ``None`` if absent/stale.
 
         Returns ``None`` for both "never registered" and "reservation
         held but ``Popen`` not yet completed" (the reservation window
-        in ``start()``). Callers that need to distinguish should use
-        :meth:`list_run_ids`.
+        in ``start()``), as well as a mismatched retained generation.
         """
         with self._lock:
             handle = self._handles.get(run_id)
-            return handle if handle is not None else None
+            if handle is None or handle.generation != generation:
+                return None
+            return handle
 
     def list_run_ids(self) -> list[str]:
         """Return live + reserved run_ids. May include reservations from
@@ -296,13 +297,11 @@ class LocalRunner:
         self,
         run_id: str,
         *,
-        generation: UUID | None = None,
+        generation: UUID,
     ) -> bool:
         """Return whether the exact retained generation is still running."""
-        handle = self.get(run_id)
+        handle = self.get(run_id, generation=generation)
         if handle is None:
-            return False
-        if generation is not None and handle.generation != generation:
             return False
         return handle.process.poll() is None
 
@@ -310,14 +309,14 @@ class LocalRunner:
         self,
         run_id: str,
         *,
-        generation: UUID | None = None,
+        generation: UUID,
         grace_seconds: float = _TERM_GRACE_SECONDS,
     ) -> bool:
         """Send SIGTERM, wait ``grace_seconds``, escalate to SIGKILL.
 
         Args:
             run_id: Stable registry identity.
-            generation: Optional exact generation fence. A mismatched retained
+            generation: Required exact generation fence. A mismatched retained
                 handle is left untouched.
             grace_seconds: Seconds to wait before escalating to SIGKILL.
 
@@ -334,10 +333,8 @@ class LocalRunner:
             ``True`` if a handle was found and termination was attempted;
             ``False`` if no live handle exists for ``run_id``.
         """
-        handle = self.get(run_id)
+        handle = self.get(run_id, generation=generation)
         if handle is None:
-            return False
-        if generation is not None and handle.generation != generation:
             return False
         proc = handle.process
         if proc.poll() is not None:
@@ -373,24 +370,22 @@ class LocalRunner:
         self,
         run_id: str,
         *,
-        generation: UUID | None = None,
+        generation: UUID,
         tail: int | None = None,
     ) -> list[str]:
         """Return a snapshot of the in-memory log buffer for ``run_id``.
 
         Args:
             run_id: Registry key.
-            generation: Optional exact generation fence.
+            generation: Required exact generation fence.
             tail: If non-None, return at most this many trailing lines.
 
         Returns:
             List of decoded log lines (newline-terminated). Empty list if
             ``run_id`` is unknown.
         """
-        handle = self.get(run_id)
+        handle = self.get(run_id, generation=generation)
         if handle is None:
-            return []
-        if generation is not None and handle.generation != generation:
             return []
         with handle.buffer_lock:
             lines = list(handle.buffer)
@@ -402,15 +397,15 @@ class LocalRunner:
             return []
         return lines[-tail:]
 
-    def reap(self, run_id: str) -> int | None:
+    def reap(self, run_id: str, *, generation: UUID) -> int | None:
         """Explicitly drop a finished retained handle and return its exit code.
 
-        Idempotent: returns ``None`` if no handle exists or the process
-        is still running.
+        Idempotent: returns ``None`` if no matching generation exists or the
+        process is still running. A stale generation cannot reap a replacement.
         """
         with self._lock:
             handle = self._handles.get(run_id)
-            if handle is None:
+            if handle is None or handle.generation != generation:
                 return None
             rc = handle.process.poll()
             if rc is None:
@@ -535,24 +530,38 @@ class LocalRunner:
             if self._handles.get(handle.run_id) is handle:
                 self._handles.pop(handle.run_id, None)
 
+    def _snapshot_handles_for_shutdown(self) -> list[LocalRunHandle]:
+        """Return current handles for process-exit cleanup only.
+
+        This private adapter is intentionally unscoped because process exit
+        must terminate every child generation. Interactive lifecycle callers
+        must use the generation-fenced public methods.
+        """
+        with self._lock:
+            return [
+                handle
+                for handle in self._handles.values()
+                if handle is not None
+            ]
+
     @classmethod
     def _atexit_cleanup_all(cls) -> None:
         """SIGTERM every live subprocess across every runner instance.
 
-        Snapshots both the instances list and each runner's run-id list
+        Snapshots both the instances list and each runner's retained handles
         once, before either loop. Otherwise a run registered between the
         first (terminate) loop and the second (wait) loop would land on
         the SIGKILL fast-path without first receiving a SIGTERM.
         """
         with cls._atexit_lock:
             instances = list(cls._instances)
-        runner_snapshots: dict[LocalRunner, list[str]] = {
-            runner: runner.list_run_ids() for runner in instances
+        runner_snapshots: dict[LocalRunner, list[LocalRunHandle]] = {
+            runner: runner._snapshot_handles_for_shutdown()
+            for runner in instances
         }
-        for runner, run_ids in runner_snapshots.items():
-            for run_id in run_ids:
-                handle = runner.get(run_id)
-                if handle is None or handle.process.poll() is not None:
+        for handles in runner_snapshots.values():
+            for handle in handles:
+                if handle.process.poll() is not None:
                     continue
                 try:
                     handle.process.terminate()
@@ -560,11 +569,8 @@ class LocalRunner:
                     pass
         # Best-effort short wait so terminating cleanly beats SIGKILL.
         deadline = time.monotonic() + 2.0
-        for runner, run_ids in runner_snapshots.items():
-            for run_id in run_ids:
-                handle = runner.get(run_id)
-                if handle is None:
-                    continue
+        for handles in runner_snapshots.values():
+            for handle in handles:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     break

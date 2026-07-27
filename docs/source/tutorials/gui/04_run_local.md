@@ -46,10 +46,12 @@ exits without writing any output. The log tail shows the dry-run output.
 Use this whenever you're not sure the form values match what the CLI
 expects — the dry-run takes seconds, a bad real run can waste minutes.
 
-Validate and Run share one action path. Each accepted click displays the
-durable run ID and generation UUID before launch. If the browser cannot obtain
-the callback acknowledgement, the pending notice becomes a visible retryable
-error instead of silently doing nothing.
+Validate and Run share one action path. The server durably records the run ID
+and generation UUID before it attempts a process spawn or scheduler submission.
+After the callback response reaches the page, the action notice displays that
+receipt. If acknowledgement is delayed or lost, the notice says the launch
+outcome is unknown and tells you not to submit again. Check Recent Runs and the
+selected output before taking further action.
 
 ## Run
 
