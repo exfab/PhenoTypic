@@ -161,6 +161,22 @@ class TimelineRevisionAuthority:
         with self._lock:
             self._by_session.pop(session_id, None)
 
+    def retire_if_matches(
+        self,
+        session_id: str,
+        generation: int,
+        revision: str,
+    ) -> None:
+        """Retire one stale authorization without clobbering a newer one."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            if (
+                current is not None
+                and current.generation == generation
+                and current.revision == revision
+            ):
+                self._by_session.pop(session_id, None)
+
 
 class SourceRevisionAuthority:
     """Thread-safe source refresh authority isolated by browser session."""
@@ -237,6 +253,38 @@ class SourceRevisionAuthority:
             return (
                 current is not None
                 and not current.reset_in_progress
+                and grid_revision in current.grid_revisions
+            )
+
+    def grid_authorization_generation(
+        self,
+        session_id: str,
+        grid_revision: str,
+    ) -> int | None:
+        """Return the source generation authorizing ``grid_revision``."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            if (
+                current is None
+                or current.reset_in_progress
+                or grid_revision not in current.grid_revisions
+            ):
+                return None
+            return current.generation
+
+    def grid_generation_is_current(
+        self,
+        session_id: str,
+        grid_revision: str,
+        generation: int,
+    ) -> bool:
+        """Return whether the exact source/grid generation remains current."""
+        with self._lock:
+            current = self._by_session.get(session_id)
+            return (
+                current is not None
+                and not current.reset_in_progress
+                and current.generation == generation
                 and grid_revision in current.grid_revisions
             )
 
@@ -546,6 +594,10 @@ def source_reset_values(
         f"{revision}:reset",
         revision,
         None,
+        None,
+        False,
+        None,
+        "",
     )
 
 
@@ -585,6 +637,55 @@ def authorize_revision_candidate(
         "generation": generation,
         "revision": revision,
     }
+
+
+def authorize_current_revision_candidate(
+    source_authority: SourceRevisionAuthority,
+    revision_authority: TimelineRevisionAuthority,
+    sandbox: SandboxRoot,
+    candidate: Mapping[str, object] | None,
+    source_payload: object,
+) -> dict[str, object] | None:
+    """Authorize a grid only while its exact source generation stays current."""
+    if not isinstance(candidate, Mapping):
+        return None
+    session_id = candidate.get("session_id")
+    grid_revision = candidate.get("revision")
+    browser_generation = candidate.get("generation")
+    if (
+        not isinstance(session_id, str)
+        or not session_id
+        or not isinstance(grid_revision, str)
+        or not grid_revision
+        or type(browser_generation) is not int
+    ):
+        return None
+    source_generation = source_authority.grid_authorization_generation(
+        session_id,
+        grid_revision,
+    )
+    if source_generation is None:
+        return None
+    authorized = authorize_revision_candidate(
+        revision_authority,
+        sandbox,
+        candidate,
+        source_payload,
+    )
+    if authorized is None:
+        return None
+    if not source_authority.grid_generation_is_current(
+        session_id,
+        grid_revision,
+        source_generation,
+    ):
+        revision_authority.retire_if_matches(
+            session_id,
+            browser_generation,
+            grid_revision,
+        )
+        return None
+    return authorized
 
 
 def resolve_popout_event(
@@ -710,6 +811,26 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         ),
         Output(ids.BROWSE_TL_SOURCE_REVISION, "data"),
         Output(ids.BROWSE_TL_POPOUT_EVENT, "data"),
+        Output(
+            ids.BROWSE_TL_POPOUT_APPROVED,
+            "data",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_POPOUT_MODAL,
+            "is_open",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_POPOUT_STORE,
+            "data",
+            allow_duplicate=True,
+        ),
+        Output(
+            ids.BROWSE_TL_POPOUT_TITLE,
+            "children",
+            allow_duplicate=True,
+        ),
         Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
         Input(SHELL_CLASSIFIER_CACHE_STORE, "data"),
         State(ids.BROWSE_TL_SESSION, "data"),
@@ -1139,26 +1260,8 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         candidate: Mapping[str, object] | None,
         source_payload: object,
     ):
-        candidate_revision = (
-            candidate.get("revision")
-            if isinstance(candidate, Mapping)
-            else None
-        )
-        candidate_session = (
-            candidate.get("session_id")
-            if isinstance(candidate, Mapping)
-            else None
-        )
-        if (
-            not isinstance(candidate_revision, str)
-            or not isinstance(candidate_session, str)
-            or not source_revision_authority.grid_is_current(
-                candidate_session,
-                candidate_revision
-            )
-        ):
-            raise dash.exceptions.PreventUpdate
-        authorized = authorize_revision_candidate(
+        authorized = authorize_current_revision_candidate(
+            source_revision_authority,
             revision_authority,
             sandbox,
             candidate,

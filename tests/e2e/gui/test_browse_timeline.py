@@ -13,6 +13,7 @@ bounded-window + off-screen-pre-mount assertions meaningful.
 from __future__ import annotations
 
 from pathlib import Path
+import time
 
 import pytest
 from playwright.sync_api import BrowserContext, expect
@@ -442,6 +443,77 @@ def test_delayed_popout_approval_cannot_reopen_retired_revision(
         }"""
     )
     assert modal_open is False
+
+
+def test_refresh_closes_popout_when_approval_response_arrives_late(
+    live_browse_timeline,
+) -> None:
+    """A response crossing Refresh cannot retain or reopen popout state."""
+    page = live_browse_timeline
+    _wait_for_authorized_grid(page)
+    old_revision = page.locator("#browse-tl-grid").get_attribute(
+        "data-grid-revision"
+    )
+    approval_response_seen = False
+
+    def _delay_approval_response(route, request) -> None:  # noqa: ANN001
+        nonlocal approval_response_seen
+        payload = request.post_data_json
+        if (
+            not approval_response_seen
+            and isinstance(payload, dict)
+            and "browse-tl-popout-approved.data"
+            in str(payload.get("output", ""))
+        ):
+            response = route.fetch()
+            approval_response_seen = True
+            time.sleep(0.75)
+            route.fulfill(response=response)
+            return
+        route.continue_()
+
+    page.route("**/_dash-update-component", _delay_approval_response)
+    page.evaluate(
+        """() => {
+            window.setTimeout(() => {
+                document.getElementById('shell-sidebar-refresh').click();
+            }, 100);
+        }"""
+    )
+    cell = page.locator(".timeline-cell[data-src][data-ref]").first
+    cell.hover()
+    cell.locator(".timeline-cell-popout").click()
+
+    page.wait_for_function(
+        """
+        previous => {
+            const grid = document.getElementById('browse-tl-grid');
+            return grid && grid.getAttribute('data-grid-revision') !== previous;
+        }
+        """,
+        arg=old_revision,
+        timeout=10_000,
+    )
+    _wait_for_authorized_grid(page)
+    page.wait_for_timeout(1_000)
+
+    assert approval_response_seen
+    assert page.evaluate(
+        """() => {
+            const dialog = document.getElementById('browse-tl-popout-modal');
+            const modal = dialog && dialog.closest('.modal');
+            return !!(modal && modal.classList.contains('show'));
+        }"""
+    ) is False
+    title = page.locator("#browse-tl-popout-title")
+    if title.count():
+        assert title.text_content() == ""
+    assert (
+        page.locator(
+            "#browse-tl-popout-osd .openseadragon-container"
+        ).count()
+        == 0
+    )
 
 
 def test_compare_await_is_cancelled_by_grid_revision(

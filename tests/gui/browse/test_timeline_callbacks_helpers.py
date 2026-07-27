@@ -128,7 +128,7 @@ def test_source_reset_transaction_clears_all_timeline_dependent_state() -> None:
     assert reset[11] == []
     assert isinstance(reset[12], str) and reset[12].endswith(":reset")
     assert isinstance(reset[13], str) and reset[13]
-    assert reset[14:] == (None,)
+    assert reset[14:] == (None, None, False, None, "")
 
 
 def test_source_reset_revision_changes_when_shared_refresh_changes() -> None:

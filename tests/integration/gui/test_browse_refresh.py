@@ -13,7 +13,12 @@ from dash.exceptions import PreventUpdate
 
 from phenotypic.gui.browse import _ids as browse_ids
 from phenotypic.gui.browse import _callbacks as browse_callbacks
-from phenotypic.gui.browse._callbacks import register_callbacks
+from phenotypic.gui.browse._callbacks import (
+    SourceRevisionAuthority,
+    TimelineRevisionAuthority,
+    authorize_current_revision_candidate,
+    register_callbacks,
+)
 from phenotypic.gui.shell._ids import (
     SHELL_CLASSIFIER_CACHE_STORE,
     SHELL_SOURCE_IMAGE_ROOT_STORE,
@@ -92,6 +97,7 @@ def test_timeline_reset_consumes_shared_refresh_revision(tmp_path: Path) -> None
     assert refreshed[10].children == "Loading current source…"
     assert refreshed[11] == []
     assert refreshed[14] is None
+    assert refreshed[15:] == (None, False, None, "")
     assert browse_ids.BROWSE_TL_SOURCE_REVISION in str(metadata["output"])
 
 
@@ -170,3 +176,87 @@ def test_out_of_order_timeline_reset_cannot_roll_back_and_next_reset_recovers(
         {"relative_path": "recovered"},
         22,
     )[13]
+
+
+def test_reset_between_source_check_and_timeline_authorize_cannot_resurrect_grid(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    sandbox = SandboxRoot.from_path(tmp_path)
+    source_payload = source_payload_from_path(
+        sandbox,
+        source,
+        source="manual",
+    )
+    assert source_payload is not None
+    source_authority = SourceRevisionAuthority()
+    timeline_authority = TimelineRevisionAuthority()
+    source_authority.ensure_session("browser-1")
+    assert source_authority.authorize_grid(
+        "browser-1",
+        None,
+        "old-grid",
+    )
+    candidate = {
+        "session_id": "browser-1",
+        "generation": 2,
+        "revision": "old-grid",
+    }
+    old_authorized = threading.Event()
+    release_old = threading.Event()
+    original_authorize = timeline_authority.authorize
+
+    def _blocked_authorize(
+        session_id: str,
+        generation: int,
+        revision: str,
+        source_root: Path,
+    ) -> bool:
+        accepted = original_authorize(
+            session_id,
+            generation,
+            revision,
+            source_root,
+        )
+        if revision == "old-grid":
+            old_authorized.set()
+            assert release_old.wait(timeout=5)
+        return accepted
+
+    monkeypatch.setattr(timeline_authority, "authorize", _blocked_authorize)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        stale = executor.submit(
+            authorize_current_revision_candidate,
+            source_authority,
+            timeline_authority,
+            sandbox,
+            candidate,
+            source_payload,
+        )
+        assert old_authorized.wait(timeout=5)
+
+        reset_generation = source_authority.begin_reset("browser-1")
+        timeline_authority.retire("browser-1")
+        assert source_authority.publish_reset(
+            "browser-1",
+            reset_generation,
+            "refresh-1",
+        )
+        assert source_authority.authorize_grid(
+            "browser-1",
+            "refresh-1",
+            "new-grid",
+        )
+        assert original_authorize(
+            "browser-1",
+            3,
+            "new-grid",
+            source,
+        )
+        release_old.set()
+        assert stale.result(timeout=5) is None
+
+    assert timeline_authority.current("browser-1", 2, "old-grid") is None
+    assert timeline_authority.current("browser-1", 3, "new-grid") is not None
