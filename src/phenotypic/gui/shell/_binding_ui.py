@@ -159,6 +159,7 @@ def _diagnostic_text(
     target: str,
 ) -> str:
     notices: list[str] = []
+    submission_unknown = payload.get("submission_outcome") == "unknown"
     if payload.get("deduplicated") is True:
         notices.append("Reused the active request.")
     if payload.get("superseded_job_id"):
@@ -175,7 +176,7 @@ def _diagnostic_text(
     cancel_error = payload.get("cancel_error")
     if isinstance(cancel_error, str) and cancel_error:
         notices.append(f"Cancellation not confirmed: {cancel_error}")
-    if payload.get("submission_outcome") == "unknown":
+    if submission_unknown:
         submission_error = payload.get("submission_error")
         detail = (
             f" ({submission_error})"
@@ -259,7 +260,16 @@ def _diagnostic_text(
             "A newer request won. The superseded candidate was not published."
         )
     elif status in _ACTIVE_STATUSES:
-        notices.append(f"Preparing {target}; publication has not changed yet.")
+        if submission_unknown:
+            notices.append(
+                "Continuing to monitor the previously acknowledged job. Its "
+                "progress does not establish whether the unacknowledged "
+                "request published."
+            )
+        else:
+            notices.append(
+                f"Preparing {target}; publication has not changed yet."
+            )
 
     return " ".join(notices)
 

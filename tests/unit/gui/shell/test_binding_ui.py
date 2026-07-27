@@ -100,7 +100,13 @@ def test_unknown_retry_keeps_prior_active_progress_and_warns() -> None:
     assert state.progress_label == "40 of 100"
     assert state.cancel_disabled is False
     assert state.poll_disabled is False
-    assert "latest submission could not be confirmed" in state.diagnostic
+    assert state.diagnostic == (
+        "The latest submission could not be confirmed and may have been "
+        "accepted (HTTP 504). Continuing to monitor the previously "
+        "acknowledged job. Its progress does not establish whether the "
+        "unacknowledged request published."
+    )
+    assert "publication has not changed" not in state.diagnostic
     assert "previous Results + Analysis publication is unchanged" not in (
         state.diagnostic
     )

@@ -107,7 +107,12 @@ def async_binding_callback_source(
                     body: JSON.stringify(requestBody),
                 }}
             );
-            const data = await response.json().catch(() => ({{}}));
+            const parsed = await response.json().catch(() => ({{}}));
+            const data = (
+                parsed &&
+                typeof parsed === "object" &&
+                !Array.isArray(parsed)
+            ) ? parsed : {{}};
             if (shared.epoch !== epoch) {{
                 return window.dash_clientside.no_update;
             }}
@@ -115,16 +120,42 @@ def async_binding_callback_source(
                 const message = data.error || ("HTTP " + response.status);
                 return unknownSubmissionState(message);
             }}
-            const job = data && data.job ? data.job : data;
+            const job = (
+                data &&
+                typeof data.job === "object" &&
+                data.job !== null &&
+                !Array.isArray(data.job)
+            ) ? data.job : null;
             if (response.status !== 202) {{
+                const snapshot = (
+                    data &&
+                    typeof data.snapshot === "object" &&
+                    data.snapshot !== null &&
+                    !Array.isArray(data.snapshot)
+                ) ? data.snapshot : null;
+                const validSynchronousSuccess = (
+                    response.status === 200 &&
+                    data.status === "ok" &&
+                    typeof data.abs_path === "string" &&
+                    data.abs_path.length > 0 &&
+                    snapshot &&
+                    typeof snapshot.processing_fingerprint === "string" &&
+                    snapshot.processing_fingerprint.length > 0
+                );
+                if (!validSynchronousSuccess) {{
+                    return unknownSubmissionState(
+                        "Binding success acknowledgement was incomplete."
+                    );
+                }}
                 const complete = Object.assign({{}}, data, {{
                     status: "succeeded",
                     redirect_url: {redirect_literal},
-                    job: Object.assign({{}}, job, {{
+                    job: {{
                         status: "succeeded",
                         phase: "complete",
                         terminal: true,
-                    }}),
+                        target: data.abs_path,
+                    }},
                 }});
                 window.setTimeout(
                     () => window.location.assign({redirect_literal}),
@@ -132,12 +163,34 @@ def async_binding_callback_source(
                 );
                 return complete;
             }}
-            if (!data.poll_path || !data.cancel_path) {{
+            const jobId = (
+                typeof data.job_id === "string" &&
+                data.job_id.length > 0
+            ) ? data.job_id : null;
+            const expectedPathSuffix = jobId
+                ? ("/jobs/" + encodeURIComponent(jobId))
+                : null;
+            const activeJob = (
+                job &&
+                job.job_id === jobId &&
+                (job.status === "queued" || job.status === "running") &&
+                job.terminal === false
+            );
+            const consistentPaths = (
+                expectedPathSuffix &&
+                typeof data.poll_path === "string" &&
+                typeof data.cancel_path === "string" &&
+                data.poll_path === data.cancel_path &&
+                data.poll_path.split(/[?#]/, 1)[0].endsWith(
+                    expectedPathSuffix
+                )
+            );
+            if (!jobId || !activeJob || !consistentPaths) {{
                 return unknownSubmissionState(
-                    "Binding acknowledgement omitted its polling contract."
+                    "Binding acknowledgement had an incomplete polling contract."
                 );
             }}
-            shared.jobId = data.job_id || job.job_id || null;
+            shared.jobId = jobId;
             const state = Object.assign({{}}, data, {{
                 job: job,
                 redirect_url: {redirect_literal},

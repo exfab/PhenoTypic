@@ -57,7 +57,12 @@ def _evaluate_callback(
         return {{
             ok: response.ok,
             status: response.status,
-            json: async () => response.body,
+            json: async () => {{
+                if (response.json_error) {{
+                    throw new SyntaxError(response.json_error);
+                }}
+                return response.body;
+            }},
         }};
     }};
     (async () => {{
@@ -237,6 +242,188 @@ def test_proxy_rejection_does_not_assert_submission_was_not_accepted() -> None:
     assert observed["result"]["job"]["terminal"] is False
     assert observed["result"]["job"]["authoritative"] is False
     assert "unchanged" not in observed["result"]["job"]["detail"]
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        {"ok": True, "status": 200, "body": {}},
+        {
+            "ok": True,
+            "status": 200,
+            "json_error": "unexpected end of JSON input",
+        },
+    ],
+)
+def test_incomplete_200_does_not_redirect_as_success(
+    response: dict[str, object],
+) -> None:
+    """Only a complete synchronous-success contract permits navigation."""
+    source = async_binding_callback_source(
+        api_url="/sandbox/api/viewer/output-root",
+        redirect_url="/results/",
+        selection_required=False,
+    )
+    observed = _evaluate_callback(
+        source,
+        invocation="callback(1, null)",
+        responses=[response],
+    )
+
+    assert observed["result"]["status"] == "unknown"
+    assert observed["result"]["submission_outcome"] == "unknown"
+    assert observed["result"]["job"]["terminal"] is False
+    assert observed["navigations"] == []
+
+
+def test_complete_synchronous_success_contract_redirects() -> None:
+    """The backward-compatible 200 contract remains explicitly supported."""
+    source = async_binding_callback_source(
+        api_url="/sandbox/api/viewer/output-root",
+        redirect_url="/results/",
+        selection_required=False,
+    )
+    observed = _evaluate_callback(
+        source,
+        invocation="callback(1, null)",
+        responses=[
+            {
+                "ok": True,
+                "status": 200,
+                "body": {
+                    "status": "ok",
+                    "abs_path": "/sandbox/results/output",
+                    "snapshot": {
+                        "processing_fingerprint": "abcdef012345",
+                    },
+                },
+            }
+        ],
+    )
+
+    assert observed["result"]["job"]["status"] == "succeeded"
+    assert observed["result"]["job"]["terminal"] is True
+    assert observed["navigations"] == ["/results/"]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {
+            "poll_path": "/sandbox/api/viewer/output-root/jobs/job-1",
+            "cancel_path": "/sandbox/api/viewer/output-root/jobs/job-1",
+            "job": {
+                "job_id": "job-1",
+                "status": "running",
+                "terminal": False,
+            },
+        },
+        {
+            "job_id": "job-1",
+            "poll_path": "/sandbox/api/viewer/output-root/jobs/job-1",
+            "cancel_path": "/sandbox/api/viewer/output-root/jobs/job-1",
+            "job": {
+                "job_id": "job-1",
+                "terminal": False,
+            },
+        },
+        {
+            "job_id": "job-1",
+            "poll_path": "/sandbox/api/viewer/output-root/jobs/job-1",
+            "cancel_path": "/sandbox/api/viewer/output-root/jobs/job-2",
+            "job": {
+                "job_id": "job-1",
+                "status": "queued",
+                "terminal": False,
+            },
+        },
+        {
+            "job_id": "job-1",
+            "poll_path": "/sandbox/api/viewer/output-root/jobs/job-1",
+            "cancel_path": "/sandbox/api/viewer/output-root/jobs/job-1",
+            "job": {
+                "job_id": "different-job",
+                "status": "queued",
+                "terminal": False,
+            },
+        },
+    ],
+)
+def test_incomplete_202_contract_retains_unknown_outcome(
+    body: dict[str, object],
+) -> None:
+    """A 202 must identify one active job and its consistent control path."""
+    source = async_binding_callback_source(
+        api_url="/sandbox/api/viewer/output-root",
+        redirect_url="/results/",
+        selection_required=False,
+    )
+    observed = _evaluate_callback(
+        source,
+        invocation="callback(1, null)",
+        responses=[{"ok": True, "status": 202, "body": body}],
+    )
+
+    assert observed["result"]["status"] == "unknown"
+    assert observed["result"]["submission_outcome"] == "unknown"
+    assert observed["result"]["job"]["terminal"] is False
+    assert observed["navigations"] == []
+
+
+@pytest.mark.parametrize(
+    ("status", "body"),
+    [
+        (200, {}),
+        (
+            202,
+            {
+                "job_id": "possible-new-job",
+                "poll_path": (
+                    "/sandbox/api/viewer/output-root/jobs/possible-new-job"
+                ),
+                "cancel_path": (
+                    "/sandbox/api/viewer/output-root/jobs/possible-new-job"
+                ),
+                "job": {
+                    "job_id": "possible-new-job",
+                    "terminal": False,
+                },
+            },
+        ),
+    ],
+)
+def test_incomplete_ok_response_does_not_replace_prior_authority(
+    status: int,
+    body: dict[str, object],
+) -> None:
+    """Malformed success-shaped responses leave the known monitor intact."""
+    source = async_binding_callback_source(
+        api_url="/sandbox/api/viewer/output-root",
+        redirect_url="/analysis/",
+        selection_required=False,
+    )
+    active = {
+        "job_id": "known-job",
+        "poll_path": "/sandbox/api/viewer/output-root/jobs/known-job",
+        "cancel_path": "/sandbox/api/viewer/output-root/jobs/known-job",
+        "job": {
+            "job_id": "known-job",
+            "status": "running",
+            "phase": "inventory",
+            "terminal": False,
+        },
+    }
+    observed = _evaluate_callback(
+        source,
+        invocation=f"callback(1, {json.dumps(active)})",
+        responses=[{"ok": True, "status": status, "body": body}],
+    )
+
+    assert observed["result"]["job"] == active["job"]
+    assert observed["result"]["job_id"] == "known-job"
+    assert observed["result"]["poll_path"] == active["poll_path"]
+    assert observed["result"]["submission_outcome"] == "unknown"
+    assert observed["navigations"] == []
 
 
 def test_poll_updates_progress_then_navigates_only_on_success() -> None:
