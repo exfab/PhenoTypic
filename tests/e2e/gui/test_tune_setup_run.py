@@ -110,20 +110,20 @@ _LAUNCHER = textwrap.dedent(
         stdout_log_path = sandbox_dir / "captured-run.log"
 
     class _CapturingRunner:
-        def reap(self, run_id):
+        def reap(self, run_id, *, generation):
             return None
 
-        def start(self, run_id, argv, *, output_dir):
+        def start(self, run_id, argv, *, output_dir, generation):
             (sandbox_dir / "captured-argv.json").write_text(
                 json.dumps(argv),
                 encoding="utf-8",
             )
             return _Handle()
 
-        def is_running(self, run_id):
+        def is_running(self, run_id, *, generation):
             return True
 
-        def snapshot_log(self, run_id, *, tail):
+        def snapshot_log(self, run_id, *, generation, tail):
             return ""
 
     app = create_app(

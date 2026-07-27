@@ -209,6 +209,7 @@ def test_lifecycle_apis_require_generation(
     tmp_path: Path,
 ) -> None:
     """No public lifecycle or mutation path accepts an unfenced run id."""
+    assert not hasattr(runner, "list_run_ids")
     calls = (
         lambda: runner.start(  # type: ignore[call-arg]
             "missing-generation",
@@ -265,28 +266,30 @@ def test_log_directory_failure_releases_reservation(
 ) -> None:
     output_file = tmp_path / "not-a-directory"
     output_file.write_text("occupied", encoding="utf-8")
+    generation = uuid4()
     with pytest.raises(OSError):
         runner.start(
             run_id="log-failure",
             argv=[sys.executable, "-c", "pass"],
             output_dir=output_file,
-            generation=uuid4(),
+            generation=generation,
         )
-    assert "log-failure" not in runner.list_run_ids()
+    assert runner.get("log-failure", generation=generation) is None
 
 
 def test_popen_failure_releases_reservation(
     runner: LocalRunner,
     tmp_path: Path,
 ) -> None:
+    generation = uuid4()
     with pytest.raises(FileNotFoundError):
         runner.start(
             run_id="popen-failure",
             argv=[str(tmp_path / "missing-executable")],
             output_dir=tmp_path,
-            generation=uuid4(),
+            generation=generation,
         )
-    assert "popen-failure" not in runner.list_run_ids()
+    assert runner.get("popen-failure", generation=generation) is None
 
 
 def test_exit_observer_start_failure_terminates_reaps_and_releases(
@@ -308,6 +311,7 @@ def test_exit_observer_start_failure_terminates_reaps_and_releases(
         return threading.Thread(**kwargs)
 
     runner = LocalRunner(thread_factory=_thread_factory)
+    generation = uuid4()
     with pytest.raises(RuntimeError, match="observer unavailable"):
         runner.start(
             run_id="observer-failure",
@@ -317,11 +321,11 @@ def test_exit_observer_start_failure_terminates_reaps_and_releases(
                 "import time; time.sleep(30)",
             ],
             output_dir=tmp_path,
-            generation=uuid4(),
+            generation=generation,
         )
     assert len(captured) == 1
     assert captured[0].process.poll() is not None
-    assert "observer-failure" not in runner.list_run_ids()
+    assert runner.get("observer-failure", generation=generation) is None
 
 
 def test_tee_start_failure_terminates_reaps_and_releases(
@@ -338,6 +342,7 @@ def test_tee_start_failure_terminates_reaps_and_releases(
         return _FailingStartThread(**kwargs)
 
     runner = LocalRunner(thread_factory=_thread_factory)
+    generation = uuid4()
     with pytest.raises(RuntimeError, match="tee unavailable"):
         runner.start(
             run_id="tee-failure",
@@ -347,10 +352,10 @@ def test_tee_start_failure_terminates_reaps_and_releases(
                 "import time; time.sleep(30)",
             ],
             output_dir=tmp_path,
-            generation=uuid4(),
+            generation=generation,
         )
     assert captured[0].process.poll() is not None
-    assert "tee-failure" not in runner.list_run_ids()
+    assert runner.get("tee-failure", generation=generation) is None
 
 
 # ---------------------------------------------------------------------------
@@ -628,7 +633,7 @@ def test_finished_handle_retention_is_bounded(tmp_path: Path) -> None:
         generation=uuid4(),
     )
     assert _wait_until(lambda: second.finished_at is not None)
-    assert runner.list_run_ids() == ["second"]
+    assert runner.get("first", generation=first.generation) is None
     assert runner.get("second", generation=second.generation) is second
 
 

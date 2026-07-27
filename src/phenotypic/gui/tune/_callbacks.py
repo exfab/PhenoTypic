@@ -30,7 +30,7 @@ import json
 import logging
 from pathlib import Path
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeout
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from dash import ctx, no_update
 
@@ -60,7 +60,11 @@ from phenotypic.gui.tune._command import (
 )
 from phenotypic.gui.tune._deploy import deploy_tune_run
 from phenotypic.gui.tune._export import export_best_from_run
-from phenotypic.gui.tune._monitor import cancel_prompt, run_switcher_items
+from phenotypic.gui.tune._monitor import (
+    cancel_prompt,
+    parse_run_receipt,
+    run_switcher_items,
+)
 from phenotypic.gui.tune._run_image_source import resolve_run_images
 from phenotypic.gui.tune._setup_authoring import (
     SetupDraft,
@@ -599,42 +603,57 @@ def _build_command_from_controls(
     )
 
 
+def _record_for_monitor_receipt(
+    registry: object,
+    receipt: object,
+) -> Any | None:
+    """Resolve only the registry record matching an exact Tune receipt."""
+    identity = parse_run_receipt(receipt)
+    if identity is None:
+        return None
+    run_id, generation = identity
+    record = registry.get(run_id)  # type: ignore[attr-defined]
+    if record is None or record.generation != generation:
+        return None
+    return record
+
+
 def cancel_monitor_run(
     *,
     runner: object,
     registry: object,
-    run_id: str | None,
+    receipt: object,
     confirmed: bool = True,
 ) -> str:
     """Cancel a running Local tune run and update the registry."""
-    if not run_id:
+    identity = parse_run_receipt(receipt)
+    if identity is None:
         return "No run selected."
-    record = registry.get(run_id)  # type: ignore[attr-defined]
+    run_id, generation = identity
+    record = _record_for_monitor_receipt(registry, receipt)
     if record is None:
-        return f"Run not found: {run_id}"
+        return f"Selected run generation is no longer current: {run_id}"
     if record.mode != "local":
         return "SLURM cancellation is not supported in v1."
-    if record.generation is None:
-        return f"Local run has no controllable launch generation: {run_id}"
     if not confirmed:
         return cancel_prompt(record.run_id, record.mode)
     reconciled = reconcile_local_run_status(
         runner=runner,
         registry=registry,
-        run_id=run_id,
+        receipt=receipt,
     )
     if reconciled in {"complete", "failed"}:
         return f"Local run already exited: {run_id} ({reconciled})."
     cancel_prompt(record.run_id, record.mode)
     stopped = runner.stop(  # type: ignore[attr-defined]
         run_id,
-        generation=record.generation,
+        generation=generation,
     )
     if not stopped:
         return f"Local run is not active: {run_id}"
     registry.compare_and_set(  # type: ignore[attr-defined]
         run_id,
-        record.generation,
+        generation,
         expected_statuses={"running", "submitting"},
         status="cancelled",
     )
@@ -645,13 +664,16 @@ def reconcile_run_status(
     *,
     runner: object,
     registry: object,
-    run_id: str,
+    receipt: object,
 ) -> str | None:
     """Reap an exited runner process and mirror its final status into the registry."""
-    record = registry.get(run_id)  # type: ignore[attr-defined]
+    identity = parse_run_receipt(receipt)
+    if identity is None:
+        return None
+    run_id, generation = identity
+    record = _record_for_monitor_receipt(registry, receipt)
     if (
         record is None
-        or record.generation is None
         or record.mode not in {"local", "slurm"}
         or record.status not in {"running", "submitting"}
     ):
@@ -659,13 +681,13 @@ def reconcile_run_status(
     is_running = getattr(runner, "is_running", None)
     if callable(is_running) and is_running(
         run_id,
-        generation=record.generation,
+        generation=generation,
     ):
         return str(record.status)
     reap = getattr(runner, "reap", None)
     if not callable(reap):
         return None
-    returncode = reap(run_id, generation=record.generation)
+    returncode = reap(run_id, generation=generation)
     if returncode is None:
         return None
     status = "running" if record.mode == "slurm" and returncode == 0 else (
@@ -673,7 +695,7 @@ def reconcile_run_status(
     )
     registry.compare_and_set(  # type: ignore[attr-defined]
         run_id,
-        record.generation,
+        generation,
         expected_statuses={"running", "submitting"},
         status=status,
     )
@@ -684,13 +706,17 @@ def reconcile_local_run_status(
     *,
     runner: object,
     registry: object,
-    run_id: str,
+    receipt: object,
 ) -> str | None:
     """Reap an exited Local run and mirror its final status into the registry."""
-    record = registry.get(run_id)  # type: ignore[attr-defined]
+    record = _record_for_monitor_receipt(registry, receipt)
     if record is None or record.mode != "local":
         return None
-    return reconcile_run_status(runner=runner, registry=registry, run_id=run_id)
+    return reconcile_run_status(
+        runner=runner,
+        registry=registry,
+        receipt=receipt,
+    )
 
 
 def _load_spec_preflight_issues(spec_path: str, strategy: str) -> list[str]:
@@ -711,13 +737,17 @@ def _load_spec_preflight_issues(spec_path: str, strategy: str) -> list[str]:
     return issues
 
 
-def export_monitor_best_pipeline(*, registry: object, run_id: str | None) -> Path:
+def export_monitor_best_pipeline(*, registry: object, receipt: object) -> Path:
     """Export the active run's best pipeline from its params sidecar."""
-    if not run_id:
+    identity = parse_run_receipt(receipt)
+    if identity is None:
         raise ValueError("No run selected.")
-    record = registry.get(run_id)  # type: ignore[attr-defined]
+    run_id, _generation = identity
+    record = _record_for_monitor_receipt(registry, receipt)
     if record is None:
-        raise ValueError(f"Run not found: {run_id}")
+        raise ValueError(
+            f"Selected run generation is no longer current: {run_id}"
+        )
     return export_best_from_run(record.output_dir)
 
 
@@ -1659,7 +1689,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         if not command.deploy_eligible or command.output_dir is None:
             return ("\n".join(command.issues), no_update, *([no_update] * 8))
         try:
-            run_id = deploy_tune_run(
+            receipt = deploy_tune_run(
                 runner=runner,
                 registry=registry,
                 sandbox=sandbox,
@@ -1674,6 +1704,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
                 no_update,
                 *([no_update] * 8),
             )
+        run_id = receipt["run_id"]
         active: _nav.Destination = "monitor"
         view_classes = [
             _nav.destination_view_class(name, active) for name in _nav.DESTINATIONS
@@ -1683,8 +1714,8 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         ]
         return (
             f"Deployed: {run_id}",
-            {"run_id": run_id, "mode": command.execution_target},
-            run_id,
+            {**receipt, "mode": command.execution_target},
+            receipt,
             active,
             *view_classes,
             *button_classes,
@@ -1700,26 +1731,32 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
     )
     def _render_monitor_registry(
         _n: int | None,
-        active_run_id: str | None,
+        active_receipt: object,
     ) -> tuple[object, bool, str, str]:
         registry = app.server.config.get(CFG_RUN_REGISTRY)
         if registry is None:
             return "No run registry.", True, "", ""
         runner = app.server.config.get(CFG_RUNNER)
-        if runner is not None:
-            for record in registry.list():
-                reconcile_run_status(
-                    runner=runner,
-                    registry=registry,
-                    run_id=record.run_id,
-                )
+        if runner is not None and parse_run_receipt(active_receipt) is not None:
+            reconcile_run_status(
+                runner=runner,
+                registry=registry,
+                receipt=active_receipt,
+            )
         records = registry.list()
-        items = run_switcher_items(records, active_id=active_run_id)
+        items = run_switcher_items(
+            records,
+            active_receipt=active_receipt,
+        )
         active_item = next((item for item in items if item.active), None)
         switcher = [
             html.Button(
                 f"{item.run_id} | {item.mode} | {item.status}",
-                id={"type": ids.TUNE_MONITOR_RUN_SWITCH, "run_id": item.run_id},
+                id={
+                    "type": ids.TUNE_MONITOR_RUN_SWITCH,
+                    "run_id": item.run_id,
+                    "generation": item.generation or "",
+                },
                 n_clicks=0,
                 className=(
                     "tune-monitor-switcher-item"
@@ -1732,17 +1769,12 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         local_text = ""
         slurm_text = ""
         if active_item is not None and active_item.mode == "local":
-            active_record = registry.get(active_item.run_id)
-            generation = (
-                active_record.generation
-                if active_record is not None
-                else None
-            )
             lines = []
-            if runner is not None and generation is not None:
+            identity = parse_run_receipt(active_receipt)
+            if runner is not None and identity is not None:
                 lines = runner.snapshot_log(
-                    active_item.run_id,
-                    generation=generation,
+                    identity[0],
+                    generation=identity[1],
                     tail=40,
                 )
             local_text = "\n".join(lines) if lines else "No local log lines yet."
@@ -1755,14 +1787,27 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
 
     @app.callback(
         Output(ids.TUNE_MONITOR_ACTIVE_RUN_STORE, "data", allow_duplicate=True),
-        Input({"type": ids.TUNE_MONITOR_RUN_SWITCH, "run_id": ALL}, "n_clicks"),
+        Input(
+            {
+                "type": ids.TUNE_MONITOR_RUN_SWITCH,
+                "run_id": ALL,
+                "generation": ALL,
+            },
+            "n_clicks",
+        ),
         prevent_initial_call=True,
     )
     def _select_monitor_run(_clicks: object) -> object:
         triggered = ctx.triggered_id
         if isinstance(triggered, dict) and triggered.get("type") == ids.TUNE_MONITOR_RUN_SWITCH:
             run_id = triggered.get("run_id")
-            return run_id if isinstance(run_id, str) else no_update
+            generation = triggered.get("generation")
+            receipt = {"run_id": run_id, "generation": generation}
+            return (
+                receipt
+                if parse_run_receipt(receipt) is not None
+                else no_update
+            )
         return no_update
 
     @app.callback(
@@ -1773,7 +1818,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
     )
     def _cancel_monitor_run(
         n_clicks: int | None,
-        active_run_id: str | None,
+        active_receipt: object,
     ) -> str:
         if not n_clicks:
             return ""
@@ -1784,7 +1829,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         return cancel_monitor_run(
             runner=runner,
             registry=registry,
-            run_id=active_run_id,
+            receipt=active_receipt,
         )
 
     @app.callback(
@@ -1795,7 +1840,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
     )
     def _export_monitor_best(
         n_clicks: int | None,
-        active_run_id: str | None,
+        active_receipt: object,
     ) -> str:
         if not n_clicks:
             return ""
@@ -1805,7 +1850,7 @@ def register_callbacks(app, *, sandbox=None) -> None:  # type: ignore[no-untyped
         try:
             written = export_monitor_best_pipeline(
                 registry=registry,
-                run_id=active_run_id,
+                receipt=active_receipt,
             )
         except FileNotFoundError as exc:
             return f"Export unavailable: {exc}"

@@ -99,8 +99,10 @@ or track a SLURM job id.
 ## Monitor — watch the study
 
 The **Monitor** destination opens the live read over the study. A
-run-switcher lists every registered Local/SLURM run; the active run drives
-the figures. A Local run shows its stdout tail and a **Cancel Local**
+run-switcher lists every registered Local/SLURM run. Selecting one retains its
+exact run ID and generation, so a stale Monitor page cannot read, reap, or stop
+a newer run that reused the same output identity. The active run drives the
+figures. A Local run shows its stdout tail and a **Cancel Local**
 button (wrapped in a confirm prompt); SLURM runs show fleet status and are
 not killed from the GUI in v1. The objective curve plots the raw per-trial
 scores plus the monotone running-best trace, the importance bars rank the

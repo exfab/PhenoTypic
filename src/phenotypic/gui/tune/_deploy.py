@@ -6,6 +6,7 @@ from pathlib import Path, PurePath
 from typing import TYPE_CHECKING, Any
 
 from phenotypic.gui.shell._runs_registry import RunStatus
+from phenotypic.gui.tune._monitor import RunReceipt, run_receipt
 
 if TYPE_CHECKING:
     from phenotypic.gui.shell._runs_registry import RunRegistry
@@ -30,7 +31,7 @@ def deploy_tune_run(
     argv: list[str],
     output_dir: Path,
     slurm: bool,
-) -> str:
+) -> RunReceipt:
     """Register and launch a Tune run via ``LocalRunner.start``.
 
     SLURM Tune launches still go through the local runner: the spawned tune CLI
@@ -78,7 +79,10 @@ def deploy_tune_run(
         pid=pid if isinstance(pid, int) else None,
         log_paths=(log_path,) if isinstance(log_path, Path) else (),
     )
-    return run_id
+    receipt = run_receipt(record)
+    if receipt is None:  # pragma: no cover
+        raise RuntimeError("deployed Tune run has no exact receipt")
+    return receipt
 
 
 __all__ = ["deploy_tune_run"]

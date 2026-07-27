@@ -287,12 +287,6 @@ class LocalRunner:
                 return None
             return handle
 
-    def list_run_ids(self) -> list[str]:
-        """Return live + reserved run_ids. May include reservations from
-        in-flight ``start()`` calls."""
-        with self._lock:
-            return list(self._handles.keys())
-
     def is_running(
         self,
         run_id: str,

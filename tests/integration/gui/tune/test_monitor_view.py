@@ -16,6 +16,7 @@ from phenotypic.gui.tune._callbacks import (
     export_monitor_best_pipeline,
     reconcile_run_status,
 )
+from phenotypic.gui.tune._monitor import run_receipt
 from phenotypic.sdk_ import best_params_path, best_pipeline_path, tuning_spec_path
 from phenotypic.tune import (
     Categorical,
@@ -51,16 +52,44 @@ class _Runner:
         self.stopped = []
         self.running = True
         self.returncode = None
+        self.running_checks = []
+        self.reaped = []
+        self.snapshots = []
 
     def stop(self, run_id, *, generation: UUID):
         self.stopped.append((run_id, generation))
         return self.running
 
     def is_running(self, run_id, *, generation: UUID):
+        self.running_checks.append((run_id, generation))
         return self.running
 
     def reap(self, run_id, *, generation: UUID):
+        self.reaped.append((run_id, generation))
         return self.returncode
+
+    def snapshot_log(self, run_id, *, generation: UUID, tail: int):
+        self.snapshots.append((run_id, generation, tail))
+        return []
+
+
+def _receipt_for(registry: RunRegistry, run_id: str) -> dict[str, str]:
+    """Return the exact receipt for one registered test record."""
+    record = registry.get(run_id)
+    assert record is not None
+    receipt = run_receipt(record)
+    assert receipt is not None
+    return receipt
+
+
+def _callback_by_name(app, name: str):
+    """Return one unwrapped Dash callback by its Python function name."""
+    return next(
+        callback.__wrapped__
+        for spec in app.callback_map.values()
+        if (callback := spec.get("callback")) is not None
+        and callback.__wrapped__.__name__ == name
+    )
 
 
 def _spec(tmp_path: Path) -> TuningSpec:
@@ -109,7 +138,7 @@ def test_local_cancel_stops_runner_and_updates_registry(tmp_path: Path):
     note = cancel_monitor_run(
         runner=runner,
         registry=registry,
-        run_id="local-run",
+        receipt=_receipt_for(registry, "local-run"),
     )
 
     record = registry.get("local-run")
@@ -138,13 +167,76 @@ def test_local_cancel_can_return_confirmation_prompt_without_stopping(
     note = cancel_monitor_run(
         runner=runner,
         registry=registry,
-        run_id="local-run",
+        receipt=_receipt_for(registry, "local-run"),
         confirmed=False,
     )
 
     assert runner.stopped == []
     assert "SIGTERM" in note
     assert registry.get("local-run").status == "running"  # type: ignore[union-attr]
+
+
+def test_stale_tune_receipt_cannot_touch_replacement_generation(
+    tmp_path: Path,
+) -> None:
+    """A stale Monitor page cannot inspect, reap, log, or stop replacement B."""
+    runner = _Runner()
+    registry = RunRegistry()
+    predecessor = RunRecord(
+        run_id="same-run",
+        mode="local",
+        output_dir=tmp_path,
+        rel_path="same-run",
+        generation=uuid4(),
+        status="complete",
+    )
+    registry.register(predecessor)
+    stale_receipt = run_receipt(predecessor)
+    assert stale_receipt is not None
+    replacement = RunRecord(
+        run_id="same-run",
+        mode="local",
+        output_dir=tmp_path,
+        rel_path="same-run",
+        generation=uuid4(),
+        status="running",
+    )
+    registry.register(replacement)
+
+    note = cancel_monitor_run(
+        runner=runner,
+        registry=registry,
+        receipt=stale_receipt,
+    )
+    status = reconcile_run_status(
+        runner=runner,
+        registry=registry,
+        receipt=stale_receipt,
+    )
+    app = create_app(
+        root=None,
+        url_prefix="/tune/",
+        registry=registry,
+        runner=runner,
+    )
+    _switcher, cancel_disabled, local_text, _slurm_text = (
+        _callback_by_name(app, "_render_monitor_registry")(
+            0,
+            stale_receipt,
+        )
+    )
+
+    assert "no longer current" in note
+    assert status is None
+    assert cancel_disabled is True
+    assert local_text == ""
+    assert runner.running_checks == []
+    assert runner.reaped == []
+    assert runner.snapshots == []
+    assert runner.stopped == []
+    current = registry.get("same-run")
+    assert current is replacement
+    assert current.status == "running"
 
 
 def test_slurm_cancel_is_not_supported(tmp_path: Path):
@@ -164,7 +256,7 @@ def test_slurm_cancel_is_not_supported(tmp_path: Path):
     note = cancel_monitor_run(
         runner=runner,
         registry=registry,
-        run_id="slurm-run",
+        receipt=_receipt_for(registry, "slurm-run"),
     )
 
     assert runner.stopped == []
@@ -199,7 +291,10 @@ def test_monitor_export_uses_active_registry_run(tmp_path: Path):
         )
     )
 
-    written = export_monitor_best_pipeline(registry=registry, run_id="local-run")
+    written = export_monitor_best_pipeline(
+        registry=registry,
+        receipt=_receipt_for(registry, "local-run"),
+    )
 
     assert written == best_pipeline_path(output_dir)
     reloaded = ImagePipeline.from_json(written.read_text())
@@ -226,7 +321,7 @@ def test_local_cancel_reconciles_already_exited_runner(tmp_path: Path):
     note = cancel_monitor_run(
         runner=runner,
         registry=registry,
-        run_id="local-run",
+        receipt=_receipt_for(registry, "local-run"),
     )
 
     assert runner.stopped == []
@@ -253,7 +348,7 @@ def test_slurm_submitter_reap_marks_successful_submit_as_running(tmp_path: Path)
     status = reconcile_run_status(
         runner=runner,
         registry=registry,
-        run_id="slurm-run",
+        receipt=_receipt_for(registry, "slurm-run"),
     )
 
     assert status == "running"
@@ -279,7 +374,7 @@ def test_slurm_submitter_reap_marks_failed_submitter_failed(tmp_path: Path):
     status = reconcile_run_status(
         runner=runner,
         registry=registry,
-        run_id="slurm-run",
+        receipt=_receipt_for(registry, "slurm-run"),
     )
 
     assert status == "failed"
