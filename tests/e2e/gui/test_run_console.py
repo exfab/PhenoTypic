@@ -191,20 +191,23 @@ def test_metadata_preflight_shows_ambient_descriptor_but_defaults_to_omit(
     payload = metadata_payload_from_path(sandbox, metadata)
     assert payload is not None
     page.goto(hub_url + "/run/")
+    page.wait_for_selector("#rc-metadata-preflight")
+    page.wait_for_function(
+        """() => (
+            window.dash_clientside
+            && typeof window.dash_clientside.set_props === "function"
+        )"""
+    )
     page.evaluate(
-        """(values) => {
+        """(metadataPayload) => {
             window.dash_clientside.set_props(
-                "shell-source-image-root-store", {data: values.source}
-            );
-            window.dash_clientside.set_props(
-                "shell-metadata-csv-store", {data: values.metadata}
+                "shell-metadata-csv-store", {data: metadataPayload}
             );
         }""",
-        {
-            "source": None,
-            "metadata": payload,
-        },
+        payload,
     )
+    preflight = page.locator("#rc-metadata-preflight")
+    expect(preflight).to_contain_text(str(metadata))
     page.evaluate(
         """(source) => window.dash_clientside.set_props(
             "rc-store-input-dir", {data: source}
@@ -212,7 +215,6 @@ def test_metadata_preflight_shows_ambient_descriptor_but_defaults_to_omit(
         str(fake_sandbox / "plate1"),
     )
 
-    preflight = page.locator("#rc-metadata-preflight")
     expect(preflight).to_contain_text(str(metadata))
     expect(preflight).to_contain_text("Status: compatible")
     expect(preflight).to_contain_text("1/1 input image(s) matched")

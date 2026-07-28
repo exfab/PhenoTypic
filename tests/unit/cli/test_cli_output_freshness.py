@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -88,14 +88,19 @@ def test_symlinked_allowed_log_file_is_not_safe(tmp_path: Path) -> None:
     assert not is_safe_gui_log_entry(log_dir)
 
 
-def _write_launch_owner(output_dir: Path) -> Path:
+def _write_launch_owner(
+    output_dir: Path,
+    *,
+    generation: UUID | None = None,
+) -> Path:
     owner = progress_dir(output_dir) / GUI_LAUNCH_OWNER_JSON
+    owner_generation = generation or uuid4()
     atomic_write_json(
         owner,
         {
             "version": 1,
             "run_id": "fresh",
-            "generation": str(uuid4()),
+            "generation": str(owner_generation),
             "mode": "local",
             "output_dir": str(output_dir),
             "rel_path": "fresh",
@@ -112,6 +117,52 @@ def test_exact_prelaunch_owner_state_is_safe(tmp_path: Path) -> None:
     owner.with_suffix(".lock").touch()
 
     assert is_safe_gui_launch_state_entry(output_dir / ".phenotypic")
+
+
+@pytest.mark.parametrize("filenames", [(), ("stdout",), ("stdout", "stderr")])
+def test_generation_matched_submitter_logs_are_safe(
+    tmp_path: Path,
+    filenames: tuple[str, ...],
+) -> None:
+    output_dir = tmp_path / "output"
+    generation = uuid4()
+    _write_launch_owner(output_dir, generation=generation)
+    gui_logs = output_dir / ".phenotypic" / "logs" / "gui"
+    gui_logs.mkdir(parents=True)
+    for stream in filenames:
+        (gui_logs / f"submitter.{generation.hex}.{stream}.log").touch()
+
+    assert is_safe_gui_launch_state_entry(output_dir / ".phenotypic")
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "submitter.other.stdout.log",
+        "submitter.stdout.log",
+        "notes.txt",
+    ],
+)
+def test_unmatched_submitter_logs_are_not_fresh(
+    tmp_path: Path,
+    filename: str,
+) -> None:
+    output_dir = tmp_path / "output"
+    _write_launch_owner(output_dir)
+    gui_logs = output_dir / ".phenotypic" / "logs" / "gui"
+    gui_logs.mkdir(parents=True)
+    (gui_logs / filename).touch()
+
+    assert not is_safe_gui_launch_state_entry(output_dir / ".phenotypic")
+
+
+def test_nested_submitter_log_entry_is_not_fresh(tmp_path: Path) -> None:
+    output_dir = tmp_path / "output"
+    _write_launch_owner(output_dir)
+    nested = output_dir / ".phenotypic" / "logs" / "gui" / "nested"
+    nested.mkdir(parents=True)
+
+    assert not is_safe_gui_launch_state_entry(output_dir / ".phenotypic")
 
 
 @pytest.mark.parametrize(

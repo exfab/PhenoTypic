@@ -75,6 +75,7 @@ dependencies = [
     "python-lucide>=0.2.24",
     "polars[rtcompat]>=1.41.2",
     "duckdb>=1.5.4",
+    "llvmlite>=0.45.1",
 ]
 
 [project.urls]

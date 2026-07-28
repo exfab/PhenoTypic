@@ -260,14 +260,20 @@ def test_generate_recompile_scripts_write_manifest_and_worker_arrays(
     )
 
     output_dir = tmp_path / "out"
-    _write_parquet(
+    aggregate = (
         output_dir
         / "results"
         / "plate_a"
         / "measurements"
-        / "_dataset_aggregated.parquet",
-        [1],
+        / "_dataset_aggregated.parquet"
     )
+    aggregate.parent.mkdir(parents=True, exist_ok=True)
+    pl.DataFrame(
+        {
+            "Size_Area": [1],
+            str(METADATA.IMAGE_NAME): ["plate_a"],
+        }
+    ).write_parquet(aggregate)
     _write_parquet(
         output_dir
         / "results"
