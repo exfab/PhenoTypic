@@ -51,7 +51,7 @@ from typing import TYPE_CHECKING, Annotated, Any, List, Optional
 from pydantic import PrivateAttr, field_validator
 
 from phenotypic.abc_ import GpuDetector
-from phenotypic.detect.nn._checkpoint_manager import Device
+from phenotypic.detect.nn._helper._checkpoint_manager import Device
 from phenotypic.sdk_.typing_ import (
     DinoSize,
     DinoVersion,
@@ -339,8 +339,8 @@ class Insid3Detector(GpuDetector):
 
         import numpy as np
 
-        from phenotypic.detect.nn._checkpoint_manager import resolve_device
-        from phenotypic.detect.nn._dino_support import (
+        from phenotypic.detect.nn._helper._checkpoint_manager import resolve_device
+        from phenotypic.detect.nn._helper._dino_support import (
             backbone_patch_size,
             extract_reference_features,
             load_dino_backbone,
@@ -432,7 +432,7 @@ class Insid3Detector(GpuDetector):
         self._ensure_model_loaded()
         rgb = sample
 
-        from phenotypic.detect.nn._tiling import (
+        from phenotypic.detect.nn._helper._tiling import (
             _plan_tiles,
             stitch_semantic_tiles,
         )
@@ -453,7 +453,7 @@ class Insid3Detector(GpuDetector):
 
     def _match_crop(self, rgb: "np.ndarray") -> "np.ndarray":
         """Debias + cosine-match one crop to the prototype → boolean mask."""
-        from phenotypic.detect.nn._dino_support import (
+        from phenotypic.detect.nn._helper._dino_support import (
             backbone_patch_size,
             cosine_match_to_mask,
             extract_patch_features,

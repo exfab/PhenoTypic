@@ -57,11 +57,14 @@ class TestDinoSam2Construction:
         assert det._hf_dino_id() == "facebook/dinov3-vitb16-pretrain-lvd1689m"
 
     def test_dinov2_hf_id(self):
-        assert DinoSam2Detector(dino_size="base")._hf_dino_id() == "facebook/dinov2-base"
+        assert DinoSam2Detector(
+            dino_size="base")._hf_dino_id() == "facebook/dinov2-base"
 
     def test_dinov2_hf_id_small_and_large(self):
-        assert DinoSam2Detector(dino_size="small")._hf_dino_id() == "facebook/dinov2-small"
-        assert DinoSam2Detector(dino_size="large")._hf_dino_id() == "facebook/dinov2-large"
+        assert DinoSam2Detector(
+            dino_size="small")._hf_dino_id() == "facebook/dinov2-small"
+        assert DinoSam2Detector(
+            dino_size="large")._hf_dino_id() == "facebook/dinov2-large"
 
     def test_serialization_round_trip(self):
         d = DinoSam2Detector(dino_version=3, similarity_thresh=0.6)
@@ -80,7 +83,7 @@ class TestDinoSam2Construction:
 class TestDinoSam2Serialization:
     def test_pipeline_json_round_trip(self):
         pipe = ImagePipeline(
-            ops=[DinoSam2Detector(dino_size="large", points_per_batch=4)]
+                ops=[DinoSam2Detector(dino_size="large", points_per_batch=4)]
         )
         restored = ImagePipeline.from_json(pipe.to_json())
         det = list(restored._ops.values())[0]
@@ -91,9 +94,9 @@ class TestDinoSam2Serialization:
     def test_old_pipeline_payload_defaults_points_per_batch(self):
         config = json.loads(ImagePipeline(ops=[DinoSam2Detector()]).to_json())
         detector_config = next(
-            value
-            for value in config["pipe_cfgs"].values()
-            if value["class"] == "DinoSam2Detector"
+                value
+                for value in config["pipe_cfgs"].values()
+                if value["class"] == "DinoSam2Detector"
         )
         detector_config["params"].pop("points_per_batch")
 
@@ -119,22 +122,22 @@ class TestDinoSam2Serialization:
 
 class TestDinoV3LoadPath:
     def test_dinov3_load_routes_through_gated_manager(self, monkeypatch):
-        from phenotypic.detect.nn import _checkpoint_manager as cm
-        from phenotypic.detect.nn import _sam2_detector as sam2_mod
+        from phenotypic.detect.nn._helper import _checkpoint_manager as cm
+        from phenotypic.detect.nn import _sam2 as sam2_mod
 
         # Accept the gate; stub the gated snapshot pull (no network).
         monkeypatch.setenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "dinov3")
         pulled: dict = {}
         monkeypatch.setattr(
-            cm, "snapshot_download",
-            lambda **kw: pulled.update(kw) or "/fake/cache/dinov3",
+                cm, "snapshot_download",
+                lambda **kw: pulled.update(kw) or "/fake/cache/dinov3",
         )
         monkeypatch.setattr(cm, "resolve_device", lambda device: "cpu")
 
         # Stub the SAM2 generator + transformers load at their real homes so
         # nothing real loads (the detector imports both inside the method).
         monkeypatch.setattr(
-            sam2_mod, "build_sam2_generator", lambda *a, **k: object()
+                sam2_mod, "build_sam2_generator", lambda *a, **k: object()
         )
 
         class _FakeModel:
@@ -157,12 +160,12 @@ class TestDinoV3LoadPath:
         # Stub the module import itself. On Windows the real Transformers
         # AutoModel placeholder requires torch before it can be monkeypatched.
         monkeypatch.setitem(
-            sys.modules,
-            "transformers",
-            types.SimpleNamespace(
-                AutoModel=_FakeAutoModel,
-                AutoImageProcessor=_FakeAutoImageProcessor,
-            ),
+                sys.modules,
+                "transformers",
+                types.SimpleNamespace(
+                        AutoModel=_FakeAutoModel,
+                        AutoImageProcessor=_FakeAutoImageProcessor,
+                ),
         )
 
         det = DinoSam2Detector(dino_version=3, dino_size="base", device="cpu")
@@ -188,12 +191,12 @@ class TestRecipeAlgorithm:
         # background-like (anti-aligned). Prototype = mean of high-confidence
         # (here, all) — but the outlier should score low.
         feats = np.array(
-            [
-                [1.0, 0.0, 0.0],
-                [0.9, 0.1, 0.0],
-                [-1.0, 0.0, 0.0],  # background, opposite direction
-            ],
-            dtype=np.float64,
+                [
+                    [1.0, 0.0, 0.0],
+                    [0.9, 0.1, 0.0],
+                    [-1.0, 0.0, 0.0],  # background, opposite direction
+                ],
+                dtype=np.float64,
         )
         # Prototype from the two foreground proposals.
         prototype = feats[:2].mean(axis=0)
@@ -222,10 +225,10 @@ class TestRecipeAlgorithm:
         bg[12:18, 12:18] = True
         # fg scores above threshold, bg below.
         objmap = _assemble_objmap(
-            proposals=[fg, bg],
-            scores=np.array([0.9, 0.1]),
-            similarity_thresh=0.5,
-            merge_iou_thresh=0.7,
+                proposals=[fg, bg],
+                scores=np.array([0.9, 0.1]),
+                similarity_thresh=0.5,
+                merge_iou_thresh=0.7,
         )
         assert objmap.dtype == np.uint16
         assert objmap.max() == 1  # only the foreground proposal survives
@@ -237,7 +240,7 @@ class TestRecipeAlgorithm:
             _assemble_objmap,
             _assemble_rle_objmap,
         )
-        from phenotypic.detect.nn._sam2_rle import encode_uncompressed_rle
+        from phenotypic.detect.nn._helper._sam2_rle import encode_uncompressed_rle
 
         outer = np.zeros((12, 15), bool)
         outer[1:10, 1:13] = True
@@ -251,7 +254,7 @@ class TestRecipeAlgorithm:
         records = [
             {
                 "segmentation": encode_uncompressed_rle(mask),
-                "area": int(mask.sum()),
+                "area"        : int(mask.sum()),
             }
             for mask in masks
         ]
@@ -260,7 +263,7 @@ class TestRecipeAlgorithm:
 
     def test_rle_merge_matches_boolean_merge(self):
         from phenotypic.detect.nn._dinosam2_detector import _merge_by_iou
-        from phenotypic.detect.nn._sam2_rle import (
+        from phenotypic.detect.nn._helper._sam2_rle import (
             encode_uncompressed_rle,
             merge_rle_records_by_iou,
         )
@@ -271,8 +274,8 @@ class TestRecipeAlgorithm:
         records = [
             {
                 "segmentation": encode_uncompressed_rle(mask),
-                "area": int(mask.sum()),
-                "identity": id(mask),
+                "area"        : int(mask.sum()),
+                "identity"    : id(mask),
             }
             for mask in masks
         ]
@@ -282,17 +285,17 @@ class TestRecipeAlgorithm:
         ]
 
     def test_rle_path_preserves_pooling_scores_order_and_final_map(self):
-        from phenotypic.detect.nn import _dino_support
+        from phenotypic.detect.nn._helper import _dino_support
         from phenotypic.detect.nn._dinosam2_detector import (
             _assemble_objmap,
             _assemble_rle_objmap,
             _score_by_prototype,
         )
-        from phenotypic.detect.nn._sam2_rle import (
+        from phenotypic.detect.nn._helper._sam2_rle import (
             decode_uncompressed_rle,
             encode_uncompressed_rle,
         )
-        from phenotypic.detect.nn._tiling import _Tile
+        from phenotypic.detect.nn._helper._tiling import _Tile
 
         shape = (12, 15)
         outer = np.zeros(shape, bool)
@@ -305,34 +308,34 @@ class TestRecipeAlgorithm:
         predicted_ious = [0.9, 0.95, 0.2]
         yy, xx = np.indices(shape)
         dense = np.stack((yy + 1, xx + 1, yy + xx + 1), axis=-1).astype(
-            np.float32
+                np.float32
         )
         tiles = [_Tile(0, 0, *shape)]
 
         bool_features = np.stack(
-            [
-                _dino_support.pool_prototype_tiled([dense], tiles, mask, 1)
-                for mask in masks
-            ]
+                [
+                    _dino_support.pool_prototype_tiled([dense], tiles, mask, 1)
+                    for mask in masks
+                ]
         )
         records = [
             {
-                "segmentation": encode_uncompressed_rle(mask),
-                "area": int(mask.sum()),
+                "segmentation" : encode_uncompressed_rle(mask),
+                "area"         : int(mask.sum()),
                 "predicted_iou": predicted_iou,
             }
             for mask, predicted_iou in zip(masks, predicted_ious)
         ]
         rle_features = np.stack(
-            [
-                _dino_support.pool_prototype_tiled(
-                    [dense],
-                    tiles,
-                    decode_uncompressed_rle(record["segmentation"]),
-                    1,
-                )
-                for record in records
-            ]
+                [
+                    _dino_support.pool_prototype_tiled(
+                            [dense],
+                            tiles,
+                            decode_uncompressed_rle(record["segmentation"]),
+                            1,
+                    )
+                    for record in records
+                ]
         )
         np.testing.assert_array_equal(rle_features, bool_features)
 
@@ -366,8 +369,8 @@ class TestDinoSam2Tiling:
     def test_pool_prototype_tiled_is_nonzero_for_a_small_colony(self):
         """F3 regression: on a full plate a 30px colony is 0.16 patches wide,
         so pool_prototype rounds it to empty and returns a zero vector."""
-        from phenotypic.detect.nn._dino_support import pool_prototype_tiled
-        from phenotypic.detect.nn._tiling import _Tile
+        from phenotypic.detect.nn._helper._dino_support import pool_prototype_tiled
+        from phenotypic.detect.nn._helper._tiling import _Tile
 
         tiles = [_Tile(0, 0, 518, 518)]
         dense = [np.ones((37, 37, 8), dtype=np.float32)]
@@ -380,8 +383,8 @@ class TestDinoSam2Tiling:
 
     def test_pool_prototype_tiled_pools_from_the_owning_tile(self):
         """The prototype must come from the tile whose core holds the centroid."""
-        from phenotypic.detect.nn._dino_support import pool_prototype_tiled
-        from phenotypic.detect.nn._tiling import _plan_tiles
+        from phenotypic.detect.nn._helper._dino_support import pool_prototype_tiled
+        from phenotypic.detect.nn._helper._tiling import _plan_tiles
 
         tiles = _plan_tiles((518, 800), 518, 0.15)
         assert len(tiles) == 2
@@ -407,11 +410,11 @@ class TestDinoSam2Tiling:
         zero-vector fail-safe. The same colony inside a 518 px tile spans
         30 / 14 = 2.1 patches and pools normally.
         """
-        from phenotypic.detect.nn._dino_support import (
+        from phenotypic.detect.nn._helper._dino_support import (
             pool_prototype,
             pool_prototype_tiled,
         )
-        from phenotypic.detect.nn._tiling import _plan_tiles
+        from phenotypic.detect.nn._helper._tiling import _plan_tiles
 
         shape = (1500, 2000)
         mask = np.zeros(shape, dtype=bool)
@@ -420,7 +423,7 @@ class TestDinoSam2Tiling:
         whole_grid = np.ones((16, 16, 4), dtype=np.float32)  # the 224 preset
         # proc_hw is the geometry the plate actually reached the ViT at.
         assert not np.any(
-            pool_prototype(whole_grid, mask, proc_hw=(224, 224), patch=14)
+                pool_prototype(whole_grid, mask, proc_hw=(224, 224), patch=14)
         )
 
         tiles = _plan_tiles(shape, 518, 0.15)
@@ -428,27 +431,27 @@ class TestDinoSam2Tiling:
         assert np.any(pool_prototype_tiled(dense, tiles, mask, 14))
 
     def test_pool_prototype_tiled_empty_mask_is_the_zero_fail_safe(self):
-        from phenotypic.detect.nn._dino_support import pool_prototype_tiled
-        from phenotypic.detect.nn._tiling import _Tile
+        from phenotypic.detect.nn._helper._dino_support import pool_prototype_tiled
+        from phenotypic.detect.nn._helper._tiling import _Tile
 
         tiles = [_Tile(0, 0, 518, 518)]
         dense = [np.ones((37, 37, 8), dtype=np.float32)]
         proto = pool_prototype_tiled(
-            dense, tiles, np.zeros((518, 518), dtype=bool), 14
+                dense, tiles, np.zeros((518, 518), dtype=bool), 14
         )
         assert proto.shape == (8,)
         assert not np.any(proto)
 
     def test_crop_fields_reach_build_sam2_generator(self, monkeypatch):
-        from phenotypic.detect.nn import _checkpoint_manager as cm
-        from phenotypic.detect.nn import _sam2_detector as sam2_mod
+        from phenotypic.detect.nn._helper import _checkpoint_manager as cm
+        from phenotypic.detect.nn import _sam2 as sam2_mod
 
         seen: dict = {}
         monkeypatch.setattr(cm, "resolve_device", lambda device: "cpu")
         monkeypatch.setattr(
-            sam2_mod,
-            "build_sam2_generator",
-            lambda *a, **k: (seen.update(k), object())[1],
+                sam2_mod,
+                "build_sam2_generator",
+                lambda *a, **k: (seen.update(k), object())[1],
         )
 
         class _FakeModel:
@@ -456,24 +459,24 @@ class TestDinoSam2Tiling:
                 return self
 
         monkeypatch.setitem(
-            sys.modules,
-            "transformers",
-            types.SimpleNamespace(
-                AutoModel=types.SimpleNamespace(
-                    from_pretrained=lambda repo_id: _FakeModel()
+                sys.modules,
+                "transformers",
+                types.SimpleNamespace(
+                        AutoModel=types.SimpleNamespace(
+                                from_pretrained=lambda repo_id: _FakeModel()
+                        ),
+                        AutoImageProcessor=types.SimpleNamespace(
+                                from_pretrained=lambda repo_id: object()
+                        ),
                 ),
-                AutoImageProcessor=types.SimpleNamespace(
-                    from_pretrained=lambda repo_id: object()
-                ),
-            ),
         )
 
         det = DinoSam2Detector(
-            device="cpu",
-            crop_n_layers=2,
-            crop_nms_thresh=0.55,
-            crop_overlap_ratio=0.25,
-            crop_n_points_downscale_factor=2,
+                device="cpu",
+                crop_n_layers=2,
+                crop_nms_thresh=0.55,
+                crop_overlap_ratio=0.25,
+                crop_n_points_downscale_factor=2,
         )
         det._ensure_model_loaded()
 
@@ -487,7 +490,7 @@ class TestDinoSam2Tiling:
     def test_infer_one_extracts_features_per_tile_not_per_plate(self, monkeypatch):
         """_infer_one must never hand the whole plate to the ViT: on a
         600x800 plate at tile_px=518 that is four 518x518 crops."""
-        from phenotypic.detect.nn import _dino_support
+        from phenotypic.detect.nn._helper import _dino_support
 
         det = DinoSam2Detector(device="cpu")
         proposal = np.zeros((600, 800), dtype=bool)
@@ -496,13 +499,13 @@ class TestDinoSam2Tiling:
         det._device = "cpu"
         det._dino_processor = object()
         det._dino_model = types.SimpleNamespace(
-            config=types.SimpleNamespace(patch_size=14, num_register_tokens=0)
+                config=types.SimpleNamespace(patch_size=14, num_register_tokens=0)
         )
         det._generator = types.SimpleNamespace(
-            generate=lambda rgb: [
-                {"segmentation": proposal, "predicted_iou": 0.9},
-                {"segmentation": ~proposal, "predicted_iou": 0.8},
-            ]
+                generate=lambda rgb: [
+                    {"segmentation": proposal, "predicted_iou": 0.9},
+                    {"segmentation": ~proposal, "predicted_iou": 0.8},
+                ]
         )
 
         shapes: list = []
@@ -541,8 +544,8 @@ def _dinov2_backbone_loadable() -> bool:
 
 
 @pytest.mark.skipif(
-    not _dinov2_backbone_loadable(),
-    reason="Requires transformers + a loadable DINOv2 backbone (ungated)",
+        not _dinov2_backbone_loadable(),
+        reason="Requires transformers + a loadable DINOv2 backbone (ungated)",
 )
 class TestDinoSam2FunctionalDinoV2:
     def test_prototypes_are_not_all_zero(self, synth_plate):
@@ -558,11 +561,11 @@ class TestDinoSam2FunctionalDinoV2:
         """
         from transformers import AutoImageProcessor, AutoModel
 
-        from phenotypic.detect.nn._dino_support import (
+        from phenotypic.detect.nn._helper._dino_support import (
             extract_patch_features,
             pool_prototype_tiled,
         )
-        from phenotypic.detect.nn._tiling import _plan_tiles
+        from phenotypic.detect.nn._helper._tiling import _plan_tiles
 
         model = AutoModel.from_pretrained("facebook/dinov2-small").eval()
         processor = AutoImageProcessor.from_pretrained("facebook/dinov2-small")
@@ -575,7 +578,7 @@ class TestDinoSam2FunctionalDinoV2:
         tiles = _plan_tiles(rgb.shape[:2], 518, 0.15)
         dense = [
             extract_patch_features(
-                model, processor, rgb[t.y0:t.y1, t.x0:t.x1], device="cpu"
+                    model, processor, rgb[t.y0:t.y1, t.x0:t.x1], device="cpu"
             )
             for t in tiles
         ]
@@ -603,8 +606,8 @@ def _dinosam2_runnable() -> bool:
 
 
 @pytest.mark.skipif(
-    not _dinosam2_runnable(),
-    reason="Requires phenotypic[foundation] + sam2 + cached weights",
+        not _dinosam2_runnable(),
+        reason="Requires phenotypic[foundation] + sam2 + cached weights",
 )
 class TestDinoSam2Functional:
     def test_constructs_generator_fields(self):

@@ -122,7 +122,7 @@ class TestFssDinoResolution:
         det._bg_gram = np.eye(4)
 
         monkeypatch.setattr(
-            "phenotypic.detect.nn._dino_support.extract_hidden_layer_features",
+            "phenotypic.detect.nn._helper._dino_support.extract_hidden_layer_features",
             lambda *a, **k: np.ones((42, 57, 4), dtype=np.float32),
         )
         out = det._segment_crop(np.zeros((600, 800, 3), dtype=np.uint8))
@@ -256,7 +256,7 @@ class TestFssDinoFunctionalDinoV2:
         224x224 -> a (16, 16) grid."""
         from transformers import AutoImageProcessor, AutoModel
 
-        from phenotypic.detect.nn._dino_support import extract_patch_features
+        from phenotypic.detect.nn._helper._dino_support import extract_patch_features
 
         m = AutoModel.from_pretrained("facebook/dinov2-small").eval()
         p = AutoImageProcessor.from_pretrained("facebook/dinov2-small")

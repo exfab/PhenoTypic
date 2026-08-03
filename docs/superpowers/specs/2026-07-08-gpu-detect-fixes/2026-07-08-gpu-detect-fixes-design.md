@@ -22,10 +22,10 @@ not inferred from docstrings.
 
 ### Backbone geometry
 
-| | `patch_size` | `config.image_size` | registers | processor default |
-|---|---|---|---|---|
-| `facebook/dinov2-base` | 14 | 518 | 0 | `shortest_edge=256` → center-crop `224` |
-| `facebook/dinov3-vitb16-pretrain-lvd1689m` | 16 | **224** | 4 | resize `{224,224}`, **no center crop** |
+|                                            | `patch_size` | `config.image_size` | registers | processor default                       |
+|--------------------------------------------|--------------|---------------------|-----------|-----------------------------------------|
+| `facebook/dinov2-base`                     | 14           | 518                 | 0         | `shortest_edge=256` → center-crop `224` |
+| `facebook/dinov3-vitb16-pretrain-lvd1689m` | 16           | **224**             | 4         | resize `{224,224}`, **no center crop**  |
 
 ### Cost and resolution
 
@@ -114,7 +114,7 @@ real plates.
 Separately, `_dinosam2_detector.py:311` passes only `min_mask_region_area` to
 `build_sam2_generator`, so the SAM2 half silently runs a stock single pass.
 
-### F4 — `Sam2Detector` leaves its own crop pyramid switched off
+### F4 — `Sam2` leaves its own crop pyramid switched off
 
 SAM2's encoder resizes to a fixed **1024×1024 square** (`sam2.1_hiera_*.yaml:
 image_size: 1024`; `sam2/utils/transforms.py:32` `Resize((1024, 1024))`) — a
@@ -145,7 +145,7 @@ crops; the code is `n_crops_per_side = 2**(i+1)` crossed with itself, i.e.
 docstring. The square-squash is undocumented, and "sliding-window crop" should read
 "crop pyramid" to match upstream vocabulary.
 
-### F5 — `Sam3Detector` fragment bug (correctness, not fidelity)
+### F5 — `Sam3` fragment bug (correctness, not fidelity)
 
 `_tiling.py` has **no edge rejection** — no `edge`, `border`, or `touch` logic
 anywhere. Uniform tiles also mean SAM2's defenses 3 and 4 are unavailable: no tile is
@@ -240,10 +240,10 @@ prototype cosine(old_buggy, new_fixed) = 0.4436     (1.0 would mean a no-op)
 
 The two prototypes are nearly unrelated. Effect on the gate plate:
 
-| Arm | buggy reference path | fixed |
-|---|---|---|
+| Arm                | buggy reference path    | fixed                       |
+|--------------------|-------------------------|-----------------------------|
 | FssDino 1:1 native | IoU 0.5877, 942 objects | **IoU 0.5947, 962 objects** |
-| Insid3 1:1 native | IoU 0.0043, 103 objects | IoU 0.0000, 9 objects |
+| Insid3 1:1 native  | IoU 0.0043, 103 objects | IoU 0.0000, 9 objects       |
 
 FssDino improves on both metrics. Insid3 goes from 103 spurious blobs to 9; both arms
 are noise (IoU ≈ 0), so this is a more specific prototype, not a regression — Insid3's
@@ -257,7 +257,7 @@ are noise (IoU ≈ 0), so this is a more specific prototype, not a regression �
 - `MicroSamDetector`. `micro_sam` is conda-only and absent from this venv; its
   resolution behaviour is unverified. Its unique `input_layer="gray"` default
   (`_microsam_detector.py:164`) is also out of scope.
-- Verifying `Sam3Detector`'s `tile_px=1008`. `facebook/sam3` returns 403 (gated,
+- Verifying `Sam3`'s `tile_px=1008`. `facebook/sam3` returns 403 (gated,
   access not granted). The value is carried as an assumption.
 - The semantic detectors' downstream issue where OR-then-connectivity-label merges
   touching colonies into one object.
@@ -328,13 +328,13 @@ shorter than `tile_px` — which is every doctest, since `load_synth_yeast_plate
 
 ### Per-operation changes
 
-| Operation | Change | Effect |
-|---|---|---|
-| `FssDinoDetector` | `tile_px: 512 → 518`, `TuneSpec(256, 1024)`; `_segment_crop` uses `upsample_grid_to_image` | 32.0 → 14.0 px/patch; 6.6× cost |
-| `Insid3Detector` | `tile_px: 1024 → 512`, `TuneSpec(256, 1024)`; same upsample fix | 73.1 → 16.0 px/patch; 26× cost |
-| `DinoSam2Detector` | new `tile_px = 518`, `tile_overlap = 0.15`; DINO per tile at 1:1; proposals pooled from covering tile(s); pass the four `crop_*` args through to `build_sam2_generator` and expose them as fields | prototypes stop collapsing to zero |
-| `Sam2Detector` | `crop_n_layers: 0 → 1`; new `box_nms_thresh = 0.7`; docstring corrections (crop count, square squash, "crop pyramid") | 3.91 → ~1.9 px/px; ~5× cost |
-| `Sam3Detector` | import merge from `_tiling`; replace `_merge_tiles_iou_nms` with `assign_by_centroid_core`; add the overlap guard | fragments eliminated without risking colony deletion |
+| Operation          | Change                                                                                                                                                                                            | Effect                                               |
+|--------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+| `FssDinoDetector`  | `tile_px: 512 → 518`, `TuneSpec(256, 1024)`; `_segment_crop` uses `upsample_grid_to_image`                                                                                                        | 32.0 → 14.0 px/patch; 6.6× cost                      |
+| `Insid3Detector`   | `tile_px: 1024 → 512`, `TuneSpec(256, 1024)`; same upsample fix                                                                                                                                   | 73.1 → 16.0 px/patch; 26× cost                       |
+| `DinoSam2Detector` | new `tile_px = 518`, `tile_overlap = 0.15`; DINO per tile at 1:1; proposals pooled from covering tile(s); pass the four `crop_*` args through to `build_sam2_generator` and expose them as fields | prototypes stop collapsing to zero                   |
+| `Sam2`             | `crop_n_layers: 0 → 1`; new `box_nms_thresh = 0.7`; docstring corrections (crop count, square squash, "crop pyramid")                                                                             | 3.91 → ~1.9 px/px; ~5× cost                          |
+| `Sam3`             | import merge from `_tiling`; replace `_merge_tiles_iou_nms` with `assign_by_centroid_core`; add the overlap guard                                                                                 | fragments eliminated without risking colony deletion |
 
 ### Choosing the `tile_px` defaults
 
@@ -419,14 +419,14 @@ measure nothing. Both arms plan the same 32 tiles; only the per-tile resize diff
 Run: `PHENOTYPIC_ACCEPT_MODEL_LICENSE=dinov3 uv run python
 scripts/accuracy_gate_gpu_detectors.py` (DINO `small`, `device="auto"`, Apple MPS).
 
-| Arm | objmask IoU | objects / 1152 | wall-clock |
-|---|---|---|---|
-| FssDino — 224 preset (pre-fix) | 0.1961 | 31 | 4.4 s |
-| **FssDino — 1:1 native (post-fix)** | **0.5877** | **942** | 2.3 s |
-| Insid3 — 224 preset (pre-fix) | 0.0000 | 0 | 1.2 s |
-| **Insid3 — 1:1 native (post-fix)** | **0.0043** | **103** | 2.0 s |
-| Sam2 — `crop_n_layers=0` (old default) | 0.4076 | 481 | 18.2 s |
-| **Sam2 — `crop_n_layers=1` (new default)** | **0.8722** | **1079** | 152.8 s |
+| Arm                                        | objmask IoU | objects / 1152 | wall-clock |
+|--------------------------------------------|-------------|----------------|------------|
+| FssDino — 224 preset (pre-fix)             | 0.1961      | 31             | 4.4 s      |
+| **FssDino — 1:1 native (post-fix)**        | **0.5877**  | **942**        | 2.3 s      |
+| Insid3 — 224 preset (pre-fix)              | 0.0000      | 0              | 1.2 s      |
+| **Insid3 — 1:1 native (post-fix)**         | **0.0043**  | **103**        | 2.0 s      |
+| Sam2 — `crop_n_layers=0` (old default)     | 0.4076      | 481            | 18.2 s     |
+| **Sam2 — `crop_n_layers=1` (new default)** | **0.8722**  | **1079**       | 152.8 s    |
 
 **Branch taken: the new defaults ship.** Every new default scores ≥ its predecessor,
 so no default is reverted. FssDino (0.1961 → 0.5877, 31 → 942 colonies) and Sam2
@@ -504,19 +504,19 @@ claim, and ship regardless.
 
 ## Risks and unverified assumptions
 
-- `Sam3Detector`'s `tile_px = 1008` is unverified; `facebook/sam3` returns 403.
+- `Sam3`'s `tile_px = 1008` is unverified; `facebook/sam3` returns 403.
 - `MicroSamDetector` is entirely unverified (conda-only).
 - Compute: FssDino 1.1 → 7.3 s/plate, Insid3 0.2 → 5.2 s/plate on an Apple GPU. A
   10,000-plate screen goes from ~3 to ~20 GPU-hours. This is an array-job sizing
   decision, consistent with the project's stated "accuracy over speed" philosophy.
-- `crop_n_layers: 0 → 1` makes every newly-constructed `Sam2Detector` ~5× slower.
+- `crop_n_layers: 0 → 1` makes every newly-constructed `Sam2` ~5× slower.
   Changelog: behaviour change.
 - Higher resolution is not monotonically better in principle. DINOv2's 224 preset is
   where its *classification* head was evaluated; dense-prediction regimes exist where
   more global context beats more pixels. The accuracy gate exists to catch this.
 - `assign_by_centroid_core` still loses a colony wider than `overlap_px` (no tiling
   policy can retain one without a full-image fallback). The overlap guard makes this
-  observable; `Sam3Detector`'s default `1008 / 0.15` gives `overlap_px = 151`.
+  observable; `Sam3`'s default `1008 / 0.15` gives `overlap_px = 151`.
 - `Insid3Detector`'s default `dino_version=3` is gated, so the stock constructor is
   unusable until Meta approves the user's DINOv3 access request.
 

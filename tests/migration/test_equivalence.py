@@ -103,10 +103,10 @@ def test_operation_matches_golden(scenario: Scenario) -> None:
 
     if sys.platform != _GOLDEN_PLATFORM:
         pytest.skip(
-            "numeric migration goldens were captured on "
-            f"{_GOLDEN_PLATFORM!r}; float results are not bit-reproducible "
-            f"on {sys.platform!r}, so numeric equivalence is asserted only "
-            "on the capture platform (structural goldens still run here)."
+                "numeric migration goldens were captured on "
+                f"{_GOLDEN_PLATFORM!r}; float results are not bit-reproducible "
+                f"on {sys.platform!r}, so numeric equivalence is asserted only "
+                "on the capture platform (structural goldens still run here)."
         )
 
     golden = load_golden(scenario)
@@ -124,13 +124,13 @@ def test_operation_matches_golden(scenario: Scenario) -> None:
         _assert_frame_equal(scenario, result, golden)
     else:  # pragma: no cover - defensive
         pytest.fail(
-            f"{scenario.scenario_id}: unknown golden type "
-            f"{type(golden).__name__}"
+                f"{scenario.scenario_id}: unknown golden type "
+                f"{type(golden).__name__}"
         )
 
 
 def _assert_image_equal(
-    scenario: Scenario, result: ImageGolden, golden: ImageGolden
+        scenario: Scenario, result: ImageGolden, golden: ImageGolden
 ) -> None:
     """Assert a result's image arrays match the golden.
 
@@ -160,25 +160,25 @@ def _assert_image_equal(
         if name == "detect_mat":
             atol = max(scenario.tolerance, _FLOAT_ATOL)
             np.testing.assert_allclose(
-                result_arr,
-                golden_arr,
-                rtol=_FLOAT_RTOL,
-                atol=atol,
-                err_msg=(
-                    f"{sid}: {name} drifted beyond tolerance "
-                    f"(rtol={_FLOAT_RTOL}, atol={atol})"
-                ),
+                    result_arr,
+                    golden_arr,
+                    rtol=_FLOAT_RTOL,
+                    atol=atol,
+                    err_msg=(
+                        f"{sid}: {name} drifted beyond tolerance "
+                        f"(rtol={_FLOAT_RTOL}, atol={atol})"
+                    ),
             )
         else:
             np.testing.assert_array_equal(
-                result_arr,
-                golden_arr,
-                err_msg=f"{sid}: {name} drifted from golden",
+                    result_arr,
+                    golden_arr,
+                    err_msg=f"{sid}: {name} drifted from golden",
             )
 
 
 def _assert_frame_equal(
-    scenario: Scenario, result: FrameGolden, golden: FrameGolden
+        scenario: Scenario, result: FrameGolden, golden: FrameGolden
 ) -> None:
     """Assert a result frame matches the golden frame.
 
@@ -198,17 +198,17 @@ def _assert_frame_equal(
     fresh = normalize_frame(result.frame)
     try:
         pd.testing.assert_frame_equal(
-            fresh,
-            golden.frame,
-            check_exact=False,
-            check_dtype=True,
-            atol=max(scenario.tolerance, _FLOAT_ATOL),
-            rtol=_FLOAT_RTOL,
+                fresh,
+                golden.frame,
+                check_exact=False,
+                check_dtype=True,
+                atol=max(scenario.tolerance, _FLOAT_ATOL),
+                rtol=_FLOAT_RTOL,
         )
     except AssertionError as exc:  # noqa: BLE001 - re-raise with context
         raise AssertionError(
-            f"{scenario.scenario_id}: result frame drifted from "
-            f"golden\n{exc}"
+                f"{scenario.scenario_id}: result frame drifted from "
+                f"golden\n{exc}"
         ) from exc
 
 
@@ -243,7 +243,7 @@ def test_every_subpackage_is_represented() -> None:
     """Sanity-check that every operation subpackage has scenarios."""
     subpackages = {s.subpackage for s in _SCENARIOS}
     # ``detect/nn`` model-backed detectors are discovered under the
-    # ``detect`` subpackage (their scenario ids are ``detect.Sam2Detector``
+    # ``detect`` subpackage (their scenario ids are ``detect.Sam2``
     # etc.), so there is no separate ``nn`` subpackage in the taxonomy.
     expected = {
         "detect",

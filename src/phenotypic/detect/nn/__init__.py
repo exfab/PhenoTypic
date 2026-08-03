@@ -11,14 +11,14 @@ import importlib.util
 
 def _check_sam2_deps() -> bool:
     return all(
-        importlib.util.find_spec(p) is not None for p in ["torch", "sam2"]
+            importlib.util.find_spec(p) is not None for p in ["torch", "sam2"]
     )
 
 
 def _check_microsam_deps() -> bool:
     return all(
-        importlib.util.find_spec(p) is not None
-        for p in ["torch", "micro_sam"]
+            importlib.util.find_spec(p) is not None
+            for p in ["torch", "micro_sam"]
     )
 
 
@@ -35,18 +35,18 @@ FOUNDATION_AVAILABLE = _check_foundation_deps()
 
 
 def __getattr__(name: str):  # type: ignore[misc]
-    if name == "Sam2Detector":
-        from ._sam2_detector import Sam2Detector
+    if name == "Sam2":
+        from ._sam2 import Sam2
 
-        return Sam2Detector
+        return Sam2
     if name == "MicroSamDetector":
         from ._microsam_detector import MicroSamDetector
 
         return MicroSamDetector
-    if name == "Sam3Detector":
-        from ._sam3_detector import Sam3Detector
+    if name == "Sam3":
+        from ._sam3 import Sam3
 
-        return Sam3Detector
+        return Sam3
     if name == "DinoSam2Detector":
         from ._dinosam2_detector import DinoSam2Detector
 
@@ -63,9 +63,9 @@ def __getattr__(name: str):  # type: ignore[misc]
 
 
 __all__ = [
-    "Sam2Detector",
+    "Sam2",
     "MicroSamDetector",
-    "Sam3Detector",
+    "Sam3",
     "DinoSam2Detector",
     "Insid3Detector",
     "FssDinoDetector",

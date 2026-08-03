@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import PrivateAttr
 
 from phenotypic.abc_ import GpuDetector
-from phenotypic.detect.nn._checkpoint_manager import (
+from phenotypic.detect.nn._helper._checkpoint_manager import (
     Device,
     MicroSamModelType,
 )
@@ -28,7 +28,7 @@ class MicroSamDetector(GpuDetector):
     predictions, and returns a fully labeled integer array -- one label
     per detected object. This means MicroSamDetector produces an
     ``objmap`` directly without the mask-assembly step required by
-    :class:`Sam2Detector`.
+    :class:`Sam2`.
 
     Args:
         model_type: micro-sam model identifier. Available models:
@@ -86,7 +86,7 @@ class MicroSamDetector(GpuDetector):
           ``"vit_b_em_organelles"`` or ``"vit_l_em_organelles"`` models.
 
     Consider Also:
-        * :class:`Sam2Detector` when processing general-purpose or
+        * :class:`Sam2` when processing general-purpose or
           non-microscopy images, or when fine-grained control over mask
           generation parameters (``points_per_side``, ``pred_iou_thresh``,
           ``stability_score_thresh``) is needed.
@@ -124,7 +124,7 @@ class MicroSamDetector(GpuDetector):
         *Nature Methods*, 2024. doi:10.1038/s41592-024-02580-4
 
     See Also:
-        :class:`Sam2Detector`
+        :class:`Sam2`
             General-purpose SAM2 detector with configurable mask
             generation parameters.
         :doc:`/how_to/pages/gpu_detection_setup`
@@ -170,8 +170,8 @@ class MicroSamDetector(GpuDetector):
     def _ensure_model_loaded(self) -> None:
         """Load the micro-sam predictor and segmenter on first use."""
         if (
-            getattr(self, "_predictor", None) is not None
-            and getattr(self, "_segmenter", None) is not None
+                getattr(self, "_predictor", None) is not None
+                and getattr(self, "_segmenter", None) is not None
         ):
             return
         try:
@@ -180,19 +180,19 @@ class MicroSamDetector(GpuDetector):
             )
         except ImportError:
             raise ImportError(
-                "MicroSamDetector requires the `micro_sam` package, "
-                "which is conda-only (not available on PyPI). See the "
-                "'Enabling micro_sam' section of "
-                "docs/source/how_to/pages/gpu_detection_setup.md for a "
-                "pixi-based recipe that installs phenotypic and "
-                "micro_sam together."
+                    "MicroSamDetector requires the `micro_sam` package, "
+                    "which is conda-only (not available on PyPI). See the "
+                    "'Enabling micro_sam' section of "
+                    "docs/source/how_to/pages/gpu_detection_setup.md for a "
+                    "pixi-based recipe that installs phenotypic and "
+                    "micro_sam together."
             ) from None
 
-        from phenotypic.detect.nn._checkpoint_manager import resolve_device
+        from phenotypic.detect.nn._helper._checkpoint_manager import resolve_device
 
         self._predictor, self._segmenter = get_predictor_and_segmenter(
-            model_type=self.model_type,
-            device=resolve_device(self.device),
+                model_type=self.model_type,
+                device=resolve_device(self.device),
         )
 
     def _infer_one(self, sample):
@@ -207,11 +207,11 @@ class MicroSamDetector(GpuDetector):
 
         rgb = sample
         labeled = automatic_instance_segmentation(
-            predictor=self._predictor,
-            segmenter=self._segmenter,
-            input_path=rgb,
-            ndim=2,
-            verbose=False,
+                predictor=self._predictor,
+                segmenter=self._segmenter,
+                input_path=rgb,
+                ndim=2,
+                verbose=False,
         )
         return labeled.astype(np.uint16)
 

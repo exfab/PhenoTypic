@@ -51,7 +51,7 @@ PhenoTypic provides optional extras for different use cases:
 - ``[napari]`` — The interactive napari desktop viewers (pulls napari + PyQt6).
   Required for ``image.rgb.napari()`` and related viewer methods, the point
   picker, and the napari sweep viewer (``python -m phenotypic.gui.sweep``).
-- ``[torch]`` — PyTorch + SAM2 for ``Sam2Detector`` (Linux/macOS only).
+- ``[torch]`` — PyTorch + SAM2 for ``Sam2`` (Linux/macOS only).
 
 .. code-block:: bash
 
@@ -74,7 +74,7 @@ Deep Learning Detectors
 -----------------------
 
 PhenoTypic ships several deep-learning colony detectors —
-``Sam2Detector``, ``Sam3Detector``, ``DinoSam2Detector``, ``Insid3Detector``,
+``Sam2``, ``Sam3``, ``DinoSam2Detector``, ``Insid3Detector``,
 ``FssDinoDetector``, and the conda-only ``MicroSamDetector``. This section
 covers **installing** the detector packages and **pre-downloading** their model
 weights. For detector usage, parameter tuning, device selection, and SLURM
@@ -94,11 +94,11 @@ The PyPI-published detectors are grouped into optional extras:
      - Detectors
      - Notes
    * - ``[torch]``
-     - ``Sam2Detector``
+     - ``Sam2``
      - PyTorch + ``sam2`` from PyPI. Linux/macOS only — no Windows wheels
        (use WSL2).
    * - ``[foundation]``
-     - ``Sam3Detector``, ``DinoSam2Detector``, ``Insid3Detector``,
+     - ``Sam3``, ``DinoSam2Detector``, ``Insid3Detector``,
        ``FssDinoDetector``
      - ``transformers`` (>=5.2.0) + ``huggingface_hub`` (pulls ``torch``).
    * - ``[gpu]``

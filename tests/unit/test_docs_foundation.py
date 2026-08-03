@@ -8,7 +8,7 @@ _HOW_TO = REPO / "docs/source/how_to/pages/gpu_detection_setup.md"
 
 def test_how_to_documents_sam3_and_gated_install():
     txt = _HOW_TO.read_text(encoding="utf-8")
-    assert "Sam3Detector" in txt and "DinoSam2Detector" in txt
+    assert "Sam3" in txt and "DinoSam2Detector" in txt
     assert "hf auth login" in txt and "--extra foundation" in txt
 
 

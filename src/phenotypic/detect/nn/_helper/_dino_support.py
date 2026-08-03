@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any, List, Tuple
 if TYPE_CHECKING:
     import numpy as np
 
-    from phenotypic.detect.nn._tiling import _Tile
+    from phenotypic.detect.nn._helper._tiling import _Tile
     from phenotypic.sdk_.typing_ import DinoSize, DinoVersion
 
 
@@ -199,7 +199,7 @@ def load_dino_backbone(
 
     Lazy-imports ``transformers`` so callers construct/serialise without it.
     ``dino_version=3`` is gated: the snapshot is pre-staged through
-    :class:`~phenotypic.detect.nn._checkpoint_manager.Dinov3CheckpointManager`
+    :class:`~phenotypic.detect.nn._helper._checkpoint_manager.Dinov3CheckpointManager`
     (honouring the license-acceptance gate) before the ``AutoModel`` load.
 
     Args:
@@ -225,7 +225,7 @@ def load_dino_backbone(
         ) from None
 
     if dino_version == 3:
-        from phenotypic.detect.nn._checkpoint_manager import (
+        from phenotypic.detect.nn._helper._checkpoint_manager import (
             Dinov3CheckpointManager,
         )
 
@@ -581,7 +581,7 @@ def pool_prototype_tiled(
 
     Tiling restores sub-patch resolution. The mask is assigned to the tile whose
     core contains its centroid
-    (:func:`~phenotypic.detect.nn._tiling.owning_tile_index`), cropped to that
+    (:func:`~phenotypic.detect.nn._helper._tiling.owning_tile_index`), cropped to that
     tile, and pooled against that tile's feature grid, where the colony now
     spans ``30 / patch`` patches.
 
@@ -589,7 +589,7 @@ def pool_prototype_tiled(
         dense_by_tile: One ``(Hp, Wp, D)`` feature grid per tile, aligned with
             *tiles*.
         tiles: Crop rectangles in full-image coordinates (from
-            :func:`~phenotypic.detect.nn._tiling._plan_tiles`). A single
+            :func:`~phenotypic.detect.nn._helper._tiling._plan_tiles`). A single
             full-extent tile is fine — the un-tiled path.
         mask: ``(H, W)`` boolean mask in full-image coordinates.
         patch: ``model.config.patch_size`` (14 for DINOv2, 16 for DINOv3).
@@ -599,7 +599,7 @@ def pool_prototype_tiled(
     """
     import numpy as np
 
-    from phenotypic.detect.nn._tiling import owning_tile_index
+    from phenotypic.detect.nn._helper._tiling import owning_tile_index
 
     ys, xs = np.nonzero(np.asarray(mask, dtype=bool))
     if ys.size == 0:

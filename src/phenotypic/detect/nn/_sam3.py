@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING, Annotated, Any, List
 from pydantic import PrivateAttr
 
 from phenotypic.abc_ import GpuDetector
-from phenotypic.detect.nn._checkpoint_manager import Device
+from phenotypic.detect.nn._helper._checkpoint_manager import Device
 
 # Shared fixed-geometric tiling and the cross-tile instance merges, both owned
 # by _tiling.py so the semantic detectors reuse the tiling. Re-exported here for
 # back-compat with callers/tests that import these names from _sam3_detector.
-from phenotypic.detect.nn._tiling import (
+from phenotypic.detect.nn._helper._tiling import (
     _iou,
     _merge_tiles_iou_nms,
     _plan_tiles,
@@ -25,18 +25,18 @@ from phenotypic.sdk_.typing_ import GpuInputLayer, GpuOutputKind, TuneSpec
 if TYPE_CHECKING:
     import numpy as np
 
-__all__ = ["Sam3Detector"]
+__all__ = ["Sam3"]
 
 # Silence "imported but unused" — these are intentional back-compat re-exports.
 _ = (_Tile, _tile_starts, _iou, _merge_tiles_iou_nms)
 
 
-class Sam3Detector(GpuDetector):
+class Sam3(GpuDetector):
     """Detect colonies with Meta's SAM3 text-prompted foundation model.
 
     SAM3 segments every region matching a short **text prompt** (default
     ``"colony"``) in one true ``(N, C, H, W)`` batched forward pass, then
-    assembles the predicted instance masks into a labelled object map.  Unlike
+    assembles the predicted instance masks into a labeled object map.  Unlike
     SAM2's dense point grid, SAM3 has a single checkpoint and is prompted by
     free text, so the only "knob" describing *what* to find is the
     :attr:`prompt`.
@@ -59,7 +59,7 @@ class Sam3Detector(GpuDetector):
     1008 px internally, so dense plates are tiled (fixed ~:attr:`tile_px`
     tiles with :attr:`tile_overlap`) and each tile is inferred separately.
     The tiles are merged by *centroid-in-core* assignment
-    (:func:`~phenotypic.detect.nn._tiling.assign_by_centroid_core`): each
+    (:func:`~phenotypic.detect.nn._helper._tiling.assign_by_centroid_core`): each
     instance is kept by the one tile whose core contains its centroid, so a
     colony straddling a seam cannot be duplicated, nor can the fragment a
     neighbouring tile saw survive as its own colony.
@@ -75,7 +75,7 @@ class Sam3Detector(GpuDetector):
             0.5.
         min_mask_region_area: Minimum mask area in pixels; smaller masks are
             dropped after generation (suppresses agar texture / dust).
-            Default 100 (matches ``Sam2Detector``).
+            Default 100 (matches ``Sam2``).
         tile_px: Nominal tile size in pixels for dense-plate tiling; images
             that fit one tile run un-tiled.  Default 1008 (SAM3's internal
             resolution).
@@ -83,7 +83,7 @@ class Sam3Detector(GpuDetector):
             0.15.
         tile_merge_iou: **Deprecated and ignored.** The cross-tile merge is now
             centroid-in-core
-            (:func:`~phenotypic.detect.nn._tiling.assign_by_centroid_core`),
+            (:func:`~phenotypic.detect.nn._helper._tiling.assign_by_centroid_core`),
             which assigns each instance to exactly one tile and therefore needs
             no IoU threshold. The field is retained only so pipelines
             serialised before the change keep deserialising; setting it has no
@@ -98,7 +98,7 @@ class Sam3Detector(GpuDetector):
             uint8 by ``_preprocess``.
 
     Returns:
-        Image: Input image with ``objmap`` set to a labelled instance map
+        Image: Input image with ``objmap`` set to a labeled instance map
         (each colony a unique integer label) and ``objmask`` to the derived
         binary mask.  Masks are painted largest-first so smaller colonies
         keep their identity at overlaps.
@@ -116,7 +116,7 @@ class Sam3Detector(GpuDetector):
         * Heterogeneous backgrounds that confuse classical thresholding.
 
     Consider Also:
-        * :class:`~phenotypic.detect.nn.Sam2Detector` for an ungated,
+        * :class:`~phenotypic.detect.nn.Sam2` for an ungated,
           prompt-free automatic mask generator.
         * :class:`~phenotypic.detect.nn.DinoSam2Detector` for an ungated
           training-free SAM2-proposals + DINOv2-scoring instance detector.
@@ -141,9 +141,9 @@ class Sam3Detector(GpuDetector):
         dependencies):
 
         >>> from phenotypic import ImagePipeline
-        >>> pipe = ImagePipeline(ops=[Sam3Detector(prompt="colony")])
+        >>> pipe = ImagePipeline(ops=[Sam3(prompt="colony")])
         >>> restored = ImagePipeline.from_json(pipe.to_json())
-        >>> type(restored.get_ops()["Sam3Detector"])
+        >>> type(restored.get_ops()["Sam3"])
         <class 'phenotypic.detect.nn._sam3_detector.Sam3Detector'>
     """
 
@@ -190,11 +190,11 @@ class Sam3Detector(GpuDetector):
             from transformers import Sam3Model, Sam3Processor
         except ImportError:
             raise ImportError(
-                "Sam3Detector requires transformers (>=5.2.0). "
-                "Install with: pip install phenotypic[foundation]"
+                    "Sam3 requires transformers (>=5.2.0). "
+                    "Install with: pip install phenotypic[foundation]"
             ) from None
 
-        from phenotypic.detect.nn._checkpoint_manager import (
+        from phenotypic.detect.nn._helper._checkpoint_manager import (
             Sam3CheckpointManager,
             resolve_device,
         )
@@ -219,18 +219,18 @@ class Sam3Detector(GpuDetector):
 
         self._ensure_model_loaded()
         inputs = self._processor(
-            images=images,
-            text=[self.prompt] * len(images),
-            return_tensors="pt",
+                images=images,
+                text=[self.prompt] * len(images),
+                return_tensors="pt",
         ).to(self._device)
         with torch.no_grad():
             outputs = self._model(**inputs)
         target_sizes = [(img.shape[0], img.shape[1]) for img in images]
         results = self._processor.post_process_instance_segmentation(
-            outputs,
-            threshold=self.score_thresh,
-            mask_threshold=self.mask_threshold,
-            target_sizes=target_sizes,
+                outputs,
+                threshold=self.score_thresh,
+                mask_threshold=self.mask_threshold,
+                target_sizes=target_sizes,
         )
         return [
             self._paint_objmap(r, (img.shape[0], img.shape[1]))
@@ -238,13 +238,13 @@ class Sam3Detector(GpuDetector):
         ]
 
     def _paint_objmap(
-        self, result: dict, shape: tuple[int, int]
+            self, result: dict, shape: tuple[int, int]
     ) -> "np.ndarray":
         """Paint one post-processed SAM3 result into a uint16 objmap.
 
         Masks are sorted largest-first and painted so smaller colonies
         overwrite at overlaps (preserving small-colony identity, like
-        ``Sam2Detector``). ``min_mask_region_area`` drops tiny masks.
+        ``Sam2``). ``min_mask_region_area`` drops tiny masks.
         """
         import numpy as np
 
@@ -268,10 +268,10 @@ class Sam3Detector(GpuDetector):
             import warnings
 
             warnings.warn(
-                f"SAM3 produced {len(bool_masks)} masks, exceeding uint16 "
-                f"range. Only the first {max_labels} will be labeled.",
-                UserWarning,
-                stacklevel=2,
+                    f"SAM3 produced {len(bool_masks)} masks, exceeding uint16 "
+                    f"range. Only the first {max_labels} will be labeled.",
+                    UserWarning,
+                    stacklevel=2,
             )
             bool_masks = bool_masks[:max_labels]
         for idx, mask in enumerate(bool_masks, start=1):
@@ -288,7 +288,7 @@ class Sam3Detector(GpuDetector):
         Each sample is tiled into fixed ~:attr:`tile_px` crops; all crops from
         all samples are regrouped and forwarded in one tile-batch (C4). The
         per-crop objmaps stay **tile-local** all the way to
-        :func:`~phenotypic.detect.nn._tiling.assign_by_centroid_core`, which
+        :func:`~phenotypic.detect.nn._helper._tiling.assign_by_centroid_core`, which
         owns the offset into full-image coordinates: it needs each instance's
         tile-local centroid to decide which tile's core claims it. Offsetting
         the crops here would make the merge add ``tile.y0``/``tile.x0`` a
@@ -309,7 +309,7 @@ class Sam3Detector(GpuDetector):
             arr = sample
             full_shapes.append((arr.shape[0], arr.shape[1]))
             tiles = _plan_tiles(
-                (arr.shape[0], arr.shape[1]), self.tile_px, self.tile_overlap
+                    (arr.shape[0], arr.shape[1]), self.tile_px, self.tile_overlap
             )
             plans.append(tiles)
             for t in tiles:
@@ -334,12 +334,12 @@ class Sam3Detector(GpuDetector):
                 results.append(np.zeros(full_shapes[s_idx], dtype=np.uint16))
             else:
                 results.append(
-                    assign_by_centroid_core(
-                        plans[s_idx], tile_objmaps, full_shapes[s_idx]
-                    )
+                        assign_by_centroid_core(
+                                plans[s_idx], tile_objmaps, full_shapes[s_idx]
+                        )
                 )
         return results
 
 
 # Expose the class docstring on .apply() for Sphinx autodoc
-Sam3Detector.apply.__doc__ = Sam3Detector.__doc__
+Sam3.apply.__doc__ = Sam3.__doc__

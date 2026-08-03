@@ -20,7 +20,7 @@ _TORCH_AVAILABLE = importlib.util.find_spec("torch") is not None
 
 
 def test_hf_dino_id_v2_and_v3():
-    from phenotypic.detect.nn._dino_support import hf_dino_id
+    from phenotypic.detect.nn._helper._dino_support import hf_dino_id
 
     assert hf_dino_id(2, "base") == "facebook/dinov2-base"
     assert hf_dino_id(2, "small") == "facebook/dinov2-small"
@@ -42,7 +42,7 @@ def test_hf_dino_id_v2_and_v3():
 class TestPatchGridReshape:
     def test_drops_cls_and_register_tokens_exact_grid(self):
         """``1 + num_register_tokens + Hp*Wp`` tokens reshape to (Hp, Wp, D)."""
-        from phenotypic.detect.nn._dino_support import reshape_patch_tokens
+        from phenotypic.detect.nn._helper._dino_support import reshape_patch_tokens
 
         Hp, Wp, D, n_reg = 3, 4, 8, 4
         n_tokens = 1 + n_reg + Hp * Wp
@@ -61,7 +61,7 @@ class TestPatchGridReshape:
         assert grid[1, 0, 0] == Wp + 1.0
 
     def test_v2_zero_registers(self):
-        from phenotypic.detect.nn._dino_support import reshape_patch_tokens
+        from phenotypic.detect.nn._helper._dino_support import reshape_patch_tokens
 
         Hp, Wp, D = 2, 2, 5
         tokens = np.zeros((1 + Hp * Wp, D), np.float32)
@@ -81,7 +81,7 @@ class TestPatchGridReshape:
 
 
 def test_pool_prototype_is_masked_mean():
-    from phenotypic.detect.nn._dino_support import pool_prototype
+    from phenotypic.detect.nn._helper._dino_support import pool_prototype
 
     feats = np.zeros((4, 4, 8), np.float32)
     feats[1:3, 1:3] = 1.0
@@ -93,7 +93,7 @@ def test_pool_prototype_is_masked_mean():
 
 def test_pool_prototype_resizes_full_res_mask_to_grid():
     """A full-resolution mask is downsampled to the patch grid before pooling."""
-    from phenotypic.detect.nn._dino_support import pool_prototype
+    from phenotypic.detect.nn._helper._dino_support import pool_prototype
 
     feats = np.zeros((4, 4, 8), np.float32)
     feats[1:3, 1:3] = 1.0
@@ -105,7 +105,7 @@ def test_pool_prototype_resizes_full_res_mask_to_grid():
 
 
 def test_pool_prototype_empty_mask_returns_zero_vector():
-    from phenotypic.detect.nn._dino_support import pool_prototype
+    from phenotypic.detect.nn._helper._dino_support import pool_prototype
 
     feats = np.ones((4, 4, 8), np.float32)
     mask = np.zeros((4, 4), bool)
@@ -115,7 +115,7 @@ def test_pool_prototype_empty_mask_returns_zero_vector():
 
 
 def test_cosine_match_recovers_prototype_region():
-    from phenotypic.detect.nn._dino_support import cosine_match_to_mask
+    from phenotypic.detect.nn._helper._dino_support import cosine_match_to_mask
 
     feats = np.zeros((4, 4, 8), np.float32)
     feats[1:3, 1:3] = 1.0
@@ -126,7 +126,7 @@ def test_cosine_match_recovers_prototype_region():
 
 
 def test_cosine_match_zero_prototype_is_all_false():
-    from phenotypic.detect.nn._dino_support import cosine_match_to_mask
+    from phenotypic.detect.nn._helper._dino_support import cosine_match_to_mask
 
     feats = np.ones((4, 4, 8), np.float32)
     proto = np.zeros(8, np.float32)
@@ -135,7 +135,7 @@ def test_cosine_match_zero_prototype_is_all_false():
 
 
 def test_cosine_similarity_map_shapes_and_range():
-    from phenotypic.detect.nn._dino_support import cosine_similarity_map
+    from phenotypic.detect.nn._helper._dino_support import cosine_similarity_map
 
     feats = np.zeros((3, 5, 6), np.float32)
     # One patch parallel to the prototype (cosine 1), one orthogonal (cosine 0).
@@ -157,7 +157,7 @@ def test_cosine_similarity_map_shapes_and_range():
 
 
 def test_resize_mask_to_grid_non_square():
-    from phenotypic.detect.nn._dino_support import resize_mask_to_grid
+    from phenotypic.detect.nn._helper._dino_support import resize_mask_to_grid
 
     # Non-square full-res mask → square-ish patch grid (order=0 nearest).
     mask = np.zeros((40, 90), bool)
@@ -170,7 +170,7 @@ def test_resize_mask_to_grid_non_square():
 
 def test_align_mask_to_grid_non_square_through_processed_geometry():
     """W4: a non-square exemplar mask aligns via the (square) processed geom."""
-    from phenotypic.detect.nn._dino_support import align_mask_to_grid
+    from phenotypic.detect.nn._helper._dino_support import align_mask_to_grid
 
     # Non-square 220x300 exemplar; the processor squashes to a 224x224 square
     # → a 16x16 patch grid (patch=14). The mask must follow the same path.
@@ -186,7 +186,7 @@ def test_align_mask_to_grid_non_square_through_processed_geometry():
 
 def test_pool_prototype_with_proc_hw_aligns_non_square():
     """pool_prototype honours proc_hw for the W4 two-step alignment."""
-    from phenotypic.detect.nn._dino_support import pool_prototype
+    from phenotypic.detect.nn._helper._dino_support import pool_prototype
 
     feats = np.zeros((16, 16, 4), np.float32)
     feats[4:12, 4:12] = 1.0  # central patch-grid block is "foreground"
@@ -206,7 +206,7 @@ def test_pool_prototype_with_proc_hw_aligns_non_square():
 
 class TestPatchGeometry:
     def test_patch_grid_hw_floors(self):
-        from phenotypic.detect.nn._dino_support import patch_grid_hw
+        from phenotypic.detect.nn._helper._dino_support import patch_grid_hw
 
         assert patch_grid_hw((518, 518), 14) == (37, 37)
         assert patch_grid_hw((512, 512), 14) == (36, 36)
@@ -214,13 +214,13 @@ class TestPatchGeometry:
         assert patch_grid_hw((600, 800), 14) == (42, 57)
 
     def test_covered_hw_is_grid_times_patch(self):
-        from phenotypic.detect.nn._dino_support import covered_hw
+        from phenotypic.detect.nn._helper._dino_support import covered_hw
 
         assert covered_hw((37, 37), 14) == (518, 518)
         assert covered_hw((42, 57), 14) == (588, 798)
 
     def test_native_kwargs_disable_resize_and_crop(self):
-        from phenotypic.detect.nn._dino_support import NATIVE_PROCESSOR_KWARGS
+        from phenotypic.detect.nn._helper._dino_support import NATIVE_PROCESSOR_KWARGS
 
         assert NATIVE_PROCESSOR_KWARGS == {
             "do_resize": False,
@@ -269,7 +269,7 @@ class TestProcessorPolicy:
         return seen, FakeModel(), FakeProcessor()
 
     def test_extract_patch_features_requests_native_geometry(self):
-        from phenotypic.detect.nn._dino_support import extract_patch_features
+        from phenotypic.detect.nn._helper._dino_support import extract_patch_features
 
         seen, model, processor = self._fakes()
         rgb = np.zeros((518, 518, 3), dtype=np.uint8)
@@ -278,7 +278,7 @@ class TestProcessorPolicy:
         assert dense.shape == (37, 37, 8)
 
     def test_extract_reference_features_requests_native_geometry(self):
-        from phenotypic.detect.nn._dino_support import extract_reference_features
+        from phenotypic.detect.nn._helper._dino_support import extract_reference_features
 
         seen, model, processor = self._fakes(patch=16, n_reg=4, grid=(32, 32))
         rgb = np.zeros((512, 512, 3), dtype=np.uint8)
@@ -290,7 +290,7 @@ class TestProcessorPolicy:
         assert proc_hw == (512, 512)
 
     def test_extract_hidden_layer_features_requests_native_geometry(self):
-        from phenotypic.detect.nn._dino_support import (
+        from phenotypic.detect.nn._helper._dino_support import (
             extract_hidden_layer_features,
         )
 
@@ -317,7 +317,7 @@ class TestCoveredExtentMapping:
         extent, NOT to the full tile: stretching the grid onto 600x800 instead
         displaces it by ~2% (6.1 px vertically here).
         """
-        from phenotypic.detect.nn._dino_support import upsample_grid_to_image
+        from phenotypic.detect.nn._helper._dino_support import upsample_grid_to_image
 
         grid = np.zeros((42, 57), dtype=bool)
         grid[20:23, 27:30] = True  # centred block
@@ -335,7 +335,7 @@ class TestCoveredExtentMapping:
         assert abs((fy.mean() + 0.5) - grid_cy * 600) > 5.0
 
     def test_upsample_pads_the_truncated_remainder(self):
-        from phenotypic.detect.nn._dino_support import upsample_grid_to_image
+        from phenotypic.detect.nn._helper._dino_support import upsample_grid_to_image
 
         grid = np.ones((42, 57), dtype=bool)
         full = upsample_grid_to_image(grid, (600, 800), 14)
@@ -343,7 +343,7 @@ class TestCoveredExtentMapping:
         assert full.all()  # edge-padded, no False stripe at 588..600
 
     def test_resize_mask_to_grid_crops_to_covered_extent(self):
-        from phenotypic.detect.nn._dino_support import resize_mask_to_grid
+        from phenotypic.detect.nn._helper._dino_support import resize_mask_to_grid
 
         mask = np.zeros((600, 800), dtype=bool)
         mask[588:600, :] = True  # lives ONLY in the truncated remainder
@@ -351,7 +351,7 @@ class TestCoveredExtentMapping:
         assert not small.any()  # the ViT never saw those rows
 
     def test_round_trip_grid_image_grid_is_identity(self):
-        from phenotypic.detect.nn._dino_support import (
+        from phenotypic.detect.nn._helper._dino_support import (
             resize_mask_to_grid,
             upsample_grid_to_image,
         )
@@ -363,7 +363,7 @@ class TestCoveredExtentMapping:
         assert (back == grid).all()
 
     def test_upsample_float_score_map_keeps_dtype_semantics(self):
-        from phenotypic.detect.nn._dino_support import upsample_grid_to_image
+        from phenotypic.detect.nn._helper._dino_support import upsample_grid_to_image
 
         grid = np.linspace(0.0, 1.0, 37 * 37, dtype=np.float32).reshape(37, 37)
         full = upsample_grid_to_image(grid, (520, 520), 14, order=1)
@@ -372,7 +372,7 @@ class TestCoveredExtentMapping:
         assert float(full.max()) <= 1.0 + 1e-6
 
     def test_align_mask_to_grid_accepts_patch(self):
-        from phenotypic.detect.nn._dino_support import align_mask_to_grid
+        from phenotypic.detect.nn._helper._dino_support import align_mask_to_grid
 
         mask = np.zeros((600, 800), dtype=bool)
         mask[588:600, :] = True  # only in the truncated remainder
@@ -381,7 +381,7 @@ class TestCoveredExtentMapping:
         assert not grid.any()
 
     def test_pool_prototype_accepts_patch(self):
-        from phenotypic.detect.nn._dino_support import pool_prototype
+        from phenotypic.detect.nn._helper._dino_support import pool_prototype
 
         feats = np.zeros((4, 4, 8), np.float32)
         feats[1:3, 1:3] = 1.0
@@ -392,7 +392,7 @@ class TestCoveredExtentMapping:
         assert np.all(proto > 0.5)
 
     def test_cosine_match_to_mask_uses_covered_extent_when_patch_given(self):
-        from phenotypic.detect.nn._dino_support import cosine_match_to_mask
+        from phenotypic.detect.nn._helper._dino_support import cosine_match_to_mask
 
         feats = np.zeros((42, 57, 8), np.float32)
         feats[20:23, 27:30] = 1.0
@@ -428,7 +428,7 @@ class TestCoveredExtentIsRequiredOnBothDirections:
         import numpy as np
         import pytest
 
-        from phenotypic.detect.nn._dino_support import (
+        from phenotypic.detect.nn._helper._dino_support import (
             align_mask_to_grid,
             cosine_match_to_mask,
             pool_prototype,
@@ -450,7 +450,7 @@ class TestCoveredExtentIsRequiredOnBothDirections:
     def test_covered_extent_excludes_the_truncated_remainder(self):
         import numpy as np
 
-        from phenotypic.detect.nn._dino_support import align_mask_to_grid
+        from phenotypic.detect.nn._helper._dino_support import align_mask_to_grid
 
         # Rows 208..220 are outside the (13, 18) grid's covered extent at patch 16.
         mask = np.zeros((220, 300), dtype=bool)
@@ -470,7 +470,7 @@ class TestBackbonePatchSize:
     def test_reads_the_value_from_the_model(self):
         import types
 
-        from phenotypic.detect.nn._dino_support import backbone_patch_size
+        from phenotypic.detect.nn._helper._dino_support import backbone_patch_size
 
         model = types.SimpleNamespace(config=types.SimpleNamespace(patch_size=16))
         assert backbone_patch_size(model) == 16
@@ -480,7 +480,7 @@ class TestBackbonePatchSize:
 
         import pytest
 
-        from phenotypic.detect.nn._dino_support import backbone_patch_size
+        from phenotypic.detect.nn._helper._dino_support import backbone_patch_size
 
         with pytest.raises(ValueError, match="patch_size"):
             backbone_patch_size(types.SimpleNamespace(config=types.SimpleNamespace()))

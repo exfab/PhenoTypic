@@ -1,6 +1,6 @@
 """Shared fixed-geometric tiling for GPU detectors (Spec 2b, Task 3).
 
-Extracted from ``_sam3_detector.py`` so the instance detector (SAM3) and the
+Extracted from ``_sam3.py`` so the instance detector (SAM3) and the
 semantic detectors (INSID3, FSSDINO, union stitch) share one tiling
 implementation. A ``GpuDetector`` runs before ``GridFinder`` and only ever sees
 a raw ``input_layer`` array, so tiling is **grid-unaware**: fixed ~``tile_px``
@@ -87,7 +87,7 @@ def _tile_starts(extent: int, tile_px: int, stride: int) -> list[int]:
 
 
 def _plan_tiles(
-    shape: tuple[int, int], tile_px: int, overlap: float
+        shape: tuple[int, int], tile_px: int, overlap: float
 ) -> list[_Tile]:
     """Plan fixed ~``tile_px`` tiles with fractional ``overlap`` over an image.
 
@@ -115,9 +115,9 @@ def _plan_tiles(
 
 
 def stitch_semantic_tiles(
-    tiles: List[_Tile],
-    tile_masks: List["np.ndarray"],
-    out_shape: tuple[int, int],
+        tiles: List[_Tile],
+        tile_masks: List["np.ndarray"],
+        out_shape: tuple[int, int],
 ) -> "np.ndarray":
     """Union per-tile boolean masks back into one full-image ``objmask``.
 
@@ -141,8 +141,8 @@ def stitch_semantic_tiles(
 
     if len(tiles) != len(tile_masks):
         raise ValueError(
-            f"stitch_semantic_tiles: {len(tiles)} tiles vs "
-            f"{len(tile_masks)} masks"
+                f"stitch_semantic_tiles: {len(tiles)} tiles vs "
+                f"{len(tile_masks)} masks"
         )
     full = np.zeros(out_shape, dtype=bool)
     for tile, mask in zip(tiles, tile_masks):
@@ -160,7 +160,7 @@ def _iou(mask_a: "np.ndarray", mask_b: "np.ndarray") -> float:
 
 
 def _merge_tiles_iou_nms(
-    objmaps: List["np.ndarray"], iou_thresh: float
+        objmaps: List["np.ndarray"], iou_thresh: float
 ) -> "np.ndarray":
     """Greedy IoU-NMS merge of per-tile objmaps into one contiguous objmap.
 
@@ -169,7 +169,7 @@ def _merge_tiles_iou_nms(
     and greedily kept unless they overlap an already-kept instance by more than
     ``iou_thresh`` (a cross-tile duplicate). Survivors are relabelled ``1..N``
     largest-first so smaller colonies overwrite at overlaps, preserving
-    small-colony identity (mirrors ``Sam2Detector``'s painting order).
+    small-colony identity (mirrors ``Sam2``'s painting order).
 
     This only suppresses *duplicates* — instances a neighbouring tile saw
     whole. It cannot suppress a **fragment**: IoU between a whole colony and
@@ -212,10 +212,10 @@ def _merge_tiles_iou_nms(
         import warnings
 
         warnings.warn(
-            f"Tiled merge kept {len(kept)} instances, exceeding uint16 range. "
-            f"Only the first {max_labels} (largest) will be labeled.",
-            UserWarning,
-            stacklevel=2,
+                f"Tiled merge kept {len(kept)} instances, exceeding uint16 range. "
+                f"Only the first {max_labels} (largest) will be labeled.",
+                UserWarning,
+                stacklevel=2,
         )
         kept = kept[:max_labels]
 
@@ -288,9 +288,9 @@ def owning_tile_index(tiles: List[_Tile], centroid_yx: tuple[float, float]) -> i
 
 
 def assign_by_centroid_core(
-    tiles: List[_Tile],
-    tile_objmaps: List["np.ndarray"],
-    out_shape: tuple[int, int],
+        tiles: List[_Tile],
+        tile_objmaps: List["np.ndarray"],
+        out_shape: tuple[int, int],
 ) -> "np.ndarray":
     """Merge tile-local instance maps by centroid-in-core assignment.
 
@@ -338,8 +338,8 @@ def assign_by_centroid_core(
 
     if len(tiles) != len(tile_objmaps):
         raise ValueError(
-            f"assign_by_centroid_core: {len(tiles)} tiles vs "
-            f"{len(tile_objmaps)} objmaps"
+                f"assign_by_centroid_core: {len(tiles)} tiles vs "
+                f"{len(tile_objmaps)} objmaps"
         )
 
     # Survivors are recorded as (area, diameter, tile_index, label) — never as
@@ -360,7 +360,7 @@ def assign_by_centroid_core(
             if owning_tile_index(tiles, (cy, cx)) != i:
                 continue
             diameter = max(
-                int(ys.max() - ys.min()) + 1, int(xs.max() - xs.min()) + 1
+                    int(ys.max() - ys.min()) + 1, int(xs.max() - xs.min()) + 1
             )
             kept.append((int(ys.size), diameter, i, int(label)))
 
@@ -374,20 +374,20 @@ def assign_by_centroid_core(
         d = kept[0][1]
         if d > overlap:
             warnings.warn(
-                f"Largest instance is {d} px across but tiles overlap by only "
-                f"{overlap} px; an instance wider than the overlap can be "
-                f"cleaved in every tile and lost. Raise tile_overlap.",
-                UserWarning,
-                stacklevel=2,
+                    f"Largest instance is {d} px across but tiles overlap by only "
+                    f"{overlap} px; an instance wider than the overlap can be "
+                    f"cleaved in every tile and lost. Raise tile_overlap.",
+                    UserWarning,
+                    stacklevel=2,
             )
 
     max_labels = int(np.iinfo(np.uint16).max)
     if len(kept) > max_labels:
         warnings.warn(
-            f"Tiled merge kept {len(kept)} instances, exceeding uint16 range. "
-            f"Only the first {max_labels} (largest) will be labeled.",
-            UserWarning,
-            stacklevel=2,
+                f"Tiled merge kept {len(kept)} instances, exceeding uint16 range. "
+                f"Only the first {max_labels} (largest) will be labeled.",
+                UserWarning,
+                stacklevel=2,
         )
         kept = kept[:max_labels]
 

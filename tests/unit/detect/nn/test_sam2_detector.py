@@ -1,4 +1,4 @@
-"""Tests for Sam2Detector.
+"""Tests for Sam2.
 
 Construction, serialization, and isinstance checks work WITHOUT torch/sam2
 installed.  Functional tests that call ``.apply()`` are skipped unless the
@@ -24,7 +24,7 @@ from phenotypic.detect.nn import SAM2_AVAILABLE, Sam2Detector
 
 
 class TestSam2DetectorConstruction:
-    """Sam2Detector can be constructed and inspected without torch."""
+    """Sam2 can be constructed and inspected without torch."""
 
     def test_default_parameters(self):
         det = Sam2Detector()
@@ -47,14 +47,14 @@ class TestSam2DetectorConstruction:
 
     def test_custom_parameters(self):
         det = Sam2Detector(
-            model_size="large",
-            points_per_side=64,
-            pred_iou_thresh=0.8,
-            stability_score_thresh=0.95,
-            min_mask_region_area=500,
-            device="cpu",
-            checkpoint="/tmp/custom.pt",
-            config="custom.yaml",
+                model_size="large",
+                points_per_side=64,
+                pred_iou_thresh=0.8,
+                stability_score_thresh=0.95,
+                min_mask_region_area=500,
+                device="cpu",
+                checkpoint="/tmp/custom.pt",
+                config="custom.yaml",
         )
         assert det.model_size == "large"
         assert det.points_per_side == 64
@@ -68,10 +68,10 @@ class TestSam2DetectorConstruction:
     def test_crop_sliding_window_parameters(self):
         """Native SAM2 crop knobs are settable for sliding-window inference."""
         det = Sam2Detector(
-            crop_n_layers=1,
-            crop_nms_thresh=0.6,
-            crop_overlap_ratio=0.4,
-            crop_n_points_downscale_factor=2,
+                crop_n_layers=1,
+                crop_nms_thresh=0.6,
+                crop_overlap_ratio=0.4,
+                crop_n_points_downscale_factor=2,
         )
         assert det.crop_n_layers == 1
         assert det.crop_nms_thresh == 0.6
@@ -105,7 +105,7 @@ class TestSam2DetectorConstruction:
 
 
 class TestSam2DetectorHierarchy:
-    """Sam2Detector sits in the correct ABC hierarchy."""
+    """Sam2 sits in the correct ABC hierarchy."""
 
     def test_is_gpu_detector(self):
         det = Sam2Detector()
@@ -126,15 +126,15 @@ class TestSam2DetectorSerialization:
 
     def test_json_roundtrip(self):
         original = Sam2Detector(
-            model_size="small",
-            points_per_side=48,
-            points_per_batch=4,
-            pred_iou_thresh=0.8,
-            stability_score_thresh=0.95,
-            min_mask_region_area=200,
-            crop_n_layers=1,
-            crop_n_points_downscale_factor=2,
-            device="cpu",
+                model_size="small",
+                points_per_side=48,
+                points_per_batch=4,
+                pred_iou_thresh=0.8,
+                stability_score_thresh=0.95,
+                min_mask_region_area=200,
+                crop_n_layers=1,
+                crop_n_points_downscale_factor=2,
+                device="cpu",
         )
         pipeline = ImagePipeline(ops=[original])
         json_str = pipeline.to_json()
@@ -177,9 +177,9 @@ class TestSam2DetectorSerialization:
     def test_old_pipeline_payload_defaults_points_per_batch(self):
         config = json.loads(ImagePipeline(ops=[Sam2Detector()]).to_json())
         sam2_config = next(
-            value
-            for value in config["pipe_cfgs"].values()
-            if value["class"] == "Sam2Detector"
+                value
+                for value in config["pipe_cfgs"].values()
+                if value["class"] == "Sam2"
         )
         sam2_config["params"].pop("points_per_batch")
 
@@ -194,10 +194,10 @@ class TestSam2DetectorSerialization:
         config = json.loads(pipeline.to_json())
 
         pipe_cfgs = config["pipe_cfgs"]
-        sam2_key = [k for k in pipe_cfgs if "Sam2Detector" in k][0]
+        sam2_key = [k for k in pipe_cfgs if "Sam2" in k][0]
         sam2_data = pipe_cfgs[sam2_key]
 
-        assert sam2_data["class"] == "Sam2Detector"
+        assert sam2_data["class"] == "Sam2"
         assert sam2_data["params"]["model_size"] == "base_plus"
         assert sam2_data["params"]["points_per_side"] == 16
 
@@ -216,16 +216,18 @@ def _sam2_tiny_available() -> bool:
     """
     if not SAM2_AVAILABLE:
         return False
-    from phenotypic.detect.nn._checkpoint_manager import Sam2CheckpointManager
+    from phenotypic.detect.nn._helper._checkpoint_manager import Sam2CheckpointManager
+
     if Sam2CheckpointManager.is_cached("tiny"):
         return True
     import urllib.error
     import urllib.request
+
     try:
         req = urllib.request.Request(
-            Sam2CheckpointManager.BASE_URL
-            + Sam2CheckpointManager.MODELS["tiny"]["filename"],
-            method="HEAD",
+                Sam2CheckpointManager.BASE_URL
+                + Sam2CheckpointManager.MODELS["tiny"]["filename"],
+                method="HEAD",
         )
         with urllib.request.urlopen(req, timeout=3):
             return True
@@ -234,8 +236,8 @@ def _sam2_tiny_available() -> bool:
 
 
 @pytest.mark.skipif(
-    not SAM2_AVAILABLE or not _sam2_tiny_available(),
-    reason="Requires phenotypic[torch] and a cached or downloadable SAM2 tiny checkpoint",
+        not SAM2_AVAILABLE or not _sam2_tiny_available(),
+        reason="Requires phenotypic[torch] and a cached or downloadable SAM2 tiny checkpoint",
 )
 class TestSam2DetectorFunctional:
     """Functional tests that load a model and run inference."""
@@ -251,8 +253,8 @@ class TestSam2DetectorFunctional:
         # invariant must still hold (objmask is the derived view of objmap).
         assert result.objmask[:].any()
         np.testing.assert_array_equal(
-            result.objmap[:] > 0,
-            result.objmask[:],
+                result.objmap[:] > 0,
+                result.objmask[:],
         )
 
     def test_objmask_objmap_consistency(self, synth_plate):
@@ -263,8 +265,8 @@ class TestSam2DetectorFunctional:
         import numpy as np
 
         np.testing.assert_array_equal(
-            result.objmap[:] > 0,
-            result.objmask[:],
+                result.objmap[:] > 0,
+                result.objmask[:],
         )
 
     def test_pipeline_apply(self, synth_plate):
@@ -285,10 +287,10 @@ class TestSam2CropPyramid:
 
     def test_build_sam2_generator_accepts_box_nms_thresh(self):
         """`box_nms_thresh` dedups the dense point grid's redundant proposals
-        within one crop. SAM2 exposes it; Sam2Detector did not."""
+        within one crop. SAM2 exposes it; Sam2 did not."""
         import inspect
 
-        from phenotypic.detect.nn._sam2_detector import build_sam2_generator
+        from phenotypic.detect.nn._sam2 import build_sam2_generator
 
         sig = inspect.signature(build_sam2_generator)
         assert "box_nms_thresh" in sig.parameters
@@ -297,9 +299,9 @@ class TestSam2CropPyramid:
 
 class TestSam2RleStreaming:
     def test_builder_forwards_batch_size_and_internal_rle_mode(
-        self, monkeypatch
+            self, monkeypatch
     ):
-        from phenotypic.detect.nn._sam2_detector import build_sam2_generator
+        from phenotypic.detect.nn._sam2 import build_sam2_generator
 
         seen: dict = {}
 
@@ -308,35 +310,35 @@ class TestSam2RleStreaming:
                 seen.update(kwargs)
 
         monkeypatch.setitem(
-            sys.modules,
-            "sam2.automatic_mask_generator",
-            types.SimpleNamespace(SAM2AutomaticMaskGenerator=FakeGenerator),
+                sys.modules,
+                "sam2.automatic_mask_generator",
+                types.SimpleNamespace(SAM2AutomaticMaskGenerator=FakeGenerator),
         )
         monkeypatch.setitem(
-            sys.modules,
-            "sam2.build_sam",
-            types.SimpleNamespace(build_sam2=lambda *a, **k: object()),
+                sys.modules,
+                "sam2.build_sam",
+                types.SimpleNamespace(build_sam2=lambda *a, **k: object()),
         )
         build_sam2_generator(
-            "tiny",
-            device="cpu",
-            points_per_batch=3,
-            checkpoint="/fake/checkpoint.pt",
-            config="fake.yaml",
+                "tiny",
+                device="cpu",
+                points_per_batch=3,
+                checkpoint="/fake/checkpoint.pt",
+                config="fake.yaml",
         )
         assert seen["points_per_batch"] == 3
         assert seen["output_mode"] == "uncompressed_rle"
 
     @pytest.mark.parametrize(
-        "mask",
-        [
-            np.zeros((3, 5), dtype=bool),
-            np.ones((3, 5), dtype=bool),
-            np.indices((4, 7)).sum(axis=0) % 2 == 0,
-        ],
+            "mask",
+            [
+                np.zeros((3, 5), dtype=bool),
+                np.ones((3, 5), dtype=bool),
+                np.indices((4, 7)).sum(axis=0) % 2 == 0,
+            ],
     )
     def test_fortran_rle_round_trip(self, mask):
-        from phenotypic.detect.nn._sam2_rle import (
+        from phenotypic.detect.nn._helper._sam2_rle import (
             decode_uncompressed_rle,
             encode_uncompressed_rle,
         )
@@ -345,7 +347,7 @@ class TestSam2RleStreaming:
         np.testing.assert_array_equal(decode_uncompressed_rle(rle), mask)
 
     def test_rle_iou_matches_boolean_iou_randomized(self):
-        from phenotypic.detect.nn._sam2_rle import (
+        from phenotypic.detect.nn._helper._sam2_rle import (
             encode_uncompressed_rle,
             rle_iou,
         )
@@ -357,11 +359,11 @@ class TestSam2RleStreaming:
             union = int((a | b).sum())
             expected = int((a & b).sum()) / union if union else 0.0
             assert rle_iou(
-                encode_uncompressed_rle(a), encode_uncompressed_rle(b)
+                    encode_uncompressed_rle(a), encode_uncompressed_rle(b)
             ) == expected
 
     def test_streamed_objmap_matches_binary_mask_ordering(self):
-        from phenotypic.detect.nn._sam2_rle import (
+        from phenotypic.detect.nn._helper._sam2_rle import (
             encode_uncompressed_rle,
             paint_rle_records,
         )
@@ -379,28 +381,28 @@ class TestSam2RleStreaming:
         ]
         expected = np.zeros(large.shape, dtype=np.uint16)
         for label, record in enumerate(
-            sorted(binary, key=lambda item: item["area"], reverse=True), start=1
+                sorted(binary, key=lambda item: item["area"], reverse=True), start=1
         ):
             expected[record["segmentation"]] = label
         rle_records = [
             {
                 "segmentation": encode_uncompressed_rle(record["segmentation"]),
-                "area": record["area"],
+                "area"        : record["area"],
             }
             for record in binary
         ]
         actual = paint_rle_records(
-            rle_records,
-            large.shape,
-            detector_name="SAM2",
-            truncate_before_sort=True,
+                rle_records,
+                large.shape,
+                detector_name="SAM2",
+                truncate_before_sort=True,
         )
         np.testing.assert_array_equal(actual, expected)
 
     def test_uint16_cap_occurs_before_area_sort(self, monkeypatch):
         from types import SimpleNamespace
 
-        from phenotypic.detect.nn._sam2_rle import (
+        from phenotypic.detect.nn._helper._sam2_rle import (
             encode_uncompressed_rle,
             paint_rle_records,
         )
@@ -420,16 +422,16 @@ class TestSam2RleStreaming:
 
         with pytest.warns(UserWarning, match="exceeding uint16"):
             actual = paint_rle_records(
-                records,
-                (1, 3),
-                detector_name="SAM2",
-                truncate_before_sort=True,
+                    records,
+                    (1, 3),
+                    detector_name="SAM2",
+                    truncate_before_sort=True,
             )
 
         np.testing.assert_array_equal(actual, np.array([[1, 2, 0]], np.uint16))
 
     def test_malformed_rle_is_rejected(self):
-        from phenotypic.detect.nn._sam2_rle import validate_uncompressed_rle
+        from phenotypic.detect.nn._helper._sam2_rle import validate_uncompressed_rle
 
         with pytest.raises(ValueError, match="cover exactly"):
             validate_uncompressed_rle({"size": [2, 3], "counts": [2, 3]})

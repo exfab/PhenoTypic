@@ -8,7 +8,7 @@ from typing import Annotated
 from pydantic import Field, PrivateAttr
 
 from phenotypic.abc_ import GpuDetector
-from phenotypic.detect.nn._checkpoint_manager import (
+from phenotypic.detect.nn._helper._checkpoint_manager import (
     Device,
     Sam2ModelSize,
 )
@@ -16,26 +16,26 @@ from phenotypic.sdk_.typing_ import GpuInputLayer, TuneSpec
 
 
 def build_sam2_generator(
-    model_size: Sam2ModelSize,
-    *,
-    device: str,
-    points_per_side: int = 32,
-    points_per_batch: int = 8,
-    pred_iou_thresh: float = 0.7,
-    stability_score_thresh: float = 0.92,
-    min_mask_region_area: int = 100,
-    crop_n_layers: int = 0,
-    crop_nms_thresh: float = 0.7,
-    crop_overlap_ratio: float = 512 / 1500,
-    crop_n_points_downscale_factor: int = 1,
-    box_nms_thresh: float = 0.7,
-    checkpoint: str | Path | None = None,
-    config: str | None = None,
+        model_size: Sam2ModelSize,
+        *,
+        device: str,
+        points_per_side: int = 32,
+        points_per_batch: int = 8,
+        pred_iou_thresh: float = 0.7,
+        stability_score_thresh: float = 0.92,
+        min_mask_region_area: int = 100,
+        crop_n_layers: int = 0,
+        crop_nms_thresh: float = 0.7,
+        crop_overlap_ratio: float = 512 / 1500,
+        crop_n_points_downscale_factor: int = 1,
+        box_nms_thresh: float = 0.7,
+        checkpoint: str | Path | None = None,
+        config: str | None = None,
 ) -> object:
     """Build a ``SAM2AutomaticMaskGenerator`` (shared by SAM2 + DinoSam2).
 
     Centralises the ``build_sam2`` + generator construction so detectors that
-    need SAM2 class-agnostic proposals (``Sam2Detector``,
+    need SAM2 class-agnostic proposals (``Sam2``,
     ``DinoSam2Detector``) do not duplicate the checkpoint-resolution and
     Hydra-config-prefix logic. There is no public accessor for an existing
     generator, so each detector calls this to rebuild its own.
@@ -78,11 +78,11 @@ def build_sam2_generator(
         from sam2.build_sam import build_sam2
     except ImportError:
         raise ImportError(
-            "SAM2 proposals require the sam2 package. "
-            "Install with: pip install phenotypic[torch]"
+                "SAM2 proposals require the sam2 package. "
+                "Install with: pip install phenotypic[torch]"
         ) from None
 
-    from phenotypic.detect.nn._checkpoint_manager import Sam2CheckpointManager
+    from phenotypic.detect.nn._helper._checkpoint_manager import Sam2CheckpointManager
 
     mgr = Sam2CheckpointManager()
     if checkpoint is not None:
@@ -100,22 +100,22 @@ def build_sam2_generator(
 
     model = build_sam2(cfg, ckpt, device=device, apply_postprocessing=False)
     return SAM2AutomaticMaskGenerator(
-        model,
-        points_per_side=points_per_side,
-        points_per_batch=points_per_batch,
-        pred_iou_thresh=pred_iou_thresh,
-        stability_score_thresh=stability_score_thresh,
-        min_mask_region_area=min_mask_region_area,
-        crop_n_layers=crop_n_layers,
-        crop_nms_thresh=crop_nms_thresh,
-        crop_overlap_ratio=crop_overlap_ratio,
-        crop_n_points_downscale_factor=crop_n_points_downscale_factor,
-        box_nms_thresh=box_nms_thresh,
-        output_mode="uncompressed_rle",
+            model,
+            points_per_side=points_per_side,
+            points_per_batch=points_per_batch,
+            pred_iou_thresh=pred_iou_thresh,
+            stability_score_thresh=stability_score_thresh,
+            min_mask_region_area=min_mask_region_area,
+            crop_n_layers=crop_n_layers,
+            crop_nms_thresh=crop_nms_thresh,
+            crop_overlap_ratio=crop_overlap_ratio,
+            crop_n_points_downscale_factor=crop_n_points_downscale_factor,
+            box_nms_thresh=box_nms_thresh,
+            output_mode="uncompressed_rle",
     )
 
 
-class Sam2Detector(GpuDetector):
+class Sam2(GpuDetector):
     """Detect colonies using Meta's SAM2 foundation model.
 
     Run SAM2's automatic mask generator over the full-colour plate image
@@ -133,7 +133,7 @@ class Sam2Detector(GpuDetector):
 
     The model is loaded lazily on the first call to
     :meth:`~phenotypic.abc_.ImageOperation.apply` (not during construction),
-    so a ``Sam2Detector`` can be serialised, round-tripped through JSON,
+    so a ``Sam2`` can be serialised, round-tripped through JSON,
     and inspected without a GPU or PyTorch installed.
 
     Args:
@@ -264,8 +264,8 @@ class Sam2Detector(GpuDetector):
         Construct a detector and inspect its default parameters (no GPU
         or ``sam2`` package required):
 
-        >>> from phenotypic.detect.nn import Sam2Detector
-        >>> det = Sam2Detector(model_size="tiny", points_per_side=32)
+        >>> from phenotypic.detect.nn import Sam2
+        >>> det = Sam2(model_size="tiny", points_per_side=32)
         >>> det.model_size
         'tiny'
 
@@ -273,18 +273,18 @@ class Sam2Detector(GpuDetector):
         to JSON (round-trips without GPU dependencies):
 
         >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.detect.nn import Sam2Detector
-        >>> pipe = ImagePipeline(ops=[Sam2Detector(model_size="small")])
+        >>> from phenotypic.detect.nn import Sam2
+        >>> pipe = ImagePipeline(ops=[Sam2(model_size="small")])
         >>> json_str = pipe.to_json()
         >>> pipe2 = ImagePipeline.from_json(json_str)
-        >>> type(pipe2.get_ops()["Sam2Detector"])
-        <class 'phenotypic.detect.nn._sam2_detector.Sam2Detector'>
+        >>> type(pipe2.get_ops()["Sam2"])
+        <class 'phenotypic.detect.nn._sam2_detector.Sam2'>
     """
 
     model_size: Sam2ModelSize = "tiny"
     points_per_side: int = 32
     points_per_batch: Annotated[int, TuneSpec(tunable=False)] = Field(
-        default=8, ge=1
+            default=8, ge=1
     )
     pred_iou_thresh: float = 0.7
     stability_score_thresh: float = 0.92
@@ -318,24 +318,24 @@ class Sam2Detector(GpuDetector):
         if getattr(self, "_generator", None) is not None:
             return
 
-        from phenotypic.detect.nn._checkpoint_manager import resolve_device
+        from phenotypic.detect.nn._helper._checkpoint_manager import resolve_device
 
         device = resolve_device(self.device)
         self._generator = build_sam2_generator(
-            self.model_size,
-            device=device,
-            points_per_side=self.points_per_side,
-            points_per_batch=self.points_per_batch,
-            pred_iou_thresh=self.pred_iou_thresh,
-            stability_score_thresh=self.stability_score_thresh,
-            min_mask_region_area=self.min_mask_region_area,
-            crop_n_layers=self.crop_n_layers,
-            crop_nms_thresh=self.crop_nms_thresh,
-            crop_overlap_ratio=self.crop_overlap_ratio,
-            crop_n_points_downscale_factor=self.crop_n_points_downscale_factor,
-            box_nms_thresh=self.box_nms_thresh,
-            checkpoint=self.checkpoint,
-            config=self.config,
+                self.model_size,
+                device=device,
+                points_per_side=self.points_per_side,
+                points_per_batch=self.points_per_batch,
+                pred_iou_thresh=self.pred_iou_thresh,
+                stability_score_thresh=self.stability_score_thresh,
+                min_mask_region_area=self.min_mask_region_area,
+                crop_n_layers=self.crop_n_layers,
+                crop_nms_thresh=self.crop_nms_thresh,
+                crop_overlap_ratio=self.crop_overlap_ratio,
+                crop_n_points_downscale_factor=self.crop_n_points_downscale_factor,
+                box_nms_thresh=self.box_nms_thresh,
+                checkpoint=self.checkpoint,
+                config=self.config,
         )
 
     def _infer_one(self, sample):
@@ -348,19 +348,19 @@ class Sam2Detector(GpuDetector):
         masks = self._generator.generate(rgb)  # type: ignore[attr-defined]
 
         h, w = rgb.shape[:2]
-        from phenotypic.detect.nn._sam2_rle import (
+        from phenotypic.detect.nn._helper._sam2_rle import (
             normalize_rle_records,
             paint_rle_records,
         )
 
         normalize_rle_records(masks, expected_shape=(h, w))
         return paint_rle_records(
-            masks,
-            (h, w),
-            detector_name="SAM2",
-            truncate_before_sort=True,
+                masks,
+                (h, w),
+                detector_name="SAM2",
+                truncate_before_sort=True,
         )
 
 
 # Expose the class docstring on .apply() for Sphinx autodoc
-Sam2Detector.apply.__doc__ = Sam2Detector.__doc__
+Sam2.apply.__doc__ = Sam2.__doc__
