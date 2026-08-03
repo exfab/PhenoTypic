@@ -1,6 +1,6 @@
 """Shared tiling module (Spec 2b, Task 3; centroid-in-core merge, Task 5).
 
-The fixed-geometric tiling was extracted from ``_sam3_detector`` to ``_tiling``
+The fixed-geometric tiling was extracted from ``_sam3`` to ``_tiling``
 so the semantic detectors reuse it, and the cross-tile instance merge followed.
 These tests exercise the new module path directly (the SAM3 suite still imports
 the re-exported names and stays green): tile planning, the semantic union
@@ -92,7 +92,7 @@ class TestStitchSemanticTiles:
 
 
 # ---------------------------------------------------------------------------
-# Instance merge: IoU-NMS (moved here from _sam3_detector)
+# Instance merge: IoU-NMS (moved here from _sam3)
 # ---------------------------------------------------------------------------
 
 

@@ -11,7 +11,7 @@ from phenotypic.detect.nn._helper._checkpoint_manager import Device
 
 # Shared fixed-geometric tiling and the cross-tile instance merges, both owned
 # by _tiling.py so the semantic detectors reuse the tiling. Re-exported here for
-# back-compat with callers/tests that import these names from _sam3_detector.
+# back-compat with callers/tests that import these names from _sam3.
 from phenotypic.detect.nn._helper._tiling import (
     _iou,
     _merge_tiles_iou_nms,
@@ -47,7 +47,7 @@ class Sam3(GpuDetector):
 
     The model and processor are loaded lazily on the first call to
     :meth:`~phenotypic.abc_.ImageOperation.apply` (not during construction), so
-    a ``Sam3Detector`` can be serialised, round-tripped through JSON, and
+    a ``Sam3`` can be serialised, round-tripped through JSON, and
     inspected without a GPU, PyTorch, or ``transformers`` installed.
 
     **Gated weights.** SAM3 weights (~3.45 GB) are gated on Hugging Face under
@@ -132,8 +132,8 @@ class Sam3(GpuDetector):
         Construct a detector and inspect its prompt (no GPU or weights
         required):
 
-        >>> from phenotypic.detect.nn import Sam3Detector
-        >>> det = Sam3Detector(prompt="yeast colony")
+        >>> from phenotypic.detect.nn import Sam3
+        >>> det = Sam3(prompt="yeast colony")
         >>> det.prompt
         'yeast colony'
 
@@ -144,7 +144,7 @@ class Sam3(GpuDetector):
         >>> pipe = ImagePipeline(ops=[Sam3(prompt="colony")])
         >>> restored = ImagePipeline.from_json(pipe.to_json())
         >>> type(restored.get_ops()["Sam3"])
-        <class 'phenotypic.detect.nn._sam3_detector.Sam3Detector'>
+        <class 'phenotypic.detect.nn._sam3.Sam3'>
     """
 
     # Capabilities — SAM3 is text-prompted, instance-native, true-batch.

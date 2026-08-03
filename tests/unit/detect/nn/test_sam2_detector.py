@@ -15,7 +15,7 @@ from pydantic import ValidationError
 
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import GpuDetector, ObjectDetector
-from phenotypic.detect.nn import SAM2_AVAILABLE, Sam2Detector
+from phenotypic.detect.nn import SAM2_AVAILABLE, Sam2
 
 
 # ---------------------------------------------------------------------------
@@ -27,7 +27,7 @@ class TestSam2DetectorConstruction:
     """Sam2 can be constructed and inspected without torch."""
 
     def test_default_parameters(self):
-        det = Sam2Detector()
+        det = Sam2()
         assert det.model_size == "tiny"
         assert det.points_per_side == 32
         assert det.points_per_batch == 8
@@ -46,7 +46,7 @@ class TestSam2DetectorConstruction:
         assert det.config is None
 
     def test_custom_parameters(self):
-        det = Sam2Detector(
+        det = Sam2(
                 model_size="large",
                 points_per_side=64,
                 pred_iou_thresh=0.8,
@@ -67,7 +67,7 @@ class TestSam2DetectorConstruction:
 
     def test_crop_sliding_window_parameters(self):
         """Native SAM2 crop knobs are settable for sliding-window inference."""
-        det = Sam2Detector(
+        det = Sam2(
                 crop_n_layers=1,
                 crop_nms_thresh=0.6,
                 crop_overlap_ratio=0.4,
@@ -80,20 +80,20 @@ class TestSam2DetectorConstruction:
 
     def test_empty_constructor_for_serialization(self):
         """Detector can be built with defaults for deserialization paths."""
-        det = Sam2Detector()
+        det = Sam2()
         assert det._generator is None
 
     def test_points_per_batch_must_be_positive(self):
         with pytest.raises(ValidationError):
-            Sam2Detector(points_per_batch=0)
+            Sam2(points_per_batch=0)
 
     def test_all_model_sizes_accepted(self):
         for size in ("tiny", "small", "base_plus", "large"):
-            det = Sam2Detector(model_size=size)
+            det = Sam2(model_size=size)
             assert det.model_size == size
 
     def test_capability_fields(self):
-        det = Sam2Detector()
+        det = Sam2()
         assert det.input_layer == "rgb"
         assert det.output_kind == "instance"
         assert det.supports_batching is False
@@ -108,11 +108,11 @@ class TestSam2DetectorHierarchy:
     """Sam2 sits in the correct ABC hierarchy."""
 
     def test_is_gpu_detector(self):
-        det = Sam2Detector()
+        det = Sam2()
         assert isinstance(det, GpuDetector)
 
     def test_is_object_detector(self):
-        det = Sam2Detector()
+        det = Sam2()
         assert isinstance(det, ObjectDetector)
 
 
@@ -125,7 +125,7 @@ class TestSam2DetectorSerialization:
     """JSON round-trip works without torch installed."""
 
     def test_json_roundtrip(self):
-        original = Sam2Detector(
+        original = Sam2(
                 model_size="small",
                 points_per_side=48,
                 points_per_batch=4,
@@ -141,7 +141,7 @@ class TestSam2DetectorSerialization:
         restored_pipeline = ImagePipeline.from_json(json_str)
 
         restored = list(restored_pipeline._ops.values())[0]
-        assert isinstance(restored, Sam2Detector)
+        assert isinstance(restored, Sam2)
         assert restored.model_size == "small"
         assert restored.points_per_side == 48
         assert restored.points_per_batch == 4
@@ -154,7 +154,7 @@ class TestSam2DetectorSerialization:
 
     def test_generator_not_in_json(self):
         """The lazy _generator attribute must not appear in serialised JSON."""
-        det = Sam2Detector(model_size="tiny")
+        det = Sam2(model_size="tiny")
         pipeline = ImagePipeline(ops=[det])
         json_str = pipeline.to_json()
         config = json.loads(json_str)
@@ -167,15 +167,15 @@ class TestSam2DetectorSerialization:
 
     def test_json_roundtrip_default_params(self):
         """Round-trip with all-default params preserves detector identity."""
-        pipeline = ImagePipeline(ops=[Sam2Detector()])
+        pipeline = ImagePipeline(ops=[Sam2()])
         restored = ImagePipeline.from_json(pipeline.to_json())
         restored_det = list(restored._ops.values())[0]
-        assert isinstance(restored_det, Sam2Detector)
+        assert isinstance(restored_det, Sam2)
         assert restored_det.model_size == "tiny"
         assert restored_det.points_per_batch == 8
 
     def test_old_pipeline_payload_defaults_points_per_batch(self):
-        config = json.loads(ImagePipeline(ops=[Sam2Detector()]).to_json())
+        config = json.loads(ImagePipeline(ops=[Sam2()]).to_json())
         sam2_config = next(
                 value
                 for value in config["pipe_cfgs"].values()
@@ -189,7 +189,7 @@ class TestSam2DetectorSerialization:
 
     def test_json_structure(self):
         """Verify the serialised JSON has the expected structure."""
-        det = Sam2Detector(model_size="base_plus", points_per_side=16)
+        det = Sam2(model_size="base_plus", points_per_side=16)
         pipeline = ImagePipeline(ops=[det])
         config = json.loads(pipeline.to_json())
 
@@ -246,7 +246,7 @@ class TestSam2DetectorFunctional:
         import numpy as np
 
         image = synth_plate.copy()
-        det = Sam2Detector(model_size="tiny", device="cpu")
+        det = Sam2(model_size="tiny", device="cpu")
         result = det.apply(image, inplace=False)
         assert result.objmap[:].max() > 0
         # S1: after the interface refactor writes objmap, the shared-backend
@@ -259,7 +259,7 @@ class TestSam2DetectorFunctional:
 
     def test_objmask_objmap_consistency(self, synth_plate):
         image = synth_plate.copy()
-        det = Sam2Detector(model_size="tiny", device="cpu")
+        det = Sam2(model_size="tiny", device="cpu")
         result = det.apply(image, inplace=False)
 
         import numpy as np
@@ -271,7 +271,7 @@ class TestSam2DetectorFunctional:
 
     def test_pipeline_apply(self, synth_plate):
         pipeline = ImagePipeline(ops=[
-            Sam2Detector(model_size="tiny", device="cpu"),
+            Sam2(model_size="tiny", device="cpu"),
         ])
         result = pipeline.apply(synth_plate.copy(), inplace=False)
         assert result.objmap[:].max() > 0
@@ -279,9 +279,9 @@ class TestSam2DetectorFunctional:
 
 class TestSam2CropPyramid:
     def test_crop_pyramid_is_engaged_by_default(self):
-        from phenotypic.detect.nn import Sam2Detector
+        from phenotypic.detect.nn import Sam2
 
-        det = Sam2Detector()
+        det = Sam2()
         assert det.crop_n_layers == 1
         assert det.box_nms_thresh == 0.7
 

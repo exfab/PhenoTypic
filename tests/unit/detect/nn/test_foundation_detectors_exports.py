@@ -15,7 +15,7 @@ from phenotypic.detect.nn import (
     DinoSam2Detector,
     FssDinoDetector,
     Insid3Detector,
-    Sam3Detector,
+    Sam3,
 )
 from phenotypic.sdk_.typing_ import TuneSpec
 
@@ -47,7 +47,7 @@ def test_detectors_exported_from_nn_all():
     assert "DinoSam2Detector" in nn.__all__
     assert "Insid3Detector" in nn.__all__
     assert "FssDinoDetector" in nn.__all__
-    assert nn.Sam3Detector is Sam3Detector
+    assert nn.Sam3 is Sam3
     assert nn.DinoSam2Detector is DinoSam2Detector
     assert nn.Insid3Detector is Insid3Detector
     assert nn.FssDinoDetector is FssDinoDetector
@@ -56,7 +56,7 @@ def test_detectors_exported_from_nn_all():
 def test_every_numeric_field_carries_a_tune_spec():
     # W1: the annotation-coverage gate is scoped to detect.__all__ (not
     # detect.nn), so pin the Spec 2a + 2b GPU detectors' tune-readiness here.
-    for cls in (Sam3Detector, DinoSam2Detector, Insid3Detector, FssDinoDetector):
+    for cls in (Sam3, DinoSam2Detector, Insid3Detector, FssDinoDetector):
         for name, field_info in _numeric_fields(cls):
             metadata = list(field_info.metadata) + _walk_metadata(
                     field_info.annotation

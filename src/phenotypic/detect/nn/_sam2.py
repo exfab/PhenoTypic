@@ -278,7 +278,7 @@ class Sam2(GpuDetector):
         >>> json_str = pipe.to_json()
         >>> pipe2 = ImagePipeline.from_json(json_str)
         >>> type(pipe2.get_ops()["Sam2"])
-        <class 'phenotypic.detect.nn._sam2_detector.Sam2'>
+        <class 'phenotypic.detect.nn._sam2.Sam2'>
     """
 
     model_size: Sam2ModelSize = "tiny"

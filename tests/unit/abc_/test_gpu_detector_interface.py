@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 from phenotypic.abc_ import GpuDetector
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.detect.nn import Sam2Detector
+from phenotypic.detect.nn import Sam2
 from phenotypic.sdk_.typing_ import GpuInputLayer, GpuOutputKind
 from tests._fakes.fake_gpu_detector import FakeGpuDetector as _FakeGpuDetector
 
@@ -27,7 +27,7 @@ class TestTypingAliases:
 
 class TestCapabilityFields:
     def test_defaults_on_existing_detector(self):
-        det = Sam2Detector()
+        det = Sam2()
         assert det.input_layer == "rgb"
         assert det.supports_batching is False
         assert det.output_kind == "instance"
@@ -40,21 +40,21 @@ class TestCapabilityFields:
         assert "output_kind" in GpuDetector.model_fields
 
     def test_input_scaling_default_and_round_trip(self):
-        det = Sam2Detector()
+        det = Sam2()
         assert det.input_scaling == "image_max"
-        restored = Sam2Detector.model_validate_json(det.model_dump_json())
+        restored = Sam2.model_validate_json(det.model_dump_json())
         assert restored.input_scaling == "image_max"
 
     def test_input_scaling_rejects_unknown_value(self):
         with pytest.raises(ValidationError):
-            Sam2Detector(input_scaling="percentile")
+            Sam2(input_scaling="percentile")
 
 
 class TestPreprocess:
     def test_2d_float_layer_stacked_and_uint8_normalized(self):
         # gray/detect_mat arrive as 2D float [0,1]; _preprocess converts before
         # stacking them to (H,W,3).
-        det = Sam2Detector()
+        det = Sam2()
         gray = np.linspace(0.0, 1.0, 20, dtype=np.float32).reshape(4, 5)
         out = det._preprocess(gray)
         assert out.shape == (4, 5, 3)
@@ -64,7 +64,7 @@ class TestPreprocess:
         np.testing.assert_array_equal(out[..., 0], out[..., 2])
 
     def test_rgb_uint8_passthrough(self):
-        det = Sam2Detector()
+        det = Sam2()
         rgb = np.zeros((4, 5, 3), dtype=np.uint8)
         rgb[1, 2] = (10, 20, 30)
         out = det._preprocess(rgb)
@@ -73,26 +73,26 @@ class TestPreprocess:
         assert out is rgb  # already uint8 3-channel -> no copy/coercion
 
     def test_all_zero_layer_returns_zero_uint8(self):
-        det = Sam2Detector()
+        det = Sam2()
         out = det._preprocess(np.zeros((4, 5), dtype=np.float32))
         assert out.shape == (4, 5, 3)
         assert out.dtype == np.uint8
         assert out.max() == 0
 
     def test_dtype_range_uint16_uses_full_bit_depth(self):
-        det = Sam2Detector(input_scaling="dtype_range")
+        det = Sam2(input_scaling="dtype_range")
         rgb = np.array([0, 32768, 65535], dtype=np.uint16).reshape(1, 1, 3)
         out = det._preprocess(rgb)
         np.testing.assert_array_equal(out, [[[0, 127, 255]]])
 
     def test_dtype_range_float_clips_out_of_range_values(self):
-        det = Sam2Detector(input_scaling="dtype_range")
+        det = Sam2(input_scaling="dtype_range")
         layer = np.array([[-0.5, 0.5, 1.5]], dtype=np.float32)
         out = det._preprocess(layer)
         np.testing.assert_array_equal(out[..., 0], [[0, 127, 255]])
 
     def test_dtype_range_handles_non_square_2d_uint16_before_stacking(self):
-        det = Sam2Detector(input_scaling="dtype_range")
+        det = Sam2(input_scaling="dtype_range")
         layer = np.arange(15, dtype=np.uint16).reshape(3, 5) * 4000
         out = det._preprocess(layer)
         assert out.shape == (3, 5, 3)
@@ -100,7 +100,7 @@ class TestPreprocess:
         np.testing.assert_array_equal(out[..., 0], out[..., 2])
 
     def test_image_max_matches_legacy_for_complete_uint16_domain(self):
-        det = Sam2Detector(input_scaling="image_max")
+        det = Sam2(input_scaling="image_max")
         values = np.arange(65536, dtype=np.uint16).reshape(256, 256)
         expected = (values / values.max() * 255).astype(np.uint8)
         actual = det._preprocess(values)[..., 0]
@@ -108,14 +108,14 @@ class TestPreprocess:
 
     @pytest.mark.parametrize("maximum", [1, 255, 1000, 30_000, 65_534])
     def test_image_max_matches_legacy_for_representative_maxima(self, maximum):
-        det = Sam2Detector(input_scaling="image_max")
+        det = Sam2(input_scaling="image_max")
         values = np.linspace(0, maximum, 10_001, dtype=np.uint16).reshape(73, 137)
         expected = (values / values.max() * 255).astype(np.uint8)
         actual = det._preprocess(values)[..., 0]
         np.testing.assert_array_equal(actual, expected)
 
     def test_image_max_conversion_crosses_chunk_boundaries(self):
-        det = Sam2Detector(input_scaling="image_max")
+        det = Sam2(input_scaling="image_max")
         values = np.arange(2_200_000, dtype=np.uint32).reshape(1100, 2000)
         expected = (values / values.max() * 255).astype(np.uint8)
         actual = det._preprocess(values)[..., 0]
@@ -188,13 +188,13 @@ class TestDefaultInputLayer:
             FssDinoDetector,
             Insid3Detector,
             MicroSamDetector,
-            Sam2Detector,
-            Sam3Detector,
+            Sam2,
+            Sam3,
         )
 
         expected = {
-            Sam2Detector: "rgb",
-            Sam3Detector: "rgb",
+            Sam2: "rgb",
+            Sam3: "rgb",
             DinoSam2Detector: "rgb",
             Insid3Detector: "rgb",
             FssDinoDetector: "rgb",
