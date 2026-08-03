@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from phenotypic.plotting._analysis_artifacts import (
+from phenotypic.plotting._pipeline._analysis_artifacts import (
     AnalysisArtifactIntegrityError,
     AnalysisManifestEntry,
     build_analysis_manifest_entry,
@@ -19,11 +19,11 @@ from phenotypic.plotting._analysis_artifacts import (
     publish_analysis_manifest_entry,
     write_analysis_publication_journal,
 )
-from phenotypic.plotting._analysis_registry import (
+from phenotypic.plotting._pipeline._analysis_registry import (
     AnalysisNotFoundError,
     AnalysisRegistry,
 )
-from phenotypic.plotting._bindings import AnalysisInput
+from phenotypic.plotting._pipeline import AnalysisInput
 
 
 @dataclass(frozen=True)

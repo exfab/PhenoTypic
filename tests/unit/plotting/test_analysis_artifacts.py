@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.plotting._analysis_artifacts import (
+from phenotypic.plotting._pipeline._analysis_artifacts import (
     AnalysisArtifactIntegrityError,
     AnalysisManifest,
     AnalysisManifestEntry,

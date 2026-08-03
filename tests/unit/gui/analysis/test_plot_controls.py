@@ -24,7 +24,7 @@ from phenotypic.gui.analysis._plot_controls import (  # noqa: E402
     plotting_params,
 )
 from phenotypic.gui.analysis._render import render_plot  # noqa: E402
-from phenotypic.plotting import PlotOutput, PlotPage  # noqa: E402
+from phenotypic.abc_.plotting import PlotOutput, PlotPage  # noqa: E402
 
 
 def _edge() -> EdgeCorrector:

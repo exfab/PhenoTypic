@@ -16,11 +16,13 @@ from phenotypic._core._pipeline_parts._serializable_pipeline import (
     PipelineLoadWarning,
 )
 from phenotypic.plotting import (
+    PlotColonyMetricOverTime,
+    PlotMeasTimeSeries,
+)
+from phenotypic.plotting._pipeline import (
     AnalysisInput,
     PipelineObjectRef,
     PlotBinding,
-    PlotColonyMetricOverTime,
-    PlotMeasTimeSeries,
 )
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 

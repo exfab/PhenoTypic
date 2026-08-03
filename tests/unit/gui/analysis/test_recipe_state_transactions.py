@@ -23,7 +23,7 @@ from phenotypic.gui.analysis._callbacks import (
     _semantic_values_equal,
 )
 from phenotypic.gui.analysis._recipe_state import RecipeState
-from phenotypic.plotting._bindings import PlotBinding, PipelineObjectRef
+from phenotypic.plotting._pipeline import PlotBinding, PipelineObjectRef
 from phenotypic.sdk_ import pipeline_json_path
 
 

@@ -12,11 +12,13 @@ import matplotlib.pyplot as plt
 import pytest
 from dash import html
 
-from phenotypic.plotting import (
-    FigureAdapter,
+from phenotypic.abc_.plotting import (
     PlotOutput,
     PlotPage,
     canonical_group_key,
+)
+from phenotypic.plotting._pipeline import (
+    FigureAdapter,
     publish_plot_output,
 )
 

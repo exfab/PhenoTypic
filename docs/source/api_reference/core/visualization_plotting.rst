@@ -33,6 +33,17 @@ Figure composition
 .. autoclass:: BoundFigures
    :members:
 
+Plot outputs
+------------
+
+.. autodata:: FigureLike
+
+.. autoclass:: PlotOutput
+
+.. autoclass:: PlotPage
+
+.. autofunction:: canonical_group_key
+
 Built-in plots
 --------------
 
@@ -49,11 +60,3 @@ Built-in plots
 
 .. autoclass:: PlotColonyMetricOverTime
    :members: inspect, report
-
-.. autoclass:: AnalysisInput
-
-.. autoclass:: MeasurementInput
-
-.. autoclass:: PlotOutput
-
-.. autoclass:: PlotPage

@@ -25,7 +25,7 @@ BaseOperation
 │   └── GridMeasureFeatures
 │       └── GridFinder                   # Detects grid structure
 
-Standalone: MeasurementInfo (enum base, now in `phenotypic.schema`; re-exported here for back-compat), PrefabPipeline (inherits ImagePipeline), and plotting capabilities under `phenotypic.abc_.plotting` (`PhtPlot`, `PlotImage`, `PlotMeas`, `PlotAnalysis`, `PlotQc`)
+Standalone: MeasurementInfo (enum base, now in `phenotypic.schema`; re-exported here for back-compat), PrefabPipeline (inherits ImagePipeline), and plotting extension contracts under `phenotypic.abc_.plotting` (`PhtPlot`, `PlotImage`, `PlotMeas`, `PlotAnalysis`, `PlotQc`, `PlotOutput`, `PlotPage`)
 ```
 
 ---

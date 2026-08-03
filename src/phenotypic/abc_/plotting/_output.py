@@ -47,15 +47,6 @@ class PlotOutput:
             raise ValueError(f"plot output contains duplicate page keys: {duplicates}")
 
 
-def normalize_plot_output(value: FigureLike | PlotOutput) -> PlotOutput:
-    """Normalize a raw figure to the one-page runtime output contract."""
-    if isinstance(value, PlotOutput):
-        return value
-    if value is None:
-        return PlotOutput(pages=())
-    return PlotOutput(pages=(PlotPage(key="default", figure=value),))
-
-
 def canonical_group_key(
     pairs: list[tuple[str, Any]],
 ) -> str:
@@ -116,5 +107,4 @@ __all__ = [
     "PlotOutput",
     "PlotPage",
     "canonical_group_key",
-    "normalize_plot_output",
 ]

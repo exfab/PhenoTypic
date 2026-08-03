@@ -34,7 +34,7 @@ from phenotypic.gui.analysis._recipe_state import (
     _pipeline_validation_payload,
 )
 from phenotypic.measure import MeasureShape
-from phenotypic.plotting._bindings import AnalysisInput, MeasurementInput
+from phenotypic.plotting._pipeline import AnalysisInput, MeasurementInput
 from phenotypic.sdk_ import pipeline_json_path
 
 

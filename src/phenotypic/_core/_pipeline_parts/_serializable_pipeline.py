@@ -191,7 +191,7 @@ class SerializablePipeline(NapariPipelineViewer):
 
         plot_bindings = pipeline.get_plots()
         if plot_bindings:
-            from phenotypic.plotting._bindings import serialize_plot_binding
+            from phenotypic.plotting._pipeline import serialize_plot_binding
 
             config["plots"] = [
                 serialize_plot_binding(binding) for binding in plot_bindings
@@ -397,7 +397,7 @@ class SerializablePipeline(NapariPipelineViewer):
         # are both producers and configured plot providers.
         plot_entries = config.get("plots", []) or []
         if plot_entries:
-            from phenotypic.plotting._bindings import deserialize_plot_bindings
+            from phenotypic.plotting._pipeline import deserialize_plot_bindings
 
             skipped_refs: set[tuple[str, str | None]] = set()
             if skip_unknown_analyzers and skipped is not None:

@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from phenotypic.abc_.plotting import PlotMeas
+from phenotypic.abc_.plotting import PlotMeas, PlotOutput
 from phenotypic.schema import (
     CONDITION_METADATA,
     CULTURE_METADATA,
@@ -15,7 +15,6 @@ from phenotypic.schema import (
 )
 from phenotypic.sdk_ import ColumnRef, ColumnRefList
 
-from ._output import PlotOutput
 from ._plot_meas_time_series import PlotMeasTimeSeries
 
 

@@ -17,7 +17,7 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.analysis import LogGrowthModel, TukeyOutlierRemover
 from phenotypic.sdk_ import deliverables_dir, pipeline_json_path
-from phenotypic.plotting import (
+from phenotypic.plotting._pipeline import (
     analysis_manifest_path,
     named_analysis_csv_path,
     named_analysis_parquet_path,
@@ -307,7 +307,7 @@ class TestEmitAnalysisOutputs:
     def test_manifest_failure_restores_previous_artifact_generation(
         self, tmp_path: Path, monkeypatch
     ) -> None:
-        import phenotypic.plotting as plotting
+        import phenotypic.plotting._pipeline as plotting_pipeline
 
         master = _synthetic_growth_master()
         pipeline = ImagePipeline(
@@ -333,7 +333,7 @@ class TestEmitAnalysisOutputs:
             raise OSError("manifest unavailable")
 
         monkeypatch.setattr(
-            plotting, "publish_analysis_manifest_entry", fail_manifest
+            plotting_pipeline, "publish_analysis_manifest_entry", fail_manifest
         )
         changed = master.with_columns(
             (pl.col("Shape_Area") * 1.5).alias("Shape_Area")

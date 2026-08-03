@@ -11,11 +11,16 @@ def test_plotting_capabilities_are_not_reexported_from_abc_root() -> None:
     import phenotypic.abc_.plotting as plotting
 
     assert plotting.PhtPlot.__module__.startswith("phenotypic.abc_.plotting")
+    assert plotting.PlotOutput.__module__.startswith("phenotypic.abc_.plotting")
+    assert plotting.PlotPage.__module__.startswith("phenotypic.abc_.plotting")
     assert not hasattr(abc_root, "PhtPlot")
     assert not hasattr(abc_root, "PlotImage")
     assert not hasattr(abc_root, "PlotMeas")
     assert not hasattr(abc_root, "PlotAnalysis")
     assert not hasattr(abc_root, "PlotQc")
+    assert not hasattr(abc_root, "PlotOutput")
+    assert not hasattr(abc_root, "PlotPage")
+    assert not hasattr(plotting, "normalize_plot_output")
 
 
 def test_plotting_subpackage_adds_no_ui_or_runtime_plotting_imports() -> None:
