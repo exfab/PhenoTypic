@@ -20,7 +20,7 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.sdk_ import _io_constants as io
 from phenotypic.tune import (
     Budget,
@@ -66,7 +66,7 @@ def _space() -> SearchSpace:
 
 def _single_objective_spec(tmp_path) -> TuningSpec:
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()]),
         search_space=_space(),
         scorer=_qc(tmp_path),
         evaluator=Evaluator(),
@@ -80,7 +80,7 @@ def _multi_objective_spec(tmp_path) -> TuningSpec:
         scorers=[_qc(tmp_path), _qc(tmp_path)], multi_objective=True
     )
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()]),
         search_space=_space(),
         scorer=composite,
         evaluator=Evaluator(),
@@ -173,7 +173,7 @@ def test_per_axis_pareto_export_picks_lowest_cost_trial(tmp_path):
     best_s1 = ImagePipeline.from_json(
         io.pareto_best_pipeline_path(out, "s1").read_text()
     )
-    # The first op is GaussianBlur; its sigma reflects the winning trial's param.
+    # The first op is BlurGauss; its sigma reflects the winning trial's param.
     assert list(best_s0.get_ops().values())[0].sigma == 1.0  # A wins s0 (lowest cost)
     assert list(best_s1.get_ops().values())[0].sigma == 2.0  # B wins s1 (lowest cost)
 

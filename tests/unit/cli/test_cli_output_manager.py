@@ -298,7 +298,7 @@ class TestAggregateMeasurementsAutoResolve:
         # Recovering the copied config must still reach the configured plotting
         # lifecycle rather than silently stopping after the mirror/splits.
         with patch(
-            "phenotypic.plotting.PlotCoordinator.emit_measurements"
+            "phenotypic.plotting._pipeline.PlotCoordinator.emit_measurements"
         ) as mock_emit_measurements:
             master_path = aggregate_measurements(
                 output_dir=output_dir,

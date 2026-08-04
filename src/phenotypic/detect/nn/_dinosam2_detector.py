@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Annotated, Any, List
 from pydantic import Field, PrivateAttr
 
 from phenotypic.abc_ import GpuDetector
-from phenotypic.detect.nn._checkpoint_manager import Device, Sam2ModelSize
+from phenotypic.detect.nn._helper._checkpoint_manager import Device, Sam2ModelSize
 from phenotypic.sdk_.typing_ import (
     DinoSize,
     DinoVersion,
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
 
 def _score_by_prototype(
-    features: "np.ndarray", prototype: "np.ndarray"
+        features: "np.ndarray", prototype: "np.ndarray"
 ) -> "np.ndarray":
     """Cosine similarity of each proposal feature to the foreground prototype.
 
@@ -72,7 +72,7 @@ def _iou_bool(mask_a: "np.ndarray", mask_b: "np.ndarray") -> float:
 
 
 def _merge_by_iou(
-    masks: List["np.ndarray"], iou_thresh: float
+        masks: List["np.ndarray"], iou_thresh: float
 ) -> List["np.ndarray"]:
     """Greedy IoU dedup of boolean proposal masks, largest-first.
 
@@ -94,10 +94,10 @@ def _merge_by_iou(
 
 
 def _assemble_objmap(
-    proposals: List["np.ndarray"],
-    scores: "np.ndarray",
-    similarity_thresh: float,
-    merge_iou_thresh: float,
+        proposals: List["np.ndarray"],
+        scores: "np.ndarray",
+        similarity_thresh: float,
+        merge_iou_thresh: float,
 ) -> "np.ndarray":
     """Filter, merge, and paint scored proposals into a uint16 objmap.
 
@@ -134,10 +134,10 @@ def _assemble_objmap(
         import warnings
 
         warnings.warn(
-            f"DinoSam2 kept {len(kept)} proposals, exceeding uint16 range. "
-            f"Only the first {max_labels} (largest) will be labeled.",
-            UserWarning,
-            stacklevel=2,
+                f"DinoSam2 kept {len(kept)} proposals, exceeding uint16 range. "
+                f"Only the first {max_labels} (largest) will be labeled.",
+                UserWarning,
+                stacklevel=2,
         )
         kept = kept[:max_labels]
 
@@ -148,16 +148,16 @@ def _assemble_objmap(
 
 
 def _assemble_rle_objmap(
-    proposals: List[dict],
-    scores: "np.ndarray",
-    similarity_thresh: float,
-    merge_iou_thresh: float,
-    shape: tuple[int, int],
+        proposals: List[dict],
+        scores: "np.ndarray",
+        similarity_thresh: float,
+        merge_iou_thresh: float,
+        shape: tuple[int, int],
 ) -> "np.ndarray":
     """Filter, RLE-IoU merge, and stream scored proposals into an objmap."""
     import numpy as np
 
-    from phenotypic.detect.nn._sam2_rle import (
+    from phenotypic.detect.nn._helper._sam2_rle import (
         merge_rle_records_by_iou,
         paint_rle_records,
     )
@@ -172,10 +172,10 @@ def _assemble_rle_objmap(
         return np.zeros(shape, dtype=np.uint16)
     kept = merge_rle_records_by_iou(foreground, merge_iou_thresh)
     return paint_rle_records(
-        kept,
-        shape,
-        detector_name="DinoSam2",
-        truncate_before_sort=False,
+            kept,
+            shape,
+            detector_name="DinoSam2",
+            truncate_before_sort=False,
     )
 
 
@@ -275,9 +275,9 @@ class DinoSam2Detector(GpuDetector):
           and a feature-similarity prior cleans up the proposals.
 
     Consider Also:
-        * :class:`~phenotypic.detect.nn.Sam2Detector` for raw SAM2 proposals
+        * :class:`~phenotypic.detect.nn.Sam2` for raw SAM2 proposals
           without DINO scoring.
-        * :class:`~phenotypic.detect.nn.Sam3Detector` for text-prompted,
+        * :class:`~phenotypic.detect.nn.Sam3` for text-prompted,
           true-batch instance detection (gated weights).
 
     References:
@@ -324,7 +324,7 @@ class DinoSam2Detector(GpuDetector):
     merge_iou_thresh: Annotated[float, TuneSpec(0.0, 1.0)] = 0.7
     min_proposal_area: Annotated[int, TuneSpec(0, 500)] = 100
     points_per_batch: Annotated[int, TuneSpec(tunable=False)] = Field(
-        default=8, ge=1
+            default=8, ge=1
     )
 
     # DINO feature tiling — 518 = 14 * 37, an exact DINOv2 patch multiple.
@@ -335,7 +335,7 @@ class DinoSam2Detector(GpuDetector):
 
     # Native SAM2 crop-pyramid knobs — defaults mirror upstream
     # ``SAM2AutomaticMaskGenerator`` except ``crop_n_layers``, which we engage
-    # by default (mirrors ``Sam2Detector``).
+    # by default (mirrors ``Sam2``).
     crop_n_layers: Annotated[int, TuneSpec(0, 2)] = 1
     crop_nms_thresh: Annotated[float, TuneSpec(0.0, 1.0)] = 0.7
     crop_overlap_ratio: Annotated[float, TuneSpec(0.0, 0.5)] = 512 / 1500
@@ -356,7 +356,7 @@ class DinoSam2Detector(GpuDetector):
             ``"facebook/dinov2-{size}"`` for v2 (ungated), or the gated
             ``"facebook/dinov3-vit{s|b|l}16-pretrain-lvd1689m"`` id for v3.
         """
-        from phenotypic.detect.nn._dino_support import hf_dino_id
+        from phenotypic.detect.nn._helper._dino_support import hf_dino_id
 
         return hf_dino_id(self.dino_version, self.dino_size)
 
@@ -377,15 +377,15 @@ class DinoSam2Detector(GpuDetector):
             from transformers import AutoImageProcessor, AutoModel
         except ImportError:
             raise ImportError(
-                "DinoSam2Detector requires transformers (>=5.2.0). "
-                "Install with: pip install phenotypic[foundation]"
+                    "DinoSam2Detector requires transformers (>=5.2.0). "
+                    "Install with: pip install phenotypic[foundation]"
             ) from None
 
-        from phenotypic.detect.nn._checkpoint_manager import (
+        from phenotypic.detect.nn._helper._checkpoint_manager import (
             Dinov3CheckpointManager,
             resolve_device,
         )
-        from phenotypic.detect.nn._sam2_detector import build_sam2_generator
+        from phenotypic.detect.nn._sam2 import build_sam2_generator
 
         # DINOv3 is gated — accept + pre-stage the snapshot before the load.
         if self.dino_version == 3:
@@ -393,14 +393,14 @@ class DinoSam2Detector(GpuDetector):
 
         self._device = resolve_device(self.device)
         self._generator = build_sam2_generator(
-            self.sam2_model_size,
-            device=self._device,
-            min_mask_region_area=self.min_proposal_area,
-            points_per_batch=self.points_per_batch,
-            crop_n_layers=self.crop_n_layers,
-            crop_nms_thresh=self.crop_nms_thresh,
-            crop_overlap_ratio=self.crop_overlap_ratio,
-            crop_n_points_downscale_factor=self.crop_n_points_downscale_factor,
+                self.sam2_model_size,
+                device=self._device,
+                min_mask_region_area=self.min_proposal_area,
+                points_per_batch=self.points_per_batch,
+                crop_n_layers=self.crop_n_layers,
+                crop_nms_thresh=self.crop_nms_thresh,
+                crop_overlap_ratio=self.crop_overlap_ratio,
+                crop_n_points_downscale_factor=self.crop_n_points_downscale_factor,
         )
         dino_id = self._hf_dino_id()
         self._dino_model = AutoModel.from_pretrained(dino_id).to(self._device)
@@ -433,7 +433,7 @@ class DinoSam2Detector(GpuDetector):
             return np.zeros(rgb.shape[:2], dtype=np.uint16)
 
         shape = rgb.shape[:2]
-        from phenotypic.detect.nn._sam2_rle import (
+        from phenotypic.detect.nn._helper._sam2_rle import (
             decode_uncompressed_rle,
             normalize_rle_records,
         )
@@ -441,45 +441,45 @@ class DinoSam2Detector(GpuDetector):
         normalize_rle_records(raw, expected_shape=shape)
         # Shared, register-token-aware dense features (C1 fix lives in one
         # place — _dino_support.extract_patch_features — not duplicated here).
-        from phenotypic.detect.nn import _dino_support
-        from phenotypic.detect.nn._tiling import _plan_tiles
+        from phenotypic.detect.nn._helper import _dino_support
+        from phenotypic.detect.nn._helper._tiling import _plan_tiles
 
         patch = _dino_support.backbone_patch_size(self._dino_model)
         tiles = _plan_tiles(rgb.shape[:2], self.tile_px, self.tile_overlap)
         dense_by_tile = [
             _dino_support.extract_patch_features(
-                self._dino_model,
-                self._dino_processor,
-                rgb[t.y0:t.y1, t.x0:t.x1],
-                device=self._device,
+                    self._dino_model,
+                    self._dino_processor,
+                    rgb[t.y0:t.y1, t.x0:t.x1],
+                    device=self._device,
             )
             for t in tiles
         ]
         pooled_features = []
         for proposal in raw:
             mask = decode_uncompressed_rle(
-                proposal["segmentation"], expected_shape=shape
+                    proposal["segmentation"], expected_shape=shape
             )
             pooled_features.append(
-                _dino_support.pool_prototype_tiled(
-                    dense_by_tile, tiles, mask, patch
-                ).astype(np.float64)
+                    _dino_support.pool_prototype_tiled(
+                            dense_by_tile, tiles, mask, patch
+                    ).astype(np.float64)
             )
             del mask
         features = np.stack(pooled_features)
         prototype = self._foreground_prototype(features, raw)
         scores = _score_by_prototype(features, prototype)
         return _assemble_rle_objmap(
-            raw,
-            scores,
-            similarity_thresh=self.similarity_thresh,
-            merge_iou_thresh=self.merge_iou_thresh,
-            shape=shape,
+                raw,
+                scores,
+                similarity_thresh=self.similarity_thresh,
+                merge_iou_thresh=self.merge_iou_thresh,
+                shape=shape,
         )
 
     @staticmethod
     def _foreground_prototype(
-        features: "np.ndarray", raw_masks: List[dict]
+            features: "np.ndarray", raw_masks: List[dict]
     ) -> "np.ndarray":
         """Build the foreground prototype from the high-confidence proposals.
 
@@ -497,8 +497,8 @@ class DinoSam2Detector(GpuDetector):
         import numpy as np
 
         ious = np.array(
-            [float(m.get("predicted_iou", 1.0)) for m in raw_masks],
-            dtype=np.float64,
+                [float(m.get("predicted_iou", 1.0)) for m in raw_masks],
+                dtype=np.float64,
         )
         if ious.size == 0:
             return features.mean(axis=0)

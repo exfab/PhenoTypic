@@ -10,7 +10,7 @@ from ..abc_ import Smoothing
 from ..sdk_.typing_ import TuneSpec
 
 
-class GaussianBlur(Smoothing):
+class BlurGauss(Smoothing):
     """Smooth noise in ``detect_mat`` using isotropic Gaussian convolution.
 
     Reduces high-frequency noise, scanner artefacts, and minor agar texture

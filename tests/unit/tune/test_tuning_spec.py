@@ -9,7 +9,7 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune import (
     Categorical,
     Evaluator,
@@ -18,6 +18,7 @@ from phenotypic.tune import (
     SearchSpace,
 )
 from phenotypic.tune.score import QCScorer
+from phenotypic.tune._evaluation import build_pipeline
 from phenotypic.tune.strategy import (
     GridConfig,
     RandomConfig,
@@ -38,7 +39,7 @@ def _spec(tmp_path) -> TuningSpec:
         {"Metadata_ImageName": ["p"] * 96, "Object_Label": list(range(96))}
     ).to_csv(csv, index=False)
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]),
         search_space=SearchSpace(knobs=(
             Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
         )),
@@ -63,9 +64,9 @@ def test_spec_round_trips_pipeline_and_scorer(tmp_path):
     back = TuningSpec.model_validate_json(spec.model_dump_json())
     # embedded pipeline reconstructed (polymorphic ops survive)
     assert [type(o).__name__ for o in back.pipeline.get_ops().values()] == [
-        "GaussianBlur", "OtsuDetector",
+        "BlurGauss", "OtsuDetector",
     ]
-    assert back.pipeline.get_ops()["GaussianBlur"].sigma == 2.0
+    assert back.pipeline.get_ops()["BlurGauss"].sigma == 2.0
     # polymorphic scorer reconstructed; path-configured check still scores
     assert isinstance(back.scorer, QCScorer)
     assert back.scorer.score_image(
@@ -142,7 +143,13 @@ def test_phase1_grid_spec_json_still_loads(tmp_path):
     assert isinstance(back.strategy, GridConfig)
     assert back.strategy.kind == "grid"
     assert [type(o).__name__ for o in back.pipeline.get_ops().values()] == [
-        "GaussianBlur", "OtsuDetector",
+        "BlurGauss", "OtsuDetector",
+    ]
+    legacy_presence = back.search_space.knobs[0]
+    assert legacy_presence.key == "0.GaussianBlur.__enabled__"
+    candidate = build_pipeline(back.pipeline, {legacy_presence.key: False})
+    assert [type(op).__name__ for op in candidate.get_ops().values()] == [
+        "OtsuDetector"
     ]
 
 
@@ -160,7 +167,7 @@ def _qc(tmp_path) -> QCScorer:
 
 def _spec_with(knobs, tmp_path) -> TuningSpec:
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]),
         search_space=SearchSpace(knobs=knobs),
         scorer=_qc(tmp_path),
         evaluator=Evaluator(),

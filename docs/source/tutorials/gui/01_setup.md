@@ -43,7 +43,7 @@ for i, seed in enumerate((1, 2, 3), start=1):
   "desc": "Synthetic yeast tutorial pipeline",
   "reset": false,
   "pipe_cfgs": {
-    "GaussianBlur": {"class": "GaussianBlur", "params": {"sigma": 2}},
+    "BlurGauss": {"class": "BlurGauss", "params": {"sigma": 2}},
     "OtsuDetector": {"class": "OtsuDetector", "params": {"ignore_zeros": true}}
   },
   "meas": {

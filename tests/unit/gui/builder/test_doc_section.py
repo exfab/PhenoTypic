@@ -189,11 +189,11 @@ class TestInspectorRenderPathsEmitDocIds:
             _new_node_id,
         )
 
-        # GaussianBlur is registered with a real Google-style docstring;
+        # BlurGauss is registered with a real Google-style docstring;
         # this branch should emit the *visible* toggle button.
         node = StepNode(
             node_id=_new_node_id(),
-            class_name="GaussianBlur",
+            class_name="BlurGauss",
         )
         scope = BuilderScope(nodes=[node])
         state = BuilderState(

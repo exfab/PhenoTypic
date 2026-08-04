@@ -1,4 +1,4 @@
-"""Tests for Sam3Detector (Spec 2a, Tasks 4-5).
+"""Tests for Sam3 (Spec 2a, Tasks 4-5).
 
 Construction / serialization / capability / prompt / tiling-math run WITHOUT
 gated weights (lazy load). The import-smoke test requires ``phenotypic[foundation]``
@@ -12,7 +12,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import GpuDetector, ObjectDetector
-from phenotypic.detect.nn import FOUNDATION_AVAILABLE, Sam3Detector
+from phenotypic.detect.nn import FOUNDATION_AVAILABLE, Sam3
 
 
 # ---------------------------------------------------------------------------
@@ -22,54 +22,54 @@ from phenotypic.detect.nn import FOUNDATION_AVAILABLE, Sam3Detector
 
 class TestSam3Construction:
     def test_capability_fields(self):
-        det = Sam3Detector()
+        det = Sam3()
         assert det.input_layer == "rgb"
         assert det.output_kind == "instance"
         assert det.supports_batching is True
 
     def test_prompt_defaults_and_overrides(self):
-        assert Sam3Detector().prompt == "colony"
-        assert Sam3Detector(prompt="yeast colony").prompt == "yeast colony"
+        assert Sam3().prompt == "colony"
+        assert Sam3(prompt="yeast colony").prompt == "yeast colony"
 
     def test_default_thresholds(self):
-        det = Sam3Detector()
+        det = Sam3()
         assert det.score_thresh == 0.5
         assert det.mask_threshold == 0.5
-        assert det.min_mask_region_area == 100  # C3: match Sam2Detector
+        assert det.min_mask_region_area == 100  # C3: match Sam2
         assert det.device == "auto"
 
     def test_default_tiling_fields(self):
-        det = Sam3Detector()
+        det = Sam3()
         assert det.tile_px == 1008
         assert det.tile_overlap == 0.15
         assert det.max_instances_per_tile == 200
 
     def test_serialization_round_trip(self):
-        det = Sam3Detector(prompt="bacterial colony", score_thresh=0.4)
-        round = Sam3Detector.from_json(det.to_json())
+        det = Sam3(prompt="bacterial colony", score_thresh=0.4)
+        round = Sam3.from_json(det.to_json())
         assert round.prompt == "bacterial colony" and round.score_thresh == 0.4
 
     def test_constructs_without_transformers(self):
         # lazy import: building the op must not import transformers
-        Sam3Detector()  # no raise
+        Sam3()  # no raise
 
     def test_is_gpu_and_object_detector(self):
-        det = Sam3Detector()
+        det = Sam3()
         assert isinstance(det, GpuDetector)
         assert isinstance(det, ObjectDetector)
 
 
 class TestSam3DetectorSerialization:
     def test_pipeline_json_round_trip(self):
-        pipe = ImagePipeline(ops=[Sam3Detector(prompt="colony", tile_px=1500)])
+        pipe = ImagePipeline(ops=[Sam3(prompt="colony", tile_px=1500)])
         restored = ImagePipeline.from_json(pipe.to_json())
         det = list(restored._ops.values())[0]
-        assert isinstance(det, Sam3Detector)
+        assert isinstance(det, Sam3)
         assert det.prompt == "colony"
         assert det.tile_px == 1500
 
     def test_private_attrs_not_in_json(self):
-        det = Sam3Detector()
+        det = Sam3()
         config = json.loads(ImagePipeline(ops=[det]).to_json())
         for op_cfg in config["pipe_cfgs"].values():
             params = op_cfg.get("params", {})
@@ -86,7 +86,7 @@ class TestSam3Tiling:
     def test_plan_fixed_tiles_cover_with_overlap(self):
         import numpy as np
 
-        from phenotypic.detect.nn._sam3_detector import _plan_tiles
+        from phenotypic.detect.nn._sam3 import _plan_tiles
 
         tiles = _plan_tiles((3000, 3000), tile_px=1008, overlap=0.15)
         assert all(t.h <= 1008 and t.w <= 1008 for t in tiles)
@@ -96,7 +96,7 @@ class TestSam3Tiling:
         assert covered.all()
 
     def test_small_image_is_single_tile(self):
-        from phenotypic.detect.nn._sam3_detector import _plan_tiles
+        from phenotypic.detect.nn._sam3 import _plan_tiles
 
         tiles = _plan_tiles((500, 500), tile_px=1008, overlap=0.15)
         assert len(tiles) == 1
@@ -104,7 +104,7 @@ class TestSam3Tiling:
         assert (t.y0, t.x0, t.y1, t.x1) == (0, 0, 500, 500)
 
     def test_tile_dims_match_bounds(self):
-        from phenotypic.detect.nn._sam3_detector import _plan_tiles
+        from phenotypic.detect.nn._sam3 import _plan_tiles
 
         for t in _plan_tiles((2500, 1800), tile_px=1008, overlap=0.2):
             assert t.h == t.y1 - t.y0
@@ -114,7 +114,7 @@ class TestSam3Tiling:
     def test_merge_dedups_overlapping_instances(self):
         import numpy as np
 
-        from phenotypic.detect.nn._tiling import _merge_tiles_iou_nms
+        from phenotypic.detect.nn._helper._tiling import _merge_tiles_iou_nms
 
         a = np.zeros((10, 10), np.uint16)
         a[2:6, 2:6] = 1
@@ -126,7 +126,7 @@ class TestSam3Tiling:
     def test_merge_keeps_distinct_instances(self):
         import numpy as np
 
-        from phenotypic.detect.nn._tiling import _merge_tiles_iou_nms
+        from phenotypic.detect.nn._helper._tiling import _merge_tiles_iou_nms
 
         a = np.zeros((10, 10), np.uint16)
         a[1:3, 1:3] = 1
@@ -144,7 +144,7 @@ class TestSam3UsesCentroidCore:
         colony plus its fragment."""
         import numpy as np
 
-        det = Sam3Detector(tile_px=100, tile_overlap=0.2)
+        det = Sam3(tile_px=100, tile_overlap=0.2)
         monkeypatch.setattr(det, "_ensure_model_loaded", lambda: None)
 
         # _plan_tiles((100, 180), 100, 0.2) -> [(0,0,100,100), (0,80,100,180)].
@@ -179,7 +179,7 @@ class TestSam3UsesCentroidCore:
         """
         import numpy as np
 
-        det = Sam3Detector(tile_px=100, tile_overlap=0.2)
+        det = Sam3(tile_px=100, tile_overlap=0.2)
         monkeypatch.setattr(det, "_ensure_model_loaded", lambda: None)
 
         # Tile 1 spans global cols 80..180; the colony sits at tile-local
@@ -200,21 +200,21 @@ class TestSam3UsesCentroidCore:
         assert (xs.min(), xs.max()) == (120, 139)
 
     def test_empty_batch_yields_no_results(self, monkeypatch):
-        det = Sam3Detector()
+        det = Sam3()
         monkeypatch.setattr(det, "_ensure_model_loaded", lambda: None)
         assert det._infer_batch([]) == []
 
 
 class TestSam3TileMergeIouDeprecated:
     def test_field_survives_json_round_trip(self):
-        pipe = ImagePipeline(ops=[Sam3Detector(tile_merge_iou=0.25)])
-        det = ImagePipeline.from_json(pipe.to_json()).get_ops()["Sam3Detector"]
+        pipe = ImagePipeline(ops=[Sam3(tile_merge_iou=0.25)])
+        det = ImagePipeline.from_json(pipe.to_json()).get_ops()["Sam3"]
         assert det.tile_merge_iou == 0.25
 
     def test_docstring_marks_it_deprecated(self):
-        doc = Sam3Detector.__doc__ or ""
+        doc = Sam3.__doc__ or ""
         arg_line = next(
-            (ln for ln in doc.splitlines() if "tile_merge_iou:" in ln), ""
+                (ln for ln in doc.splitlines() if "tile_merge_iou:" in ln), ""
         )
         assert "Deprecated" in arg_line
 
@@ -223,11 +223,11 @@ class TestSam3TilingBatchInteraction:
     """C4: tiles regroup by source image; per-tile target_sizes; offset back."""
 
     def test_two_images_with_different_tile_counts_batch_correctly(
-        self, monkeypatch
+            self, monkeypatch
     ):
         import numpy as np
 
-        det = Sam3Detector(tile_px=1008, tile_overlap=0.15)
+        det = Sam3(tile_px=1008, tile_overlap=0.15)
         # Avoid loading any model.
         monkeypatch.setattr(det, "_ensure_model_loaded", lambda: None)
 
@@ -249,7 +249,7 @@ class TestSam3TilingBatchInteraction:
         small = np.zeros((400, 400, 3), dtype=np.uint8)
         large = np.zeros((3000, 3000, 3), dtype=np.uint8)
 
-        from phenotypic.detect.nn._sam3_detector import _plan_tiles
+        from phenotypic.detect.nn._sam3 import _plan_tiles
 
         n_small = len(_plan_tiles((400, 400), 1008, 0.15))
         n_large = len(_plan_tiles((3000, 3000), 1008, 0.15))
@@ -277,8 +277,8 @@ class TestSam3TilingBatchInteraction:
 
 
 @pytest.mark.skipif(
-    not FOUNDATION_AVAILABLE,
-    reason="Requires phenotypic[foundation] (transformers)",
+        not FOUNDATION_AVAILABLE,
+        reason="Requires phenotypic[foundation] (transformers)",
 )
 class TestSam3ImportSmoke:
     def test_transformers_sam3_symbols_resolve(self):
@@ -287,9 +287,9 @@ class TestSam3ImportSmoke:
         assert Sam3Model is not None and Sam3Processor is not None
 
     def test_detector_module_imports(self):
-        from phenotypic.detect.nn import _sam3_detector
+        from phenotypic.detect.nn import _sam3
 
-        assert _sam3_detector.Sam3Detector is Sam3Detector
+        assert _sam3.Sam3 is Sam3
 
 
 # ---------------------------------------------------------------------------
@@ -310,12 +310,12 @@ def _sam3_weights_available() -> bool:
 
 
 @pytest.mark.skipif(
-    not _sam3_weights_available(),
-    reason="Requires phenotypic[foundation] and cached gated SAM3 weights",
+        not _sam3_weights_available(),
+        reason="Requires phenotypic[foundation] and cached gated SAM3 weights",
 )
 class TestSam3Functional:
     def test_apply_produces_objects(self, synth_plate):
-        det = Sam3Detector(device="cpu")
+        det = Sam3(device="cpu")
         result = det.apply(synth_plate.copy(), inplace=False)
         assert result.objmap[:].max() >= 0
 

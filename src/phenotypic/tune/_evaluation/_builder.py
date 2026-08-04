@@ -16,6 +16,7 @@ from pydantic import ValidationError
 from pydantic_core import InitErrorDetails
 
 from phenotypic import ImagePipeline
+from phenotypic.sdk_._class_aliases import canonical_class_name
 
 #: Matches a nested list-index segment ``name[i]`` (e.g. ``ops[0]``) and
 #: captures the field name and the integer index. The depth cap is 1: a key may
@@ -124,7 +125,7 @@ def _parse_key(key: str, ordered_ops: list) -> ParsedKey:
         if len(parts) == 3:
             expected_cls = parts[1]
             actual_cls = type(ordered_ops[position]).__name__
-            if actual_cls != expected_cls:
+            if actual_cls != canonical_class_name(expected_cls):
                 raise ValueError(
                     f"presence key {key!r} targets class {expected_cls!r}, but "
                     f"position {position} holds a {actual_cls!r}"

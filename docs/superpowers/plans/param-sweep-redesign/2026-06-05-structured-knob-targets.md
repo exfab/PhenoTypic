@@ -47,7 +47,7 @@ def test_param_key():
 
 def test_presence_key_bare_and_classed():
     assert Presence(op=0).key == "0.__enabled__"
-    assert Presence(op=0, op_class="GaussianBlur").key == "0.GaussianBlur.__enabled__"
+    assert Presence(op=0, op_class="BlurGauss").key == "0.BlurGauss.__enabled__"
 
 
 def test_nested_key():
@@ -202,14 +202,14 @@ from phenotypic.tune._search_space._targets import parse_key
 
 
 @pytest.mark.parametrize("key", [
-    "0.sigma", "0.__enabled__", "0.GaussianBlur.__enabled__", "1.detectors[0].ignore_zeros",
+    "0.sigma", "0.__enabled__", "0.BlurGauss.__enabled__", "1.detectors[0].ignore_zeros",
 ])
 def test_parse_key_round_trips(key):
     assert parse_key(key).key == key          # string-preserving
 
 
 def test_parse_key_recovers_op_class_only_for_classed_presence():
-    assert parse_key("0.GaussianBlur.__enabled__").op_class == "GaussianBlur"
+    assert parse_key("0.BlurGauss.__enabled__").op_class == "BlurGauss"
     assert parse_key("0.sigma").op_class is None
     assert parse_key("0.__enabled__").op_class is None
 
@@ -236,12 +236,12 @@ def parse_key(key: str) -> "KnobTarget":
     The pipeline-free inverse of ``KnobTarget.key`` — a purely *structural*
     parse; op-range / field-existence checks happen later against the pipeline
     in the ``TuningSpec`` validator. ``op_class`` is recovered only from the
-    classed presence form (``"0.GaussianBlur.__enabled__"``); flat and nested
+    classed presence form (``"0.BlurGauss.__enabled__"``); flat and nested
     keys do not encode a class, so their ``op_class`` is ``None``.
 
     Args:
         key: A canonical key, e.g. ``"0.sigma"`` /
-            ``"0.GaussianBlur.__enabled__"`` / ``"0.refiners[1].min_size"``.
+            ``"0.BlurGauss.__enabled__"`` / ``"0.refiners[1].min_size"``.
 
     Returns:
         The matching ``Param`` / ``Presence`` / ``Nested``.
@@ -305,13 +305,13 @@ git commit -m "tune(targets): parse_key (string -> target, op_class from classed
 # append to tests/unit/tune/test_targets.py
 from phenotypic.tune._search_space._targets import with_op_class
 from phenotypic import ImagePipeline
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.detect import OtsuDetector
 
 
 def test_with_op_class_fills_from_pipeline():
-    ops = list(ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]).get_ops().values())
-    assert with_op_class(Param(op=0, field="sigma"), ops).op_class == "GaussianBlur"
+    ops = list(ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]).get_ops().values())
+    assert with_op_class(Param(op=0, field="sigma"), ops).op_class == "BlurGauss"
     assert with_op_class(Param(op=1, field="ignore_zeros"), ops).op_class == "OtsuDetector"
 
 
@@ -387,14 +387,14 @@ def test_knob_accepts_target_and_string_key_equivalently():
 
 
 def test_knob_serializes_target_structurally_and_loads_legacy_string():
-    k = Knob(key="0.GaussianBlur.__enabled__", domain=Categorical(choices=(True, False)))
+    k = Knob(key="0.BlurGauss.__enabled__", domain=Categorical(choices=(True, False)))
     dumped = k.model_dump()
     assert dumped["target"]["kind"] == "presence"
     assert "key" not in dumped                  # structured, not the string
     # legacy string still loads:
-    again = Knob.model_validate({"key": "0.GaussianBlur.__enabled__",
+    again = Knob.model_validate({"key": "0.BlurGauss.__enabled__",
                                  "domain": {"kind": "categorical", "choices": [True, False]}})
-    assert again.key == "0.GaussianBlur.__enabled__"
+    assert again.key == "0.BlurGauss.__enabled__"
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
@@ -547,7 +547,7 @@ git commit -m "tune(space): SearchSpace.targets() accessor"
 # append to tests/unit/tune/test_tuning_spec.py
 import pytest
 from phenotypic import ImagePipeline
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.detect import OtsuDetector
 from phenotypic.tune import (TuningSpec, SearchSpace, Knob, FloatRange, Categorical,
                              QCScorer, Evaluator, GridConfig, Budget)
@@ -556,7 +556,7 @@ from phenotypic.tune._search_space._targets import Param
 
 def _spec_with(knobs):
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]),
         search_space=SearchSpace(knobs=knobs),
         scorer=QCScorer(check=...),   # replace ... with a real ExpectedVsDetectedCount fixture
         evaluator=Evaluator(), strategy=GridConfig(), budget=Budget(),
@@ -704,16 +704,16 @@ git commit -m "tune(spec): TuningSpec cross-validator (op range/class/field, did
 ```python
 # append to the inference test file
 from phenotypic import ImagePipeline
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.detect import OtsuDetector
 from phenotypic.tune import infer_search_space
 
 
 def test_inferred_targets_carry_op_class():
-    pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    pipe = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     proposal = infer_search_space(pipe)
     sigma = next(k for k in proposal.knobs if k.target.op == 0 and k.target.key == "0.sigma")
-    assert sigma.target.op_class == "GaussianBlur"
+    assert sigma.target.op_class == "BlurGauss"
     assert all(k.target.op_class for k in proposal.knobs)   # every knob stamped
 ```
 
@@ -770,17 +770,17 @@ git commit -m "tune(infer): stamp op_class on every inferred target (posture C)"
 from __future__ import annotations
 
 from phenotypic import ImagePipeline
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.detect import OtsuDetector
 from phenotypic.tune._search_space._discovery import pipeline_targets, TunableParam
 
 
 def test_pipeline_targets_catalog():
-    pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    pipe = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     cat = pipeline_targets(pipe)
     assert cat and all(isinstance(t, TunableParam) for t in cat)
     sigma = next(t for t in cat if t.target.key == "0.sigma")
-    assert sigma.op_class == "GaussianBlur"           # always populated
+    assert sigma.op_class == "BlurGauss"           # always populated
     assert sigma.value_type == "float"
     assert sigma.default == 2.0                       # current value
     assert sigma.suggested_domain is not None

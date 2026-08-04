@@ -23,7 +23,7 @@ class NormControlMixin:
     operation has one, the `_disable_normalization` method will create a shallow copy
     with `norm=None`. This preserves the original operation unchanged while allowing
     the copy to operate without output normalization. Operations that carry no `norm`
-    field (e.g. `GaussianBlur`) are returned unchanged.
+    field (e.g. `BlurGauss`) are returned unchanged.
 
     Note:
         Renamed from ``ClipControlMixin`` in 0.18.0, when ``clip: bool`` became
@@ -57,10 +57,10 @@ class NormControlMixin:
         Creating a normalization-disabled copy of a pipeline:
 
         >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.enhance import BlurGauss
         >>>
         >>> pipeline = ImagePipeline(pipe_cfgs=[
-        ...     GaussianBlur(sigma=1.0),
+        ...     BlurGauss(sigma=1.0),
         ...     Denoise(sigma=5.0, norm="clip")
         ... ])
         >>> copied_pipe = NormControlMixin._disable_normalization(pipeline)
@@ -102,10 +102,10 @@ class NormControlMixin:
             An operation carrying no `norm` field passes straight through, unchanged
             and uncopied:
 
-            >>> from phenotypic.enhance import GaussianBlur
+            >>> from phenotypic.enhance import BlurGauss
             >>> from phenotypic.sdk_ import NormControlMixin
             >>>
-            >>> blur = GaussianBlur(sigma=1.0)
+            >>> blur = BlurGauss(sigma=1.0)
             >>> NormControlMixin._disable_normalization(blur) is blur
             True
         """

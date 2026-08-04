@@ -105,7 +105,7 @@ class TestInsid3Resolution:
 
         seen = {}
         monkeypatch.setattr(
-            "phenotypic.detect.nn._dino_support.extract_patch_features",
+            "phenotypic.detect.nn._helper._dino_support.extract_patch_features",
             lambda *a, **k: np.ones((32, 32, 4), dtype=np.float32),
         )
 
@@ -114,7 +114,7 @@ class TestInsid3Resolution:
             return np.zeros(out_shape, dtype=bool)
 
         monkeypatch.setattr(
-            "phenotypic.detect.nn._dino_support.cosine_match_to_mask", fake_match
+            "phenotypic.detect.nn._helper._dino_support.cosine_match_to_mask", fake_match
         )
         det._match_crop(np.zeros((512, 512, 3), dtype=np.uint8))
         assert seen["patch"] == 16

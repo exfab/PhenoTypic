@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List, Literal
 
 from phenotypic.abc_ import PrefabPipeline
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.detect import RoundPeaksDetector
 from phenotypic.measure import (
     MeasureShape,
@@ -21,7 +21,7 @@ class RoundPeaksPipeline(PrefabPipeline):
     the Heavy variants, making it the fastest prefab option.
 
     Steps:
-        1. GaussianBlur — smooth noise
+        1. BlurGauss — smooth noise
         2. RoundPeaksDetector — grid-aware circular colony detection
 
     Measurements: MeasureShape, MeasureIntensity, MeasureTexture, MeasureColor.
@@ -108,7 +108,7 @@ class RoundPeaksPipeline(PrefabPipeline):
             benchmark: bool = False,
             verbose: bool = False,
     ) -> None:
-        gaussian = GaussianBlur(
+        gaussian = BlurGauss(
                 sigma=blur_sigma,
                 mode=blur_mode,
                 cval=blur_cval,

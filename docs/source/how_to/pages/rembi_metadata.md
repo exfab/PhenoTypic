@@ -117,7 +117,7 @@ module as a small file you keep beside the dataset:
 a same-named constant `Metadata*` column that came in via `--metadata`, so the
 study file is the single source of truth for run-level fields even if the CSV
 also carries them. Every field is optional. The available keys mirror the
-{doc}`STUDY_METADATA </measurements_ref/metadata/study_metadata>` and
+{ref}`STUDY_METADATA <measurement-info-study-metadata>` and
 `EXPERIMENT_METADATA` schema pages.
 
 ## The output: `deliverables/rembi.yaml`

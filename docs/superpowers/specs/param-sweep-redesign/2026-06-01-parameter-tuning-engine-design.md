@@ -142,7 +142,7 @@ product, so **today's behaviour is a preserved special case**, not discarded.
    param is one of `Categorical([...])`, `IntRange(lo, hi, step?, log?)`,
    `FloatRange(lo, hi, log?)`, `Fixed(v)`, with **conditional nesting** (a param
    exists only when its parent op is present / set a certain way — define-by-run).
-   *Back-compat:* `Sweep(GaussianBlur, sigma=(1.0, 2.0))` (a tuple) is reinterpreted
+   *Back-compat:* `Sweep(BlurGauss, sigma=(1.0, 2.0))` (a tuple) is reinterpreted
    as `Categorical`; `Presence` becomes a categorical over `{present, absent}`.
 
 2. **`SearchStrategy` (Protocol)** — `suggest()`, `register_result(params, score)`,
@@ -255,12 +255,12 @@ the `TuningSpec`** (the base every trial overlays onto). Start from a base:
 
 ```python
 from phenotypic import ImagePipeline
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.detect import OtsuDetector
 from phenotypic.refine import AreaFilter          # illustrative op names
 
 base = ImagePipeline(operations=[
-    GaussianBlur(sigma=2.0, mode="reflect"),       # position 0
+    BlurGauss(sigma=2.0, mode="reflect"),       # position 0
     OtsuDetector(ignore_zeros=False),              # position 1
     AreaFilter(min_area=20, max_area=4000),        # position 2
 ])
@@ -274,10 +274,10 @@ base = ImagePipeline(operations=[
 | `1.ignore_zeros` | field `ignore_zeros` on the op at **position 1** |
 | `0.sigma` | field `sigma` on the op at position 0 |
 | `1.detectors[0].block_size` | a **one-level nested** op (list member); class-validated on apply |
-| `0.GaussianBlur.__enabled__` | the **presence toggle** for an optional top-level op |
+| `0.BlurGauss.__enabled__` | the **presence toggle** for an optional top-level op |
 
 The leading segment is the pipeline **position index** (stable against same-class
-duplication — two `GaussianBlur`s never collide on a bare `GaussianBlur.sigma`).
+duplication — two `BlurGauss`s never collide on a bare `BlurGauss.sigma`).
 `__enabled__` is the reserved presence sentinel.
 
 **The space.** A frozen tuple of `Knob`s, each pairing a path-key with one of the
@@ -288,17 +288,17 @@ from phenotypic.tune import SearchSpace, Knob, Categorical, IntRange, FloatRange
 
 space = SearchSpace(knobs=(
     # presence: should the blur even run? (legacy "Presence" sweep, modernized)
-    Knob(key="0.GaussianBlur.__enabled__",
+    Knob(key="0.BlurGauss.__enabled__",
          domain=Categorical(choices=(True, False))),
 
     # continuous, log-scaled — only meaningful WHEN the blur is enabled, so gate it:
     Knob(key="0.sigma",
          domain=FloatRange(low=0.5, high=8.0, log=True),
-         conditional_on=(("0.GaussianBlur.__enabled__", True),),
-         description="GaussianBlur kernel sigma (px)"),
+         conditional_on=(("0.BlurGauss.__enabled__", True),),
+         description="BlurGauss kernel sigma (px)"),
     Knob(key="0.mode",
          domain=Categorical(choices=("reflect", "nearest")),
-         conditional_on=(("0.GaussianBlur.__enabled__", True),)),
+         conditional_on=(("0.BlurGauss.__enabled__", True),)),
 
     # boolean = a 2-choice categorical:
     Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
@@ -322,17 +322,17 @@ space = SearchSpace(knobs=(
 
 ```json
 {"search_space": {"knobs": [
-  {"key": "0.GaussianBlur.__enabled__",
+  {"key": "0.BlurGauss.__enabled__",
    "domain": {"kind": "categorical", "choices": [true, false]},
    "conditional_on": null, "source": "manual", "needs_review": false, "description": ""},
   {"key": "0.sigma",
    "domain": {"kind": "float_range", "low": 0.5, "high": 8.0, "log": true},
-   "conditional_on": [["0.GaussianBlur.__enabled__", true]], "source": "manual", "...": "..."}
+   "conditional_on": [["0.BlurGauss.__enabled__", true]], "source": "manual", "...": "..."}
 ]}}
 ```
 
 **A trial turns a combo back into a pipeline** (the `Evaluator` builder, §4): a
-strategy `suggest()`s a flat combo `{"0.GaussianBlur.__enabled__": True, "0.sigma":
+strategy `suggest()`s a flat combo `{"0.BlurGauss.__enabled__": True, "0.sigma":
 3.2, "0.mode": "reflect", "1.ignore_zeros": True}`; the builder **clones `base`** →
 **overlays** each key's value onto the addressed op (reconstructing
 keyword-only/immutable ops) → **drops** any op whose `__enabled__=False` →

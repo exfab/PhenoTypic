@@ -14,8 +14,10 @@ from typing import Any
 
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 
+from phenotypic.abc_.plotting import PlotOutput
+
 from ._adapter import FigureAdapter
-from ._output import PlotOutput, normalize_plot_output
+from ._output import normalize_plot_output
 
 logger = logging.getLogger(__name__)
 

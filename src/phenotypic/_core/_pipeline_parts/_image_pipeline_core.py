@@ -38,7 +38,7 @@ from phenotypic.analysis.abc_._set_analyzer import SetAnalyzer
 # never pulls in qc._runner / _cli / gui at module load.
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_.mixin import LazyWidgetMixin
-from phenotypic.plotting._bindings import PlotBinding, normalize_plot_bindings
+from phenotypic.plotting._pipeline import PlotBinding, normalize_plot_bindings
 
 logger = logging.getLogger("ImagePipeline")
 

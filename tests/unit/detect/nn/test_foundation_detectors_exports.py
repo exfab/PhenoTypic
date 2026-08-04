@@ -2,7 +2,7 @@
 
 The annotation-coverage gate (``tests/unit/tune/test_annotation_coverage.py``)
 iterates ``phenotypic.detect.__all__`` (top level), so the ``nn`` subpackage's
-GPU detectors are out of its denominator by the existing design — ``Sam2Detector``
+GPU detectors are out of its denominator by the existing design — ``Sam2``
 is not in the gate either. This module pins the meaningful S1 guarantee directly:
 both new detectors are exported from ``detect/nn/__init__.__all__`` and EVERY
 numeric (int/float) field on them carries a ``TuneSpec`` (search window or
@@ -15,7 +15,7 @@ from phenotypic.detect.nn import (
     DinoSam2Detector,
     FssDinoDetector,
     Insid3Detector,
-    Sam3Detector,
+    Sam3,
 )
 from phenotypic.sdk_.typing_ import TuneSpec
 
@@ -43,11 +43,11 @@ def _numeric_fields(cls):
 def test_detectors_exported_from_nn_all():
     import phenotypic.detect.nn as nn
 
-    assert "Sam3Detector" in nn.__all__
+    assert "Sam3" in nn.__all__
     assert "DinoSam2Detector" in nn.__all__
     assert "Insid3Detector" in nn.__all__
     assert "FssDinoDetector" in nn.__all__
-    assert nn.Sam3Detector is Sam3Detector
+    assert nn.Sam3 is Sam3
     assert nn.DinoSam2Detector is DinoSam2Detector
     assert nn.Insid3Detector is Insid3Detector
     assert nn.FssDinoDetector is FssDinoDetector
@@ -56,10 +56,10 @@ def test_detectors_exported_from_nn_all():
 def test_every_numeric_field_carries_a_tune_spec():
     # W1: the annotation-coverage gate is scoped to detect.__all__ (not
     # detect.nn), so pin the Spec 2a + 2b GPU detectors' tune-readiness here.
-    for cls in (Sam3Detector, DinoSam2Detector, Insid3Detector, FssDinoDetector):
+    for cls in (Sam3, DinoSam2Detector, Insid3Detector, FssDinoDetector):
         for name, field_info in _numeric_fields(cls):
             metadata = list(field_info.metadata) + _walk_metadata(
-                field_info.annotation
+                    field_info.annotation
             )
             assert any(isinstance(m, TuneSpec) for m in metadata), (
                 f"{cls.__name__}.{name} (numeric) lacks a TuneSpec annotation"

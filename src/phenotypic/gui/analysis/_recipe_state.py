@@ -190,7 +190,7 @@ def _plot_validation_node(node: object) -> object:
         if key in _PLOT_ENVELOPE_KEYS
     }
 
-    from phenotypic.plotting._bindings import (
+    from phenotypic.plotting._pipeline._bindings import (
         AnalysisInput,
         MeasurementInput,
         PipelineObjectRef,
@@ -496,7 +496,7 @@ def _plot_target_defaults_to_measurements(
         return False
 
     from phenotypic.abc_.plotting import PlotAnalysis, PlotQc
-    from phenotypic.plotting._bindings import _load_qualified_class
+    from phenotypic.plotting._pipeline._bindings import _load_qualified_class
 
     resolved: object = None
     ref = node.get("ref")

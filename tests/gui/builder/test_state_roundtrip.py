@@ -106,7 +106,7 @@ def test_flat_pipeline_roundtrip() -> None:
     """A linear ops/meas chain survives ``to_pipeline`` -> ``from_pipeline``."""
 
     registry = get_registry()
-    for required in ("GaussianBlur", "OtsuDetector", "MeasureSize"):
+    for required in ("BlurGauss", "OtsuDetector", "MeasureSize"):
         assert registry.get(required) is not None, (
             f"Expected '{required}' in the operation registry"
         )
@@ -115,9 +115,9 @@ def test_flat_pipeline_roundtrip() -> None:
             nodes=[
                 StepNode(
                         node_id="aaaa1111",
-                        class_name="GaussianBlur",
+                        class_name="BlurGauss",
                         params={"sigma": 2.0},
-                        label="GaussianBlur",
+                        label="BlurGauss",
                 ),
                 StepNode(
                         node_id="bbbb2222",
@@ -140,9 +140,9 @@ def test_flat_pipeline_roundtrip() -> None:
 
     assert isinstance(pipeline, ImagePipeline)
     assert pipeline.name == "flat_demo"
-    assert list(pipeline.get_ops().keys()) == ["GaussianBlur", "OtsuDetector"]
+    assert list(pipeline.get_ops().keys()) == ["BlurGauss", "OtsuDetector"]
     assert list(pipeline.get_meas().keys()) == ["MeasureSize"]
-    assert pipeline.get_ops()["GaussianBlur"].sigma == 2.0
+    assert pipeline.get_ops()["BlurGauss"].sigma == 2.0
     assert pipeline.get_ops()["OtsuDetector"].ignore_borders is True
 
     # to_json round-trip should be JSON-serializable.
@@ -155,12 +155,12 @@ def test_flat_pipeline_roundtrip() -> None:
     # canonical labels coming from the minted dict keys).
     rebuilt_scope = from_pipeline(pipeline)
     assert [n.class_name for n in rebuilt_scope.nodes] == [
-        "GaussianBlur",
+        "BlurGauss",
         "OtsuDetector",
         "MeasureSize",
     ]
     assert [n.label for n in rebuilt_scope.nodes] == [
-        "GaussianBlur",
+        "BlurGauss",
         "OtsuDetector",
         "MeasureSize",
     ]
@@ -173,7 +173,7 @@ def test_flat_pipeline_roundtrip() -> None:
     json.dumps(state_json)  # must be JSON-serializable in stdlib
     rehydrated = state_from_json(state_json)
     assert [n.class_name for n in rehydrated.root.nodes] == [
-        "GaussianBlur",
+        "BlurGauss",
         "OtsuDetector",
         "MeasureSize",
     ]
@@ -187,9 +187,9 @@ def test_nested_pipeline_roundtrip() -> None:
             nodes=[
                 StepNode(
                         node_id="inner001",
-                        class_name="GaussianBlur",
+                        class_name="BlurGauss",
                         params={"sigma": 1.25},
-                        label="GaussianBlur",
+                        label="BlurGauss",
                 ),
                 StepNode(
                         node_id="inner002",
@@ -227,8 +227,8 @@ def test_nested_pipeline_roundtrip() -> None:
     assert len(ops) == 1
     only_op = next(iter(ops.values()))
     assert isinstance(only_op, ImagePipeline)
-    assert list(only_op.get_ops().keys()) == ["GaussianBlur", "OtsuDetector"]
-    assert only_op.get_ops()["GaussianBlur"].sigma == 1.25
+    assert list(only_op.get_ops().keys()) == ["BlurGauss", "OtsuDetector"]
+    assert only_op.get_ops()["BlurGauss"].sigma == 1.25
     assert only_op.get_ops()["OtsuDetector"].ignore_zeros is True
     assert list(pipeline.get_meas().keys()) == ["MeasureSize"]
 
@@ -239,7 +239,7 @@ def test_nested_pipeline_roundtrip() -> None:
     assert nested_node.class_name == "ImagePipeline"
     assert nested_node.nested is not None
     assert [n.class_name for n in nested_node.nested.nodes] == [
-        "GaussianBlur",
+        "BlurGauss",
         "OtsuDetector",
     ]
     assert nested_node.nested.nodes[0].params["sigma"] == 1.25
@@ -252,7 +252,7 @@ def test_nested_pipeline_roundtrip() -> None:
     # stage_of for ImagePipeline is "ops".
     assert stage_of("ImagePipeline") == "ops"
     assert stage_of("MeasureSize") == "meas"
-    assert stage_of("GaussianBlur") == "ops"
+    assert stage_of("BlurGauss") == "ops"
 
 
 def test_op_typed_param_roundtrip() -> None:
@@ -682,9 +682,9 @@ def test_aux_breadcrumb_walks_into_pipeline_aux_scope() -> None:
             nodes=[
                 StepNode(
                         node_id="aux_inner",
-                        class_name="GaussianBlur",
+                        class_name="BlurGauss",
                         params={"sigma": 0.5},
-                        label="GaussianBlur",
+                        label="BlurGauss",
                 ),
             ],
             name="aux_inner_pipeline",
@@ -722,7 +722,7 @@ def test_aux_breadcrumb_walks_into_pipeline_aux_scope() -> None:
     drilled = current_scope(state)
     # An ImagePipeline aux drill descends into its inner scope directly.
     assert drilled is inner_scope
-    assert [n.class_name for n in drilled.nodes] == ["GaussianBlur"]
+    assert [n.class_name for n in drilled.nodes] == ["BlurGauss"]
 
 
 def test_state_json_back_compat_without_aux_fields() -> None:
@@ -733,9 +733,9 @@ def test_state_json_back_compat_without_aux_fields() -> None:
             "nodes": [
                 {
                     "node_id"   : "a",
-                    "class_name": "GaussianBlur",
+                    "class_name": "BlurGauss",
                     "params"    : {"sigma": 1.0},
-                    "label"     : "GaussianBlur",
+                    "label"     : "BlurGauss",
                     "nested"    : None,
                     # NB: no ``aux_ports`` key
                 },
@@ -892,9 +892,9 @@ def test_nested_pipeline_apply_with_intermediates() -> None:
             nodes=[
                 StepNode(
                         node_id="inner_a",
-                        class_name="GaussianBlur",
+                        class_name="BlurGauss",
                         params={"sigma": 1.0},
-                        label="GaussianBlur",
+                        label="BlurGauss",
                 ),
                 StepNode(
                         node_id="inner_b",

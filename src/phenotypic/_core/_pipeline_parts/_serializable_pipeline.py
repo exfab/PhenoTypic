@@ -18,24 +18,13 @@ from phenotypic.sdk_._io_constants import (
     CONFIG_SUFFIX_PIPELINE,
     ensure_typed_json_suffix,
 )
+from phenotypic.sdk_._class_aliases import _LEGACY_CLASS_ALIASES
 from ._napari_pipeline_viewer import NapariPipelineViewer
 
 # Import version for serialization - must be after other phenotypic imports to avoid circular import
 import phenotypic
 
 __version__ = phenotypic.__version__
-
-_LEGACY_CLASS_ALIASES = {
-    # Pre-0.17 serialized pipelines used the original BM3D operation name.
-    # Resolve it here instead of exporting a module alias that would appear in
-    # the GUI operation registry as a duplicate palette entry.
-    "BM3DDenoiser": ("phenotypic.enhance", "EnhanceBlockMatch"),
-    # Preserve pipelines written before the correction operations adopted
-    # verb-first public names.
-    "ImageCropper": ("phenotypic.correction", "CropImage"),
-    "ImagePadder": ("phenotypic.correction", "PadImage"),
-}
-
 
 @dataclass(frozen=True)
 class PipelineLoadWarning:
@@ -191,7 +180,7 @@ class SerializablePipeline(NapariPipelineViewer):
 
         plot_bindings = pipeline.get_plots()
         if plot_bindings:
-            from phenotypic.plotting._bindings import serialize_plot_binding
+            from phenotypic.plotting._pipeline import serialize_plot_binding
 
             config["plots"] = [
                 serialize_plot_binding(binding) for binding in plot_bindings
@@ -397,7 +386,7 @@ class SerializablePipeline(NapariPipelineViewer):
         # are both producers and configured plot providers.
         plot_entries = config.get("plots", []) or []
         if plot_entries:
-            from phenotypic.plotting._bindings import deserialize_plot_bindings
+            from phenotypic.plotting._pipeline import deserialize_plot_bindings
 
             skipped_refs: set[tuple[str, str | None]] = set()
             if skip_unknown_analyzers and skipped is not None:

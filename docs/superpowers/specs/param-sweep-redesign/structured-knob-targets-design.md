@@ -27,7 +27,7 @@ A `Knob` references a pipeline parameter by a **string key** in one of three gra
 | Case | String key |
 |------|-----------|
 | Flat field on a top-level op | `"0.sigma"` |
-| Presence toggle (op on/off) | `"0.GaussianBlur.__enabled__"` (or bare `"0.__enabled__"`) |
+| Presence toggle (op on/off) | `"0.BlurGauss.__enabled__"` (or bare `"0.__enabled__"`) |
 | Depth-1 nested-op leaf | `"0.refiners[1].min_size"` |
 
 Stringly-typed keys are error-prone for **programmatic / agent (MCP)** construction: a typo
@@ -74,7 +74,7 @@ class Param(BaseModel):             # kind="param"     →  "0.sigma"
     field: str
     op_class: Optional[str] = None        # optional cross-check (see §5)
 
-class Presence(BaseModel):          # kind="presence"  →  "0.GaussianBlur.__enabled__"
+class Presence(BaseModel):          # kind="presence"  →  "0.BlurGauss.__enabled__"
     kind: Literal["presence"] = "presence"
     op: int
     op_class: Optional[str] = None        # also renders the classed key form
@@ -91,7 +91,7 @@ KnobTarget = Annotated[Param | Presence | Nested, Field(discriminator="kind")]
 ```
 
 - **`.key` property** on each renders the canonical string. `Presence.key` renders the
-  classed form (`"0.GaussianBlur.__enabled__"`) when `op_class` is set, else the bare
+  classed form (`"0.BlurGauss.__enabled__"`) when `op_class` is set, else the bare
   (`"0.__enabled__"`) form — both already parse in `build_pipeline`.
 - **`parse_key(s: str) -> KnobTarget`** — the inverse, reusing the existing parse logic in
   `_builder.py::_parse_key` (a single shared parser; the builder's `FlatKey`/`PresenceKey`/
@@ -124,7 +124,7 @@ Knob(key="0.sigma",                              domain=FloatRange(low=0.5, high
 - `Knob.key` remains as a **read property** → `self.target.key` (so existing `.key` readers and
   `SearchSpace.keys()` keep working).
 - `conditional_on` references **targets** instead of strings:
-  `conditional_on=((targets.Presence(op=0, op_class="GaussianBlur"), True),)`. A legacy string
+  `conditional_on=((targets.Presence(op=0, op_class="BlurGauss"), True),)`. A legacy string
   parent key is coerced the same way.
 - `SearchSpace` is otherwise unchanged: `.keys()` → `[k.target.key for k in knobs]`; add a
   `.targets()` accessor.
@@ -142,7 +142,7 @@ The structural win is **early validation against the actual pipeline**. A
 
 - **op in range** — `0 <= op < len(pipeline ops)`; else a clear out-of-range error.
 - **`op_class` cross-check (decision A=2)** — when a target carries `op_class`, assert the op
-  actually at `op` *is* that class (`op=0, op_class="GaussianBlur"` fails if index 0 is an
+  actually at `op` *is* that class (`op=0, op_class="BlurGauss"` fails if index 0 is an
   `OtsuDetector`). This catches the "wrong op / index drift" mistake class directly.
 - **field / leaf exists** — `Param.field` ∈ `type(op).model_fields`; `Nested.leaf` ∈ the
   nested op's `model_fields`. On a miss, a **`difflib` did-you-mean** suggestion plus the list of
@@ -150,7 +150,7 @@ The structural win is **early validation against the actual pipeline**. A
 - **nested resolution** — `Nested.field` is an op-valued list field, `index` in range, the slot
   is not `None`.
 - **rich errors regardless of `op_class`** — even a bare-index target's error names *what is
-  actually at that index* ("op 0 is a `GaussianBlur`; for the `OtsuDetector` use op 1"), so an
+  actually at that index* ("op 0 is a `BlurGauss`; for the `OtsuDetector` use op 1"), so an
   agent gets an actionable correction.
 
 **`op_class` posture = C (optional on the class, always populated by discovery/inference).**
@@ -159,7 +159,7 @@ verbosity). But **every programmatic producer always sets it** — `pipeline_tar
 `infer_search_space`, the GUI `6c` form, and the MCP tool all emit `op_class`-bearing targets, so
 every realistic path is wrong-op-cross-checked for free. The only uncovered case is a
 deliberately-bare hand-written target, which still gets the field-exists check + the rich
-"op 0 is actually a GaussianBlur" error.
+"op 0 is actually a BlurGauss" error.
 
 This complements (does not replace) the existing **apply-time `⊆` backstop** in `build_pipeline`
 (`_rebuild_op_or_raise_with_keys`), which still catches *validator*-enforced value bounds that
@@ -206,7 +206,7 @@ def pipeline_targets(pipeline) -> list[TunableParam]: ...
 A `Knob` serializes its target **structurally**:
 
 ```json
-{"target": {"kind": "param", "op": 0, "field": "sigma", "op_class": "GaussianBlur"},
+{"target": {"kind": "param", "op": 0, "field": "sigma", "op_class": "BlurGauss"},
  "domain": {"kind": "float", "low": 0.5, "high": 8.0}}
 ```
 

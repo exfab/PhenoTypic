@@ -22,7 +22,7 @@ a version where colonies stand out more clearly.
 
 Reduce random variation while preserving colony boundaries.
 
-- **GaussianBlur** — isotropic smoothing; fast but blurs edges
+- **BlurGauss** — isotropic smoothing; fast but blurs edges
 - **MedianFilter** — removes salt-and-pepper noise; preserves edges better
 - **LocalEdgeDenoise** — smooths within regions; preserves edges explicitly
 - **DenoiseBlockMatch (BM3D)** — state-of-the-art block-matching denoising
@@ -81,7 +81,7 @@ work. Put it first, or not at all.
 3. **Enhance contrast** — maximize colony/background separation last
 
 A typical preprocessing chain:
-`GaussianBlur → FlattenIllumination → EnhanceLocalContrast`.
+`BlurGauss → FlattenIllumination → EnhanceLocalContrast`.
 
 ## The Enhancement ↔ Detection Interface
 

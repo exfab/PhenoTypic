@@ -8,7 +8,7 @@ from phenotypic.gui.tune._validation import (
 from phenotypic.gui.tune._callbacks import _load_spec_preflight_issues
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune import Evaluator
 from phenotypic.tune.score import QCScorer
 from phenotypic.tune.strategy import GridConfig
@@ -109,7 +109,7 @@ def test_run_preflight_reads_authored_spec_and_blocks_grid_continuous_float(
         encoding="utf-8",
     )
     spec = TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=2.0)]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=2.0)]),
         search_space=SearchSpace(
             knobs=(
                 Knob(

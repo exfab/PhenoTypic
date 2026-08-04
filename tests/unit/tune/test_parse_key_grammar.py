@@ -10,7 +10,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import CompositeDetector, OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune._evaluation._builder import (
     FlatKey,
     NestedKey,
@@ -20,7 +20,7 @@ from phenotypic.tune._evaluation._builder import (
 
 
 def _flat_base() -> list:
-    base = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    base = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     return list(base.get_ops().values())
 
 
@@ -50,10 +50,10 @@ def test_bare_presence_parses_to_presencekey_without_class():
 
 
 def test_classed_presence_parses_to_presencekey_with_class():
-    parsed = _parse_key("0.GaussianBlur.__enabled__", _flat_base())
+    parsed = _parse_key("0.BlurGauss.__enabled__", _flat_base())
     assert isinstance(parsed, PresenceKey)
     assert parsed.position == 0
-    assert parsed.cls_name == "GaussianBlur"
+    assert parsed.cls_name == "BlurGauss"
 
 
 def test_classed_presence_class_mismatch_raises():

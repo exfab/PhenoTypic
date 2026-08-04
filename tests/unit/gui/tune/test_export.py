@@ -3,7 +3,7 @@ import json
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.gui.tune._export import (
     export_best_from_run,
     export_pareto_pipeline,
@@ -28,7 +28,7 @@ from phenotypic.tune._spec import Budget, TuningSpec
 
 
 def _base() -> ImagePipeline:
-    return ImagePipeline(ops=[GaussianBlur(sigma=1.0)])
+    return ImagePipeline(ops=[BlurGauss(sigma=1.0)])
 
 
 def _spec(tmp_path) -> TuningSpec:
@@ -38,7 +38,7 @@ def _spec(tmp_path) -> TuningSpec:
         + "\n".join(f"plate,{i}" for i in range(96))
     )
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()]),
         search_space=SearchSpace(
             knobs=(Knob(key="1.ignore_zeros", domain=Categorical(choices=(True,))),)
         ),

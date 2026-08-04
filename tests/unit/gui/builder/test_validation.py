@@ -97,9 +97,9 @@ class TestRule1Fork:
         """A single block with 2 outgoing image edges → ``kind="fork"``."""
 
         scope = _DagBuilderScope()
-        src = _new_block("GaussianBlur")
-        t1 = _new_block("GaussianBlur")
-        t2 = _new_block("GaussianBlur")
+        src = _new_block("BlurGauss")
+        t1 = _new_block("BlurGauss")
+        t2 = _new_block("BlurGauss")
         scope.blocks.extend([src, t1, t2])
         scope.edges.append(_image_edge(scope.blocks[0].block_id, src.block_id))
         scope.edges.append(_image_edge(src.block_id, t1.block_id))
@@ -113,9 +113,9 @@ class TestRule1Fork:
         """Two image edges into one input port → ``kind="fork"``."""
 
         scope = _DagBuilderScope()
-        a = _new_block("GaussianBlur")
-        b = _new_block("GaussianBlur")
-        sink = _new_block("GaussianBlur")
+        a = _new_block("BlurGauss")
+        b = _new_block("BlurGauss")
+        sink = _new_block("BlurGauss")
         scope.blocks.extend([a, b, sink])
         scope.edges.append(_image_edge(scope.blocks[0].block_id, a.block_id))
         scope.edges.append(_image_edge(scope.blocks[0].block_id, b.block_id))
@@ -136,9 +136,9 @@ class TestRule1Fork:
         """
 
         scope = _DagBuilderScope()
-        src = _new_block("GaussianBlur")
-        downstream = _new_block("GaussianBlur")
-        consumer = _new_block("GaussianBlur")
+        src = _new_block("BlurGauss")
+        downstream = _new_block("BlurGauss")
+        consumer = _new_block("BlurGauss")
         scope.blocks.extend([src, downstream, consumer])
         scope.edges.append(_image_edge(scope.blocks[0].block_id, src.block_id))
         scope.edges.append(_image_edge(src.block_id, downstream.block_id))
@@ -154,8 +154,8 @@ class TestRule1Fork:
         """A clean linear chain emits no fork issue."""
 
         scope = _DagBuilderScope()
-        a = _new_block("GaussianBlur")
-        b = _new_block("GaussianBlur")
+        a = _new_block("BlurGauss")
+        b = _new_block("BlurGauss")
         scope.blocks.extend([a, b])
         scope.edges.append(_image_edge(scope.blocks[0].block_id, a.block_id))
         scope.edges.append(_image_edge(a.block_id, b.block_id))
@@ -174,7 +174,7 @@ class TestRule2Stub:
         """A block with no edges is unreachable → ``kind="stub"``."""
 
         scope = _DagBuilderScope()
-        orphan = _new_block("GaussianBlur")
+        orphan = _new_block("BlurGauss")
         scope.blocks.append(orphan)
 
         issues = validate(_wrap(scope))
@@ -185,9 +185,9 @@ class TestRule2Stub:
         """Removing a middle wire orphans every downstream block."""
 
         scope = _DagBuilderScope()
-        a = _new_block("GaussianBlur")
-        b = _new_block("GaussianBlur")
-        c = _new_block("GaussianBlur")
+        a = _new_block("BlurGauss")
+        b = _new_block("BlurGauss")
+        c = _new_block("BlurGauss")
         scope.blocks.extend([a, b, c])
         scope.edges.append(_image_edge(scope.blocks[0].block_id, a.block_id))
         scope.edges.append(_image_edge(a.block_id, b.block_id))
@@ -379,8 +379,8 @@ class TestRule4Cycle:
         """A → B → A on image edges → both members flagged."""
 
         scope = _DagBuilderScope()
-        a = _new_block("GaussianBlur")
-        b = _new_block("GaussianBlur")
+        a = _new_block("BlurGauss")
+        b = _new_block("BlurGauss")
         scope.blocks.extend([a, b])
         scope.edges.append(_image_edge(scope.blocks[0].block_id, a.block_id))
         scope.edges.append(_image_edge(a.block_id, b.block_id))
@@ -396,8 +396,8 @@ class TestRule4Cycle:
         """An aux-only A → B → A cycle is still detected."""
 
         scope = _DagBuilderScope()
-        a = _new_block("GaussianBlur")
-        b = _new_block("GaussianBlur")
+        a = _new_block("BlurGauss")
+        b = _new_block("BlurGauss")
         scope.blocks.extend([a, b])
         # Reach both via image flow + aux ring on top.
         scope.edges.append(_image_edge(scope.blocks[0].block_id, a.block_id))
@@ -414,8 +414,8 @@ class TestRule4Cycle:
         """A mixed image+aux cycle still trips Rule 4."""
 
         scope = _DagBuilderScope()
-        a = _new_block("GaussianBlur")
-        b = _new_block("GaussianBlur")
+        a = _new_block("BlurGauss")
+        b = _new_block("BlurGauss")
         scope.blocks.extend([a, b])
         scope.edges.append(_image_edge(scope.blocks[0].block_id, a.block_id))
         scope.edges.append(_image_edge(a.block_id, b.block_id))
@@ -439,7 +439,7 @@ class TestRule5ContainerMode:
 
         scope = _DagBuilderScope()
         container = _new_block(PIPELINE_CLASS_NAME)
-        consumer = _new_block("GaussianBlur")
+        consumer = _new_block("BlurGauss")
         scope.blocks.extend([container, consumer])
         # Left wired (image-in to container).
         scope.edges.append(_image_edge(scope.blocks[0].block_id, container.block_id))
@@ -455,7 +455,7 @@ class TestRule5ContainerMode:
 
         scope = _DagBuilderScope()
         container = _new_block(PIPELINE_CLASS_NAME)
-        downstream = _new_block("GaussianBlur")
+        downstream = _new_block("BlurGauss")
         scope.blocks.extend([container, downstream])
         # Right wired to image-in, but left unwired.
         scope.edges.append(_image_edge(container.block_id, downstream.block_id))
@@ -469,7 +469,7 @@ class TestRule5ContainerMode:
 
         scope = _DagBuilderScope()
         container = _new_block(PIPELINE_CLASS_NAME)
-        downstream = _new_block("GaussianBlur")
+        downstream = _new_block("BlurGauss")
         scope.blocks.extend([container, downstream])
         scope.edges.append(_image_edge(scope.blocks[0].block_id, container.block_id))
         scope.edges.append(_image_edge(container.block_id, downstream.block_id))
@@ -535,7 +535,7 @@ class TestRule7StageOrder:
         # validator only consults ``OperationInfo.cls`` and uses
         # ``issubclass`` so we need real classes.
         from phenotypic.abc_ import MeasureFeatures
-        from phenotypic.enhance import GaussianBlur
+        from phenotypic.enhance import BlurGauss
 
         # Build OperationInfo records pointing at real classes so
         # ``_safe_stage`` returns the right thing.  We replace .cls in
@@ -551,7 +551,7 @@ class TestRule7StageOrder:
             parameters={},
         )
         empty_registry.ops["OpFake"] = OperationInfo(
-            cls=GaussianBlur,
+            cls=BlurGauss,
             name="OpFake",
             category="Enhancer",
             module="tests.fake",
@@ -576,13 +576,13 @@ class TestRule7StageOrder:
         """An ops → meas chain emits no advisory."""
 
         from phenotypic.abc_ import MeasureFeatures
-        from phenotypic.enhance import GaussianBlur
+        from phenotypic.enhance import BlurGauss
 
         class _MeasFake(MeasureFeatures):  # type: ignore[misc]
             pass
 
         empty_registry.ops["OpFake"] = OperationInfo(
-            cls=GaussianBlur,
+            cls=BlurGauss,
             name="OpFake",
             category="Enhancer",
             module="tests.fake",
@@ -620,16 +620,16 @@ def test_recursion_into_container_aggregates_scope_path():
     container.nested = _DagBuilderScope()
     # Make the container's nested scope have a fork.
     inner = container.nested
-    src = _new_block("GaussianBlur")
-    t1 = _new_block("GaussianBlur")
-    t2 = _new_block("GaussianBlur")
+    src = _new_block("BlurGauss")
+    t1 = _new_block("BlurGauss")
+    t2 = _new_block("BlurGauss")
     inner.blocks.extend([src, t1, t2])
     inner.edges.append(_image_edge(inner.blocks[0].block_id, src.block_id))
     inner.edges.append(_image_edge(src.block_id, t1.block_id))
     inner.edges.append(_image_edge(src.block_id, t2.block_id))
     # Attach container in outer scope (left-wired + right wired image to
     # downstream — clean Rule 5).
-    downstream = _new_block("GaussianBlur")
+    downstream = _new_block("BlurGauss")
     outer.blocks.extend([container, downstream])
     outer.edges.append(_image_edge(outer.blocks[0].block_id, container.block_id))
     outer.edges.append(_image_edge(container.block_id, downstream.block_id))
@@ -817,7 +817,7 @@ def test_invalid_fixture_matches_expected_issues(name, empty_registry):
             ),
         },
     )
-    empty_registry.ops["GaussianBlur"] = _make_op_info("GaussianBlur", {})
+    empty_registry.ops["BlurGauss"] = _make_op_info("BlurGauss", {})
 
     with fixture_path.open(encoding="utf-8") as f:
         scope_data = json.load(f)

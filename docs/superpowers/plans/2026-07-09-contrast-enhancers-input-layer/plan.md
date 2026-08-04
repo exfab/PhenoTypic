@@ -674,7 +674,7 @@ Create `tests/unit/sdk_/mixin/test_norm_control_mixin.py`:
 import pytest
 
 from phenotypic import ImagePipeline
-from phenotypic.enhance import GaussianBlur, LocalEdgeDenoise
+from phenotypic.enhance import BlurGauss, LocalEdgeDenoise
 from phenotypic.sdk_ import NormControlMixin
 
 
@@ -686,13 +686,13 @@ def test_disable_normalization_sets_norm_none():
 
 
 def test_disable_normalization_is_noop_without_norm_field():
-    blur = GaussianBlur(sigma=1.0)
+    blur = BlurGauss(sigma=1.0)
     assert not hasattr(blur, "norm")
     assert NormControlMixin._disable_normalization(blur) is not None
 
 
 def test_disable_normalization_recurses_into_pipeline():
-    pipe = ImagePipeline(pipe_cfgs=[GaussianBlur(sigma=1.0), LocalEdgeDenoise(norm="clip")])
+    pipe = ImagePipeline(pipe_cfgs=[BlurGauss(sigma=1.0), LocalEdgeDenoise(norm="clip")])
     copied = NormControlMixin._disable_normalization(pipe)
     assert list(copied._ops.values())[1].norm is None
 
@@ -2479,7 +2479,7 @@ and each carries a `TuneSpec`.
 
 Add to the parametrized list in `tests/unit/tune/test_enhance_annotations.py`. The file
 already imports `FloatRange, IntRange` from `phenotypic.tune` (line 37); `FloatRange`
-entries carry a **3-tuple** `(low, high, log)` — see `GaussianBlur` at line 59:
+entries carry a **3-tuple** `(low, high, log)` — see `BlurGauss` at line 59:
 
 ```python
             (ContrastGamma(), "gamma", FloatRange, (0.1, 5.0, True)),

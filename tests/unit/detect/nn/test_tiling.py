@@ -1,6 +1,6 @@
 """Shared tiling module (Spec 2b, Task 3; centroid-in-core merge, Task 5).
 
-The fixed-geometric tiling was extracted from ``_sam3_detector`` to ``_tiling``
+The fixed-geometric tiling was extracted from ``_sam3`` to ``_tiling``
 so the semantic detectors reuse it, and the cross-tile instance merge followed.
 These tests exercise the new module path directly (the SAM3 suite still imports
 the re-exported names and stays green): tile planning, the semantic union
@@ -11,7 +11,7 @@ it for tiled instance detection.
 import numpy as np
 import pytest
 
-from phenotypic.detect.nn._tiling import (
+from phenotypic.detect.nn._helper._tiling import (
     _merge_tiles_iou_nms,
     _plan_tiles,
     _Tile,
@@ -48,12 +48,12 @@ class TestPlanTiles:
             assert t.w == t.x1 - t.x0
             assert t.y1 <= 2500 and t.x1 <= 1800
 
-    def test_sam3_detector_reexports_tiling(self):
-        # Back-compat: _sam3_detector re-exports the extracted names.
-        from phenotypic.detect.nn import _sam3_detector
+    def test_sam3_reexports_tiling(self):
+        # Back-compat: _sam3 re-exports the extracted names.
+        from phenotypic.detect.nn import _sam3
 
-        assert _sam3_detector._plan_tiles is _plan_tiles
-        assert _sam3_detector._Tile is _Tile
+        assert _sam3._plan_tiles is _plan_tiles
+        assert _sam3._Tile is _Tile
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +92,7 @@ class TestStitchSemanticTiles:
 
 
 # ---------------------------------------------------------------------------
-# Instance merge: IoU-NMS (moved here from _sam3_detector)
+# Instance merge: IoU-NMS (moved here from _sam3)
 # ---------------------------------------------------------------------------
 
 
@@ -113,11 +113,11 @@ class TestMergeTilesIouNms:
         merged = _merge_tiles_iou_nms([a, b], iou_thresh=0.5)
         assert merged.max() == 2
 
-    def test_sam3_detector_reexports_the_merge(self):
-        from phenotypic.detect.nn import _sam3_detector
+    def test_sam3_reexports_the_merge(self):
+        from phenotypic.detect.nn import _sam3
 
-        assert _sam3_detector._merge_tiles_iou_nms is _merge_tiles_iou_nms
-        assert _sam3_detector._iou is not None
+        assert _sam3._merge_tiles_iou_nms is _merge_tiles_iou_nms
+        assert _sam3._iou is not None
 
     def test_fragment_survives_iou_nms(self):
         """Documents the bug centroid-in-core exists to fix.
@@ -274,7 +274,7 @@ class TestAssignByCentroidCoreMemory:
 
         import numpy as np
 
-        from phenotypic.detect.nn._tiling import (
+        from phenotypic.detect.nn._helper._tiling import (
             _plan_tiles,
             assign_by_centroid_core,
         )
@@ -308,6 +308,6 @@ class TestAssignByCentroidCoreMemory:
         # per-instance full-image masks return.
         one_full_image_mask_per_instance = n_inst * h * w
         assert peak < 20_000_000, (
-            f"peak {peak/1e6:.0f} MB; per-instance full-image masks would cost "
-            f"{one_full_image_mask_per_instance/1e6:.0f} MB"
+            f"peak {peak / 1e6:.0f} MB; per-instance full-image masks would cost "
+            f"{one_full_image_mask_per_instance / 1e6:.0f} MB"
         )

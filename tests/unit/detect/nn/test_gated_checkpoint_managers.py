@@ -9,7 +9,7 @@ import pytest
 
 
 def test_sam3_manager_requires_acceptance(monkeypatch):
-    from phenotypic.detect.nn._checkpoint_manager import Sam3CheckpointManager
+    from phenotypic.detect.nn._helper._checkpoint_manager import Sam3CheckpointManager
 
     monkeypatch.delenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", raising=False)
     mgr = Sam3CheckpointManager()
@@ -18,7 +18,7 @@ def test_sam3_manager_requires_acceptance(monkeypatch):
 
 
 def test_sam3_manager_accepts_then_downloads(monkeypatch):
-    from phenotypic.detect.nn import _checkpoint_manager as cm
+    from phenotypic.detect.nn._helper import _checkpoint_manager as cm
 
     monkeypatch.setenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "sam3")
     calls: dict = {}
@@ -32,7 +32,7 @@ def test_sam3_manager_accepts_then_downloads(monkeypatch):
 
 
 def test_gated_download_401_is_actionable(monkeypatch):
-    from phenotypic.detect.nn import _checkpoint_manager as cm
+    from phenotypic.detect.nn._helper import _checkpoint_manager as cm
 
     monkeypatch.setenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "sam3")
 
@@ -45,7 +45,7 @@ def test_gated_download_401_is_actionable(monkeypatch):
 
 
 def test_dinov3_manager_requires_acceptance(monkeypatch):
-    from phenotypic.detect.nn._checkpoint_manager import Dinov3CheckpointManager
+    from phenotypic.detect.nn._helper._checkpoint_manager import Dinov3CheckpointManager
 
     monkeypatch.delenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", raising=False)
     with pytest.raises(RuntimeError, match="license"):
@@ -53,7 +53,7 @@ def test_dinov3_manager_requires_acceptance(monkeypatch):
 
 
 def test_dinov3_manager_accepts_then_downloads(monkeypatch):
-    from phenotypic.detect.nn import _checkpoint_manager as cm
+    from phenotypic.detect.nn._helper import _checkpoint_manager as cm
 
     monkeypatch.setenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "dinov3")
     calls: dict = {}
@@ -67,7 +67,7 @@ def test_dinov3_manager_accepts_then_downloads(monkeypatch):
 
 
 def test_dinov3_manager_maps_size_to_repo_id(monkeypatch):
-    from phenotypic.detect.nn import _checkpoint_manager as cm
+    from phenotypic.detect.nn._helper import _checkpoint_manager as cm
 
     monkeypatch.setenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "dinov3")
     expected = {
@@ -86,7 +86,7 @@ def test_dinov3_manager_maps_size_to_repo_id(monkeypatch):
 
 
 def test_dinov3_manager_401_is_actionable(monkeypatch):
-    from phenotypic.detect.nn import _checkpoint_manager as cm
+    from phenotypic.detect.nn._helper import _checkpoint_manager as cm
 
     monkeypatch.setenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "dinov3")
 
@@ -99,7 +99,7 @@ def test_dinov3_manager_401_is_actionable(monkeypatch):
 
 
 def test_dinov3_manager_rejects_unknown_size():
-    from phenotypic.detect.nn._checkpoint_manager import Dinov3CheckpointManager
+    from phenotypic.detect.nn._helper._checkpoint_manager import Dinov3CheckpointManager
 
     with pytest.raises(ValueError, match="size"):
         Dinov3CheckpointManager(size="huge")
@@ -107,7 +107,7 @@ def test_dinov3_manager_rejects_unknown_size():
 
 def test_dinov2_manager_is_ungated(monkeypatch):
     # DINOv2 needs no acceptance / token
-    from phenotypic.detect.nn import _checkpoint_manager as cm
+    from phenotypic.detect.nn._helper import _checkpoint_manager as cm
 
     monkeypatch.delenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", raising=False)
     monkeypatch.setattr(cm, "snapshot_download", lambda **kw: "/fake/dinov2")
@@ -115,7 +115,7 @@ def test_dinov2_manager_is_ungated(monkeypatch):
 
 
 def test_dinov2_manager_maps_size_to_repo_id(monkeypatch):
-    from phenotypic.detect.nn import _checkpoint_manager as cm
+    from phenotypic.detect.nn._helper import _checkpoint_manager as cm
 
     monkeypatch.delenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", raising=False)
     calls: dict = {}
@@ -129,7 +129,7 @@ def test_dinov2_manager_maps_size_to_repo_id(monkeypatch):
 
 def test_sam3_non_gated_error_propagates(monkeypatch):
     """A non-gated error (e.g. disk full) is re-raised unchanged, not reworded."""
-    from phenotypic.detect.nn import _checkpoint_manager as cm
+    from phenotypic.detect.nn._helper import _checkpoint_manager as cm
 
     monkeypatch.setenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "sam3")
 
@@ -149,7 +149,7 @@ def test_sam3_non_gated_error_propagates(monkeypatch):
 def test_cli_sam3_choice_and_accept_license(monkeypatch):
     from click.testing import CliRunner
 
-    from phenotypic.detect.nn import _checkpoint_manager as cm
+    from phenotypic.detect.nn._helper import _checkpoint_manager as cm
     from phenotypic.detect.nn._cli import nn_cli
 
     monkeypatch.delenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", raising=False)
@@ -165,7 +165,7 @@ def test_cli_sam3_choice_and_accept_license(monkeypatch):
 def test_cli_sam3_without_accept_license_fails(monkeypatch):
     from click.testing import CliRunner
 
-    from phenotypic.detect.nn import _checkpoint_manager as cm
+    from phenotypic.detect.nn._helper import _checkpoint_manager as cm
     from phenotypic.detect.nn._cli import nn_cli
 
     monkeypatch.delenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", raising=False)
@@ -182,7 +182,7 @@ def test_cli_sam3_without_accept_license_fails(monkeypatch):
 def test_cli_dinov2_choice(monkeypatch):
     from click.testing import CliRunner
 
-    from phenotypic.detect.nn import _checkpoint_manager as cm
+    from phenotypic.detect.nn._helper import _checkpoint_manager as cm
     from phenotypic.detect.nn._cli import nn_cli
 
     calls: dict = {}
@@ -200,7 +200,7 @@ def test_cli_dinov2_choice(monkeypatch):
 def test_cli_dinov3_choice_and_accept_license(monkeypatch):
     from click.testing import CliRunner
 
-    from phenotypic.detect.nn import _checkpoint_manager as cm
+    from phenotypic.detect.nn._helper import _checkpoint_manager as cm
     from phenotypic.detect.nn._cli import nn_cli
 
     monkeypatch.delenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", raising=False)
@@ -228,7 +228,7 @@ def test_cli_dinov3_choice_and_accept_license(monkeypatch):
 def test_cli_dinov3_without_accept_license_fails(monkeypatch):
     from click.testing import CliRunner
 
-    from phenotypic.detect.nn import _checkpoint_manager as cm
+    from phenotypic.detect.nn._helper import _checkpoint_manager as cm
     from phenotypic.detect.nn._cli import nn_cli
 
     monkeypatch.delenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", raising=False)

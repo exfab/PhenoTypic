@@ -12,9 +12,8 @@ from pydantic import ValidationError
 from phenotypic.plotting import (
     PlotColonyMetricOverTime,
     PlotMeasTimeSeries,
-    publish_plot_output,
 )
-from phenotypic.plotting._writer import FigureAdapter
+from phenotypic.plotting._pipeline import FigureAdapter, publish_plot_output
 
 
 def _frame() -> pd.DataFrame:

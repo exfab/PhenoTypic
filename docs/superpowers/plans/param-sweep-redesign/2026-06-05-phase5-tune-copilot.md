@@ -400,10 +400,10 @@ deterministic on `load_synth_yeast_plate()`.
 def test_render_candidate_overlay_returns_rgb(tmp_path):
     from phenotypic.data import load_synth_yeast_plate
     from phenotypic import ImagePipeline
-    from phenotypic.enhance import GaussianBlur
+    from phenotypic.enhance import BlurGauss
     from phenotypic.detect import OtsuDetector
     from phenotypic.gui.tune._overlays import render_candidate_overlay
-    base = ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
+    base = ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()])
     img = render_candidate_overlay(base, {"0.sigma": 2.0}, load_synth_yeast_plate())
     assert img.ndim == 3 and img.shape[2] in (3, 4)
 ```

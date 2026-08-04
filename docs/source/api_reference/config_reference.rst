@@ -54,7 +54,7 @@ Pipeline configurations are stored as JSON with the following structure:
      "description": "...",
      "ops": [
        {
-         "class": "GaussianBlur",
+         "class": "BlurGauss",
          "module": "phenotypic.enhance",
          "params": {"sigma": 2.0, "mode": "reflect"}
        }

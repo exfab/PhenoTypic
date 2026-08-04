@@ -543,9 +543,9 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
 
             Combine with other operations to exclude detected regions:
 
-            >>> from phenotypic.enhance import GaussianBlur
+            >>> from phenotypic.enhance import BlurGauss
             >>> # Apply blur only to background
-            >>> blurred = GaussianBlur(sigma=2.0).operate(image)
+            >>> blurred = BlurGauss(sigma=2.0).operate(image)
             >>> combined = image.gray[:] * image.objmask[:] + blurred.gray[:] * ~image.objmask
         """
         self_mask: np.ndarray = self._backend.toarray() > 0

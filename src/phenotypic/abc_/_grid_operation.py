@@ -41,7 +41,7 @@ class GridOperation(ImageOperation, ABC):
 
     - **ImageOperation:** Works on single, unaligned Image objects. The image may or may not
       have grid information. Used for general-purpose preprocessing, detection, and measurement.
-      Examples: GaussianBlur, OtsuDetector, MeasureColorComposition.
+      Examples: BlurGauss, OtsuDetector, MeasureColorComposition.
 
     - **GridOperation:** Works only on GridImage objects that have grid structure information
       (row/column layout of wells on an agar plate). The operation assumes grid information
@@ -184,12 +184,12 @@ class GridOperation(ImageOperation, ABC):
         Type safety: GridOperation prevents misuse:
 
         >>> from phenotypic import Image, GridImage
-        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.enhance import BlurGauss
         >>> from phenotypic.data import load_synth_yeast_plate
         >>> image = Image('generic.jpg')  # Plain Image
         >>> grid_image = load_synth_yeast_plate()  # GridImage
-        >>> # ImageOperation (GaussianBlur) accepts both
-        >>> enhancer = GaussianBlur(sigma=2)
+        >>> # ImageOperation (BlurGauss) accepts both
+        >>> enhancer = BlurGauss(sigma=2)
         >>> result1 = enhancer.apply(image)       # OK: Image -> Image
         >>> result2 = enhancer.apply(grid_image)  # OK: GridImage -> GridImage
         >>> # GridOperation requires GridImage only

@@ -16,7 +16,7 @@ from phenotypic.detect import (
     OtsuDetector,
     RoundPeaksDetector,
 )
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune import Knob, infer_search_space
 
 
@@ -85,7 +85,7 @@ def test_recurse_nested_false_yields_flat_only():
 
 def test_nested_recursion_additive_alongside_flat_op():
     pipe = ImagePipeline(ops=[
-        GaussianBlur(sigma=2.0),                # position 0 — flat
+        BlurGauss(sigma=2.0),                # position 0 — flat
         CompositeDetector(ops=[           # position 1 — nested host
             OtsuDetector(ignore_zeros=False),
             RoundPeaksDetector(),
@@ -93,7 +93,7 @@ def test_nested_recursion_additive_alongside_flat_op():
     ])
     space = infer_search_space(pipe)
     keys = _keys(space)
-    # flat knob for the GaussianBlur op survives unchanged
+    # flat knob for the BlurGauss op survives unchanged
     assert "0.sigma" in keys
     # nested keys are prefixed with the parent's position (1)
     assert "1.ops[0].ignore_zeros" in keys

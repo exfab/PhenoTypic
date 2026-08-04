@@ -39,8 +39,8 @@ class Knob(BaseModel):
             union — ``Categorical`` / ``IntRange`` / ``FloatRange`` / ``Fixed``).
         conditional_on: Parent presence conditions that gate this knob; the knob
             is active only when each ``(target, value)`` pair holds, e.g.
-            ``((Presence(op=0, op_class="GaussianBlur"), True),)`` — define-by-run
-            conditional nesting. A string parent (``"0.GaussianBlur.__enabled__"``)
+            ``((Presence(op=0, op_class="BlurGauss"), True),)`` — define-by-run
+            conditional nesting. A string parent (``"0.BlurGauss.__enabled__"``)
             is coerced to a target. ``None`` means unconditional.
         source: Provenance of the knob (a closed ``KnobSource`` set). Defaults to
             ``"manual"`` for hand-authored spaces; ``infer_search_space`` (Phase 3)

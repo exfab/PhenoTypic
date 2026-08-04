@@ -88,7 +88,7 @@ def hub_url(live_server: str) -> str:
 
 
 def test_wire_drag_image_to_image_snaps_blue(page: Page, hub_url: str) -> None:
-    """Drag GaussianBlur.output → OtsuDetector.in → wire snaps blue 3px.
+    """Drag BlurGauss.output → OtsuDetector.in → wire snaps blue 3px.
 
     Uses the ``STORE_EDGE_EVENT`` set_props path to synthesise the
     edge_create without driving the cytoscape pointer geometry (the
@@ -120,7 +120,7 @@ def test_wire_drag_image_to_image_snaps_blue(page: Page, hub_url: str) -> None:
 
 
 def test_wire_drag_image_to_aux_snaps_purple(page: Page, hub_url: str) -> None:
-    """Drag GaussianBlur.output → FilamentousFungiDetector.inoculum_detector.
+    """Drag BlurGauss.output → FilamentousFungiDetector.inoculum_detector.
 
     Wire snaps purple-dashed; source block border turns solid purple.
     Skips gracefully when the test fixture cannot programmatically pick
@@ -229,22 +229,22 @@ def test_wire_drag_from_already_wired_source_replaces_first_wire(
     _open_builder(page, hub_url)
     ids = _seed_two_blocks(page)
     # Need a THIRD target so we can re-wire from src.  Drop another
-    # GaussianBlur.
+    # BlurGauss.
     box = _canvas_box(page)
     _drag_palette_to_canvas(
-        page, "GaussianBlur", box["width"] * 0.5, box["height"] * 0.8
+        page, "BlurGauss", box["width"] * 0.5, box["height"] * 0.8
     )
     page.wait_for_function(
         """() => {
             const cy = window.phenoGetCy();
-            return cy.nodes().filter(n => n.data('class_name') === 'GaussianBlur').length >= 3;
+            return cy.nodes().filter(n => n.data('class_name') === 'BlurGauss').length >= 3;
         }""",
         timeout=10_000,
     )
     third = page.evaluate(
         """() => {
             const cy = window.phenoGetCy();
-            const blocks = cy.nodes().filter(n => n.data('class_name') === 'GaussianBlur');
+            const blocks = cy.nodes().filter(n => n.data('class_name') === 'BlurGauss');
             return blocks[2].data('block_id') || blocks[2].id();
         }"""
     )

@@ -6,11 +6,11 @@ Save pipeline configurations to JSON for reproducibility and sharing.
 
 ```python
 import phenotypic as pht
-from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
+from phenotypic.enhance import BlurGauss, EnhanceLocalContrast
 from phenotypic.detect import OtsuDetector
 
 pipeline = pht.ImagePipeline(
-    ops=[GaussianBlur(sigma=2.0), EnhanceLocalContrast(clip_limit=0.01), OtsuDetector()],
+    ops=[BlurGauss(sigma=2.0), EnhanceLocalContrast(clip_limit=0.01), OtsuDetector()],
     name="yeast_detection_v1",
 )
 

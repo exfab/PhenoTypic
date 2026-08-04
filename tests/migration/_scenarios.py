@@ -383,9 +383,9 @@ CURATED_EXTRAS: tuple[_CuratedExtra, ...] = (
             {"coord1": (60, 70), "coord2": (540, 730), "width": 18},
     ),
     # -- enhance --
-    _CuratedExtra("GaussianBlur", "sigma4", {"sigma": 4.0}),
+    _CuratedExtra("BlurGauss", "sigma4", {"sigma": 4.0}),
     _CuratedExtra(
-            "GaussianBlur",
+            "BlurGauss",
             "constant_mode",
             {"sigma": 2.0, "mode": "constant", "cval": 0.0},
     ),
@@ -609,9 +609,9 @@ _STOCHASTIC_DEFAULTS: frozenset[str] = frozenset(
 # a real forward pass, so the suite stays runnable in CI without weights.
 _STRUCTURAL_ONLY: frozenset[str] = frozenset(
         {
-            "Sam2Detector",
+            "Sam2",
             "MicroSamDetector",
-            "Sam3Detector",
+            "Sam3",
             "DinoSam2Detector",
             "Insid3Detector",
             "FssDinoDetector",

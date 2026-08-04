@@ -44,9 +44,12 @@ from phenotypic.gui.results_viewer.colony_view._grid import build_grid
 from phenotypic.gui.results_viewer._viewer_card import (
     layout as build_viewer_card,
 )
+from phenotypic.abc_.plotting import PlotOutput, PlotPage
+from phenotypic.plotting._pipeline import (
+    PlotPublicationBlocked,
+    publish_plot_output,
+)
 from phenotypic.schema import METADATA
-from phenotypic.plotting import PlotOutput, PlotPage, publish_plot_output
-from phenotypic.plotting._writer import PlotPublicationBlocked
 from phenotypic.sdk_ import (
     gui_launch_owner_path,
     master_measurements_parquet_path,

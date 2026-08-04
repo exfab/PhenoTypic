@@ -117,7 +117,7 @@ git commit -m "test(gpu): promote FakeGpuDetector to shared tests/_fakes helper"
 import pytest
 
 from phenotypic import ImagePipeline
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.detect import OtsuDetector
 from phenotypic.refine import SmallObjectRemover
 from phenotypic.measure import MeasureSize
@@ -130,12 +130,12 @@ from tests._fakes.fake_gpu_detector import FakeGpuDetector
 
 def test_splits_at_first_gpu_detector():
     pipe = ImagePipeline(
-        ops=[GaussianBlur(), FakeGpuDetector(), SmallObjectRemover()],
+        ops=[BlurGauss(), FakeGpuDetector(), SmallObjectRemover()],
         meas=[MeasureSize()],
     )
     plan = split_pipeline_at_gpu(pipe)
     assert isinstance(plan, StagePlan)
-    assert list(plan.pre_pipeline.get_ops().keys()) == ["GaussianBlur"]
+    assert list(plan.pre_pipeline.get_ops().keys()) == ["BlurGauss"]
     assert isinstance(plan.gpu_detector, FakeGpuDetector)
     assert list(plan.post_pipeline.get_ops().keys()) == ["SmallObjectRemover"]
     # post pipeline carries the measurements
@@ -149,7 +149,7 @@ def test_rejects_more_than_one_gpu_detector():
 
 
 def test_rejects_no_gpu_detector():
-    pipe = ImagePipeline(ops=[GaussianBlur(), OtsuDetector()])
+    pipe = ImagePipeline(ops=[BlurGauss(), OtsuDetector()])
     with pytest.raises(ValueError, match="no GpuDetector"):
         split_pipeline_at_gpu(pipe)
 ```

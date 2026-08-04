@@ -39,7 +39,7 @@ def _seed_state() -> dict:
     state = BuilderState(
         root=BuilderScope(
             nodes=[
-                StepNode(node_id="aaa", class_name="GaussianBlur"),
+                StepNode(node_id="aaa", class_name="BlurGauss"),
                 StepNode(node_id="bbb", class_name="OtsuDetector"),
             ],
             name="root",
@@ -268,7 +268,7 @@ def test_render_views_drilled_in_breadcrumb_returns_button_children() -> None:
                     class_name="ImagePipeline",
                     label="Subpipeline",
                     nested=BuilderScope(
-                        nodes=[StepNode(node_id="aaa", class_name="GaussianBlur")],
+                        nodes=[StepNode(node_id="aaa", class_name="BlurGauss")],
                         name="Subpipeline",
                     ),
                 ),

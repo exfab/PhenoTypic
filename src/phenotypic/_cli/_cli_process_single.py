@@ -110,7 +110,7 @@ def process_single_image_core(
     output_manager.save_image_hdf(image, dataset_name, image_stem)
     if output_manager.save_overlays:
         output_manager.save_overlay(image, dataset_name, image_stem)
-    from phenotypic.plotting import PlotCoordinator
+    from phenotypic.plotting._pipeline import PlotCoordinator
 
     PlotCoordinator(pipeline, output_dir).emit_image(
         image,
@@ -169,7 +169,7 @@ def process_single_hdf_measure_core(
 
     # Save measurements parquet (overlay + HDF intentionally skipped)
     output_manager.save_measurements(measurements, dataset_name, hdf_path.stem)
-    from phenotypic.plotting import PlotCoordinator
+    from phenotypic.plotting._pipeline import PlotCoordinator
 
     PlotCoordinator(pipeline, output_dir).emit_image(
         image,

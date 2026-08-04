@@ -966,7 +966,7 @@ delegated to the runtime (some ops may raise on empty pipelines). See
   ```python
   raise ValueError(
       "Cannot materialise pipeline: 2 validation error(s) — "
-      "fork(GaussianBlur), required_aux(FilamentousFungiDetector)"
+      "fork(BlurGauss), required_aux(FilamentousFungiDetector)"
   )
   ```
 
@@ -1291,7 +1291,7 @@ Phased so each phase is independently merge-able and CI-gated.
 
 * `assets/palette_dnd.js` (new) wires HTML5 dnd → `STORE_PALETTE_DROP`.
 * `block_create` dispatch + container hit-test on drop.
-* E2E: drag GaussianBlur from palette, drop on canvas, block appears wired
+* E2E: drag BlurGauss from palette, drop on canvas, block appears wired
   to nothing.
 
 **Phase 4 — Wire-drawing**
@@ -1409,7 +1409,7 @@ should be unmapped.
 
 #### 8.3.1 Palette → canvas (§4.8, §4.9)
 
-* `test_palette_drag_drop_creates_block` — drag `GaussianBlur` from the
+* `test_palette_drag_drop_creates_block` — drag `BlurGauss` from the
   palette to canvas centre; block appears at drop coords; toolbar count
   badge stays at "0 issues".
 * `test_palette_drag_drop_inside_container` — drop into a container's
@@ -1426,7 +1426,7 @@ should be unmapped.
   off the canvas wrapper bounds; no block created; no toast.
 * `test_palette_drag_esc_during_drag_cancels` — `keyboard.press("Escape")`
   mid-drag; ghost disappears; no block.
-* `test_palette_keyboard_fallback` — `Tab` to `GaussianBlur` button +
+* `test_palette_keyboard_fallback` — `Tab` to `BlurGauss` button +
   `Enter`; block placed at viewport centre.
 * `test_palette_no_input_image_button` — assert palette contains no
   `+ Input Image` button (`expect(...).toHaveCount(0)`).
@@ -1438,16 +1438,16 @@ should be unmapped.
 #### 8.3.2 Wire drawing (§4.3, §4.9)
 
 * `test_wire_drag_image_to_image_snaps_blue` — drag from
-  GaussianBlur.output to OtsuDetector.in; wire snaps blue 3px (main path
+  BlurGauss.output to OtsuDetector.in; wire snaps blue 3px (main path
   emphasis).
-* `test_wire_drag_image_to_aux_snaps_purple` — drag GaussianBlur.output
+* `test_wire_drag_image_to_aux_snaps_purple` — drag BlurGauss.output
   to FilamentousFungiDetector.inoculum_detector; wire snaps purple-
   dashed 2px; **source block border turns solid purple (aux-consumed
   cue)**.
 * `test_wire_drag_live_wire_neutral_gray_during_flight` — assert wire's
   stroke colour is the neutral hex while mouse is down + moving.
 * `test_wire_drag_compatible_targets_glow_incompatible_dim` — pick up
-  GaussianBlur (Corrector); only Corrector-typed aux ports glow; a
+  BlurGauss (Corrector); only Corrector-typed aux ports glow; a
   `Detector`-typed aux port renders at ≤30% opacity.
 * `test_wire_drag_drop_on_dimmed_port_rejects_with_red_flash` — assert
   the dimmed port flashes red briefly; no edge created.
@@ -1726,7 +1726,7 @@ of each `<fixture>.json` (matches `state_to_json` output) and of the
       "kind": "fork" | "stub" | "required_aux" | "cycle"
             | "container_mode" | "missing_input" | "duplicate_input"
             | "stage_order_hint" | "unknown_class",
-      "block_label": "GaussianBlur",
+      "block_label": "BlurGauss",
       "severity": "error" | "advisory",
       "scope_path": []
     }
@@ -1741,7 +1741,7 @@ normalisation; ordering is not significant.
 
 
 * `empty.json` — root scope with only `InputImage`.
-* `linear_chain.json` — Input → GaussianBlur → OtsuDetector → MeasureSize.
+* `linear_chain.json` — Input → BlurGauss → OtsuDetector → MeasureSize.
 * `linear_chain_misordered.json` — Input → MeasureSize → MaskRefiner →
   MeasureSize (Rule 7 advisory fires).
 * `scalar_aux.json` — `FilamentousFungiDetector` with a single

@@ -45,8 +45,8 @@ def test_preview_here_selects_the_previewed_output_block(
 
     _open_builder(page, hub_url)
     _click_palette_button(page, "BayesShrinkCorrector")
-    _click_palette_button(page, "GaussianBlur")
-    expect(page.locator(".linear-side-title")).to_have_text("GaussianBlur")
+    _click_palette_button(page, "BlurGauss")
+    expect(page.locator(".linear-side-title")).to_have_text("BlurGauss")
 
     page.locator(
         'button.linear-port-image-out[aria-label="Insert after BayesShrinkCorrector"]'
@@ -64,7 +64,7 @@ def test_preview_mount_survives_reselection_and_marks_param_edit_stale(
     """Inspector updates preserve the mount and invalidate semantic edits."""
 
     _open_builder(page, hub_url)
-    _click_palette_button(page, "GaussianBlur")
+    _click_palette_button(page, "BlurGauss")
     page.evaluate(
         """() => {
             const status = document.querySelector("#preview-status");
@@ -101,7 +101,7 @@ def test_preview_mount_survives_reselection_and_marks_param_edit_stale(
     )
 
     page.locator(
-        "button.linear-node-title-button", has_text="GaussianBlur"
+        "button.linear-node-title-button", has_text="BlurGauss"
     ).click()
     expect(page.locator("#inspector-preview img")).to_have_count(1)
     assert page.evaluate(
@@ -160,7 +160,7 @@ def test_preview_running_renders_before_blocked_compute(
 
     page.route("**/_dash-update-component", delay_compute)
     _open_builder(page, hub_url)
-    _click_palette_button(page, "GaussianBlur")
+    _click_palette_button(page, "BlurGauss")
     page.evaluate(
         """() => {
             const status = document.querySelector("#preview-status");
@@ -224,7 +224,7 @@ def test_late_terminal_result_cannot_overwrite_newer_running_request(
 
     page.route("**/_dash-update-component", capture_and_abort_compute)
     _open_builder(page, hub_url)
-    _click_palette_button(page, "GaussianBlur")
+    _click_palette_button(page, "BlurGauss")
 
     page.locator("#btn-run-preview").click()
     for _ in range(20):
@@ -321,7 +321,7 @@ def test_same_preview_work_is_consumed_once_with_reversed_responses(
 
     page.route("**/_dash-update-component", capture_initial_work)
     _open_builder(page, hub_url)
-    _click_palette_button(page, "GaussianBlur")
+    _click_palette_button(page, "BlurGauss")
     page.locator("#btn-run-preview").click()
     for _ in range(20):
         if captured_payloads:
@@ -401,7 +401,7 @@ def test_same_preview_work_is_consumed_once_with_reversed_responses(
         "button.linear-node-title-button", has_text="InputImage"
     ).click()
     page.locator(
-        "button.linear-node-title-button", has_text="GaussianBlur"
+        "button.linear-node-title-button", has_text="BlurGauss"
     ).click()
     expect(page.locator("#inspector-preview img")).to_have_count(1)
 
@@ -412,7 +412,7 @@ def test_preview_running_transitions_to_error(
     """A failed computation retains its visible running-to-error lifecycle."""
 
     _open_builder(page, hub_url)
-    _click_palette_button(page, "GaussianBlur")
+    _click_palette_button(page, "BlurGauss")
     page.locator("#btn-run-preview").click()
     expect(page.locator("#preview-status")).to_contain_text(
         "Preview complete",
@@ -465,7 +465,7 @@ def test_linear_map_source_and_connectors_align(page: Page, hub_url: str) -> Non
     """The source node body and connector lines stay on the port grid."""
 
     _open_builder(page, hub_url)
-    _click_palette_button(page, "GaussianBlur")
+    _click_palette_button(page, "BlurGauss")
     _click_palette_button(page, "FilamentousFungiDetector")
     expect(page.locator(".linear-node-card")).to_have_count(3)
 
@@ -642,9 +642,9 @@ def test_linear_zoom_controls_are_view_only_and_keep_ports_clickable(
 
     _open_builder(page, hub_url)
     for _ in range(5):
-        _click_palette_button(page, "GaussianBlur")
+        _click_palette_button(page, "BlurGauss")
     expect(page.locator(".linear-node-card")).to_have_count(6)
-    expect(page.locator(".linear-side-title")).to_have_text("GaussianBlur")
+    expect(page.locator(".linear-side-title")).to_have_text("BlurGauss")
     titles_before = _linear_node_titles(page)
 
     page.locator("#linear-zoom-in").click()
@@ -715,9 +715,9 @@ def test_new_pipeline_side_target_drills_and_breadcrumb_returns(
     expect(page.locator(".linear-node-card")).to_have_count(1)
     assert _linear_node_titles(page) == ["InputImage"]
 
-    _click_palette_button(page, "GaussianBlur")
+    _click_palette_button(page, "BlurGauss")
     expect(page.locator(".linear-node-card")).to_have_count(2)
-    assert _linear_node_titles(page) == ["InputImage", "GaussianBlur"]
+    assert _linear_node_titles(page) == ["InputImage", "BlurGauss"]
 
     page.locator("#breadcrumb button").click()
     # Close the inspector slide-over so it doesn't overlay (and intercept
@@ -772,7 +772,7 @@ def test_retired_drag_and_wire_stores_are_inert(page: Page, hub_url: str) -> Non
         "store-palette-drop",
         {
             "kind": "block_create",
-            "class_name": "GaussianBlur",
+            "class_name": "BlurGauss",
             "x": 0,
             "y": 0,
             "ts": 1,

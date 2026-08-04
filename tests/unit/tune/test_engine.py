@@ -32,9 +32,9 @@ class _FailScorer(Scorer):
 
 def _grid_space() -> SearchSpace:
     return SearchSpace(knobs=(
-        Knob(key="0.GaussianBlur.__enabled__", domain=Categorical(choices=(True, False))),
+        Knob(key="0.BlurGauss.__enabled__", domain=Categorical(choices=(True, False))),
         Knob(key="0.sigma", domain=Categorical(choices=(1.0, 2.0)),
-             conditional_on=(("0.GaussianBlur.__enabled__", True),)),
+             conditional_on=(("0.BlurGauss.__enabled__", True),)),
         Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
     ))
 
@@ -51,8 +51,8 @@ def _spec(budget: Budget, store_pipeline) -> TuningSpec:
 
 
 def _base():
-    from phenotypic.enhance import GaussianBlur
-    return ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
+    from phenotypic.enhance import BlurGauss
+    return ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()])
 
 
 class _SuspiciousScorer(Scorer):

@@ -11,10 +11,13 @@ from typing import Any
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from phenotypic.abc_.plotting import PlotMeas
+from phenotypic.abc_.plotting import (
+    PlotMeas,
+    PlotOutput,
+    PlotPage,
+    canonical_group_key,
+)
 from phenotypic.sdk_ import ColumnRef, ColumnRefList, is_metadata_header
-
-from ._output import PlotOutput, PlotPage, canonical_group_key
 
 
 class PlotMeasTimeSeries(BaseModel, PlotMeas):

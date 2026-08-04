@@ -12,18 +12,18 @@ import numpy as np
 from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.gui.tune._overlays import render_candidate_overlay
 
 
 def test_render_candidate_overlay_returns_rgb() -> None:
-    base = ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
+    base = ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()])
     img = render_candidate_overlay(base, {"0.sigma": 2.0}, load_synth_yeast_plate())
     assert img.ndim == 3 and img.shape[2] in (3, 4)
 
 
 def test_render_candidate_overlay_is_uint8_downscaled() -> None:
-    base = ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
+    base = ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()])
     img = render_candidate_overlay(
         base, {"0.sigma": 2.0}, load_synth_yeast_plate(), max_dim=128
     )
@@ -33,7 +33,7 @@ def test_render_candidate_overlay_is_uint8_downscaled() -> None:
 
 
 def test_render_candidate_overlay_param_changes_segmentation() -> None:
-    base = ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
+    base = ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()])
     plate = load_synth_yeast_plate()
     weak = render_candidate_overlay(base, {"0.sigma": 0.5}, plate)
     strong = render_candidate_overlay(base, {"0.sigma": 6.0}, plate)

@@ -111,7 +111,7 @@ def test_nested_scope_target_resolves_without_legacy_current_scope() -> None:
 
     nested = _DagBuilderScope()
     nested_input = nested.blocks[0]
-    nested_blur = _block("GaussianBlur")
+    nested_blur = _block("BlurGauss")
     nested.blocks.append(nested_blur)
     nested.edges.append(_image_edge(nested_input, nested_blur))
     container = BlockNode(
@@ -148,7 +148,7 @@ def test_linear_scope_derives_unique_spine_and_ignores_owned_aux_blocks() -> Non
 
     scope = _DagBuilderScope()
     input_block = scope.blocks[0]
-    blur = _block("GaussianBlur")
+    blur = _block("BlurGauss")
     consumer = _block("FilamentousFungiDetector")
     aux = _block("OtsuDetector")
     scope.blocks.extend([blur, consumer, aux])
@@ -165,7 +165,7 @@ def test_linear_scope_derives_unique_spine_and_ignores_owned_aux_blocks() -> Non
     assert model.unsupported is None
     assert [block.class_name for block in model.spine_blocks] == [
         "InputImage",
-        "GaussianBlur",
+        "BlurGauss",
         "FilamentousFungiDetector",
     ]
     assert model.terminal_block.block_id == consumer.block_id
@@ -178,7 +178,7 @@ def test_linear_scope_classifies_image_fork_as_unsupported() -> None:
 
     scope = _DagBuilderScope()
     input_block = scope.blocks[0]
-    left = _block("GaussianBlur")
+    left = _block("BlurGauss")
     right = _block("OtsuDetector")
     scope.blocks.extend([left, right])
     scope.edges.extend([_image_edge(input_block, left), _image_edge(input_block, right)])

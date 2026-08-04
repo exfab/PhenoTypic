@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune._evaluation._builder import (
     FlatKey,
     PresenceKey,
@@ -23,7 +23,7 @@ from phenotypic.tune._evaluation._builder import (
 
 
 def _ordered_ops() -> list:
-    base = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    base = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     return list(base.get_ops().values())
 
 
@@ -60,7 +60,7 @@ def test_bare_presence_key_projects_to_phase1_enabled_tuple():
 def test_classed_presence_key_projects_to_phase1_enabled_tuple():
     """``"<pos>.<Class>.__enabled__"`` — the three-part presence form."""
     ops = _ordered_ops()
-    assert _project(_parse_key("0.GaussianBlur.__enabled__", ops)) == (
+    assert _project(_parse_key("0.BlurGauss.__enabled__", ops)) == (
         0,
         "__enabled__",
     )
@@ -72,7 +72,7 @@ def test_all_four_flat_presence_shapes_freeze_together():
         "0.sigma": (0, "sigma"),
         "1.ignore_zeros": (1, "ignore_zeros"),
         "0.__enabled__": (0, "__enabled__"),
-        "0.GaussianBlur.__enabled__": (0, "__enabled__"),
+        "0.BlurGauss.__enabled__": (0, "__enabled__"),
     }
     for key, expected in frozen.items():
         assert _project(_parse_key(key, ops)) == expected

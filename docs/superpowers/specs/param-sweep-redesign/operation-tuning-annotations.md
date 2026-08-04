@@ -61,7 +61,7 @@ decision:
 For an important knob, declare both, and the `⊆` invariant ties them together:
 
 ```python
-class GaussianBlur(ImageEnhancer):
+class BlurGauss(ImageEnhancer):
     sigma: Annotated[float, TuneSpec(0.5, 5.0, log=True)] = Field(2.0, gt=0.0)
     #      └ search window (tight, hint)                    └ validity (wide) + default
     #      invariant: [0.5, 5.0] ⊆ (0, ∞) ✓
@@ -81,7 +81,7 @@ Many fields need only **one**:
 
 A human migrator (not the engine) reads three existing sources:
 
-- **Docstrings.** Many already state ranges — `GaussianBlur.sigma`: *"Typical range:
+- **Docstrings.** Many already state ranges — `BlurGauss.sigma`: *"Typical range:
   0.5–5.0. Keep below the smallest colony radius."* Inference deliberately does **not**
   auto-parse these (search-space-inference.md §4 "No docstring-range parsing"), but they
   are the author's stated intent and the primary input to a manual migration.

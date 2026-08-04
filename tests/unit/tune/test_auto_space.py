@@ -9,14 +9,14 @@ from __future__ import annotations
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import CompositeDetector, OtsuDetector, RoundPeaksDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.sdk_ import _io_constants as io
 from phenotypic.tune import InferredSearchSpace
 from phenotypic.tune._tune_cli._auto_space import run_auto_space
 
 
 def _pipe() -> ImagePipeline:
-    return ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    return ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
 
 
 def test_run_auto_space_writes_tuning_spec_json(tmp_path):

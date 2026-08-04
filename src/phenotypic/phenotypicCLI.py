@@ -376,25 +376,25 @@ def is_safe_gui_log_entry(entry: Path) -> bool:
 
 
 def is_safe_gui_launch_state_entry(entry: Path) -> bool:
-    """Return whether ``entry`` contains only the pre-launch GUI owner state.
+    """Return whether ``entry`` contains only pre-launch GUI state.
 
     The GUI must persist its launch generation before starting the CLI. That
-    owner record and its interprocess lock are the only machine-state entries
-    permitted by the fresh-output guard. Existing processing state, scheduler
-    metadata, completion markers, symlinks, and unrecognized files remain
-    non-fresh.
+    owner record, its interprocess lock, and generation-scoped submitter logs
+    are the only machine-state entries permitted by the fresh-output guard.
+    Existing processing state, scheduler metadata, completion markers,
+    symlinks, and unrecognized files remain non-fresh.
     """
     if entry.name != DIR_PHENOTYPIC or entry.is_symlink():
         return False
     try:
         if not entry.is_dir():
             return False
-        children = list(entry.iterdir())
-        if len(children) != 1:
+        children = {child.name: child for child in entry.iterdir()}
+        if not children.keys() <= {"progress", "logs"}:
             return False
-        progress = children[0]
+        progress = children.get("progress")
         if (
-            progress.name != "progress"
+            progress is None
             or progress.is_symlink()
             or not progress.is_dir()
         ):
@@ -417,11 +417,17 @@ def is_safe_gui_launch_state_entry(entry: Path) -> bool:
         payload = json.loads(owner.read_text(encoding="utf-8"))
         if not isinstance(payload, dict) or payload.get("version") != 1:
             return False
-        UUID(str(payload.get("generation")))
+        generation = UUID(str(payload.get("generation")))
         output_dir = Path(str(payload.get("output_dir", ""))).resolve(
             strict=False
         )
         if output_dir != entry.parent.resolve(strict=False):
+            return False
+        logs = children.get("logs")
+        if logs is not None and not _is_safe_gui_submitter_log_tree(
+            logs,
+            generation=generation,
+        ):
             return False
         return (
             payload.get("mode") in {"local", "slurm", "validate"}
@@ -432,6 +438,36 @@ def is_safe_gui_launch_state_entry(entry: Path) -> bool:
         )
     except (OSError, RuntimeError, ValueError, json.JSONDecodeError):
         return False
+
+
+def _is_safe_gui_submitter_log_tree(
+    logs: Path,
+    *,
+    generation: UUID,
+) -> bool:
+    """Validate the exact pre-launch submitter-log tree for ``generation``."""
+    if logs.is_symlink() or not logs.is_dir():
+        return False
+    children = list(logs.iterdir())
+    if len(children) != 1:
+        return False
+    gui_logs = children[0]
+    if (
+        gui_logs.name != "gui"
+        or gui_logs.is_symlink()
+        or not gui_logs.is_dir()
+    ):
+        return False
+    allowed = {
+        f"submitter.{generation.hex}.stdout.log",
+        f"submitter.{generation.hex}.stderr.log",
+    }
+    return all(
+        child.name in allowed
+        and not child.is_symlink()
+        and child.is_file()
+        for child in gui_logs.iterdir()
+    )
 
 
 def _format_slurm_key(key: str) -> str:

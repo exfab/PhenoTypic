@@ -32,7 +32,7 @@ import polars as pl
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic._core._image_pipeline import ImagePipeline
-    from phenotypic.plotting import AnalysisResult
+    from phenotypic.plotting._pipeline import AnalysisResult
 
 from ._cli_types import Dataset
 from ._metadata_join import prepare_metadata_join_keys
@@ -518,7 +518,7 @@ def _emit_analysis_outputs(
         )
         return None
 
-    from phenotypic.plotting import (
+    from phenotypic.plotting._pipeline import (
         AnalysisManifest,
         AnalysisManifestEntry,
         AnalysisResult,
@@ -535,7 +535,7 @@ def _emit_analysis_outputs(
         if deliverables_base is not None
         else deliverables_dir(output_dir)
     )
-    from phenotypic.plotting._analysis_artifacts import (
+    from phenotypic.plotting._pipeline._analysis_artifacts import (
         _analysis_publication_paths,
         write_analysis_manifest,
     )
@@ -992,7 +992,7 @@ def finalize_post_master_outputs(
         )
 
     if pipeline is not None:
-        from phenotypic.plotting import AnalysisRegistry, PlotCoordinator
+        from phenotypic.plotting._pipeline import AnalysisRegistry, PlotCoordinator
 
         _persist_pipeline_to_output_dir(output_dir, pipeline)
         measurements_pd = post_df.to_pandas()

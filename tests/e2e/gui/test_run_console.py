@@ -19,8 +19,6 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Page, expect
 
-from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
-from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.schema import METADATA
 from phenotypic.sdk_ import gui_launch_owner_path
 
@@ -187,24 +185,21 @@ def test_metadata_preflight_shows_ambient_descriptor_but_defaults_to_omit(
         f"{METADATA.IMAGE_NAME},Treatment\nimage,control\n",
         encoding="utf-8",
     )
-    sandbox = SandboxRoot.from_path(fake_sandbox)
-    payload = metadata_payload_from_path(sandbox, metadata)
-    assert payload is not None
     page.goto(hub_url + "/run/")
-    page.evaluate(
-        """(values) => {
-            window.dash_clientside.set_props(
-                "shell-source-image-root-store", {data: values.source}
-            );
-            window.dash_clientside.set_props(
-                "shell-metadata-csv-store", {data: values.metadata}
-            );
-        }""",
-        {
-            "source": None,
-            "metadata": payload,
-        },
+    page.locator("#shell-settings-button").click()
+    page.locator("#shell-settings-metadata-csv-pick").click()
+    metadata_modal = page.locator("#shell-metadata-csv-modal")
+    expect(metadata_modal).to_be_visible()
+    metadata_entry = page.locator(
+        '[id*="shell-metadata-csv-entry"]'
+        '[id*="one-image-metadata.csv"]'
     )
+    metadata_entry.click()
+    expect(page.locator("#shell-metadata-csv-modal-body")).to_contain_text(
+        "Selected CSV: one-image-metadata.csv"
+    )
+    page.locator("#shell-metadata-csv-confirm").click()
+    expect(metadata_modal).not_to_be_visible()
     page.evaluate(
         """(source) => window.dash_clientside.set_props(
             "rc-store-input-dir", {data: source}

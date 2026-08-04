@@ -25,7 +25,7 @@ BaseOperation
 │   └── GridMeasureFeatures
 │       └── GridFinder                   # Detects grid structure
 
-Standalone: MeasurementInfo (enum base, now in `phenotypic.schema`; re-exported here for back-compat), PrefabPipeline (inherits ImagePipeline), and plotting capabilities under `phenotypic.abc_.plotting` (`PhtPlot`, `PlotImage`, `PlotMeas`, `PlotAnalysis`, `PlotQc`)
+Standalone: MeasurementInfo (enum base, now in `phenotypic.schema`; re-exported here for back-compat), PrefabPipeline (inherits ImagePipeline), and plotting extension contracts under `phenotypic.abc_.plotting` (`PhtPlot`, `PlotImage`, `PlotMeas`, `PlotAnalysis`, `PlotQc`, `PlotOutput`, `PlotPage`)
 ```
 
 ---
@@ -68,7 +68,7 @@ live in [`enhance/CLAUDE.md`](../enhance/CLAUDE.md).
   skill.
 - **`_operate()` must be an instance method** (not static); access params via `self`.
   Static `_operate(image, **params)` is deprecated.
-  Canonical: [`enhance/_gaussian_blur.py`](../enhance/_gaussian_blur.py).
+  Canonical: [`enhance/_blur_gauss.py`](../enhance/_blur_gauss.py).
 - **Operations must be instantiable with no required args** for `from_json()` to work.
   Operations that need mandatory args (e.g., `ColorCorrector` needs a fitted profile)
   cannot be generically deserialized and must be excluded from round-trip tests.
@@ -137,7 +137,7 @@ code template before the formal API. Canonical subclass example:
 
 | ABC                              | Example            | Location                          |
 |----------------------------------|--------------------|-----------------------------------|
-| `ImageEnhancer`                  | GaussianBlur       | `enhance/_gaussian_blur.py`       |
+| `ImageEnhancer`                  | BlurGauss       | `enhance/_blur_gauss.py`       |
 | `ImageEnhancer` + FootprintMixin | GrayOpening        | `enhance/_gray_opening.py`        |
 | `ObjectDetector`                 | OtsuDetector       | `detect/_otsu_detector.py`        |
 | `ThresholdDetector`              | HysteresisDetector | `detect/_hysteresis_detector.py`  |

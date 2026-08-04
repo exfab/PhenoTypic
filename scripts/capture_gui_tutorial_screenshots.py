@@ -87,8 +87,8 @@ PIPELINE_DOC = {
     "desc"     : "Synthetic yeast tutorial pipeline",
     "reset"    : False,
     "pipe_cfgs": {
-        "GaussianBlur": {
-            "class" : "GaussianBlur",
+        "BlurGauss": {
+            "class" : "BlurGauss",
             "params": {"sigma": 2},
         },
         "OtsuDetector": {
@@ -150,7 +150,7 @@ def build_tutorial_dataset(force: bool = False) -> None:
                 plate_002.tif        # 8x12 grid, seed 2
                 plate_003.tif        # 8x12 grid, seed 3
             metadata.csv             # synthetic plate metadata (Neurospora-style schema)
-            pipeline.json.pht-pipe   # GaussianBlur + OtsuDetector + MeasureShape + MeasureSize
+            pipeline.json.pht-pipe   # BlurGauss + OtsuDetector + MeasureShape + MeasureSize
     """
     # Current captures should advertise only the canonical typed config. These
     # are capture-owned legacy residues from pre-suffix fixture generations.
@@ -357,7 +357,7 @@ def run_tune_once() -> None:
     """Produce a hermetic ``python -m phenotypic.tune`` output for the co-pilot.
 
     A SHORT, optuna-free **grid** tune over the synthetic plates: a base
-    ``GaussianBlur → OtsuDetector`` pipeline searched over a 3-value ``sigma`` ×
+    ``BlurGauss → OtsuDetector`` pipeline searched over a 3-value ``sigma`` ×
     2-value ``ignore_zeros`` grid (6 trials, so the Curate shortlist populates).
     The run goes through the real :func:`~phenotypic.tune._tune_cli._run.run_tuning`
     path, so it writes the full marker set the GUI reads:
@@ -406,7 +406,7 @@ def run_tune_once() -> None:
     from phenotypic import ImagePipeline
     from phenotypic.analysis import ExpectedVsDetectedCount
     from phenotypic.detect import OtsuDetector
-    from phenotypic.enhance import GaussianBlur
+    from phenotypic.enhance import BlurGauss
     from phenotypic.tune import (
     Budget,
     Categorical,
@@ -435,7 +435,7 @@ def run_tune_once() -> None:
     ]
     pd.DataFrame(layout_rows).to_csv(TUNE_LAYOUT_CSV, index=False)
 
-    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    pipeline = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     # A 3x2 categorical grid = 6 enumerated trials (>= 5 for the shortlist).
     space = SearchSpace(
         knobs=(
@@ -1310,7 +1310,7 @@ def _capture_build_pipeline(context, base_url: str) -> None:
     _save(page, "build_pipeline", "01_builder_empty.png")
 
     _expand_palette_accordions(page)
-    for cls in ("GaussianBlur", "OtsuDetector", "MeasureShape", "MeasureSize"):
+    for cls in ("BlurGauss", "OtsuDetector", "MeasureShape", "MeasureSize"):
         _add_palette_op(page, cls)
     _wait_linear_node_count(page, 5)
     fit = page.locator("#linear-zoom-fit")
@@ -1467,7 +1467,7 @@ def _capture_pick_points(context, base_url: str) -> None:
     ``docs/source/tutorials/gui/07_pick_points.md``:
 
     1. Palette with the PICK badge visible on the two pickable ops.
-    2. Canvas with ``GaussianBlur → OtsuDetector → ManualRefine``.
+    2. Canvas with ``BlurGauss → OtsuDetector → ManualRefine``.
     3. Inspector param form for ``ManualRefine`` (count = "0 points").
     4. Picker modal open on the original RGB plate.
     5. Picker modal toggled to the predecessor's intermediate.
@@ -1509,7 +1509,7 @@ def _capture_pick_points(context, base_url: str) -> None:
     page.wait_for_timeout(300)
     _save(page, "pick_points", "01_palette_with_badge.png")
 
-    # 2) Pipeline with GaussianBlur → OtsuDetector → ManualRefine.
+    # 2) Pipeline with BlurGauss → OtsuDetector → ManualRefine.
     # Each palette button is a pattern-matching id of the form
     # {"type": "palette-add", "class_name": "<name>"}; Dash hashes the dict
     # to a JSON string when it renders the DOM, so the selector below
@@ -1522,7 +1522,7 @@ def _capture_pick_points(context, base_url: str) -> None:
         page.click(sel)
         page.wait_for_timeout(400)
 
-    for cls in ("GaussianBlur", "OtsuDetector", "ManualRefine"):
+    for cls in ("BlurGauss", "OtsuDetector", "ManualRefine"):
         _add_op(cls)
     _wait_linear_node_count(page, 4)
     _relayout_canvas(page)
@@ -1666,7 +1666,7 @@ def _capture_aux_ports(context, base_url: str) -> None:
 
     1. ``01_initial.png`` — empty builder canvas + palette.
     2. ``02_main_pipeline.png`` — palette clicks build the ribbon
-       ``Input Image -> GaussianBlur -> FilamentousFungiDetector``; the
+       ``Input Image -> BlurGauss -> FilamentousFungiDetector``; the
        detector shows a required empty ``inoculum_detector`` side value.
     3. ``03_aux_wired.png`` — selecting that side port and clicking
        ``OtsuDetector`` fills the value row.
@@ -1683,7 +1683,7 @@ def _capture_aux_ports(context, base_url: str) -> None:
     _expand_palette_accordions(page)
 
     # 2) Main ribbon with the aux-consuming op (FFD) on the tail.
-    for cls in ("GaussianBlur", "FilamentousFungiDetector"):
+    for cls in ("BlurGauss", "FilamentousFungiDetector"):
         _add_palette_op(page, cls)
     _wait_linear_node_count(page, 3)
     _relayout_canvas(page)
@@ -1980,7 +1980,7 @@ def _capture_aux_wire_in_dag(context, base_url: str) -> None:
     Steps exercised against the real dispatcher:
 
     1. ``01_main_with_consumer.png`` — palette clicks build the main
-       ribbon ``Input Image -> GaussianBlur -> ContrastStretching ->
+       ribbon ``Input Image -> BlurGauss -> ContrastStretching ->
        FilamentousFungiDetector``.
     2. ``02_detector_dropped.png`` — the ``inoculum_detector`` side port is
        selected green as the active fill target.
@@ -1992,7 +1992,7 @@ def _capture_aux_wire_in_dag(context, base_url: str) -> None:
     _expand_palette_accordions(page)
 
     # 1) Main ribbon + the consumer whose aux port we will feed.
-    for cls in ("GaussianBlur", "ContrastStretching", "FilamentousFungiDetector"):
+    for cls in ("BlurGauss", "ContrastStretching", "FilamentousFungiDetector"):
         _add_palette_op(page, cls)
     _wait_linear_node_count(page, 4)
     _relayout_canvas(page)
@@ -2023,7 +2023,7 @@ def _capture_wire_pipeline_as_aux(context, base_url: str) -> None:
     1. ``01_empty_container.png`` — the embedded pipeline has just been
        created and the active breadcrumb is inside its empty linear scope.
     2. ``02_chain_in_container.png`` — palette clicks build
-       ``Input Image -> GaussianBlur -> OtsuDetector`` inside that scope.
+       ``Input Image -> BlurGauss -> OtsuDetector`` inside that scope.
     3. ``03_pipeline_wired_as_aux.png`` — breadcrumb returns to root and the
        consumer side loader shows the embedded ``ImagePipeline`` value.
     """
@@ -2040,7 +2040,7 @@ def _capture_wire_pipeline_as_aux(context, base_url: str) -> None:
     _save(page, "wire-pipeline-as-aux", "01_empty_container.png")
 
     # 2) Build the embedded linear chain.
-    for cls in ("GaussianBlur", "OtsuDetector"):
+    for cls in ("BlurGauss", "OtsuDetector"):
         _add_palette_op(page, cls)
     _wait_linear_node_count(page, 3)
     _relayout_canvas(page)
@@ -2076,7 +2076,7 @@ def _capture_fix_validation_issues(context, base_url: str) -> None:
     _expand_palette_accordions(page)
 
     # 1) Build a main spine with a consumer missing a required side value.
-    for cls in ("GaussianBlur", "FilamentousFungiDetector"):
+    for cls in ("BlurGauss", "FilamentousFungiDetector"):
         _add_palette_op(page, cls)
     _wait_linear_node_count(page, 3)
     _select_linear_node(page, "FilamentousFungiDetector")

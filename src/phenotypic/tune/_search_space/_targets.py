@@ -103,12 +103,12 @@ def parse_key(key: str) -> "KnobTarget":
     The pipeline-free inverse of ``KnobTarget.key`` — a purely *structural*
     parse; op-range / field-existence checks happen later against the pipeline
     in the ``TuningSpec`` validator. ``op_class`` is recovered only from the
-    classed presence form (``"0.GaussianBlur.__enabled__"``); flat and nested
+    classed presence form (``"0.BlurGauss.__enabled__"``); flat and nested
     keys do not encode a class, so their ``op_class`` is ``None``.
 
     Args:
         key: A canonical key, e.g. ``"0.sigma"`` /
-            ``"0.GaussianBlur.__enabled__"`` / ``"0.refiners[1].min_size"``.
+            ``"0.BlurGauss.__enabled__"`` / ``"0.refiners[1].min_size"``.
 
     Returns:
         The matching ``Param`` / ``Presence`` / ``Nested``.

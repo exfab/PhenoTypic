@@ -97,7 +97,7 @@ Gaussian-blur `sigma` ahead of an Otsu detector, scored against an expected
 ```python
 >>> import pandas as pd
 >>> from phenotypic import ImagePipeline
->>> from phenotypic.enhance import GaussianBlur
+>>> from phenotypic.enhance import BlurGauss
 >>> from phenotypic.detect import OtsuDetector
 >>> from phenotypic.analysis import ExpectedVsDetectedCount
 >>> from phenotypic.tune import (
@@ -105,7 +105,7 @@ Gaussian-blur `sigma` ahead of an Otsu detector, scored against an expected
 ... )
 >>> from phenotypic.tune.score import QCScorer
 >>> from phenotypic.tune.strategy import GridConfig
->>> pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+>>> pipe = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
 >>> space = SearchSpace(knobs=(
 ...     Knob(key="0.sigma", domain=FloatRange(low=0.5, high=8.0)),
 ... ))
@@ -131,7 +131,7 @@ Gaussian-blur `sigma` ahead of an Otsu detector, scored against an expected
 ```
 
 A knob's `key` is a position-indexed path: `"0.sigma"` targets the `sigma`
-field of op `0` (the `GaussianBlur`). Save the spec with
+field of op `0` (the `BlurGauss`). Save the spec with
 `spec.model_dump_json()` and feed it to `python -m phenotypic.tune run`. For a
 spec that must round-trip through JSON, configure the count check from a
 metadata *path* (`ExpectedVsDetectedCount(metadata="layout.csv", ...)`) — a

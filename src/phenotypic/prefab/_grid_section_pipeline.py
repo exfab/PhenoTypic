@@ -2,7 +2,7 @@ from typing import Literal, Optional
 
 from phenotypic.abc_ import PrefabPipeline
 from phenotypic import ImagePipeline
-from phenotypic.enhance import EnhanceLocalContrast, GaussianBlur, MedianFilter, ContrastStretching
+from phenotypic.enhance import EnhanceLocalContrast, BlurGauss, MedianFilter, ContrastStretching
 from phenotypic.detect import OtsuDetector
 from phenotypic.grid import GridApply
 from phenotypic.refine import (
@@ -30,7 +30,7 @@ class GridSectionPipeline(PrefabPipeline):
     vary across the plate (e.g., different strains in different wells).
 
     Steps:
-        1. GaussianBlur + EnhanceLocalContrast — global preprocessing
+        1. BlurGauss + EnhanceLocalContrast — global preprocessing
         2. OtsuDetector — initial global detection
         3. RemoveBorderObjects, SmallObjectRemover — cleanup
         4. GridAligner — straighten the grid
@@ -137,7 +137,7 @@ class GridSectionPipeline(PrefabPipeline):
             benchmark (bool): Indicates whether benchmarking is enabled across the pipeline.
         """
         ops = {
-            "blur"                            : GaussianBlur(
+            "blur"                            : BlurGauss(
                     sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate
             ),
             "clahe"                           : EnhanceLocalContrast(kernel_size=clahe_kernel_size,
@@ -164,7 +164,7 @@ class GridSectionPipeline(PrefabPipeline):
             "section-level detect"            : GridApply(
                     image_op=ImagePipeline(
                             pipe_cfgs={
-                                "blur"               : GaussianBlur(
+                                "blur"               : BlurGauss(
                                         sigma=section_blur_sigma,
                                         mode=section_blur_mode,
                                         truncate=section_blur_truncate,

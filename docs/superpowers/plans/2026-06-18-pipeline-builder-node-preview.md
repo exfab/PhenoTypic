@@ -66,7 +66,7 @@ Create `tests/unit/core/test_full_layers_intermediates.py`:
 """full_layers=True writes complete v2 HDF snapshots per node."""
 import h5py
 from phenotypic._core._image_pipeline import ImagePipeline
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.detect import OtsuDetector
 
 
@@ -74,7 +74,7 @@ def test_full_layers_writes_v2_snapshots(tmp_path):
     from phenotypic.data import load_synth_yeast_plate
 
     image = load_synth_yeast_plate()
-    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=1), OtsuDetector()])
+    pipeline = ImagePipeline(ops=[BlurGauss(sigma=1), OtsuDetector()])
     out_dir = tmp_path / "full"
 
     result = pipeline.apply_with_intermediates(
@@ -109,7 +109,7 @@ def test_full_layers_false_keeps_delta_behavior(tmp_path):
     from phenotypic.data import load_synth_yeast_plate
 
     image = load_synth_yeast_plate()
-    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=1)])
+    pipeline = ImagePipeline(ops=[BlurGauss(sigma=1)])
     out_dir = tmp_path / "delta"
 
     pipeline.apply_with_intermediates(image, output_dir=out_dir)  # default
@@ -563,7 +563,7 @@ def _linear_root_state(op_blocks):
 
 def test_root_scope_caches_all_nodes(tmp_path, monkeypatch):
     monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
-    blur = BlockNode(block_id=_new_block_id(), class_name="GaussianBlur",
+    blur = BlockNode(block_id=_new_block_id(), class_name="BlurGauss",
                      params={"sigma": 1})
     state = _linear_root_state([blur])
 
@@ -581,7 +581,7 @@ def test_root_scope_caches_all_nodes(tmp_path, monkeypatch):
 
 def test_fingerprint_stable_then_invalidates_on_edit(tmp_path, monkeypatch):
     monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
-    blur = BlockNode(block_id=_new_block_id(), class_name="GaussianBlur",
+    blur = BlockNode(block_id=_new_block_id(), class_name="BlurGauss",
                      params={"sigma": 1})
     state = _linear_root_state([blur])
 
@@ -599,17 +599,17 @@ def test_nested_scope_threads_parent_output(tmp_path, monkeypatch):
     """An inner node sees the parent enhancer's detect_mat, not the raw sample."""
     monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
 
-    # Parent scope: InputImage -> GaussianBlur(parent) -> sub-pipeline container
+    # Parent scope: InputImage -> BlurGauss(parent) -> sub-pipeline container
     inner_scope = _DagBuilderScope()
     inner_input = inner_scope.blocks[0]
-    inner_op = BlockNode(block_id=_new_block_id(), class_name="GaussianBlur",
+    inner_op = BlockNode(block_id=_new_block_id(), class_name="BlurGauss",
                          params={"sigma": 1})
     inner_scope.blocks.append(inner_op)
     inner_scope.edges.append(_image_edge(inner_input.block_id, inner_op.block_id))
 
     container = BlockNode(block_id=_new_block_id(), class_name="ImagePipeline",
                           params={}, nested=inner_scope)
-    parent_blur = BlockNode(block_id=_new_block_id(), class_name="GaussianBlur",
+    parent_blur = BlockNode(block_id=_new_block_id(), class_name="BlurGauss",
                             params={"sigma": 7})
     state = _linear_root_state([parent_blur, container])
 
@@ -831,7 +831,7 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `uv run pytest tests/gui/builder/test_preview_compute_scope.py -v`
-Expected: PASS (3 passed). If `to_pipeline_dag` needs the operation registry, the import of `_conversion_dag` triggers `get_registry()` lazily; the synth ops (`GaussianBlur`) are core-registered, so no app context is required.
+Expected: PASS (3 passed). If `to_pipeline_dag` needs the operation registry, the import of `_conversion_dag` triggers `get_registry()` lazily; the synth ops (`BlurGauss`) are core-registered, so no app context is required.
 
 - [ ] **Step 5: Lint/type-check**
 
@@ -1800,7 +1800,7 @@ def _nested_state():
     inner.edges.append(_img_edge(inner_in.block_id, inner_op.block_id))
     container = BlockNode(block_id=_new_block_id(), class_name="ImagePipeline",
                           params={}, nested=inner)
-    parent_blur = BlockNode(block_id=_new_block_id(), class_name="GaussianBlur",
+    parent_blur = BlockNode(block_id=_new_block_id(), class_name="BlurGauss",
                             params={"sigma": 5})
     scope = _DagBuilderScope()
     inp = scope.blocks[0]
@@ -1845,7 +1845,7 @@ def test_parent_edit_invalidates_inner(tmp_path, monkeypatch):
 
     # edit the PARENT enhancer; inner fingerprint must change (chaining)
     for b in state.root.blocks:
-        if b.class_name == "GaussianBlur":
+        if b.class_name == "BlurGauss":
             b.params["sigma"] = 1
     fp2 = pc.compute_scope(sid, state, scope_path, None, None, None)["fingerprint"]
     assert fp1 != fp2

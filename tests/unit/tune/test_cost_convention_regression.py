@@ -45,9 +45,9 @@ def _space() -> SearchSpace:
 
 
 def _base() -> ImagePipeline:
-    from phenotypic.enhance import GaussianBlur
+    from phenotypic.enhance import BlurGauss
 
-    return ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
+    return ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()])
 
 
 class _GoodnessKnobScorer(Scorer):

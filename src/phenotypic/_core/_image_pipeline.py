@@ -20,11 +20,11 @@ class ImagePipeline(SerializablePipeline):
 
         >>> from phenotypic.data import _synthetic_data
         >>> import phenotypic as pht
-        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.enhance import BlurGauss
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.measure import MeasureShape, MeasureIntensity
         >>> pipe = pht.ImagePipeline(
-        ...     ops=[GaussianBlur(), OtsuDetector()],
+        ...     ops=[BlurGauss(), OtsuDetector()],
         ...     meas=[MeasureShape(), MeasureIntensity()]
         ... )
         >>> image = _synthetic_data.load_synth_yeast_plate()

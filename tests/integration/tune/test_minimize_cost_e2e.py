@@ -10,7 +10,7 @@ whole-system proof that complements the synthetic-objective regressions in
 ``tests/unit/tune/test_cost_convention_regression.py``.
 
 Implementation note: the raw ``make_synthetic_plate`` arrays detect only
-~84/96 colonies with ``GaussianBlur + OtsuDetector`` at any resolution (it is
+~84/96 colonies with ``BlurGauss + OtsuDetector`` at any resolution (it is
 detector-limited, not resolution-limited), so a small-sigma config could not
 reach the ``best_value < 0.5`` "good pipeline reachable" bar. The pre-rendered
 ``load_synth_yeast_plate`` fixture detects exactly 96 with ``sigma=1.0`` and
@@ -28,7 +28,7 @@ from phenotypic import GridImage, ImagePipeline  # noqa: E402
 from phenotypic.analysis import ExpectedVsDetectedCount  # noqa: E402
 from phenotypic.data import load_synth_yeast_plate  # noqa: E402
 from phenotypic.detect import OtsuDetector  # noqa: E402
-from phenotypic.enhance import GaussianBlur  # noqa: E402
+from phenotypic.enhance import BlurGauss  # noqa: E402
 from phenotypic.sdk_ import _io_constants as io  # noqa: E402
 from phenotypic.tune import (  # noqa: E402
     Budget,
@@ -50,7 +50,7 @@ def _seeded_plates(n: int = 4) -> list[GridImage]:
     """``n`` cleanly-detectable plates under DISTINCT names.
 
     The canonical ``load_synth_yeast_plate`` fixture detects exactly 96 colonies
-    with ``GaussianBlur(sigma=1.0) + OtsuDetector`` (and collapses at large
+    with ``BlurGauss(sigma=1.0) + OtsuDetector`` (and collapses at large
     sigma), so the count signal is clean and the small-sigma config is reachably
     low-cost. Copies carry distinct ``name``s so the multi-image cross-plate
     robust aggregate path executes (the count is identical per plate, so the
@@ -77,11 +77,11 @@ def _layout_csv(tmp_path, names) -> str:
 
 
 def _spec(tmp_path, names) -> TuningSpec:
-    # GaussianBlur sigma is the discriminating knob: a small sigma keeps colonies
+    # BlurGauss sigma is the discriminating knob: a small sigma keeps colonies
     # separable (count ~= 96 -> low cost); a large sigma merges/erases them
     # (count far from 96 -> high cost). Minimization must prefer the small sigma.
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()]),
         search_space=SearchSpace(
             knobs=(Knob(key="0.sigma", domain=Categorical(choices=(1.0, 12.0, 40.0))),)
         ),

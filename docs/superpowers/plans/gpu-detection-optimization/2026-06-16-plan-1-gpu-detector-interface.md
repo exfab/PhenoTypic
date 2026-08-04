@@ -1,38 +1,58 @@
 # GpuDetector Batched Interface Refactor — Implementation Plan (Spec 1, Plan 1 of 3)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:
+> subagent-driven-development (recommended) or superpowers:executing-plans to implement
+> this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Give `GpuDetector` a full batched/streaming interface (`input_layer`, `supports_batching`, `output_kind`, `preprocess`/`collate`/`infer_batch`) with a correct single-image default, and refactor the existing `Sam2Detector`/`MicroSamDetector` onto it — with **no behavior change** for notebook users.
+**Goal:** Give `GpuDetector` a full batched/streaming interface (`input_layer`,
+`supports_batching`, `output_kind`, `preprocess`/`collate`/`infer_batch`) with a correct
+single-image default, and refactor the existing `Sam2`/`MicroSamDetector` onto it — with
+**no behavior change** for notebook users.
 
-**Architecture:** `GpuDetector` becomes a concrete-`_operate` ABC: it reads the declared `input_layer`, runs `preprocess → collate → infer_batch`, and writes the result via `output_kind` (`objmap` for instance, `objmask` for semantic). The default `infer_batch` loops a per-detector `_infer_one`, so non-batchable models (SAM2/micro-sam) need only `_infer_one` + `_ensure_model_loaded`. Spec 2's batchable models will later override `infer_batch` with a true `(N,C,H,W)` forward — no engine changes.
+**Architecture:** `GpuDetector` becomes a concrete-`_operate` ABC: it reads the declared
+`input_layer`, runs `preprocess → collate → infer_batch`, and writes the result via
+`output_kind` (`objmap` for instance, `objmask` for semantic). The default `infer_batch`
+loops a per-detector `_infer_one`, so non-batchable models (SAM2/micro-sam) need only
+`_infer_one` + `_ensure_model_loaded`. Spec 2's batchable models will later override
+`infer_batch` with a true `(N,C,H,W)` forward — no engine changes.
 
-**Tech Stack:** Python, pydantic v2 (operations are `BaseModel`s with class-annotated fields), numpy, scikit-image (`skimage.measure.label`), pytest. `uv` is the sole runner.
+**Tech Stack:** Python, pydantic v2 (operations are `BaseModel`s with class-annotated
+fields), numpy, scikit-image (`skimage.measure.label`), pytest. `uv` is the sole runner.
 
-**Source of truth:** `docs/superpowers/specs/gpu-detection-optimization/2026-06-16-staged-batched-gpu-detection-design.md` §3–§4, §8 (decisions D4, D8, D9).
+**Source of truth:**
+`docs/superpowers/specs/gpu-detection-optimization/2026-06-16-staged-batched-gpu-detection-design.md`
+§3–§4, §8 (decisions D4, D8, D9).
 
-**Plan set:** Plan 1 (this) = interface refactor. Plan 2 = CLI splitter + local staged engine + sidecar. Plan 3 = SLURM per-stage chaining + licensing scaffolding.
+**Plan set:** Plan 1 (this) = interface refactor. Plan 2 = CLI splitter + local staged
+engine + sidecar. Plan 3 = SLURM per-stage chaining + licensing scaffolding.
 
 ---
 
 ## File Structure
 
-| File | Responsibility | Action |
-|---|---|---|
-| `src/phenotypic/tools_/typing_.py` | `GpuInputLayer`, `GpuOutputKind` Literal aliases | Modify |
-| `src/phenotypic/abc_/_gpu_detector.py` | Interface fields + `preprocess`/`collate`/`infer_batch`/`_write_object_output`/concrete `_operate`; abstract `_ensure_model_loaded`; `_infer_one` hook | Modify |
-| `src/phenotypic/detect/nn/_sam2_detector.py` | Set capability fields; move core into `_infer_one`; drop bespoke `_operate` | Modify |
-| `src/phenotypic/detect/nn/_microsam_detector.py` | Same as SAM2 | Modify |
-| `tests/unit/abc_/test_gpu_detector_interface.py` | Interface, channel-stacking, default-loop, both routes (via a CPU `_FakeGpuDetector`) | Create |
-| `tests/unit/detect/nn/test_sam2_detector.py` | Add capability-field assertions | Modify |
-| `tests/unit/detect/nn/test_microsam_detector.py` | Add capability-field assertions | Modify |
+| File                                             | Responsibility                                                                                                                                         | Action |
+|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|--------|
+| `src/phenotypic/tools_/typing_.py`               | `GpuInputLayer`, `GpuOutputKind` Literal aliases                                                                                                       | Modify |
+| `src/phenotypic/abc_/_gpu_detector.py`           | Interface fields + `preprocess`/`collate`/`infer_batch`/`_write_object_output`/concrete `_operate`; abstract `_ensure_model_loaded`; `_infer_one` hook | Modify |
+| `src/phenotypic/detect/nn/_sam2_detector.py`     | Set capability fields; move core into `_infer_one`; drop bespoke `_operate`                                                                            | Modify |
+| `src/phenotypic/detect/nn/_microsam_detector.py` | Same as SAM2                                                                                                                                           | Modify |
+| `tests/unit/abc_/test_gpu_detector_interface.py` | Interface, channel-stacking, default-loop, both routes (via a CPU `_FakeGpuDetector`)                                                                  | Create |
+| `tests/unit/detect/nn/test_sam2_detector.py`     | Add capability-field assertions                                                                                                                        | Modify |
+| `tests/unit/detect/nn/test_microsam_detector.py` | Add capability-field assertions                                                                                                                        | Modify |
 
-**Convention note for the engineer:** Operations are pydantic v2 models — parameters are **class-level annotated fields** (e.g. `input_layer: GpuInputLayer = "rgb"`), there is no `__init__`, construction is keyword-only. Private runtime state uses `PrivateAttr` and never serializes. Tests construct detectors **without** torch installed; only `.apply()` functional tests require the `phenotypic[torch]` extra and are skipped otherwise.
+**Convention note for the engineer:** Operations are pydantic v2 models — parameters are
+**class-level annotated fields** (e.g. `input_layer: GpuInputLayer = "rgb"`), there is
+no `__init__`, construction is keyword-only. Private runtime state uses `PrivateAttr`
+and never serializes. Tests construct detectors **without** torch installed; only
+`.apply()` functional tests require the `phenotypic[torch]` extra and are skipped
+otherwise.
 
 ---
 
 ### Task 1: Typing aliases for the interface
 
 **Files:**
+
 - Modify: `src/phenotypic/tools_/typing_.py`
 - Test: `tests/unit/abc_/test_gpu_detector_interface.py` (Create)
 
@@ -62,12 +82,14 @@ class TestTypingAliases:
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestTypingAliases -v`
+Run:
+`uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestTypingAliases -v`
 Expected: FAIL — `ImportError: cannot import name 'GpuInputLayer'`.
 
 - [ ] **Step 3: Add the aliases**
 
-In `src/phenotypic/tools_/typing_.py`, next to the existing `ProcessOnlyLayer` / `DetectMode` Literal aliases, add:
+In `src/phenotypic/tools_/typing_.py`, next to the existing `ProcessOnlyLayer` /
+`DetectMode` Literal aliases, add:
 
 ```python
 #: Image layer a GpuDetector consumes as model input. Single-channel layers
@@ -81,7 +103,8 @@ GpuOutputKind = Literal["instance", "semantic"]
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestTypingAliases -v`
+Run:
+`uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestTypingAliases -v`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -96,6 +119,7 @@ git commit -m "feat(gpu): add GpuInputLayer/GpuOutputKind typing aliases"
 ### Task 2: GpuDetector capability fields + abstract `_ensure_model_loaded`
 
 **Files:**
+
 - Modify: `src/phenotypic/abc_/_gpu_detector.py`
 - Test: `tests/unit/abc_/test_gpu_detector_interface.py`
 
@@ -105,12 +129,12 @@ Append to `tests/unit/abc_/test_gpu_detector_interface.py`:
 
 ```python
 from phenotypic.abc_ import GpuDetector
-from phenotypic.detect.nn import Sam2Detector
+from phenotypic.detect.nn import Sam2
 
 
 class TestCapabilityFields:
     def test_defaults_on_existing_detector(self):
-        det = Sam2Detector()
+        det = Sam2()
         assert det.input_layer == "rgb"
         assert det.supports_batching is False
         assert det.output_kind == "instance"
@@ -124,12 +148,14 @@ class TestCapabilityFields:
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestCapabilityFields -v`
-Expected: FAIL — `AttributeError: 'Sam2Detector' object has no attribute 'input_layer'`.
+Run:
+`uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestCapabilityFields -v`
+Expected: FAIL — `AttributeError: 'Sam2' object has no attribute 'input_layer'`.
 
 - [ ] **Step 3: Add fields + abstract `_ensure_model_loaded`**
 
-In `src/phenotypic/abc_/_gpu_detector.py`, add the imports and replace the class body's field/abstract section. The new top of the class:
+In `src/phenotypic/abc_/_gpu_detector.py`, add the imports and replace the class body's
+field/abstract section. The new top of the class:
 
 ```python
 from __future__ import annotations
@@ -165,12 +191,16 @@ class GpuDetector(ObjectDetector, ABC):
         """Build/load the GPU model on first use (idempotent)."""
 ```
 
-(Leave the existing class docstring text intact; only add the fields + `_ensure_model_loaded` abstract method. The existing abstract `_operate` stays for now — it is replaced in Task 5.)
+(Leave the existing class docstring text intact; only add the fields +
+`_ensure_model_loaded` abstract method. The existing abstract `_operate` stays for now —
+it is replaced in Task 5.)
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestCapabilityFields tests/unit/detect/nn -v`
-Expected: PASS (existing SAM2/micro-sam construction + serialization tests still pass — they already implement `_ensure_model_loaded`).
+Run:
+`uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestCapabilityFields tests/unit/detect/nn -v`
+Expected: PASS (existing SAM2/micro-sam construction + serialization tests still pass —
+they already implement `_ensure_model_loaded`).
 
 - [ ] **Step 5: Commit**
 
@@ -184,6 +214,7 @@ git commit -m "feat(gpu): add GpuDetector capability fields + abstract _ensure_m
 ### Task 3: `GpuDetector.preprocess` channel-stacking
 
 **Files:**
+
 - Modify: `src/phenotypic/abc_/_gpu_detector.py`
 - Test: `tests/unit/abc_/test_gpu_detector_interface.py`
 
@@ -197,13 +228,13 @@ import numpy as np
 
 class TestPreprocess:
     def test_2d_layer_stacked_to_3_channels(self):
-        det = Sam2Detector()
+        det = Sam2()
         gray = np.zeros((4, 5), dtype=np.float32)
         out = det.preprocess(gray)
         assert out.shape == (4, 5, 3)
 
     def test_rgb_passthrough(self):
-        det = Sam2Detector()
+        det = Sam2()
         rgb = np.zeros((4, 5, 3), dtype=np.uint8)
         out = det.preprocess(rgb)
         assert out.shape == (4, 5, 3)
@@ -250,6 +281,7 @@ git commit -m "feat(gpu): add GpuDetector.preprocess channel-stacking default"
 ### Task 4: `collate` + `infer_batch` default loop + `_infer_one` hook
 
 **Files:**
+
 - Modify: `src/phenotypic/abc_/_gpu_detector.py`
 - Test: `tests/unit/abc_/test_gpu_detector_interface.py`
 
@@ -310,8 +342,11 @@ class TestInferBatchDefault:
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestInferBatchDefault -v`
-Expected: FAIL — `_FakeGpuDetector` can't instantiate (abstract `_operate` not implemented) **or** `AttributeError: ... 'collate'`. (Either failure is fine; Task 5 makes `_operate` concrete so the fake can construct.)
+Run:
+`uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestInferBatchDefault -v`
+Expected: FAIL — `_FakeGpuDetector` can't instantiate (abstract `_operate` not
+implemented) **or** `AttributeError: ... 'collate'`. (Either failure is fine; Task 5
+makes `_operate` concrete so the fake can construct.)
 
 - [ ] **Step 3: Implement `collate`, `infer_batch`, and the `_infer_one` hook**
 
@@ -349,8 +384,12 @@ Add to `GpuDetector`:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestInferBatchDefault -v`
-Expected: PASS (after Task 5 makes `_operate` concrete the fake constructs; if this task is run before Task 5, temporarily the fake still can't construct — run Step 4 only after Task 5 if executing strictly in order). To keep this task self-contained, **proceed to Task 5 and run both test classes together** in Task 5 Step 4.
+Run:
+`uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestInferBatchDefault -v`
+Expected: PASS (after Task 5 makes `_operate` concrete the fake constructs; if this task
+is run before Task 5, temporarily the fake still can't construct — run Step 4 only after
+Task 5 if executing strictly in order). To keep this task self-contained, **proceed to
+Task 5 and run both test classes together** in Task 5 Step 4.
 
 - [ ] **Step 5: Commit**
 
@@ -364,6 +403,7 @@ git commit -m "feat(gpu): add GpuDetector.collate + infer_batch default loop + _
 ### Task 5: Concrete `_operate` + `_write_object_output` (both routes)
 
 **Files:**
+
 - Modify: `src/phenotypic/abc_/_gpu_detector.py`
 - Test: `tests/unit/abc_/test_gpu_detector_interface.py`
 
@@ -401,12 +441,15 @@ class TestOperateRoutes:
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestOperateRoutes -v`
-Expected: FAIL — the base `_operate` is still the abstract stub, so `_FakeGpuDetector` can't instantiate.
+Run:
+`uv run pytest tests/unit/abc_/test_gpu_detector_interface.py::TestOperateRoutes -v`
+Expected: FAIL — the base `_operate` is still the abstract stub, so `_FakeGpuDetector`
+can't instantiate.
 
 - [ ] **Step 3: Replace abstract `_operate` with concrete + add `_write_object_output`**
 
-In `src/phenotypic/abc_/_gpu_detector.py`, **remove** the old `@abstractmethod def _operate(...)` and add:
+In `src/phenotypic/abc_/_gpu_detector.py`, **remove** the old
+`@abstractmethod def _operate(...)` and add:
 
 ```python
     def _write_object_output(self, image: "Image", result: np.ndarray) -> None:
@@ -452,32 +495,40 @@ git commit -m "feat(gpu): concrete GpuDetector._operate + per-output_kind write-
 
 ---
 
-### Task 6: Refactor `Sam2Detector` onto the interface
+### Task 6: Refactor `Sam2` onto the interface
 
 **Files:**
+
 - Modify: `src/phenotypic/detect/nn/_sam2_detector.py`
 - Test: `tests/unit/detect/nn/test_sam2_detector.py`
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `tests/unit/detect/nn/test_sam2_detector.py` inside `TestSam2DetectorConstruction`:
+Append to `tests/unit/detect/nn/test_sam2_detector.py` inside
+`TestSam2DetectorConstruction`:
 
 ```python
     def test_capability_fields(self):
-        det = Sam2Detector()
-        assert det.input_layer == "rgb"
-        assert det.output_kind == "instance"
-        assert det.supports_batching is False
+    det = Sam2()
+    assert det.input_layer == "rgb"
+    assert det.output_kind == "instance"
+    assert det.supports_batching is False
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest "tests/unit/detect/nn/test_sam2_detector.py::TestSam2DetectorConstruction::test_capability_fields" -v`
-Expected: PASS already (fields inherited from Task 2) — this guards the refactor. If it errors on import, fix imports first. Proceed to refactor the body.
+Run:
+`uv run pytest "tests/unit/detect/nn/test_sam2_detector.py::TestSam2DetectorConstruction::test_capability_fields" -v`
+Expected: PASS already (fields inherited from Task 2) — this guards the refactor. If it
+errors on import, fix imports first. Proceed to refactor the body.
 
-- [ ] **Step 3: Move the inference core into `_infer_one`; delete the bespoke `_operate`**
+- [ ] **Step 3: Move the inference core into `_infer_one`; delete the bespoke `_operate`
+  **
 
-In `src/phenotypic/detect/nn/_sam2_detector.py`: **delete** the existing `def _operate(self, image)` method and the trailing `Sam2Detector.apply.__doc__ = Sam2Detector._operate.__doc__` line. Add `_infer_one` (the same algorithm, now operating on the preprocessed sample):
+In `src/phenotypic/detect/nn/_sam2_detector.py`: **delete** the existing
+`def _operate(self, image)` method and the trailing
+`Sam2.apply.__doc__ = Sam2._operate.__doc__` line. Add `_infer_one` (the same algorithm,
+now operating on the preprocessed sample):
 
 ```python
     def _infer_one(self, sample):
@@ -518,25 +569,29 @@ In `src/phenotypic/detect/nn/_sam2_detector.py`: **delete** the existing `def _o
         return objmap
 ```
 
-Then re-point the autodoc line to the class docstring (replace the deleted `_operate`-based line at the bottom of the file):
+Then re-point the autodoc line to the class docstring (replace the deleted `_operate`
+-based line at the bottom of the file):
 
 ```python
 # Expose the class docstring on .apply() for Sphinx autodoc
-Sam2Detector.apply.__doc__ = Sam2Detector.__doc__
+Sam2.apply.__doc__ = Sam2.__doc__
 ```
 
-Capability fields are inherited (`input_layer="rgb"`, `supports_batching=False`, `output_kind="instance"`) — no need to redeclare them.
+Capability fields are inherited (`input_layer="rgb"`, `supports_batching=False`,
+`output_kind="instance"`) — no need to redeclare them.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `uv run pytest tests/unit/detect/nn/test_sam2_detector.py -v`
-Expected: PASS for construction/hierarchy/serialization. Functional tests (`TestSam2DetectorFunctional`) **skip** unless `phenotypic[torch]` + a cached SAM2 tiny checkpoint are present — that skip is correct.
+Expected: PASS for construction/hierarchy/serialization. Functional tests (
+`TestSam2DetectorFunctional`) **skip** unless `phenotypic[torch]` + a cached SAM2 tiny
+checkpoint are present — that skip is correct.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/phenotypic/detect/nn/_sam2_detector.py tests/unit/detect/nn/test_sam2_detector.py
-git commit -m "refactor(gpu): move Sam2Detector onto the batched interface (_infer_one)"
+git add src/phenotypic/detect/nn/_sam2.py tests/unit/detect/nn/test_sam2_detector.py
+git commit -m "refactor(gpu): move Sam2 onto the batched interface (_infer_one)"
 ```
 
 ---
@@ -544,12 +599,14 @@ git commit -m "refactor(gpu): move Sam2Detector onto the batched interface (_inf
 ### Task 7: Refactor `MicroSamDetector` onto the interface
 
 **Files:**
+
 - Modify: `src/phenotypic/detect/nn/_microsam_detector.py`
 - Test: `tests/unit/detect/nn/test_microsam_detector.py`
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `tests/unit/detect/nn/test_microsam_detector.py` (inside the construction test class — match the file's existing class name):
+Append to `tests/unit/detect/nn/test_microsam_detector.py` (inside the construction test
+class — match the file's existing class name):
 
 ```python
     def test_capability_fields(self):
@@ -561,12 +618,17 @@ Append to `tests/unit/detect/nn/test_microsam_detector.py` (inside the construct
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/detect/nn/test_microsam_detector.py -k capability_fields -v`
-Expected: PASS already if the construction class imports cleanly (fields inherited). Proceed to refactor the body.
+Run:
+`uv run pytest tests/unit/detect/nn/test_microsam_detector.py -k capability_fields -v`
+Expected: PASS already if the construction class imports cleanly (fields inherited).
+Proceed to refactor the body.
 
-- [ ] **Step 3: Move the inference core into `_infer_one`; delete the bespoke `_operate`**
+- [ ] **Step 3: Move the inference core into `_infer_one`; delete the bespoke `_operate`
+  **
 
-In `src/phenotypic/detect/nn/_microsam_detector.py`: **delete** the existing `def _operate(self, image)` and the trailing `MicroSamDetector.apply.__doc__ = MicroSamDetector._operate.__doc__` line. Add:
+In `src/phenotypic/detect/nn/_microsam_detector.py`: **delete** the existing
+`def _operate(self, image)` and the trailing
+`MicroSamDetector.apply.__doc__ = MicroSamDetector._operate.__doc__` line. Add:
 
 ```python
     def _infer_one(self, sample):
@@ -607,7 +669,8 @@ MicroSamDetector.apply.__doc__ = MicroSamDetector.__doc__
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `uv run pytest tests/unit/detect/nn/test_microsam_detector.py -v`
-Expected: PASS for construction/serialization (functional tests skip without `micro_sam`).
+Expected: PASS for construction/serialization (functional tests skip without
+`micro_sam`).
 
 - [ ] **Step 5: Commit**
 
@@ -625,19 +688,29 @@ git commit -m "refactor(gpu): move MicroSamDetector onto the batched interface (
 - [ ] **Step 1: Run the interface + detector + migration suites**
 
 Run:
+
 ```bash
 uv run pytest tests/unit/abc_/test_gpu_detector_interface.py tests/unit/detect/nn tests/migration -v
 ```
-Expected: PASS / SKIP only (no failures). The SAM2/micro-sam migration goldens are `structural_only`, so the new capability fields do not break them. **If** a migration test fails on a changed serialized shape, open the reported golden under `tests/migration/_goldens/` and reconcile it with the new params, then re-run; commit the updated golden with message `test(gpu): update migration goldens for GpuDetector capability fields`.
+
+Expected: PASS / SKIP only (no failures). The SAM2/micro-sam migration goldens are
+`structural_only`, so the new capability fields do not break them. **If** a migration
+test fails on a changed serialized shape, open the reported golden under
+`tests/migration/_goldens/` and reconcile it with the new params, then re-run; commit
+the updated golden with message
+`test(gpu): update migration goldens for GpuDetector capability fields`.
 
 - [ ] **Step 2: Type-check the changed modules**
 
-Run: `uv run mypy src/phenotypic/abc_/_gpu_detector.py src/phenotypic/detect/nn/_sam2_detector.py src/phenotypic/detect/nn/_microsam_detector.py src/phenotypic/tools_/typing_.py`
-Expected: no new errors. (`sam2.*` / `micro_sam.*` are already in the mypy `ignore_missing_imports` list.)
+Run:
+`uv run mypy src/phenotypic/abc_/_gpu_detector.py src/phenotypic/detect/nn/_sam2_detector.py src/phenotypic/detect/nn/_microsam_detector.py src/phenotypic/tools_/typing_.py`
+Expected: no new errors. (`sam2.*` / `micro_sam.*` are already in the mypy
+`ignore_missing_imports` list.)
 
 - [ ] **Step 3: Lint/format**
 
-Run: `uv run ruff check --fix src/phenotypic/abc_/_gpu_detector.py src/phenotypic/detect/nn tests/unit/abc_/test_gpu_detector_interface.py`
+Run:
+`uv run ruff check --fix src/phenotypic/abc_/_gpu_detector.py src/phenotypic/detect/nn tests/unit/abc_/test_gpu_detector_interface.py`
 Expected: clean (auto-fixes applied).
 
 - [ ] **Step 4: Run the broader detector + pipeline smoke to catch regressions**
@@ -657,6 +730,7 @@ git commit -m "test(gpu): green regression for GpuDetector interface refactor" -
 ## Self-Review (run before handing off)
 
 **Spec coverage (Spec 1 §4, D4/D8/D9):**
+
 - `input_layer` / `supports_batching` / `output_kind` as pydantic fields → Task 2. ✓
 - `preprocess` channel-stacking for 2D layers (D9) → Task 3. ✓
 - `collate` + default-loop `infer_batch` + `_infer_one` hook → Task 4. ✓
@@ -664,12 +738,18 @@ git commit -m "test(gpu): green regression for GpuDetector interface refactor" -
 - SAM2/micro-sam refactored, no behavior change → Tasks 6–7. ✓
 - `_operate`↔`infer_batch` shared core (notebook + batched paths) → Tasks 4–5. ✓
 
-**Type consistency:** `_infer_one(sample) -> np.ndarray`, `infer_batch(batch) -> List[np.ndarray]`, `preprocess(array) -> Any`, `collate(List) -> Any`, `_write_object_output(image, result)`, `_operate(image) -> Image` — names/signatures consistent across Tasks 4–7. ✓
+**Type consistency:** `_infer_one(sample) -> np.ndarray`,
+`infer_batch(batch) -> List[np.ndarray]`, `preprocess(array) -> Any`,
+`collate(List) -> Any`, `_write_object_output(image, result)`,
+`_operate(image) -> Image` — names/signatures consistent across Tasks 4–7. ✓
 
-**Out of scope (later plans):** the CLI splitter, the staged engine, the sidecar, resume, SLURM, and licensing scaffolding are **Plan 2 / Plan 3** — not implemented here. This plan ships a self-contained, notebook-testable interface refactor.
+**Out of scope (later plans):** the CLI splitter, the staged engine, the sidecar,
+resume, SLURM, and licensing scaffolding are **Plan 2 / Plan 3** — not implemented here.
+This plan ships a self-contained, notebook-testable interface refactor.
 
 ---
 
 ## Execution Handoff
 
-Plan complete. Next: choose how to execute, or have me draft **Plan 2** (CLI splitter + local staged engine + sidecar) first.
+Plan complete. Next: choose how to execute, or have me draft **Plan 2** (CLI splitter +
+local staged engine + sidecar) first.

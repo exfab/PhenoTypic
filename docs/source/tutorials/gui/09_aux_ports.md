@@ -26,9 +26,9 @@ parameters.
 
 ## Step 2 - Add the main pipeline
 
-Click `GaussianBlur`, then `FilamentousFungiDetector`. Each palette click adds
+Click `BlurGauss`, then `FilamentousFungiDetector`. Each palette click adds
 to the current green continuation target, so the main chain becomes
-`InputImage -> GaussianBlur -> FilamentousFungiDetector`.
+`InputImage -> BlurGauss -> FilamentousFungiDetector`.
 
 ![Main linear chain with FilamentousFungiDetector selected and an empty inoculum_detector side value.](../../_static/gui_images/aux_ports/02_main_pipeline.png)
 

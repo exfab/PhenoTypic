@@ -109,8 +109,8 @@ def render_candidate_overlay(
         >>> from phenotypic import ImagePipeline
         >>> from phenotypic.data import load_synth_yeast_plate
         >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.enhance import GaussianBlur
-        >>> base = ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
+        >>> from phenotypic.enhance import BlurGauss
+        >>> base = ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()])
         >>> overlay = render_candidate_overlay(
         ...     base, {"0.sigma": 2.0}, load_synth_yeast_plate()
         ... )

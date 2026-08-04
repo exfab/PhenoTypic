@@ -28,10 +28,18 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _write_parquet(path: Path, values: list[int]) -> None:
-    """Write a tiny measurement Parquet."""
+def _write_parquet(
+    path: Path,
+    values: list[int],
+    *,
+    image_names: list[str] | None = None,
+) -> None:
+    """Write a tiny measurement Parquet with optional image identities."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    pl.DataFrame({"Size_Area": values}).write_parquet(path)
+    columns: dict[str, list[int] | list[str]] = {"Size_Area": values}
+    if image_names is not None:
+        columns[str(METADATA.IMAGE_NAME)] = image_names
+    pl.DataFrame(columns).write_parquet(path)
 
 
 def test_recompile_slurm_dispatcher_submits_and_writes_metadata(
@@ -267,6 +275,7 @@ def test_generate_recompile_scripts_write_manifest_and_worker_arrays(
         / "measurements"
         / "_dataset_aggregated.parquet",
         [1],
+        image_names=["plate_a"],
     )
     _write_parquet(
         output_dir

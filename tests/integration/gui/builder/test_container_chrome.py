@@ -211,7 +211,7 @@ def test_collapsed_container_chain_glyph_counts_inner_ops() -> None:
 
     inner_one = BlockNode(
         block_id=_new_block_id(),
-        class_name="GaussianBlur",
+        class_name="BlurGauss",
         params={},
     )
     inner_two = BlockNode(
@@ -325,7 +325,7 @@ def test_collapsed_container_children_marked_parent_collapsed() -> None:
     inner_block_id = _new_block_id()
     inner_block = BlockNode(
         block_id=inner_block_id,
-        class_name="GaussianBlur",
+        class_name="BlurGauss",
         params={},
     )
     nested = _DagBuilderScope(blocks=[inner_block], name="inner_pipe")
@@ -509,7 +509,7 @@ def test_container_inspector_card_renders_pipeline_name_and_summary() -> None:
 
     inner = BlockNode(
         block_id=_new_block_id(),
-        class_name="GaussianBlur",
+        class_name="BlurGauss",
         params={"sigma": 1.0},
     )
     container_id = _new_block_id()
@@ -732,7 +732,7 @@ def test_container_data_carries_inner_issue_counts() -> None:
     inner_block_id = _new_block_id()
     inner_block = BlockNode(
         block_id=inner_block_id,
-        class_name="GaussianBlur",
+        class_name="BlurGauss",
         params={},
     )
     nested = _DagBuilderScope(blocks=[inner_block], name="inner")

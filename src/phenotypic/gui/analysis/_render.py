@@ -23,8 +23,8 @@ matplotlib.use("Agg")  # safe in dash worker threads; must precede pyplot import
 import matplotlib.pyplot as plt
 from dash import dcc, html
 
-from phenotypic.plotting import FigureAdapter
-from phenotypic.plotting._output import normalize_plot_output
+from phenotypic.plotting._pipeline import FigureAdapter
+from phenotypic.plotting._pipeline._output import normalize_plot_output
 from phenotypic.sdk_.viz.figures import apply_theme, phenotypic_mpl_context
 
 if TYPE_CHECKING:

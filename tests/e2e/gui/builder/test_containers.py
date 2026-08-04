@@ -146,7 +146,7 @@ def test_container_drag_op_into_expanded_body_adopts(
     # returns its block_id.
     container_id = _click_new_pipeline_button(page)
     assert container_id, "New Pipeline should mint an ImagePipeline container"
-    # Adopt a GaussianBlur into the container's nested scope.  We
+    # Adopt a BlurGauss into the container's nested scope.  We
     # dispatch the ``block_create`` payload directly (with the resolved
     # ``container_block_id``) rather than synthesising an HTML5 drag —
     # Playwright's synthesized pointer events don't reliably trigger the
@@ -158,7 +158,7 @@ def test_container_drag_op_into_expanded_body_adopts(
         page,
         {
             "kind": "block_create",
-            "class_name": "GaussianBlur",
+            "class_name": "BlurGauss",
             "x": 0,
             "y": 0,
             "container_block_id": container_id,
@@ -169,7 +169,7 @@ def test_container_drag_op_into_expanded_body_adopts(
         """() => {
             const cy = window.phenoGetCy();
             const gb = cy.nodes().filter(
-                n => n.data('class_name') === 'GaussianBlur'
+                n => n.data('class_name') === 'BlurGauss'
             )[0];
             return gb && gb.parent().length > 0;
         }""",

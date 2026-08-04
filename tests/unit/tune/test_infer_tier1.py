@@ -138,13 +138,13 @@ def test_categories_tune_spec_skips_subset_check():
 def test_inferred_targets_carry_op_class():
     from phenotypic import ImagePipeline
     from phenotypic.detect import OtsuDetector
-    from phenotypic.enhance import GaussianBlur
+    from phenotypic.enhance import BlurGauss
     from phenotypic.tune import infer_search_space
 
-    pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    pipe = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     proposal = infer_search_space(pipe)
     sigma = next(
         k for k in proposal.knobs if k.target.op == 0 and k.target.key == "0.sigma"
     )
-    assert sigma.target.op_class == "GaussianBlur"
+    assert sigma.target.op_class == "BlurGauss"
     assert all(k.target.op_class for k in proposal.knobs)  # every knob stamped

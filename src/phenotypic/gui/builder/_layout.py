@@ -165,7 +165,7 @@ def _scope_path_labels(state: BuilderState) -> List[str]:
         else:
             # Param drill (legacy popover-era): the synthesized op-param
             # scope was retired in Phase 7. We surface a label
-            # ``GaussianBlur.sub_op`` so older saved state still renders a
+            # ``BlurGauss.sub_op`` so older saved state still renders a
             # readable breadcrumb, but the walker stops here — the
             # synthesized scope is no longer materialised.
             base = node.label or node.class_name
@@ -2216,7 +2216,7 @@ def _issue_row_block_label(
     """Resolve a human-readable block label for a tooltip row.
 
     Walks the DAG state to find the offender ``BlockNode`` so the row
-    can show ``"GaussianBlur#abc12345"`` (label or class_name + short
+    can show ``"BlurGauss#abc12345"`` (label or class_name + short
     block_id suffix) rather than a raw 32-character UUID.  Falls back
     to the rule short name for scope-level issues
     (``missing_input`` has ``block_id == None``).

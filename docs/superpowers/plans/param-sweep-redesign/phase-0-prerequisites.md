@@ -456,7 +456,7 @@ import json
 from pathlib import Path
 
 from phenotypic.sweep import Presence, Sweep, generate_sweep_manifest
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.detect import OtsuDetector
 
 GOLDEN = Path(__file__).resolve().parents[1] / (
@@ -467,7 +467,7 @@ GOLDEN = Path(__file__).resolve().parents[1] / (
 def build_golden_config():
     """A conditional config: a Presence (present/absent) + a swept detector."""
     return [
-        Presence(GaussianBlur, sigma=(1.0, 2.0)),     # 2 sigmas + absent = 3
+        Presence(BlurGauss, sigma=(1.0, 2.0)),     # 2 sigmas + absent = 3
         Sweep(OtsuDetector, ignore_zeros=(True, False)),  # 2
     ]  # → 3 * 2 = 6 pipelines
 

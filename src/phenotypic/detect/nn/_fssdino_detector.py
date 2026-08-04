@@ -56,7 +56,7 @@ from typing import TYPE_CHECKING, Annotated, Any, List
 from pydantic import PrivateAttr
 
 from phenotypic.abc_ import GpuDetector
-from phenotypic.detect.nn._checkpoint_manager import Device
+from phenotypic.detect.nn._helper._checkpoint_manager import Device
 from phenotypic.sdk_.typing_ import (
     DinoSize,
     DinoVersion,
@@ -446,8 +446,8 @@ class FssDinoDetector(GpuDetector):
 
         import numpy as np
 
-        from phenotypic.detect.nn._checkpoint_manager import resolve_device
-        from phenotypic.detect.nn._dino_support import (
+        from phenotypic.detect.nn._helper._checkpoint_manager import resolve_device
+        from phenotypic.detect.nn._helper._dino_support import (
             align_mask_to_grid,
             backbone_patch_size,
             extract_reference_features,
@@ -549,7 +549,7 @@ class FssDinoDetector(GpuDetector):
         self._ensure_model_loaded()
         rgb = sample
 
-        from phenotypic.detect.nn._tiling import (
+        from phenotypic.detect.nn._helper._tiling import (
             _plan_tiles,
             stitch_semantic_tiles,
         )
@@ -570,7 +570,7 @@ class FssDinoDetector(GpuDetector):
 
     def _segment_crop(self, rgb: "np.ndarray") -> "np.ndarray":
         """Run the FSSDINO scoring on one crop → full-res boolean mask."""
-        from phenotypic.detect.nn._dino_support import (
+        from phenotypic.detect.nn._helper._dino_support import (
             backbone_patch_size,
             extract_hidden_layer_features,
             upsample_grid_to_image,

@@ -13,14 +13,14 @@ from __future__ import annotations
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune import Categorical, Knob, infer_search_space
 from phenotypic.tune._search_space._infer import _stamp_op_classes
 from phenotypic.tune._search_space._targets import Param, Presence
 
 
 def _ops() -> list:
-    return [GaussianBlur(), OtsuDetector()]
+    return [BlurGauss(), OtsuDetector()]
 
 
 def test_stamp_fills_op_class_on_conditional_parent():
@@ -37,7 +37,7 @@ def test_stamp_fills_op_class_on_conditional_parent():
     # ... and the conditional parent target is now stamped too (the fix).
     assert stamped.conditional_on is not None
     parent_target, parent_value = stamped.conditional_on[0]
-    assert parent_target.op_class == "GaussianBlur"
+    assert parent_target.op_class == "BlurGauss"
     assert parent_value is True
 
 
@@ -55,7 +55,7 @@ def test_stamp_preserves_parent_value_and_count():
     assert len(stamped.conditional_on) == 2
     # Both parents are stamped against the op at their position (both op 0).
     for parent_target, _value in stamped.conditional_on:
-        assert parent_target.op_class == "GaussianBlur"
+        assert parent_target.op_class == "BlurGauss"
     # Values carry through unchanged.
     assert [v for _t, v in stamped.conditional_on] == [True, 2.0]
 
@@ -68,7 +68,7 @@ def test_stamp_leaves_unconditional_knob_untouched():
     stamped = _stamp_op_classes(knob, _ops())
     assert stamped.conditional_on is None
     # The target is still stamped (the conditional path is purely additive).
-    assert stamped.target.op_class == "GaussianBlur"
+    assert stamped.target.op_class == "BlurGauss"
 
 
 def test_stamp_parent_out_of_range_left_untouched():
@@ -87,7 +87,7 @@ def test_stamp_parent_out_of_range_left_untouched():
 def test_inference_keeps_conditional_on_none_in_v1():
     # End-to-end: v1 never presence-wraps, so every inferred knob's
     # conditional_on stays None (the stamping is a no-op on the None branch).
-    pipe = ImagePipeline(ops=[GaussianBlur(), OtsuDetector()])
+    pipe = ImagePipeline(ops=[BlurGauss(), OtsuDetector()])
     space = infer_search_space(pipe)
     assert all(k.conditional_on is None for k in space.knobs)
     # But every knob's own target is op_class-stamped.

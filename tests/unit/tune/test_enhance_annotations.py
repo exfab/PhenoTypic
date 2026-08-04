@@ -29,7 +29,7 @@ from phenotypic.enhance import (
     FocusEdgePhase,
     EnhanceLocalContrast,
     FlattenIllumination,
-    GaussianBlur,
+    BlurGauss,
     GrayOpening,
     LocalEdgeDenoise,
     MedianFilter,
@@ -61,7 +61,7 @@ def _excluded(op, field_name: str):
 @pytest.mark.parametrize(
         "op, field_name, expected_domain, expected_bounds",
         [
-            (GaussianBlur(), "sigma", FloatRange, (0.5, 5.0, True)),
+            (BlurGauss(), "sigma", FloatRange, (0.5, 5.0, True)),
             (MedianFilter(), "width", IntRange, (3, 9)),
             (EnhanceLocalContrast(), "clip_limit", FloatRange, (0.005, 0.05, True)),
             (SubtractGaussian(), "sigma", FloatRange, (20.0, 100.0, False)),
@@ -116,7 +116,7 @@ def test_tune_spec_resolves_tier1(op, field_name, expected_domain, expected_boun
 @pytest.mark.parametrize(
         "op, field_name",
         [
-            (GaussianBlur(), "truncate"),
+            (BlurGauss(), "truncate"),
         ],
 )
 def test_tune_spec_off_excludes(op, field_name):
@@ -133,8 +133,8 @@ def test_tune_spec_off_excludes(op, field_name):
 @pytest.mark.parametrize(
         "factory",
         [
-            lambda: GaussianBlur(sigma=999.0),
-            lambda: GaussianBlur(truncate=0.001),
+            lambda: BlurGauss(sigma=999.0),
+            lambda: BlurGauss(truncate=0.001),
             lambda: MedianFilter(width=101),
             lambda: EnhanceLocalContrast(clip_limit=0.99),
             lambda: SubtractGaussian(sigma=5000.0),

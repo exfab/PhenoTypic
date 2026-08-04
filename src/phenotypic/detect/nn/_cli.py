@@ -86,7 +86,7 @@ def download(
     console = Console()
 
     if model_type == "sam3":
-        from ._checkpoint_manager import Sam3CheckpointManager
+        from ._helper._checkpoint_manager import Sam3CheckpointManager
 
         if accept_license:
             existing = os.environ.get("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "")
@@ -104,7 +104,7 @@ def download(
         return
 
     if model_type == "dinov2":
-        from ._checkpoint_manager import Dinov2CheckpointManager
+        from ._helper._checkpoint_manager import Dinov2CheckpointManager
 
         console.print(
             f"[cyan]Downloading DINOv2 backbone: {dino_size} (ungated)...[/cyan]"
@@ -118,7 +118,7 @@ def download(
         return
 
     if model_type == "dinov3":
-        from ._checkpoint_manager import Dinov3CheckpointManager
+        from ._helper._checkpoint_manager import Dinov3CheckpointManager
 
         if accept_license:
             existing = os.environ.get("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "")
@@ -140,7 +140,7 @@ def download(
         return
 
     if model_type == "sam2":
-        from ._checkpoint_manager import Sam2CheckpointManager
+        from ._helper._checkpoint_manager import Sam2CheckpointManager
 
         if download_all:
             sizes = list(Sam2CheckpointManager.MODELS)
@@ -167,7 +167,7 @@ def download(
                 sys.exit(1)
 
     elif model_type == "microsam":
-        from ._checkpoint_manager import MicroSamCheckpointManager
+        from ._helper._checkpoint_manager import MicroSamCheckpointManager
 
         if download_all:
             models = list(MicroSamCheckpointManager.MODELS)
@@ -215,7 +215,7 @@ def list_models() -> None:
     sam2_table.add_column("Path", style="dim")
 
     try:
-        from ._checkpoint_manager import Sam2CheckpointManager
+        from ._helper._checkpoint_manager import Sam2CheckpointManager
 
         sam2_cached = Sam2CheckpointManager.list_cached()
         if sam2_cached:
@@ -244,7 +244,7 @@ def list_models() -> None:
     msam_table.add_column("Path", style="dim")
 
     try:
-        from ._checkpoint_manager import MicroSamCheckpointManager
+        from ._helper._checkpoint_manager import MicroSamCheckpointManager
 
         msam_cached = MicroSamCheckpointManager.list_cached()
         if msam_cached:
@@ -288,7 +288,7 @@ def clear(model_type: str) -> None:
 
     if model_type in ("sam2", "all"):
         try:
-            from ._checkpoint_manager import Sam2CheckpointManager
+            from ._helper._checkpoint_manager import Sam2CheckpointManager
 
             deleted = Sam2CheckpointManager.clear()
             total_deleted.extend(deleted)
@@ -305,7 +305,7 @@ def clear(model_type: str) -> None:
 
     if model_type in ("microsam", "all"):
         try:
-            from ._checkpoint_manager import MicroSamCheckpointManager
+            from ._helper._checkpoint_manager import MicroSamCheckpointManager
 
             deleted = MicroSamCheckpointManager.clear()
             total_deleted.extend(deleted)

@@ -10,15 +10,20 @@ from types import SimpleNamespace
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import GridOccupancy
-from phenotypic.abc_.plotting import PlotAnalysis, PlotImage, PlotMeas, PlotQc
-from phenotypic.plotting import (
+from phenotypic.abc_.plotting import (
+    PlotAnalysis,
+    PlotImage,
+    PlotMeas,
+    PlotOutput,
+    PlotPage,
+    PlotQc,
+)
+from phenotypic.plotting._pipeline import (
     AnalysisInput,
     AnalysisRegistry,
     MeasurementInput,
     PlotBinding,
     PlotCoordinator,
-    PlotOutput,
-    PlotPage,
     PipelineObjectRef,
     QcPlotSubject,
 )

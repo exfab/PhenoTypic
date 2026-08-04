@@ -7,7 +7,7 @@ from typing import List, Optional
 import pytest
 
 from phenotypic.abc_ import ObjectDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.gui._operation_registry import (
     OperationRegistry,
     ParamInfo,
@@ -42,15 +42,15 @@ class TestOperationInfo:
     def test_operation_info_creation(self):
         """Test creating OperationInfo."""
         info = OperationInfo(
-                cls=GaussianBlur,
-                name="GaussianBlur",
+                cls=BlurGauss,
+                name="BlurGauss",
                 category="Enhancer",
                 module="phenotypic.enhance",
                 docstring="Test docstring",
                 parameters={},
         )
-        assert info.cls is GaussianBlur
-        assert info.name == "GaussianBlur"
+        assert info.cls is BlurGauss
+        assert info.name == "BlurGauss"
         assert info.category == "Enhancer"
 
 
@@ -67,7 +67,7 @@ class TestOperationRegistry:
     def test_discover_operations(self, registry):
         """Test that operations are discovered."""
         assert len(registry._operations) > 0
-        assert "GaussianBlur" in registry._operations
+        assert "BlurGauss" in registry._operations
         assert "OtsuDetector" in registry._operations
 
     def test_get_categories(self, registry):
@@ -87,7 +87,7 @@ class TestOperationRegistry:
 
         # Check specific operations
         enhancer_names = [info.name for info in enhancers]
-        assert "GaussianBlur" in enhancer_names
+        assert "BlurGauss" in enhancer_names
         assert "EnhanceLocalContrast" in enhancer_names
 
     def test_legacy_bm3d_alias_not_registered(self, registry):
@@ -97,10 +97,10 @@ class TestOperationRegistry:
 
     def test_get_operation(self, registry):
         """Test getting specific operation by name."""
-        info = registry.get("GaussianBlur")
+        info = registry.get("BlurGauss")
         assert info is not None
-        assert info.cls is GaussianBlur
-        assert info.name == "GaussianBlur"
+        assert info.cls is BlurGauss
+        assert info.name == "BlurGauss"
         assert info.category == "Enhancer"
 
     def test_get_nonexistent_operation(self, registry):
@@ -113,15 +113,15 @@ class TestOperationRegistry:
         all_ops = registry.get_all()
         assert isinstance(all_ops, dict)
         assert len(all_ops) > 0
-        assert "GaussianBlur" in all_ops
+        assert "BlurGauss" in all_ops
 
     def test_create_instance(self, registry):
         """Test creating operation instance."""
-        blur = registry.create_instance("GaussianBlur")
-        assert isinstance(blur, GaussianBlur)
+        blur = registry.create_instance("BlurGauss")
+        assert isinstance(blur, BlurGauss)
 
         # With parameters
-        blur2 = registry.create_instance("GaussianBlur", sigma=2.5)
+        blur2 = registry.create_instance("BlurGauss", sigma=2.5)
         assert blur2.sigma == 2.5
 
     def test_create_instance_nonexistent(self, registry):
@@ -131,7 +131,7 @@ class TestOperationRegistry:
 
     def test_extract_parameters(self, registry):
         """Test parameter extraction."""
-        info = registry.get("GaussianBlur")
+        info = registry.get("BlurGauss")
         assert "sigma" in info.parameters
 
         param_info = info.parameters["sigma"]
@@ -156,13 +156,13 @@ class TestOperationRegistry:
 
     def test_operation_has_docstring(self, registry):
         """Test that operations include docstrings."""
-        info = registry.get("GaussianBlur")
+        info = registry.get("BlurGauss")
         assert info.docstring is not None
         assert len(info.docstring) > 0
 
     def test_operation_module_path(self, registry):
         """Test that module paths are captured."""
-        info = registry.get("GaussianBlur")
+        info = registry.get("BlurGauss")
         assert "phenotypic" in info.module
         assert "enhance" in info.module
 
@@ -199,7 +199,7 @@ class TestPointPickerMarker:
         assert otsu.is_point_pickable is False
         assert otsu.point_picker_param is None
 
-        blur = registry.get("GaussianBlur")
+        blur = registry.get("BlurGauss")
         assert blur is not None
         assert blur.is_point_pickable is False
         assert blur.point_picker_param is None
@@ -275,7 +275,7 @@ class TestColumnRefDetection:
 
     def test_non_analyzer_op_has_no_column_ref(self, registry):
         """Builder-side operations don't carry the marker."""
-        blur = registry.get("GaussianBlur")
+        blur = registry.get("BlurGauss")
         assert blur is not None
         for p in blur.parameters.values():
             assert p.column_ref is None
@@ -350,7 +350,7 @@ class TestIsListDetection:
 
     def test_scalar_param_is_not_list(self, registry):
         """Scalar params keep ``is_list=False`` (regression guard)."""
-        blur = registry.get("GaussianBlur")
+        blur = registry.get("BlurGauss")
         assert blur is not None
         for p in blur.parameters.values():
             assert p.is_list is False

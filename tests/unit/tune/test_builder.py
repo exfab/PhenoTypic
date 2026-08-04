@@ -4,13 +4,13 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import FilamentousFungiDetector, OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune._evaluation._builder import build_pipeline
 
 
 def _base() -> ImagePipeline:
     return ImagePipeline(ops=[
-        GaussianBlur(sigma=2.0),           # position 0
+        BlurGauss(sigma=2.0),           # position 0
         OtsuDetector(ignore_zeros=False),  # position 1
     ])
 
@@ -20,34 +20,34 @@ def test_overlay_scalar_field_rebuilds_op_and_leaves_base_untouched():
     candidate = build_pipeline(base, {"1.ignore_zeros": True, "0.sigma": 4.0})
     cops = candidate.get_ops()
     assert cops["OtsuDetector"].ignore_zeros is True
-    assert cops["GaussianBlur"].sigma == 4.0
+    assert cops["BlurGauss"].sigma == 4.0
     # base is unmutated
     assert base.get_ops()["OtsuDetector"].ignore_zeros is False
-    assert base.get_ops()["GaussianBlur"].sigma == 2.0
+    assert base.get_ops()["BlurGauss"].sigma == 2.0
 
 
 def test_no_overlay_yields_equivalent_pipeline():
     base = _base()
     candidate = build_pipeline(base, {})
-    assert list(candidate.get_ops().keys()) == ["GaussianBlur", "OtsuDetector"]
+    assert list(candidate.get_ops().keys()) == ["BlurGauss", "OtsuDetector"]
 
 
 def test_presence_false_drops_the_op():
     base = _base()
-    candidate = build_pipeline(base, {"0.GaussianBlur.__enabled__": False})
+    candidate = build_pipeline(base, {"0.BlurGauss.__enabled__": False})
     assert list(candidate.get_ops().keys()) == ["OtsuDetector"]
 
 
 def test_presence_true_keeps_the_op():
     base = _base()
-    candidate = build_pipeline(base, {"0.GaussianBlur.__enabled__": True, "0.sigma": 1.5})
-    assert list(candidate.get_ops().keys()) == ["GaussianBlur", "OtsuDetector"]
-    assert candidate.get_ops()["GaussianBlur"].sigma == 1.5
+    candidate = build_pipeline(base, {"0.BlurGauss.__enabled__": True, "0.sigma": 1.5})
+    assert list(candidate.get_ops().keys()) == ["BlurGauss", "OtsuDetector"]
+    assert candidate.get_ops()["BlurGauss"].sigma == 1.5
 
 
 def test_presence_class_mismatch_raises():
     base = _base()
-    # position 0 is a GaussianBlur, not an OtsuDetector
+    # position 0 is a BlurGauss, not an OtsuDetector
     with pytest.raises(ValueError, match="OtsuDetector"):
         build_pipeline(base, {"0.OtsuDetector.__enabled__": False})
 

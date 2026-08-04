@@ -34,6 +34,11 @@ _ALLOWED = {
     # generic-fallback + legacy shims (kept literals, load old data)
     "gui/results_viewer/_output_root.py": {"Metadata_ImageName"},   # _IMAGENAME_COL legacy master shim
     "gui/results_viewer/_curation_labels.py": {"Metadata_ImageFile"},  # _LEGACY_IMAGE_FILE curation shim
+    "gui/results_viewer/_compatibility.py": {"Metadata_ImageName"},  # explicit output migration alias
+    "gui/shell/_metadata_context.py": {  # metadata CSV identity aliases
+        "Metadata_ImageName",
+        "Metadata_ImageFileName",
+    },
     "_cli/_cli_recompile_worker.py": {"Metadata_Well"},             # no WELL schema member
     # arbitrary-column doctest examples (demonstrate non-vocabulary columns)
     "abc_/_post_measurement.py": {"Metadata_Flag"},                # AddConstant(column="Metadata_Flag")

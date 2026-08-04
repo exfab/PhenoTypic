@@ -1,7 +1,7 @@
 """End-to-end exercise of the builder preview-cache contract.
 
 Drives :func:`phenotypic.gui.builder._callbacks._bake_preview_cache` against
-a small ``BuilderState`` (``GaussianBlur → OtsuDetector → MeasureSize``) and
+a small ``BuilderState`` (``BlurGauss → OtsuDetector → MeasureSize``) and
 asserts:
 
 - Cache slots for ops nodes hold raw PNG :class:`bytes`.
@@ -44,8 +44,8 @@ def _seed_pipeline_state() -> BuilderState:
     return BuilderState(
         root=BuilderScope(
             nodes=[
-                StepNode(node_id="aaa", class_name="GaussianBlur",
-                         params={"sigma": 1.0}, label="GaussianBlur"),
+                StepNode(node_id="aaa", class_name="BlurGauss",
+                         params={"sigma": 1.0}, label="BlurGauss"),
                 StepNode(node_id="bbb", class_name="OtsuDetector",
                          label="OtsuDetector"),
                 StepNode(node_id="ccc", class_name="MeasureSize",
@@ -245,7 +245,7 @@ def test_bake_preview_cache_dag_uses_32char_block_id_keys():
     )
 
     # ``linear_chain.json`` is a fully wired DAG fixture:
-    # InputImage -> GaussianBlur -> OtsuDetector -> MeasureSize.
+    # InputImage -> BlurGauss -> OtsuDetector -> MeasureSize.
     fixture = (
         Path(__file__).resolve().parents[2]
         / "fixtures"

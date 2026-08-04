@@ -4,7 +4,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import ImageEnhancer
-from phenotypic.enhance import GaussianBlur, LocalEdgeDenoise
+from phenotypic.enhance import BlurGauss, LocalEdgeDenoise
 from phenotypic.sdk_ import NormalizedOutputMixin, NormControlMixin
 
 
@@ -55,7 +55,7 @@ def test_op_with_norm_is_cleared_and_op_without_norm_is_untouched():
     genuinely has no `norm` must pass through unchanged and must not raise.
     """
     with_norm = _Probe(norm="clip")
-    without_norm = GaussianBlur(sigma=1.0)
+    without_norm = BlurGauss(sigma=1.0)
     assert not hasattr(without_norm, "norm")
 
     assert NormControlMixin._disable_normalization(with_norm).norm is None
@@ -63,14 +63,14 @@ def test_op_with_norm_is_cleared_and_op_without_norm_is_untouched():
 
 
 def test_disable_normalization_recurses_into_pipeline():
-    pipe = ImagePipeline(pipe_cfgs=[GaussianBlur(sigma=1.0), _Probe(norm="clip")])
+    pipe = ImagePipeline(pipe_cfgs=[BlurGauss(sigma=1.0), _Probe(norm="clip")])
     copied = NormControlMixin._disable_normalization(pipe)
     assert list(copied._ops.values())[1].norm is None
 
 
 def test_pipeline_recursion_leaves_the_original_pipeline_untouched():
     probe = _Probe(norm="clip")
-    pipe = ImagePipeline(pipe_cfgs=[GaussianBlur(sigma=1.0), probe])
+    pipe = ImagePipeline(pipe_cfgs=[BlurGauss(sigma=1.0), probe])
     NormControlMixin._disable_normalization(pipe)
     assert probe.norm == "clip"
     assert list(pipe._ops.values())[1].norm == "clip"

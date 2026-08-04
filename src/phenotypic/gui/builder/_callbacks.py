@@ -7796,7 +7796,7 @@ def _bake_preview_cache_legacy(
     See :func:`_bake_preview_cache` for the full contract.
     """
 
-    # Map intermediate keys ("GaussianBlur", "GaussianBlur_2", ...) back to
+    # Map intermediate keys ("BlurGauss", "BlurGauss_2", ...) back to
     # BuilderState node-ids by walking ops in declaration order.
     ops_nodes: List[StepNode] = [
         n

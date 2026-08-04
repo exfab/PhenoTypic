@@ -28,6 +28,7 @@ import pytest
 
 from phenotypic._cli._cli_types import DatasetState
 from phenotypic._cli._cli_update_state import (
+    PROCESSING_GENERATION_ENV_VAR,
     append_event,
     append_completion_event,
     parse_event_line,
@@ -59,6 +60,12 @@ def tmp_dir():
     """Provide a temporary directory that cleans up after each test."""
     with tempfile.TemporaryDirectory() as tmpdir:
         yield Path(tmpdir)
+
+
+@pytest.fixture(autouse=True)
+def _clear_processing_generation(monkeypatch):
+    """Prevent process-global generation state from leaking between tests."""
+    monkeypatch.delenv(PROCESSING_GENERATION_ENV_VAR, raising=False)
 
 
 @pytest.fixture

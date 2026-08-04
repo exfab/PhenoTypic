@@ -206,7 +206,7 @@ def stage3_merge_measure_core(
     if output_manager.save_overlays:
         _check_active(active_check)
         output_manager.save_overlay(image, dataset_name, image_stem)
-    from phenotypic.plotting import PlotCoordinator
+    from phenotypic.plotting._pipeline import PlotCoordinator
 
     _check_active(active_check)
     PlotCoordinator(plan.post_pipeline, output_dir).emit_image(

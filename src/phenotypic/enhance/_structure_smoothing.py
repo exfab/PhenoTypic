@@ -42,7 +42,7 @@ class StructureSmoothing(Smoothing):
           of round colonies where directional enhancement is not needed.
         - :class:`FocusEdgeSato` for direct ridge detection on images that
           are already clean enough to skip a diffusion preprocessing step.
-        - :class:`GaussianBlur` when isotropic smoothing is sufficient and
+        - :class:`BlurGauss` when isotropic smoothing is sufficient and
           directional selectivity is not required.
 
     Args:

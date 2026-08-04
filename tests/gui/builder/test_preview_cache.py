@@ -62,7 +62,7 @@ def test_scope_signature_changes_when_nested_scope_changes():
     nested.blocks.append(
         BlockNode(
             block_id=_new_block_id(),
-            class_name="GaussianBlur",
+            class_name="BlurGauss",
             params={"sigma": 1.0},
         )
     )

@@ -99,7 +99,7 @@ Call log: waiting for locator("[data-testid=\"point-picker-osd-canvas\"]") to be
 Visible in the regenerated `03_param_form.png`:
 
 - ✅ Canvas shows 4 connected blocks (
-  `InputImage → GaussianBlur → OtsuDetector → ManualRefine`), breadthfirst layout
+  `InputImage → BlurGauss → OtsuDetector → ManualRefine`), breadthfirst layout
   positions them correctly.
 - ✅ "0 ISSUES" badge — DAG validator green.
 - ✅ Inspector renders the ManualRefine param form.

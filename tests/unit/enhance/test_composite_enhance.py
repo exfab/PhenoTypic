@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from phenotypic import Image, ImagePipeline
-from phenotypic.enhance import CompositeEnhance, GaussianBlur, MedianFilter
+from phenotypic.enhance import CompositeEnhance, BlurGauss, MedianFilter
 
 
 def _three_branch_image() -> tuple[Image, np.ndarray, np.ndarray, np.ndarray]:
@@ -19,7 +19,7 @@ def _three_branch_image() -> tuple[Image, np.ndarray, np.ndarray, np.ndarray]:
     return image, np.full((8, 8), 0.2), np.full((8, 8), 0.6), np.full((8, 8), 0.4)
 
 
-class _SetPlane(GaussianBlur):
+class _SetPlane(BlurGauss):
     """Test-only enhancer that floods ``detect_mat`` with a constant value."""
 
     value: float = 0.0
@@ -112,7 +112,7 @@ class TestIntegrityAndDefaults:
         rgb_before = image.rgb[:].copy()
         gray_before = image.gray[:].copy()
         result = CompositeEnhance(
-            ops=[GaussianBlur(sigma=1.0), MedianFilter()],
+            ops=[BlurGauss(sigma=1.0), MedianFilter()],
         ).apply(image)
         assert np.array_equal(result.rgb[:], rgb_before)
         assert np.array_equal(result.gray[:], gray_before)
@@ -122,19 +122,19 @@ class TestIntegrityAndDefaults:
         assert op.mode == "max"
         assert op.norm is None
         assert len(op.ops) == 2
-        assert isinstance(op.ops[0], GaussianBlur)
+        assert isinstance(op.ops[0], BlurGauss)
         assert isinstance(op.ops[1], MedianFilter)
 
     def test_explicit_none_enhancers_maps_to_default(self):
         op = CompositeEnhance(ops=None)
-        assert isinstance(op.ops[0], GaussianBlur)
+        assert isinstance(op.ops[0], BlurGauss)
         assert isinstance(op.ops[1], MedianFilter)
 
 
 class TestSerialization:
     def test_roundtrip_preserves_branch_subclasses_and_mode(self):
         op = CompositeEnhance(
-            ops=[GaussianBlur(sigma=1.5), MedianFilter()],
+            ops=[BlurGauss(sigma=1.5), MedianFilter()],
             mode="mean",
             norm="clip",
         )
@@ -142,6 +142,6 @@ class TestSerialization:
         assert isinstance(restored, CompositeEnhance)
         assert restored.mode == "mean"
         assert restored.norm == "clip"
-        assert isinstance(restored.ops[0], GaussianBlur)
+        assert isinstance(restored.ops[0], BlurGauss)
         assert restored.ops[0].sigma == 1.5
         assert isinstance(restored.ops[1], MedianFilter)

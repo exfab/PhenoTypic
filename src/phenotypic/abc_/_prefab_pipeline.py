@@ -125,14 +125,14 @@ class PrefabPipeline(ImagePipeline):
     .. code-block:: python
 
         from phenotypic import ImagePipeline
-        from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
+        from phenotypic.enhance import BlurGauss, EnhanceLocalContrast
         from phenotypic.detect import CannyDetector  # Different detector
         from phenotypic.refine import SmallObjectRemover, MaskFill
         from phenotypic.measure import MeasureShape, MeasureColor
 
         # Custom pipeline for your specific use case
         custom = ImagePipeline()
-        custom.add(GaussianBlur(sigma=3))
+        custom.add(BlurGauss(sigma=3))
         custom.add(EnhanceLocalContrast())
         custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))
         custom.add(SmallObjectRemover(min_size=100))
@@ -190,7 +190,7 @@ class PrefabPipeline(ImagePipeline):
     .. code-block:: python
 
         from phenotypic.abc_ import PrefabPipeline
-        from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
+        from phenotypic.enhance import BlurGauss, EnhanceLocalContrast
         from phenotypic.detect import OtsuDetector
         from phenotypic.refine import SmallObjectRemover
         from phenotypic.measure import MeasureShape
@@ -202,7 +202,7 @@ class PrefabPipeline(ImagePipeline):
                          benchmark: bool = False, verbose: bool = False):
                 '''Initialize with tunable parameters.'''
                 pipe_cfgs = [
-                    GaussianBlur(sigma=param2),
+                    BlurGauss(sigma=param2),
                     EnhanceLocalContrast(),
                     OtsuDetector(),
                     SmallObjectRemover(min_size=param1),
@@ -292,8 +292,8 @@ class PrefabPipeline(ImagePipeline):
         >>> result1 = prefab.apply(image)
         >>> # Option 2: Create custom pipeline for comparison
         >>> custom = ImagePipeline()
-        >>> from phenotypic.enhance import GaussianBlur
-        >>> custom.add(GaussianBlur(sigma=2))
+        >>> from phenotypic.enhance import BlurGauss
+        >>> custom.add(BlurGauss(sigma=2))
         >>> custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))
         >>> custom.add(SmallObjectRemover(min_size=100))
         >>> result2 = custom.apply(image)

@@ -27,7 +27,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import CompositeDetector, FilamentousFungiDetector, OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.gui._operation_registry import ParamInfo, get_registry
 from phenotypic.gui.builder._conversion_dag import (
     from_pipeline_dag,
@@ -194,7 +194,7 @@ class TestToPipelineDagBasic:
         assert pipeline.get_post() == {}
 
     def test_to_pipeline_dag_linear_chain_partitions_correctly(self):
-        blur = _make_block("GaussianBlur", params={"sigma": 1.5})
+        blur = _make_block("BlurGauss", params={"sigma": 1.5})
         otsu = _make_block("OtsuDetector")
         meas = _make_block("MeasureSize")
         scope = _scope_with_chain(blur, otsu, meas)
@@ -206,14 +206,14 @@ class TestToPipelineDagBasic:
         post_list = list(pipeline.get_post().values())
 
         assert len(ops) == 2
-        assert isinstance(ops[0], GaussianBlur)
+        assert isinstance(ops[0], BlurGauss)
         assert isinstance(ops[1], OtsuDetector)
         assert len(meas_list) == 1
         assert isinstance(meas_list[0], MeasureSize)
         assert post_list == []
 
     def test_to_pipeline_dag_preserves_root_scope_metadata(self):
-        blur = _make_block("GaussianBlur")
+        blur = _make_block("BlurGauss")
         scope = _scope_with_chain(blur)
         scope.name = "my-pipe"
         scope.desc = "test desc"
@@ -264,14 +264,14 @@ class TestToPipelineDagRaises:
     """Every blocking validation rule raises ``ValueError``."""
 
     def test_to_pipeline_dag_raises_on_fork(self):
-        blur = _make_block("GaussianBlur")
+        blur = _make_block("BlurGauss")
         otsu_a = _make_block("OtsuDetector")
         otsu_b = _make_block("OtsuDetector")
 
         scope = BuilderScope()
         scope.blocks.extend([blur, otsu_a, otsu_b])
         scope.edges.append(_make_image_edge(scope.blocks[0], blur))
-        # Fork: GaussianBlur drives both detectors via image-flow.
+        # Fork: BlurGauss drives both detectors via image-flow.
         scope.edges.append(_make_image_edge(blur, otsu_a))
         scope.edges.append(_make_image_edge(blur, otsu_b))
         state = BuilderState(root=scope)
@@ -281,7 +281,7 @@ class TestToPipelineDagRaises:
 
     def test_to_pipeline_dag_raises_on_stub(self):
         # Stub block: no edges reach it.
-        stub = _make_block("GaussianBlur")
+        stub = _make_block("BlurGauss")
         scope = BuilderScope()
         scope.blocks.append(stub)
         # No edges from InputImage; stub is orphaned.
@@ -316,8 +316,8 @@ class TestToPipelineDagRaises:
                 to_pipeline_dag(state)
 
     def test_to_pipeline_dag_raises_on_cycle(self):
-        a = _make_block("GaussianBlur", label="A")
-        b = _make_block("GaussianBlur", label="B")
+        a = _make_block("BlurGauss", label="A")
+        b = _make_block("BlurGauss", label="B")
         scope = BuilderScope()
         scope.blocks.extend([a, b])
         # Reach from InputImage so the cycle is the only issue.
@@ -367,7 +367,7 @@ class TestToPipelineDagRaises:
         scope.nrows = None
         scope.ncols = None
         # Add a non-input block so the validator has a target.
-        scope.blocks.append(_make_block("GaussianBlur"))
+        scope.blocks.append(_make_block("BlurGauss"))
         state = BuilderState(root=scope)
 
         with pytest.raises(ValueError, match=r"missing_input"):
@@ -422,7 +422,7 @@ class TestFromPipelineDagBasic:
 
     def test_from_pipeline_dag_round_trip_linear(self):
         pipe = ImagePipeline(
-            ops=[GaussianBlur(sigma=1.5), OtsuDetector()],
+            ops=[BlurGauss(sigma=1.5), OtsuDetector()],
             meas=[MeasureSize()],
             name="rt",
         )
@@ -430,7 +430,7 @@ class TestFromPipelineDagBasic:
         rt_pipe = to_pipeline_dag(state)
         # Same ops in same order.
         assert [type(o).__name__ for o in rt_pipe.get_ops().values()] == [
-            "GaussianBlur",
+            "BlurGauss",
             "OtsuDetector",
         ]
         assert [type(m).__name__ for m in rt_pipe.get_meas().values()] == [
@@ -439,14 +439,14 @@ class TestFromPipelineDagBasic:
         assert rt_pipe.name == "rt"
 
     def test_from_pipeline_dag_seeds_input_image_in_root(self):
-        pipe = ImagePipeline(ops=[GaussianBlur()])
+        pipe = ImagePipeline(ops=[BlurGauss()])
         state = from_pipeline_dag(pipe)
         root_classes = [b.class_name for b in state.root.blocks]
         assert root_classes[0] == INPUT_IMAGE_CLASS_NAME
 
     def test_from_pipeline_dag_copies_root_metadata(self):
         pipe = ImagePipeline(
-            ops=[GaussianBlur()],
+            ops=[BlurGauss()],
             name="mypipe",
             desc="d",
             nrows=4,
@@ -523,7 +523,7 @@ class TestFromPipelineDagContainers:
 
     def test_from_pipeline_dag_recurses_into_containers(self):
         inner_pipe = ImagePipeline(
-            ops=[GaussianBlur(), OtsuDetector()], name="inner"
+            ops=[BlurGauss(), OtsuDetector()], name="inner"
         )
         outer = ImagePipeline(ops=[inner_pipe], name="outer")
         state = from_pipeline_dag(outer)
@@ -538,7 +538,7 @@ class TestFromPipelineDagContainers:
         inner_classes = [
             b.class_name for b in inner_scope.blocks if b.class_name != INPUT_IMAGE_CLASS_NAME
         ]
-        assert inner_classes == ["GaussianBlur", "OtsuDetector"]
+        assert inner_classes == ["BlurGauss", "OtsuDetector"]
         # Inner scope still has an auto-seeded InputImage.
         assert any(
             b.class_name == INPUT_IMAGE_CLASS_NAME for b in inner_scope.blocks
@@ -546,7 +546,7 @@ class TestFromPipelineDagContainers:
 
     def test_from_pipeline_dag_container_scope_leaves_nrows_ncols_none(self):
         inner_pipe = ImagePipeline(
-            ops=[GaussianBlur()], name="inner", nrows=2, ncols=3
+            ops=[BlurGauss()], name="inner", nrows=2, ncols=3
         )
         outer = ImagePipeline(
             ops=[inner_pipe], name="outer", nrows=4, ncols=5
@@ -741,11 +741,11 @@ class TestContainerFixtureRoundTrip:
         assert len(ops) == 1
         container_op = ops[0]
         assert isinstance(container_op, ImagePipeline)
-        # Container's nested ops: GaussianBlur + OtsuDetector.
+        # Container's nested ops: BlurGauss + OtsuDetector.
         nested_classes = [
             type(o).__name__ for o in container_op.get_ops().values()
         ]
-        assert nested_classes == ["GaussianBlur", "OtsuDetector"]
+        assert nested_classes == ["BlurGauss", "OtsuDetector"]
         # The measurement step follows the container.
         assert len(meas) == 1
         assert isinstance(meas[0], MeasureSize)
@@ -776,9 +776,9 @@ class TestContainerFixtureRoundTrip:
         # The aux container materialised inside the consumer.
         aux_inst = consumer.inoculum_detector
         assert isinstance(aux_inst, ImagePipeline)
-        # Aux pipeline's nested ops are GaussianBlur + OtsuDetector.
+        # Aux pipeline's nested ops are BlurGauss + OtsuDetector.
         aux_classes = [type(o).__name__ for o in aux_inst.get_ops().values()]
-        assert aux_classes == ["GaussianBlur", "OtsuDetector"]
+        assert aux_classes == ["BlurGauss", "OtsuDetector"]
         # Aux container's name/desc preserved.
         assert aux_inst.name == "subpipeline"
         # Aux container scope leaves nrows/ncols as None.
@@ -797,7 +797,7 @@ class TestContainerFixtureRoundTrip:
         """
 
         inner_pipe = ImagePipeline(
-            ops=[GaussianBlur()], name="inner", nrows=2, ncols=3
+            ops=[BlurGauss()], name="inner", nrows=2, ncols=3
         )
         outer = ImagePipeline(
             ops=[inner_pipe], name="outer", nrows=4, ncols=5
@@ -834,7 +834,7 @@ class TestContainerFixtureRoundTrip:
         """
 
         innermost = ImagePipeline(
-            ops=[GaussianBlur(sigma=1.0), OtsuDetector()], name="innermost"
+            ops=[BlurGauss(sigma=1.0), OtsuDetector()], name="innermost"
         )
         outer_container = ImagePipeline(
             ops=[CompositeDetector(ops=[innermost])], name="outer"
@@ -867,7 +867,7 @@ class TestContainerFixtureRoundTrip:
         assert outer_nested_classes == sorted(
             [INPUT_IMAGE_CLASS_NAME, PIPELINE_CLASS_NAME, "CompositeDetector"]
         )
-        # Inner container's nested scope: InputImage + GaussianBlur +
+        # Inner container's nested scope: InputImage + BlurGauss +
         # OtsuDetector.
         inner_block = next(
             b for b in outer_block.nested.blocks
@@ -880,7 +880,7 @@ class TestContainerFixtureRoundTrip:
             b.class_name for b in inner_block.nested.blocks
         )
         assert inner_nested_classes == sorted(
-            [INPUT_IMAGE_CLASS_NAME, "GaussianBlur", "OtsuDetector"]
+            [INPUT_IMAGE_CLASS_NAME, "BlurGauss", "OtsuDetector"]
         )
 
         # Now round-trip back: to_pipeline_dag(state) must reproduce
@@ -906,4 +906,4 @@ class TestContainerFixtureRoundTrip:
         rt_inner_classes = [
             type(o).__name__ for o in rt_inner.get_ops().values()
         ]
-        assert rt_inner_classes == ["GaussianBlur", "OtsuDetector"]
+        assert rt_inner_classes == ["BlurGauss", "OtsuDetector"]

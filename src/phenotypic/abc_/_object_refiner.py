@@ -569,7 +569,7 @@ class ObjectRefiner(ImageOperation, ABC):
         Chaining multiple refinements in a pipeline:
 
         >>> from phenotypic import Image, ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.enhance import BlurGauss
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.refine import (
         ...     SmallObjectRemover, MaskFill, RemoveLowCircularity
@@ -578,7 +578,7 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> # Build complete processing pipeline with enhancement, detection, and refinement
         >>> pipeline = ImagePipeline()
         >>> # Preprocessing
-        >>> pipeline.add(GaussianBlur(sigma=1.5))
+        >>> pipeline.add(BlurGauss(sigma=1.5))
         >>> # Detection
         >>> pipeline.add(OtsuDetector())
         >>> # Refinement (chain multiple cleanup operations)

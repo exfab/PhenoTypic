@@ -17,15 +17,15 @@ position order, builds the flat ``"<pos>.<field>"`` keys, and assembles the
 :class:`~phenotypic.tune.InferredSearchSpace` proposal.
 
 Example:
-    ``GaussianBlur.sigma`` carries a ``TuneSpec`` (the annotations workstream), so
+    ``BlurGauss.sigma`` carries a ``TuneSpec`` (the annotations workstream), so
     it resolves via Tier-1; ``ChanVeseDetector.mu`` is still un-annotated and
     exercises the Tier-2 unbounded heuristic ``[d/4, d·4]``.
 
     >>> from phenotypic import ImagePipeline
-    >>> from phenotypic.enhance import GaussianBlur
+    >>> from phenotypic.enhance import BlurGauss
     >>> from phenotypic.detect import ChanVeseDetector
     >>> from phenotypic.tune import infer_search_space
-    >>> pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), ChanVeseDetector()])
+    >>> pipe = ImagePipeline(ops=[BlurGauss(sigma=2.0), ChanVeseDetector()])
     >>> sigma = next(k for k in infer_search_space(pipe).knobs if k.key == "0.sigma")
     >>> (sigma.source, sigma.domain.low, sigma.domain.high)
     ('tune_spec', 0.5, 5.0)

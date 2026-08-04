@@ -509,7 +509,7 @@ def expand_palette_accordions(page) -> None:
     The builder palette groups operations under ``dbc.Accordion``
     sections.  ``always_open=True`` auto-expands only the *first* item;
     the rest start ``collapsed`` (``display: none``).  A palette button
-    in a non-first category (e.g. ``GaussianBlur`` under Enhancer) is
+    in a non-first category (e.g. ``BlurGauss`` under Enhancer) is
     therefore present in the DOM but not *visible*, so a Playwright
     ``hover`` / drag against it times out with "element is not visible".
 

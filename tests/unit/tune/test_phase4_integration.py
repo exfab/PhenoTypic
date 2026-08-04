@@ -23,7 +23,7 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.sdk_ import _io_constants as io
 from phenotypic.tune import (
     Budget,
@@ -101,7 +101,7 @@ def test_supervised_composite_pareto_end_to_end(tmp_path):
         multi_objective=True,
     )
     spec = TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()]),
         search_space=_space(),
         scorer=composite,
         evaluator=Evaluator(),
@@ -147,7 +147,7 @@ def test_supervised_composite_pareto_end_to_end(tmp_path):
 def test_single_objective_sibling_writes_no_pareto(tmp_path):
     # The single-objective sibling: a plain QCScorer + grid → NO pareto/ dir.
     spec = TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()]),
         search_space=_space(),
         scorer=_qc_count_scorer(tmp_path),
         evaluator=Evaluator(),

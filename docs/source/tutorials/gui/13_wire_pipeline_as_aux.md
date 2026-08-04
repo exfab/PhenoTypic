@@ -5,7 +5,7 @@ with a single detector, fill it with a nested `ImagePipeline`, drill into that
 pipeline, and build a fixed linear chain inside it.
 
 This tutorial fills `FilamentousFungiDetector.inoculum_detector` with a nested
-pipeline containing `GaussianBlur -> OtsuDetector`.
+pipeline containing `BlurGauss -> OtsuDetector`.
 
 ## Step 1 - Create the embedded pipeline
 
@@ -21,9 +21,9 @@ value rather than the root pipeline.
 
 ## Step 2 - Build the nested chain
 
-Inside the embedded scope, click `GaussianBlur`, then `OtsuDetector`:
+Inside the embedded scope, click `BlurGauss`, then `OtsuDetector`:
 
-![Nested pipeline scope with GaussianBlur and OtsuDetector in a fixed linear chain.](../../_static/gui_images/wire-pipeline-as-aux/02_chain_in_container.png)
+![Nested pipeline scope with BlurGauss and OtsuDetector in a fixed linear chain.](../../_static/gui_images/wire-pipeline-as-aux/02_chain_in_container.png)
 
 The nested scope has the same controls as the root: fixed node cards, visible
 ports, docstring help, side-loader parameters, and view-only zoom/fit controls.

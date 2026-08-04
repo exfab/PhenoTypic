@@ -918,7 +918,7 @@ def palette_button_id(class_name: str) -> Dict[str, Any]:
     """Build the pattern-matching id for an operation-palette button.
 
     Args:
-        class_name: Registry key (e.g. ``"GaussianBlur"``) the button adds.
+        class_name: Registry key (e.g. ``"BlurGauss"``) the button adds.
 
     Returns:
         Dict of shape ``{"type": "palette-add", "class_name": class_name}``.

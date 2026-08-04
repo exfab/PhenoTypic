@@ -60,12 +60,12 @@ explicit "never tune this" escape hatch and short-circuits Tier 2 entirely.
 from typing import Annotated, ClassVar
 from phenotypic.tune import TuneSpec
 
-class GaussianBlur(ImageEnhancer):
+class BlurGauss(ImageEnhancer):
     sigma:    Annotated[float, TuneSpec(0.5, 5.0, log=True)] = 2.0
     truncate: Annotated[float, TuneSpec(tunable=False)]      = 4.0   # never tuned
 ```
 
-At runtime `sigma` is still a plain `float`; `GaussianBlur(sigma=999.0)` constructs
+At runtime `sigma` is still a plain `float`; `BlurGauss(sigma=999.0)` constructs
 exactly as before. The marker carries `__eq__`/`__hash__` (like `_ColumnRefMarker`)
 so a duplicate in an `Annotated` chain de-dupes.
 
@@ -197,7 +197,7 @@ visible, never silently dropped, and the fix is one annotation.
 
 ### No docstring-range parsing
 
-`GaussianBlur.sigma`'s docstring literally says *"Typical range: 0.5–5.0"* — tempting,
+`BlurGauss.sigma`'s docstring literally says *"Typical range: 0.5–5.0"* — tempting,
 but free-text parsing is fragile, and a *silently wrong* range is worse than a *visibly
 flagged* guess. Inference never parses it. Instead, the proposal already surfaces the
 full docstring `description` (§7), so a reviewer sees "Typical range: 0.5–5.0" right
@@ -212,7 +212,7 @@ An operation declares itself droppable with a ClassVar, matching the existing
 behavior-flag convention (`_HIGHER_IS_BAD`, `_exposes_agg_func` on the QC checks):
 
 ```python
-class GaussianBlur(ImageEnhancer):
+class BlurGauss(ImageEnhancer):
     _tune_optional: ClassVar[bool] = True   # an optional denoiser — safe to drop
 ```
 
@@ -256,7 +256,7 @@ default (`recurse_nested=True`), applying the same Tier-1 → Tier-2 rules and n
 For:
 
 ```python
-[ GaussianBlur(sigma=2.0),                                    # position 0
+[ BlurGauss(sigma=2.0),                                    # position 0
   CompositeDetector(detectors=[                               # position 1
       OtsuDetector(ignore_zeros=False),
       WatershedDetector(min_size=50),
@@ -267,7 +267,7 @@ inference emits:
 
 | Knob key                       | Domain                | Provenance (source · class) |
 |--------------------------------|-----------------------|------------------------------|
-| `0.sigma`                      | `FloatRange(0.5, 8.0)`| unbounded_heuristic · GaussianBlur |
+| `0.sigma`                      | `FloatRange(0.5, 8.0)`| unbounded_heuristic · BlurGauss |
 | `1.detectors[0].ignore_zeros`  | `Categorical([T,F])`  | bool · OtsuDetector          |
 | `1.detectors[1].min_size`      | `IntRange(12, 200)`   | unbounded_heuristic · WatershedDetector |
 
@@ -275,7 +275,7 @@ A nested knob's `description` comes from the **nested class's** `model_json_sche
 its provenance records the nested class name for display *and* apply-time safety.
 
 *(This example reflects the ops as they exist today — un-annotated — so `0.sigma`
-resolves via the unbounded heuristic to `[0.5, 8.0]`. Had `GaussianBlur` carried the
+resolves via the unbounded heuristic to `[0.5, 8.0]`. Had `BlurGauss` carried the
 illustrative `TuneSpec(0.5, 5.0, log=True)` from §3, `0.sigma` would instead resolve
 `source="tune_spec"`, domain `FloatRange(0.5, 5.0, log=True)` — Tier 1 over Tier 2.)*
 
@@ -283,9 +283,9 @@ illustrative `TuneSpec(0.5, 5.0, log=True)` from §3, `0.sigma` would instead re
 
 Recursion forces a naming upgrade: the canonical key is a **root-relative path with a
 parent identifier** — `1.detectors[0].ignore_zeros` — which also fixes a latent
-top-level bug where two `GaussianBlur`s in one pipeline would collide on a bare
-`GaussianBlur.sigma`. The exact form of the *parent-identifier* segment (raw position
-index vs. a class-occurrence tag like `GaussianBlur#0`) is owned by the `SearchSpace`
+top-level bug where two `BlurGauss`s in one pipeline would collide on a bare
+`BlurGauss.sigma`. The exact form of the *parent-identifier* segment (raw position
+index vs. a class-occurrence tag like `BlurGauss#0`) is owned by the `SearchSpace`
 naming design (master); this doc uses the position-index form in examples and only
 requires that recursion have *some* stable parent identifier. The position-index form
 is stable against same-class duplication but shifts under top-level reordering — a
@@ -343,7 +343,7 @@ class Knob:
                                   #   | unbounded_heuristic | presence_optin
     needs_review: bool
     description: str              # from the owning class's model_json_schema()
-    conditional_on: dict[str, object] | None = None   # e.g. {"GaussianBlur.__enabled__": True}
+    conditional_on: dict[str, object] | None = None   # e.g. {"BlurGauss.__enabled__": True}
 
 @dataclass(frozen=True)
 class Excluded:

@@ -189,7 +189,7 @@ git commit -m "feat(gui-tune): pure run-switcher / live-view / cancel-prompt log
 ```python
 # tests/unit/gui/tune/test_export.py
 from phenotypic import ImagePipeline
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.gui.tune._export import (
     export_pareto_pipeline,
     export_winning_pipeline,
@@ -203,7 +203,7 @@ from phenotypic.tools_._io_constants import (
 
 def _base() -> ImagePipeline:
     # ImagePipeline is keyword-only constructed; there is no .add() method.
-    return ImagePipeline(ops=[GaussianBlur(sigma=1.0)])
+    return ImagePipeline(ops=[BlurGauss(sigma=1.0)])
 
 
 def test_export_winning_writes_typed_pipeline(tmp_path):

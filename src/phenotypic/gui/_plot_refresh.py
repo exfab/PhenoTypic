@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from phenotypic.plotting import (
+from phenotypic.plotting._pipeline import (
     AnalysisInput,
     AnalysisRegistry,
     MeasurementInput,
@@ -17,7 +17,7 @@ from phenotypic.plotting import (
 )
 
 if TYPE_CHECKING:
-    from phenotypic.plotting import AnalysisResult
+    from phenotypic.plotting._pipeline import AnalysisResult
     from phenotypic.sdk_ import BundleLayout
     from phenotypic.sdk_._qc_recipe._runner import SuccessfulQcModule
 

@@ -837,8 +837,8 @@ The file has three test groups mapping to §10:
 
 
   def _base() -> ImagePipeline:
-      from phenotypic.enhance import GaussianBlur
-      return ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
+      from phenotypic.enhance import BlurGauss
+      return ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()])
 
 
   class _GoodnessKnobScorer(Scorer):
@@ -855,7 +855,7 @@ The file has three test groups mapping to §10:
           self, image: Any, measurements: pd.DataFrame
       ) -> dict[str, float]:
           # The engine built the pipeline with the chosen sigma; recover it from
-          # the GaussianBlur op so the natural value depends only on the param.
+          # the BlurGauss op so the natural value depends only on the param.
           sigma = float(self._chosen_sigma)
           return {"Quality": _NATURAL_GOODNESS[sigma]}
 
@@ -1201,7 +1201,7 @@ from phenotypic import GridImage, ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.data import make_synthetic_plate
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tools_ import _io_constants as io
 from phenotypic.tune import (
     Budget,
@@ -1249,11 +1249,11 @@ def _layout_csv(tmp_path, names) -> str:
 
 
 def _spec(tmp_path, names) -> TuningSpec:
-    # GaussianBlur sigma is the discriminating knob: a small sigma keeps colonies
+    # BlurGauss sigma is the discriminating knob: a small sigma keeps colonies
     # separable (count ~= 96 -> low cost); a large sigma merges/erases them
     # (count far from 96 -> high cost). Minimization must prefer the small sigma.
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()]),
         search_space=SearchSpace(
             knobs=(Knob(key="0.sigma", domain=Categorical(choices=(1.0, 12.0, 40.0))),)
         ),

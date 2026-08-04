@@ -86,7 +86,7 @@ treat them as inputs.
 
 * `empty.json` — root scope with only the auto-seeded `InputImage`
   block.  No edges.  Expected to validate cleanly.
-* `linear_chain.json` — `InputImage → GaussianBlur → OtsuDetector →
+* `linear_chain.json` — `InputImage → BlurGauss → OtsuDetector →
   MeasureSize`.  Three image-flow edges; no aux.  Expected to
   validate cleanly.
 * `duplicate_input_image.json` — root scope with TWO `InputImage`

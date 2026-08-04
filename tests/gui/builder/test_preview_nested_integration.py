@@ -23,7 +23,7 @@ def _nested_state():
     inner.edges.append(_img_edge(inner_in.block_id, inner_op.block_id))
     container = BlockNode(block_id=_new_block_id(), class_name="ImagePipeline",
                           params={}, nested=inner)
-    parent_blur = BlockNode(block_id=_new_block_id(), class_name="GaussianBlur",
+    parent_blur = BlockNode(block_id=_new_block_id(), class_name="BlurGauss",
                             params={"sigma": 5})
     scope = _DagBuilderScope()
     inp = scope.blocks[0]
@@ -68,7 +68,7 @@ def test_parent_edit_invalidates_inner(tmp_path, monkeypatch):
 
     # edit the PARENT enhancer; inner fingerprint must change (chaining)
     for b in state.root.blocks:
-        if b.class_name == "GaussianBlur":
+        if b.class_name == "BlurGauss":
             b.params["sigma"] = 1
     fp2 = pc.compute_scope(sid, state, scope_path, None, None, None)["fingerprint"]
     assert fp1 != fp2

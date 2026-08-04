@@ -46,7 +46,7 @@ shipped text never says geodesic.
 `SubtractGaussian` (radius > widest colony) — domain sanity-check these.
 
 **5. Low-risk skim:** the ~60 lean/generic classes (Mask* morphology,
-GaussianBlur, MedianFilter, etc.) — library-derived ranges, no literature claims.
+BlurGauss, MedianFilter, etc.) — library-derived ranges, no literature claims.
 
 ## Verification performed
 
@@ -5093,14 +5093,14 @@ index 92cbc21f..61135a7c 100644
      """
 
      def _operate(self, image: Image) -> Image:
-diff --git a/src/phenotypic/enhance/_gaussian_blur.py b/src/phenotypic/enhance/_gaussian_blur.py
+diff --git a/src/phenotypic/enhance/_blur_gauss.py b/src/phenotypic/enhance/_blur_gauss.py
 index 7d3535f4..55913d25 100644
---- a/src/phenotypic/enhance/_gaussian_blur.py
-+++ b/src/phenotypic/enhance/_gaussian_blur.py
+--- a/src/phenotypic/enhance/_blur_gauss.py
++++ b/src/phenotypic/enhance/_blur_gauss.py
 @@ -10,25 +10,43 @@ from ..abc_ import Smoothing
 
 
- class GaussianBlur(Smoothing):
+ class BlurGauss(Smoothing):
 -    """Smooth noise in detect_mat using isotropic Gaussian convolution.
 +    """Smooth noise in ``detect_mat`` using isotropic Gaussian convolution.
 
@@ -5150,7 +5150,7 @@ index 7d3535f4..55913d25 100644
 
      Returns:
          Image: Input image with ``detect_mat`` smoothed by the Gaussian
-@@ -37,24 +55,11 @@ class GaussianBlur(Smoothing):
+@@ -37,24 +55,11 @@ class BlurGauss(Smoothing):
      Raises:
          ValueError: If ``mode`` is not one of the accepted values.
 
@@ -5526,7 +5526,7 @@ index da6c63b8..44091d1e 100644
 +          edges must be suppressed without blurring colony margins.
 
      Consider Also:
-         - :class:`GaussianBlur` for faster, simpler smoothing when edge
+         - :class:`BlurGauss` for faster, simpler smoothing when edge
 -          preservation is less critical.
 -        - :class:`LocalEdgeDenoise` for edge-preserving smoothing with
 -          continuous intensity gradients.
@@ -5995,7 +5995,7 @@ index 53f3acd3..b87cd4d9 100644
 +          of round colonies where directional enhancement is not needed.
 +        - :class:`FocusEdgeSato` for direct ridge detection on images that
 +          are already clean enough to skip a diffusion preprocessing step.
-+        - :class:`GaussianBlur` when isotropic smoothing is sufficient and
++        - :class:`BlurGauss` when isotropic smoothing is sufficient and
 +          directional selectivity is not required.
 +
 +    Args:
@@ -7163,9 +7163,9 @@ index 06c2f99f..a6ef8962 100644
 -        Use in a pipeline for manual curation after automatic detection:
 -
 -        >>> from phenotypic import ImagePipeline
--        >>> from phenotypic.enhance import GaussianBlur
+-        >>> from phenotypic.enhance import BlurGauss
 -        >>> pipeline = ImagePipeline(ops=[
--        ...     GaussianBlur(sigma=1.0),
+-        ...     BlurGauss(sigma=1.0),
 -        ...     OtsuDetector(),
 -        ...     ManualRefine(centers=[(cy, cx)], width=3),
 -        ... ])

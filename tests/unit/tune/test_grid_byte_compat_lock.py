@@ -5,7 +5,7 @@ from pathlib import Path
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune import Categorical, Knob, SearchSpace
 from phenotypic.tune._evaluation import build_pipeline
 from phenotypic.tune.strategy._enumerate import enumerate_grid
@@ -37,16 +37,16 @@ def _golden_signatures() -> set:
 
 def _tune_space() -> SearchSpace:
     return SearchSpace(knobs=(
-        Knob(key="0.GaussianBlur.__enabled__",
+        Knob(key="0.BlurGauss.__enabled__",
              domain=Categorical(choices=(True, False)), source="presence_optin"),
         Knob(key="0.sigma", domain=Categorical(choices=(1.0, 2.0)),
-             conditional_on=(("0.GaussianBlur.__enabled__", True),)),
+             conditional_on=(("0.BlurGauss.__enabled__", True),)),
         Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
     ))
 
 
 def test_tune_grid_reproduces_golden_op_combinations():
-    base = ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
+    base = ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()])
     combos = enumerate_grid(_tune_space())
     assert len(combos) == 6
     tune_sigs = {_signature(build_pipeline(base, c)) for c in combos}

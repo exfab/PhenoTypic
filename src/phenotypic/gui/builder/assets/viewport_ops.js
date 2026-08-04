@@ -425,7 +425,7 @@
             // layout set.  cytoscape-dagre mis-ranks compound parents
             // whose children are absent from ``eles`` — the chain comes
             // out scrambled (a 3-op ribbon lands as OtsuDetector,
-            // InputImage, GaussianBlur instead of left-to-right order).
+            // InputImage, BlurGauss instead of left-to-right order).
             // The sub-nodes carry no edges so they ride inside their
             // parent without affecting rank assignment.  Container
             // blocks are skipped here: their nested-scope children are

@@ -276,7 +276,7 @@ input:disabled{background:#f0f3f7;color:var(--color-muted);cursor:not-allowed}
         <button class="pickbtn" id="pipebtn" onclick="choosePipeline()">📁 Choose pipeline…</button>
         <span class="filechip" id="pipechip" style="display:none">~/specs/yeast_plate_pipeline.json.pht-pipe</span>
         <button class="btn" id="pipeclear" style="display:none;padding:5px 11px" onclick="clearPipeline()">Change</button></div>
-      <div class="opchain" id="opchain" style="display:none"><span class="opnode">GaussianBlur</span><span class="oparrow">→</span>
+      <div class="opchain" id="opchain" style="display:none"><span class="opnode">BlurGauss</span><span class="oparrow">→</span>
         <span class="opnode">OtsuDetector</span><span class="oparrow">→</span><span class="opnode">SizeFilter</span></div>
       <p class="hintline" id="pipehint">Pick a <span style="font-family:var(--font-mono)">pipeline.json.pht-pipe</span> (or legacy <span style="font-family:var(--font-mono)">.json</span>) — its operations define what can be tuned. Or come straight from the <b>Builder</b> via "Tune this pipeline", or <b>Open spec…</b> to re-edit a saved one.</p>
       <div class="row" style="margin-top:var(--sp-3)">
@@ -308,7 +308,7 @@ input:disabled{background:#f0f3f7;color:var(--color-muted);cursor:not-allowed}
         <tbody>
           <tr id="k-sigma">
             <td><label class="switch"><input type="checkbox" checked onchange="toggleKnob(this)"><span class="slider"></span></label></td>
-            <td><span class="target">GaussianBlur.sigma
+            <td><span class="target">BlurGauss.sigma
               <span class="help" tabindex="0">?<span class="tip"><b>sigma</b> <code>float</code><br>Standard deviation of the Gaussian kernel, in pixels. Larger values smooth noise and faint colony edges before thresholding. Typical agar-plate range 1–5; too high merges adjacent colonies.</span></span></span></td>
             <td><span class="domsummary" id="sum-sigma" onclick="toggleEd('sigma')">1–6 · float <span class="edit">✎</span></span></td>
             <td><span class="badge b-num">bounded</span></td></tr>
@@ -395,7 +395,7 @@ input:disabled{background:#f0f3f7;color:var(--color-muted);cursor:not-allowed}
 
           <tr class="off" id="k-mode">
             <td><label class="switch"><input type="checkbox" onchange="toggleKnob(this)"><span class="slider"></span></label></td>
-            <td><span class="target">GaussianBlur.mode
+            <td><span class="target">BlurGauss.mode
               <span class="help" tabindex="0">?<span class="tip"><b>mode</b> <code>Literal["reflect","nearest",…]</code><br>How the kernel extends the image past its borders when convolving. <code>reflect</code> avoids the edge darkening that <code>constant</code> can introduce at plate margins.</span></span></span></td>
             <td><span class="domsummary" id="sum-mode" onclick="toggleEd('mode')">{reflect, nearest, …} <span class="edit">✎</span></span></td>
             <td><span class="badge b-enum">enum</span></td></tr>
@@ -415,7 +415,7 @@ input:disabled{background:#f0f3f7;color:var(--color-muted);cursor:not-allowed}
             <div class="gridhint ok">✓ structural toggle — children become conditional on "enabled" (advanced, v1-deferred)</div></div></td></tr>
         </tbody>
       </table>
-      <p class="hintline" id="gridglobal"><b>Grid unavailable</b> — a continuous float (<span style="font-family:var(--font-mono)">GaussianBlur.sigma</span>) is active. Give it a step, pin it, or use Optuna on Run. With it stepped/pinned: <b>~640 candidates</b>.</p>
+      <p class="hintline" id="gridglobal"><b>Grid unavailable</b> — a continuous float (<span style="font-family:var(--font-mono)">BlurGauss.sigma</span>) is active. Give it a step, pin it, or use Optuna on Run. With it stepped/pinned: <b>~640 candidates</b>.</p>
       <p class="fielderr" id="space-err" style="display:none"></p>
     </div>
   </div>
@@ -464,7 +464,7 @@ input:disabled{background:#f0f3f7;color:var(--color-muted);cursor:not-allowed}
       <div class="row"><label>Trials (budget)</label><input type="number" value="50"><span class="hintline" style="margin:0">≈ 50 × ~7 s = <b>~6 min</b> on 8 workers</span></div>
       <div class="row"><label>Max failures</label><input type="number" value="10"><span class="hintline" style="margin:0">abort after N failed trials</span></div>
       <div class="row"><label>Seed</label><input type="number" value="0"></div>
-      <div class="preflight" id="pf">✓ Pre-flight: Optuna selected — float knob <span style="font-family:var(--font-mono)">GaussianBlur.sigma</span> is sweepable. No conflicts.</div>
+      <div class="preflight" id="pf">✓ Pre-flight: Optuna selected — float knob <span style="font-family:var(--font-mono)">BlurGauss.sigma</span> is sweepable. No conflicts.</div>
     </div></div>
 
   <div class="section"><div class="sec-head" onclick="toggleSec(this)"><span class="chev">▶</span><span class="stitle">Advanced</span>
@@ -511,7 +511,7 @@ input:disabled{background:#f0f3f7;color:var(--color-muted);cursor:not-allowed}
     <div class="bestcard">
       <div class="bhead"><span class="bstar">★</span> Best so far · trial 28 · score <b style="margin:0 2px">0.912</b>
         <span class="runbadge">● running — may still improve</span></div>
-      <div class="bparams">GaussianBlur.sigma=2.8 · OtsuDetector.ignore_zeros=False · SizeFilter.min_area=52 · SizeFilter.max_area=18000</div>
+      <div class="bparams">BlurGauss.sigma=2.8 · OtsuDetector.ignore_zeros=False · SizeFilter.min_area=52 · SizeFilter.max_area=18000</div>
       <div class="bactions">
         <button class="btn primary" onclick="exportToast()">⤓ Export best pipeline</button>
         <button class="btn" onclick="exportToast()">Open in Builder</button>
@@ -733,7 +733,7 @@ function recomputeGlobalGrid(){
   const step=document.getElementById('step-sigma');
   const sigContinuous=sigOn && (step.value.trim()===''|| parseFloat(step.value)<=0) && document.getElementById('range-sigma').style.display!=='none';
   const g=document.getElementById('gridglobal');
-  if(sigContinuous){g.innerHTML='<b>Grid unavailable</b> — a continuous float (<span style="font-family:var(--font-mono)">GaussianBlur.sigma</span>) is active. Give it a step, pin it, or use Optuna on Run. With it stepped/pinned: <b>~640 candidates</b>.';}
+  if(sigContinuous){g.innerHTML='<b>Grid unavailable</b> — a continuous float (<span style="font-family:var(--font-mono)">BlurGauss.sigma</span>) is active. Give it a step, pin it, or use Optuna on Run. With it stepped/pinned: <b>~640 candidates</b>.';}
   else{g.innerHTML='✓ All active knobs are enumerable — <b>grid is available</b>. Estimated candidates: <b>~'+(sigOn?'1,920':'640')+'</b>.';}
 }
 function pickScorer(el,k){el.parentElement.querySelectorAll('.radio').forEach(r=>r.classList.remove('sel'));el.classList.add('sel');
@@ -748,8 +748,8 @@ function onStrat(){const v=document.getElementById('strat').value;
   document.getElementById('samplerrow').style.display=(v==='optuna')?'flex':'none';
   const pf=document.getElementById('pf');
   if(v==='grid'){pf.style.cssText='display:flex;align-items:center;gap:8px;font-size:.8125rem;background:#fdeee6;border:1px solid #f3c9b1;color:#a9420a;border-radius:var(--radius);padding:8px 12px;margin-top:var(--sp-3);font-weight:500';
-    pf.innerHTML='⚠ Pre-flight: grid selected, but float knob <span style="font-family:var(--font-mono);margin:0 3px">GaussianBlur.sigma</span> is continuous — give it a step in Setup or pin it.';}
-  else{pf.style.cssText='';pf.className='preflight';pf.innerHTML='✓ Pre-flight: '+v+' selected — float knob <span style="font-family:var(--font-mono)">GaussianBlur.sigma</span> is sweepable. No conflicts.';}
+    pf.innerHTML='⚠ Pre-flight: grid selected, but float knob <span style="font-family:var(--font-mono);margin:0 3px">BlurGauss.sigma</span> is continuous — give it a step in Setup or pin it.';}
+  else{pf.style.cssText='';pf.className='preflight';pf.innerHTML='✓ Pre-flight: '+v+' selected — float knob <span style="font-family:var(--font-mono)">BlurGauss.sigma</span> is sweepable. No conflicts.';}
   validate();}
 function subtab(el,k){el.parentElement.querySelectorAll('.subtab').forEach(s=>s.classList.remove('active'));el.classList.add('active');
   document.getElementById('sv-mon').classList.toggle('active',k==='mon');document.getElementById('sv-cur').classList.toggle('active',k==='cur');}

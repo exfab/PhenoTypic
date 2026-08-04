@@ -1,23 +1,42 @@
 # GPU Detector Resolution & Tiling Fixes — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:
+> subagent-driven-development (recommended) or superpowers:executing-plans to implement
+> this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Stop the DINO-backed GPU detectors from silently downsampling every tile to 224×224, and replace SAM3's fragment-producing tile merge with a centroid-in-core assignment that cannot duplicate or delete colonies.
+**Goal:** Stop the DINO-backed GPU detectors from silently downsampling every tile to
+224×224, and replace SAM3's fragment-producing tile merge with a centroid-in-core
+assignment that cannot duplicate or delete colonies.
 
-**Architecture:** Two shared modules absorb the policy so detectors get thinner, not fatter. `_dino_support.py` becomes the single resize policy (`NATIVE_PROCESSOR_KWARGS` + a grid↔image geometry pair that always uses the *covered* extent `hp*patch × wp*patch`). `_tiling.py` becomes the single tiling policy (owns the instance merge, which currently lives in `_sam3_detector.py`). Detectors then only choose `tile_px` and call into these.
+**Architecture:** Two shared modules absorb the policy so detectors get thinner, not
+fatter. `_dino_support.py` becomes the single resize policy (`NATIVE_PROCESSOR_KWARGS` +
+a grid↔image geometry pair that always uses the *covered* extent `hp*patch × wp*patch`).
+`_tiling.py` becomes the single tiling policy (owns the instance merge, which currently
+lives in `_sam3_detector.py`). Detectors then only choose `tile_px` and call into these.
 
-**Tech Stack:** Python 3.12, pydantic v2 operations, `transformers` (DINOv2/DINOv3), `sam2`, numpy, scikit-image, pytest. Runner is `uv`.
+**Tech Stack:** Python 3.12, pydantic v2 operations, `transformers` (DINOv2/DINOv3),
+`sam2`, numpy, scikit-image, pytest. Runner is `uv`.
 
 ## Global Constraints
 
-- **`uv` is the sole runner.** Never bare `python`/`pip`. Test env: `uv sync --group dev --extra foundation`.
-- **Operations are pydantic v2 models.** Keyword-only construction, class-level annotated fields, no `__init__`. Normalize in a `field_validator`.
-- **Every new numeric field needs `Annotated[T, TuneSpec(lo, hi)]` or `TuneSpec(tunable=False)`**, or the coverage gate against `tests/fixtures/tune/annotation_allowlist.json` fails.
-- **Resolution invariant:** under 1:1, native px per patch `== patch_size`, independent of `tile_px`. `tile_px` is a compute/context knob only, and **smaller is cheaper at equal fidelity**.
-- **DINOv2 is patch 14 / 0 registers; DINOv3 is patch 16 / 4 registers.** Never hardcode 14 or 16 — read `model.config.patch_size`.
-- **`config.image_size` is not a native-resolution signal** (DINOv2 → 518, DINOv3 → 224). Do not use it to pick defaults.
-- **Semantic tiling (`stitch_semantic_tiles`) is already correct.** Do not apply instance-merge or edge logic to it.
-- Google-style docstrings; doctests must run against `load_synth_yeast_plate()` (600×800, 96 ground-truth colonies).
+- **`uv` is the sole runner.** Never bare `python`/`pip`. Test env:
+  `uv sync --group dev --extra foundation`.
+- **Operations are pydantic v2 models.** Keyword-only construction, class-level
+  annotated fields, no `__init__`. Normalize in a `field_validator`.
+- **Every new numeric field needs `Annotated[T, TuneSpec(lo, hi)]`
+  or `TuneSpec(tunable=False)`**, or the coverage gate against
+  `tests/fixtures/tune/annotation_allowlist.json` fails.
+- **Resolution invariant:** under 1:1, native px per patch `== patch_size`, independent
+  of `tile_px`. `tile_px` is a compute/context knob only, and **smaller is cheaper at
+  equal fidelity**.
+- **DINOv2 is patch 14 / 0 registers; DINOv3 is patch 16 / 4 registers.** Never hardcode
+  14 or 16 — read `model.config.patch_size`.
+- **`config.image_size` is not a native-resolution signal** (DINOv2 → 518, DINOv3 →
+  224). Do not use it to pick defaults.
+- **Semantic tiling (`stitch_semantic_tiles`) is already correct.** Do not apply
+  instance-merge or edge logic to it.
+- Google-style docstrings; doctests must run against `load_synth_yeast_plate()` (
+  600×800, 96 ground-truth colonies).
 - Commit after every task.
 
 ---
@@ -25,16 +44,26 @@
 ## File Structure
 
 **Modified:**
-- `src/phenotypic/detect/nn/_dino_support.py` — resize policy + grid geometry. Gains `NATIVE_PROCESSOR_KWARGS`, `patch_grid_hw`, `covered_hw`, `upsample_grid_to_image`, `pool_prototype_tiled`. Existing `resize_mask_to_grid`, `align_mask_to_grid`, `cosine_match_to_mask`, `pool_prototype` gain a `patch` parameter.
-- `src/phenotypic/detect/nn/_tiling.py` — tiling policy. Gains `_iou`, `_merge_tiles_iou_nms` (moved in), `tile_overlap_px`, `owning_tile_index`, `assign_by_centroid_core`.
-- `src/phenotypic/detect/nn/_sam3_detector.py` — merge moves out; switches to centroid-in-core.
-- `src/phenotypic/detect/nn/_fssdino_detector.py` — `tile_px` default, `_segment_crop` upsample.
+
+- `src/phenotypic/detect/nn/_dino_support.py` — resize policy + grid geometry. Gains
+  `NATIVE_PROCESSOR_KWARGS`, `patch_grid_hw`, `covered_hw`, `upsample_grid_to_image`,
+  `pool_prototype_tiled`. Existing `resize_mask_to_grid`, `align_mask_to_grid`,
+  `cosine_match_to_mask`, `pool_prototype` gain a `patch` parameter.
+- `src/phenotypic/detect/nn/_tiling.py` — tiling policy. Gains `_iou`,
+  `_merge_tiles_iou_nms` (moved in), `tile_overlap_px`, `owning_tile_index`,
+  `assign_by_centroid_core`.
+- `src/phenotypic/detect/nn/_sam3_detector.py` — merge moves out; switches to
+  centroid-in-core.
+- `src/phenotypic/detect/nn/_fssdino_detector.py` — `tile_px` default, `_segment_crop`
+  upsample.
 - `src/phenotypic/detect/nn/_insid3_detector.py` — `tile_px` default, patch threading.
 - `src/phenotypic/detect/nn/_dinosam2_detector.py` — tiled DINO, `crop_*` pass-through.
-- `src/phenotypic/detect/nn/_sam2_detector.py` — `crop_n_layers` default, `box_nms_thresh`, docstring corrections.
+- `src/phenotypic/detect/nn/_sam2_detector.py` — `crop_n_layers` default,
+  `box_nms_thresh`, docstring corrections.
 - `docs/source/how_to/pages/gpu_detection_setup.md` — lines 167, 178, 261, 299.
 
 **Test files:**
+
 - `tests/unit/detect/nn/test_dino_support.py`
 - `tests/unit/detect/nn/test_tiling.py`
 - `tests/unit/detect/nn/test_sam3_detector.py`
@@ -44,7 +73,9 @@
 - `tests/unit/detect/nn/test_sam2_detector.py`
 
 **Created:**
-- `scripts/accuracy_gate_gpu_detectors.py` — measures IoU against `synth_plate` ground truth.
+
+- `scripts/accuracy_gate_gpu_detectors.py` — measures IoU against `synth_plate` ground
+  truth.
 
 ---
 
@@ -63,16 +94,16 @@ T8  (independent)
 {T3, T4, T8} → T10 → T9
 ```
 
-| # | Tasks | Shape | Files | Model / effort | Depends |
-|---|---|---|---|---|---|
-| **C1** | T1, T2 | Keystone | `_dino_support.py` | Opus, high | — |
-| **C2** | T3, T4 | Leaf-pair | `_fssdino`, `_insid3` | Sonnet, medium | C1 |
-| **C3** | T5 | Keystone | `_tiling.py`, `_sam3` (deletes) | Opus, high | — |
-| **C4** | T6 | **Seam** | `_sam3_detector.py` | Opus, high | C3 |
-| **C5** | T7 | Keystone | `_dino_support`, `_dinosam2` | Opus, high | C1, C3 |
-| **C6** | T8 | Leaf | `_sam2_detector.py` | Sonnet, medium | — |
-| **C7** | T9 | Sweep | docs, tune gate | Sonnet, medium | all code |
-| **C8** | T10 | Gate | `scripts/`, spec | Opus, high | C2, C6 |
+| #      | Tasks  | Shape     | Files                           | Model / effort | Depends  |
+|--------|--------|-----------|---------------------------------|----------------|----------|
+| **C1** | T1, T2 | Keystone  | `_dino_support.py`              | Opus, high     | —        |
+| **C2** | T3, T4 | Leaf-pair | `_fssdino`, `_insid3`           | Sonnet, medium | C1       |
+| **C3** | T5     | Keystone  | `_tiling.py`, `_sam3` (deletes) | Opus, high     | —        |
+| **C4** | T6     | **Seam**  | `_sam3_detector.py`             | Opus, high     | C3       |
+| **C5** | T7     | Keystone  | `_dino_support`, `_dinosam2`    | Opus, high     | C1, C3   |
+| **C6** | T8     | Leaf      | `_sam2_detector.py`             | Sonnet, medium | —        |
+| **C7** | T9     | Sweep     | docs, tune gate                 | Sonnet, medium | all code |
+| **C8** | T10    | Gate      | `scripts/`, spec                | Opus, high     | C2, C6   |
 
 **C1 = T1+T2** because T2's `upsample_grid_to_image` is meaningless without T1's
 `covered_hw`; same file, same intent, one reviewable diff.
@@ -100,15 +131,17 @@ Never review with a model weaker than the implementer.
 ## Task 1: Native processor kwargs + patch geometry
 
 **Files:**
+
 - Modify: `src/phenotypic/detect/nn/_dino_support.py:154-280`
 - Test: `tests/unit/detect/nn/test_dino_support.py`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces:
-  - `NATIVE_PROCESSOR_KWARGS: dict[str, bool]`
-  - `patch_grid_hw(pixel_hw: Tuple[int, int], patch: int) -> Tuple[int, int]`
-  - `covered_hw(grid_hw: Tuple[int, int], patch: int) -> Tuple[int, int]`
+    - `NATIVE_PROCESSOR_KWARGS: dict[str, bool]`
+    - `patch_grid_hw(pixel_hw: Tuple[int, int], patch: int) -> Tuple[int, int]`
+    - `covered_hw(grid_hw: Tuple[int, int], patch: int) -> Tuple[int, int]`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -243,7 +276,8 @@ def covered_hw(grid_hw: Tuple[int, int], patch: int) -> Tuple[int, int]:
     return (int(grid_hw[0]) * int(patch), int(grid_hw[1]) * int(patch))
 ```
 
-Then in **all three** extract functions, replace the processor call at lines 175, 216, 263:
+Then in **all three** extract functions, replace the processor call at lines 175, 216,
+263:
 
 ```python
     inputs = processor(
@@ -284,12 +318,14 @@ for rid, tile in [('facebook/dinov2-base', 518), ('facebook/dinov3-vitb16-pretra
 ```
 
 Expected:
+
 ```
 dinov2-base (518, 518) (37, 37) 14.0 px/patch
 dinov3-vitb16-pretrain-lvd1689m (512, 512) (32, 32) 16.0 px/patch
 ```
 
-If DINOv3 is not downloaded, this step needs `PHENOTYPIC_ACCEPT_MODEL_LICENSE=dinov3` and an approved HF gate. Skip the DINOv3 half and note it, rather than guessing.
+If DINOv3 is not downloaded, this step needs `PHENOTYPIC_ACCEPT_MODEL_LICENSE=dinov3`
+and an approved HF gate. Skip the DINOv3 half and note it, rather than guessing.
 
 - [ ] **Step 6: Commit**
 
@@ -303,19 +339,29 @@ git commit -m "fix(nn): feed DINO tiles at native geometry, not the 224 classifi
 ## Task 2: Covered-extent grid↔image mapping
 
 **Files:**
-- Modify: `src/phenotypic/detect/nn/_dino_support.py:282-360` (`resize_mask_to_grid`, `align_mask_to_grid`), `:428-464` (`cosine_match_to_mask`), `:361-398` (`pool_prototype`)
+
+- Modify: `src/phenotypic/detect/nn/_dino_support.py:282-360` (`resize_mask_to_grid`,
+  `align_mask_to_grid`), `:428-464` (`cosine_match_to_mask`), `:361-398` (
+  `pool_prototype`)
 - Test: `tests/unit/detect/nn/test_dino_support.py`
 
 **Interfaces:**
+
 - Consumes: `patch_grid_hw`, `covered_hw` (Task 1).
 - Produces:
-  - `upsample_grid_to_image(grid, image_hw: Tuple[int, int], patch: int, *, order: int = 0) -> np.ndarray`
-  - `resize_mask_to_grid(mask, grid_hw, patch: int | None = None) -> np.ndarray`
-  - `align_mask_to_grid(mask, proc_hw, grid_hw, patch: int | None = None) -> np.ndarray`
-  - `cosine_match_to_mask(features, prototype, thresh, out_shape, patch: int | None = None) -> np.ndarray`
-  - `pool_prototype(features, mask, proc_hw=None, patch: int | None = None) -> np.ndarray`
+  -
+  `upsample_grid_to_image(grid, image_hw: Tuple[int, int], patch: int, *, order: int = 0) -> np.ndarray`
+    - `resize_mask_to_grid(mask, grid_hw, patch: int | None = None) -> np.ndarray`
+    -
+  `align_mask_to_grid(mask, proc_hw, grid_hw, patch: int | None = None) -> np.ndarray`
+  -
+  `cosine_match_to_mask(features, prototype, thresh, out_shape, patch: int | None = None) -> np.ndarray`
+  -
+  `pool_prototype(features, mask, proc_hw=None, patch: int | None = None) -> np.ndarray`
 
-`patch` is keyword-with-default `None` on the four existing functions so present callers and tests keep working; `None` reproduces today's whole-extent behaviour. Every in-repo caller passes it.
+`patch` is keyword-with-default `None` on the four existing functions so present callers
+and tests keep working; `None` reproduces today's whole-extent behaviour. Every in-repo
+caller passes it.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -380,7 +426,8 @@ class TestCoveredExtentMapping:
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/detect/nn/test_dino_support.py::TestCoveredExtentMapping -v`
+Run:
+`uv run pytest tests/unit/detect/nn/test_dino_support.py::TestCoveredExtentMapping -v`
 Expected: FAIL with `ImportError: cannot import name 'upsample_grid_to_image'`
 
 - [ ] **Step 3: Write minimal implementation**
@@ -516,10 +563,13 @@ git commit -m "fix(nn): map patch grids through their covered extent, not the fu
 ## Task 3: FssDinoDetector — 1:1 tiles
 
 **Files:**
-- Modify: `src/phenotypic/detect/nn/_fssdino_detector.py:386` (`tile_px`), `:545-572` (`_segment_crop`)
+
+- Modify: `src/phenotypic/detect/nn/_fssdino_detector.py:386` (`tile_px`), `:545-572` (
+  `_segment_crop`)
 - Test: `tests/unit/detect/nn/test_fssdino_detector.py`
 
 **Interfaces:**
+
 - Consumes: `upsample_grid_to_image` (Task 2).
 - Produces: nothing downstream.
 
@@ -562,7 +612,8 @@ class TestFssDinoResolution:
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/detect/nn/test_fssdino_detector.py::TestFssDinoResolution -v`
+Run:
+`uv run pytest tests/unit/detect/nn/test_fssdino_detector.py::TestFssDinoResolution -v`
 Expected: FAIL — `assert 512 == 518`
 
 - [ ] **Step 3: Write minimal implementation**
@@ -612,7 +663,8 @@ Expected: PASS
 
 - [ ] **Step 5: Run the functional regression (needs DINOv2, ungated)**
 
-Add to the existing `TestFssDinoFunctionalDinoV2` class (`test_fssdino_detector.py:201`):
+Add to the existing `TestFssDinoFunctionalDinoV2` class (
+`test_fssdino_detector.py:201`):
 
 ```python
     def test_dense_grid_is_native_not_224(self, synth_plate):
@@ -646,10 +698,13 @@ git commit -m "fix(fssdino): 1:1 native tiles (32.0 -> 14.0 native px/patch)"
 ## Task 4: Insid3Detector — 1:1 tiles + gate error
 
 **Files:**
-- Modify: `src/phenotypic/detect/nn/_insid3_detector.py:266` (`tile_px`), `:409-425` (`_match_crop`)
+
+- Modify: `src/phenotypic/detect/nn/_insid3_detector.py:266` (`tile_px`), `:409-425` (
+  `_match_crop`)
 - Test: `tests/unit/detect/nn/test_insid3_detector.py`
 
 **Interfaces:**
+
 - Consumes: `cosine_match_to_mask(..., patch=...)` (Task 2).
 - Produces: nothing downstream.
 
@@ -696,7 +751,8 @@ class TestInsid3Resolution:
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/detect/nn/test_insid3_detector.py::TestInsid3Resolution -v`
+Run:
+`uv run pytest tests/unit/detect/nn/test_insid3_detector.py::TestInsid3Resolution -v`
 Expected: FAIL — `assert 1024 == 512`
 
 - [ ] **Step 3: Write minimal implementation**
@@ -769,18 +825,24 @@ git commit -m "fix(insid3): 1:1 native tiles (73.1 -> 16.0 native px/patch); sur
 ## Task 5: `_tiling.py` — centroid-in-core instance merge
 
 **Files:**
+
 - Modify: `src/phenotypic/detect/nn/_tiling.py`
-- Modify: `src/phenotypic/detect/nn/_sam3_detector.py:27-93` (remove `_iou`, `_merge_tiles_iou_nms`)
+- Modify: `src/phenotypic/detect/nn/_sam3_detector.py:27-93` (remove `_iou`,
+  `_merge_tiles_iou_nms`)
 - Test: `tests/unit/detect/nn/test_tiling.py`
 
 **Interfaces:**
+
 - Consumes: `_Tile`, `_plan_tiles` (existing).
 - Produces:
-  - `_iou(mask_a, mask_b) -> float` (moved verbatim)
-  - `_merge_tiles_iou_nms(objmaps: List[np.ndarray], iou_thresh: float) -> np.ndarray` (moved verbatim; retained for the single-tile relabel path)
-  - `tile_overlap_px(tiles: List[_Tile]) -> int`
-  - `owning_tile_index(tiles: List[_Tile], centroid_yx: Tuple[float, float]) -> int`
-  - `assign_by_centroid_core(tiles: List[_Tile], tile_objmaps: List[np.ndarray], out_shape: Tuple[int, int]) -> np.ndarray`
+    - `_iou(mask_a, mask_b) -> float` (moved verbatim)
+    -
+  `_merge_tiles_iou_nms(objmaps: List[np.ndarray], iou_thresh: float) -> np.ndarray` (
+  moved verbatim; retained for the single-tile relabel path)
+    - `tile_overlap_px(tiles: List[_Tile]) -> int`
+    - `owning_tile_index(tiles: List[_Tile], centroid_yx: Tuple[float, float]) -> int`
+    -
+  `assign_by_centroid_core(tiles: List[_Tile], tile_objmaps: List[np.ndarray], out_shape: Tuple[int, int]) -> np.ndarray`
 
 `tile_objmaps[i]` is **tile-local**, shape `(tiles[i].h, tiles[i].w)`. This differs
 from `_merge_tiles_iou_nms`, which takes full-image-offset objmaps.
@@ -1057,20 +1119,25 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/phenotypic/detect/nn/_tiling.py src/phenotypic/detect/nn/_sam3_detector.py tests/unit/detect/nn/test_tiling.py
+git add src/phenotypic/detect/nn/_tiling.py src/phenotypic/detect/nn/_sam3.py tests/unit/detect/nn/test_tiling.py
 git commit -m "feat(tiling): centroid-in-core instance merge; move IoU-NMS out of _sam3_detector"
 ```
 
 ---
 
-## Task 6: Sam3Detector — adopt the new merge
+## Task 6: Sam3 — adopt the new merge
 
 **Files:**
-- Modify: `src/phenotypic/detect/nn/_sam3_detector.py:337-396` (`_infer_batch`), imports at `:14-24`
-- Test: `tests/unit/detect/nn/test_sam3_detector.py:117-137` (existing merge tests import from `_sam3_detector`)
+
+- Modify: `src/phenotypic/detect/nn/_sam3_detector.py:337-396` (`_infer_batch`), imports
+  at `:14-24`
+- Test: `tests/unit/detect/nn/test_sam3_detector.py:117-137` (existing merge tests
+  import from `_sam3_detector`)
 
 **Interfaces:**
-- Consumes: `assign_by_centroid_core`, `_merge_tiles_iou_nms`, `_plan_tiles`, `_Tile` (Task 5).
+
+- Consumes: `assign_by_centroid_core`, `_merge_tiles_iou_nms`, `_plan_tiles`, `_Tile` (
+  Task 5).
 - Produces: nothing downstream.
 
 - [ ] **Step 1: Write the failing test**
@@ -1082,9 +1149,9 @@ class TestSam3UsesCentroidCore:
         colony plus its fragment."""
         import numpy as np
 
-        from phenotypic.detect.nn import Sam3Detector
+        from phenotypic.detect.nn import Sam3
 
-        det = Sam3Detector(tile_px=100, tile_overlap=0.2)
+        det = Sam3(tile_px=100, tile_overlap=0.2)
         det._model = object()
         det._processor = object()
         monkeypatch.setattr(det, "_ensure_model_loaded", lambda: None)
@@ -1122,7 +1189,8 @@ to import from the new home:
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `uv run pytest tests/unit/detect/nn/test_sam3_detector.py -v`
-Expected: FAIL — `ImportError: cannot import name '_merge_tiles_iou_nms' from '_sam3_detector'`
+Expected: FAIL —
+`ImportError: cannot import name '_merge_tiles_iou_nms' from '_sam3_detector'`
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -1184,7 +1252,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/phenotypic/detect/nn/_sam3_detector.py tests/unit/detect/nn/test_sam3_detector.py
+git add src/phenotypic/detect/nn/_sam3.py tests/unit/detect/nn/test_sam3_detector.py
 git commit -m "fix(sam3): merge tiles by centroid-in-core; a seam-straddling colony is no longer split"
 ```
 
@@ -1193,13 +1261,18 @@ git commit -m "fix(sam3): merge tiles by centroid-in-core; a seam-straddling col
 ## Task 7: DinoSam2Detector — tiled DINO + crop pass-through
 
 **Files:**
-- Modify: `src/phenotypic/detect/nn/_dinosam2_detector.py:250-266` (fields), `:304-318` (`_ensure_model_loaded`), `:328-362` (`_infer_one`)
+
+- Modify: `src/phenotypic/detect/nn/_dinosam2_detector.py:250-266` (fields),
+  `:304-318` (`_ensure_model_loaded`), `:328-362` (`_infer_one`)
 - Modify: `src/phenotypic/detect/nn/_dino_support.py` (add `pool_prototype_tiled`)
 - Test: `tests/unit/detect/nn/test_dinosam2_detector.py`
 
 **Interfaces:**
-- Consumes: `extract_patch_features`, `pool_prototype` (Tasks 1–2); `_plan_tiles`, `owning_tile_index` (Task 5).
-- Produces: `pool_prototype_tiled(dense_by_tile: List[np.ndarray], tiles: List[_Tile], mask: np.ndarray, patch: int) -> np.ndarray`
+
+- Consumes: `extract_patch_features`, `pool_prototype` (Tasks 1–2); `_plan_tiles`,
+  `owning_tile_index` (Task 5).
+- Produces:
+  `pool_prototype_tiled(dense_by_tile: List[np.ndarray], tiles: List[_Tile], mask: np.ndarray, patch: int) -> np.ndarray`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1233,7 +1306,8 @@ class TestDinoSam2Tiling:
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/detect/nn/test_dinosam2_detector.py::TestDinoSam2Tiling -v`
+Run:
+`uv run pytest tests/unit/detect/nn/test_dinosam2_detector.py::TestDinoSam2Tiling -v`
 Expected: FAIL — `assert 0 == 518` (no `tile_px` field)
 
 - [ ] **Step 3: Write minimal implementation**
@@ -1278,7 +1352,7 @@ def pool_prototype_tiled(
     return pool_prototype(dense_by_tile[i], local, patch=patch)
 ```
 
-Add fields to `DinoSam2Detector` (mirroring `Sam2Detector`):
+Add fields to `DinoSam2Detector` (mirroring `Sam2`):
 
 ```python
     tile_px: Annotated[int, TuneSpec(256, 1024)] = 518
@@ -1383,13 +1457,16 @@ git commit -m "fix(dinosam2): tile DINO features; stop pooling every colony into
 
 ---
 
-## Task 8: Sam2Detector — engage the crop pyramid
+## Task 8: Sam2 — engage the crop pyramid
 
 **Files:**
-- Modify: `src/phenotypic/detect/nn/_sam2_detector.py:18-32` (`build_sam2_generator` signature), `:108-280` (docstring + fields), `:284-309` (`_ensure_model_loaded`)
+
+- Modify: `src/phenotypic/detect/nn/_sam2_detector.py:18-32` (`build_sam2_generator`
+  signature), `:108-280` (docstring + fields), `:284-309` (`_ensure_model_loaded`)
 - Test: `tests/unit/detect/nn/test_sam2_detector.py`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: `build_sam2_generator(..., box_nms_thresh: float = 0.7)`.
 
@@ -1398,18 +1475,18 @@ git commit -m "fix(dinosam2): tile DINO features; stop pooling every colony into
 ```python
 class TestSam2CropPyramid:
     def test_crop_pyramid_is_engaged_by_default(self):
-        from phenotypic.detect.nn import Sam2Detector
+        from phenotypic.detect.nn import Sam2
 
-        det = Sam2Detector()
+        det = Sam2()
         assert det.crop_n_layers == 1
         assert det.box_nms_thresh == 0.7
 
     def test_build_sam2_generator_accepts_box_nms_thresh(self):
         """`box_nms_thresh` dedups the dense point grid's redundant proposals
-        within one crop. SAM2 exposes it; Sam2Detector did not."""
+        within one crop. SAM2 exposes it; Sam2 did not."""
         import inspect
 
-        from phenotypic.detect.nn._sam2_detector import build_sam2_generator
+        from phenotypic.detect.nn._sam2 import build_sam2_generator
 
         sig = inspect.signature(build_sam2_generator)
         assert "box_nms_thresh" in sig.parameters
@@ -1427,7 +1504,7 @@ Add `box_nms_thresh: float = 0.7` to `build_sam2_generator`'s signature (after
 `stability_score_thresh`), document it, and forward it to
 `SAM2AutomaticMaskGenerator(..., box_nms_thresh=box_nms_thresh, ...)`.
 
-On `Sam2Detector`:
+On `Sam2`:
 
 ```python
     box_nms_thresh: Annotated[float, TuneSpec(0.0, 1.0)] = 0.7
@@ -1463,7 +1540,7 @@ Fix the three docstring defects. Replace the `crop_n_layers` paragraph
             passes and ``2`` costs 21.  Default 1.
 ```
 
-Add to the `Sam2Detector` docstring's parameter list:
+Add to the `Sam2` docstring's parameter list:
 
 ```
         box_nms_thresh: Box-IoU cutoff for non-maximum suppression between the
@@ -1489,7 +1566,7 @@ Expected: PASS
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/phenotypic/detect/nn/_sam2_detector.py tests/unit/detect/nn/test_sam2_detector.py
+git add src/phenotypic/detect/nn/_sam2.py tests/unit/detect/nn/test_sam2_detector.py
 git commit -m "fix(sam2): engage the crop pyramid by default; expose box_nms_thresh; correct crop-count docs"
 ```
 
@@ -1498,6 +1575,7 @@ git commit -m "fix(sam2): engage the crop pyramid by default; expose box_nms_thr
 ## Task 9: Tune-gate, docs, changelog
 
 **Files:**
+
 - Modify: `docs/source/how_to/pages/gpu_detection_setup.md:167,178,261,299`
 - Verify: `tests/fixtures/tune/annotation_allowlist.json`
 
@@ -1514,21 +1592,28 @@ Add the annotation — do **not** add them to the allowlist.
 - [ ] **Step 2: Run the full nn suite and mypy**
 
 Run:
+
 ```bash
 uv run pytest tests/unit/detect/nn -v
 uv run mypy src/phenotypic/detect/nn
 uv run ruff check --fix src/phenotypic/detect/nn
 ```
+
 Expected: all pass.
 
 - [ ] **Step 3: Update the how-to page**
 
 At `docs/source/how_to/pages/gpu_detection_setup.md`, replace the four lines:
 
-- line 178: ``- `tile_px` / `tile_overlap` — dense-plate tiling (defaults 1008 / 0.15). Under the native processor geometry the resolution is pinned at the backbone's `patch_size` regardless of `tile_px`, so **larger tiles are slower at identical fidelity** — 1008 and 2016 both give the same px/patch, but 2016 costs ~3x more.``
-- line 261 (`Insid3Detector`): ``- `tile_px` / `tile_overlap` — large-plate tiling (defaults 512 / 0.15). `512 = 16 * 32` is an exact DINOv3 patch multiple. Do not raise it for accuracy; it buys none.``
-- line 299 (`FssDinoDetector`): ``- `tile_px` / `tile_overlap` — large-plate tiling (defaults 518 / 0.15). `518 = 14 * 37` is an exact DINOv2 patch multiple.``
-- line 167: replace the "SAM3 resizes to 1008 internally" claim with "SAM3's internal resize is unverified (`facebook/sam3` is gated); `tile_px=1008` is carried as an assumption."
+- line 178:
+  ``- `tile_px` / `tile_overlap` — dense-plate tiling (defaults 1008 / 0.15). Under the native processor geometry the resolution is pinned at the backbone's `patch_size` regardless of `tile_px`, so **larger tiles are slower at identical fidelity** — 1008 and 2016 both give the same px/patch, but 2016 costs ~3x more.``
+- line 261 (`Insid3Detector`):
+  ``- `tile_px` / `tile_overlap` — large-plate tiling (defaults 512 / 0.15). `512 = 16 * 32` is an exact DINOv3 patch multiple. Do not raise it for accuracy; it buys none.``
+- line 299 (`FssDinoDetector`):
+  ``- `tile_px` / `tile_overlap` — large-plate tiling (defaults 518 / 0.15). `518 = 14 * 37` is an exact DINOv2 patch multiple.``
+- line 167: replace the "SAM3 resizes to 1008 internally" claim with "SAM3's internal
+  resize is unverified (`facebook/sam3` is gated); `tile_px=1008` is carried as an
+  assumption."
 
 Add a **Behaviour changes** admonition near the top:
 
@@ -1539,9 +1624,10 @@ tile to the ViT at 224x224 regardless of `tile_px`. They now feed tiles at nativ
 geometry. Existing pipelines deserialized from JSON keep their pinned `tile_px`
 but **will produce different (higher-resolution) masks**, and cost 6.6x (FssDino)
 to 26x (Insid3) more GPU time. Re-serialize to pick up the new `tile_px` defaults.
-`Sam2Detector`'s `crop_n_layers` default moves 0 -> 1 (~5x cost) for
+`Sam2`'s `crop_n_layers` default moves 0 -> 1 (~5x cost) for
 newly-constructed detectors only.
 ```
+
 ```
 
 - [ ] **Step 4: Commit**
@@ -1556,8 +1642,11 @@ git commit -m "docs(gpu): tile_px is a compute knob, not a fidelity knob; record
 ## Task 10: Accuracy gate
 
 **Files:**
+
 - Create: `scripts/accuracy_gate_gpu_detectors.py`
-- Modify: `docs/superpowers/specs/2026-07-08-gpu-detect-fixes/2026-07-08-gpu-detect-fixes-design.md` (Accuracy budget section)
+- Modify:
+  `docs/superpowers/specs/2026-07-08-gpu-detect-fixes/2026-07-08-gpu-detect-fixes-design.md` (
+  Accuracy budget section)
 
 **Interfaces:** none.
 
@@ -1661,14 +1750,14 @@ def evaluate(detector, label: str, *, legacy: bool = False) -> float:
     pred = np.asarray(result.objmask[:])
     iou = mask_iou(pred, truth)
     print(
-        f"{label:<40} IoU {iou:.4f}  "
-        f"objects {image.num_objects:>5} / {int(truth_om.max())}"
+            f"{label:<40} IoU {iou:.4f}  "
+            f"objects {image.num_objects:>5} / {int(truth_om.max())}"
     )
     return iou
 
 
 if __name__ == "__main__":
-    from phenotypic.detect.nn import FssDinoDetector, Insid3Detector, Sam2Detector
+    from phenotypic.detect.nn import FssDinoDetector, Insid3Detector, Sam2
 
     print("plate: 1800x3200, 1152 ground-truth colonies\n")
 
@@ -1686,9 +1775,9 @@ if __name__ == "__main__":
     # it — it ships on the strength of SAM2's four documented defenses (edge
     # rejection, crop overlap, full-image fallback, resolution-preferring NMS),
     # not on evidence. SAM2 is ungated and installed, so measure it.
-    evaluate(Sam2Detector(model_size="tiny", crop_n_layers=0, device="auto"),
+    evaluate(Sam2(model_size="tiny", crop_n_layers=0, device="auto"),
              "Sam2     crop_n_layers=0 (old default)")
-    evaluate(Sam2Detector(model_size="tiny", crop_n_layers=1, device="auto"),
+    evaluate(Sam2(model_size="tiny", crop_n_layers=1, device="auto"),
              "Sam2     crop_n_layers=1 (new default)")
 ```
 
@@ -1728,20 +1817,20 @@ git commit -m "test(nn): accuracy gate for the GPU detector resolution fixes"
 
 **Spec coverage:**
 
-| Spec item | Task |
-|---|---|
-| F1 — `tile_px` inert | 1, 3, 4 |
-| F2 — query-side misregistration + truncation | 2, 3, 4 |
-| F3 — DinoSam2 zero prototypes + `crop_*` pass-through | 7 |
-| F4 — Sam2 crop pyramid off; `box_nms_thresh`; docstring errors | 8 |
-| F5 — Sam3 fragment bug; merge moves to `_tiling` | 5, 6 |
-| `assign_by_centroid_core` + overlap guard | 5 |
-| `tile_px` default rationale (not `config.image_size`) | 3, 4 (comments) |
-| Compatibility: no field removed; `tile_merge_iou` retained | 6 |
-| Tune annotation gate | 9 |
-| Docs lines 167/178/261/299 + behaviour-change notice | 9 |
-| Accuracy budget | 10 |
-| Non-goals: micro_sam, SAM3 `tile_px` verification | untouched by design |
+| Spec item                                                      | Task                |
+|----------------------------------------------------------------|---------------------|
+| F1 — `tile_px` inert                                           | 1, 3, 4             |
+| F2 — query-side misregistration + truncation                   | 2, 3, 4             |
+| F3 — DinoSam2 zero prototypes + `crop_*` pass-through          | 7                   |
+| F4 — Sam2 crop pyramid off; `box_nms_thresh`; docstring errors | 8                   |
+| F5 — Sam3 fragment bug; merge moves to `_tiling`               | 5, 6                |
+| `assign_by_centroid_core` + overlap guard                      | 5                   |
+| `tile_px` default rationale (not `config.image_size`)          | 3, 4 (comments)     |
+| Compatibility: no field removed; `tile_merge_iou` retained     | 6                   |
+| Tune annotation gate                                           | 9                   |
+| Docs lines 167/178/261/299 + behaviour-change notice           | 9                   |
+| Accuracy budget                                                | 10                  |
+| Non-goals: micro_sam, SAM3 `tile_px` verification              | untouched by design |
 
 **Known deviations from the spec, discovered while reading the code:**
 

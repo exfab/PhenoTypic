@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 from ..abc_ import ImageEnhancer
 from ..sdk_.mixin import NormalizedOutputMixin
 from ..sdk_.typing_ import NormOut, OperationField
-from ._gaussian_blur import GaussianBlur
+from ._blur_gauss import BlurGauss
 from ._median_filter import MedianFilter
 
 CombineMode = Literal["max", "mean", "min", "median"]
@@ -52,7 +52,7 @@ class CompositeEnhance(NormalizedOutputMixin, ImageEnhancer):
         ops: List of :class:`~phenotypic.abc_.ImageEnhancer` or
             :class:`~phenotypic.ImagePipeline` instances to combine. Pipelines
             allow per-branch preprocessing before the response is collected.
-            Defaults to ``[GaussianBlur(), MedianFilter()]`` when not
+            Defaults to ``[BlurGauss(), MedianFilter()]`` when not
             specified. ``None`` entries mark unfilled GUI-builder slots and
             are skipped.
         mode: Pixel-wise reduction across branch response maps. ``'max'``
@@ -80,12 +80,12 @@ class CompositeEnhance(NormalizedOutputMixin, ImageEnhancer):
         >>> from phenotypic.data import load_synth_yeast_plate
         >>> from phenotypic.enhance import (
         ...     CompositeEnhance,
-        ...     GaussianBlur,
+        ...     BlurGauss,
         ...     SubtractRollingBall,
         ... )
         >>> image = load_synth_yeast_plate()
         >>> combiner = CompositeEnhance(
-        ...     ops=[GaussianBlur(sigma=1.5), SubtractRollingBall()],
+        ...     ops=[BlurGauss(sigma=1.5), SubtractRollingBall()],
         ...     mode="max",
         ... )
         >>> enhanced = combiner.apply(image)
@@ -96,7 +96,7 @@ class CompositeEnhance(NormalizedOutputMixin, ImageEnhancer):
 
         >>> from phenotypic.enhance import MedianFilter, EnhanceLocalContrast
         >>> combiner = CompositeEnhance(
-        ...     ops=[GaussianBlur(), MedianFilter(), EnhanceLocalContrast()],
+        ...     ops=[BlurGauss(), MedianFilter(), EnhanceLocalContrast()],
         ...     mode="mean",
         ...     norm="clip",
         ... )
@@ -111,7 +111,7 @@ class CompositeEnhance(NormalizedOutputMixin, ImageEnhancer):
     # ``| None`` permits an empty list slot that the GUI builder uses to mark
     # an unfilled enhancer slot in an in-progress pipeline.
     ops: List[OperationField | None] = Field(
-        default_factory=lambda: [GaussianBlur(), MedianFilter()]
+        default_factory=lambda: [BlurGauss(), MedianFilter()]
     )
     mode: CombineMode = "max"
     norm: NormOut = None
@@ -126,7 +126,7 @@ class CompositeEnhance(NormalizedOutputMixin, ImageEnhancer):
         ``ops=None`` call by substituting the default pair.
         """
         if value is None:
-            return [GaussianBlur(), MedianFilter()]
+            return [BlurGauss(), MedianFilter()]
         return value
 
     def _operate(self, image: Image) -> Image:

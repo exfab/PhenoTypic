@@ -17,7 +17,7 @@ from phenotypic._core._pipeline_parts._image_pipeline_core import _layers_modifi
 from phenotypic._core._image_pipeline import ImagePipeline
 from phenotypic.abc_ import ImageCorrector
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.measure import MeasureSize
 from phenotypic.refine import SmallObjectRemover
 
@@ -45,7 +45,7 @@ class TestLayersModifiedBy:
     """Verify ``_layers_modified_by`` returns the correct layer tuple for each ABC."""
 
     def test_enhancer_returns_detect_mat(self):
-        assert _layers_modified_by(GaussianBlur(sigma=1)) == ("detect_mat",)
+        assert _layers_modified_by(BlurGauss(sigma=1)) == ("detect_mat",)
 
     def test_detector_returns_objmap(self):
         assert _layers_modified_by(OtsuDetector()) == ("objmap",)
@@ -80,7 +80,7 @@ class TestDeltaIntermediatesOutput:
         from phenotypic.data import load_synth_yeast_plate
 
         image = load_synth_yeast_plate()
-        pipeline = ImagePipeline(ops=[GaussianBlur(sigma=1), OtsuDetector()])
+        pipeline = ImagePipeline(ops=[BlurGauss(sigma=1), OtsuDetector()])
 
         out_dir = tmp_path / "intermediates"
         result = pipeline.apply_with_intermediates(image, output_dir=out_dir)
@@ -95,8 +95,8 @@ class TestDeltaIntermediatesOutput:
             assert "objmap" in f
 
         # -- enhancer delta: detect_mat only --------------------------
-        enhancer_file = out_dir / "00_GaussianBlur.h5"
-        assert enhancer_file.exists(), "00_GaussianBlur.h5 should be created"
+        enhancer_file = out_dir / "00_BlurGauss.h5"
+        assert enhancer_file.exists(), "00_BlurGauss.h5 should be created"
         with h5py.File(enhancer_file, "r") as f:
             assert "detect_mat" in f
             assert "rgb" not in f
@@ -129,7 +129,7 @@ class TestCorrectorEmitsBase:
 
         image = load_synth_yeast_plate()
         pipeline = ImagePipeline(
-            ops=[GaussianBlur(sigma=1), _DummyCorrector(), OtsuDetector()],
+            ops=[BlurGauss(sigma=1), _DummyCorrector(), OtsuDetector()],
         )
 
         out_dir = tmp_path / "intermediates"
@@ -140,9 +140,9 @@ class TestCorrectorEmitsBase:
         with h5py.File(out_dir / "base_00.h5", "r") as f:
             assert set(f.keys()) & _ALL_LAYERS == _ALL_LAYERS
 
-        # 00_GaussianBlur.h5 -> detect_mat delta
-        assert (out_dir / "00_GaussianBlur.h5").exists()
-        with h5py.File(out_dir / "00_GaussianBlur.h5", "r") as f:
+        # 00_BlurGauss.h5 -> detect_mat delta
+        assert (out_dir / "00_BlurGauss.h5").exists()
+        with h5py.File(out_dir / "00_BlurGauss.h5", "r") as f:
             assert "detect_mat" in f
             assert "rgb" not in f
 
