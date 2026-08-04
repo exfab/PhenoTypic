@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -112,6 +113,39 @@ def test_exact_prelaunch_owner_state_is_safe(tmp_path: Path) -> None:
     owner.with_suffix(".lock").touch()
 
     assert is_safe_gui_launch_state_entry(output_dir / ".phenotypic")
+
+
+def test_generation_scoped_submitter_logs_are_safe(tmp_path: Path) -> None:
+    output_dir = tmp_path / "output"
+    owner = _write_launch_owner(output_dir)
+    generation = json.loads(owner.read_text(encoding="utf-8"))["generation"]
+    token = UUID(generation).hex
+    log_dir = output_dir / ".phenotypic" / "logs" / "gui"
+    log_dir.mkdir(parents=True)
+    for stream in ("stdout", "stderr"):
+        (log_dir / f"submitter.{token}.{stream}.log").touch()
+
+    assert is_safe_gui_launch_state_entry(output_dir / ".phenotypic")
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "notes.txt",
+        "submitter.wrong.stdout.log",
+    ],
+)
+def test_unrecognized_submitter_log_is_not_safe(
+    tmp_path: Path,
+    filename: str,
+) -> None:
+    output_dir = tmp_path / "output"
+    _write_launch_owner(output_dir)
+    log_dir = output_dir / ".phenotypic" / "logs" / "gui"
+    log_dir.mkdir(parents=True)
+    (log_dir / filename).touch()
+
+    assert not is_safe_gui_launch_state_entry(output_dir / ".phenotypic")
 
 
 @pytest.mark.parametrize(

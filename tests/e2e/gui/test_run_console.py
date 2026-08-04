@@ -192,18 +192,12 @@ def test_metadata_preflight_shows_ambient_descriptor_but_defaults_to_omit(
     assert payload is not None
     page.goto(hub_url + "/run/")
     page.evaluate(
-        """(values) => {
+        """(metadata) => {
             window.dash_clientside.set_props(
-                "shell-source-image-root-store", {data: values.source}
-            );
-            window.dash_clientside.set_props(
-                "shell-metadata-csv-store", {data: values.metadata}
+                "shell-metadata-csv-store", {data: metadata}
             );
         }""",
-        {
-            "source": None,
-            "metadata": payload,
-        },
+        payload,
     )
     page.evaluate(
         """(source) => window.dash_clientside.set_props(
