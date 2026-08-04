@@ -1,42 +1,28 @@
-"""Unit tests for the generated Measurements Reference docs."""
+"""Unit tests for the generated Measurements reference docs."""
 
 from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from typing import Any
 
 import phenotypic.schema as schema
-from phenotypic.schema import MeasurementInfo
+from phenotypic.schema import Entry, MeasurementInfo
 from pytest import MonkeyPatch
 
 
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 _EXTENSION_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "docs"
-    / "source"
-    / "_extensions"
-    / "measurements_ref.py"
+    _REPO_ROOT / "docs" / "source" / "_extensions" / "measurements_ref.py"
+)
+_API_INDEX_PATH = (
+    _REPO_ROOT / "docs" / "source" / "api_reference" / "index.rst"
 )
 
-_METADATA_ENUM_NAMES = {
-    "METADATA",
-    "ACQUISITION_METADATA",
-    "CONDITION_METADATA",
-    "CULTURE_METADATA",
-    "EXPERIMENT_METADATA",
-    "GENETIC_METADATA",
-    "PLATE_METADATA",
-    "SAMPLE_METADATA",
-    "STUDY_METADATA",
-}
 
-_EXPERIMENTAL_TAG_NAMES = _METADATA_ENUM_NAMES - {"METADATA"}
-
-
-def _load_extension(monkeypatch: MonkeyPatch):
-    # The extension imports nothing from sphinx at module load (its only sphinx
-    # touchpoints are the ``app`` argument to ``_generate``/``setup``, neither of
-    # which these tests exercise), so it loads without a sphinx install.
+def _load_extension(monkeypatch: MonkeyPatch) -> Any:
+    # The extension imports nothing from Sphinx at module load, so these unit
+    # tests do not require a Sphinx application.
     spec = importlib.util.spec_from_file_location(
         "measurements_ref_extension_under_test",
         _EXTENSION_PATH,
@@ -48,14 +34,20 @@ def _load_extension(monkeypatch: MonkeyPatch):
     return module
 
 
-def _public_measurement_info_classes() -> dict[str, type[MeasurementInfo]]:
-    return {
-        name: value
-        for name in schema.__all__
-        if name != "MeasurementInfo"
-        and isinstance((value := getattr(schema, name, None)), type)
-        and issubclass(value, MeasurementInfo)
-    }
+def _canonical_public_classes() -> tuple[type[MeasurementInfo], ...]:
+    classes: list[type[MeasurementInfo]] = []
+    seen: set[type[MeasurementInfo]] = set()
+    for name in schema.__all__:
+        value = getattr(schema, name, None)
+        if (
+            name != "MeasurementInfo"
+            and isinstance(value, type)
+            and issubclass(value, MeasurementInfo)
+            and value not in seen
+        ):
+            classes.append(value)
+            seen.add(value)
+    return tuple(classes)
 
 
 def _build_reference_tree(tmp_path: Path, monkeypatch: MonkeyPatch) -> Path:
@@ -64,144 +56,181 @@ def _build_reference_tree(tmp_path: Path, monkeypatch: MonkeyPatch) -> Path:
     return tmp_path / "measurements_ref"
 
 
-#: Group slugs (caption -> directory slug) for the reference tree.
-_GROUP_SLUGS = {
-    "Measurements": "measurements",
-    "Models & Analysis": "models-and-analysis",
-    "Quality Control": "quality-control",
-    "Curation & Errors": "curation-and-errors",
-    "Compatibility": "compatibility",
-    "Metadata": "metadata",
-}
+def _class_heading(class_name: str) -> str:
+    return (
+        f":doc:`{class_name} "
+        f"</api_reference/api/phenotypic.schema.{class_name}>`"
+    )
 
 
-def test_build_pages_creates_grouped_reference_indexes(
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
+def test_build_pages_creates_exactly_two_reference_pages(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
 
-    assert (docs_root / "index.rst").is_file()
-    for slug in _GROUP_SLUGS.values():
-        assert (docs_root / slug / "index.rst").is_file()
-
-
-def test_root_index_links_every_group(
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-) -> None:
-    docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    root_index = (docs_root / "index.rst").read_text()
-
-    for caption, slug in _GROUP_SLUGS.items():
-        assert f".. grid-item-card:: {caption}" in root_index
-        assert f"   {slug}/index" in root_index
-
-
-def test_every_public_measurement_info_has_one_generated_page(
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-) -> None:
-    extension = _load_extension(monkeypatch)
-    extension._build_pages(str(tmp_path))
-    docs_root = tmp_path / "measurements_ref"
-
-    name_to_slug = {
-        name: extension._group_slug(caption)
-        for caption, names in extension._GROUPS.items()
-        for name in names
-    }
-
-    page_paths = [
+    pages = sorted(
         path.relative_to(docs_root).as_posix()
         for path in docs_root.rglob("*.rst")
-        if path.name != "index.rst"
-    ]
-
-    public_infos = _public_measurement_info_classes()
-    assert len(page_paths) == len(public_infos)
-    for name in public_infos:
-        expected_stem = name.lower()
-        matches = [path for path in page_paths if Path(path).stem == expected_stem]
-        assert matches == [f"{name_to_slug[name]}/{expected_stem}.rst"]
+    )
+    assert pages == ["index.rst", "metadata/index.rst"]
 
 
-def test_experimental_tags_are_listed_under_metadata_only(
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
+def test_measurements_page_has_metadata_as_its_only_toctree_child(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    metadata_index = (docs_root / "metadata" / "index.rst").read_text()
-    measurements_index = (docs_root / "measurements" / "index.rst").read_text()
+    measurements_page = (docs_root / "index.rst").read_text()
+    metadata_page = (docs_root / "metadata" / "index.rst").read_text()
 
-    for name in _EXPERIMENTAL_TAG_NAMES:
-        assert name in metadata_index
-        assert name not in measurements_index
+    assert ".. toctree::\n   :hidden:\n\n   metadata/index" in measurements_page
+    assert ".. toctree::" not in metadata_page
 
 
-def test_metadata_index_embeds_overview_table(
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
+def test_every_canonical_public_class_appears_once_on_the_correct_page(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    metadata_index = (docs_root / "metadata" / "index.rst").read_text()
+    measurements_page = (docs_root / "index.rst").read_text()
+    metadata_page = (docs_root / "metadata" / "index.rst").read_text()
+    combined = measurements_page + metadata_page
 
-    assert "Metadata Tag Overview" in metadata_index
-    assert "Framework-populated image bookkeeping" in metadata_index
-    assert "Use for sample-level biological identity" in metadata_index
+    public_classes = _canonical_public_classes()
+    assert combined.count(".. list-table:: Category:") == len(public_classes)
+    for info_cls in public_classes:
+        heading = _class_heading(info_cls.__name__)
+        expected_page = (
+            metadata_page
+            if info_cls.category().startswith("Metadata")
+            else measurements_page
+        )
+        other_page = (
+            measurements_page
+            if info_cls.category().startswith("Metadata")
+            else metadata_page
+        )
+        assert expected_page.count(heading) == 1
+        assert heading not in other_page
 
 
-def test_group_index_uses_category_labels(
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
+def test_class_order_follows_schema_export_order(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    measurements_index = (docs_root / "measurements" / "index.rst").read_text()
+    measurements_page = (docs_root / "index.rst").read_text()
+    metadata_page = (docs_root / "metadata" / "index.rst").read_text()
 
-    assert "   Size <size>" in measurements_index
-    assert "   Shape <shape>" in measurements_index
-    assert "   SIZE" not in measurements_index
-    assert "   SHAPE" not in measurements_index
+    public_classes = _canonical_public_classes()
+    expected_groups = (
+        (
+            measurements_page,
+            [
+                info_cls
+                for info_cls in public_classes
+                if not info_cls.category().startswith("Metadata")
+            ],
+        ),
+        (
+            metadata_page,
+            [
+                info_cls
+                for info_cls in public_classes
+                if info_cls.category().startswith("Metadata")
+            ],
+        ),
+    )
+    for page, expected_classes in expected_groups:
+        positions = [page.index(_class_heading(info_cls.__name__)) for info_cls in expected_classes]
+        assert positions == sorted(positions)
 
 
-def test_generated_enum_pages_escape_rst_markup(
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
+def test_future_classes_are_discovered_and_partitioned_automatically(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    class FUTURE_MEASUREMENT(MeasurementInfo):
+        @classmethod
+        def category(cls) -> str:
+            return "FutureMeasurement"
+
+        VALUE = Entry("Value", "A future measurement value.")
+
+    class FUTURE_METADATA(MeasurementInfo):
+        @classmethod
+        def category(cls) -> str:
+            return "MetadataFuture"
+
+        VALUE = Entry("Value", "A future metadata value.")
+
+    monkeypatch.setattr(
+        schema, "FUTURE_MEASUREMENT", FUTURE_MEASUREMENT, raising=False
+    )
+    monkeypatch.setattr(schema, "FUTURE_METADATA", FUTURE_METADATA, raising=False)
+    monkeypatch.setattr(
+        schema,
+        "__all__",
+        [*schema.__all__, "FUTURE_MEASUREMENT", "FUTURE_METADATA"],
+    )
+
+    docs_root = _build_reference_tree(tmp_path, monkeypatch)
+    measurements_page = (docs_root / "index.rst").read_text()
+    metadata_page = (docs_root / "metadata" / "index.rst").read_text()
+
+    assert _class_heading("FUTURE_MEASUREMENT") in measurements_page
+    assert _class_heading("FUTURE_MEASUREMENT") not in metadata_page
+    assert _class_heading("FUTURE_METADATA") in metadata_page
+    assert _class_heading("FUTURE_METADATA") not in measurements_page
+
+
+def test_compatibility_alias_is_deduplicated_to_canonical_class(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    metadata_page = (docs_root / "metadata" / "metadata.rst").read_text()
-    quality_check_page = (
-        docs_root / "quality-control" / "quality_check.rst"
-    ).read_text()
-    quality_se_page = (
-        docs_root / "quality-control" / "quality_se.rst"
-    ).read_text()
+    measurements_page = (docs_root / "index.rst").read_text()
+
+    assert measurements_page.count(
+        _class_heading("ORIENTATION_ZONE_DIAGNOSTIC")
+    ) == 1
+    assert _class_heading("ORIENTATION_ZONES") not in measurements_page
+
+
+def test_pages_only_add_linked_class_sections_and_tables(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    docs_root = _build_reference_tree(tmp_path, monkeypatch)
+    combined = "\n".join(
+        path.read_text() for path in sorted(docs_root.rglob("*.rst"))
+    )
+
+    assert ".. _measurement-info-shape:" in combined
+    assert _class_heading("SHAPE") in combined
+    assert "Python export:" not in combined
+    assert "Compatibility alias for" not in combined
+    assert "Metadata Tag Overview" not in combined
+    assert ".. grid::" not in combined
+    assert "Browse " not in combined
+
+
+def test_generated_tables_escape_rst_markup(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    docs_root = _build_reference_tree(tmp_path, monkeypatch)
+    measurements_page = (docs_root / "index.rst").read_text()
+    metadata_page = (docs_root / "metadata" / "index.rst").read_text()
 
     assert ":mod:" not in metadata_page
     assert ":class:" not in metadata_page
-    assert ":meth:" not in quality_check_page
-    assert r"\|mean\|" in quality_se_page
+    assert ":meth:" not in measurements_page
+    assert r"\|mean\|" in measurements_page
 
 
-def test_compatibility_alias_page_uses_public_export_name(
-        tmp_path: Path,
-        monkeypatch: MonkeyPatch,
-) -> None:
-    """An enum alias should not masquerade as a second canonical class page."""
-    docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    alias_page = (
-        docs_root / "compatibility" / "orientation_zones.rst"
-    ).read_text()
+def test_schema_is_included_in_api_reference_autosummary() -> None:
+    api_index = _API_INDEX_PATH.read_text()
 
-    assert alias_page.startswith("ORIENTATION_ZONES\n=================")
-    assert "phenotypic.schema.ORIENTATION_ZONES" in alias_page
-    assert "Compatibility alias for" in alias_page
-    assert "phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC" in alias_page
-
-
-def test_every_public_enum_lands_in_exactly_one_group(monkeypatch):
-    ext = _load_extension(monkeypatch)
-    public = set(ext._public_measurement_info_classes())  # {name: class} -> keys
-    grouped = [name for names in ext._GROUPS.values() for name in names]
-    assert len(grouped) == len(set(grouped)), "an enum appears in >1 group"
-    assert set(grouped) == public, f"ungrouped or unknown: {public ^ set(grouped)}"
+    assert "   phenotypic.schema\n" in api_index
