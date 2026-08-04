@@ -28,9 +28,9 @@
             },
             {
               "block_id": "00000000000000000000000000000053",
-              "class_name": "GaussianBlur",
+              "class_name": "BlurGauss",
               "params": {"sigma": 2.0},
-              "label": "GaussianBlur",
+              "label": "BlurGauss",
               "nested": null,
               "collapsed": false,
               "list_slot_counts": {}

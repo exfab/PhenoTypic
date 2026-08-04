@@ -313,13 +313,13 @@ class TestCompositeDetector:
 
     def test_pipeline_with_multiple_operations(self, synth_plate):
         """Test CompositeDetector in a complex pipeline."""
-        from phenotypic.enhance import GaussianBlur
+        from phenotypic.enhance import BlurGauss
         from phenotypic.refine import SmallObjectRemover
 
         image = synth_plate.copy()
 
         pipeline = ImagePipeline(ops=[
-            GaussianBlur(sigma=2),
+            BlurGauss(sigma=2),
             CompositeDetector(
                     ops=[OtsuDetector(), CannyDetector(sigma=2)],
                     mode='union'
@@ -348,13 +348,13 @@ class TestCompositeDetector:
 
     def test_pipeline_as_detector(self, synth_plate):
         """Test that CompositeDetector accepts ImagePipeline as detector."""
-        from phenotypic.enhance import GaussianBlur
+        from phenotypic.enhance import BlurGauss
 
         image = synth_plate.copy()
 
         # Pipeline with preprocessing + detection
         pipeline = ImagePipeline(ops=[
-            GaussianBlur(sigma=2),
+            BlurGauss(sigma=2),
             OtsuDetector()
         ])
 
@@ -369,7 +369,7 @@ class TestCompositeDetector:
 
     def test_mixed_detectors_and_pipelines(self, synth_plate):
         """Test mixing ObjectDetector and ImagePipeline."""
-        from phenotypic.enhance import GaussianBlur
+        from phenotypic.enhance import BlurGauss
 
         image = synth_plate.copy()
 
@@ -377,7 +377,7 @@ class TestCompositeDetector:
                 ops=[
                     OtsuDetector(),  # Direct detector
                     ImagePipeline(ops=[  # Pipeline
-                        GaussianBlur(sigma=2),
+                        BlurGauss(sigma=2),
                         CannyDetector(sigma=2)
                     ])
                 ],
@@ -391,13 +391,13 @@ class TestCompositeDetector:
 
     def test_pipeline_serialization_roundtrip(self):
         """Test that CompositeDetector with pipelines serializes correctly."""
-        from phenotypic.enhance import GaussianBlur
+        from phenotypic.enhance import BlurGauss
 
         composite = CompositeDetector(
                 ops=[
                     OtsuDetector(),
                     ImagePipeline(ops=[
-                        GaussianBlur(sigma=2),
+                        BlurGauss(sigma=2),
                         CannyDetector(sigma=2)
                     ])
                 ],
@@ -422,7 +422,7 @@ class TestCompositeDetector:
 
     def test_pipeline_functional_equivalence(self, synth_plate):
         """Test functional equivalence after serialization with pipelines."""
-        from phenotypic.enhance import GaussianBlur
+        from phenotypic.enhance import BlurGauss
 
         image = synth_plate.copy()
 
@@ -430,7 +430,7 @@ class TestCompositeDetector:
                 ops=[
                     OtsuDetector(),
                     ImagePipeline(ops=[
-                        GaussianBlur(sigma=2),
+                        BlurGauss(sigma=2),
                         CannyDetector(sigma=2)
                     ])
                 ],
@@ -454,14 +454,14 @@ class TestCompositeDetector:
 
     def test_json_structure_with_pipelines(self):
         """Test JSON structure contains nested pipelines."""
-        from phenotypic.enhance import GaussianBlur
+        from phenotypic.enhance import BlurGauss
         import json
 
         composite = CompositeDetector(
                 ops=[
                     OtsuDetector(),
                     ImagePipeline(ops=[
-                        GaussianBlur(sigma=2),
+                        BlurGauss(sigma=2),
                         OtsuDetector()
                     ])
                 ],

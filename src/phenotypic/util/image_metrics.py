@@ -489,7 +489,7 @@ class ImageMetricsCalculator:
                 action = "Strong denoising required (LocalEdgeDenoise, MedianFilter)."
             elif snr < THRESHOLDS["snr"]["marginal"]:
                 quality = "marginal"
-                action = "Light denoising recommended (GaussianBlur sigma=0.5-1.0)."
+                action = "Light denoising recommended (BlurGauss sigma=0.5-1.0)."
             else:
                 quality = "adequate"
                 action = "No denoising needed."
@@ -568,7 +568,7 @@ class ImageMetricsCalculator:
                     "Apply strong denoising: LocalEdgeDenoise(sigma_spatial=3, sigma_intensity=0.1)"
             )
         elif snr < THRESHOLDS["snr"]["marginal"]:
-            recommendations.append("Apply light denoising: GaussianBlur(sigma=0.5-1.0)")
+            recommendations.append("Apply light denoising: BlurGauss(sigma=0.5-1.0)")
 
         if corr_len > 5:
             recommendations.append(

@@ -28,7 +28,7 @@ from phenotypic.tune._study_store import JournalStudyStore, Trial
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune import (
     Budget,
     Categorical,
@@ -207,7 +207,7 @@ def test_draft_callback_serializes_only_opaque_receipt_for_credential_spec(
     tmp_path: Path,
 ) -> None:
     secret = "setup-spec-browser-secret"
-    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    pipeline = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     metadata = tmp_path / "layout.csv"
     metadata.write_text(
         "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
@@ -287,7 +287,7 @@ def test_write_receipt_does_not_bless_source_mutation_before_descriptor(
     pipeline_path = tmp_path / "pipeline.json.pht-pipe"
     metadata_path = tmp_path / "layout.csv"
     pipeline_path.write_text(
-        ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]).to_json(),
+        ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]).to_json(),
         encoding="utf-8",
     )
     metadata_path.write_text(
@@ -303,7 +303,7 @@ def test_write_receipt_does_not_bless_source_mutation_before_descriptor(
         draft=draft,
     )
     pipeline_path.write_text(
-        ImagePipeline(ops=[GaussianBlur(sigma=4.0), OtsuDetector()]).to_json(),
+        ImagePipeline(ops=[BlurGauss(sigma=4.0), OtsuDetector()]).to_json(),
         encoding="utf-8",
     )
     descriptor = authored_spec_descriptor(
@@ -365,7 +365,7 @@ def test_existing_spec_controls_preserve_seed_budget_and_storage(
         "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
         encoding="utf-8",
     )
-    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    pipeline = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     original = TuningSpec(
         pipeline=pipeline,
         search_space=infer_search_space(pipeline).to_search_space(),
@@ -440,7 +440,7 @@ def test_existing_spec_trial_override_preserves_authored_strategy(
         "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
         encoding="utf-8",
     )
-    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    pipeline = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     original = TuningSpec(
         pipeline=pipeline,
         search_space=infer_search_space(pipeline).to_search_space(),
@@ -511,7 +511,7 @@ def test_existing_grid_spec_never_emits_trial_override(
         "MetadataImage_ImageName,Object_Label\nplate.tif,1\n",
         encoding="utf-8",
     )
-    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    pipeline = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     original = TuningSpec(
         pipeline=pipeline,
         search_space=SearchSpace(

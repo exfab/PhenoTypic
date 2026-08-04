@@ -51,7 +51,7 @@ PANEL_B_AUTOCORR = PanelDescription(
         how_to_read="Center=max correlation. Width indicates noise correlation length",
         good_values="Tight central peak (uncorrelated noise, easy to filter)",
         poor_values="Wide/elongated peak (structured noise, harder to remove)",
-        pipeline_link="GaussianBlur, LocalEdgeDenoise, MedianFilter",
+        pipeline_link="BlurGauss, LocalEdgeDenoise, MedianFilter",
 )
 
 PANEL_C_PSD = PanelDescription(
@@ -61,7 +61,7 @@ PANEL_C_PSD = PanelDescription(
         how_to_read="X: spatial frequency, Y: power. Slope indicates noise type",
         good_values="Smooth rolloff, signal above noise floor at low freq",
         poor_values="Flat spectrum (white noise dominant), peaks (periodic artifacts)",
-        pipeline_link="GaussianBlur (high-freq), SubtractRollingBall (low-freq)",
+        pipeline_link="BlurGauss (high-freq), SubtractRollingBall (low-freq)",
 )
 
 PANEL_D_ORIGINAL = PanelDescription(
@@ -101,7 +101,7 @@ PANEL_G_GRADIENT = PanelDescription(
         how_to_read="Brighter=stronger edges. Reveals structure boundaries",
         good_values="Sharp colony edges, minimal background texture",
         poor_values="Weak edges, noisy background, double edges",
-        pipeline_link="SharpenEdgeGauss, GaussianBlur (pre-smooth), CannyDetector",
+        pipeline_link="SharpenEdgeGauss, BlurGauss (pre-smooth), CannyDetector",
 )
 
 PANEL_H_COHERENCE = PanelDescription(

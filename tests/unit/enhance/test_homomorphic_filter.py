@@ -224,7 +224,7 @@ class TestPipelineIntegration:
     """FlattenIllumination works inside an ImagePipeline."""
 
     def test_in_pipeline(self):
-        from phenotypic.enhance import GaussianBlur
+        from phenotypic.enhance import BlurGauss
 
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float64) * 0.5 + 0.25
@@ -232,7 +232,7 @@ class TestPipelineIntegration:
 
         pipeline = ImagePipeline(ops=[
             FlattenIllumination(sigma=10.0),
-            GaussianBlur(sigma=1.0),
+            BlurGauss(sigma=1.0),
         ])
         result = pipeline.apply(image)
         assert result.detect_mat[:].shape == image.detect_mat[:].shape

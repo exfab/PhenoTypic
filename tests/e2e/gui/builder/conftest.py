@@ -138,7 +138,7 @@ def _open_builder(page: Page, hub_url: str) -> None:
         timeout=15_000,
     )
     # Palette categories past the first start collapsed; expand them so
-    # buttons like ``GaussianBlur`` (Enhancer) are visible + draggable.
+    # buttons like ``BlurGauss`` (Enhancer) are visible + draggable.
     expand_palette_accordions(page)
 
 
@@ -306,7 +306,7 @@ def _publish_palette_drop(page: Page, payload: dict) -> None:
 
 
 def _seed_two_blocks(page: Page) -> dict:
-    """Drop two ``GaussianBlur`` blocks on the canvas; return their ids.
+    """Drop two ``BlurGauss`` blocks on the canvas; return their ids.
 
     Returns ``{"source": <block_id>, "target": <block_id>}``. Waits for
     each block to materialise in cytoscape, then for the network to go
@@ -316,26 +316,26 @@ def _seed_two_blocks(page: Page) -> dict:
 
     box = _canvas_box(page)
     _drag_palette_to_canvas(
-        page, "GaussianBlur", box["width"] * 0.3, box["height"] * 0.5
+        page, "BlurGauss", box["width"] * 0.3, box["height"] * 0.5
     )
     page.wait_for_function(
         """() => {
             const cy = window.phenoGetCy && window.phenoGetCy();
             if (!cy) return false;
             return cy.nodes().filter(
-                n => n.data('class_name') === 'GaussianBlur'
+                n => n.data('class_name') === 'BlurGauss'
             ).length >= 1;
         }""",
         timeout=10_000,
     )
     _drag_palette_to_canvas(
-        page, "GaussianBlur", box["width"] * 0.7, box["height"] * 0.5
+        page, "BlurGauss", box["width"] * 0.7, box["height"] * 0.5
     )
     page.wait_for_function(
         """() => {
             const cy = window.phenoGetCy();
             return cy.nodes().filter(
-                n => n.data('class_name') === 'GaussianBlur'
+                n => n.data('class_name') === 'BlurGauss'
             ).length >= 2;
         }""",
         timeout=10_000,
@@ -347,7 +347,7 @@ def _seed_two_blocks(page: Page) -> dict:
         """() => {
             const cy = window.phenoGetCy();
             const blocks = cy.nodes().filter(
-                n => n.data('class_name') === 'GaussianBlur'
+                n => n.data('class_name') === 'BlurGauss'
             );
             return {
                 source: blocks[0].data('block_id') || blocks[0].id(),

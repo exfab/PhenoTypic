@@ -106,7 +106,7 @@ def to_pipeline_dag(state: BuilderState) -> ImagePipeline:
             surface a deterministic explanation.
 
     Examples:
-        Build a one-op DAG (Input Image → GaussianBlur) and materialise
+        Build a one-op DAG (Input Image → BlurGauss) and materialise
         it as an :class:`~phenotypic.ImagePipeline`. The synth-yeast
         fixture is loaded only to anchor the example in the project's
         microbiology context — the conversion does not touch image
@@ -122,7 +122,7 @@ def to_pipeline_dag(state: BuilderState) -> ImagePipeline:
         >>> input_block = scope.blocks[0]
         >>> blur = BlockNode(
         ...     block_id=_new_block_id(),
-        ...     class_name="GaussianBlur",
+        ...     class_name="BlurGauss",
         ...     params={},
         ...     label="blur",
         ... )
@@ -711,15 +711,15 @@ def from_pipeline_dag(pipeline: ImagePipeline) -> BuilderState:
         the mirrored op follows at index 1:
 
         >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.enhance import BlurGauss
         >>> from phenotypic.data import load_synth_yeast_plate
         >>> from phenotypic.gui.builder._conversion_dag import (
         ...     from_pipeline_dag,
         ... )
-        >>> pipeline = ImagePipeline(ops=[GaussianBlur()], name="demo")
+        >>> pipeline = ImagePipeline(ops=[BlurGauss()], name="demo")
         >>> state = from_pipeline_dag(pipeline)
         >>> [b.class_name for b in state.root.blocks]
-        ['InputImage', 'GaussianBlur']
+        ['InputImage', 'BlurGauss']
         >>> _ = load_synth_yeast_plate()  # microbiology context anchor
     """
 

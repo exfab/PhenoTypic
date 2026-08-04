@@ -11,7 +11,7 @@ from phenotypic import ImagePipeline
 from phenotypic.abc_ import BaseOperation, ImageOperation
 from phenotypic.correction import CropImage, PadImage
 from phenotypic.detect import CompositeDetector, OtsuDetector, TriangleDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.measure import MeasureShape
 from phenotypic.prefab import HeavyOtsuPipeline
 from phenotypic.refine import RemoveBorderObjects, SmallObjectRemover
@@ -163,7 +163,7 @@ def test_operation_params_survive_roundtrip():
     """Operations from all ABC categories preserve params through JSON round-trip."""
     pipe = ImagePipeline(
         ops=[
-            GaussianBlur(sigma=3.5, mode="reflect"),
+            BlurGauss(sigma=3.5, mode="reflect"),
             OtsuDetector(ignore_zeros=True, ignore_borders=False),
             RemoveBorderObjects(border_size=7),
             PadImage(left=10, right=20, top=5, bottom=15, mode="constant"),
@@ -172,7 +172,7 @@ def test_operation_params_survive_roundtrip():
 
     loaded = ImagePipeline.from_json(pipe.to_json())
 
-    blur = loaded._ops["GaussianBlur"]
+    blur = loaded._ops["BlurGauss"]
     assert blur.sigma == 3.5
     assert blur.mode == "reflect"
 
@@ -233,7 +233,7 @@ def test_prefab_custom_params_roundtrip():
     loaded = HeavyOtsuPipeline.from_json(original.to_json())
 
     first_op = list(loaded._ops.values())[0]
-    assert isinstance(first_op, GaussianBlur)
+    assert isinstance(first_op, BlurGauss)
     assert first_op.sigma == 7
 
     removers = [
@@ -246,7 +246,7 @@ def test_prefab_custom_params_roundtrip():
 @timeit
 def test_pipeline_embedded_in_pipeline():
     """ImagePipeline nested inside another ImagePipeline survives round-trip."""
-    inner = ImagePipeline(ops=[GaussianBlur(sigma=2), OtsuDetector()])
+    inner = ImagePipeline(ops=[BlurGauss(sigma=2), OtsuDetector()])
     outer = ImagePipeline(ops=[inner, SmallObjectRemover(min_size=30)])
 
     loaded = ImagePipeline.from_json(outer.to_json())
@@ -258,7 +258,7 @@ def test_pipeline_embedded_in_pipeline():
 
     inner_ops = list(ops[0]._ops.values())
     assert len(inner_ops) == 2
-    assert isinstance(inner_ops[0], GaussianBlur)
+    assert isinstance(inner_ops[0], BlurGauss)
     assert inner_ops[0].sigma == 2
     assert isinstance(inner_ops[1], OtsuDetector)
 
@@ -279,7 +279,7 @@ def test_prefab_embedded_in_pipeline():
     assert ops[1].border_size == 12
 
     inner_first = list(ops[0]._ops.values())[0]
-    assert isinstance(inner_first, GaussianBlur)
+    assert isinstance(inner_first, BlurGauss)
     assert inner_first.sigma == 5
 
 
@@ -288,7 +288,7 @@ def test_prefab_embedded_in_pipeline():
 def test_file_roundtrip():
     """Pipeline serialization to file and back preserves structure."""
     pipe = ImagePipeline(
-        ops=[GaussianBlur(sigma=4), OtsuDetector()],
+        ops=[BlurGauss(sigma=4), OtsuDetector()],
         meas=[MeasureShape()],
         name="file_test",
     )

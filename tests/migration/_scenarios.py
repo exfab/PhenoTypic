@@ -383,9 +383,9 @@ CURATED_EXTRAS: tuple[_CuratedExtra, ...] = (
             {"coord1": (60, 70), "coord2": (540, 730), "width": 18},
     ),
     # -- enhance --
-    _CuratedExtra("GaussianBlur", "sigma4", {"sigma": 4.0}),
+    _CuratedExtra("BlurGauss", "sigma4", {"sigma": 4.0}),
     _CuratedExtra(
-            "GaussianBlur",
+            "BlurGauss",
             "constant_mode",
             {"sigma": 2.0, "mode": "constant", "cval": 0.0},
     ),

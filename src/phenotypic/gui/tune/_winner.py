@@ -66,7 +66,7 @@ def write_winner(
         >>> import tempfile
         >>> from phenotypic import ImagePipeline
         >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.enhance import BlurGauss
         >>> from phenotypic.gui.tune._run_root import TuneRunRoot
         >>> from phenotypic.sdk_ import best_pipeline_path
         >>> from phenotypic.tune._study_store import Trial
@@ -76,7 +76,7 @@ def write_winner(
         ...     directions=None, images_dir=None,
         ...     best_pipeline_path=best_pipeline_path(d),
         ... )
-        >>> base = ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
+        >>> base = ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()])
         >>> winner = Trial(number=0, params={"0.sigma": 3.0}, score=0.05,
         ...                terms={}, n_images=2)
         >>> written = write_winner(root, base, winner)

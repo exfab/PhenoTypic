@@ -8,7 +8,7 @@ This walkthrough uses `FilamentousFungiDetector.inoculum_detector`.
 
 ## Step 1 - Add the consumer
 
-Open the `Builder` tab, then click `GaussianBlur`, `ContrastStretching`, and
+Open the `Builder` tab, then click `BlurGauss`, `ContrastStretching`, and
 `FilamentousFungiDetector` in the palette. The main chain is fixed and
 left-to-right:
 

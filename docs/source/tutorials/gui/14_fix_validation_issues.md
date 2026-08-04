@@ -9,7 +9,7 @@ value that has not been filled yet.
 
 ## Step 1 - Introduce an issue
 
-Click `GaussianBlur`, then `FilamentousFungiDetector`. The main spine is
+Click `BlurGauss`, then `FilamentousFungiDetector`. The main spine is
 linear, but `FilamentousFungiDetector.inoculum_detector` is required and still
 empty:
 

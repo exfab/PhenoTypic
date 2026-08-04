@@ -87,12 +87,12 @@ def _state_with_clean_scope() -> Dict[str, Any]:
     """Build a JSON state with a single image-edge linear chain.
 
     The InputImage auto-seeds when the scope is constructed, so this
-    fixture results in ``InputImage → GaussianBlur`` — a clean chain
+    fixture results in ``InputImage → BlurGauss`` — a clean chain
     with no validation issues.
     """
 
     scope = _DagBuilderScope()
-    a = _new_block("GaussianBlur")
+    a = _new_block("BlurGauss")
     scope.blocks.append(a)
     scope.edges.append(_image_edge(scope.blocks[0].block_id, a.block_id))
     state = _DagBuilderState(root=scope)
@@ -102,13 +102,13 @@ def _state_with_clean_scope() -> Dict[str, Any]:
 def _state_with_blocking_stub() -> Dict[str, Any]:
     """Build a state with a blocking ``stub`` issue (unreachable block).
 
-    Adds an orphan ``GaussianBlur`` block with no edges; the validator
+    Adds an orphan ``BlurGauss`` block with no edges; the validator
     emits ``Issue(kind="stub", severity="error")`` because the block
     is not reachable from the auto-seeded InputImage.
     """
 
     scope = _DagBuilderScope()
-    orphan = _new_block("GaussianBlur")
+    orphan = _new_block("BlurGauss")
     scope.blocks.append(orphan)
     state = _DagBuilderState(root=scope)
     return state_to_json(state)
@@ -118,8 +118,8 @@ def _state_with_unsupported_linear_fork() -> Dict[str, Any]:
     """Build a state the defensive linear map cannot safely edit."""
 
     scope = _DagBuilderScope()
-    a = _new_block("GaussianBlur")
-    b = _new_block("GaussianBlur")
+    a = _new_block("BlurGauss")
+    b = _new_block("BlurGauss")
     scope.blocks.extend([a, b])
     scope.edges.append(_image_edge(scope.blocks[0].block_id, a.block_id))
     scope.edges.append(_image_edge(scope.blocks[0].block_id, b.block_id))

@@ -102,7 +102,7 @@ def _make_palette_drop_payload(
 
 
 def _seed_registry(empty_registry: Any) -> None:
-    """Stash one fresh GaussianBlur op + one Pipeline sentinel.
+    """Stash one fresh BlurGauss op + one Pipeline sentinel.
 
     Mirrored from ``test_validation.py``'s use of ``empty_registry``.
     ``_dispatch_state_update`` uses the **registry returned by
@@ -112,7 +112,7 @@ def _seed_registry(empty_registry: Any) -> None:
     drift between the dispatcher and the validator.
     """
 
-    empty_registry.ops["GaussianBlur"] = _make_op_info("GaussianBlur")
+    empty_registry.ops["BlurGauss"] = _make_op_info("BlurGauss")
     empty_registry.ops["DummyOp"] = _make_op_info("DummyOp")
 
 
@@ -151,14 +151,14 @@ def test_block_create_appends_to_root_scope(
     new_state = _dispatch_state_update(
         state_dict,
         "block_create",
-        _make_palette_drop_payload("GaussianBlur"),
+        _make_palette_drop_payload("BlurGauss"),
     )
 
     blocks = new_state["root"]["blocks"]
     assert len(blocks) == initial_block_count + 1, (
         f"Expected 1 new block; got {len(blocks)} (was {initial_block_count})"
     )
-    new_blocks = [b for b in blocks if b["class_name"] == "GaussianBlur"]
+    new_blocks = [b for b in blocks if b["class_name"] == "BlurGauss"]
     assert len(new_blocks) == 1
     new_block = new_blocks[0]
     # The dispatcher should select the new block so the inspector
@@ -195,7 +195,7 @@ def test_block_create_with_container_block_id_adopts(
         state_dict,
         "block_create",
         _make_palette_drop_payload(
-            "GaussianBlur",
+            "BlurGauss",
             container_block_id=container.block_id,
         ),
     )
@@ -205,7 +205,7 @@ def test_block_create_with_container_block_id_adopts(
     root_class_names = [
         b["class_name"] for b in new_state["root"]["blocks"]
     ]
-    assert "GaussianBlur" not in root_class_names
+    assert "BlurGauss" not in root_class_names
 
     # The container's nested scope grew by one.
     container_blocks = next(
@@ -214,7 +214,7 @@ def test_block_create_with_container_block_id_adopts(
     )["nested"]["blocks"]
     assert len(container_blocks) == initial_nested_count + 1
     nested_class_names = [b["class_name"] for b in container_blocks]
-    assert "GaussianBlur" in nested_class_names
+    assert "BlurGauss" in nested_class_names
 
 
 def test_block_create_nested_container_innermost_wins(
@@ -249,7 +249,7 @@ def test_block_create_nested_container_innermost_wins(
         state_dict,
         "block_create",
         _make_palette_drop_payload(
-            "GaussianBlur",
+            "BlurGauss",
             container_block_id=inner.block_id,
         ),
     )
@@ -263,8 +263,8 @@ def test_block_create_nested_container_innermost_wins(
     outer_nested_classes = [
         b["class_name"] for b in outer_in_new["nested"]["blocks"]
     ]
-    # Outer scope contains: InputImage + inner container — no GaussianBlur.
-    assert outer_nested_classes.count("GaussianBlur") == 0
+    # Outer scope contains: InputImage + inner container — no BlurGauss.
+    assert outer_nested_classes.count("BlurGauss") == 0
 
     inner_in_new = next(
         b for b in outer_in_new["nested"]["blocks"]
@@ -273,7 +273,7 @@ def test_block_create_nested_container_innermost_wins(
     inner_nested_classes = [
         b["class_name"] for b in inner_in_new["nested"]["blocks"]
     ]
-    assert inner_nested_classes.count("GaussianBlur") == 1
+    assert inner_nested_classes.count("BlurGauss") == 1
 
 
 def test_block_create_uses_default_params(
@@ -379,7 +379,7 @@ def test_block_create_stale_container_id_short_circuits(
             state_dict,
             "block_create",
             _make_palette_drop_payload(
-                "GaussianBlur",
+                "BlurGauss",
                 container_block_id=stale_id,
             ),
         )
@@ -444,19 +444,19 @@ def test_block_create_validates_after_mutation(
     new_state_dict = _dispatch_state_update(
         state_dict,
         "block_create",
-        _make_palette_drop_payload("GaussianBlur"),
+        _make_palette_drop_payload("BlurGauss"),
     )
 
     # The new block is added but not yet wired — Rule 2 (stub) fires
-    # for the unwired GaussianBlur.  Existence of the issue confirms
+    # for the unwired BlurGauss.  Existence of the issue confirms
     # validation ran AND the new block participates in the state.
     state = state_from_json(new_state_dict)
     issues = validate(state)
     stub_issues = [i for i in issues if i.kind == "stub"]
-    # At least one stub issue points at the GaussianBlur block.
+    # At least one stub issue points at the BlurGauss block.
     gb_block = next(
         b for b in new_state_dict["root"]["blocks"]
-        if b["class_name"] == "GaussianBlur"
+        if b["class_name"] == "BlurGauss"
     )
     assert any(i.block_id == gb_block["block_id"] for i in stub_issues)
 
@@ -482,7 +482,7 @@ def test_block_create_does_not_double_seed_input_image(
     new_state = _dispatch_state_update(
         state_dict,
         "block_create",
-        _make_palette_drop_payload("GaussianBlur"),
+        _make_palette_drop_payload("BlurGauss"),
     )
 
     input_count_after = sum(
@@ -515,7 +515,7 @@ def test_block_create_does_not_mutate_input_dict(
     _dispatch_state_update(
         state_dict,
         "block_create",
-        _make_palette_drop_payload("GaussianBlur"),
+        _make_palette_drop_payload("BlurGauss"),
     )
 
     assert len(state_dict["root"]["blocks"]) == snapshot["block_count"]

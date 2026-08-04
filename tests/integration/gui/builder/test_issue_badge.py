@@ -324,7 +324,7 @@ def test_popover_row_lists_block_label_rule_name_detail() -> None:
 
     block = BlockNode(
         block_id="blk_a",
-        class_name="GaussianBlur",
+        class_name="BlurGauss",
         params={},
         label="UpstreamBlur",
     )

@@ -23,18 +23,18 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import CompositeDetector, OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 
 
 def _synth_runnable_pipeline() -> ImagePipeline:
     """A ``load_synth_yeast_plate()``-runnable flat pipeline (blur + Otsu)."""
-    return ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    return ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
 
 
 def _nested_pipeline() -> ImagePipeline:
     """A pipeline whose CompositeDetector yields depth-1 ``Nested`` knobs."""
     return ImagePipeline(
-        ops=[GaussianBlur(sigma=2.0), CompositeDetector(ops=[OtsuDetector()])]
+        ops=[BlurGauss(sigma=2.0), CompositeDetector(ops=[OtsuDetector()])]
     )
 
 

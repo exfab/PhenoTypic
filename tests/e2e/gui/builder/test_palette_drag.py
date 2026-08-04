@@ -95,13 +95,13 @@ def hub_url(live_server: str) -> str:
 
 
 def test_palette_drag_drop_creates_block(page: Page, hub_url: str) -> None:
-    """Drag GaussianBlur from the palette to canvas center → block appears."""
+    """Drag BlurGauss from the palette to canvas center → block appears."""
 
     _open_builder(page, hub_url)
     box = _canvas_box(page)
     _drag_palette_to_canvas(
         page,
-        "GaussianBlur",
+        "BlurGauss",
         box["width"] / 2,
         box["height"] / 2,
     )
@@ -111,7 +111,7 @@ def test_palette_drag_drop_creates_block(page: Page, hub_url: str) -> None:
         """() => {
             const cy = window.phenoGetCy && window.phenoGetCy();
             if (!cy) return false;
-            return cy.nodes().some(n => n.data('class_name') === 'GaussianBlur');
+            return cy.nodes().some(n => n.data('class_name') === 'BlurGauss');
         }""",
         timeout=10_000,
     )
@@ -121,7 +121,7 @@ def test_palette_drag_drop_inside_container(page: Page, hub_url: str) -> None:
     """Drop inside an expanded container → block adopted into nested scope.
 
     Sets up a pipeline container first (via the existing "New Pipeline"
-    button) and then drags a GaussianBlur into its body.
+    button) and then drags a BlurGauss into its body.
     """
 
     _open_builder(page, hub_url)
@@ -130,7 +130,7 @@ def test_palette_drag_drop_inside_container(page: Page, hub_url: str) -> None:
     # idle, then returns its block_id.
     container_id = _click_new_pipeline_button(page)
     assert container_id, "New Pipeline should mint an ImagePipeline container"
-    # Adopt a GaussianBlur into the container's nested scope.  We
+    # Adopt a BlurGauss into the container's nested scope.  We
     # dispatch the ``block_create`` payload directly (with the resolved
     # ``container_block_id``) rather than synthesising an HTML5 drag:
     # Playwright's synthesized pointer events don't reliably trigger the
@@ -142,7 +142,7 @@ def test_palette_drag_drop_inside_container(page: Page, hub_url: str) -> None:
         page,
         {
             "kind": "block_create",
-            "class_name": "GaussianBlur",
+            "class_name": "BlurGauss",
             "x": 0,
             "y": 0,
             "container_block_id": container_id,
@@ -153,7 +153,7 @@ def test_palette_drag_drop_inside_container(page: Page, hub_url: str) -> None:
     page.wait_for_function(
         """() => {
             const cy = window.phenoGetCy();
-            const gb = cy.nodes().filter(n => n.data('class_name') === 'GaussianBlur')[0];
+            const gb = cy.nodes().filter(n => n.data('class_name') === 'BlurGauss')[0];
             return gb && gb.parent().length > 0;
         }""",
         timeout=10_000,
@@ -198,14 +198,14 @@ def test_palette_drag_drop_on_existing_block_lands_adjacent(
     # First drop: create a block in the middle.
     _drag_palette_to_canvas(
         page,
-        "GaussianBlur",
+        "BlurGauss",
         box["width"] / 2,
         box["height"] / 2,
     )
     page.wait_for_function(
         """() => {
             const cy = window.phenoGetCy();
-            return cy && cy.nodes().filter(n => n.data('class_name') === 'GaussianBlur').length === 1;
+            return cy && cy.nodes().filter(n => n.data('class_name') === 'BlurGauss').length === 1;
         }""",
         timeout=10_000,
     )
@@ -213,23 +213,23 @@ def test_palette_drag_drop_on_existing_block_lands_adjacent(
     target = page.evaluate(
         """() => {
             const cy = window.phenoGetCy();
-            const gb = cy.nodes().filter(n => n.data('class_name') === 'GaussianBlur')[0];
+            const gb = cy.nodes().filter(n => n.data('class_name') === 'BlurGauss')[0];
             const pos = gb.renderedPosition();
             return { x: pos.x, y: pos.y };
         }"""
     )
     _drag_palette_to_canvas(
         page,
-        "GaussianBlur",
+        "BlurGauss",
         target["x"],
         target["y"],
     )
-    # Now there should be TWO GaussianBlur blocks; the second has a
+    # Now there should be TWO BlurGauss blocks; the second has a
     # different position (cytoscape doesn't overlay).
     page.wait_for_function(
         """() => {
             const cy = window.phenoGetCy();
-            return cy && cy.nodes().filter(n => n.data('class_name') === 'GaussianBlur').length === 2;
+            return cy && cy.nodes().filter(n => n.data('class_name') === 'BlurGauss').length === 2;
         }""",
         timeout=10_000,
     )
@@ -271,7 +271,7 @@ def test_palette_drag_drop_outside_cy_slot_cancels(
     before = page.evaluate(
         "() => window.phenoGetCy().nodes().length"
     )
-    palette = _palette_button(page, "GaussianBlur")
+    palette = _palette_button(page, "BlurGauss")
     palette.hover()
     page.mouse.down()
     # Move far above the canvas wrapper (no drop target).
@@ -294,7 +294,7 @@ def test_palette_drag_esc_during_drag_cancels(page: Page, hub_url: str) -> None:
     before = page.evaluate(
         "() => window.phenoGetCy().nodes().length"
     )
-    palette = _palette_button(page, "GaussianBlur")
+    palette = _palette_button(page, "BlurGauss")
     palette.hover()
     page.mouse.down()
     page.mouse.move(50, 50, steps=3)
@@ -322,7 +322,7 @@ def test_palette_keyboard_fallback(page: Page, hub_url: str) -> None:
     # ``data-palette-class`` lives on the draggable wrapper ``<div>``
     # (not focusable); the focusable, ``Enter``-activatable element is
     # the ``<button>`` it wraps.  Focus that.
-    palette_button = _palette_button(page, "GaussianBlur").locator(
+    palette_button = _palette_button(page, "BlurGauss").locator(
         "button"
     )
     palette_button.focus()

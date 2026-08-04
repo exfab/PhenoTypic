@@ -85,7 +85,7 @@ def test_wire_card_summary_uses_block_labels() -> None:
     # Build a small state where we control the labels.
     src = BlockNode(
         block_id=_new_block_id(),
-        class_name="GaussianBlur",
+        class_name="BlurGauss",
         params={},
         label="UpstreamBlur",
     )

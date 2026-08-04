@@ -131,7 +131,7 @@ fit. Screening uses **hierarchical, per-activation** importance:
   `__enabled__` knobs**, on all trials.
 - A **separate** fANOVA per optional-op group, over only the trials where it was
   **active**, reported as **conditional importance** — *"`sigma` matters this much, given
-  `GaussianBlur` is enabled."* This is a PED-ANOVA-style subspace computation and is
+  `BlurGauss` is enabled."* This is a PED-ANOVA-style subspace computation and is
   bounded to **one run per optional op** by the search-space **depth-cap of 1** (presence
   is top-level only).
 

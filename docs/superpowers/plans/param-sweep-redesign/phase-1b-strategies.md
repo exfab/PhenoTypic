@@ -156,25 +156,25 @@ def test_grid_values_rejects_floatrange():
 
 
 def test_enumerate_conditional_absent_collapses():
-    # Mirrors the golden config: Presence(GaussianBlur, sigma=(1,2)) + Sweep(Otsu, ignore_zeros=(T,F))
+    # Mirrors the golden config: Presence(BlurGauss, sigma=(1,2)) + Sweep(Otsu, ignore_zeros=(T,F))
     space = SearchSpace(knobs=(
-        Knob(key="0.GaussianBlur.__enabled__",
+        Knob(key="0.BlurGauss.__enabled__",
              domain=Categorical(choices=(True, False)), source="presence_optin"),
-        Knob(key="0.GaussianBlur.sigma",
+        Knob(key="0.BlurGauss.sigma",
              domain=Categorical(choices=(1.0, 2.0)),
-             conditional_on=(("0.GaussianBlur.__enabled__", True),)),
+             conditional_on=(("0.BlurGauss.__enabled__", True),)),
         Knob(key="1.OtsuDetector.ignore_zeros",
              domain=Categorical(choices=(True, False))),
     ))
     combos = enumerate_grid(space)
     # absent: enabled=False → sigma omitted → 2 (× ignore_zeros); present: 2 sigmas × 2 = 4 → total 6
     assert len(combos) == 6
-    absent = [c for c in combos if c["0.GaussianBlur.__enabled__"] is False]
+    absent = [c for c in combos if c["0.BlurGauss.__enabled__"] is False]
     assert len(absent) == 2
-    assert all("0.GaussianBlur.sigma" not in c for c in absent)
-    present = [c for c in combos if c["0.GaussianBlur.__enabled__"] is True]
+    assert all("0.BlurGauss.sigma" not in c for c in absent)
+    present = [c for c in combos if c["0.BlurGauss.__enabled__"] is True]
     assert len(present) == 4
-    assert all("0.GaussianBlur.sigma" in c for c in present)
+    assert all("0.BlurGauss.sigma" in c for c in present)
 
 
 def test_enumerate_unconditional_only():

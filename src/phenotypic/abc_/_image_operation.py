@@ -45,7 +45,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         ImageOperation (this class)
         ├── ImageEnhancer
         │   └── Modifies ONLY image.detect_mat
-        │       ├── GaussianBlur, EnhanceLocalContrast, RankMedianEnhancer, ...
+        │       ├── BlurGauss, EnhanceLocalContrast, RankMedianEnhancer, ...
         │       └── Use for: noise reduction, contrast, edge sharpening
         │
         ├── ObjectDetector
@@ -188,7 +188,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
     .. code-block:: python
 
-        result = (GaussianBlur(sigma=2).apply(image)
+        result = (BlurGauss(sigma=2).apply(image)
                  .apply_operation(OtsuDetector()))
 
     Or use ``ImagePipeline`` for multi-step workflows with automatic benchmarking:
@@ -196,7 +196,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     .. code-block:: python
 
         pipeline = ImagePipeline()
-        pipeline.add(GaussianBlur(sigma=2))
+        pipeline.add(BlurGauss(sigma=2))
         pipeline.add(OtsuDetector())
         pipeline.add(GridFinder())
 
@@ -320,10 +320,10 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
         Understanding inplace parameter and memory efficiency:
 
-        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.enhance import BlurGauss
         >>> from phenotypic import Image
         >>> image = Image.imread('colony_plate.jpg')
-        >>> enhancer = GaussianBlur(sigma=2.0)
+        >>> enhancer = BlurGauss(sigma=2.0)
         >>> # Default: inplace=False (safe, creates copy)
         >>> enhanced = enhancer.apply(image)
         >>> print(f"Same object? {id(image) == id(enhanced)}")  # False
@@ -336,18 +336,18 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         Using operations in a processing pipeline:
 
         >>> from phenotypic import Image, ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.enhance import BlurGauss
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.grid import GridFinder
         >>> # Load image
         >>> image = Image.imread('colony_plate.jpg')
         >>> # Sequential chaining
-        >>> enhanced = GaussianBlur(sigma=2).apply(image)
+        >>> enhanced = BlurGauss(sigma=2).apply(image)
         >>> detected = OtsuDetector().apply(enhanced)
         >>> grid = GridFinder().apply(detected)
         >>> # Or use ImagePipeline for batch processing
         >>> pipeline = ImagePipeline()
-        >>> pipeline.add(GaussianBlur(sigma=2))
+        >>> pipeline.add(BlurGauss(sigma=2))
         >>> pipeline.add(OtsuDetector())
         >>> pipeline.add(GridFinder())
         >>> # Process multiple images with automatic parallelization

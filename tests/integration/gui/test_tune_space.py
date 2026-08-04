@@ -18,7 +18,7 @@ def _runnable_spec(tmp_path: Path):  # type: ignore[no-untyped-def]
     from phenotypic import ImagePipeline
     from phenotypic.analysis import ExpectedVsDetectedCount
     from phenotypic.detect import OtsuDetector
-    from phenotypic.enhance import GaussianBlur
+    from phenotypic.enhance import BlurGauss
     from phenotypic.tune import (
     Budget,
     Categorical,
@@ -35,7 +35,7 @@ def _runnable_spec(tmp_path: Path):  # type: ignore[no-untyped-def]
         {"Metadata_ImageName": ["plate1"] * 96, "Object_Label": list(range(96))}
     ).to_csv(csv, index=False)
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]),
         search_space=SearchSpace(
             knobs=(Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),)
         ),

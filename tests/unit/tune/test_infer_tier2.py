@@ -1,7 +1,7 @@
 """Tier-2 type/constraint heuristics for ``infer_search_space`` (P3-3).
 
 Table-driven over synthetic single-field pydantic ops + real
-``GaussianBlur``/``OtsuDetector`` on a ``load_synth_yeast_plate()`` pipeline.
+``BlurGauss``/``OtsuDetector`` on a ``load_synth_yeast_plate()`` pipeline.
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.sdk_._column_ref import ColumnRef
 from phenotypic.sdk_.typing_ import NdArrayField
 from phenotypic.tune import (
@@ -240,28 +240,28 @@ def test_description_from_schema():
 
 
 # --------------------------------------------------------------------------- #
-# real pipeline: GaussianBlur + OtsuDetector
+# real pipeline: BlurGauss + OtsuDetector
 # --------------------------------------------------------------------------- #
 def test_infer_real_pipeline_flat():
-    pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    pipe = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     space = infer_search_space(pipe)
     assert isinstance(space, InferredSearchSpace)
     keys = {k.key for k in space.knobs}
-    # GaussianBlur.sigma now carries a TuneSpec -> Tier-1 ``tune_spec`` (the
+    # BlurGauss.sigma now carries a TuneSpec -> Tier-1 ``tune_spec`` (the
     # annotations workstream migrated it from the unbounded heuristic).
     assert "0.sigma" in keys
     sigma = next(k for k in space.knobs if k.key == "0.sigma")
     assert sigma.source == "tune_spec"
     assert (sigma.domain.low, sigma.domain.high, sigma.domain.log) == (0.5, 5.0, True)
     assert "Standard deviation" in sigma.description
-    # GaussianBlur.mode (Literal) -> 0.mode categorical
+    # BlurGauss.mode (Literal) -> 0.mode categorical
     mode = next(k for k in space.knobs if k.key == "0.mode")
     assert mode.source == "literal"
     assert mode.domain.choices == ("reflect", "constant", "nearest")
     # OtsuDetector.ignore_zeros (bool) -> 1.ignore_zeros
     iz = next(k for k in space.knobs if k.key == "1.ignore_zeros")
     assert iz.source == "bool"
-    # GaussianBlur.cval now carries TuneSpec(tunable=False) -> excluded by opt-out.
+    # BlurGauss.cval now carries TuneSpec(tunable=False) -> excluded by opt-out.
     cval_excluded = next((e for e in space.excluded if e.key == "0.cval"), None)
     assert cval_excluded is not None
     assert cval_excluded.reason == "tune_spec_off"
@@ -270,13 +270,13 @@ def test_infer_real_pipeline_flat():
 def test_recurse_nested_is_noop_stub_this_chunk():
     # Nested recursion is the next chunk; recurse_nested must be accepted and
     # not crash, but emit no nested ("[" in key) knobs for a flat pipeline.
-    pipe = ImagePipeline(ops=[GaussianBlur(), OtsuDetector()])
+    pipe = ImagePipeline(ops=[BlurGauss(), OtsuDetector()])
     space = infer_search_space(pipe, recurse_nested=True)
     assert not any("[" in k.key for k in space.knobs)
 
 
 @pytest.mark.parametrize("recurse", [True, False])
 def test_infer_accepts_recurse_flag(recurse):
-    pipe = ImagePipeline(ops=[GaussianBlur()])
+    pipe = ImagePipeline(ops=[BlurGauss()])
     space = infer_search_space(pipe, recurse_nested=recurse)
     assert isinstance(space, InferredSearchSpace)

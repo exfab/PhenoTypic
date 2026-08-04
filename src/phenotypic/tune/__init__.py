@@ -30,10 +30,10 @@ Hand-author a search space and inspect it:
 Infer a candidate space from a configured pipeline:
 
     >>> from phenotypic import ImagePipeline
-    >>> from phenotypic.enhance import GaussianBlur
+    >>> from phenotypic.enhance import BlurGauss
     >>> from phenotypic.detect import OtsuDetector
     >>> from phenotypic.tune import infer_search_space
-    >>> pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    >>> pipe = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     >>> proposal = infer_search_space(pipe)
     >>> next(k.domain.high for k in proposal.knobs if k.key == "0.sigma")
     5.0

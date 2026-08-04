@@ -163,7 +163,7 @@ def test_to_overlay_png_bytes_with_zero_labels(synthetic_image):
 @pytest.mark.parametrize(
     "class_name",
     [
-        "GaussianBlur",       # Enhancer → detect_mat
+        "BlurGauss",       # Enhancer → detect_mat
         "OtsuDetector",       # Detector → overlay
         "ImagePipeline",      # nested pipeline → rgb
         "DefinitelyNotAClass",  # unknown → rgb
@@ -188,7 +188,7 @@ def test_render_node_preview_detector_uses_overlay_path(detected_image):
 def test_render_node_preview_enhancer_uses_detect_mat(synthetic_image):
     """Enhancer renders should match the detect_mat single-channel render."""
     via_dispatcher = render_node_preview(
-        synthetic_image, "GaussianBlur", max_dim=64
+        synthetic_image, "BlurGauss", max_dim=64
     )
     direct = to_png_bytes(synthetic_image, channel="detect_mat", max_dim=64)
     assert via_dispatcher == direct

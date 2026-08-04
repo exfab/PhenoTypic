@@ -30,6 +30,20 @@
   "search_space": {
     "knobs": [
       {
+        "key": "0.GaussianBlur.__enabled__",
+        "domain": {
+          "kind": "categorical",
+          "choices": [
+            true,
+            false
+          ]
+        },
+        "conditional_on": null,
+        "source": "manual",
+        "needs_review": false,
+        "description": ""
+      },
+      {
         "key": "1.ignore_zeros",
         "domain": {
           "kind": "categorical",

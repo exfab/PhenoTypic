@@ -26,7 +26,7 @@ def _linear_root_state(op_blocks):
 
 def test_root_scope_caches_all_nodes(tmp_path, monkeypatch):
     monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
-    blur = BlockNode(block_id=_new_block_id(), class_name="GaussianBlur",
+    blur = BlockNode(block_id=_new_block_id(), class_name="BlurGauss",
                      params={"sigma": 1})
     state = _linear_root_state([blur])
 
@@ -44,7 +44,7 @@ def test_root_scope_caches_all_nodes(tmp_path, monkeypatch):
 
 def test_fingerprint_stable_then_invalidates_on_edit(tmp_path, monkeypatch):
     monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
-    blur = BlockNode(block_id=_new_block_id(), class_name="GaussianBlur",
+    blur = BlockNode(block_id=_new_block_id(), class_name="BlurGauss",
                      params={"sigma": 1})
     state = _linear_root_state([blur])
 
@@ -62,17 +62,17 @@ def test_nested_scope_threads_parent_output(tmp_path, monkeypatch):
     """An inner node sees the parent enhancer's detect_mat, not the raw sample."""
     monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
 
-    # Parent scope: InputImage -> GaussianBlur(parent) -> sub-pipeline container
+    # Parent scope: InputImage -> BlurGauss(parent) -> sub-pipeline container
     inner_scope = _DagBuilderScope()
     inner_input = inner_scope.blocks[0]
-    inner_op = BlockNode(block_id=_new_block_id(), class_name="GaussianBlur",
+    inner_op = BlockNode(block_id=_new_block_id(), class_name="BlurGauss",
                          params={"sigma": 1})
     inner_scope.blocks.append(inner_op)
     inner_scope.edges.append(_image_edge(inner_input.block_id, inner_op.block_id))
 
     container = BlockNode(block_id=_new_block_id(), class_name="ImagePipeline",
                           params={}, nested=inner_scope)
-    parent_blur = BlockNode(block_id=_new_block_id(), class_name="GaussianBlur",
+    parent_blur = BlockNode(block_id=_new_block_id(), class_name="BlurGauss",
                             params={"sigma": 7})
     state = _linear_root_state([parent_blur, container])
 

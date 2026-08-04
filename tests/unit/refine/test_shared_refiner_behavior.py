@@ -177,10 +177,10 @@ class TestRefinerPipelineShared:
     def test_pipeline_integration(self, RefinerClass, synth_plate):
         """Test refiner in a complete processing pipeline."""
         from phenotypic import ImagePipeline
-        from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
+        from phenotypic.enhance import BlurGauss, EnhanceLocalContrast
 
         pipeline = ImagePipeline(ops=[
-            GaussianBlur(sigma=1),
+            BlurGauss(sigma=1),
             EnhanceLocalContrast(clip_limit=2),
             RoundPeaksDetector(),
             RefinerClass(),

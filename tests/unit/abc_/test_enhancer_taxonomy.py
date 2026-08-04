@@ -47,7 +47,7 @@ TAXONOMY: dict[type, tuple[str, ...]] = {
     ),
     FocusBlob             : ("FocusBlobLoG",),
     Smoothing             : (
-        "GaussianBlur",
+        "BlurGauss",
         "MedianFilter",
         "RankMedianEnhancer",
         "StructureSmoothing",

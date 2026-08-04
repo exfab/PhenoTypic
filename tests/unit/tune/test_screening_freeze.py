@@ -13,7 +13,7 @@ from __future__ import annotations
 from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune import (
     Budget,
     Categorical,
@@ -196,7 +196,7 @@ def _random_space() -> SearchSpace:
 
 def _spec(strategy, space=None, budget=None) -> TuningSpec:
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]),
         search_space=space if space is not None else _grid_space(),
         scorer=_SigmaScorer(),
         evaluator=Evaluator(),

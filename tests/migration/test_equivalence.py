@@ -15,7 +15,7 @@ Library float math (numpy/scipy/scikit-image/BLAS) is **not**
 bit-reproducible across OS/arch, so the numeric goldens are valid only
 on the platform they were captured on (``_GOLDEN_PLATFORM``); on other
 platforms the numeric comparisons are skipped (large cross-platform
-divergences -- e.g. ~20% on GaussianBlur on macOS arm64 -- cannot be
+divergences -- e.g. ~20% on BlurGauss on macOS arm64 -- cannot be
 absorbed by any honest tolerance). On the capture platform, the small
 ``_FLOAT_RTOL`` / ``_FLOAT_ATOL`` tolerance still absorbs minor
 library-version jitter while staying tight enough to fail a genuine
@@ -31,7 +31,7 @@ The suite is parametrized so it can be sliced by subpackage::
     uv run pytest tests/migration -q             # everything
 
 Each test id is the scenario id (e.g. ``detect.OtsuDetector`` or
-``enhance.GaussianBlur.sigma4``), so ``-k`` filters on subpackage,
+``enhance.BlurGauss.sigma4``), so ``-k`` filters on subpackage,
 class name, or variant.
 """
 
@@ -70,7 +70,7 @@ _FLOAT_ATOL = 1e-9
 # The numeric goldens are float snapshots captured on the CI platform
 # (Linux x86_64). Library float math (numpy/scipy/scikit-image/BLAS) is
 # not bit-reproducible across OS/arch -- macOS arm64 (Accelerate) diverges
-# from Linux (OpenBLAS) by as much as ~20% for some ops (e.g. GaussianBlur),
+# from Linux (OpenBLAS) by as much as ~20% for some ops (e.g. BlurGauss),
 # which no honest tolerance can absorb without disabling the check. The
 # numeric equivalence is therefore asserted only on the capture platform;
 # elsewhere the run is skipped (not failed). Structural goldens are plain

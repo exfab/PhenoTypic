@@ -52,14 +52,14 @@ operations complete.
 
     from phenotypic import ImagePipeline
     from phenotypic.detect import OtsuDetector
-    from phenotypic.enhance import GaussianBlur
+    from phenotypic.enhance import BlurGauss
     from phenotypic.refine import RemoveSmallObjects
     from phenotypic.measure import MeasureShape, MeasureIntensity
     
     # Create pipeline with operations and measurements
     pipeline = ImagePipeline(
         ops=[
-            GaussianBlur(sigma=1.5),
+            BlurGauss(sigma=1.5),
             OtsuDetector(),
             RemoveSmallObjects(min_size=100)
         ],
@@ -89,15 +89,15 @@ class names are provided, automatic suffix numbering ensures uniqueness.
     
     # Set operations as list
     pipeline.set_ops([
-        GaussianBlur(sigma=1.5),
+        BlurGauss(sigma=1.5),
         OtsuDetector(),
         RemoveSmallObjects(min_size=100)
     ])
-    # Names: 'GaussianBlur', 'OtsuDetector', 'RemoveSmallObjects'
+    # Names: 'BlurGauss', 'OtsuDetector', 'RemoveSmallObjects'
     
     # Set operations as dict with custom names
     pipeline.set_ops({
-        'blur': GaussianBlur(sigma=1.5),
+        'blur': BlurGauss(sigma=1.5),
         'detect': OtsuDetector(),
         'refine': RemoveSmallObjects(min_size=100)
     })
@@ -254,7 +254,7 @@ the pipeline with ``benchmark=True``.
 
     # Create pipeline with benchmarking enabled
     pipeline = ImagePipeline(
-        ops=[GaussianBlur(), OtsuDetector(), RemoveSmallObjects()],
+        ops=[BlurGauss(), OtsuDetector(), RemoveSmallObjects()],
         meas=[MeasureShape(), MeasureIntensity()],
         benchmark=True,
         verbose=True
@@ -268,7 +268,7 @@ the pipeline with ``benchmark=True``.
     performance = pipeline.benchmark_results()
     print(performance)
     #   Process Type         Process Name  Execution Time (s)
-    # 0    Operation         GaussianBlur            0.0234
+    # 0    Operation         BlurGauss            0.0234
     # 1    Operation        OtsuDetector            0.1523
     # 2    Operation  RemoveSmallObjects            0.0456
     # 3  Measurement         MeasureShape            0.0893
@@ -339,7 +339,7 @@ are excluded to keep serialization clean.
 
     # Create and configure pipeline
     pipeline = ImagePipeline(
-        ops=[GaussianBlur(sigma=1.5), OtsuDetector()],
+        ops=[BlurGauss(sigma=1.5), OtsuDetector()],
         meas=[MeasureShape(), MeasureIntensity()],
         benchmark=True,
         verbose=False
@@ -358,8 +358,8 @@ are excluded to keep serialization clean.
 
     {
       "ops": {
-        "GaussianBlur": {
-          "class": "GaussianBlur",
+        "BlurGauss": {
+          "class": "BlurGauss",
           "params": {"sigma": 1.5}
         },
         "OtsuDetector": {
@@ -420,7 +420,7 @@ instantiated with their saved parameters.
 
     # Researcher 1: Develop and save pipeline
     pipeline = ImagePipeline(
-        ops=[GaussianBlur(sigma=2.0), OtsuDetector()],
+        ops=[BlurGauss(sigma=2.0), OtsuDetector()],
         meas=[MeasureShape()]
     )
     pipeline.to_json('colony_detection_v1.json.pht-pipe')
@@ -482,7 +482,7 @@ which extends ImagePipeline with multiprocessing capabilities:
     
     # Create batch pipeline with parallel processing
     batch_pipeline = ImagePipelineBatch(
-        ops=[GaussianBlur(), OtsuDetector()],
+        ops=[BlurGauss(), OtsuDetector()],
         meas=[MeasureShape(), MeasureIntensity()],
         n_jobs=4,  # Use 4 worker processes
         verbose=True

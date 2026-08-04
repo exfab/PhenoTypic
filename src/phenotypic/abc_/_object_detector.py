@@ -302,13 +302,13 @@ class ObjectDetector(ImageOperation, ABC):
         Detection in a full pipeline with enhancement and refinement:
 
         >>> from phenotypic import Image, ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.enhance import BlurGauss
         >>> from phenotypic.detect import CannyDetector
         >>> from phenotypic.refine import RemoveSmallObjectsRefiner
         >>> from phenotypic.measure import MeasureColor
         >>> # Create a processing pipeline
         >>> pipeline = ImagePipeline()
-        >>> pipeline.add(GaussianBlur(sigma=2.0))  # Preprocessing
+        >>> pipeline.add(BlurGauss(sigma=2.0))  # Preprocessing
         >>> pipeline.add(CannyDetector(sigma=1.5))  # Detection
         >>> pipeline.add(RemoveSmallObjectsRefiner(min_size=50))  # Cleanup
         >>> pipeline.add(MeasureColor())  # Downstream analysis

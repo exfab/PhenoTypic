@@ -59,7 +59,7 @@ def test_badge_renders_for_pickable_ops():
     assert "ManualPointDetector" in pickable_button_classnames
     assert "ManualRefine" in pickable_button_classnames
     assert "OtsuDetector" not in pickable_button_classnames
-    assert "GaussianBlur" not in pickable_button_classnames
+    assert "BlurGauss" not in pickable_button_classnames
 
     assert "ManualPointDetector" in badge_owners
     assert "ManualRefine" in badge_owners

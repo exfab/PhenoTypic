@@ -21,7 +21,7 @@ from ._contrast_gamma import ContrastGamma
 from ._contrast_log import ContrastLog
 from ._contrast_sigmoid import ContrastSigmoid
 from ._focus_edge_frangi import FocusEdgeFrangi
-from ._gaussian_blur import GaussianBlur
+from ._blur_gauss import BlurGauss
 from ._focus_edge_hessian import FocusEdgeHessian
 from ._subtract_gaussian import SubtractGaussian
 from ._image_inverter import ImageInverter
@@ -59,7 +59,7 @@ __all__ = [
     "ContrastLog",
     "ContrastSigmoid",
     "FocusEdgeFrangi",
-    "GaussianBlur",
+    "BlurGauss",
     "SubtractGaussian",
     "GrayOpening",
     "FocusEdgeHessian",

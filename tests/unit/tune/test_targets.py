@@ -4,7 +4,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune._search_space._targets import (
     Nested,
     Param,
@@ -20,7 +20,7 @@ def test_param_key():
 
 def test_presence_key_bare_and_classed():
     assert Presence(op=0).key == "0.__enabled__"
-    assert Presence(op=0, op_class="GaussianBlur").key == "0.GaussianBlur.__enabled__"
+    assert Presence(op=0, op_class="BlurGauss").key == "0.BlurGauss.__enabled__"
 
 
 def test_nested_key():
@@ -38,14 +38,14 @@ def test_targets_are_frozen_and_discriminated():
 
 
 @pytest.mark.parametrize("key", [
-    "0.sigma", "0.__enabled__", "0.GaussianBlur.__enabled__", "1.ops[0].ignore_zeros",
+    "0.sigma", "0.__enabled__", "0.BlurGauss.__enabled__", "1.ops[0].ignore_zeros",
 ])
 def test_parse_key_round_trips(key):
     assert parse_key(key).key == key          # string-preserving
 
 
 def test_parse_key_recovers_op_class_only_for_classed_presence():
-    assert parse_key("0.GaussianBlur.__enabled__").op_class == "GaussianBlur"
+    assert parse_key("0.BlurGauss.__enabled__").op_class == "BlurGauss"
     assert parse_key("0.sigma").op_class is None
     assert parse_key("0.__enabled__").op_class is None
 
@@ -58,8 +58,8 @@ def test_parse_key_rejects_malformed():
 
 
 def test_with_op_class_fills_from_pipeline():
-    ops = list(ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]).get_ops().values())
-    assert with_op_class(Param(op=0, field="sigma"), ops).op_class == "GaussianBlur"
+    ops = list(ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]).get_ops().values())
+    assert with_op_class(Param(op=0, field="sigma"), ops).op_class == "BlurGauss"
     assert with_op_class(Param(op=1, field="ignore_zeros"), ops).op_class == "OtsuDetector"
 
 

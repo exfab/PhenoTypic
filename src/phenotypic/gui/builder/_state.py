@@ -93,7 +93,7 @@ class BlockNode:
 
     Attributes:
         block_id: Stable identifier (``uuid.uuid4().hex`` — 32 chars).
-        class_name: Registry key (e.g. ``"GaussianBlur"``), the
+        class_name: Registry key (e.g. ``"BlurGauss"``), the
             ``"ImagePipeline"`` sentinel for container blocks, or the
             ``"InputImage"`` sentinel for the scope's source block.
         params: Scalar parameter values (no op-typed values — those come
@@ -357,7 +357,7 @@ class _LegacyStepNode:
         node_id: Short, stable identifier (8-char hex slice of a UUID4).
             Used as the cytoscape node id and to address sub-scopes via
             the breadcrumb path.
-        class_name: Registry key (e.g. ``"GaussianBlur"``) or the
+        class_name: Registry key (e.g. ``"BlurGauss"``) or the
             sentinel ``"ImagePipeline"`` when the node represents a
             nested pipeline.
         params: Raw parameter values.  Scalars are stored as-is; values

@@ -15,9 +15,9 @@ their reason.
 
 Example:
     >>> from phenotypic import ImagePipeline
-    >>> from phenotypic.enhance import GaussianBlur
+    >>> from phenotypic.enhance import BlurGauss
     >>> from phenotypic.detect import OtsuDetector
-    >>> pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    >>> pipe = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     >>> from pathlib import Path
     >>> from tempfile import TemporaryDirectory
     >>> from phenotypic.sdk_ import _io_constants as io

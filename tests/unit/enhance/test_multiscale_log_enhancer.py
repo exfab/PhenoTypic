@@ -276,14 +276,14 @@ class TestPipelineIntegration:
     """FocusBlobLoG works inside an ImagePipeline."""
 
     def test_in_pipeline(self):
-        from phenotypic.enhance import GaussianBlur
+        from phenotypic.enhance import BlurGauss
 
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float64) * 0.5 + 0.25
         image = Image(arr=arr)
 
         pipeline = ImagePipeline(ops=[
-            GaussianBlur(sigma=1.0),
+            BlurGauss(sigma=1.0),
             FocusBlobLoG(min_radius=3.0, max_radius=10.0, num_scales=6),
         ])
         result = pipeline.apply(image)

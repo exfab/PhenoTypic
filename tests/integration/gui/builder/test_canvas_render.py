@@ -151,7 +151,7 @@ def test_aux_ports_carry_accepts_list() -> None:
     # Find the consumer block (anything that's not InputImage)
     consumer = next(
         b for b in state.root.blocks
-        if b.class_name not in (INPUT_IMAGE_CLASS_NAME, "GaussianBlur")
+        if b.class_name not in (INPUT_IMAGE_CLASS_NAME, "BlurGauss")
         and b.class_name != PIPELINE_CLASS_NAME
     )
     # Find an aux port on this consumer

@@ -82,7 +82,7 @@ def test_budget_no_longer_overshoots_after_reconciliation(tmp_path):
     from phenotypic import ImagePipeline
     from phenotypic.data import load_synth_yeast_plate
     from phenotypic.detect import OtsuDetector
-    from phenotypic.enhance import GaussianBlur
+    from phenotypic.enhance import BlurGauss
     from phenotypic.tune import (
     Categorical,
     Evaluator,
@@ -116,7 +116,7 @@ def test_budget_no_longer_overshoots_after_reconciliation(tmp_path):
         knobs=(Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),)
     )
     spec = TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()]),
         search_space=space,
         scorer=_ConstScorer(),
         evaluator=Evaluator(),

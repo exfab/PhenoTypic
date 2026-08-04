@@ -57,7 +57,7 @@ def _build_synthetic_100_block_scope() -> _DagBuilderScope:
     for i in range(100):
         b = BlockNode(
             block_id=_new_block_id(),
-            class_name="GaussianBlur",
+            class_name="BlurGauss",
             params={},
             label=f"op_{i}",
         )
@@ -130,7 +130,7 @@ def test_validate_scales_under_budget_at_multiple_sizes(scale: int):
     blocks = [
         BlockNode(
             block_id=_new_block_id(),
-            class_name="GaussianBlur",
+            class_name="BlurGauss",
             params={},
             label=f"op_{i}",
         )

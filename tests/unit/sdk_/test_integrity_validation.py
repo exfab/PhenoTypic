@@ -8,7 +8,7 @@ import pytest
 from phenotypic import Image
 import phenotypic.settings as settings
 from phenotypic.abc_ import ImageEnhancer, ObjectDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.sdk_.exceptions_ import OperationIntegrityError
 
 
@@ -52,7 +52,7 @@ def test_enhancer_validation_allows_grayscale_image_without_rgb() -> None:
     image = Image(arr=np.zeros((5, 5), dtype=np.uint8))
 
     with settings.validation(True):
-        result = GaussianBlur(sigma=1.0, mode="constant").apply(image)
+        result = BlurGauss(sigma=1.0, mode="constant").apply(image)
 
     assert result.rgb.isempty()
     assert result.detect_mat[:].shape == (5, 5)

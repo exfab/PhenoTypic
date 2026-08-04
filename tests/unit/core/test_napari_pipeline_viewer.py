@@ -21,7 +21,7 @@ from phenotypic._core._pipeline_parts._napari_pipeline_viewer import (
 from phenotypic._core._image_pipeline import ImagePipeline
 from phenotypic.abc_ import ImageCorrector
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
+from phenotypic.enhance import BlurGauss, EnhanceLocalContrast
 from phenotypic.measure import MeasureSize
 from phenotypic.refine import SmallObjectRemover
 
@@ -95,7 +95,7 @@ class TestNapariLayersFor:
     """Verify ``_napari_layers_for`` returns correct layer specs per ABC."""
 
     def test_enhancer_returns_detect_mat(self):
-        result = _napari_layers_for(GaussianBlur(sigma=1))
+        result = _napari_layers_for(BlurGauss(sigma=1))
         assert result == [("detect_mat", False)]
 
     def test_clahe_enhancer_returns_detect_mat(self):
@@ -275,7 +275,7 @@ class TestApplyNapari:
         from phenotypic.data import load_synth_yeast_plate
 
         image = load_synth_yeast_plate()
-        pipe = ImagePipeline(ops=[GaussianBlur(sigma=1), OtsuDetector()])
+        pipe = ImagePipeline(ops=[BlurGauss(sigma=1), OtsuDetector()])
 
         mock_viewer = _make_mock_viewer()
 
@@ -301,7 +301,7 @@ class TestApplyNapari:
         assert "00_original_detect_mat" in layer_names
 
         # Operation layers
-        assert "01_GaussianBlur_detect_mat" in layer_names
+        assert "01_BlurGauss_detect_mat" in layer_names
         assert "02_OtsuDetector_objmap" in layer_names
 
     @patch(
@@ -313,7 +313,7 @@ class TestApplyNapari:
         from phenotypic.data import load_synth_yeast_plate
 
         image = load_synth_yeast_plate()
-        pipe = ImagePipeline(ops=[GaussianBlur(sigma=1)])
+        pipe = ImagePipeline(ops=[BlurGauss(sigma=1)])
 
         mock_viewer = _make_mock_viewer()
         result = pipe.apply_napari(image, viewer=mock_viewer)
@@ -337,7 +337,7 @@ class TestApplyNapari:
         pipe = ImagePipeline(ops=[])
         mock_viewer = _make_mock_viewer()
 
-        result = pipe.apply_napari(image, viewer=mock_viewer)
+        pipe.apply_napari(image, viewer=mock_viewer)
 
         # Only baseline layers should exist — no operation layers
         layer_names = [
@@ -356,10 +356,10 @@ class TestApplyNapari:
         image = load_synth_yeast_plate()
         original_detect_mat = image.detect_mat[:].copy()
 
-        pipe = ImagePipeline(ops=[GaussianBlur(sigma=3)])
+        pipe = ImagePipeline(ops=[BlurGauss(sigma=3)])
         mock_viewer = _make_mock_viewer()
 
-        result = pipe.apply_napari(image, viewer=mock_viewer, inplace=False)
+        pipe.apply_napari(image, viewer=mock_viewer, inplace=False)
 
         np.testing.assert_array_equal(image.detect_mat[:], original_detect_mat)
 
@@ -374,7 +374,7 @@ class TestApplyNapari:
         image = load_synth_yeast_plate()
         original_detect_mat = image.detect_mat[:].copy()
 
-        pipe = ImagePipeline(ops=[GaussianBlur(sigma=3)])
+        pipe = ImagePipeline(ops=[BlurGauss(sigma=3)])
         mock_viewer = _make_mock_viewer()
 
         result = pipe.apply_napari(image, viewer=mock_viewer, inplace=True)
@@ -394,7 +394,7 @@ class TestApplyNapari:
         pipe = ImagePipeline(ops=[_DummyCorrector()])
         mock_viewer = _make_mock_viewer()
 
-        result = pipe.apply_napari(image, viewer=mock_viewer)
+        pipe.apply_napari(image, viewer=mock_viewer)
 
         layer_names = [
             call[1]["name"] for call in mock_viewer.add_image.call_args_list
@@ -428,7 +428,7 @@ class TestApplyNapari:
         from phenotypic.data import load_synth_yeast_plate
 
         image = load_synth_yeast_plate()
-        pipe = ImagePipeline(ops=[GaussianBlur(sigma=1)])
+        pipe = ImagePipeline(ops=[BlurGauss(sigma=1)])
 
         with patch(
             "phenotypic._core._image_parts.accessor_abstracts._image_accessor_base._HAS_NAPARI",

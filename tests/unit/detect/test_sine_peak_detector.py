@@ -272,10 +272,10 @@ class TestSinePeakDetectorIntegration:
     def test_pipeline_integration(self, plate_12hr_grid_image):
         """SinePeakDetector should work in an ImagePipeline."""
         from phenotypic import ImagePipeline
-        from phenotypic.enhance import GaussianBlur
+        from phenotypic.enhance import BlurGauss
 
         pipeline = ImagePipeline(ops=[
-            GaussianBlur(sigma=1.0),
+            BlurGauss(sigma=1.0),
             SinePeakDetector(thresh_method="otsu"),
         ])
 

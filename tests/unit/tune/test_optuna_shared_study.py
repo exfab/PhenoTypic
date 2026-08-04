@@ -24,7 +24,7 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune import (
     Categorical,
     Evaluator,
@@ -50,17 +50,17 @@ class _ConstScorer(Scorer):
 
 def _space() -> SearchSpace:
     return SearchSpace(knobs=(
-        Knob(key="0.GaussianBlur.__enabled__",
+        Knob(key="0.BlurGauss.__enabled__",
              domain=Categorical(choices=(True, False))),
         Knob(key="0.sigma", domain=Categorical(choices=(1.0, 2.0)),
-             conditional_on=(("0.GaussianBlur.__enabled__", True),)),
+             conditional_on=(("0.BlurGauss.__enabled__", True),)),
         Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
     ))
 
 
 def _spec(url: str, n_trials: int) -> TuningSpec:
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()]),
         search_space=_space(),
         scorer=_ConstScorer(),
         evaluator=Evaluator(),

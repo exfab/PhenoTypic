@@ -5,7 +5,7 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.tune._setup_authoring import (
     SetupDraftCache,
@@ -46,7 +46,7 @@ def _metadata(path: Path) -> Path:
 def test_write_authored_setup_spec_uses_path_backed_qc_scorer(tmp_path: Path):
     pipeline_path = tmp_path / "pipeline.json.pht-pipe"
     pipeline_path.write_text(
-        ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]).to_json(),
+        ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]).to_json(),
         encoding="utf-8",
     )
     metadata_path = _metadata(tmp_path / "layout.csv")
@@ -69,7 +69,7 @@ def test_write_authored_setup_spec_uses_path_backed_qc_scorer(tmp_path: Path):
 def test_write_authored_setup_spec_requires_metadata_file(tmp_path: Path):
     pipeline_path = tmp_path / "pipeline.json.pht-pipe"
     pipeline_path.write_text(
-        ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]).to_json(),
+        ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]).to_json(),
         encoding="utf-8",
     )
 
@@ -86,7 +86,7 @@ def test_write_authored_setup_spec_preserves_existing_spec_search_space(
 ):
     metadata_path = _metadata(tmp_path / "layout.csv")
     original = TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]),
         search_space=SearchSpace(
             knobs=(
                 Knob(
@@ -128,7 +128,7 @@ def test_existing_spec_replaces_scorer_only_when_requested(tmp_path: Path):
     original_metadata = _metadata(tmp_path / "original.csv")
     replacement_metadata = _metadata(tmp_path / "replacement.csv")
     original = TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]),
         search_space=SearchSpace(
             knobs=(
                 Knob(
@@ -166,7 +166,7 @@ def test_existing_spec_replaces_scorer_only_when_requested(tmp_path: Path):
 
 
 def test_build_authored_setup_spec_reports_all_validation_issues(tmp_path: Path):
-    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    pipeline = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     pipeline_path = tmp_path / "pipeline.json.pht-pipe"
     pipeline_path.write_text(pipeline.to_json(), encoding="utf-8")
     first_knob = infer_search_space(pipeline).knobs[0]
@@ -293,7 +293,7 @@ def test_setup_draft_is_the_revisioned_validated_write_authority(
     tmp_path: Path,
 ) -> None:
     pipeline_path = tmp_path / "pipeline.json.pht-pipe"
-    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    pipeline = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     pipeline_path.write_text(pipeline.to_json(), encoding="utf-8")
     metadata_path = _metadata(tmp_path / "layout.csv")
     first_knob = infer_search_space(pipeline).knobs[0]
@@ -338,7 +338,7 @@ def test_setup_draft_write_rejects_source_changed_after_validation(
 ) -> None:
     pipeline_path = tmp_path / "pipeline.json.pht-pipe"
     pipeline_path.write_text(
-        ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]).to_json(),
+        ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]).to_json(),
         encoding="utf-8",
     )
     metadata_path = _metadata(tmp_path / "layout.csv")
@@ -347,7 +347,7 @@ def test_setup_draft_write_rejects_source_changed_after_validation(
         metadata=SetupPathResolution(metadata_path, "typed"),
     )
     pipeline_path.write_text(
-        ImagePipeline(ops=[GaussianBlur(sigma=4.0), OtsuDetector()]).to_json(),
+        ImagePipeline(ops=[BlurGauss(sigma=4.0), OtsuDetector()]).to_json(),
         encoding="utf-8",
     )
 
@@ -363,7 +363,7 @@ def test_authored_targets_and_descriptors_bind_content_not_only_stem(
     first_dir.mkdir()
     second_dir.mkdir()
     metadata = _metadata(tmp_path / "layout.csv")
-    pipeline = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
+    pipeline = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])
     first = first_dir / "pipeline.json.pht-pipe"
     second = second_dir / "pipeline.json.pht-pipe"
     first.write_text(pipeline.to_json(), encoding="utf-8")

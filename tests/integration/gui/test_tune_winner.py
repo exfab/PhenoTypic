@@ -17,7 +17,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.gui.tune._run_root import TuneRunRoot
 from phenotypic.tune._study_store import Trial
 
@@ -37,7 +37,7 @@ def _root(tmp_path: Path) -> TuneRunRoot:
 
 
 def _base() -> ImagePipeline:
-    return ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
+    return ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()])
 
 
 # ---------------------------------------------------------------------------

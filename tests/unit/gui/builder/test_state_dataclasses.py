@@ -114,7 +114,7 @@ def _make_two_block_dag_state() -> _DagBuilderState:
         A :class:`_DagBuilderState` whose root scope has:
 
         * The auto-seeded ``InputImage`` block.
-        * A regular op block (``GaussianBlur``) wired from ``InputImage``.
+        * A regular op block (``BlurGauss``) wired from ``InputImage``.
         * A pipeline container with its own auto-seeded inner ``InputImage``.
     """
 
@@ -125,7 +125,7 @@ def _make_two_block_dag_state() -> _DagBuilderState:
     state.root.blocks.append(
         BlockNode(
             block_id=blur_id,
-            class_name="GaussianBlur",
+            class_name="BlurGauss",
             params={"sigma": 1.5},
             label="Blur",
         )
@@ -216,7 +216,7 @@ def test_state_to_json_legacy_round_trip() -> None:
         nodes=[
             _LegacyStepNode(
                 node_id="abc01234",
-                class_name="GaussianBlur",
+                class_name="BlurGauss",
                 params={"sigma": 2.0},
                 label="Smooth",
             )
@@ -235,7 +235,7 @@ def test_state_to_json_legacy_round_trip() -> None:
     assert restored.root.name == "legacy-demo"
     assert restored.root.desc == "legacy description"
     assert len(restored.root.nodes) == 1
-    assert restored.root.nodes[0].class_name == "GaussianBlur"
+    assert restored.root.nodes[0].class_name == "BlurGauss"
     assert restored.root.nodes[0].params == {"sigma": 2.0}
 
 
@@ -248,7 +248,7 @@ def test_state_from_json_seeds_missing_input_image() -> None:
             "blocks": [
                 {
                     "block_id": "deadbeef" * 4,
-                    "class_name": "GaussianBlur",
+                    "class_name": "BlurGauss",
                     "params": {"sigma": 1.0},
                     "label": None,
                     "nested": None,

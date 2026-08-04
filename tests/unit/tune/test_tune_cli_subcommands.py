@@ -13,7 +13,7 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.sdk_ import _io_constants as io
 from phenotypic.tune import (
     Categorical,
@@ -33,7 +33,7 @@ def _spec(tmp_path) -> TuningSpec:
          "Object_Label": list(range(96))}
     ).to_csv(csv, index=False)
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()]),
         search_space=SearchSpace(knobs=(
             Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
         )),
@@ -86,7 +86,7 @@ def test_auto_space_subcommand_infers_without_running_engine(tmp_path):
 
     pipe_path = tmp_path / "pipeline.json"
     pipe_path.write_text(
-        ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]).to_json() or ""
+        ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]).to_json() or ""
     )
     out = tmp_path / "auto"
 

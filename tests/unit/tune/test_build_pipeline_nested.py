@@ -17,7 +17,7 @@ from phenotypic.detect import (
     OtsuDetector,
     RoundPeaksDetector,
 )
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune._evaluation._builder import build_pipeline
 
 
@@ -77,7 +77,7 @@ def test_nested_overlay_combined_with_parent_scalar_field():
 
 def test_nested_overlay_alongside_flat_op_in_pipeline():
     base = ImagePipeline(ops=[
-        GaussianBlur(sigma=2.0),                    # position 0
+        BlurGauss(sigma=2.0),                    # position 0
         CompositeDetector(ops=[               # position 1
             OtsuDetector(ignore_zeros=False),
             RoundPeaksDetector(),
@@ -88,7 +88,7 @@ def test_nested_overlay_alongside_flat_op_in_pipeline():
         "1.ops[0].ignore_zeros": True,
     })
     ops = candidate.get_ops()
-    assert ops["GaussianBlur"].sigma == 4.0
+    assert ops["BlurGauss"].sigma == 4.0
     assert ops["CompositeDetector"].ops[0].ignore_zeros is True
 
 

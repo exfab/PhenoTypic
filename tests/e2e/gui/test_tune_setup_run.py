@@ -52,7 +52,7 @@ _LAUNCHER = textwrap.dedent(
     from phenotypic import ImagePipeline
     from phenotypic.analysis import ExpectedVsDetectedCount
     from phenotypic.detect import OtsuDetector
-    from phenotypic.enhance import GaussianBlur
+    from phenotypic.enhance import BlurGauss
     from phenotypic.gui.shell import SandboxRoot
     from phenotypic.gui.shell._ids import TUNE_PIPELINE_PATH_STORE
     from phenotypic.gui.shell._runs_registry import RunRegistry
@@ -66,7 +66,7 @@ _LAUNCHER = textwrap.dedent(
     pipeline = sandbox_dir / "pipeline.json.pht-pipe"
     pipeline.write_text(
         ImagePipeline(
-            ops=[GaussianBlur(sigma=2.0), OtsuDetector()]
+            ops=[BlurGauss(sigma=2.0), OtsuDetector()]
         ).to_json(),
         encoding="utf-8",
     )
@@ -77,7 +77,7 @@ _LAUNCHER = textwrap.dedent(
     )
     (sandbox_dir / "plate images").mkdir()
     configured_pipeline = ImagePipeline(
-        ops=[GaussianBlur(sigma=2.0), OtsuDetector()]
+        ops=[BlurGauss(sigma=2.0), OtsuDetector()]
     )
     existing = TuningSpec(
         pipeline=configured_pipeline,

@@ -19,7 +19,7 @@ def _space() -> SearchSpace:
         Knob(
             key="0.mode",
             domain=Categorical(choices=("reflect", "nearest")),
-            conditional_on=(("0.GaussianBlur.__enabled__", True),),
+            conditional_on=(("0.BlurGauss.__enabled__", True),),
         ),
     ))
 
@@ -66,7 +66,7 @@ def test_searchspace_roundtrip_with_conditional_and_mixed_domains():
     # conditional_on survives (list<->tuple coercion) and the domain discriminator routes
     cond = next(k for k in back if k.key.endswith(".mode"))
     assert cond.conditional_on == (
-        (Presence(op=0, op_class="GaussianBlur"), True),
+        (Presence(op=0, op_class="BlurGauss"), True),
     )
     assert isinstance(cond.domain, Categorical)
 
@@ -79,14 +79,14 @@ def test_knob_accepts_target_and_string_key_equivalently():
 
 
 def test_knob_serializes_target_structurally_and_loads_legacy_string():
-    k = Knob(key="0.GaussianBlur.__enabled__", domain=Categorical(choices=(True, False)))
+    k = Knob(key="0.BlurGauss.__enabled__", domain=Categorical(choices=(True, False)))
     dumped = k.model_dump()
     assert dumped["target"]["kind"] == "presence"
     assert "key" not in dumped                  # structured, not the string
     # legacy string still loads:
-    again = Knob.model_validate({"key": "0.GaussianBlur.__enabled__",
+    again = Knob.model_validate({"key": "0.BlurGauss.__enabled__",
                                  "domain": {"kind": "categorical", "choices": [True, False]}})
-    assert again.key == "0.GaussianBlur.__enabled__"
+    assert again.key == "0.BlurGauss.__enabled__"
 
 
 def test_search_space_targets_and_keys():

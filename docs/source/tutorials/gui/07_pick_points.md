@@ -23,7 +23,7 @@ you can spot them at a glance.
 
 This walkthrough curates an Otsu detection. The flow is:
 
-1. Drag `GaussianBlur` from `Corrector` onto the canvas.
+1. Drag `BlurGauss` from `Corrector` onto the canvas.
 2. Drag `OtsuDetector` from `Detector`.
 3. Drag `ManualRefine` from `Refiner` (it carries the PICK badge).
 4. Connect them in order: blur → detect → select.

@@ -10,7 +10,7 @@ from phenotypic import ImagePipeline, Image
 from phenotypic._core._pipeline_parts._serializable_pipeline import SerializablePipeline
 from phenotypic.data import load_colony
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
+from phenotypic.enhance import BlurGauss, EnhanceLocalContrast
 from phenotypic.measure import MeasureShape, MeasureIntensity, MeasureColor
 from phenotypic.refine import SmallObjectRemover, RemoveBorderObjects
 from phenotypic.sdk_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
@@ -63,14 +63,14 @@ class TestBasicSerialization:
     def test_multiple_operations_serialization(self):
         """Test serialization with multiple operations."""
         pipe = ImagePipeline(
-                ops=[GaussianBlur(sigma=2), OtsuDetector(),
+                ops=[BlurGauss(sigma=2), OtsuDetector(),
                      SmallObjectRemover(min_size=50)]
         )
         json_str = pipe.to_json()
 
         config = json.loads(json_str)
         assert len(config["pipe_cfgs"]) == 3
-        assert "GaussianBlur" in config["pipe_cfgs"]
+        assert "BlurGauss" in config["pipe_cfgs"]
         assert "OtsuDetector" in config["pipe_cfgs"]
         assert "SmallObjectRemover" in config["pipe_cfgs"]
 
@@ -105,7 +105,7 @@ class TestParameterSerialization:
         """Test serialization of int and float parameters."""
         pipe = ImagePipeline(
                 ops=[
-                    GaussianBlur(sigma=3),
+                    BlurGauss(sigma=3),
                     OtsuDetector(),
                     SmallObjectRemover(min_size=100),
                 ],
@@ -114,7 +114,7 @@ class TestParameterSerialization:
         json_str = pipe.to_json()
 
         loaded_pipe = ImagePipeline.from_json(json_str)
-        blur = loaded_pipe._ops["GaussianBlur"]
+        blur = loaded_pipe._ops["BlurGauss"]
 
         # Test that public attributes are preserved
         assert blur.sigma == 3
@@ -150,7 +150,7 @@ class TestParameterSerialization:
     def test_dict_parameters(self):
         """Test serialization with dict-style operations input."""
         pipe = ImagePipeline(
-                ops={"blur": GaussianBlur(sigma=2), "detect": OtsuDetector()}
+                ops={"blur": BlurGauss(sigma=2), "detect": OtsuDetector()}
         )
         json_str = pipe.to_json()
 
@@ -186,7 +186,7 @@ class TestRoundtripFunctionality:
         """Test roundtrip with a complex pipeline."""
         pipe = ImagePipeline(
                 ops=[
-                    GaussianBlur(sigma=2),
+                    BlurGauss(sigma=2),
                     OtsuDetector(ignore_zeros=True),
                     SmallObjectRemover(min_size=25),
                     RemoveBorderObjects(border_size=10),
@@ -290,7 +290,7 @@ class TestFileIO:
     def test_roundtrip_through_file(self):
         """Test complete roundtrip through file."""
         original_pipe = ImagePipeline(
-                ops=[GaussianBlur(sigma=2), OtsuDetector()],
+                ops=[BlurGauss(sigma=2), OtsuDetector()],
                 meas=[MeasureShape(), MeasureIntensity()],
         )
 
@@ -334,8 +334,8 @@ class TestEdgeCases:
     def test_duplicate_operation_names(self):
         """Test handling of duplicate operation names."""
         pipe = ImagePipeline(
-                ops=[GaussianBlur(sigma=1), GaussianBlur(sigma=2),
-                     GaussianBlur(sigma=3)]
+                ops=[BlurGauss(sigma=1), BlurGauss(sigma=2),
+                     BlurGauss(sigma=3)]
         )
         json_str = pipe.to_json()
 
@@ -344,9 +344,9 @@ class TestEdgeCases:
 
         # Verify all three blurs are present with different parameters
         op_names = list(loaded_pipe._ops.keys())
-        assert "GaussianBlur" in op_names
-        assert "GaussianBlur_1" in op_names
-        assert "GaussianBlur_2" in op_names
+        assert "BlurGauss" in op_names
+        assert "BlurGauss_1" in op_names
+        assert "BlurGauss_2" in op_names
 
     def test_grid_preset_roundtrip(self):
         """nrows/ncols soft preset survives to_json / from_json."""
@@ -492,11 +492,13 @@ class TestPreMigrationBackwardCompat:
 
         # Build the equivalent pipeline directly and compare.
         expected = ImagePipeline(
-                ops=[
-                    GaussianBlur(sigma=3.0, mode="reflect"),
-                    OtsuDetector(ignore_zeros=True, ignore_borders=False),
-                    SmallObjectRemover(min_size=40),
-                ],
+                ops={
+                    "GaussianBlur": BlurGauss(sigma=3.0, mode="reflect"),
+                    "OtsuDetector": OtsuDetector(
+                        ignore_zeros=True, ignore_borders=False
+                    ),
+                    "SmallObjectRemover": SmallObjectRemover(min_size=40),
+                },
                 meas=[MeasureShape()],
                 name="legacy_pipeline",
                 desc="saved before the pydantic migration",
@@ -508,7 +510,7 @@ class TestPreMigrationBackwardCompat:
         assert list(loaded._meas.keys()) == list(expected._meas.keys())
 
         loaded_blur = loaded._ops["GaussianBlur"]
-        assert isinstance(loaded_blur, GaussianBlur)
+        assert isinstance(loaded_blur, BlurGauss)
         assert loaded_blur.sigma == 3.0
         assert loaded_blur.mode == "reflect"
 
@@ -759,7 +761,7 @@ class TestPipelineAsOperationSerialization:
 
     def test_plain_pipeline_nested_roundtrip(self):
         """Test that a plain ImagePipeline nested as operation roundtrips correctly."""
-        inner = ImagePipeline(ops=[GaussianBlur(sigma=5), OtsuDetector()])
+        inner = ImagePipeline(ops=[BlurGauss(sigma=5), OtsuDetector()])
         outer = ImagePipeline(ops=[inner])
 
         json_str = outer.to_json()
@@ -769,7 +771,7 @@ class TestPipelineAsOperationSerialization:
         assert isinstance(inner_loaded, ImagePipeline)
         inner_ops = list(inner_loaded._ops.values())
         assert len(inner_ops) == 2
-        assert isinstance(inner_ops[0], GaussianBlur)
+        assert isinstance(inner_ops[0], BlurGauss)
         assert inner_ops[0].sigma == 5
         assert isinstance(inner_ops[1], OtsuDetector)
 
@@ -800,7 +802,7 @@ class TestPipelineAsOperationSerialization:
 
     def test_deeply_nested_pipelines(self):
         """Test three levels of pipeline nesting."""
-        level1 = ImagePipeline(ops=[GaussianBlur(sigma=3)])
+        level1 = ImagePipeline(ops=[BlurGauss(sigma=3)])
         level2 = ImagePipeline(ops=[level1, OtsuDetector()])
         level3 = ImagePipeline(ops=[level2])
 
@@ -814,20 +816,20 @@ class TestPipelineAsOperationSerialization:
         assert isinstance(l1_loaded, ImagePipeline)
 
         l1_ops = list(l1_loaded._ops.values())
-        assert isinstance(l1_ops[0], GaussianBlur)
+        assert isinstance(l1_ops[0], BlurGauss)
         assert l1_ops[0].sigma == 3
 
     def test_mixed_regular_ops_and_pipeline_ops(self):
         """Test pipeline containing both regular operations and nested pipelines."""
         inner = ImagePipeline(ops=[OtsuDetector()])
         outer = ImagePipeline(
-                ops=[GaussianBlur(sigma=2), inner, SmallObjectRemover(min_size=50)]
+                ops=[BlurGauss(sigma=2), inner, SmallObjectRemover(min_size=50)]
         )
 
         loaded = ImagePipeline.from_json(outer.to_json())
         ops = list(loaded._ops.values())
         assert len(ops) == 3
-        assert isinstance(ops[0], GaussianBlur)
+        assert isinstance(ops[0], BlurGauss)
         assert isinstance(ops[1], ImagePipeline)
         assert isinstance(ops[2], SmallObjectRemover)
 

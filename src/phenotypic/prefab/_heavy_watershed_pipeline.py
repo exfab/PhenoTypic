@@ -5,7 +5,7 @@ import numpy as np
 from phenotypic.abc_ import PrefabPipeline
 from phenotypic.correction import GridAligner
 from phenotypic.detect import WatershedDetector
-from phenotypic.enhance import EnhanceLocalContrast, GaussianBlur, MedianFilter
+from phenotypic.enhance import EnhanceLocalContrast, BlurGauss, MedianFilter
 from phenotypic.measure import (
     MeasureColor,
     MeasureIntensity,
@@ -30,7 +30,7 @@ class HeavyWatershedPipeline(PrefabPipeline):
     alignment.
 
     Steps:
-        1. GaussianBlur — smooth noise
+        1. BlurGauss — smooth noise
         2. EnhanceLocalContrast — boost local contrast
         3. MedianFilter — remove residual speckle
         4. WatershedDetector — region-growing segmentation
@@ -126,7 +126,7 @@ class HeavyWatershedPipeline(PrefabPipeline):
         min_residual_reducer = ReduceSectionsByLine()
 
         ops = [
-            GaussianBlur(
+            BlurGauss(
                     sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate
             ),
             EnhanceLocalContrast(),

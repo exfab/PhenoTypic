@@ -8,7 +8,7 @@ from dash.development.base_component import Component
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
 from phenotypic.gui.tune import _callbacks as tune_callbacks
 from phenotypic.gui.tune import _ids as ids
@@ -101,7 +101,7 @@ def _spec(tmp_path: Path) -> TuningSpec:
         + "\n".join(f"plate,{i}" for i in range(96))
     )
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()]),
         search_space=SearchSpace(
             knobs=(Knob(key="1.ignore_zeros", domain=Categorical(choices=(True,))),)
         ),

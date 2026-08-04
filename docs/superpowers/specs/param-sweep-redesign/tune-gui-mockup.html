@@ -278,12 +278,12 @@
     <div class="card pad" style="margin-bottom:14px;display:flex;align-items:center;gap:12px">
       <span class="muted" style="font-size:12.5px">Pipeline</span>
       <div class="picker"><span class="path">deliverables/pipeline.json</span><span class="muted">▾</span></div>
-      <span class="muted" style="font-size:12px">GaussianBlur → OtsuDetector → WatershedRefiner</span>
+      <span class="muted" style="font-size:12px">BlurGauss → OtsuDetector → WatershedRefiner</span>
     </div>
     <div class="card pad">
       <h3 class="section">Knobs</h3>
-      <div class="knob"><span class="name">0 · GaussianBlur · __enabled__</span><span class="kind">presence</span><span class="muted">on ↔ off</span><span class="toggle on" title="tunable"></span></div>
-      <div class="knob"><span class="name">0 · GaussianBlur · sigma</span><span class="kind">float</span><span>low <input type="text" value="0.5"> high <input type="text" value="6.0"> &nbsp;log <span class="toggle" style="display:inline-block;vertical-align:middle"></span></span><span class="toggle on"></span></div>
+      <div class="knob"><span class="name">0 · BlurGauss · __enabled__</span><span class="kind">presence</span><span class="muted">on ↔ off</span><span class="toggle on" title="tunable"></span></div>
+      <div class="knob"><span class="name">0 · BlurGauss · sigma</span><span class="kind">float</span><span>low <input type="text" value="0.5"> high <input type="text" value="6.0"> &nbsp;log <span class="toggle" style="display:inline-block;vertical-align:middle"></span></span><span class="toggle on"></span></div>
       <div class="knob"><span class="name">1 · OtsuDetector · ignore_zeros</span><span class="kind">categorical</span><span class="muted">{true, false}</span><span class="toggle on"></span></div>
       <div class="knob"><span class="name">1 · OtsuDetector · nbins</span><span class="kind">int</span><span>low <input type="text" value="64"> high <input type="text" value="512"> &nbsp;log <span class="toggle" style="display:inline-block;vertical-align:middle"></span></span><span class="toggle on"></span></div>
       <div class="knob nested"><span class="name">2 · Watershed · markers[0].min_distance</span><span class="kind">nested</span><span class="lock">🔒 read-only (nested, v1)</span><span class="toggle"></span></div>

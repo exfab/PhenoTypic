@@ -228,7 +228,7 @@ import pandas as pd
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune import (
     Categorical,
     Evaluator,
@@ -246,7 +246,7 @@ def _spec(tmp_path) -> TuningSpec:
         {"Metadata_ImageName": ["p"] * 96, "Object_Label": list(range(96))}
     ).to_csv(csv, index=False)
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]),
         search_space=SearchSpace(knobs=(
             Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
         )),
@@ -271,9 +271,9 @@ def test_spec_round_trips_pipeline_and_scorer(tmp_path):
     back = TuningSpec.model_validate_json(spec.model_dump_json())
     # embedded pipeline reconstructed (polymorphic ops survive)
     assert [type(o).__name__ for o in back.pipeline.get_ops().values()] == [
-        "GaussianBlur", "OtsuDetector",
+        "BlurGauss", "OtsuDetector",
     ]
-    assert back.pipeline.get_ops()["GaussianBlur"].sigma == 2.0
+    assert back.pipeline.get_ops()["BlurGauss"].sigma == 2.0
     # polymorphic scorer reconstructed; path-configured check still scores
     assert isinstance(back.scorer, QCScorer)
     assert back.scorer.score_image(
@@ -416,9 +416,9 @@ class _ConstScorer(Scorer):
 
 def _grid_space() -> SearchSpace:
     return SearchSpace(knobs=(
-        Knob(key="0.GaussianBlur.__enabled__", domain=Categorical(choices=(True, False))),
+        Knob(key="0.BlurGauss.__enabled__", domain=Categorical(choices=(True, False))),
         Knob(key="0.sigma", domain=Categorical(choices=(1.0, 2.0)),
-             conditional_on=(("0.GaussianBlur.__enabled__", True),)),
+             conditional_on=(("0.BlurGauss.__enabled__", True),)),
         Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
     ))
 
@@ -435,8 +435,8 @@ def _spec(budget: Budget, store_pipeline) -> TuningSpec:
 
 
 def _base():
-    from phenotypic.enhance import GaussianBlur
-    return ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
+    from phenotypic.enhance import BlurGauss
+    return ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()])
 
 
 def test_engine_runs_full_grid():
@@ -777,7 +777,7 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tools_ import _io_constants as io
 from phenotypic.tune import (
     Categorical, Evaluator, GridConfig, Knob, QCScorer, SearchSpace,
@@ -793,7 +793,7 @@ def _spec(tmp_path) -> TuningSpec:
          "Object_Label": list(range(96))}
     ).to_csv(csv, index=False)
     return TuningSpec(
-        pipeline=ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()]),
+        pipeline=ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()]),
         search_space=SearchSpace(knobs=(
             Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
         )),
@@ -1006,9 +1006,9 @@ equivalence*, not literal manifest-byte equality. The golden is reconstructed vi
 `ImagePipeline.from_json` from the committed JSON, so this test stands after `sweep` is
 deleted in Task 7.)
 
-The golden config (Phase 0): `Presence(GaussianBlur, sigma=(1.0, 2.0))` +
+The golden config (Phase 0): `Presence(BlurGauss, sigma=(1.0, 2.0))` +
 `Sweep(OtsuDetector, ignore_zeros=(True, False))` → 6 pipelines. Its tune equivalent: base
-`[GaussianBlur(sigma=1.0), OtsuDetector()]` (the blur's `sigma` is always overlaid, so the
+`[BlurGauss(sigma=1.0), OtsuDetector()]` (the blur's `sigma` is always overlaid, so the
 base value is irrelevant) + the presence/sweep `SearchSpace`.
 
 - [ ] **Step 1: Write the lock test**
@@ -1022,7 +1022,7 @@ from pathlib import Path
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune import Categorical, Knob, SearchSpace
 from phenotypic.tune._evaluation import build_pipeline
 from phenotypic.tune._strategies._enumerate import enumerate_grid
@@ -1054,16 +1054,16 @@ def _golden_signatures() -> set:
 
 def _tune_space() -> SearchSpace:
     return SearchSpace(knobs=(
-        Knob(key="0.GaussianBlur.__enabled__",
+        Knob(key="0.BlurGauss.__enabled__",
              domain=Categorical(choices=(True, False)), source="presence_optin"),
         Knob(key="0.sigma", domain=Categorical(choices=(1.0, 2.0)),
-             conditional_on=(("0.GaussianBlur.__enabled__", True),)),
+             conditional_on=(("0.BlurGauss.__enabled__", True),)),
         Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
     ))
 
 
 def test_tune_grid_reproduces_golden_op_combinations():
-    base = ImagePipeline(ops=[GaussianBlur(sigma=1.0), OtsuDetector()])
+    base = ImagePipeline(ops=[BlurGauss(sigma=1.0), OtsuDetector()])
     combos = enumerate_grid(_tune_space())
     assert len(combos) == 6
     tune_sigs = {_signature(build_pipeline(base, c)) for c in combos}

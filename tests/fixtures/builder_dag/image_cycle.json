@@ -9,12 +9,12 @@
     },
     {
       "block_id": "a",
-      "class_name": "GaussianBlur",
+      "class_name": "BlurGauss",
       "label": "A"
     },
     {
       "block_id": "b",
-      "class_name": "GaussianBlur",
+      "class_name": "BlurGauss",
       "label": "B"
     }
   ],

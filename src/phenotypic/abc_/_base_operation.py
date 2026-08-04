@@ -141,15 +141,15 @@ class BaseOperation(BaseModel, ABC):
         Accessing memory information programmatically:
 
         >>> import logging
-        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.enhance import BlurGauss
         >>> # Create custom logger to capture memory messages
-        >>> logger = logging.getLogger('phenotypic.enhance.GaussianBlur')
+        >>> logger = logging.getLogger('phenotypic.enhance.BlurGauss')
         >>> logger.setLevel(logging.INFO)
         >>> handler = logging.StreamHandler()
         >>> handler.setLevel(logging.INFO)
         >>> logger.addHandler(handler)
         >>> # Use operation
-        >>> blur = GaussianBlur(sigma=2)
+        >>> blur = BlurGauss(sigma=2)
         >>> enhanced = blur.apply(image)
         # Memory tracking happens automatically during operation
 

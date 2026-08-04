@@ -479,11 +479,11 @@ class TuneSpec:
     via ``op.model_fields[name].metadata`` (where pydantic v2 stores
     ``Annotated`` extras). It rides in an ``Annotated[T, TuneSpec(...)]`` chain::
 
-        class GaussianBlur(ImageEnhancer):
+        class BlurGauss(ImageEnhancer):
             sigma:    Annotated[float, TuneSpec(0.5, 5.0, log=True)] = 2.0
             truncate: Annotated[float, TuneSpec(tunable=False)]      = 4.0
 
-    At runtime ``sigma`` is still a plain ``float``; ``GaussianBlur(sigma=999.0)``
+    At runtime ``sigma`` is still a plain ``float``; ``BlurGauss(sigma=999.0)``
     constructs exactly as before. The marker is the **search** domain, never the
     **valid** domain — validity stays the job of pydantic ``Field(ge=, le=)``.
 

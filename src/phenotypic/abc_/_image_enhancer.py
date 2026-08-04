@@ -24,7 +24,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
 
     - **ImageEnhancer (this class):** Modify only ``image.detect_mat`` for preprocessing.
       Use for: noise reduction, contrast enhancement, illumination correction.
-      Examples: [GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py),
+      Examples: [BlurGauss](src/phenotypic/enhance/_blur_gauss.py),
       [EnhanceLocalContrast](src/phenotypic/enhance/_enhance_local_contrast.py),
       [LocalEdgeDenoise](src/phenotypic/enhance/_local_edge_denoise.py).
     - **ImageCorrector:** Transform entire image (rotation, cropping, perspective).
@@ -74,7 +74,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
 
     The following are canonical examples of ImageEnhancer implementations:
 
-    - [GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py): Noise reduction via Gaussian filtering.
+    - [BlurGauss](src/phenotypic/enhance/_blur_gauss.py): Noise reduction via Gaussian filtering.
     - [EnhanceLocalContrast](src/phenotypic/enhance/_enhance_local_contrast.py): Contrast-limited adaptive histogram equalization for local contrast.
     - ``GrayOpening``: Morphological opening using ``FootprintMixin``.
     - [LocalEdgeDenoise](src/phenotypic/enhance/_local_edge_denoise.py): Edge-preserving denoising.
@@ -205,7 +205,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         result = EnhanceLocalContrast(kernel_size=50, clip_limit=0.02).apply(result)
 
         # Step 3: Smooth remaining noise
-        result = GaussianBlur(sigma=2).apply(result)
+        result = BlurGauss(sigma=2).apply(result)
 
         # Step 4: Detect colonies in detection matrix
         result = OtsuDetector().apply(result)
@@ -226,13 +226,13 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     .. code-block:: python
 
         from phenotypic import Image, ImagePipeline
-        from phenotypic.enhance import SubtractRollingBall, EnhanceLocalContrast, GaussianBlur
+        from phenotypic.enhance import SubtractRollingBall, EnhanceLocalContrast, BlurGauss
         from phenotypic.detect import OtsuDetector
 
         pipeline = ImagePipeline()
         pipeline.add(SubtractRollingBall(width=50))
         pipeline.add(EnhanceLocalContrast(kernel_size=50, clip_limit=0.02))
-        pipeline.add(GaussianBlur(sigma=2))
+        pipeline.add(BlurGauss(sigma=2))
         pipeline.add(OtsuDetector())
 
         # Process a batch of images with automatic parallelization
@@ -318,13 +318,13 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         Chaining multiple enhancements in pipeline:
 
         >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
+        >>> from phenotypic.enhance import BlurGauss, EnhanceLocalContrast
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.data import load_synth_yeast_plate
         >>>
         >>> image = load_synth_yeast_plate()
         >>> pipeline = ImagePipeline(pipe_cfgs=[
-        ...     GaussianBlur(sigma=1.5),
+        ...     BlurGauss(sigma=1.5),
         ...     EnhanceLocalContrast(clip_limit=2.0),
         ...     OtsuDetector()
         ... ])

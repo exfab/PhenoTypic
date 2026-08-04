@@ -22,6 +22,7 @@ from phenotypic.sdk_._io_constants import (
     CONFIG_SUFFIX_TUNING,
     ensure_typed_json_suffix,
 )
+from phenotypic.sdk_._class_aliases import canonical_class_name
 from phenotypic.sdk_.typing_ import polymorphic_field
 
 from ._evaluation import Evaluator, HeldOutConfig
@@ -96,7 +97,10 @@ def _validate_target(target: KnobTarget, ordered_ops: list) -> None:
         )
     actual = ordered_ops[op]
     actual_cls = type(actual).__name__
-    if target.op_class is not None and target.op_class != actual_cls:
+    if (
+        target.op_class is not None
+        and canonical_class_name(target.op_class) != actual_cls
+    ):
         raise ValueError(
             f"knob target {target.key!r} names class {target.op_class!r}, but op "
             f"{op} is a {actual_cls!r}"

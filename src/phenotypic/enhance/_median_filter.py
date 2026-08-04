@@ -31,7 +31,7 @@ class MedianFilter(Smoothing):
           edges must be suppressed without blurring colony margins.
 
     Consider Also:
-        - :class:`GaussianBlur` for faster, simpler smoothing when edge
+        - :class:`BlurGauss` for faster, simpler smoothing when edge
           preservation is less critical and noise is Gaussian rather than
           impulsive.
         - :class:`LocalEdgeDenoise` for bilateral edge-preserving smoothing

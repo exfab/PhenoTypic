@@ -81,7 +81,7 @@
           fill="#003660" fill-opacity="0.10"
           stroke="#003660" stroke-width="1"/>
     <text x="90" y="40" text-anchor="middle"
-          font-size="14" font-weight="600" fill="#003660">GaussianBlur</text>
+          font-size="14" font-weight="600" fill="#003660">BlurGauss</text>
     <text x="90" y="58" text-anchor="middle"
           font-size="11" fill="#475569">sigma = 2.0</text>
     <!-- Image-in port (left edge, blue circle) -->
@@ -201,7 +201,7 @@
        Wires connecting the canonical examples
        ================================================================= -->
   <!-- Input Image (right port at 180,232 in canvas coords) →
-       GaussianBlur image-in (left port at 280,216) — blue solid -->
+       BlurGauss image-in (left port at 280,216) — blue solid -->
   <line x1="180" y1="232" x2="274" y2="216"
         stroke="#1b75bc" stroke-width="3"
         marker-end="url(#arrow-image)"/>

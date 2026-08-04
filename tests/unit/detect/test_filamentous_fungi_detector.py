@@ -6,7 +6,7 @@ from phenotypic.detect import (
     TriangleDetector,
     FilamentousFungiDetector,
 )
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 
 
 class TestFilamentousFungiDetector:
@@ -85,7 +85,7 @@ class TestFilamentousFungiDetector:
 
         # Create pipeline for center detection with preprocessing
         center_pipeline = ImagePipeline(ops=[
-            GaussianBlur(sigma=0.5),
+            BlurGauss(sigma=0.5),
             OtsuDetector()
         ])
 
@@ -153,7 +153,7 @@ class TestFilamentousFungiDetector:
 
         # Build pipeline with enhancement and detection
         pipeline = ImagePipeline(ops=[
-            GaussianBlur(sigma=1.0),
+            BlurGauss(sigma=1.0),
             FilamentousFungiDetector(
                     inoculum_detector=OtsuDetector(),
             ),

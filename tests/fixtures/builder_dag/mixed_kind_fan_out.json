@@ -9,12 +9,12 @@
     },
     {
       "block_id": "mixed_src",
-      "class_name": "GaussianBlur",
+      "class_name": "BlurGauss",
       "label": "mixed_src"
     },
     {
       "block_id": "image_downstream",
-      "class_name": "GaussianBlur",
+      "class_name": "BlurGauss",
       "label": "image_downstream"
     },
     {

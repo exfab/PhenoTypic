@@ -167,15 +167,15 @@ class OperationRegistry:
         >>> # Get operations by category
         >>> enhancers = registry.get_by_category('Enhancer')
         >>> print([op.name for op in enhancers])
-        ['GaussianBlur', 'EnhanceLocalContrast', 'MedianFilter', ...]
+        ['BlurGauss', 'EnhanceLocalContrast', 'MedianFilter', ...]
         >>>
         >>> # Get specific operation info
-        >>> info = registry.get('GaussianBlur')
+        >>> info = registry.get('BlurGauss')
         >>> print(info.parameters.keys())
         dict_keys(['sigma'])
         >>>
         >>> # Create instance with defaults
-        >>> blur = registry.create_instance('GaussianBlur')
+        >>> blur = registry.create_instance('BlurGauss')
         >>> print(blur.sigma)
         1.0
     """

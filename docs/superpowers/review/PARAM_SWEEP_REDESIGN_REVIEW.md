@@ -310,7 +310,7 @@ of ~50 bounds are PLAUSIBLE despite the "24 unverified" commit)*
 | `FocusEdgePhase.k`                                                                                                                                                 | [0.0,20.0]             | 2.0       | **SUSPECT — degenerate at 0.0**          |
 | `FlattenIllumination.sigma`                                                                                                                                        | [40,300] log           | 200       | weak — default pinned near ceiling       |
 | `FocusBlobLoG.min_radius` vs `max_radius`                                                                                                                          | [1,5] / [8,50]         | 3 / 12    | safe but narrow                          |
-| `GaussianBlur.sigma`, `EnhanceBlockMatch.sigma_psd`, `MedianFilter.width` (odd via step=2), `WatershedDetector.compactness` (log), most `detect/*` geometry params | —                      | —         | PLAUSIBLE vs docstrings                  |
+| `BlurGauss.sigma`, `EnhanceBlockMatch.sigma_psd`, `MedianFilter.width` (odd via step=2), `WatershedDetector.compactness` (log), most `detect/*` geometry params | —                      | —         | PLAUSIBLE vs docstrings                  |
 
 Full per-param table (≈50 rows) is in the agent transcript; only the four SUSPECT rows
 above need action.

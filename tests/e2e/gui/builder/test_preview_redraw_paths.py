@@ -22,11 +22,11 @@ def preview_redraw_sandbox(
     """Build a sandbox containing one loadable pipeline."""
     from phenotypic import ImagePipeline
     from phenotypic.detect import OtsuDetector
-    from phenotypic.enhance import GaussianBlur
+    from phenotypic.enhance import BlurGauss
 
     sandbox = _build_sandbox(tmp_path_factory.mktemp("preview_redraw"))
     pipeline = ImagePipeline(
-        ops=[GaussianBlur(sigma=1.0), OtsuDetector()],
+        ops=[BlurGauss(sigma=1.0), OtsuDetector()],
         name="preview-redraw-load",
     )
     (sandbox / "preview-redraw.json.pht-pipe").write_text(
@@ -93,7 +93,7 @@ def test_load_prefab_and_delete_keep_preview_mount(
 ) -> None:
     """Every redraw path leaves preview ownership with the stable mount."""
     _open_builder(page, hub_url)
-    _click_palette_button(page, "GaussianBlur")
+    _click_palette_button(page, "BlurGauss")
     page.locator("#btn-run-preview").click()
     expect(page.locator("#inspector-preview img")).to_have_count(
         1,
@@ -106,7 +106,7 @@ def test_load_prefab_and_delete_keep_preview_mount(
 
     page.locator(
         "button.linear-node-title-button",
-        has_text="GaussianBlur",
+        has_text="BlurGauss",
     ).click()
     page.locator("#btn-run-preview").click()
     expect(page.locator("#inspector-preview img")).to_have_count(
@@ -120,7 +120,7 @@ def test_load_prefab_and_delete_keep_preview_mount(
     _load_saved_pipeline(page)
     page.locator(
         "button.linear-node-title-button",
-        has_text="GaussianBlur",
+        has_text="BlurGauss",
     ).click()
     page.locator("#btn-run-preview").click()
     expect(page.locator("#inspector-preview img")).to_have_count(

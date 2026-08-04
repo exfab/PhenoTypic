@@ -9,7 +9,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
-from phenotypic.enhance import GaussianBlur
+from phenotypic.enhance import BlurGauss
 from phenotypic.tune.score import QCScorer
 from phenotypic.tune._evaluation import build_pipeline
 from phenotypic.tune.strategy._enumerate import enumerate_grid
@@ -43,7 +43,7 @@ def _legacy_gaussian_pipeline(*sigmas: float) -> dict:
         key = "GaussianBlur" if index == 0 else f"GaussianBlur_{index}"
         pipe_cfgs[key] = {
             "class": "GaussianBlur",
-            "params": GaussianBlur(sigma=sigma).model_dump(mode="json"),
+            "params": BlurGauss(sigma=sigma).model_dump(mode="json"),
         }
     return {
         "desc": None,
