@@ -97,7 +97,7 @@ class TestRecompileCliRouting:
             include_dataset_column=True,
             overlay_alpha=0.3,
             checkpoint_interval=None,
-            slurm_args={"slurm_partition": "compute", "time": 30},
+            slurm_args={"slurm_partition": "compute", "time": "00:30:00"},
             wait=False,
             no_qc=False,
         )

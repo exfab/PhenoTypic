@@ -232,8 +232,12 @@ class TestDashboardAnalysisTab:
         assert "tab-progress" in html
         assert "tab-readme" in html
         assert "tab-download" in html
-        assert "progress/manifest.json" in html
-        assert "progress/failures.jsonl" in html
+        assert (
+            'const PROGRESS_PREFIX = ROOT_PREFIX + ".phenotypic/progress/";'
+            in html
+        )
+        assert "PROGRESS_PREFIX + 'manifest.json?'" in html
+        assert "PROGRESS_PREFIX + 'failures.jsonl?'" in html
         # Analysis is now a separate page
         assert "analysis.html" in html
         assert "tab-analysis" not in html
