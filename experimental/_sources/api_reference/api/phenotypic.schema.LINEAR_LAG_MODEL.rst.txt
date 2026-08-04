@@ -1,0 +1,107 @@
+phenotypic.schema.LINEAR\_LAG\_MODEL
+====================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: LINEAR_LAG_MODEL
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~LINEAR_LAG_MODEL.kind
+      ~LINEAR_LAG_MODEL.category
+      ~LINEAR_LAG_MODEL.tier
+      ~LINEAR_LAG_MODEL.rembi_module
+      ~LINEAR_LAG_MODEL.header_scheme
+      ~LINEAR_LAG_MODEL.member_for_header
+      ~LINEAR_LAG_MODEL.owns_header
+      ~LINEAR_LAG_MODEL.get_labels
+      ~LINEAR_LAG_MODEL.get_headers
+      ~LINEAR_LAG_MODEL.rst_table
+      ~LINEAR_LAG_MODEL.append_rst_to_doc
+      ~LINEAR_LAG_MODEL.encode
+      ~LINEAR_LAG_MODEL.replace
+      ~LINEAR_LAG_MODEL.split
+      ~LINEAR_LAG_MODEL.rsplit
+      ~LINEAR_LAG_MODEL.join
+      ~LINEAR_LAG_MODEL.capitalize
+      ~LINEAR_LAG_MODEL.casefold
+      ~LINEAR_LAG_MODEL.title
+      ~LINEAR_LAG_MODEL.center
+      ~LINEAR_LAG_MODEL.count
+      ~LINEAR_LAG_MODEL.expandtabs
+      ~LINEAR_LAG_MODEL.find
+      ~LINEAR_LAG_MODEL.partition
+      ~LINEAR_LAG_MODEL.index
+      ~LINEAR_LAG_MODEL.ljust
+      ~LINEAR_LAG_MODEL.lower
+      ~LINEAR_LAG_MODEL.lstrip
+      ~LINEAR_LAG_MODEL.rfind
+      ~LINEAR_LAG_MODEL.rindex
+      ~LINEAR_LAG_MODEL.rjust
+      ~LINEAR_LAG_MODEL.rstrip
+      ~LINEAR_LAG_MODEL.rpartition
+      ~LINEAR_LAG_MODEL.splitlines
+      ~LINEAR_LAG_MODEL.strip
+      ~LINEAR_LAG_MODEL.swapcase
+      ~LINEAR_LAG_MODEL.translate
+      ~LINEAR_LAG_MODEL.upper
+      ~LINEAR_LAG_MODEL.startswith
+      ~LINEAR_LAG_MODEL.endswith
+      ~LINEAR_LAG_MODEL.removeprefix
+      ~LINEAR_LAG_MODEL.removesuffix
+      ~LINEAR_LAG_MODEL.isascii
+      ~LINEAR_LAG_MODEL.islower
+      ~LINEAR_LAG_MODEL.isupper
+      ~LINEAR_LAG_MODEL.istitle
+      ~LINEAR_LAG_MODEL.isspace
+      ~LINEAR_LAG_MODEL.isdecimal
+      ~LINEAR_LAG_MODEL.isdigit
+      ~LINEAR_LAG_MODEL.isnumeric
+      ~LINEAR_LAG_MODEL.isalpha
+      ~LINEAR_LAG_MODEL.isalnum
+      ~LINEAR_LAG_MODEL.isidentifier
+      ~LINEAR_LAG_MODEL.isprintable
+      ~LINEAR_LAG_MODEL.zfill
+      ~LINEAR_LAG_MODEL.format
+      ~LINEAR_LAG_MODEL.format_map
+      ~LINEAR_LAG_MODEL.maketrans
+      ~LINEAR_LAG_MODEL.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LINEAR_LAG_MODEL.CATEGORY
+      ~LINEAR_LAG_MODEL.resolved_kind
+      ~LINEAR_LAG_MODEL.resolved_tier
+      ~LINEAR_LAG_MODEL.resolved_rembi_module
+      ~LINEAR_LAG_MODEL.use_label
+      ~LINEAR_LAG_MODEL.use_badge
+      ~LINEAR_LAG_MODEL.v
+      ~LINEAR_LAG_MODEL.s0
+      ~LINEAR_LAG_MODEL.lam
+      ~LINEAR_LAG_MODEL.alpha
+      ~LINEAR_LAG_MODEL.label
+      ~LINEAR_LAG_MODEL.desc
+      ~LINEAR_LAG_MODEL.bio_desc
+      ~LINEAR_LAG_MODEL.image
+      ~LINEAR_LAG_MODEL.pair
+      ~LINEAR_LAG_MODEL.tier_override
+      ~LINEAR_LAG_MODEL.derivation_type
+      ~LINEAR_LAG_MODEL.derives_from
+      ~LINEAR_LAG_MODEL.rembi_module_override
+   
+   

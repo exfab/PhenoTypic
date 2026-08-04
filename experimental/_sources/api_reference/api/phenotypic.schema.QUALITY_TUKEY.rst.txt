@@ -1,0 +1,107 @@
+phenotypic.schema.QUALITY\_TUKEY
+================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: QUALITY_TUKEY
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~QUALITY_TUKEY.kind
+      ~QUALITY_TUKEY.category
+      ~QUALITY_TUKEY.tier
+      ~QUALITY_TUKEY.rembi_module
+      ~QUALITY_TUKEY.header_scheme
+      ~QUALITY_TUKEY.member_for_header
+      ~QUALITY_TUKEY.owns_header
+      ~QUALITY_TUKEY.get_labels
+      ~QUALITY_TUKEY.get_headers
+      ~QUALITY_TUKEY.rst_table
+      ~QUALITY_TUKEY.append_rst_to_doc
+      ~QUALITY_TUKEY.encode
+      ~QUALITY_TUKEY.replace
+      ~QUALITY_TUKEY.split
+      ~QUALITY_TUKEY.rsplit
+      ~QUALITY_TUKEY.join
+      ~QUALITY_TUKEY.capitalize
+      ~QUALITY_TUKEY.casefold
+      ~QUALITY_TUKEY.title
+      ~QUALITY_TUKEY.center
+      ~QUALITY_TUKEY.count
+      ~QUALITY_TUKEY.expandtabs
+      ~QUALITY_TUKEY.find
+      ~QUALITY_TUKEY.partition
+      ~QUALITY_TUKEY.index
+      ~QUALITY_TUKEY.ljust
+      ~QUALITY_TUKEY.lower
+      ~QUALITY_TUKEY.lstrip
+      ~QUALITY_TUKEY.rfind
+      ~QUALITY_TUKEY.rindex
+      ~QUALITY_TUKEY.rjust
+      ~QUALITY_TUKEY.rstrip
+      ~QUALITY_TUKEY.rpartition
+      ~QUALITY_TUKEY.splitlines
+      ~QUALITY_TUKEY.strip
+      ~QUALITY_TUKEY.swapcase
+      ~QUALITY_TUKEY.translate
+      ~QUALITY_TUKEY.upper
+      ~QUALITY_TUKEY.startswith
+      ~QUALITY_TUKEY.endswith
+      ~QUALITY_TUKEY.removeprefix
+      ~QUALITY_TUKEY.removesuffix
+      ~QUALITY_TUKEY.isascii
+      ~QUALITY_TUKEY.islower
+      ~QUALITY_TUKEY.isupper
+      ~QUALITY_TUKEY.istitle
+      ~QUALITY_TUKEY.isspace
+      ~QUALITY_TUKEY.isdecimal
+      ~QUALITY_TUKEY.isdigit
+      ~QUALITY_TUKEY.isnumeric
+      ~QUALITY_TUKEY.isalpha
+      ~QUALITY_TUKEY.isalnum
+      ~QUALITY_TUKEY.isidentifier
+      ~QUALITY_TUKEY.isprintable
+      ~QUALITY_TUKEY.zfill
+      ~QUALITY_TUKEY.format
+      ~QUALITY_TUKEY.format_map
+      ~QUALITY_TUKEY.maketrans
+      ~QUALITY_TUKEY.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QUALITY_TUKEY.CATEGORY
+      ~QUALITY_TUKEY.resolved_kind
+      ~QUALITY_TUKEY.resolved_tier
+      ~QUALITY_TUKEY.resolved_rembi_module
+      ~QUALITY_TUKEY.use_label
+      ~QUALITY_TUKEY.use_badge
+      ~QUALITY_TUKEY.LOWER_FENCE
+      ~QUALITY_TUKEY.UPPER_FENCE
+      ~QUALITY_TUKEY.NUM_OUTLIERS
+      ~QUALITY_TUKEY.NUM_MEMBERS
+      ~QUALITY_TUKEY.label
+      ~QUALITY_TUKEY.desc
+      ~QUALITY_TUKEY.bio_desc
+      ~QUALITY_TUKEY.image
+      ~QUALITY_TUKEY.pair
+      ~QUALITY_TUKEY.tier_override
+      ~QUALITY_TUKEY.derivation_type
+      ~QUALITY_TUKEY.derives_from
+      ~QUALITY_TUKEY.rembi_module_override
+   
+   

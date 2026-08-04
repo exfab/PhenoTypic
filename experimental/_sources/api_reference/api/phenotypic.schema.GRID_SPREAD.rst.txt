@@ -1,0 +1,104 @@
+phenotypic.schema.GRID\_SPREAD
+==============================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: GRID_SPREAD
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GRID_SPREAD.kind
+      ~GRID_SPREAD.category
+      ~GRID_SPREAD.tier
+      ~GRID_SPREAD.rembi_module
+      ~GRID_SPREAD.header_scheme
+      ~GRID_SPREAD.member_for_header
+      ~GRID_SPREAD.owns_header
+      ~GRID_SPREAD.get_labels
+      ~GRID_SPREAD.get_headers
+      ~GRID_SPREAD.rst_table
+      ~GRID_SPREAD.append_rst_to_doc
+      ~GRID_SPREAD.encode
+      ~GRID_SPREAD.replace
+      ~GRID_SPREAD.split
+      ~GRID_SPREAD.rsplit
+      ~GRID_SPREAD.join
+      ~GRID_SPREAD.capitalize
+      ~GRID_SPREAD.casefold
+      ~GRID_SPREAD.title
+      ~GRID_SPREAD.center
+      ~GRID_SPREAD.count
+      ~GRID_SPREAD.expandtabs
+      ~GRID_SPREAD.find
+      ~GRID_SPREAD.partition
+      ~GRID_SPREAD.index
+      ~GRID_SPREAD.ljust
+      ~GRID_SPREAD.lower
+      ~GRID_SPREAD.lstrip
+      ~GRID_SPREAD.rfind
+      ~GRID_SPREAD.rindex
+      ~GRID_SPREAD.rjust
+      ~GRID_SPREAD.rstrip
+      ~GRID_SPREAD.rpartition
+      ~GRID_SPREAD.splitlines
+      ~GRID_SPREAD.strip
+      ~GRID_SPREAD.swapcase
+      ~GRID_SPREAD.translate
+      ~GRID_SPREAD.upper
+      ~GRID_SPREAD.startswith
+      ~GRID_SPREAD.endswith
+      ~GRID_SPREAD.removeprefix
+      ~GRID_SPREAD.removesuffix
+      ~GRID_SPREAD.isascii
+      ~GRID_SPREAD.islower
+      ~GRID_SPREAD.isupper
+      ~GRID_SPREAD.istitle
+      ~GRID_SPREAD.isspace
+      ~GRID_SPREAD.isdecimal
+      ~GRID_SPREAD.isdigit
+      ~GRID_SPREAD.isnumeric
+      ~GRID_SPREAD.isalpha
+      ~GRID_SPREAD.isalnum
+      ~GRID_SPREAD.isidentifier
+      ~GRID_SPREAD.isprintable
+      ~GRID_SPREAD.zfill
+      ~GRID_SPREAD.format
+      ~GRID_SPREAD.format_map
+      ~GRID_SPREAD.maketrans
+      ~GRID_SPREAD.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GRID_SPREAD.CATEGORY
+      ~GRID_SPREAD.resolved_kind
+      ~GRID_SPREAD.resolved_tier
+      ~GRID_SPREAD.resolved_rembi_module
+      ~GRID_SPREAD.use_label
+      ~GRID_SPREAD.use_badge
+      ~GRID_SPREAD.OBJECT_SPREAD
+      ~GRID_SPREAD.label
+      ~GRID_SPREAD.desc
+      ~GRID_SPREAD.bio_desc
+      ~GRID_SPREAD.image
+      ~GRID_SPREAD.pair
+      ~GRID_SPREAD.tier_override
+      ~GRID_SPREAD.derivation_type
+      ~GRID_SPREAD.derives_from
+      ~GRID_SPREAD.rembi_module_override
+   
+   

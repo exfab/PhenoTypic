@@ -1,0 +1,105 @@
+phenotypic.schema.EDGE\_CORRECTION
+==================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: EDGE_CORRECTION
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~EDGE_CORRECTION.kind
+      ~EDGE_CORRECTION.category
+      ~EDGE_CORRECTION.tier
+      ~EDGE_CORRECTION.rembi_module
+      ~EDGE_CORRECTION.header_scheme
+      ~EDGE_CORRECTION.member_for_header
+      ~EDGE_CORRECTION.owns_header
+      ~EDGE_CORRECTION.get_labels
+      ~EDGE_CORRECTION.get_headers
+      ~EDGE_CORRECTION.rst_table
+      ~EDGE_CORRECTION.append_rst_to_doc
+      ~EDGE_CORRECTION.encode
+      ~EDGE_CORRECTION.replace
+      ~EDGE_CORRECTION.split
+      ~EDGE_CORRECTION.rsplit
+      ~EDGE_CORRECTION.join
+      ~EDGE_CORRECTION.capitalize
+      ~EDGE_CORRECTION.casefold
+      ~EDGE_CORRECTION.title
+      ~EDGE_CORRECTION.center
+      ~EDGE_CORRECTION.count
+      ~EDGE_CORRECTION.expandtabs
+      ~EDGE_CORRECTION.find
+      ~EDGE_CORRECTION.partition
+      ~EDGE_CORRECTION.index
+      ~EDGE_CORRECTION.ljust
+      ~EDGE_CORRECTION.lower
+      ~EDGE_CORRECTION.lstrip
+      ~EDGE_CORRECTION.rfind
+      ~EDGE_CORRECTION.rindex
+      ~EDGE_CORRECTION.rjust
+      ~EDGE_CORRECTION.rstrip
+      ~EDGE_CORRECTION.rpartition
+      ~EDGE_CORRECTION.splitlines
+      ~EDGE_CORRECTION.strip
+      ~EDGE_CORRECTION.swapcase
+      ~EDGE_CORRECTION.translate
+      ~EDGE_CORRECTION.upper
+      ~EDGE_CORRECTION.startswith
+      ~EDGE_CORRECTION.endswith
+      ~EDGE_CORRECTION.removeprefix
+      ~EDGE_CORRECTION.removesuffix
+      ~EDGE_CORRECTION.isascii
+      ~EDGE_CORRECTION.islower
+      ~EDGE_CORRECTION.isupper
+      ~EDGE_CORRECTION.istitle
+      ~EDGE_CORRECTION.isspace
+      ~EDGE_CORRECTION.isdecimal
+      ~EDGE_CORRECTION.isdigit
+      ~EDGE_CORRECTION.isnumeric
+      ~EDGE_CORRECTION.isalpha
+      ~EDGE_CORRECTION.isalnum
+      ~EDGE_CORRECTION.isidentifier
+      ~EDGE_CORRECTION.isprintable
+      ~EDGE_CORRECTION.zfill
+      ~EDGE_CORRECTION.format
+      ~EDGE_CORRECTION.format_map
+      ~EDGE_CORRECTION.maketrans
+      ~EDGE_CORRECTION.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~EDGE_CORRECTION.CATEGORY
+      ~EDGE_CORRECTION.resolved_kind
+      ~EDGE_CORRECTION.resolved_tier
+      ~EDGE_CORRECTION.resolved_rembi_module
+      ~EDGE_CORRECTION.use_label
+      ~EDGE_CORRECTION.use_badge
+      ~EDGE_CORRECTION.CORRECTED_CAP
+      ~EDGE_CORRECTION.NEW_VAL
+      ~EDGE_CORRECTION.label
+      ~EDGE_CORRECTION.desc
+      ~EDGE_CORRECTION.bio_desc
+      ~EDGE_CORRECTION.image
+      ~EDGE_CORRECTION.pair
+      ~EDGE_CORRECTION.tier_override
+      ~EDGE_CORRECTION.derivation_type
+      ~EDGE_CORRECTION.derives_from
+      ~EDGE_CORRECTION.rembi_module_override
+   
+   

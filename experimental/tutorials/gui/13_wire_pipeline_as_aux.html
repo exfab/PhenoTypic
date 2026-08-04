@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Fill a scalar aux target" href="12_aux_wire_in_dag.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -663,7 +663,7 @@
 with a single detector, fill it with a nested <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code>, drill into that
 pipeline, and build a fixed linear chain inside it.</p>
 <p>This tutorial fills <code class="docutils literal notranslate"><span class="pre">FilamentousFungiDetector.inoculum_detector</span></code> with a nested
-pipeline containing <code class="docutils literal notranslate"><span class="pre">GaussianBlur</span> <span class="pre">-&gt;</span> <span class="pre">OtsuDetector</span></code>.</p>
+pipeline containing <code class="docutils literal notranslate"><span class="pre">BlurGauss</span> <span class="pre">-&gt;</span> <span class="pre">OtsuDetector</span></code>.</p>
 <section id="step-1-create-the-embedded-pipeline">
 <h2>Step 1 - Create the embedded pipeline<a class="headerlink" href="#step-1-create-the-embedded-pipeline" title="Link to this heading">#</a></h2>
 <p>Add <code class="docutils literal notranslate"><span class="pre">FilamentousFungiDetector</span></code> to the main map, select it, and click the gold
@@ -676,8 +676,8 @@ value rather than the root pipeline.</p>
 </section>
 <section id="step-2-build-the-nested-chain">
 <h2>Step 2 - Build the nested chain<a class="headerlink" href="#step-2-build-the-nested-chain" title="Link to this heading">#</a></h2>
-<p>Inside the embedded scope, click <code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code>, then <code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code>:</p>
-<p><img alt="Nested pipeline scope with GaussianBlur and OtsuDetector in a fixed linear chain." src="../../_images/02_chain_in_container.png" /></p>
+<p>Inside the embedded scope, click <code class="docutils literal notranslate"><span class="pre">BlurGauss</span></code>, then <code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code>:</p>
+<p><img alt="Nested pipeline scope with BlurGauss and OtsuDetector in a fixed linear chain." src="../../_images/02_chain_in_container.png" /></p>
 <p>The nested scope has the same controls as the root: fixed node cards, visible
 ports, docstring help, side-loader parameters, and view-only zoom/fit controls.</p>
 </section>

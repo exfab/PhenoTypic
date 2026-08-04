@@ -1,0 +1,111 @@
+phenotypic.schema.GRID
+======================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: GRID
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GRID.kind
+      ~GRID.category
+      ~GRID.tier
+      ~GRID.rembi_module
+      ~GRID.header_scheme
+      ~GRID.member_for_header
+      ~GRID.owns_header
+      ~GRID.get_labels
+      ~GRID.get_headers
+      ~GRID.rst_table
+      ~GRID.append_rst_to_doc
+      ~GRID.encode
+      ~GRID.replace
+      ~GRID.split
+      ~GRID.rsplit
+      ~GRID.join
+      ~GRID.capitalize
+      ~GRID.casefold
+      ~GRID.title
+      ~GRID.center
+      ~GRID.count
+      ~GRID.expandtabs
+      ~GRID.find
+      ~GRID.partition
+      ~GRID.index
+      ~GRID.ljust
+      ~GRID.lower
+      ~GRID.lstrip
+      ~GRID.rfind
+      ~GRID.rindex
+      ~GRID.rjust
+      ~GRID.rstrip
+      ~GRID.rpartition
+      ~GRID.splitlines
+      ~GRID.strip
+      ~GRID.swapcase
+      ~GRID.translate
+      ~GRID.upper
+      ~GRID.startswith
+      ~GRID.endswith
+      ~GRID.removeprefix
+      ~GRID.removesuffix
+      ~GRID.isascii
+      ~GRID.islower
+      ~GRID.isupper
+      ~GRID.istitle
+      ~GRID.isspace
+      ~GRID.isdecimal
+      ~GRID.isdigit
+      ~GRID.isnumeric
+      ~GRID.isalpha
+      ~GRID.isalnum
+      ~GRID.isidentifier
+      ~GRID.isprintable
+      ~GRID.zfill
+      ~GRID.format
+      ~GRID.format_map
+      ~GRID.maketrans
+      ~GRID.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GRID.CATEGORY
+      ~GRID.resolved_kind
+      ~GRID.resolved_tier
+      ~GRID.resolved_rembi_module
+      ~GRID.use_label
+      ~GRID.use_badge
+      ~GRID.ROW_NUM
+      ~GRID.ROW_INTERVAL_START
+      ~GRID.ROW_INTERVAL_END
+      ~GRID.COL_NUM
+      ~GRID.COL_INTERVAL_START
+      ~GRID.COL_INTERVAL_END
+      ~GRID.ROW_MAJOR_IDX
+      ~GRID.COL_MAJOR_IDX
+      ~GRID.label
+      ~GRID.desc
+      ~GRID.bio_desc
+      ~GRID.image
+      ~GRID.pair
+      ~GRID.tier_override
+      ~GRID.derivation_type
+      ~GRID.derives_from
+      ~GRID.rembi_module_override
+   
+   

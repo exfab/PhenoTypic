@@ -1,0 +1,1401 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.schema._orientation_zones &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/schema/_orientation_zones';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/schema/_orientation_zones.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.18.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.schema._orientation_zones</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.schema._orientation_zones</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Public header schema for MeasureOrientationZones (category ``OrientZones``).</span>
+
+<span class="sd">Existing absolute-orientation headers use</span>
+<span class="sd">``OrientZones_&lt;Metric&gt;-&lt;Variant&gt;-&lt;Zone&gt;``. Radial-relative headers use the</span>
+<span class="sd">detected-structure selector explicitly:</span>
+<span class="sd">``OrientZones_&lt;Metric&gt;-Mask-&lt;Region&gt;``. Region is usually one of</span>
+<span class="sd">{Overall, Dense, Sparse}; longer-range rotation also includes the paired</span>
+<span class="sd">DenseToSparse transition.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DescriptiveTrait</span><span class="p">,</span> <span class="n">QualityInfo</span>
+
+
+<div class="viewcode-block" id="ORIENTATION_ZONE_PRIMARY">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_PRIMARY.html#phenotypic.schema.ORIENTATION_ZONE_PRIMARY">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ORIENTATION_ZONE_PRIMARY</span><span class="p">(</span><span class="n">DescriptiveTrait</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Primary full-length outward-rotation traits by radial zone.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ORIENTATION_ZONE_PRIMARY.category">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_PRIMARY.html#phenotypic.schema.ORIENTATION_ZONE_PRIMARY.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;OrientZones&quot;</span></div>
+
+
+    <span class="n">OUTWARD_ROTATION_SUSTAINED_PEAK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationSustainedPeak-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Largest rolling-median absolute cumulative rotation across consecutive &quot;</span>
+        <span class="s2">&quot;supported literal skeleton-ring crossings from the inferred inoculum &quot;</span>
+        <span class="s2">&quot;boundary through the full detected object extent. Reported in degrees, &quot;</span>
+        <span class="s2">&quot;nonnegative with no fixed upper bound. The default three-ring window &quot;</span>
+        <span class="s2">&quot;rejects a one-ring spike; NaN means no complete supported window.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_SUSTAINED_PEAK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationSustainedPeak-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Largest rolling-median absolute cumulative rotation across consecutive &quot;</span>
+        <span class="s2">&quot;supported literal skeleton-ring crossings from the inferred inoculum &quot;</span>
+        <span class="s2">&quot;boundary to dense_end. Reported in degrees, nonnegative with no fixed &quot;</span>
+        <span class="s2">&quot;upper bound. The default three-ring window rejects a one-ring spike; &quot;</span>
+        <span class="s2">&quot;NaN means no complete supported window.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_SUSTAINED_PEAK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationSustainedPeak-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Largest rolling-median absolute cumulative rotation across consecutive &quot;</span>
+        <span class="s2">&quot;supported literal skeleton-ring crossings from dense_end through the &quot;</span>
+        <span class="s2">&quot;full detected object extent. Reported in degrees, nonnegative with no &quot;</span>
+        <span class="s2">&quot;fixed upper bound. The default three-ring window rejects a one-ring &quot;</span>
+        <span class="s2">&quot;spike; NaN means no complete supported window. Cumulative rotation is &quot;</span>
+        <span class="s2">&quot;not rebased at dense_end, so this Sparse magnitude may include rotation &quot;</span>
+        <span class="s2">&quot;accumulated while the profile was in Dense.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_NET_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationNet-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Outer endpoint median minus inner endpoint median of cumulative literal &quot;</span>
+        <span class="s2">&quot;skeleton-ring rotation along the longest supported run from the inferred &quot;</span>
+        <span class="s2">&quot;inoculum boundary through the full detected object extent. Reported in &quot;</span>
+        <span class="s2">&quot;signed degrees with no fixed bounds; positive is clockwise and negative &quot;</span>
+        <span class="s2">&quot;is counterclockwise while moving outward in image coordinates. NaN means &quot;</span>
+        <span class="s2">&quot;the run is shorter than the configured minimum.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_NET_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationNet-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Outer endpoint median minus inner endpoint median of cumulative literal &quot;</span>
+        <span class="s2">&quot;skeleton-ring rotation along the longest supported run from the inferred &quot;</span>
+        <span class="s2">&quot;inoculum boundary to dense_end. Reported in signed degrees with no fixed &quot;</span>
+        <span class="s2">&quot;bounds; positive is clockwise and negative is counterclockwise while &quot;</span>
+        <span class="s2">&quot;moving outward in image coordinates. NaN means the run is shorter than &quot;</span>
+        <span class="s2">&quot;the configured minimum.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_NET_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationNet-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Outer endpoint median minus inner endpoint median of cumulative literal &quot;</span>
+        <span class="s2">&quot;skeleton-ring rotation along the longest supported run from dense_end &quot;</span>
+        <span class="s2">&quot;through the full detected object extent. Reported in signed degrees with &quot;</span>
+        <span class="s2">&quot;no fixed bounds; positive is clockwise and negative is counterclockwise &quot;</span>
+        <span class="s2">&quot;while moving outward in image coordinates. NaN means the run is shorter &quot;</span>
+        <span class="s2">&quot;than the configured minimum. Because this is a difference, cumulative &quot;</span>
+        <span class="s2">&quot;rotation carried into Sparse cancels from the result.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RATE_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRate-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Median of all pairwise cumulative-rotation slopes along the longest &quot;</span>
+        <span class="s2">&quot;supported literal skeleton-ring run from the inferred inoculum boundary &quot;</span>
+        <span class="s2">&quot;through the full detected object extent. Reported in signed degrees per &quot;</span>
+        <span class="s2">&quot;pixel; positive is clockwise and negative is counterclockwise while &quot;</span>
+        <span class="s2">&quot;moving outward in image coordinates. NaN means the run is shorter than &quot;</span>
+        <span class="s2">&quot;the configured minimum.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RATE_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRate-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Median of all pairwise cumulative-rotation slopes along the longest &quot;</span>
+        <span class="s2">&quot;supported literal skeleton-ring run from the inferred inoculum boundary &quot;</span>
+        <span class="s2">&quot;to dense_end. Reported in signed degrees per pixel; positive is clockwise &quot;</span>
+        <span class="s2">&quot;and negative is counterclockwise while moving outward in image &quot;</span>
+        <span class="s2">&quot;coordinates. NaN means the run is shorter than the configured minimum.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RATE_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRate-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Median of all pairwise cumulative-rotation slopes along the longest &quot;</span>
+        <span class="s2">&quot;supported literal skeleton-ring run from dense_end through the full &quot;</span>
+        <span class="s2">&quot;detected object extent. Reported in signed degrees per pixel; positive &quot;</span>
+        <span class="s2">&quot;is clockwise and negative is counterclockwise while moving outward in &quot;</span>
+        <span class="s2">&quot;image coordinates. NaN means the run is shorter than the configured &quot;</span>
+        <span class="s2">&quot;minimum. The slope is unchanged by cumulative rotation carried into &quot;</span>
+        <span class="s2">&quot;Sparse.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_CONSISTENCY_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationConsistency-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Absolute Kendall tau-b association between radius and cumulative literal &quot;</span>
+        <span class="s2">&quot;skeleton-ring rotation along the longest supported run from the inferred &quot;</span>
+        <span class="s2">&quot;inoculum boundary through the full detected object extent. Dimensionless &quot;</span>
+        <span class="s2">&quot;in [0, 1]; 1 is fully monotonic and values near 0 indicate reversals, &quot;</span>
+        <span class="s2">&quot;plateaus, or no ordered trend. Direction is carried by the rotation &quot;</span>
+        <span class="s2">&quot;rate. NaN means the run is shorter than the configured minimum.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_CONSISTENCY_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationConsistency-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Absolute Kendall tau-b association between radius and cumulative literal &quot;</span>
+        <span class="s2">&quot;skeleton-ring rotation along the longest supported run from the inferred &quot;</span>
+        <span class="s2">&quot;inoculum boundary to dense_end. Dimensionless in [0, 1]; 1 is fully &quot;</span>
+        <span class="s2">&quot;monotonic and values near 0 indicate reversals, plateaus, or no ordered &quot;</span>
+        <span class="s2">&quot;trend. Direction is carried by the rotation rate. NaN means the run is &quot;</span>
+        <span class="s2">&quot;shorter than the configured minimum.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_CONSISTENCY_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationConsistency-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Absolute Kendall tau-b association between radius and cumulative literal &quot;</span>
+        <span class="s2">&quot;skeleton-ring rotation along the longest supported run from dense_end &quot;</span>
+        <span class="s2">&quot;through the full detected object extent. Dimensionless in [0, 1]; 1 is &quot;</span>
+        <span class="s2">&quot;fully monotonic and values near 0 indicate reversals, plateaus, or no &quot;</span>
+        <span class="s2">&quot;ordered trend. Direction is carried by the rotation rate, and the rank &quot;</span>
+        <span class="s2">&quot;association is unchanged by rotation carried into Sparse. NaN means the &quot;</span>
+        <span class="s2">&quot;run is shorter than the configured minimum.&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ORIENTATION_ZONE_DIAGNOSTIC">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.html#phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ORIENTATION_ZONE_DIAGNOSTIC</span><span class="p">(</span><span class="n">QualityInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Opt-in validation, comparator, and legacy orientation-zone columns.</span>
+
+<span class="sd">    The literal skeleton-ring diagnostics use the detected-object mask from the</span>
+<span class="sd">    inferred inoculum boundary through the full object extent. The retained</span>
+<span class="sd">    legacy field diagnostics use the structure-tensor field in symmetric-radius</span>
+<span class="sd">    zones and include ``Radial`` (all tile pixels) and ``Mask`` variants. See</span>
+<span class="sd">    :class:`MeasureOrientationZones` for parameters and method.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ORIENTATION_ZONE_DIAGNOSTIC.category">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.html#phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;OrientZones&quot;</span></div>
+
+
+    <span class="n">OUTWARD_ROTATION_RAW_PEAK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRawPeak-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Largest absolute cumulative literal skeleton-ring rotation from the &quot;</span>
+        <span class="s2">&quot;inferred inoculum boundary through the full detected object extent. &quot;</span>
+        <span class="s2">&quot;Reported in degrees, nonnegative with no fixed upper bound. This raw &quot;</span>
+        <span class="s2">&quot;maximum is outlier-sensitive and should be compared with the primary &quot;</span>
+        <span class="s2">&quot;sustained peak.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RAW_PEAK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRawPeak-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Largest absolute cumulative literal skeleton-ring rotation from the &quot;</span>
+        <span class="s2">&quot;inferred inoculum boundary to dense_end. Reported in degrees, &quot;</span>
+        <span class="s2">&quot;nonnegative with no fixed upper bound. This raw maximum is &quot;</span>
+        <span class="s2">&quot;outlier-sensitive and should be compared with the primary sustained &quot;</span>
+        <span class="s2">&quot;peak.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RAW_PEAK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRawPeak-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Largest absolute cumulative literal skeleton-ring rotation from &quot;</span>
+        <span class="s2">&quot;dense_end through the full detected object extent. Reported in degrees, &quot;</span>
+        <span class="s2">&quot;nonnegative with no fixed upper bound. This raw maximum is &quot;</span>
+        <span class="s2">&quot;outlier-sensitive. Cumulative rotation is not rebased at dense_end, so &quot;</span>
+        <span class="s2">&quot;this Sparse magnitude may include rotation accumulated while the profile &quot;</span>
+        <span class="s2">&quot;was in Dense.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_P90_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationP90-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;90th percentile of absolute cumulative literal skeleton-ring rotation &quot;</span>
+        <span class="s2">&quot;over supported rings from the inferred inoculum boundary through the &quot;</span>
+        <span class="s2">&quot;full detected object extent. Reported in degrees, nonnegative with no &quot;</span>
+        <span class="s2">&quot;fixed upper bound. This validation comparator ignores radial order.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_P90_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationP90-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;90th percentile of absolute cumulative literal skeleton-ring rotation &quot;</span>
+        <span class="s2">&quot;over supported rings from the inferred inoculum boundary to dense_end. &quot;</span>
+        <span class="s2">&quot;Reported in degrees, nonnegative with no fixed upper bound. This &quot;</span>
+        <span class="s2">&quot;validation comparator ignores radial order.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_P90_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationP90-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;90th percentile of absolute cumulative literal skeleton-ring rotation &quot;</span>
+        <span class="s2">&quot;over supported rings from dense_end through the full detected object &quot;</span>
+        <span class="s2">&quot;extent. Reported in degrees, nonnegative with no fixed upper bound. This &quot;</span>
+        <span class="s2">&quot;comparator ignores radial order. Cumulative rotation is not rebased at &quot;</span>
+        <span class="s2">&quot;dense_end, so this Sparse magnitude may include rotation accumulated &quot;</span>
+        <span class="s2">&quot;while the profile was in Dense.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_P95_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationP95-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;95th percentile of absolute cumulative literal skeleton-ring rotation &quot;</span>
+        <span class="s2">&quot;over supported rings from the inferred inoculum boundary through the &quot;</span>
+        <span class="s2">&quot;full detected object extent. Reported in degrees, nonnegative with no &quot;</span>
+        <span class="s2">&quot;fixed upper bound. With few supported rings it remains close to the raw &quot;</span>
+        <span class="s2">&quot;maximum and is not the primary robust metric.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_P95_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationP95-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;95th percentile of absolute cumulative literal skeleton-ring rotation &quot;</span>
+        <span class="s2">&quot;over supported rings from the inferred inoculum boundary to dense_end. &quot;</span>
+        <span class="s2">&quot;Reported in degrees, nonnegative with no fixed upper bound. With few &quot;</span>
+        <span class="s2">&quot;supported rings it remains close to the raw maximum.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_P95_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationP95-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;95th percentile of absolute cumulative literal skeleton-ring rotation &quot;</span>
+        <span class="s2">&quot;over supported rings from dense_end through the full detected object &quot;</span>
+        <span class="s2">&quot;extent. Reported in degrees, nonnegative with no fixed upper bound. &quot;</span>
+        <span class="s2">&quot;Cumulative rotation is not rebased at dense_end, so this Sparse &quot;</span>
+        <span class="s2">&quot;magnitude may include rotation accumulated while the profile was in &quot;</span>
+        <span class="s2">&quot;Dense.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_MEDIAN_MAGNITUDE_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationMedianMagnitude-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Median absolute cumulative literal skeleton-ring rotation over supported &quot;</span>
+        <span class="s2">&quot;rings from the inferred inoculum boundary through the full detected &quot;</span>
+        <span class="s2">&quot;object extent. Reported in degrees, nonnegative with no fixed upper &quot;</span>
+        <span class="s2">&quot;bound. This validation comparator describes typical magnitude but &quot;</span>
+        <span class="s2">&quot;ignores radial order and localized outer turns.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_MEDIAN_MAGNITUDE_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationMedianMagnitude-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Median absolute cumulative literal skeleton-ring rotation over supported &quot;</span>
+        <span class="s2">&quot;rings from the inferred inoculum boundary to dense_end. Reported in &quot;</span>
+        <span class="s2">&quot;degrees, nonnegative with no fixed upper bound. This validation &quot;</span>
+        <span class="s2">&quot;comparator describes typical magnitude but ignores radial order.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_MEDIAN_MAGNITUDE_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationMedianMagnitude-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Median absolute cumulative literal skeleton-ring rotation over supported &quot;</span>
+        <span class="s2">&quot;rings from dense_end through the full detected object extent. Reported &quot;</span>
+        <span class="s2">&quot;in degrees, nonnegative with no fixed upper bound. Cumulative rotation &quot;</span>
+        <span class="s2">&quot;is not rebased at dense_end, so this Sparse magnitude may include &quot;</span>
+        <span class="s2">&quot;rotation accumulated while the profile was in Dense.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_ABSOLUTE_AREA_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationAbsoluteArea-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Trapezoidal area under absolute cumulative rotation within supported &quot;</span>
+        <span class="s2">&quot;runs from the inferred inoculum boundary through the full detected &quot;</span>
+        <span class="s2">&quot;object extent, divided by their total supported radial span. Reported &quot;</span>
+        <span class="s2">&quot;in degrees, nonnegative with no fixed upper bound. It describes &quot;</span>
+        <span class="s2">&quot;radially persistent rotation but can remain high after one early step.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_ABSOLUTE_AREA_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationAbsoluteArea-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Trapezoidal area under absolute cumulative rotation within supported &quot;</span>
+        <span class="s2">&quot;runs from the inferred inoculum boundary to dense_end, divided by their &quot;</span>
+        <span class="s2">&quot;total supported radial span. Reported in degrees, nonnegative with no &quot;</span>
+        <span class="s2">&quot;fixed upper bound. It describes radially persistent rotation but can &quot;</span>
+        <span class="s2">&quot;remain high after one early step.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_ABSOLUTE_AREA_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationAbsoluteArea-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Trapezoidal area under absolute cumulative rotation within supported &quot;</span>
+        <span class="s2">&quot;runs from dense_end through the full detected object extent, divided by &quot;</span>
+        <span class="s2">&quot;their total supported radial span. Reported in degrees, nonnegative with &quot;</span>
+        <span class="s2">&quot;no fixed upper bound. Cumulative rotation is not rebased at dense_end, &quot;</span>
+        <span class="s2">&quot;so this Sparse magnitude may include rotation accumulated while the &quot;</span>
+        <span class="s2">&quot;profile was in Dense.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_TOTAL_VARIATION_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationTotalVariation-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Sum of absolute adjacent cumulative-rotation changes within supported &quot;</span>
+        <span class="s2">&quot;runs from the inferred inoculum boundary through the full detected &quot;</span>
+        <span class="s2">&quot;object extent, without bridging gaps. Reported in degrees, nonnegative &quot;</span>
+        <span class="s2">&quot;with no fixed upper bound. It is sensitive to oscillation, profile &quot;</span>
+        <span class="s2">&quot;length, and noise and is diagnostic only.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_TOTAL_VARIATION_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationTotalVariation-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Sum of absolute adjacent cumulative-rotation changes within supported &quot;</span>
+        <span class="s2">&quot;runs from the inferred inoculum boundary to dense_end, without bridging &quot;</span>
+        <span class="s2">&quot;gaps. Reported in degrees, nonnegative with no fixed upper bound. It is &quot;</span>
+        <span class="s2">&quot;sensitive to oscillation, profile length, and noise and is diagnostic &quot;</span>
+        <span class="s2">&quot;only.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_TOTAL_VARIATION_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationTotalVariation-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Sum of absolute adjacent cumulative-rotation changes within supported &quot;</span>
+        <span class="s2">&quot;runs from dense_end through the full detected object extent, without &quot;</span>
+        <span class="s2">&quot;bridging gaps. Reported in degrees, nonnegative with no fixed upper &quot;</span>
+        <span class="s2">&quot;bound. It is sensitive to oscillation, profile length, and noise and is &quot;</span>
+        <span class="s2">&quot;diagnostic only.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RATE_GRADIENT_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRateGradient-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Outer-half robust rotation rate minus inner-half robust rotation rate, &quot;</span>
+        <span class="s2">&quot;divided by the separation of their median radii, along the longest &quot;</span>
+        <span class="s2">&quot;supported run from the inferred inoculum boundary through the full &quot;</span>
+        <span class="s2">&quot;detected object extent. Reported in signed degrees per pixel squared. &quot;</span>
+        <span class="s2">&quot;This is a spatial rate gradient, not temporal acceleration, and is NaN &quot;</span>
+        <span class="s2">&quot;unless the run meets both the configured minimum and eight rings.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RATE_GRADIENT_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRateGradient-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Outer-half robust rotation rate minus inner-half robust rotation rate, &quot;</span>
+        <span class="s2">&quot;divided by the separation of their median radii, along the longest &quot;</span>
+        <span class="s2">&quot;supported run from the inferred inoculum boundary to dense_end. Reported &quot;</span>
+        <span class="s2">&quot;in signed degrees per pixel squared. This is a spatial rate gradient, &quot;</span>
+        <span class="s2">&quot;not temporal acceleration, and is NaN unless the run meets both the &quot;</span>
+        <span class="s2">&quot;configured minimum and eight rings.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RATE_GRADIENT_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRateGradient-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Outer-half robust rotation rate minus inner-half robust rotation rate, &quot;</span>
+        <span class="s2">&quot;divided by the separation of their median radii, along the longest &quot;</span>
+        <span class="s2">&quot;supported run from dense_end through the full detected object extent. &quot;</span>
+        <span class="s2">&quot;Reported in signed degrees per pixel squared. This is a spatial rate &quot;</span>
+        <span class="s2">&quot;gradient, not temporal acceleration, and is NaN for runs shorter than &quot;</span>
+        <span class="s2">&quot;the larger of eight rings and the configured minimum.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RING_SUPPORT_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRingSupport-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Fraction of candidate literal sampling rings from the inferred inoculum &quot;</span>
+        <span class="s2">&quot;boundary through the full detected object extent with a finite &quot;</span>
+        <span class="s2">&quot;cumulative-rotation state. Dimensionless in [0, 1]. This is a &quot;</span>
+        <span class="s2">&quot;density-sensitive quality diagnostic, not an orientation phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RING_SUPPORT_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRingSupport-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Fraction of candidate literal sampling rings from the inferred inoculum &quot;</span>
+        <span class="s2">&quot;boundary to dense_end with a finite cumulative-rotation state. &quot;</span>
+        <span class="s2">&quot;Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, &quot;</span>
+        <span class="s2">&quot;not an orientation phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RING_SUPPORT_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRingSupport-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Fraction of candidate literal sampling rings from dense_end through the &quot;</span>
+        <span class="s2">&quot;full detected object extent with a finite cumulative-rotation state. &quot;</span>
+        <span class="s2">&quot;Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, &quot;</span>
+        <span class="s2">&quot;not an orientation phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RUN_SPAN_SUPPORT_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRunSpanSupport-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Radial span of the longest contiguous supported literal-crossing run &quot;</span>
+        <span class="s2">&quot;divided by the full candidate span from the inferred inoculum boundary &quot;</span>
+        <span class="s2">&quot;through the full detected object extent. Dimensionless in [0, 1]. This &quot;</span>
+        <span class="s2">&quot;reports continuity of usable evidence, not orientation.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RUN_SPAN_SUPPORT_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRunSpanSupport-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Radial span of the longest contiguous supported literal-crossing run &quot;</span>
+        <span class="s2">&quot;divided by the full candidate span from the inferred inoculum boundary &quot;</span>
+        <span class="s2">&quot;to dense_end. Dimensionless in [0, 1]. This reports continuity of usable &quot;</span>
+        <span class="s2">&quot;evidence, not orientation.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_RUN_SPAN_SUPPORT_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationRunSpanSupport-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Radial span of the longest contiguous supported literal-crossing run &quot;</span>
+        <span class="s2">&quot;divided by the full candidate span from dense_end through the full &quot;</span>
+        <span class="s2">&quot;detected object extent. Dimensionless in [0, 1]. This reports continuity &quot;</span>
+        <span class="s2">&quot;of usable evidence, not orientation.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_MEDIAN_RESULTANT_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationMedianResultant-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Median doubled-angle resultant of crossing orientations among eligible &quot;</span>
+        <span class="s2">&quot;literal rings from the inferred inoculum boundary through the full &quot;</span>
+        <span class="s2">&quot;detected object extent. Dimensionless in [0, 1]; larger values mean &quot;</span>
+        <span class="s2">&quot;stronger within-ring axial agreement. This is an orientation-reliability &quot;</span>
+        <span class="s2">&quot;diagnostic, not a rotation phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_MEDIAN_RESULTANT_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationMedianResultant-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Median doubled-angle resultant of crossing orientations among eligible &quot;</span>
+        <span class="s2">&quot;literal rings from the inferred inoculum boundary to dense_end. &quot;</span>
+        <span class="s2">&quot;Dimensionless in [0, 1]; larger values mean stronger within-ring axial &quot;</span>
+        <span class="s2">&quot;agreement. This is an orientation-reliability diagnostic, not a rotation &quot;</span>
+        <span class="s2">&quot;phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_ROTATION_MEDIAN_RESULTANT_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardRotationMedianResultant-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Median doubled-angle resultant of crossing orientations among eligible &quot;</span>
+        <span class="s2">&quot;literal rings from dense_end through the full detected object extent. &quot;</span>
+        <span class="s2">&quot;Dimensionless in [0, 1]; larger values mean stronger within-ring axial &quot;</span>
+        <span class="s2">&quot;agreement. This is an orientation-reliability diagnostic, not a rotation &quot;</span>
+        <span class="s2">&quot;phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">CONCENTRATION_RADIAL_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Concentration-Radial-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Coherence-weighted resultant length R of the doubled-angle orientation field &quot;</span>
+        <span class="s2">&quot;over all tile pixels in the full symmetric disk (0 .. symmetric_radius) &quot;</span>
+        <span class="s2">&quot;region. Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = &quot;</span>
+        <span class="s2">&quot;isotropic. NaN when the summed coherence over the selector is ~0 or the zone &quot;</span>
+        <span class="s2">&quot;has zero width.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CONCENTRATION_RADIAL_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Concentration-Radial-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Coherence-weighted resultant length R of the doubled-angle orientation field &quot;</span>
+        <span class="s2">&quot;over all tile pixels in the dense ring (core_end .. dense_end radii) region. &quot;</span>
+        <span class="s2">&quot;Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = isotropic. NaN &quot;</span>
+        <span class="s2">&quot;when the summed coherence over the selector is ~0 or the zone has zero &quot;</span>
+        <span class="s2">&quot;width.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CONCENTRATION_RADIAL_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Concentration-Radial-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Coherence-weighted resultant length R of the doubled-angle orientation field &quot;</span>
+        <span class="s2">&quot;over all tile pixels in the sparse ring (dense_end .. sparse_end radii) &quot;</span>
+        <span class="s2">&quot;region. Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = &quot;</span>
+        <span class="s2">&quot;isotropic. NaN when the summed coherence over the selector is ~0 or the zone &quot;</span>
+        <span class="s2">&quot;has zero width.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CONCENTRATION_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Concentration-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Coherence-weighted resultant length R of the doubled-angle orientation field &quot;</span>
+        <span class="s2">&quot;over detected-object pixels in the full symmetric disk (0 .. &quot;</span>
+        <span class="s2">&quot;symmetric_radius) region. Dimensionless in [0, 1]; 1 = perfectly aligned &quot;</span>
+        <span class="s2">&quot;hyphae, 0 = isotropic. NaN when the summed coherence over the selector is ~0 &quot;</span>
+        <span class="s2">&quot;or the zone has zero width.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CONCENTRATION_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Concentration-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Coherence-weighted resultant length R of the doubled-angle orientation field &quot;</span>
+        <span class="s2">&quot;over detected-object pixels in the dense ring (core_end .. dense_end radii) &quot;</span>
+        <span class="s2">&quot;region. Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = &quot;</span>
+        <span class="s2">&quot;isotropic. NaN when the summed coherence over the selector is ~0 or the zone &quot;</span>
+        <span class="s2">&quot;has zero width.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CONCENTRATION_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Concentration-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Coherence-weighted resultant length R of the doubled-angle orientation field &quot;</span>
+        <span class="s2">&quot;over detected-object pixels in the sparse ring (dense_end .. sparse_end &quot;</span>
+        <span class="s2">&quot;radii) region. Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = &quot;</span>
+        <span class="s2">&quot;isotropic. NaN when the summed coherence over the selector is ~0 or the zone &quot;</span>
+        <span class="s2">&quot;has zero width.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">TURNING_RADIAL_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Turning-Radial-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Coherence-weighted mean orientation-gradient magnitude &lt;|grad phi|&gt; over all &quot;</span>
+        <span class="s2">&quot;tile pixels in the full symmetric disk (0 .. symmetric_radius) region, in &quot;</span>
+        <span class="s2">&quot;degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 &quot;</span>
+        <span class="s2">&quot;indicates straight parallel growth.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">TURNING_RADIAL_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Turning-Radial-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Coherence-weighted mean orientation-gradient magnitude &lt;|grad phi|&gt; over all &quot;</span>
+        <span class="s2">&quot;tile pixels in the dense ring (core_end .. dense_end radii) region, in &quot;</span>
+        <span class="s2">&quot;degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 &quot;</span>
+        <span class="s2">&quot;indicates straight parallel growth.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">TURNING_RADIAL_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Turning-Radial-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Coherence-weighted mean orientation-gradient magnitude &lt;|grad phi|&gt; over all &quot;</span>
+        <span class="s2">&quot;tile pixels in the sparse ring (dense_end .. sparse_end radii) region, in &quot;</span>
+        <span class="s2">&quot;degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 &quot;</span>
+        <span class="s2">&quot;indicates straight parallel growth.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">TURNING_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Turning-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Coherence-weighted mean orientation-gradient magnitude &lt;|grad phi|&gt; over &quot;</span>
+        <span class="s2">&quot;detected-object pixels in the full symmetric disk (0 .. symmetric_radius) &quot;</span>
+        <span class="s2">&quot;region, in degrees per pixel. Higher values indicate curving/fanning hyphae; &quot;</span>
+        <span class="s2">&quot;~0 indicates straight parallel growth.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">TURNING_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Turning-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Coherence-weighted mean orientation-gradient magnitude &lt;|grad phi|&gt; over &quot;</span>
+        <span class="s2">&quot;detected-object pixels in the dense ring (core_end .. dense_end radii) &quot;</span>
+        <span class="s2">&quot;region, in degrees per pixel. Higher values indicate curving/fanning hyphae; &quot;</span>
+        <span class="s2">&quot;~0 indicates straight parallel growth.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">TURNING_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Turning-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Coherence-weighted mean orientation-gradient magnitude &lt;|grad phi|&gt; over &quot;</span>
+        <span class="s2">&quot;detected-object pixels in the sparse ring (dense_end .. sparse_end radii) &quot;</span>
+        <span class="s2">&quot;region, in degrees per pixel. Higher values indicate curving/fanning hyphae; &quot;</span>
+        <span class="s2">&quot;~0 indicates straight parallel growth.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">COHERENCE_RADIAL_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Coherence-Radial-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mean structure-tensor coherence C over all tile pixels in the full symmetric &quot;</span>
+        <span class="s2">&quot;disk (0 .. symmetric_radius) region. Dimensionless in [0, 1]; a &quot;</span>
+        <span class="s2">&quot;confidence/QC readout for how well orientation is defined there (low where &quot;</span>
+        <span class="s2">&quot;texture is isotropic).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">COHERENCE_RADIAL_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Coherence-Radial-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mean structure-tensor coherence C over all tile pixels in the dense ring &quot;</span>
+        <span class="s2">&quot;(core_end .. dense_end radii) region. Dimensionless in [0, 1]; a &quot;</span>
+        <span class="s2">&quot;confidence/QC readout for how well orientation is defined there (low where &quot;</span>
+        <span class="s2">&quot;texture is isotropic).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">COHERENCE_RADIAL_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Coherence-Radial-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mean structure-tensor coherence C over all tile pixels in the sparse ring &quot;</span>
+        <span class="s2">&quot;(dense_end .. sparse_end radii) region. Dimensionless in [0, 1]; a &quot;</span>
+        <span class="s2">&quot;confidence/QC readout for how well orientation is defined there (low where &quot;</span>
+        <span class="s2">&quot;texture is isotropic).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">COHERENCE_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Coherence-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mean structure-tensor coherence C over detected-object pixels in the full &quot;</span>
+        <span class="s2">&quot;symmetric disk (0 .. symmetric_radius) region. Dimensionless in [0, 1]; a &quot;</span>
+        <span class="s2">&quot;confidence/QC readout for how well orientation is defined there (low where &quot;</span>
+        <span class="s2">&quot;texture is isotropic).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">COHERENCE_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Coherence-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mean structure-tensor coherence C over detected-object pixels in the dense &quot;</span>
+        <span class="s2">&quot;ring (core_end .. dense_end radii) region. Dimensionless in [0, 1]; a &quot;</span>
+        <span class="s2">&quot;confidence/QC readout for how well orientation is defined there (low where &quot;</span>
+        <span class="s2">&quot;texture is isotropic).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">COHERENCE_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Coherence-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mean structure-tensor coherence C over detected-object pixels in the sparse &quot;</span>
+        <span class="s2">&quot;ring (dense_end .. sparse_end radii) region. Dimensionless in [0, 1]; a &quot;</span>
+        <span class="s2">&quot;confidence/QC readout for how well orientation is defined there (low where &quot;</span>
+        <span class="s2">&quot;texture is isotropic).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">RADIAL_TILT_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;RadialTilt-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Equal-angular-sector mean of the coherence-weighted absolute axial &quot;</span>
+        <span class="s2">&quot;difference between the local fiber axis and the outward radial spoke at the &quot;</span>
+        <span class="s2">&quot;same pixel, over detected-object pixels in the full symmetric disk (0 .. &quot;</span>
+        <span class="s2">&quot;symmetric_radius) region. Reported in degrees in [0, 90]; 0 = locally radial &quot;</span>
+        <span class="s2">&quot;and 90 = locally tangential. Each occupied 10-degree angular sector &quot;</span>
+        <span class="s2">&quot;contributes equally. For a fixed set of reliable sectors, multiplying branch &quot;</span>
+        <span class="s2">&quot;evidence without changing within-sector tilt distributions leaves the result &quot;</span>
+        <span class="s2">&quot;unchanged. A support-threshold crossing can add a newly reliable sector and &quot;</span>
+        <span class="s2">&quot;change the estimate; mixed orientations within one sector remain &quot;</span>
+        <span class="s2">&quot;pixel-weighted.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">RADIAL_TILT_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;RadialTilt-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Equal-angular-sector mean of the coherence-weighted absolute axial &quot;</span>
+        <span class="s2">&quot;difference between the local fiber axis and the outward radial spoke at the &quot;</span>
+        <span class="s2">&quot;same pixel, over detected-object pixels in the dense ring (core_end .. &quot;</span>
+        <span class="s2">&quot;dense_end radii) region. Reported in degrees in [0, 90]; 0 = locally radial &quot;</span>
+        <span class="s2">&quot;and 90 = locally tangential. Each occupied 10-degree angular sector &quot;</span>
+        <span class="s2">&quot;contributes equally. For a fixed set of reliable sectors, multiplying branch &quot;</span>
+        <span class="s2">&quot;evidence without changing within-sector tilt distributions leaves the result &quot;</span>
+        <span class="s2">&quot;unchanged. A support-threshold crossing can add a newly reliable sector and &quot;</span>
+        <span class="s2">&quot;change the estimate; mixed orientations within one sector remain &quot;</span>
+        <span class="s2">&quot;pixel-weighted.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">RADIAL_TILT_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;RadialTilt-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Equal-angular-sector mean of the coherence-weighted absolute axial &quot;</span>
+        <span class="s2">&quot;difference between the local fiber axis and the outward radial spoke at the &quot;</span>
+        <span class="s2">&quot;same pixel, over detected-object pixels in the sparse ring (dense_end .. &quot;</span>
+        <span class="s2">&quot;sparse_end radii) region. Reported in degrees in [0, 90]; 0 = locally radial &quot;</span>
+        <span class="s2">&quot;and 90 = locally tangential. Each occupied 10-degree angular sector &quot;</span>
+        <span class="s2">&quot;contributes equally. For a fixed set of reliable sectors, multiplying branch &quot;</span>
+        <span class="s2">&quot;evidence without changing within-sector tilt distributions leaves the result &quot;</span>
+        <span class="s2">&quot;unchanged. A support-threshold crossing can add a newly reliable sector and &quot;</span>
+        <span class="s2">&quot;change the estimate; mixed orientations within one sector remain &quot;</span>
+        <span class="s2">&quot;pixel-weighted.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_TURNING_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardTurning-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Equal-angular-sector mean radial derivative magnitude of the radial-relative &quot;</span>
+        <span class="s2">&quot;fiber tilt, over detected-object pixels in the full symmetric disk (0 .. &quot;</span>
+        <span class="s2">&quot;symmetric_radius) region. Reported in degrees per pixel. 0 means the tilt &quot;</span>
+        <span class="s2">&quot;stays constant while moving outward; larger values mean the local fiber &quot;</span>
+        <span class="s2">&quot;field rotates relative to its radial spoke. The aggregation gives each &quot;</span>
+        <span class="s2">&quot;occupied 10-degree angular sector equal weight. This is a field-level &quot;</span>
+        <span class="s2">&quot;curvature measure, not parent-to-daughter branch tracking.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_TURNING_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardTurning-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Equal-angular-sector mean radial derivative magnitude of the radial-relative &quot;</span>
+        <span class="s2">&quot;fiber tilt, over detected-object pixels in the dense ring (core_end .. &quot;</span>
+        <span class="s2">&quot;dense_end radii) region. Reported in degrees per pixel. 0 means the tilt &quot;</span>
+        <span class="s2">&quot;stays constant while moving outward; larger values mean the local fiber &quot;</span>
+        <span class="s2">&quot;field rotates relative to its radial spoke. The aggregation gives each &quot;</span>
+        <span class="s2">&quot;occupied 10-degree angular sector equal weight. This is a field-level &quot;</span>
+        <span class="s2">&quot;curvature measure, not parent-to-daughter branch tracking.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTWARD_TURNING_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OutwardTurning-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Equal-angular-sector mean radial derivative magnitude of the radial-relative &quot;</span>
+        <span class="s2">&quot;fiber tilt, over detected-object pixels in the sparse ring (dense_end .. &quot;</span>
+        <span class="s2">&quot;sparse_end radii) region. Reported in degrees per pixel. 0 means the tilt &quot;</span>
+        <span class="s2">&quot;stays constant while moving outward; larger values mean the local fiber &quot;</span>
+        <span class="s2">&quot;field rotates relative to its radial spoke. The aggregation gives each &quot;</span>
+        <span class="s2">&quot;occupied 10-degree angular sector equal weight. This is a field-level &quot;</span>
+        <span class="s2">&quot;curvature measure, not parent-to-daughter branch tracking.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">RADIAL_SECTOR_SUPPORT_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;RadialSectorSupport-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Fraction of the 36 fixed 10-degree sectors in the full symmetric disk (0 .. &quot;</span>
+        <span class="s2">&quot;symmetric_radius) region that contain at least three detected-structure &quot;</span>
+        <span class="s2">&quot;pixels with structure-tensor coherence C &gt;= 0.15. Dimensionless in [0, 1]. &quot;</span>
+        <span class="s2">&quot;This is a density-sensitive quality diagnostic for interpreting radial tilt &quot;</span>
+        <span class="s2">&quot;and outward turning, not an orientation phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">RADIAL_SECTOR_SUPPORT_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;RadialSectorSupport-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Fraction of the 36 fixed 10-degree sectors in the dense ring (core_end .. &quot;</span>
+        <span class="s2">&quot;dense_end radii) region that contain at least three detected-structure &quot;</span>
+        <span class="s2">&quot;pixels with structure-tensor coherence C &gt;= 0.15. Dimensionless in [0, 1]. &quot;</span>
+        <span class="s2">&quot;This is a density-sensitive quality diagnostic for interpreting radial tilt &quot;</span>
+        <span class="s2">&quot;and outward turning, not an orientation phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">RADIAL_SECTOR_SUPPORT_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;RadialSectorSupport-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Fraction of the 36 fixed 10-degree sectors in the sparse ring (dense_end .. &quot;</span>
+        <span class="s2">&quot;sparse_end radii) region that contain at least three detected-structure &quot;</span>
+        <span class="s2">&quot;pixels with structure-tensor coherence C &gt;= 0.15. Dimensionless in [0, 1]. &quot;</span>
+        <span class="s2">&quot;This is a density-sensitive quality diagnostic for interpreting radial tilt &quot;</span>
+        <span class="s2">&quot;and outward turning, not an orientation phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">LONG_RANGE_ROTATION_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;LongRangeRotation-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Equal-cell mean absolute seam-safe axial change between matching 10-degree &quot;</span>
+        <span class="s2">&quot;sectors in configured-width Sholl-style annular bands (8 pixels by default) &quot;</span>
+        <span class="s2">&quot;whose centres are separated by the configured long-range lag (16 pixels by &quot;</span>
+        <span class="s2">&quot;default). Ring pairs are assigned to the core-excluded symmetric region &quot;</span>
+        <span class="s2">&quot;(core_end .. min(sparse_end, symmetric_radius)) region by their midpoint. &quot;</span>
+        <span class="s2">&quot;Reported in degrees in [0, 90]. Annular bands begin outside the inferred &quot;</span>
+        <span class="s2">&quot;inoculum core. Each reliable ring-sector comparison contributes equally, so &quot;</span>
+        <span class="s2">&quot;multiplying same-orientation branch evidence within an already reliable cell &quot;</span>
+        <span class="s2">&quot;does not change its contribution.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">LONG_RANGE_ROTATION_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;LongRangeRotation-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Equal-cell mean absolute seam-safe axial change between matching 10-degree &quot;</span>
+        <span class="s2">&quot;sectors in configured-width Sholl-style annular bands (8 pixels by default) &quot;</span>
+        <span class="s2">&quot;whose centres are separated by the configured long-range lag (16 pixels by &quot;</span>
+        <span class="s2">&quot;default). Ring pairs are assigned to the dense ring (core_end .. dense_end &quot;</span>
+        <span class="s2">&quot;radii) region by their midpoint. Reported in degrees in [0, 90]. Annular &quot;</span>
+        <span class="s2">&quot;bands begin outside the inferred inoculum core. Each reliable ring-sector &quot;</span>
+        <span class="s2">&quot;comparison contributes equally, so multiplying same-orientation branch &quot;</span>
+        <span class="s2">&quot;evidence within an already reliable cell does not change its contribution.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">LONG_RANGE_ROTATION_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;LongRangeRotation-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Equal-cell mean absolute seam-safe axial change between matching 10-degree &quot;</span>
+        <span class="s2">&quot;sectors in configured-width Sholl-style annular bands (8 pixels by default) &quot;</span>
+        <span class="s2">&quot;whose centres are separated by the configured long-range lag (16 pixels by &quot;</span>
+        <span class="s2">&quot;default). Ring pairs are assigned to the sparse ring (dense_end .. &quot;</span>
+        <span class="s2">&quot;sparse_end radii) region by their midpoint. Reported in degrees in [0, 90]. &quot;</span>
+        <span class="s2">&quot;Annular bands begin outside the inferred inoculum core. Each reliable &quot;</span>
+        <span class="s2">&quot;ring-sector comparison contributes equally, so multiplying same-orientation &quot;</span>
+        <span class="s2">&quot;branch evidence within an already reliable cell does not change its &quot;</span>
+        <span class="s2">&quot;contribution.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">SIGNED_LONG_RANGE_ROTATION_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;SignedLongRangeRotation-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Signed counterpart of LongRangeRotation over the core-excluded symmetric &quot;</span>
+        <span class="s2">&quot;region (core_end .. min(sparse_end, symmetric_radius)) region, in degrees in &quot;</span>
+        <span class="s2">&quot;[-90, 90]. Positive means the radial-relative fiber axis rotates clockwise &quot;</span>
+        <span class="s2">&quot;and negative means counterclockwise while moving outward in image &quot;</span>
+        <span class="s2">&quot;coordinates. Opposing reliable ring-sector changes cancel in this &quot;</span>
+        <span class="s2">&quot;directional summary; inspect the absolute metric and support alongside it.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">SIGNED_LONG_RANGE_ROTATION_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;SignedLongRangeRotation-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Signed counterpart of LongRangeRotation over the dense ring (core_end .. &quot;</span>
+        <span class="s2">&quot;dense_end radii) region, in degrees in [-90, 90]. Positive means the &quot;</span>
+        <span class="s2">&quot;radial-relative fiber axis rotates clockwise and negative means &quot;</span>
+        <span class="s2">&quot;counterclockwise while moving outward in image coordinates. Opposing &quot;</span>
+        <span class="s2">&quot;reliable ring-sector changes cancel in this directional summary; inspect the &quot;</span>
+        <span class="s2">&quot;absolute metric and support alongside it.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">SIGNED_LONG_RANGE_ROTATION_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;SignedLongRangeRotation-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Signed counterpart of LongRangeRotation over the sparse ring (dense_end .. &quot;</span>
+        <span class="s2">&quot;sparse_end radii) region, in degrees in [-90, 90]. Positive means the &quot;</span>
+        <span class="s2">&quot;radial-relative fiber axis rotates clockwise and negative means &quot;</span>
+        <span class="s2">&quot;counterclockwise while moving outward in image coordinates. Opposing &quot;</span>
+        <span class="s2">&quot;reliable ring-sector changes cancel in this directional summary; inspect the &quot;</span>
+        <span class="s2">&quot;absolute metric and support alongside it.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">LONG_RANGE_ROTATION_SUPPORT_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;LongRangeRotationSupport-Mask-Overall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Fraction of fixed-lag ring-sector comparison cells assigned to the &quot;</span>
+        <span class="s2">&quot;core-excluded symmetric region (core_end .. min(sparse_end, &quot;</span>
+        <span class="s2">&quot;symmetric_radius)) region that have reliable orientation estimates at both &quot;</span>
+        <span class="s2">&quot;radii. Dimensionless in [0, 1]. This is a density-sensitive quality &quot;</span>
+        <span class="s2">&quot;diagnostic, not an orientation phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">LONG_RANGE_ROTATION_SUPPORT_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;LongRangeRotationSupport-Mask-Dense&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Fraction of fixed-lag ring-sector comparison cells assigned to the dense &quot;</span>
+        <span class="s2">&quot;ring (core_end .. dense_end radii) region that have reliable orientation &quot;</span>
+        <span class="s2">&quot;estimates at both radii. Dimensionless in [0, 1]. This is a &quot;</span>
+        <span class="s2">&quot;density-sensitive quality diagnostic, not an orientation phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">LONG_RANGE_ROTATION_SUPPORT_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;LongRangeRotationSupport-Mask-Sparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Fraction of fixed-lag ring-sector comparison cells assigned to the sparse &quot;</span>
+        <span class="s2">&quot;ring (dense_end .. sparse_end radii) region that have reliable orientation &quot;</span>
+        <span class="s2">&quot;estimates at both radii. Dimensionless in [0, 1]. This is a &quot;</span>
+        <span class="s2">&quot;density-sensitive quality diagnostic, not an orientation phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">LONG_RANGE_ROTATION_MASK_DENSE_TO_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;LongRangeRotation-Mask-DenseToSparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Equal-sector mean absolute seam-safe axial difference between the broad &quot;</span>
+        <span class="s2">&quot;Dense-zone and Sparse-zone radial-relative fiber means. Reported in degrees &quot;</span>
+        <span class="s2">&quot;in [0, 90]. Only 10-degree sectors reliable in both zones contribute, and &quot;</span>
+        <span class="s2">&quot;each paired sector receives equal weight. This measures accumulated &quot;</span>
+        <span class="s2">&quot;zone-to-zone rotation without detecting individual branches.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">SIGNED_LONG_RANGE_ROTATION_MASK_DENSE_TO_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;SignedLongRangeRotation-Mask-DenseToSparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Signed mean Dense-to-Sparse axial change over paired reliable 10-degree &quot;</span>
+        <span class="s2">&quot;sectors, in degrees in [-90, 90]. Positive means clockwise and negative &quot;</span>
+        <span class="s2">&quot;means counterclockwise radial-relative rotation while moving outward in &quot;</span>
+        <span class="s2">&quot;image coordinates. Opposing sector rotations cancel.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">LONG_RANGE_ROTATION_SUPPORT_MASK_DENSE_TO_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;LongRangeRotationSupport-Mask-DenseToSparse&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Fraction of the 36 fixed 10-degree sectors with reliable radial-relative &quot;</span>
+        <span class="s2">&quot;orientation estimates in both the Dense and Sparse zones. Dimensionless in &quot;</span>
+        <span class="s2">&quot;[0, 1]. This is a density-sensitive quality diagnostic, not an orientation &quot;</span>
+        <span class="s2">&quot;phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># Preserve member-level access for callers that imported the former legacy enum.</span>
+<span class="c1"># The diagnostic class contains every former member plus the new opt-in fields.</span>
+<span class="c1"># New code should use the explicit primary/diagnostic names above.</span>
+<span class="n">ORIENTATION_ZONES</span> <span class="o">=</span> <span class="n">ORIENTATION_ZONE_DIAGNOSTIC</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

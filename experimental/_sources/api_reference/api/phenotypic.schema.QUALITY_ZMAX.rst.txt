@@ -1,0 +1,106 @@
+phenotypic.schema.QUALITY\_ZMAX
+===============================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: QUALITY_ZMAX
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~QUALITY_ZMAX.kind
+      ~QUALITY_ZMAX.category
+      ~QUALITY_ZMAX.tier
+      ~QUALITY_ZMAX.rembi_module
+      ~QUALITY_ZMAX.header_scheme
+      ~QUALITY_ZMAX.member_for_header
+      ~QUALITY_ZMAX.owns_header
+      ~QUALITY_ZMAX.get_labels
+      ~QUALITY_ZMAX.get_headers
+      ~QUALITY_ZMAX.rst_table
+      ~QUALITY_ZMAX.append_rst_to_doc
+      ~QUALITY_ZMAX.encode
+      ~QUALITY_ZMAX.replace
+      ~QUALITY_ZMAX.split
+      ~QUALITY_ZMAX.rsplit
+      ~QUALITY_ZMAX.join
+      ~QUALITY_ZMAX.capitalize
+      ~QUALITY_ZMAX.casefold
+      ~QUALITY_ZMAX.title
+      ~QUALITY_ZMAX.center
+      ~QUALITY_ZMAX.count
+      ~QUALITY_ZMAX.expandtabs
+      ~QUALITY_ZMAX.find
+      ~QUALITY_ZMAX.partition
+      ~QUALITY_ZMAX.index
+      ~QUALITY_ZMAX.ljust
+      ~QUALITY_ZMAX.lower
+      ~QUALITY_ZMAX.lstrip
+      ~QUALITY_ZMAX.rfind
+      ~QUALITY_ZMAX.rindex
+      ~QUALITY_ZMAX.rjust
+      ~QUALITY_ZMAX.rstrip
+      ~QUALITY_ZMAX.rpartition
+      ~QUALITY_ZMAX.splitlines
+      ~QUALITY_ZMAX.strip
+      ~QUALITY_ZMAX.swapcase
+      ~QUALITY_ZMAX.translate
+      ~QUALITY_ZMAX.upper
+      ~QUALITY_ZMAX.startswith
+      ~QUALITY_ZMAX.endswith
+      ~QUALITY_ZMAX.removeprefix
+      ~QUALITY_ZMAX.removesuffix
+      ~QUALITY_ZMAX.isascii
+      ~QUALITY_ZMAX.islower
+      ~QUALITY_ZMAX.isupper
+      ~QUALITY_ZMAX.istitle
+      ~QUALITY_ZMAX.isspace
+      ~QUALITY_ZMAX.isdecimal
+      ~QUALITY_ZMAX.isdigit
+      ~QUALITY_ZMAX.isnumeric
+      ~QUALITY_ZMAX.isalpha
+      ~QUALITY_ZMAX.isalnum
+      ~QUALITY_ZMAX.isidentifier
+      ~QUALITY_ZMAX.isprintable
+      ~QUALITY_ZMAX.zfill
+      ~QUALITY_ZMAX.format
+      ~QUALITY_ZMAX.format_map
+      ~QUALITY_ZMAX.maketrans
+      ~QUALITY_ZMAX.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QUALITY_ZMAX.CATEGORY
+      ~QUALITY_ZMAX.resolved_kind
+      ~QUALITY_ZMAX.resolved_tier
+      ~QUALITY_ZMAX.resolved_rembi_module
+      ~QUALITY_ZMAX.use_label
+      ~QUALITY_ZMAX.use_badge
+      ~QUALITY_ZMAX.MEDIAN
+      ~QUALITY_ZMAX.MAD
+      ~QUALITY_ZMAX.NUM_MEMBERS
+      ~QUALITY_ZMAX.label
+      ~QUALITY_ZMAX.desc
+      ~QUALITY_ZMAX.bio_desc
+      ~QUALITY_ZMAX.image
+      ~QUALITY_ZMAX.pair
+      ~QUALITY_ZMAX.tier_override
+      ~QUALITY_ZMAX.derivation_type
+      ~QUALITY_ZMAX.derives_from
+      ~QUALITY_ZMAX.rembi_module_override
+   
+   

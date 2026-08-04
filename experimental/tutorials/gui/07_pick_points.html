@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="View Results" href="06_view_results.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -679,7 +679,7 @@ you can spot them at a glance.</p>
 <h2>Set up a curation pipeline<a class="headerlink" href="#set-up-a-curation-pipeline" title="Link to this heading">#</a></h2>
 <p>This walkthrough curates an Otsu detection. The flow is:</p>
 <ol class="arabic simple">
-<li><p>Drag <code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code> from <code class="docutils literal notranslate"><span class="pre">Corrector</span></code> onto the canvas.</p></li>
+<li><p>Drag <code class="docutils literal notranslate"><span class="pre">BlurGauss</span></code> from <code class="docutils literal notranslate"><span class="pre">Corrector</span></code> onto the canvas.</p></li>
 <li><p>Drag <code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code> from <code class="docutils literal notranslate"><span class="pre">Detector</span></code>.</p></li>
 <li><p>Drag <code class="docutils literal notranslate"><span class="pre">ManualRefine</span></code> from <code class="docutils literal notranslate"><span class="pre">Refiner</span></code> (it carries the PICK badge).</p></li>
 <li><p>Connect them in order: blur → detect → select.</p></li>

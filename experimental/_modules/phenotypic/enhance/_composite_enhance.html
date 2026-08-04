@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -609,7 +609,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">NormalizedOutputMixin</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NormOut</span><span class="p">,</span> <span class="n">OperationField</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._gaussian_blur</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._blur_gauss</span><span class="w"> </span><span class="kn">import</span> <span class="n">BlurGauss</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._median_filter</span><span class="w"> </span><span class="kn">import</span> <span class="n">MedianFilter</span>
 
 <span class="n">CombineMode</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;max&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;min&quot;</span><span class="p">,</span> <span class="s2">&quot;median&quot;</span><span class="p">]</span>
@@ -652,7 +652,7 @@
 <span class="sd">        ops: List of :class:`~phenotypic.abc_.ImageEnhancer` or</span>
 <span class="sd">            :class:`~phenotypic.ImagePipeline` instances to combine. Pipelines</span>
 <span class="sd">            allow per-branch preprocessing before the response is collected.</span>
-<span class="sd">            Defaults to ``[GaussianBlur(), MedianFilter()]`` when not</span>
+<span class="sd">            Defaults to ``[BlurGauss(), MedianFilter()]`` when not</span>
 <span class="sd">            specified. ``None`` entries mark unfilled GUI-builder slots and</span>
 <span class="sd">            are skipped.</span>
 <span class="sd">        mode: Pixel-wise reduction across branch response maps. ``&#39;max&#39;``</span>
@@ -680,12 +680,12 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import (</span>
 <span class="sd">        ...     CompositeEnhance,</span>
-<span class="sd">        ...     GaussianBlur,</span>
+<span class="sd">        ...     BlurGauss,</span>
 <span class="sd">        ...     SubtractRollingBall,</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
 <span class="sd">        &gt;&gt;&gt; combiner = CompositeEnhance(</span>
-<span class="sd">        ...     ops=[GaussianBlur(sigma=1.5), SubtractRollingBall()],</span>
+<span class="sd">        ...     ops=[BlurGauss(sigma=1.5), SubtractRollingBall()],</span>
 <span class="sd">        ...     mode=&quot;max&quot;,</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; enhanced = combiner.apply(image)</span>
@@ -696,7 +696,7 @@
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import MedianFilter, EnhanceLocalContrast</span>
 <span class="sd">        &gt;&gt;&gt; combiner = CompositeEnhance(</span>
-<span class="sd">        ...     ops=[GaussianBlur(), MedianFilter(), EnhanceLocalContrast()],</span>
+<span class="sd">        ...     ops=[BlurGauss(), MedianFilter(), EnhanceLocalContrast()],</span>
 <span class="sd">        ...     mode=&quot;mean&quot;,</span>
 <span class="sd">        ...     norm=&quot;clip&quot;,</span>
 <span class="sd">        ... )</span>
@@ -711,7 +711,7 @@
     <span class="c1"># ``| None`` permits an empty list slot that the GUI builder uses to mark</span>
     <span class="c1"># an unfilled enhancer slot in an in-progress pipeline.</span>
     <span class="n">ops</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">OperationField</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
-        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianBlur</span><span class="p">(),</span> <span class="n">MedianFilter</span><span class="p">()]</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="n">BlurGauss</span><span class="p">(),</span> <span class="n">MedianFilter</span><span class="p">()]</span>
     <span class="p">)</span>
     <span class="n">mode</span><span class="p">:</span> <span class="n">CombineMode</span> <span class="o">=</span> <span class="s2">&quot;max&quot;</span>
     <span class="n">norm</span><span class="p">:</span> <span class="n">NormOut</span> <span class="o">=</span> <span class="kc">None</span>
@@ -726,7 +726,7 @@
 <span class="sd">        ``ops=None`` call by substituting the default pair.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">[</span><span class="n">GaussianBlur</span><span class="p">(),</span> <span class="n">MedianFilter</span><span class="p">()]</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">BlurGauss</span><span class="p">(),</span> <span class="n">MedianFilter</span><span class="p">()]</span>
         <span class="k">return</span> <span class="n">value</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>

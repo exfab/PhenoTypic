@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -613,9 +613,9 @@
 
 <span class="sd">Example:</span>
 <span class="sd">    &gt;&gt;&gt; from phenotypic import ImagePipeline</span>
-<span class="sd">    &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">    &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
 <span class="sd">    &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
-<span class="sd">    &gt;&gt;&gt; pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])</span>
+<span class="sd">    &gt;&gt;&gt; pipe = ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()])</span>
 <span class="sd">    &gt;&gt;&gt; from pathlib import Path</span>
 <span class="sd">    &gt;&gt;&gt; from tempfile import TemporaryDirectory</span>
 <span class="sd">    &gt;&gt;&gt; from phenotypic.sdk_ import _io_constants as io</span>

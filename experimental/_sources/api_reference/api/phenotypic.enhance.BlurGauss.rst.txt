@@ -1,0 +1,66 @@
+phenotypic.enhance.BlurGauss
+============================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: BlurGauss
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BlurGauss.__init__
+      ~BlurGauss.apply
+      ~BlurGauss.construct
+      ~BlurGauss.copy
+      ~BlurGauss.dict
+      ~BlurGauss.from_json
+      ~BlurGauss.from_orm
+      ~BlurGauss.json
+      ~BlurGauss.model_construct
+      ~BlurGauss.model_copy
+      ~BlurGauss.model_dump
+      ~BlurGauss.model_dump_json
+      ~BlurGauss.model_json_schema
+      ~BlurGauss.model_parametrized_name
+      ~BlurGauss.model_post_init
+      ~BlurGauss.model_rebuild
+      ~BlurGauss.model_validate
+      ~BlurGauss.model_validate_json
+      ~BlurGauss.model_validate_strings
+      ~BlurGauss.parse_file
+      ~BlurGauss.parse_obj
+      ~BlurGauss.parse_raw
+      ~BlurGauss.schema
+      ~BlurGauss.schema_json
+      ~BlurGauss.to_json
+      ~BlurGauss.update_forward_refs
+      ~BlurGauss.validate
+      ~BlurGauss.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BlurGauss.model_computed_fields
+      ~BlurGauss.model_config
+      ~BlurGauss.model_extra
+      ~BlurGauss.model_fields
+      ~BlurGauss.model_fields_set
+      ~BlurGauss.sigma
+      ~BlurGauss.mode
+      ~BlurGauss.cval
+      ~BlurGauss.truncate
+   
+   

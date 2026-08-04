@@ -1,0 +1,113 @@
+phenotypic.schema.SAMPLE\_METADATA
+==================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: SAMPLE_METADATA
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SAMPLE_METADATA.kind
+      ~SAMPLE_METADATA.category
+      ~SAMPLE_METADATA.tier
+      ~SAMPLE_METADATA.rembi_module
+      ~SAMPLE_METADATA.header_scheme
+      ~SAMPLE_METADATA.member_for_header
+      ~SAMPLE_METADATA.owns_header
+      ~SAMPLE_METADATA.get_labels
+      ~SAMPLE_METADATA.get_headers
+      ~SAMPLE_METADATA.rst_table
+      ~SAMPLE_METADATA.append_rst_to_doc
+      ~SAMPLE_METADATA.encode
+      ~SAMPLE_METADATA.replace
+      ~SAMPLE_METADATA.split
+      ~SAMPLE_METADATA.rsplit
+      ~SAMPLE_METADATA.join
+      ~SAMPLE_METADATA.capitalize
+      ~SAMPLE_METADATA.casefold
+      ~SAMPLE_METADATA.title
+      ~SAMPLE_METADATA.center
+      ~SAMPLE_METADATA.count
+      ~SAMPLE_METADATA.expandtabs
+      ~SAMPLE_METADATA.find
+      ~SAMPLE_METADATA.partition
+      ~SAMPLE_METADATA.index
+      ~SAMPLE_METADATA.ljust
+      ~SAMPLE_METADATA.lower
+      ~SAMPLE_METADATA.lstrip
+      ~SAMPLE_METADATA.rfind
+      ~SAMPLE_METADATA.rindex
+      ~SAMPLE_METADATA.rjust
+      ~SAMPLE_METADATA.rstrip
+      ~SAMPLE_METADATA.rpartition
+      ~SAMPLE_METADATA.splitlines
+      ~SAMPLE_METADATA.strip
+      ~SAMPLE_METADATA.swapcase
+      ~SAMPLE_METADATA.translate
+      ~SAMPLE_METADATA.upper
+      ~SAMPLE_METADATA.startswith
+      ~SAMPLE_METADATA.endswith
+      ~SAMPLE_METADATA.removeprefix
+      ~SAMPLE_METADATA.removesuffix
+      ~SAMPLE_METADATA.isascii
+      ~SAMPLE_METADATA.islower
+      ~SAMPLE_METADATA.isupper
+      ~SAMPLE_METADATA.istitle
+      ~SAMPLE_METADATA.isspace
+      ~SAMPLE_METADATA.isdecimal
+      ~SAMPLE_METADATA.isdigit
+      ~SAMPLE_METADATA.isnumeric
+      ~SAMPLE_METADATA.isalpha
+      ~SAMPLE_METADATA.isalnum
+      ~SAMPLE_METADATA.isidentifier
+      ~SAMPLE_METADATA.isprintable
+      ~SAMPLE_METADATA.zfill
+      ~SAMPLE_METADATA.format
+      ~SAMPLE_METADATA.format_map
+      ~SAMPLE_METADATA.maketrans
+      ~SAMPLE_METADATA.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SAMPLE_METADATA.CATEGORY
+      ~SAMPLE_METADATA.resolved_kind
+      ~SAMPLE_METADATA.resolved_tier
+      ~SAMPLE_METADATA.resolved_rembi_module
+      ~SAMPLE_METADATA.use_label
+      ~SAMPLE_METADATA.use_badge
+      ~SAMPLE_METADATA.SAMPLE_ID
+      ~SAMPLE_METADATA.BIO_REPLICATE
+      ~SAMPLE_METADATA.COND_REPLICATE
+      ~SAMPLE_METADATA.TECHNICAL_REPLICATE
+      ~SAMPLE_METADATA.CLONE
+      ~SAMPLE_METADATA.LIBRARY_ID
+      ~SAMPLE_METADATA.SOURCE_PLATE
+      ~SAMPLE_METADATA.SOURCE_WELL
+      ~SAMPLE_METADATA.BARCODE
+      ~SAMPLE_METADATA.CONTROL
+      ~SAMPLE_METADATA.label
+      ~SAMPLE_METADATA.desc
+      ~SAMPLE_METADATA.bio_desc
+      ~SAMPLE_METADATA.image
+      ~SAMPLE_METADATA.pair
+      ~SAMPLE_METADATA.tier_override
+      ~SAMPLE_METADATA.derivation_type
+      ~SAMPLE_METADATA.derives_from
+      ~SAMPLE_METADATA.rembi_module_override
+   
+   

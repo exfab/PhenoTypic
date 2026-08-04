@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="GridImage Class Methods" href="grid_image_methods.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -722,7 +722,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.ContrastLog.html">phenotypic.enhance.ContrastLog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.ContrastSigmoid.html">phenotypic.enhance.ContrastSigmoid</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.FocusEdgeFrangi.html">phenotypic.enhance.FocusEdgeFrangi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.GaussianBlur.html">phenotypic.enhance.GaussianBlur</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.BlurGauss.html">phenotypic.enhance.BlurGauss</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.SubtractGaussian.html">phenotypic.enhance.SubtractGaussian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.GrayOpening.html">phenotypic.enhance.GrayOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.FocusEdgeHessian.html">phenotypic.enhance.FocusEdgeHessian</a></li>
@@ -810,6 +810,60 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.refine.MaskWhiteTophat.html">phenotypic.refine.MaskWhiteTophat</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.refine.KeepSectionLargest.html">phenotypic.refine.KeepSectionLargest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.refine.RemoveByFeature.html">phenotypic.refine.RemoveByFeature</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/phenotypic.schema.html">phenotypic.schema</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.parse_qualified_header.html">phenotypic.schema.parse_qualified_header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.qualified_header.html">phenotypic.schema.qualified_header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.header_to_module.html">phenotypic.schema.header_to_module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.Entry.html">phenotypic.schema.Entry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.MeasurementInfo.html">phenotypic.schema.MeasurementInfo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.REMBI_MODULE.html">phenotypic.schema.REMBI_MODULE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.METADATA.html">phenotypic.schema.METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.METADATA_MATCH.html">phenotypic.schema.METADATA_MATCH</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.ACQUISITION_METADATA.html">phenotypic.schema.ACQUISITION_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.CONDITION_METADATA.html">phenotypic.schema.CONDITION_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.CULTURE_METADATA.html">phenotypic.schema.CULTURE_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.EXPERIMENT_METADATA.html">phenotypic.schema.EXPERIMENT_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.GENETIC_METADATA.html">phenotypic.schema.GENETIC_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.PLATE_METADATA.html">phenotypic.schema.PLATE_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.SAMPLE_METADATA.html">phenotypic.schema.SAMPLE_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.STUDY_METADATA.html">phenotypic.schema.STUDY_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.BBOX.html">phenotypic.schema.BBOX</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.ColorComposition.html">phenotypic.schema.ColorComposition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.ColorHSV.html">phenotypic.schema.ColorHSV</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.ColorLab.html">phenotypic.schema.ColorLab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.Colorxy.html">phenotypic.schema.Colorxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.ColorXYZ.html">phenotypic.schema.ColorXYZ</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.CURATION.html">phenotypic.schema.CURATION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.LINEAR_CAP_AND_LAG_MODEL.html">phenotypic.schema.LINEAR_CAP_AND_LAG_MODEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.EDGE_CORRECTION.html">phenotypic.schema.EDGE_CORRECTION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.ErrorCategory.html">phenotypic.schema.ErrorCategory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.GRID.html">phenotypic.schema.GRID</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.GRID_LINREG_STATS.html">phenotypic.schema.GRID_LINREG_STATS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.NEIGHBOR_DIST.html">phenotypic.schema.NEIGHBOR_DIST</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.GRID_SPREAD.html">phenotypic.schema.GRID_SPREAD</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.INTENSITY.html">phenotypic.schema.INTENSITY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.LINEAR_LAG_MODEL.html">phenotypic.schema.LINEAR_LAG_MODEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.LOG_GROWTH_MODEL.html">phenotypic.schema.LOG_GROWTH_MODEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.MODEL_METRICS.html">phenotypic.schema.MODEL_METRICS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.OBJECT.html">phenotypic.schema.OBJECT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.QUALITY_CHECK.html">phenotypic.schema.QUALITY_CHECK</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.QUALITY_COUNT.html">phenotypic.schema.QUALITY_COUNT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.QUALITY_ICC.html">phenotypic.schema.QUALITY_ICC</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.QUALITY_MAD.html">phenotypic.schema.QUALITY_MAD</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.QUALITY_OCCUPANCY.html">phenotypic.schema.QUALITY_OCCUPANCY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.QUALITY_SE.html">phenotypic.schema.QUALITY_SE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.QUALITY_TUKEY.html">phenotypic.schema.QUALITY_TUKEY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.QUALITY_ZMAX.html">phenotypic.schema.QUALITY_ZMAX</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.RADIAL_EXPANSION.html">phenotypic.schema.RADIAL_EXPANSION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.SHAPE.html">phenotypic.schema.SHAPE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.SIZE.html">phenotypic.schema.SIZE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.ORIENTATION_ZONES.html">phenotypic.schema.ORIENTATION_ZONES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.html">phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.ORIENTATION_ZONE_PRIMARY.html">phenotypic.schema.ORIENTATION_ZONE_PRIMARY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.SYMMETRIC_ZONES.html">phenotypic.schema.SYMMETRIC_ZONES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.schema.TEXTURE.html">phenotypic.schema.TEXTURE</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api/phenotypic.sdk_.html">phenotypic.sdk_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -1239,14 +1293,14 @@ operations complete.</p>
 <p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">BlurGauss</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">RemoveSmallObjects</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureShape</span><span class="p">,</span> <span class="n">MeasureIntensity</span>
 
 <span class="c1"># Create pipeline with operations and measurements</span>
 <span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span>
     <span class="n">ops</span><span class="o">=</span><span class="p">[</span>
-        <span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">1.5</span><span class="p">),</span>
+        <span class="n">BlurGauss</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">1.5</span><span class="p">),</span>
         <span class="n">OtsuDetector</span><span class="p">(),</span>
         <span class="n">RemoveSmallObjects</span><span class="p">(</span><span class="n">min_size</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
     <span class="p">],</span>
@@ -1289,15 +1343,15 @@ class names are provided, automatic suffix numbering ensures uniqueness.</p>
 
 <span class="c1"># Set operations as list</span>
 <span class="n">pipeline</span><span class="o">.</span><span class="n">set_ops</span><span class="p">([</span>
-    <span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">1.5</span><span class="p">),</span>
+    <span class="n">BlurGauss</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">1.5</span><span class="p">),</span>
     <span class="n">OtsuDetector</span><span class="p">(),</span>
     <span class="n">RemoveSmallObjects</span><span class="p">(</span><span class="n">min_size</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 <span class="p">])</span>
-<span class="c1"># Names: &#39;GaussianBlur&#39;, &#39;OtsuDetector&#39;, &#39;RemoveSmallObjects&#39;</span>
+<span class="c1"># Names: &#39;BlurGauss&#39;, &#39;OtsuDetector&#39;, &#39;RemoveSmallObjects&#39;</span>
 
 <span class="c1"># Set operations as dict with custom names</span>
 <span class="n">pipeline</span><span class="o">.</span><span class="n">set_ops</span><span class="p">({</span>
-    <span class="s1">&#39;blur&#39;</span><span class="p">:</span> <span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">1.5</span><span class="p">),</span>
+    <span class="s1">&#39;blur&#39;</span><span class="p">:</span> <span class="n">BlurGauss</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">1.5</span><span class="p">),</span>
     <span class="s1">&#39;detect&#39;</span><span class="p">:</span> <span class="n">OtsuDetector</span><span class="p">(),</span>
     <span class="s1">&#39;refine&#39;</span><span class="p">:</span> <span class="n">RemoveSmallObjects</span><span class="p">(</span><span class="n">min_size</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 <span class="p">})</span>
@@ -1575,7 +1629,7 @@ the pipeline with <code class="docutils literal notranslate"><span class="pre">b
 <p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create pipeline with benchmarking enabled</span>
 <span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span>
-    <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">GaussianBlur</span><span class="p">(),</span> <span class="n">OtsuDetector</span><span class="p">(),</span> <span class="n">RemoveSmallObjects</span><span class="p">()],</span>
+    <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">BlurGauss</span><span class="p">(),</span> <span class="n">OtsuDetector</span><span class="p">(),</span> <span class="n">RemoveSmallObjects</span><span class="p">()],</span>
     <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">(),</span> <span class="n">MeasureIntensity</span><span class="p">()],</span>
     <span class="n">benchmark</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
@@ -1589,7 +1643,7 @@ the pipeline with <code class="docutils literal notranslate"><span class="pre">b
 <span class="n">performance</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">benchmark_results</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">performance</span><span class="p">)</span>
 <span class="c1">#   Process Type         Process Name  Execution Time (s)</span>
-<span class="c1"># 0    Operation         GaussianBlur            0.0234</span>
+<span class="c1"># 0    Operation         BlurGauss            0.0234</span>
 <span class="c1"># 1    Operation        OtsuDetector            0.1523</span>
 <span class="c1"># 2    Operation  RemoveSmallObjects            0.0456</span>
 <span class="c1"># 3  Measurement         MeasureShape            0.0893</span>
@@ -1683,7 +1737,7 @@ are excluded to keep serialization clean.</p>
 <p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create and configure pipeline</span>
 <span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span>
-    <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">1.5</span><span class="p">),</span> <span class="n">OtsuDetector</span><span class="p">()],</span>
+    <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">BlurGauss</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">1.5</span><span class="p">),</span> <span class="n">OtsuDetector</span><span class="p">()],</span>
     <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">(),</span> <span class="n">MeasureIntensity</span><span class="p">()],</span>
     <span class="n">benchmark</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span>
@@ -1700,8 +1754,8 @@ are excluded to keep serialization clean.</p>
 <p><strong>Example JSON Output:</strong></p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;ops&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;GaussianBlur&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;class&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GaussianBlur&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;BlurGauss&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;class&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;BlurGauss&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;params&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;sigma&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.5</span><span class="p">}</span>
 <span class="w">    </span><span class="p">},</span>
 <span class="w">    </span><span class="nt">&quot;OtsuDetector&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -1814,7 +1868,7 @@ instantiated with their saved parameters.</p>
 <p><strong>Reproducibility Workflow:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Researcher 1: Develop and save pipeline</span>
 <span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span>
-    <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">2.0</span><span class="p">),</span> <span class="n">OtsuDetector</span><span class="p">()],</span>
+    <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">BlurGauss</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">2.0</span><span class="p">),</span> <span class="n">OtsuDetector</span><span class="p">()],</span>
     <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">()]</span>
 <span class="p">)</span>
 <span class="n">pipeline</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s1">&#39;colony_detection_v1.json.pht-pipe&#39;</span><span class="p">)</span>
@@ -1872,7 +1926,7 @@ which extends ImagePipeline with multiprocessing capabilities:</p>
 
 <span class="c1"># Create batch pipeline with parallel processing</span>
 <span class="n">batch_pipeline</span> <span class="o">=</span> <span class="n">ImagePipelineBatch</span><span class="p">(</span>
-    <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">GaussianBlur</span><span class="p">(),</span> <span class="n">OtsuDetector</span><span class="p">()],</span>
+    <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">BlurGauss</span><span class="p">(),</span> <span class="n">OtsuDetector</span><span class="p">()],</span>
     <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">(),</span> <span class="n">MeasureIntensity</span><span class="p">()],</span>
     <span class="n">n_jobs</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>  <span class="c1"># Use 4 worker processes</span>
     <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>

@@ -1,0 +1,110 @@
+phenotypic.schema.MODEL\_METRICS
+================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: MODEL_METRICS
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MODEL_METRICS.kind
+      ~MODEL_METRICS.category
+      ~MODEL_METRICS.tier
+      ~MODEL_METRICS.rembi_module
+      ~MODEL_METRICS.header_scheme
+      ~MODEL_METRICS.member_for_header
+      ~MODEL_METRICS.owns_header
+      ~MODEL_METRICS.get_labels
+      ~MODEL_METRICS.get_headers
+      ~MODEL_METRICS.rst_table
+      ~MODEL_METRICS.append_rst_to_doc
+      ~MODEL_METRICS.encode
+      ~MODEL_METRICS.replace
+      ~MODEL_METRICS.split
+      ~MODEL_METRICS.rsplit
+      ~MODEL_METRICS.join
+      ~MODEL_METRICS.capitalize
+      ~MODEL_METRICS.casefold
+      ~MODEL_METRICS.title
+      ~MODEL_METRICS.center
+      ~MODEL_METRICS.count
+      ~MODEL_METRICS.expandtabs
+      ~MODEL_METRICS.find
+      ~MODEL_METRICS.partition
+      ~MODEL_METRICS.index
+      ~MODEL_METRICS.ljust
+      ~MODEL_METRICS.lower
+      ~MODEL_METRICS.lstrip
+      ~MODEL_METRICS.rfind
+      ~MODEL_METRICS.rindex
+      ~MODEL_METRICS.rjust
+      ~MODEL_METRICS.rstrip
+      ~MODEL_METRICS.rpartition
+      ~MODEL_METRICS.splitlines
+      ~MODEL_METRICS.strip
+      ~MODEL_METRICS.swapcase
+      ~MODEL_METRICS.translate
+      ~MODEL_METRICS.upper
+      ~MODEL_METRICS.startswith
+      ~MODEL_METRICS.endswith
+      ~MODEL_METRICS.removeprefix
+      ~MODEL_METRICS.removesuffix
+      ~MODEL_METRICS.isascii
+      ~MODEL_METRICS.islower
+      ~MODEL_METRICS.isupper
+      ~MODEL_METRICS.istitle
+      ~MODEL_METRICS.isspace
+      ~MODEL_METRICS.isdecimal
+      ~MODEL_METRICS.isdigit
+      ~MODEL_METRICS.isnumeric
+      ~MODEL_METRICS.isalpha
+      ~MODEL_METRICS.isalnum
+      ~MODEL_METRICS.isidentifier
+      ~MODEL_METRICS.isprintable
+      ~MODEL_METRICS.zfill
+      ~MODEL_METRICS.format
+      ~MODEL_METRICS.format_map
+      ~MODEL_METRICS.maketrans
+      ~MODEL_METRICS.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MODEL_METRICS.CATEGORY
+      ~MODEL_METRICS.resolved_kind
+      ~MODEL_METRICS.resolved_tier
+      ~MODEL_METRICS.resolved_rembi_module
+      ~MODEL_METRICS.use_label
+      ~MODEL_METRICS.use_badge
+      ~MODEL_METRICS.MAE
+      ~MODEL_METRICS.MSE
+      ~MODEL_METRICS.RMSE
+      ~MODEL_METRICS.R2
+      ~MODEL_METRICS.NUM_SAMPLES
+      ~MODEL_METRICS.LOSS
+      ~MODEL_METRICS.STATUS
+      ~MODEL_METRICS.label
+      ~MODEL_METRICS.desc
+      ~MODEL_METRICS.bio_desc
+      ~MODEL_METRICS.image
+      ~MODEL_METRICS.pair
+      ~MODEL_METRICS.tier_override
+      ~MODEL_METRICS.derivation_type
+      ~MODEL_METRICS.derives_from
+      ~MODEL_METRICS.rembi_module_override
+   
+   

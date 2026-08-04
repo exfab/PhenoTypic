@@ -36,4 +36,6 @@ interactive report. Plotly and Matplotlib figures are both accepted by the CLI
 publisher.
 
 The CLI writes plots below `deliverables/plots/<ClassName>/`. A multi-page plot may
-return `PlotOutput` with deterministically keyed `PlotPage` entries.
+return `PlotOutput` with deterministically keyed `PlotPage` entries. Import both
+output contracts from `phenotypic.abc_.plotting`; `phenotypic.plotting` contains
+only the ready-to-use plot models.

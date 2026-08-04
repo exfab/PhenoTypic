@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="How To: Merge Fragmented Detections" href="../notebooks/merge_fragmented_detections.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -660,7 +660,7 @@ whatever 224 implied. Pipelines deserialized from JSON keep their pinned
 <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> (<code class="docutils literal notranslate"><span class="pre">to_json()</span></code> writes every field), but <strong>will produce different,
 higher-resolution masks</strong> and cost substantially more GPU time – re-serialize
 to adopt the new <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> defaults described below. Separately,
-<code class="docutils literal notranslate"><span class="pre">Sam2Detector.crop_n_layers</span></code> moves from <code class="docutils literal notranslate"><span class="pre">0</span></code> to <code class="docutils literal notranslate"><span class="pre">1</span></code> (~5.2x cost) for
+<code class="docutils literal notranslate"><span class="pre">Sam2.crop_n_layers</span></code> moves from <code class="docutils literal notranslate"><span class="pre">0</span></code> to <code class="docutils literal notranslate"><span class="pre">1</span></code> (~5.2x cost) for
 <strong>newly-constructed</strong> detectors only; existing serialized pipelines are
 unaffected.</p>
 </div>
@@ -676,7 +676,7 @@ unaffected.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Sam2Detector</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Sam2</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">torch</span></code>, <code class="docutils literal notranslate"><span class="pre">torchvision</span></code>, <code class="docutils literal notranslate"><span class="pre">sam2</span></code></p></td>
 <td><p><strong>PyPI</strong> (ships in <code class="docutils literal notranslate"><span class="pre">phenotypic[torch]</span></code>)</p></td>
 <td><p>Yes — Linux + CUDA</p></td>
@@ -686,7 +686,7 @@ unaffected.</p>
 <td><p><strong>conda-forge only</strong>, not on PyPI</p></td>
 <td><p>CPU by default; user-managed CUDA possible</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Sam3Detector</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Sam3</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">transformers</span></code>, <code class="docutils literal notranslate"><span class="pre">huggingface_hub</span></code> (+ <code class="docutils literal notranslate"><span class="pre">torch</span></code>)</p></td>
 <td><p><strong>PyPI</strong> (ships in <code class="docutils literal notranslate"><span class="pre">phenotypic[foundation]</span></code>); weights <strong>gated</strong></p></td>
 <td><p>Yes — Linux + CUDA</p></td>
@@ -784,18 +784,18 @@ for gated foundation weights are documented in the
 tutorial section. The SLURM-specific staging is expanded under
 <a class="reference internal" href="#slurm-deployment"><span class="std std-ref">SLURM Deployment</span></a> below.</p>
 </section>
-<section id="using-sam2detector">
-<h2>Using Sam2Detector<a class="headerlink" href="#using-sam2detector" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">Sam2Detector</span></code> wraps Meta’s SAM2 automatic mask generator. It lays a grid of
+<section id="using-sam2">
+<h2>Using Sam2<a class="headerlink" href="#using-sam2" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Sam2</span></code> wraps Meta’s SAM2 automatic mask generator. It lays a grid of
 prompt points over the RGB image, predicts masks at each point, filters by
 quality, and assembles a labelled object map.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam2Detector</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam2</span>
 
 <span class="c1"># Basic usage with default parameters</span>
-<span class="n">detector</span> <span class="o">=</span> <span class="n">Sam2Detector</span><span class="p">()</span>
+<span class="n">detector</span> <span class="o">=</span> <span class="n">Sam2</span><span class="p">()</span>
 
 <span class="c1"># Tuned for dense plates with small colonies</span>
-<span class="n">detector</span> <span class="o">=</span> <span class="n">Sam2Detector</span><span class="p">(</span>
+<span class="n">detector</span> <span class="o">=</span> <span class="n">Sam2</span><span class="p">(</span>
     <span class="n">model_size</span><span class="o">=</span><span class="s2">&quot;small&quot;</span><span class="p">,</span>
     <span class="n">points_per_side</span><span class="o">=</span><span class="mi">48</span><span class="p">,</span>
     <span class="n">pred_iou_thresh</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
@@ -884,16 +884,16 @@ microscopy images of agar plates.</p>
 </ul>
 </section>
 </section>
-<section id="using-sam3detector">
-<h2>Using Sam3Detector<a class="headerlink" href="#using-sam3detector" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">Sam3Detector</span></code> wraps Meta’s <strong>text-prompted</strong> SAM3 foundation model. Unlike
+<section id="using-sam3">
+<h2>Using Sam3<a class="headerlink" href="#using-sam3" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Sam3</span></code> wraps Meta’s <strong>text-prompted</strong> SAM3 foundation model. Unlike
 SAM2’s dense point grid, SAM3 segments everything matching a short text
 <code class="docutils literal notranslate"><span class="pre">prompt</span></code> (default <code class="docutils literal notranslate"><span class="pre">&quot;colony&quot;</span></code>) in one true batched forward pass, then assembles
 the predicted instance masks into a labelled <code class="docutils literal notranslate"><span class="pre">objmap</span></code> (<code class="docutils literal notranslate"><span class="pre">output_kind=&quot;instance&quot;</span></code>).</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam3Detector</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam3</span>
 
 <span class="c1"># Override the prompt per run — SAM3 has no prompt-free &quot;segment everything&quot; mode.</span>
-<span class="n">det</span> <span class="o">=</span> <span class="n">Sam3Detector</span><span class="p">(</span><span class="n">prompt</span><span class="o">=</span><span class="s2">&quot;yeast colony&quot;</span><span class="p">,</span> <span class="n">score_thresh</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="n">det</span> <span class="o">=</span> <span class="n">Sam3</span><span class="p">(</span><span class="n">prompt</span><span class="o">=</span><span class="s2">&quot;yeast colony&quot;</span><span class="p">,</span> <span class="n">score_thresh</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>SAM3 weights are <strong>gated</strong> (SAM License). Accept the gate and authenticate
@@ -902,10 +902,10 @@ before the first <code class="docutils literal notranslate"><span class="pre">ap
 <p><strong>Dense plates.</strong> SAM3 caps at 200 instances per forward. <code class="docutils literal notranslate"><span class="pre">facebook/sam3</span></code> is a
 gated repository whose processor config we cannot read (requests return 403),
 so the claim that it runs at 1008 px internally is carried as an
-<strong>assumption</strong>, not a verified fact. <code class="docutils literal notranslate"><span class="pre">Sam3Detector</span></code> tiles large plates into
+<strong>assumption</strong>, not a verified fact. <code class="docutils literal notranslate"><span class="pre">Sam3</span></code> tiles large plates into
 fixed <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> crops with <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code>, infers each tile, and merges the
 per-tile instances by <strong>centroid-in-core assignment</strong>
-(<code class="docutils literal notranslate"><span class="pre">~phenotypic.detect.nn._tiling.assign_by_centroid_core</span></code>): each instance is
+(<code class="docutils literal notranslate"><span class="pre">~phenotypic.detect.nn._helper._tiling.assign_by_centroid_core</span></code>): each instance is
 kept by the one tile whose core – the Voronoi cell of the tile centres –
 contains its centroid, so a colony straddling a seam is claimed by exactly one
 tile and the fragment a neighbouring tile saw is never kept as its own
@@ -965,8 +965,8 @@ each proposal’s pooled feature would collapse to the same zero vector and the
 re-ranking would do no work.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">crop_n_layers</span></code> / <code class="docutils literal notranslate"><span class="pre">crop_nms_thresh</span></code> / <code class="docutils literal notranslate"><span class="pre">crop_overlap_ratio</span></code> /
 <code class="docutils literal notranslate"><span class="pre">crop_n_points_downscale_factor</span></code> — SAM2 crop-pyramid controls for the
-<em>proposal</em> half, forwarded to the same mask generator <code class="docutils literal notranslate"><span class="pre">Sam2Detector</span></code> uses and
-documented under <a class="reference internal" href="#using-sam2detector"><span class="std std-ref">Using Sam2Detector</span></a>. <code class="docutils literal notranslate"><span class="pre">crop_n_layers</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">1</span></code>
+<em>proposal</em> half, forwarded to the same mask generator <code class="docutils literal notranslate"><span class="pre">Sam2</span></code> uses and
+documented under <a class="reference internal" href="#using-sam2"><span class="std std-ref">Using Sam2</span></a>. <code class="docutils literal notranslate"><span class="pre">crop_n_layers</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">1</span></code>
 here too.</p></li>
 </ul>
 </section>
@@ -1093,11 +1093,11 @@ buys no extra detail.</p></li>
 <h2>Pipeline Integration<a class="headerlink" href="#pipeline-integration" title="Link to this heading">#</a></h2>
 <p>GPU detectors work like any other PhenoTypic operation in a pipeline:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pht</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam2Detector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam2</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">SizeMeasurer</span>
 
 <span class="n">pipeline</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">ImagePipeline</span><span class="p">(</span>
-    <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">Sam2Detector</span><span class="p">(</span><span class="n">model_size</span><span class="o">=</span><span class="s2">&quot;tiny&quot;</span><span class="p">,</span> <span class="n">points_per_side</span><span class="o">=</span><span class="mi">32</span><span class="p">)],</span>
+    <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">Sam2</span><span class="p">(</span><span class="n">model_size</span><span class="o">=</span><span class="s2">&quot;tiny&quot;</span><span class="p">,</span> <span class="n">points_per_side</span><span class="o">=</span><span class="mi">32</span><span class="p">)],</span>
     <span class="n">measurer</span><span class="o">=</span><span class="n">SizeMeasurer</span><span class="p">(),</span>
     <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sam2_colony_pipeline&quot;</span><span class="p">,</span>
 <span class="p">)</span>
@@ -1167,7 +1167,7 @@ python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w
 </section>
 <section id="slurm-deployment">
 <h2>SLURM Deployment<a class="headerlink" href="#slurm-deployment" title="Link to this heading">#</a></h2>
-<p>When a pipeline contains a <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code> operation (either <code class="docutils literal notranslate"><span class="pre">Sam2Detector</span></code> or
+<p>When a pipeline contains a <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code> operation (either <code class="docutils literal notranslate"><span class="pre">Sam2</span></code> or
 <code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code>), the CLI automatically adapts:</p>
 <p><strong>Local execution:</strong> Forward GPU runs use the staged engine above (the model
 loads once and streams every image); see “Local Staged GPU Detection”. The
@@ -1264,10 +1264,10 @@ order:</p>
 <section id="explicit-device">
 <h3>Explicit device<a class="headerlink" href="#explicit-device" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Force a specific device</span>
-<span class="n">Sam2Detector</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>   <span class="c1"># NVIDIA GPU</span>
-<span class="n">Sam2Detector</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;mps&quot;</span><span class="p">)</span>    <span class="c1"># Apple Silicon</span>
-<span class="n">Sam2Detector</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;xpu&quot;</span><span class="p">)</span>    <span class="c1"># Intel GPU</span>
-<span class="n">Sam2Detector</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>    <span class="c1"># CPU (very slow, but always available)</span>
+<span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>   <span class="c1"># NVIDIA GPU</span>
+<span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;mps&quot;</span><span class="p">)</span>    <span class="c1"># Apple Silicon</span>
+<span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;xpu&quot;</span><span class="p">)</span>    <span class="c1"># Intel GPU</span>
+<span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>    <span class="c1"># CPU (very slow, but always available)</span>
 </pre></div>
 </div>
 <p>When an explicit accelerator is requested but unavailable, a <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>
@@ -1277,7 +1277,7 @@ is raised with a descriptive message.</p>
 <h3><code class="docutils literal notranslate"><span class="pre">resolve_device()</span></code> utility<a class="headerlink" href="#resolve-device-utility" title="Link to this heading">#</a></h3>
 <p>The device resolution logic is available as a standalone function for custom
 workflows:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn._checkpoint_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_device</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn._helper._checkpoint_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_device</span>
 
 <span class="n">device</span> <span class="o">=</span> <span class="n">resolve_device</span><span class="p">(</span><span class="s2">&quot;auto&quot;</span><span class="p">)</span>           <span class="c1"># raises if no accelerator</span>
 <span class="n">device</span> <span class="o">=</span> <span class="n">resolve_device</span><span class="p">(</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="n">allow_cpu</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># falls back to CPU with warning</span>
@@ -1311,8 +1311,8 @@ python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<spa
 </section>
 <section id="troubleshooting">
 <h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">#</a></h2>
-<section id="importerror-sam2detector-requires-the-sam2-package">
-<h3><code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">Sam2Detector</span> <span class="pre">requires</span> <span class="pre">the</span> <span class="pre">sam2</span> <span class="pre">package</span></code><a class="headerlink" href="#importerror-sam2detector-requires-the-sam2-package" title="Link to this heading">#</a></h3>
+<section id="importerror-sam2-requires-the-sam2-package">
+<h3><code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">Sam2</span> <span class="pre">requires</span> <span class="pre">the</span> <span class="pre">sam2</span> <span class="pre">package</span></code><a class="headerlink" href="#importerror-sam2-requires-the-sam2-package" title="Link to this heading">#</a></h3>
 <p>PyTorch and the model packages are not installed. Install the <code class="docutils literal notranslate"><span class="pre">torch</span></code> extra:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;phenotypic[torch]&quot;</span>
 </pre></div>
@@ -1333,7 +1333,7 @@ tutorial section for the conda-forge / <code class="docutils literal notranslate
 <li><p>On macOS with Apple Silicon, ensure PyTorch &gt;= 2.0 with MPS support.</p></li>
 <li><p>Pass <code class="docutils literal notranslate"><span class="pre">device=&quot;cpu&quot;</span></code> to force CPU inference (very slow):</p></li>
 </ul>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Sam2Detector</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -1358,7 +1358,7 @@ keeps the same prompt grid, crop pyramid, thresholds, and mask geometry.</p></li
 same bounded row-chunk conversion, so this setting is not an OOM control.
 Keep the <code class="docutils literal notranslate"><span class="pre">&quot;image_max&quot;</span></code> default for the validated compatibility policy; use
 <code class="docutils literal notranslate"><span class="pre">&quot;dtype_range&quot;</span></code> only when absolute sensor-scale intensity is required.</p></li>
-<li><p>Use a smaller model: <code class="docutils literal notranslate"><span class="pre">Sam2Detector(model_size=&quot;tiny&quot;)</span></code> instead of <code class="docutils literal notranslate"><span class="pre">&quot;large&quot;</span></code>.</p></li>
+<li><p>Use a smaller model: <code class="docutils literal notranslate"><span class="pre">Sam2(model_size=&quot;tiny&quot;)</span></code> instead of <code class="docutils literal notranslate"><span class="pre">&quot;large&quot;</span></code>.</p></li>
 <li><p>Use <code class="docutils literal notranslate"><span class="pre">MicroSamDetector(model_type=&quot;vit_t_lm&quot;)</span></code> for the smallest micro-sam
 model.</p></li>
 <li><p>If memory is still insufficient, reduce <code class="docutils literal notranslate"><span class="pre">points_per_side</span></code> (for example, 16
@@ -1425,7 +1425,7 @@ Stages 1 &amp; 3 are the ones exposed to a heterogeneous CPU partition.)</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#downloading-model-checkpoints">Downloading Model Checkpoints</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-sam2detector">Using Sam2Detector</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-sam2">Using Sam2</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#parameter-tuning-for-colony-detection">Parameter tuning for colony detection</a></li>
 </ul>
 </li>
@@ -1433,7 +1433,7 @@ Stages 1 &amp; 3 are the ones exposed to a heterogeneous CPU partition.)</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#model-selection">Model selection</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-sam3detector">Using Sam3Detector</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-sam3">Using Sam3</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-dinosam2detector">Using DinoSam2Detector</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#semantic-few-shot-detectors-insid3detector-fssdinodetector">Semantic few-shot detectors (<code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code>, <code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code>)</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#insid3detector-one-shot-in-context-dinov3-native-gated"><code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code> — one-shot in-context (DINOv3-native, gated)</a></li>
@@ -1461,7 +1461,7 @@ Stages 1 &amp; 3 are the ones exposed to a heterogeneous CPU partition.)</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#troubleshooting">Troubleshooting</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#importerror-sam2detector-requires-the-sam2-package"><code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">Sam2Detector</span> <span class="pre">requires</span> <span class="pre">the</span> <span class="pre">sam2</span> <span class="pre">package</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#importerror-sam2-requires-the-sam2-package"><code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">Sam2</span> <span class="pre">requires</span> <span class="pre">the</span> <span class="pre">sam2</span> <span class="pre">package</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#importerror-microsamdetector-requires-the-micro-sam-package"><code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">MicroSamDetector</span> <span class="pre">requires</span> <span class="pre">the</span> <span class="pre">micro_sam</span> <span class="pre">package</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#runtimeerror-no-accelerator-available"><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">No</span> <span class="pre">accelerator</span> <span class="pre">available</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#runtimeerror-device-cuda-requested-but-cuda-is-not-available"><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">device='cuda'</span> <span class="pre">requested</span> <span class="pre">but</span> <span class="pre">CUDA</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">available</span></code></a></li>

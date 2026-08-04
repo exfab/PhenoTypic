@@ -1,0 +1,120 @@
+phenotypic.schema.SHAPE
+=======================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: SHAPE
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SHAPE.kind
+      ~SHAPE.category
+      ~SHAPE.tier
+      ~SHAPE.rembi_module
+      ~SHAPE.header_scheme
+      ~SHAPE.member_for_header
+      ~SHAPE.owns_header
+      ~SHAPE.get_labels
+      ~SHAPE.get_headers
+      ~SHAPE.rst_table
+      ~SHAPE.append_rst_to_doc
+      ~SHAPE.encode
+      ~SHAPE.replace
+      ~SHAPE.split
+      ~SHAPE.rsplit
+      ~SHAPE.join
+      ~SHAPE.capitalize
+      ~SHAPE.casefold
+      ~SHAPE.title
+      ~SHAPE.center
+      ~SHAPE.count
+      ~SHAPE.expandtabs
+      ~SHAPE.find
+      ~SHAPE.partition
+      ~SHAPE.index
+      ~SHAPE.ljust
+      ~SHAPE.lower
+      ~SHAPE.lstrip
+      ~SHAPE.rfind
+      ~SHAPE.rindex
+      ~SHAPE.rjust
+      ~SHAPE.rstrip
+      ~SHAPE.rpartition
+      ~SHAPE.splitlines
+      ~SHAPE.strip
+      ~SHAPE.swapcase
+      ~SHAPE.translate
+      ~SHAPE.upper
+      ~SHAPE.startswith
+      ~SHAPE.endswith
+      ~SHAPE.removeprefix
+      ~SHAPE.removesuffix
+      ~SHAPE.isascii
+      ~SHAPE.islower
+      ~SHAPE.isupper
+      ~SHAPE.istitle
+      ~SHAPE.isspace
+      ~SHAPE.isdecimal
+      ~SHAPE.isdigit
+      ~SHAPE.isnumeric
+      ~SHAPE.isalpha
+      ~SHAPE.isalnum
+      ~SHAPE.isidentifier
+      ~SHAPE.isprintable
+      ~SHAPE.zfill
+      ~SHAPE.format
+      ~SHAPE.format_map
+      ~SHAPE.maketrans
+      ~SHAPE.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SHAPE.CATEGORY
+      ~SHAPE.resolved_kind
+      ~SHAPE.resolved_tier
+      ~SHAPE.resolved_rembi_module
+      ~SHAPE.use_label
+      ~SHAPE.use_badge
+      ~SHAPE.AREA
+      ~SHAPE.PERIMETER
+      ~SHAPE.CIRCULARITY
+      ~SHAPE.CONVEX_AREA
+      ~SHAPE.MEDIAN_RADIUS
+      ~SHAPE.MEAN_RADIUS
+      ~SHAPE.MAX_RADIUS
+      ~SHAPE.MIN_FERET_DIAMETER
+      ~SHAPE.MAX_FERET_DIAMETER
+      ~SHAPE.ECCENTRICITY
+      ~SHAPE.SOLIDITY
+      ~SHAPE.EXTENT
+      ~SHAPE.BBOX_AREA
+      ~SHAPE.MAJOR_AXIS_LENGTH
+      ~SHAPE.MINOR_AXIS_LENGTH
+      ~SHAPE.COMPACTNESS
+      ~SHAPE.ORIENTATION
+      ~SHAPE.label
+      ~SHAPE.desc
+      ~SHAPE.bio_desc
+      ~SHAPE.image
+      ~SHAPE.pair
+      ~SHAPE.tier_override
+      ~SHAPE.derivation_type
+      ~SHAPE.derives_from
+      ~SHAPE.rembi_module_override
+   
+   

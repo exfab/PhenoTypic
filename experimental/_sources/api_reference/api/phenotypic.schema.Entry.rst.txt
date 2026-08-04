@@ -1,0 +1,38 @@
+phenotypic.schema.Entry
+=======================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: Entry
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~Entry.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Entry.label
+      ~Entry.desc
+      ~Entry.bio_desc
+      ~Entry.image
+      ~Entry.tier
+      ~Entry.derivation_type
+      ~Entry.derives_from
+      ~Entry.rembi_module
+   
+   

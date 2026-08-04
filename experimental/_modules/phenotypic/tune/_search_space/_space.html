@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -639,8 +639,8 @@
 <span class="sd">            union — ``Categorical`` / ``IntRange`` / ``FloatRange`` / ``Fixed``).</span>
 <span class="sd">        conditional_on: Parent presence conditions that gate this knob; the knob</span>
 <span class="sd">            is active only when each ``(target, value)`` pair holds, e.g.</span>
-<span class="sd">            ``((Presence(op=0, op_class=&quot;GaussianBlur&quot;), True),)`` — define-by-run</span>
-<span class="sd">            conditional nesting. A string parent (``&quot;0.GaussianBlur.__enabled__&quot;``)</span>
+<span class="sd">            ``((Presence(op=0, op_class=&quot;BlurGauss&quot;), True),)`` — define-by-run</span>
+<span class="sd">            conditional nesting. A string parent (``&quot;0.BlurGauss.__enabled__&quot;``)</span>
 <span class="sd">            is coerced to a target. ``None`` means unconditional.</span>
 <span class="sd">        source: Provenance of the knob (a closed ``KnobSource`` set). Defaults to</span>
 <span class="sd">            ``&quot;manual&quot;`` for hand-authored spaces; ``infer_search_space`` (Phase 3)</span>

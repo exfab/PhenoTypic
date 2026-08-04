@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../_static/documentation_options.js?v=478834ab"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -630,6 +630,7 @@
 <li><a href="phenotypic/abc_/_prefab_pipeline.html">phenotypic.abc_._prefab_pipeline</a></li>
 <li><a href="phenotypic/abc_/_threshold_detector.html">phenotypic.abc_._threshold_detector</a></li>
 <li><a href="phenotypic/abc_/plotting/_lifecycle.html">phenotypic.abc_.plotting._lifecycle</a></li>
+<li><a href="phenotypic/abc_/plotting/_output.html">phenotypic.abc_.plotting._output</a></li>
 <li><a href="phenotypic/abc_/plotting/_pht_plot.html">phenotypic.abc_.plotting._pht_plot</a></li>
 <li><a href="phenotypic/analysis/_cubical_persistence.html">phenotypic.analysis._cubical_persistence</a></li>
 <li><a href="phenotypic/analysis/_error_cutoffs.html">phenotypic.analysis._error_cutoffs</a></li>
@@ -685,6 +686,7 @@
 <li><a href="phenotypic/detect/_watershed_detector.html">phenotypic.detect._watershed_detector</a></li>
 <li><a href="phenotypic/detect/_yen_detector.html">phenotypic.detect._yen_detector</a></li>
 <li><a href="phenotypic/enhance/_bayesshrink_enhancer.html">phenotypic.enhance._bayesshrink_enhancer</a></li>
+<li><a href="phenotypic/enhance/_blur_gauss.html">phenotypic.enhance._blur_gauss</a></li>
 <li><a href="phenotypic/enhance/_composite_enhance.html">phenotypic.enhance._composite_enhance</a></li>
 <li><a href="phenotypic/enhance/_contrast_gamma.html">phenotypic.enhance._contrast_gamma</a></li>
 <li><a href="phenotypic/enhance/_contrast_log.html">phenotypic.enhance._contrast_log</a></li>
@@ -704,7 +706,6 @@
 <li><a href="phenotypic/enhance/_focus_edge_sato.html">phenotypic.enhance._focus_edge_sato</a></li>
 <li><a href="phenotypic/enhance/_focus_edge_sobel.html">phenotypic.enhance._focus_edge_sobel</a></li>
 <li><a href="phenotypic/enhance/_focus_edge_two_k_phase.html">phenotypic.enhance._focus_edge_two_k_phase</a></li>
-<li><a href="phenotypic/enhance/_gaussian_blur.html">phenotypic.enhance._gaussian_blur</a></li>
 <li><a href="phenotypic/enhance/_gray_opening.html">phenotypic.enhance._gray_opening</a></li>
 <li><a href="phenotypic/enhance/_image_inverter.html">phenotypic.enhance._image_inverter</a></li>
 <li><a href="phenotypic/enhance/_local_edge_denoise.html">phenotypic.enhance._local_edge_denoise</a></li>
@@ -738,9 +739,7 @@
 <li><a href="phenotypic/measure/_measure_size.html">phenotypic.measure._measure_size</a></li>
 <li><a href="phenotypic/measure/_measure_symmetric_zones.html">phenotypic.measure._measure_symmetric_zones</a></li>
 <li><a href="phenotypic/measure/_measure_texture.html">phenotypic.measure._measure_texture</a></li>
-<li><a href="phenotypic/plotting/_bindings.html">phenotypic.plotting._bindings</a></li>
 <li><a href="phenotypic/plotting/_image_plots.html">phenotypic.plotting._image_plots</a></li>
-<li><a href="phenotypic/plotting/_output.html">phenotypic.plotting._output</a></li>
 <li><a href="phenotypic/plotting/_plot_colony_metric_over_time.html">phenotypic.plotting._plot_colony_metric_over_time</a></li>
 <li><a href="phenotypic/plotting/_plot_meas_time_series.html">phenotypic.plotting._plot_meas_time_series</a></li>
 <li><a href="phenotypic/prefab/_filamentous_fungi_pipeline.html">phenotypic.prefab._filamentous_fungi_pipeline</a></li>
@@ -777,7 +776,51 @@
 <li><a href="phenotypic/refine/_small_to_large_merger.html">phenotypic.refine._small_to_large_merger</a></li>
 <li><a href="phenotypic/refine/_thinning.html">phenotypic.refine._thinning</a></li>
 <li><a href="phenotypic/refine/_trim_asymmetry.html">phenotypic.refine._trim_asymmetry</a></li>
+<li><a href="phenotypic/schema/_bbox.html">phenotypic.schema._bbox</a></li>
+<li><a href="phenotypic/schema/_color_composition.html">phenotypic.schema._color_composition</a></li>
+<li><a href="phenotypic/schema/_color_hsv.html">phenotypic.schema._color_hsv</a></li>
+<li><a href="phenotypic/schema/_color_lab.html">phenotypic.schema._color_lab</a></li>
+<li><a href="phenotypic/schema/_color_xy.html">phenotypic.schema._color_xy</a></li>
+<li><a href="phenotypic/schema/_color_xyz.html">phenotypic.schema._color_xyz</a></li>
+<li><a href="phenotypic/schema/_curation.html">phenotypic.schema._curation</a></li>
+<li><a href="phenotypic/schema/_edge_correction.html">phenotypic.schema._edge_correction</a></li>
+<li><a href="phenotypic/schema/_error_category.html">phenotypic.schema._error_category</a></li>
+<li><a href="phenotypic/schema/_experimental_tags/_acquisition.html">phenotypic.schema._experimental_tags._acquisition</a></li>
+<li><a href="phenotypic/schema/_experimental_tags/_condition.html">phenotypic.schema._experimental_tags._condition</a></li>
+<li><a href="phenotypic/schema/_experimental_tags/_culture.html">phenotypic.schema._experimental_tags._culture</a></li>
+<li><a href="phenotypic/schema/_experimental_tags/_experiment.html">phenotypic.schema._experimental_tags._experiment</a></li>
+<li><a href="phenotypic/schema/_experimental_tags/_genetic.html">phenotypic.schema._experimental_tags._genetic</a></li>
+<li><a href="phenotypic/schema/_experimental_tags/_plate.html">phenotypic.schema._experimental_tags._plate</a></li>
+<li><a href="phenotypic/schema/_experimental_tags/_sample.html">phenotypic.schema._experimental_tags._sample</a></li>
+<li><a href="phenotypic/schema/_experimental_tags/_study.html">phenotypic.schema._experimental_tags._study</a></li>
+<li><a href="phenotypic/schema/_grid.html">phenotypic.schema._grid</a></li>
+<li><a href="phenotypic/schema/_grid_linreg_stats.html">phenotypic.schema._grid_linreg_stats</a></li>
+<li><a href="phenotypic/schema/_grid_spread.html">phenotypic.schema._grid_spread</a></li>
+<li><a href="phenotypic/schema/_intensity.html">phenotypic.schema._intensity</a></li>
+<li><a href="phenotypic/schema/_linear_cap_and_lag_model.html">phenotypic.schema._linear_cap_and_lag_model</a></li>
+<li><a href="phenotypic/schema/_linear_lag_model.html">phenotypic.schema._linear_lag_model</a></li>
+<li><a href="phenotypic/schema/_log_growth_model.html">phenotypic.schema._log_growth_model</a></li>
 <li><a href="phenotypic/schema/_measurement_info.html">phenotypic.schema._measurement_info</a></li>
+<li><a href="phenotypic/schema/_metadata.html">phenotypic.schema._metadata</a></li>
+<li><a href="phenotypic/schema/_metadata_match.html">phenotypic.schema._metadata_match</a></li>
+<li><a href="phenotypic/schema/_model_metrics.html">phenotypic.schema._model_metrics</a></li>
+<li><a href="phenotypic/schema/_neighbor_dist.html">phenotypic.schema._neighbor_dist</a></li>
+<li><a href="phenotypic/schema/_object.html">phenotypic.schema._object</a></li>
+<li><a href="phenotypic/schema/_orientation_zones.html">phenotypic.schema._orientation_zones</a></li>
+<li><a href="phenotypic/schema/_quality_check.html">phenotypic.schema._quality_check</a></li>
+<li><a href="phenotypic/schema/_quality_count.html">phenotypic.schema._quality_count</a></li>
+<li><a href="phenotypic/schema/_quality_icc.html">phenotypic.schema._quality_icc</a></li>
+<li><a href="phenotypic/schema/_quality_mad.html">phenotypic.schema._quality_mad</a></li>
+<li><a href="phenotypic/schema/_quality_occupancy.html">phenotypic.schema._quality_occupancy</a></li>
+<li><a href="phenotypic/schema/_quality_se.html">phenotypic.schema._quality_se</a></li>
+<li><a href="phenotypic/schema/_quality_tukey.html">phenotypic.schema._quality_tukey</a></li>
+<li><a href="phenotypic/schema/_quality_zmax.html">phenotypic.schema._quality_zmax</a></li>
+<li><a href="phenotypic/schema/_radial_expansion.html">phenotypic.schema._radial_expansion</a></li>
+<li><a href="phenotypic/schema/_rembi.html">phenotypic.schema._rembi</a></li>
+<li><a href="phenotypic/schema/_shape.html">phenotypic.schema._shape</a></li>
+<li><a href="phenotypic/schema/_size.html">phenotypic.schema._size</a></li>
+<li><a href="phenotypic/schema/_symmetric_zones.html">phenotypic.schema._symmetric_zones</a></li>
+<li><a href="phenotypic/schema/_texture.html">phenotypic.schema._texture</a></li>
 <li><a href="phenotypic/sdk_/_atomic_io.html">phenotypic.sdk_._atomic_io</a></li>
 <li><a href="phenotypic/sdk_/_io_constants.html">phenotypic.sdk_._io_constants</a></li>
 <li><a href="phenotypic/sdk_/_metadata_helpers.html">phenotypic.sdk_._metadata_helpers</a></li>

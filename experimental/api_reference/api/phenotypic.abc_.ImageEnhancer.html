@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="phenotypic.abc_.ImageOperation" href="phenotypic.abc_.ImageOperation.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -722,7 +722,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ContrastLog.html">phenotypic.enhance.ContrastLog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ContrastSigmoid.html">phenotypic.enhance.ContrastSigmoid</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeFrangi.html">phenotypic.enhance.FocusEdgeFrangi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GaussianBlur.html">phenotypic.enhance.GaussianBlur</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BlurGauss.html">phenotypic.enhance.BlurGauss</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractGaussian.html">phenotypic.enhance.SubtractGaussian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GrayOpening.html">phenotypic.enhance.GrayOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeHessian.html">phenotypic.enhance.FocusEdgeHessian</a></li>
@@ -810,6 +810,60 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskWhiteTophat.html">phenotypic.refine.MaskWhiteTophat</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.KeepSectionLargest.html">phenotypic.refine.KeepSectionLargest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveByFeature.html">phenotypic.refine.RemoveByFeature</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.schema.html">phenotypic.schema</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.parse_qualified_header.html">phenotypic.schema.parse_qualified_header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.qualified_header.html">phenotypic.schema.qualified_header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.header_to_module.html">phenotypic.schema.header_to_module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.Entry.html">phenotypic.schema.Entry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html">phenotypic.schema.MeasurementInfo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.REMBI_MODULE.html">phenotypic.schema.REMBI_MODULE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.METADATA.html">phenotypic.schema.METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.METADATA_MATCH.html">phenotypic.schema.METADATA_MATCH</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ACQUISITION_METADATA.html">phenotypic.schema.ACQUISITION_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CONDITION_METADATA.html">phenotypic.schema.CONDITION_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CULTURE_METADATA.html">phenotypic.schema.CULTURE_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.EXPERIMENT_METADATA.html">phenotypic.schema.EXPERIMENT_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.GENETIC_METADATA.html">phenotypic.schema.GENETIC_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.PLATE_METADATA.html">phenotypic.schema.PLATE_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.SAMPLE_METADATA.html">phenotypic.schema.SAMPLE_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.STUDY_METADATA.html">phenotypic.schema.STUDY_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.BBOX.html">phenotypic.schema.BBOX</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ColorComposition.html">phenotypic.schema.ColorComposition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ColorHSV.html">phenotypic.schema.ColorHSV</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ColorLab.html">phenotypic.schema.ColorLab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.Colorxy.html">phenotypic.schema.Colorxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ColorXYZ.html">phenotypic.schema.ColorXYZ</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CURATION.html">phenotypic.schema.CURATION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.LINEAR_CAP_AND_LAG_MODEL.html">phenotypic.schema.LINEAR_CAP_AND_LAG_MODEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.EDGE_CORRECTION.html">phenotypic.schema.EDGE_CORRECTION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ErrorCategory.html">phenotypic.schema.ErrorCategory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.GRID.html">phenotypic.schema.GRID</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.GRID_LINREG_STATS.html">phenotypic.schema.GRID_LINREG_STATS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.NEIGHBOR_DIST.html">phenotypic.schema.NEIGHBOR_DIST</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.GRID_SPREAD.html">phenotypic.schema.GRID_SPREAD</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.INTENSITY.html">phenotypic.schema.INTENSITY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.LINEAR_LAG_MODEL.html">phenotypic.schema.LINEAR_LAG_MODEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.LOG_GROWTH_MODEL.html">phenotypic.schema.LOG_GROWTH_MODEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MODEL_METRICS.html">phenotypic.schema.MODEL_METRICS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.OBJECT.html">phenotypic.schema.OBJECT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_CHECK.html">phenotypic.schema.QUALITY_CHECK</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_COUNT.html">phenotypic.schema.QUALITY_COUNT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_ICC.html">phenotypic.schema.QUALITY_ICC</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_MAD.html">phenotypic.schema.QUALITY_MAD</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_OCCUPANCY.html">phenotypic.schema.QUALITY_OCCUPANCY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_SE.html">phenotypic.schema.QUALITY_SE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_TUKEY.html">phenotypic.schema.QUALITY_TUKEY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_ZMAX.html">phenotypic.schema.QUALITY_ZMAX</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.RADIAL_EXPANSION.html">phenotypic.schema.RADIAL_EXPANSION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.SHAPE.html">phenotypic.schema.SHAPE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.SIZE.html">phenotypic.schema.SIZE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ORIENTATION_ZONES.html">phenotypic.schema.ORIENTATION_ZONES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.html">phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ORIENTATION_ZONE_PRIMARY.html">phenotypic.schema.ORIENTATION_ZONE_PRIMARY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.SYMMETRIC_ZONES.html">phenotypic.schema.SYMMETRIC_ZONES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.TEXTURE.html">phenotypic.schema.TEXTURE</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.sdk_.html">phenotypic.sdk_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -1202,7 +1256,7 @@ grayscale data untouched, protecting image integrity while enabling targeted pre
 <ul class="simple">
 <li><p><strong>ImageEnhancer (this class):</strong> Modify only <code class="docutils literal notranslate"><span class="pre">image.detect_mat</span></code> for preprocessing.
 Use for: noise reduction, contrast enhancement, illumination correction.
-Examples: [GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py),
+Examples: [BlurGauss](src/phenotypic/enhance/_blur_gauss.py),
 [EnhanceLocalContrast](src/phenotypic/enhance/_enhance_local_contrast.py),
 [LocalEdgeDenoise](src/phenotypic/enhance/_local_edge_denoise.py).</p></li>
 <li><p><strong>ImageCorrector:</strong> Transform entire image (rotation, cropping, perspective).
@@ -1243,7 +1297,7 @@ identical RGB/gray data—ready for detection algorithms to operate on enhanced 
 <p><strong>Subclass References</strong></p>
 <p>The following are canonical examples of ImageEnhancer implementations:</p>
 <ul class="simple">
-<li><p>[GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py): Noise reduction via Gaussian filtering.</p></li>
+<li><p>[BlurGauss](src/phenotypic/enhance/_blur_gauss.py): Noise reduction via Gaussian filtering.</p></li>
 <li><p>[EnhanceLocalContrast](src/phenotypic/enhance/_enhance_local_contrast.py): Contrast-limited adaptive histogram equalization for local contrast.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GrayOpening</span></code>: Morphological opening using <code class="docutils literal notranslate"><span class="pre">FootprintMixin</span></code>.</p></li>
 <li><p>[LocalEdgeDenoise](src/phenotypic/enhance/_local_edge_denoise.py): Edge-preserving denoising.</p></li>
@@ -1350,7 +1404,7 @@ Choose width smaller than the minimum colony diameter to avoid destroying fine d
 <span class="n">result</span> <span class="o">=</span> <span class="n">EnhanceLocalContrast</span><span class="p">(</span><span class="n">kernel_size</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">clip_limit</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 
 <span class="c1"># Step 3: Smooth remaining noise</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">BlurGauss</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 
 <span class="c1"># Step 4: Detect colonies in detection matrix</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
@@ -1369,13 +1423,13 @@ reuse across experiments.</p></li>
 </ul>
 <p><strong>Use ImagePipeline for convenient chaining:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span><span class="p">,</span> <span class="n">ImagePipeline</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">SubtractRollingBall</span><span class="p">,</span> <span class="n">EnhanceLocalContrast</span><span class="p">,</span> <span class="n">GaussianBlur</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">SubtractRollingBall</span><span class="p">,</span> <span class="n">EnhanceLocalContrast</span><span class="p">,</span> <span class="n">BlurGauss</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
 
 <span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">()</span>
 <span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">SubtractRollingBall</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">50</span><span class="p">))</span>
 <span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">EnhanceLocalContrast</span><span class="p">(</span><span class="n">kernel_size</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">clip_limit</span><span class="o">=</span><span class="mf">0.02</span><span class="p">))</span>
-<span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+<span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">BlurGauss</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
 <span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">OtsuDetector</span><span class="p">())</span>
 
 <span class="c1"># Process a batch of images with automatic parallelization</span>
@@ -1486,13 +1540,13 @@ automatically invalidated to prevent stale results.</p></li>
 </div>
 <p>Chaining multiple enhancements in pipeline:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span><span class="p">,</span> <span class="n">EnhanceLocalContrast</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">BlurGauss</span><span class="p">,</span> <span class="n">EnhanceLocalContrast</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_synth_yeast_plate</span>
 <span class="gp">&gt;&gt;&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">image</span> <span class="o">=</span> <span class="n">load_synth_yeast_plate</span><span class="p">()</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">pipe_cfgs</span><span class="o">=</span><span class="p">[</span>
-<span class="gp">... </span>    <span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">1.5</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">BlurGauss</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">1.5</span><span class="p">),</span>
 <span class="gp">... </span>    <span class="n">EnhanceLocalContrast</span><span class="p">(</span><span class="n">clip_limit</span><span class="o">=</span><span class="mf">2.0</span><span class="p">),</span>
 <span class="gp">... </span>    <span class="n">OtsuDetector</span><span class="p">()</span>
 <span class="gp">... </span><span class="p">])</span>

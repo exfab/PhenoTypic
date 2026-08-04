@@ -14,7 +14,7 @@ whatever 224 implied. Pipelines deserialized from JSON keep their pinned
 `tile_px` (`to_json()` writes every field), but **will produce different,
 higher-resolution masks** and cost substantially more GPU time -- re-serialize
 to adopt the new `tile_px` defaults described below. Separately,
-`Sam2Detector.crop_n_layers` moves from `0` to `1` (~5.2x cost) for
+`Sam2.crop_n_layers` moves from `0` to `1` (~5.2x cost) for
 **newly-constructed** detectors only; existing serialized pipelines are
 unaffected.
 ```
@@ -23,23 +23,23 @@ unaffected.
 
 The GPU detectors have different packaging constraints:
 
-| Detector            | Package(s) needed          | Available via              | CUDA-capable?          |
-|---------------------|----------------------------|----------------------------|------------------------|
-| `Sam2Detector`      | `torch`, `torchvision`, `sam2` | **PyPI** (ships in `phenotypic[torch]`) | Yes — Linux + CUDA |
-| `MicroSamDetector`  | `micro_sam` (+ `torch`)    | **conda-forge only**, not on PyPI | CPU by default; user-managed CUDA possible |
-| `Sam3Detector`      | `transformers`, `huggingface_hub` (+ `torch`) | **PyPI** (ships in `phenotypic[foundation]`); weights **gated** | Yes — Linux + CUDA |
-| `DinoSam2Detector`  | `transformers`, `sam2` (+ `torch`) | **PyPI** (ships in `phenotypic[foundation]`); DINOv2 weights **ungated** | Yes — Linux + CUDA |
+| Detector           | Package(s) needed                             | Available via                                                            | CUDA-capable?                              |
+|--------------------|-----------------------------------------------|--------------------------------------------------------------------------|--------------------------------------------|
+| `Sam2`             | `torch`, `torchvision`, `sam2`                | **PyPI** (ships in `phenotypic[torch]`)                                  | Yes — Linux + CUDA                         |
+| `MicroSamDetector` | `micro_sam` (+ `torch`)                       | **conda-forge only**, not on PyPI                                        | CPU by default; user-managed CUDA possible |
+| `Sam3`             | `transformers`, `huggingface_hub` (+ `torch`) | **PyPI** (ships in `phenotypic[foundation]`); weights **gated**          | Yes — Linux + CUDA                         |
+| `DinoSam2Detector` | `transformers`, `sam2` (+ `torch`)            | **PyPI** (ships in `phenotypic[foundation]`); DINOv2 weights **ungated** | Yes — Linux + CUDA                         |
 
 ### Per-model license posture
 
-| Model         | Code license          | Weights license            | Gated? |
-|---------------|-----------------------|----------------------------|--------|
-| SAM2          | Apache-2.0            | Apache-2.0                 | No     |
-| SAM3          | Apache-2.0 (`transformers`) | **SAM License** (commercial-OK) | **Yes** — accept on Hugging Face |
-| DINOv2        | Apache-2.0            | Apache-2.0                 | No     |
-| DINOv3 (opt-in) | Apache-2.0          | **DINOv3 License** (custom Meta) | **Yes** — accept on Hugging Face |
-| INSID3 method (`Insid3Detector`) | Apache-2.0 (clean-room, no code vendored) | DINOv3-native backbone (gated) | **Yes** (via DINOv3) |
-| FSSDINO method (`FssDinoDetector`) | paper **CC BY-NC-SA** (clean-room, no code vendored) | DINOv2 default (ungated) / DINOv3 opt-in | No (DINOv2) / Yes (DINOv3) |
+| Model                              | Code license                                         | Weights license                          | Gated?                           |
+|------------------------------------|------------------------------------------------------|------------------------------------------|----------------------------------|
+| SAM2                               | Apache-2.0                                           | Apache-2.0                               | No                               |
+| SAM3                               | Apache-2.0 (`transformers`)                          | **SAM License** (commercial-OK)          | **Yes** — accept on Hugging Face |
+| DINOv2                             | Apache-2.0                                           | Apache-2.0                               | No                               |
+| DINOv3 (opt-in)                    | Apache-2.0                                           | **DINOv3 License** (custom Meta)         | **Yes** — accept on Hugging Face |
+| INSID3 method (`Insid3Detector`)   | Apache-2.0 (clean-room, no code vendored)            | DINOv3-native backbone (gated)           | **Yes** (via DINOv3)             |
+| FSSDINO method (`FssDinoDetector`) | paper **CC BY-NC-SA** (clean-room, no code vendored) | DINOv2 default (ungated) / DINOv3 opt-in | No (DINOv2) / Yes (DINOv3)       |
 
 PhenoTypic **does not redistribute model weights** — each weight is downloaded
 by you from the upstream source under that model's license, which you accept
@@ -82,20 +82,20 @@ for gated foundation weights are documented in the
 tutorial section. The SLURM-specific staging is expanded under
 [SLURM Deployment](#slurm-deployment) below.
 
-## Using Sam2Detector
+## Using Sam2
 
-`Sam2Detector` wraps Meta's SAM2 automatic mask generator. It lays a grid of
+`Sam2` wraps Meta's SAM2 automatic mask generator. It lays a grid of
 prompt points over the RGB image, predicts masks at each point, filters by
 quality, and assembles a labelled object map.
 
 ```python
-from phenotypic.detect.nn import Sam2Detector
+from phenotypic.detect.nn import Sam2
 
 # Basic usage with default parameters
-detector = Sam2Detector()
+detector = Sam2()
 
 # Tuned for dense plates with small colonies
-detector = Sam2Detector(
+detector = Sam2(
     model_size="small",
     points_per_side=48,
     pred_iou_thresh=0.6,
@@ -181,18 +181,18 @@ Base SAM checkpoints (without microscopy finetuning):
 
 - `"vit_t"`, `"vit_b"`, `"vit_l"`, `"vit_h"`
 
-## Using Sam3Detector
+## Using Sam3
 
-`Sam3Detector` wraps Meta's **text-prompted** SAM3 foundation model. Unlike
+`Sam3` wraps Meta's **text-prompted** SAM3 foundation model. Unlike
 SAM2's dense point grid, SAM3 segments everything matching a short text
 `prompt` (default `"colony"`) in one true batched forward pass, then assembles
 the predicted instance masks into a labelled `objmap` (`output_kind="instance"`).
 
 ```python
-from phenotypic.detect.nn import Sam3Detector
+from phenotypic.detect.nn import Sam3
 
 # Override the prompt per run — SAM3 has no prompt-free "segment everything" mode.
-det = Sam3Detector(prompt="yeast colony", score_thresh=0.5)
+det = Sam3(prompt="yeast colony", score_thresh=0.5)
 ```
 
 SAM3 weights are **gated** (SAM License). Accept the gate and authenticate
@@ -202,10 +202,10 @@ before the first `apply()`.
 **Dense plates.** SAM3 caps at 200 instances per forward. `facebook/sam3` is a
 gated repository whose processor config we cannot read (requests return 403),
 so the claim that it runs at 1008 px internally is carried as an
-**assumption**, not a verified fact. `Sam3Detector` tiles large plates into
+**assumption**, not a verified fact. `Sam3` tiles large plates into
 fixed `tile_px` crops with `tile_overlap`, infers each tile, and merges the
 per-tile instances by **centroid-in-core assignment**
-(`~phenotypic.detect.nn._tiling.assign_by_centroid_core`): each instance is
+(`~phenotypic.detect.nn._helper._tiling.assign_by_centroid_core`): each instance is
 kept by the one tile whose core -- the Voronoi cell of the tile centres --
 contains its centroid, so a colony straddling a seam is claimed by exactly one
 tile and the fragment a neighbouring tile saw is never kept as its own
@@ -268,8 +268,8 @@ Key parameters:
   re-ranking would do no work.
 - `crop_n_layers` / `crop_nms_thresh` / `crop_overlap_ratio` /
   `crop_n_points_downscale_factor` — SAM2 crop-pyramid controls for the
-  *proposal* half, forwarded to the same mask generator `Sam2Detector` uses and
-  documented under {ref}`Using Sam2Detector`. `crop_n_layers` defaults to `1`
+  *proposal* half, forwarded to the same mask generator `Sam2` uses and
+  documented under {ref}`Using Sam2`. `crop_n_layers` defaults to `1`
   here too.
 
 ## Semantic few-shot detectors (`Insid3Detector`, `FssDinoDetector`)
@@ -403,11 +403,11 @@ GPU detectors work like any other PhenoTypic operation in a pipeline:
 
 ```python
 import phenotypic as pht
-from phenotypic.detect.nn import Sam2Detector
+from phenotypic.detect.nn import Sam2
 from phenotypic.measure import SizeMeasurer
 
 pipeline = pht.ImagePipeline(
-    ops=[Sam2Detector(model_size="tiny", points_per_side=32)],
+    ops=[Sam2(model_size="tiny", points_per_side=32)],
     measurer=SizeMeasurer(),
     name="sam2_colony_pipeline",
 )
@@ -480,7 +480,7 @@ python -m phenotypic --mode process --layer objmap \
 
 ## SLURM Deployment
 
-When a pipeline contains a `GpuDetector` operation (either `Sam2Detector` or
+When a pipeline contains a `GpuDetector` operation (either `Sam2` or
 `MicroSamDetector`), the CLI automatically adapts:
 
 **Local execution:** Forward GPU runs use the staged engine above (the model
@@ -590,10 +590,10 @@ If none is found, a `RuntimeError` is raised.
 
 ```python
 # Force a specific device
-Sam2Detector(device="cuda")   # NVIDIA GPU
-Sam2Detector(device="mps")    # Apple Silicon
-Sam2Detector(device="xpu")    # Intel GPU
-Sam2Detector(device="cpu")    # CPU (very slow, but always available)
+Sam2(device="cuda")   # NVIDIA GPU
+Sam2(device="mps")    # Apple Silicon
+Sam2(device="xpu")    # Intel GPU
+Sam2(device="cpu")    # CPU (very slow, but always available)
 ```
 
 When an explicit accelerator is requested but unavailable, a `RuntimeError`
@@ -605,7 +605,7 @@ The device resolution logic is available as a standalone function for custom
 workflows:
 
 ```python
-from phenotypic.detect.nn._checkpoint_manager import resolve_device
+from phenotypic.detect.nn._helper._checkpoint_manager import resolve_device
 
 device = resolve_device("auto")           # raises if no accelerator
 device = resolve_device("auto", allow_cpu=True)  # falls back to CPU with warning
@@ -637,7 +637,7 @@ python -m phenotypic.detect.nn clear --model-type microsam
 
 ## Troubleshooting
 
-### `ImportError: Sam2Detector requires the sam2 package`
+### `ImportError: Sam2 requires the sam2 package`
 
 PyTorch and the model packages are not installed. Install the `torch` extra:
 
@@ -662,7 +662,7 @@ No GPU was detected. Options:
 - Pass `device="cpu"` to force CPU inference (very slow):
 
 ```python
-Sam2Detector(device="cpu")
+Sam2(device="cpu")
 ```
 
 ### `RuntimeError: device='cuda' requested but CUDA is not available`
@@ -685,7 +685,7 @@ without lowering segmentation resolution:
   same bounded row-chunk conversion, so this setting is not an OOM control.
   Keep the `"image_max"` default for the validated compatibility policy; use
   `"dtype_range"` only when absolute sensor-scale intensity is required.
-- Use a smaller model: `Sam2Detector(model_size="tiny")` instead of `"large"`.
+- Use a smaller model: `Sam2(model_size="tiny")` instead of `"large"`.
 - Use `MicroSamDetector(model_type="vit_t_lm")` for the smallest micro-sam
   model.
 - If memory is still insufficient, reduce `points_per_side` (for example, 16

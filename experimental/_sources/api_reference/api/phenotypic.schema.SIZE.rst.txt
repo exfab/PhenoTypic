@@ -1,0 +1,105 @@
+phenotypic.schema.SIZE
+======================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: SIZE
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SIZE.tier
+      ~SIZE.kind
+      ~SIZE.category
+      ~SIZE.rembi_module
+      ~SIZE.header_scheme
+      ~SIZE.member_for_header
+      ~SIZE.owns_header
+      ~SIZE.get_labels
+      ~SIZE.get_headers
+      ~SIZE.rst_table
+      ~SIZE.append_rst_to_doc
+      ~SIZE.encode
+      ~SIZE.replace
+      ~SIZE.split
+      ~SIZE.rsplit
+      ~SIZE.join
+      ~SIZE.capitalize
+      ~SIZE.casefold
+      ~SIZE.title
+      ~SIZE.center
+      ~SIZE.count
+      ~SIZE.expandtabs
+      ~SIZE.find
+      ~SIZE.partition
+      ~SIZE.index
+      ~SIZE.ljust
+      ~SIZE.lower
+      ~SIZE.lstrip
+      ~SIZE.rfind
+      ~SIZE.rindex
+      ~SIZE.rjust
+      ~SIZE.rstrip
+      ~SIZE.rpartition
+      ~SIZE.splitlines
+      ~SIZE.strip
+      ~SIZE.swapcase
+      ~SIZE.translate
+      ~SIZE.upper
+      ~SIZE.startswith
+      ~SIZE.endswith
+      ~SIZE.removeprefix
+      ~SIZE.removesuffix
+      ~SIZE.isascii
+      ~SIZE.islower
+      ~SIZE.isupper
+      ~SIZE.istitle
+      ~SIZE.isspace
+      ~SIZE.isdecimal
+      ~SIZE.isdigit
+      ~SIZE.isnumeric
+      ~SIZE.isalpha
+      ~SIZE.isalnum
+      ~SIZE.isidentifier
+      ~SIZE.isprintable
+      ~SIZE.zfill
+      ~SIZE.format
+      ~SIZE.format_map
+      ~SIZE.maketrans
+      ~SIZE.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SIZE.CATEGORY
+      ~SIZE.resolved_kind
+      ~SIZE.resolved_tier
+      ~SIZE.resolved_rembi_module
+      ~SIZE.use_label
+      ~SIZE.use_badge
+      ~SIZE.AREA
+      ~SIZE.INTEGRATED_INTENSITY
+      ~SIZE.label
+      ~SIZE.desc
+      ~SIZE.bio_desc
+      ~SIZE.image
+      ~SIZE.pair
+      ~SIZE.tier_override
+      ~SIZE.derivation_type
+      ~SIZE.derives_from
+      ~SIZE.rembi_module_override
+   
+   

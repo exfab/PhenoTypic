@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -623,7 +623,7 @@
 <span class="sd">    operation has one, the `_disable_normalization` method will create a shallow copy</span>
 <span class="sd">    with `norm=None`. This preserves the original operation unchanged while allowing</span>
 <span class="sd">    the copy to operate without output normalization. Operations that carry no `norm`</span>
-<span class="sd">    field (e.g. `GaussianBlur`) are returned unchanged.</span>
+<span class="sd">    field (e.g. `BlurGauss`) are returned unchanged.</span>
 
 <span class="sd">    Note:</span>
 <span class="sd">        Renamed from ``ClipControlMixin`` in 0.18.0, when ``clip: bool`` became</span>
@@ -657,10 +657,10 @@
 <span class="sd">        Creating a normalization-disabled copy of a pipeline:</span>
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic import ImagePipeline</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
 <span class="sd">        &gt;&gt;&gt;</span>
 <span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline(pipe_cfgs=[</span>
-<span class="sd">        ...     GaussianBlur(sigma=1.0),</span>
+<span class="sd">        ...     BlurGauss(sigma=1.0),</span>
 <span class="sd">        ...     Denoise(sigma=5.0, norm=&quot;clip&quot;)</span>
 <span class="sd">        ... ])</span>
 <span class="sd">        &gt;&gt;&gt; copied_pipe = NormControlMixin._disable_normalization(pipeline)</span>
@@ -702,10 +702,10 @@
 <span class="sd">            An operation carrying no `norm` field passes straight through, unchanged</span>
 <span class="sd">            and uncopied:</span>
 
-<span class="sd">            &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
 <span class="sd">            &gt;&gt;&gt; from phenotypic.sdk_ import NormControlMixin</span>
 <span class="sd">            &gt;&gt;&gt;</span>
-<span class="sd">            &gt;&gt;&gt; blur = GaussianBlur(sigma=1.0)</span>
+<span class="sd">            &gt;&gt;&gt; blur = BlurGauss(sigma=1.0)</span>
 <span class="sd">            &gt;&gt;&gt; NormControlMixin._disable_normalization(blur) is blur</span>
 <span class="sd">            True</span>
 <span class="sd">        &quot;&quot;&quot;</span>

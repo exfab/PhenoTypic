@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -725,14 +725,14 @@
 <span class="sd">    .. code-block:: python</span>
 
 <span class="sd">        from phenotypic import ImagePipeline</span>
-<span class="sd">        from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast</span>
+<span class="sd">        from phenotypic.enhance import BlurGauss, EnhanceLocalContrast</span>
 <span class="sd">        from phenotypic.detect import CannyDetector  # Different detector</span>
 <span class="sd">        from phenotypic.refine import SmallObjectRemover, MaskFill</span>
 <span class="sd">        from phenotypic.measure import MeasureShape, MeasureColor</span>
 
 <span class="sd">        # Custom pipeline for your specific use case</span>
 <span class="sd">        custom = ImagePipeline()</span>
-<span class="sd">        custom.add(GaussianBlur(sigma=3))</span>
+<span class="sd">        custom.add(BlurGauss(sigma=3))</span>
 <span class="sd">        custom.add(EnhanceLocalContrast())</span>
 <span class="sd">        custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))</span>
 <span class="sd">        custom.add(SmallObjectRemover(min_size=100))</span>
@@ -790,7 +790,7 @@
 <span class="sd">    .. code-block:: python</span>
 
 <span class="sd">        from phenotypic.abc_ import PrefabPipeline</span>
-<span class="sd">        from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast</span>
+<span class="sd">        from phenotypic.enhance import BlurGauss, EnhanceLocalContrast</span>
 <span class="sd">        from phenotypic.detect import OtsuDetector</span>
 <span class="sd">        from phenotypic.refine import SmallObjectRemover</span>
 <span class="sd">        from phenotypic.measure import MeasureShape</span>
@@ -802,7 +802,7 @@
 <span class="sd">                         benchmark: bool = False, verbose: bool = False):</span>
 <span class="sd">                &#39;&#39;&#39;Initialize with tunable parameters.&#39;&#39;&#39;</span>
 <span class="sd">                pipe_cfgs = [</span>
-<span class="sd">                    GaussianBlur(sigma=param2),</span>
+<span class="sd">                    BlurGauss(sigma=param2),</span>
 <span class="sd">                    EnhanceLocalContrast(),</span>
 <span class="sd">                    OtsuDetector(),</span>
 <span class="sd">                    SmallObjectRemover(min_size=param1),</span>
@@ -892,8 +892,8 @@
 <span class="sd">        &gt;&gt;&gt; result1 = prefab.apply(image)</span>
 <span class="sd">        &gt;&gt;&gt; # Option 2: Create custom pipeline for comparison</span>
 <span class="sd">        &gt;&gt;&gt; custom = ImagePipeline()</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
-<span class="sd">        &gt;&gt;&gt; custom.add(GaussianBlur(sigma=2))</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
+<span class="sd">        &gt;&gt;&gt; custom.add(BlurGauss(sigma=2))</span>
 <span class="sd">        &gt;&gt;&gt; custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))</span>
 <span class="sd">        &gt;&gt;&gt; custom.add(SmallObjectRemover(min_size=100))</span>
 <span class="sd">        &gt;&gt;&gt; result2 = custom.apply(image)</span>

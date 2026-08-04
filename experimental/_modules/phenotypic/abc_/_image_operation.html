@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -645,7 +645,7 @@
 <span class="sd">        ImageOperation (this class)</span>
 <span class="sd">        ├── ImageEnhancer</span>
 <span class="sd">        │   └── Modifies ONLY image.detect_mat</span>
-<span class="sd">        │       ├── GaussianBlur, EnhanceLocalContrast, RankMedianEnhancer, ...</span>
+<span class="sd">        │       ├── BlurGauss, EnhanceLocalContrast, RankMedianEnhancer, ...</span>
 <span class="sd">        │       └── Use for: noise reduction, contrast, edge sharpening</span>
 <span class="sd">        │</span>
 <span class="sd">        ├── ObjectDetector</span>
@@ -788,7 +788,7 @@
 
 <span class="sd">    .. code-block:: python</span>
 
-<span class="sd">        result = (GaussianBlur(sigma=2).apply(image)</span>
+<span class="sd">        result = (BlurGauss(sigma=2).apply(image)</span>
 <span class="sd">                 .apply_operation(OtsuDetector()))</span>
 
 <span class="sd">    Or use ``ImagePipeline`` for multi-step workflows with automatic benchmarking:</span>
@@ -796,7 +796,7 @@
 <span class="sd">    .. code-block:: python</span>
 
 <span class="sd">        pipeline = ImagePipeline()</span>
-<span class="sd">        pipeline.add(GaussianBlur(sigma=2))</span>
+<span class="sd">        pipeline.add(BlurGauss(sigma=2))</span>
 <span class="sd">        pipeline.add(OtsuDetector())</span>
 <span class="sd">        pipeline.add(GridFinder())</span>
 
@@ -920,10 +920,10 @@
 
 <span class="sd">        Understanding inplace parameter and memory efficiency:</span>
 
-<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
 <span class="sd">        &gt;&gt;&gt; image = Image.imread(&#39;colony_plate.jpg&#39;)</span>
-<span class="sd">        &gt;&gt;&gt; enhancer = GaussianBlur(sigma=2.0)</span>
+<span class="sd">        &gt;&gt;&gt; enhancer = BlurGauss(sigma=2.0)</span>
 <span class="sd">        &gt;&gt;&gt; # Default: inplace=False (safe, creates copy)</span>
 <span class="sd">        &gt;&gt;&gt; enhanced = enhancer.apply(image)</span>
 <span class="sd">        &gt;&gt;&gt; print(f&quot;Same object? {id(image) == id(enhanced)}&quot;)  # False</span>
@@ -936,18 +936,18 @@
 <span class="sd">        Using operations in a processing pipeline:</span>
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic import Image, ImagePipeline</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.grid import GridFinder</span>
 <span class="sd">        &gt;&gt;&gt; # Load image</span>
 <span class="sd">        &gt;&gt;&gt; image = Image.imread(&#39;colony_plate.jpg&#39;)</span>
 <span class="sd">        &gt;&gt;&gt; # Sequential chaining</span>
-<span class="sd">        &gt;&gt;&gt; enhanced = GaussianBlur(sigma=2).apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; enhanced = BlurGauss(sigma=2).apply(image)</span>
 <span class="sd">        &gt;&gt;&gt; detected = OtsuDetector().apply(enhanced)</span>
 <span class="sd">        &gt;&gt;&gt; grid = GridFinder().apply(detected)</span>
 <span class="sd">        &gt;&gt;&gt; # Or use ImagePipeline for batch processing</span>
 <span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline()</span>
-<span class="sd">        &gt;&gt;&gt; pipeline.add(GaussianBlur(sigma=2))</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(BlurGauss(sigma=2))</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(OtsuDetector())</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(GridFinder())</span>
 <span class="sd">        &gt;&gt;&gt; # Process multiple images with automatic parallelization</span>

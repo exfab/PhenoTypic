@@ -12,7 +12,7 @@ it?" -- Explanation pages answer "how and why does it work?"
 
 | Operation complexity | Target lines | Example |
 |---------------------|-------------|---------|
-| Simple (1-3 params) | 25--40 | `GaussianBlur`, `MaskDilation` |
+| Simple (1-3 params) | 25--40 | `BlurGauss`, `MaskDilation` |
 | Moderate (4-8 params) | 40--60 | `OtsuDetector`, `EnhanceLocalContrast` |
 | Complex (8+ params) | 60--90 | `FilamentousFungiDetector`, `RoundPeaksDetector` |
 

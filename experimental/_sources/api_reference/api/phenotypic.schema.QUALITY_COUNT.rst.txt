@@ -1,0 +1,106 @@
+phenotypic.schema.QUALITY\_COUNT
+================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: QUALITY_COUNT
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~QUALITY_COUNT.kind
+      ~QUALITY_COUNT.category
+      ~QUALITY_COUNT.tier
+      ~QUALITY_COUNT.rembi_module
+      ~QUALITY_COUNT.header_scheme
+      ~QUALITY_COUNT.member_for_header
+      ~QUALITY_COUNT.owns_header
+      ~QUALITY_COUNT.get_labels
+      ~QUALITY_COUNT.get_headers
+      ~QUALITY_COUNT.rst_table
+      ~QUALITY_COUNT.append_rst_to_doc
+      ~QUALITY_COUNT.encode
+      ~QUALITY_COUNT.replace
+      ~QUALITY_COUNT.split
+      ~QUALITY_COUNT.rsplit
+      ~QUALITY_COUNT.join
+      ~QUALITY_COUNT.capitalize
+      ~QUALITY_COUNT.casefold
+      ~QUALITY_COUNT.title
+      ~QUALITY_COUNT.center
+      ~QUALITY_COUNT.count
+      ~QUALITY_COUNT.expandtabs
+      ~QUALITY_COUNT.find
+      ~QUALITY_COUNT.partition
+      ~QUALITY_COUNT.index
+      ~QUALITY_COUNT.ljust
+      ~QUALITY_COUNT.lower
+      ~QUALITY_COUNT.lstrip
+      ~QUALITY_COUNT.rfind
+      ~QUALITY_COUNT.rindex
+      ~QUALITY_COUNT.rjust
+      ~QUALITY_COUNT.rstrip
+      ~QUALITY_COUNT.rpartition
+      ~QUALITY_COUNT.splitlines
+      ~QUALITY_COUNT.strip
+      ~QUALITY_COUNT.swapcase
+      ~QUALITY_COUNT.translate
+      ~QUALITY_COUNT.upper
+      ~QUALITY_COUNT.startswith
+      ~QUALITY_COUNT.endswith
+      ~QUALITY_COUNT.removeprefix
+      ~QUALITY_COUNT.removesuffix
+      ~QUALITY_COUNT.isascii
+      ~QUALITY_COUNT.islower
+      ~QUALITY_COUNT.isupper
+      ~QUALITY_COUNT.istitle
+      ~QUALITY_COUNT.isspace
+      ~QUALITY_COUNT.isdecimal
+      ~QUALITY_COUNT.isdigit
+      ~QUALITY_COUNT.isnumeric
+      ~QUALITY_COUNT.isalpha
+      ~QUALITY_COUNT.isalnum
+      ~QUALITY_COUNT.isidentifier
+      ~QUALITY_COUNT.isprintable
+      ~QUALITY_COUNT.zfill
+      ~QUALITY_COUNT.format
+      ~QUALITY_COUNT.format_map
+      ~QUALITY_COUNT.maketrans
+      ~QUALITY_COUNT.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QUALITY_COUNT.CATEGORY
+      ~QUALITY_COUNT.resolved_kind
+      ~QUALITY_COUNT.resolved_tier
+      ~QUALITY_COUNT.resolved_rembi_module
+      ~QUALITY_COUNT.use_label
+      ~QUALITY_COUNT.use_badge
+      ~QUALITY_COUNT.DETECTED
+      ~QUALITY_COUNT.EXPECTED
+      ~QUALITY_COUNT.DELTA
+      ~QUALITY_COUNT.label
+      ~QUALITY_COUNT.desc
+      ~QUALITY_COUNT.bio_desc
+      ~QUALITY_COUNT.image
+      ~QUALITY_COUNT.pair
+      ~QUALITY_COUNT.tier_override
+      ~QUALITY_COUNT.derivation_type
+      ~QUALITY_COUNT.derives_from
+      ~QUALITY_COUNT.rembi_module_override
+   
+   

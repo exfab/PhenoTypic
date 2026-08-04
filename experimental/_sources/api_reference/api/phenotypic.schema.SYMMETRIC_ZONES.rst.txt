@@ -1,0 +1,113 @@
+phenotypic.schema.SYMMETRIC\_ZONES
+==================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: SYMMETRIC_ZONES
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SYMMETRIC_ZONES.tier
+      ~SYMMETRIC_ZONES.kind
+      ~SYMMETRIC_ZONES.category
+      ~SYMMETRIC_ZONES.rembi_module
+      ~SYMMETRIC_ZONES.header_scheme
+      ~SYMMETRIC_ZONES.member_for_header
+      ~SYMMETRIC_ZONES.owns_header
+      ~SYMMETRIC_ZONES.get_labels
+      ~SYMMETRIC_ZONES.get_headers
+      ~SYMMETRIC_ZONES.rst_table
+      ~SYMMETRIC_ZONES.append_rst_to_doc
+      ~SYMMETRIC_ZONES.encode
+      ~SYMMETRIC_ZONES.replace
+      ~SYMMETRIC_ZONES.split
+      ~SYMMETRIC_ZONES.rsplit
+      ~SYMMETRIC_ZONES.join
+      ~SYMMETRIC_ZONES.capitalize
+      ~SYMMETRIC_ZONES.casefold
+      ~SYMMETRIC_ZONES.title
+      ~SYMMETRIC_ZONES.center
+      ~SYMMETRIC_ZONES.count
+      ~SYMMETRIC_ZONES.expandtabs
+      ~SYMMETRIC_ZONES.find
+      ~SYMMETRIC_ZONES.partition
+      ~SYMMETRIC_ZONES.index
+      ~SYMMETRIC_ZONES.ljust
+      ~SYMMETRIC_ZONES.lower
+      ~SYMMETRIC_ZONES.lstrip
+      ~SYMMETRIC_ZONES.rfind
+      ~SYMMETRIC_ZONES.rindex
+      ~SYMMETRIC_ZONES.rjust
+      ~SYMMETRIC_ZONES.rstrip
+      ~SYMMETRIC_ZONES.rpartition
+      ~SYMMETRIC_ZONES.splitlines
+      ~SYMMETRIC_ZONES.strip
+      ~SYMMETRIC_ZONES.swapcase
+      ~SYMMETRIC_ZONES.translate
+      ~SYMMETRIC_ZONES.upper
+      ~SYMMETRIC_ZONES.startswith
+      ~SYMMETRIC_ZONES.endswith
+      ~SYMMETRIC_ZONES.removeprefix
+      ~SYMMETRIC_ZONES.removesuffix
+      ~SYMMETRIC_ZONES.isascii
+      ~SYMMETRIC_ZONES.islower
+      ~SYMMETRIC_ZONES.isupper
+      ~SYMMETRIC_ZONES.istitle
+      ~SYMMETRIC_ZONES.isspace
+      ~SYMMETRIC_ZONES.isdecimal
+      ~SYMMETRIC_ZONES.isdigit
+      ~SYMMETRIC_ZONES.isnumeric
+      ~SYMMETRIC_ZONES.isalpha
+      ~SYMMETRIC_ZONES.isalnum
+      ~SYMMETRIC_ZONES.isidentifier
+      ~SYMMETRIC_ZONES.isprintable
+      ~SYMMETRIC_ZONES.zfill
+      ~SYMMETRIC_ZONES.format
+      ~SYMMETRIC_ZONES.format_map
+      ~SYMMETRIC_ZONES.maketrans
+      ~SYMMETRIC_ZONES.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SYMMETRIC_ZONES.CATEGORY
+      ~SYMMETRIC_ZONES.resolved_kind
+      ~SYMMETRIC_ZONES.resolved_tier
+      ~SYMMETRIC_ZONES.resolved_rembi_module
+      ~SYMMETRIC_ZONES.use_label
+      ~SYMMETRIC_ZONES.use_badge
+      ~SYMMETRIC_ZONES.CORE_RADIUS
+      ~SYMMETRIC_ZONES.SYMMETRIC_RADIUS
+      ~SYMMETRIC_ZONES.MEAN_EXPANSION
+      ~SYMMETRIC_ZONES.MAX_EXPANSION
+      ~SYMMETRIC_ZONES.CORE_END_RADIUS
+      ~SYMMETRIC_ZONES.DENSE_END_RADIUS
+      ~SYMMETRIC_ZONES.SPARSE_END_RADIUS
+      ~SYMMETRIC_ZONES.CORE_AREA
+      ~SYMMETRIC_ZONES.DENSE_AREA
+      ~SYMMETRIC_ZONES.SPARSE_AREA
+      ~SYMMETRIC_ZONES.label
+      ~SYMMETRIC_ZONES.desc
+      ~SYMMETRIC_ZONES.bio_desc
+      ~SYMMETRIC_ZONES.image
+      ~SYMMETRIC_ZONES.pair
+      ~SYMMETRIC_ZONES.tier_override
+      ~SYMMETRIC_ZONES.derivation_type
+      ~SYMMETRIC_ZONES.derives_from
+      ~SYMMETRIC_ZONES.rembi_module_override
+   
+   

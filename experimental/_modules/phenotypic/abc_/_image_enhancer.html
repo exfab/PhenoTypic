@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -624,7 +624,7 @@
 
 <span class="sd">    - **ImageEnhancer (this class):** Modify only ``image.detect_mat`` for preprocessing.</span>
 <span class="sd">      Use for: noise reduction, contrast enhancement, illumination correction.</span>
-<span class="sd">      Examples: [GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py),</span>
+<span class="sd">      Examples: [BlurGauss](src/phenotypic/enhance/_blur_gauss.py),</span>
 <span class="sd">      [EnhanceLocalContrast](src/phenotypic/enhance/_enhance_local_contrast.py),</span>
 <span class="sd">      [LocalEdgeDenoise](src/phenotypic/enhance/_local_edge_denoise.py).</span>
 <span class="sd">    - **ImageCorrector:** Transform entire image (rotation, cropping, perspective).</span>
@@ -674,7 +674,7 @@
 
 <span class="sd">    The following are canonical examples of ImageEnhancer implementations:</span>
 
-<span class="sd">    - [GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py): Noise reduction via Gaussian filtering.</span>
+<span class="sd">    - [BlurGauss](src/phenotypic/enhance/_blur_gauss.py): Noise reduction via Gaussian filtering.</span>
 <span class="sd">    - [EnhanceLocalContrast](src/phenotypic/enhance/_enhance_local_contrast.py): Contrast-limited adaptive histogram equalization for local contrast.</span>
 <span class="sd">    - ``GrayOpening``: Morphological opening using ``FootprintMixin``.</span>
 <span class="sd">    - [LocalEdgeDenoise](src/phenotypic/enhance/_local_edge_denoise.py): Edge-preserving denoising.</span>
@@ -805,7 +805,7 @@
 <span class="sd">        result = EnhanceLocalContrast(kernel_size=50, clip_limit=0.02).apply(result)</span>
 
 <span class="sd">        # Step 3: Smooth remaining noise</span>
-<span class="sd">        result = GaussianBlur(sigma=2).apply(result)</span>
+<span class="sd">        result = BlurGauss(sigma=2).apply(result)</span>
 
 <span class="sd">        # Step 4: Detect colonies in detection matrix</span>
 <span class="sd">        result = OtsuDetector().apply(result)</span>
@@ -826,13 +826,13 @@
 <span class="sd">    .. code-block:: python</span>
 
 <span class="sd">        from phenotypic import Image, ImagePipeline</span>
-<span class="sd">        from phenotypic.enhance import SubtractRollingBall, EnhanceLocalContrast, GaussianBlur</span>
+<span class="sd">        from phenotypic.enhance import SubtractRollingBall, EnhanceLocalContrast, BlurGauss</span>
 <span class="sd">        from phenotypic.detect import OtsuDetector</span>
 
 <span class="sd">        pipeline = ImagePipeline()</span>
 <span class="sd">        pipeline.add(SubtractRollingBall(width=50))</span>
 <span class="sd">        pipeline.add(EnhanceLocalContrast(kernel_size=50, clip_limit=0.02))</span>
-<span class="sd">        pipeline.add(GaussianBlur(sigma=2))</span>
+<span class="sd">        pipeline.add(BlurGauss(sigma=2))</span>
 <span class="sd">        pipeline.add(OtsuDetector())</span>
 
 <span class="sd">        # Process a batch of images with automatic parallelization</span>
@@ -918,13 +918,13 @@
 <span class="sd">        Chaining multiple enhancements in pipeline:</span>
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic import ImagePipeline</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import BlurGauss, EnhanceLocalContrast</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
 <span class="sd">        &gt;&gt;&gt;</span>
 <span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
 <span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline(pipe_cfgs=[</span>
-<span class="sd">        ...     GaussianBlur(sigma=1.5),</span>
+<span class="sd">        ...     BlurGauss(sigma=1.5),</span>
 <span class="sd">        ...     EnhanceLocalContrast(clip_limit=2.0),</span>
 <span class="sd">        ...     OtsuDetector()</span>
 <span class="sd">        ... ])</span>

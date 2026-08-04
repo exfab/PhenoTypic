@@ -7,7 +7,7 @@ enabling JSON serialization and dynamic pipeline construction.
 ## How It Works
 
 When `ImagePipeline.from_json()` encounters an operation like
-`"GaussianBlur"`, it resolves the class by:
+`"BlurGauss"`, it resolves the class by:
 
 1. Searching known PhenoTypic modules (`phenotypic.enhance`,
    `phenotypic.detect`, `phenotypic.refine`, etc.)
@@ -48,7 +48,7 @@ reference to another pipeline slot or an inline plot model.
 ## Naming Conventions
 
 - Operation class names should be descriptive and end with their type:
-  `GaussianBlur` (enhancer), `OtsuDetector` (detector),
+  `BlurGauss` (enhancer), `OtsuDetector` (detector),
   `SmallObjectRemover` (refiner)
 - Avoid generic names like `MyOperation` — the class name appears in
   pipeline JSON files and should be self-documenting

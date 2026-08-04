@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -902,13 +902,13 @@
 <span class="sd">        Detection in a full pipeline with enhancement and refinement:</span>
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic import Image, ImagePipeline</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import CannyDetector</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.refine import RemoveSmallObjectsRefiner</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.measure import MeasureColor</span>
 <span class="sd">        &gt;&gt;&gt; # Create a processing pipeline</span>
 <span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline()</span>
-<span class="sd">        &gt;&gt;&gt; pipeline.add(GaussianBlur(sigma=2.0))  # Preprocessing</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(BlurGauss(sigma=2.0))  # Preprocessing</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(CannyDetector(sigma=1.5))  # Detection</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(RemoveSmallObjectsRefiner(min_size=50))  # Cleanup</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(MeasureColor())  # Downstream analysis</span>

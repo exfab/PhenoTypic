@@ -1,0 +1,104 @@
+phenotypic.schema.OBJECT
+========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: OBJECT
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~OBJECT.kind
+      ~OBJECT.category
+      ~OBJECT.tier
+      ~OBJECT.rembi_module
+      ~OBJECT.header_scheme
+      ~OBJECT.member_for_header
+      ~OBJECT.owns_header
+      ~OBJECT.get_labels
+      ~OBJECT.get_headers
+      ~OBJECT.rst_table
+      ~OBJECT.append_rst_to_doc
+      ~OBJECT.encode
+      ~OBJECT.replace
+      ~OBJECT.split
+      ~OBJECT.rsplit
+      ~OBJECT.join
+      ~OBJECT.capitalize
+      ~OBJECT.casefold
+      ~OBJECT.title
+      ~OBJECT.center
+      ~OBJECT.count
+      ~OBJECT.expandtabs
+      ~OBJECT.find
+      ~OBJECT.partition
+      ~OBJECT.index
+      ~OBJECT.ljust
+      ~OBJECT.lower
+      ~OBJECT.lstrip
+      ~OBJECT.rfind
+      ~OBJECT.rindex
+      ~OBJECT.rjust
+      ~OBJECT.rstrip
+      ~OBJECT.rpartition
+      ~OBJECT.splitlines
+      ~OBJECT.strip
+      ~OBJECT.swapcase
+      ~OBJECT.translate
+      ~OBJECT.upper
+      ~OBJECT.startswith
+      ~OBJECT.endswith
+      ~OBJECT.removeprefix
+      ~OBJECT.removesuffix
+      ~OBJECT.isascii
+      ~OBJECT.islower
+      ~OBJECT.isupper
+      ~OBJECT.istitle
+      ~OBJECT.isspace
+      ~OBJECT.isdecimal
+      ~OBJECT.isdigit
+      ~OBJECT.isnumeric
+      ~OBJECT.isalpha
+      ~OBJECT.isalnum
+      ~OBJECT.isidentifier
+      ~OBJECT.isprintable
+      ~OBJECT.zfill
+      ~OBJECT.format
+      ~OBJECT.format_map
+      ~OBJECT.maketrans
+      ~OBJECT.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~OBJECT.CATEGORY
+      ~OBJECT.resolved_kind
+      ~OBJECT.resolved_tier
+      ~OBJECT.resolved_rembi_module
+      ~OBJECT.use_label
+      ~OBJECT.use_badge
+      ~OBJECT.LABEL
+      ~OBJECT.label
+      ~OBJECT.desc
+      ~OBJECT.bio_desc
+      ~OBJECT.image
+      ~OBJECT.pair
+      ~OBJECT.tier_override
+      ~OBJECT.derivation_type
+      ~OBJECT.derives_from
+      ~OBJECT.rembi_module_override
+   
+   

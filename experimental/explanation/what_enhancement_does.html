@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../_static/documentation_options.js?v=478834ab"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Grid vs Non-Grid Detection" href="grid_vs_non_grid_detection.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -659,7 +659,7 @@ a version where colonies stand out more clearly.</p>
 <h3>Smoothing (Noise Reduction)<a class="headerlink" href="#smoothing-noise-reduction" title="Link to this heading">#</a></h3>
 <p>Reduce random variation while preserving colony boundaries.</p>
 <ul class="simple">
-<li><p><strong>GaussianBlur</strong> — isotropic smoothing; fast but blurs edges</p></li>
+<li><p><strong>BlurGauss</strong> — isotropic smoothing; fast but blurs edges</p></li>
 <li><p><strong>MedianFilter</strong> — removes salt-and-pepper noise; preserves edges better</p></li>
 <li><p><strong>LocalEdgeDenoise</strong> — smooths within regions; preserves edges explicitly</p></li>
 <li><p><strong>DenoiseBlockMatch (BM3D)</strong> — state-of-the-art block-matching denoising</p></li>
@@ -723,7 +723,7 @@ work. Put it first, or not at all.</p>
 <li><p><strong>Enhance contrast</strong> — maximize colony/background separation last</p></li>
 </ol>
 <p>A typical preprocessing chain:
-<code class="docutils literal notranslate"><span class="pre">GaussianBlur</span> <span class="pre">→</span> <span class="pre">FlattenIllumination</span> <span class="pre">→</span> <span class="pre">EnhanceLocalContrast</span></code>.</p>
+<code class="docutils literal notranslate"><span class="pre">BlurGauss</span> <span class="pre">→</span> <span class="pre">FlattenIllumination</span> <span class="pre">→</span> <span class="pre">EnhanceLocalContrast</span></code>.</p>
 </section>
 <section id="the-enhancement-detection-interface">
 <h2>The Enhancement ↔ Detection Interface<a class="headerlink" href="#the-enhancement-detection-interface" title="Link to this heading">#</a></h2>

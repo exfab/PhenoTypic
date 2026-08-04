@@ -35,7 +35,7 @@ ports remain normal clickable buttons at every zoom level.
 
 The walkthrough pipeline consists of:
 
-1. `GaussianBlur` - smooths each plate before thresholding.
+1. `BlurGauss` - smooths each plate before thresholding.
 2. `OtsuDetector` - produces the binary colony mask.
 3. `MeasureShape` and `MeasureSize` - extract per-colony shape and area
    measurements.
@@ -44,7 +44,7 @@ To build it:
 
 1. Start with the floating `+` continuation port selected. It is the green
    target at the end of the map.
-2. Click `GaussianBlur` in the `Corrector` palette group. The node appears after
+2. Click `BlurGauss` in the `Corrector` palette group. The node appears after
    `InputImage`, becomes selected, and the green target moves to the new tail.
 3. Click `OtsuDetector`, then `MeasureShape`, then `MeasureSize`. Each click
    appends to the current continuation target.
@@ -52,7 +52,7 @@ To build it:
    side loader.
 5. Click `Save` once the issue badge is clear.
 
-![Builder chain with GaussianBlur, OtsuDetector, MeasureShape, and MeasureSize.](../../_static/gui_images/build_pipeline/02_builder_chain.png)
+![Builder chain with BlurGauss, OtsuDetector, MeasureShape, and MeasureSize.](../../_static/gui_images/build_pipeline/02_builder_chain.png)
 
 ## Ports and menus
 

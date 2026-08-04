@@ -1,0 +1,130 @@
+phenotypic.schema.ColorXYZ
+==========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: ColorXYZ
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ColorXYZ.tier
+      ~ColorXYZ.kind
+      ~ColorXYZ.category
+      ~ColorXYZ.rembi_module
+      ~ColorXYZ.header_scheme
+      ~ColorXYZ.member_for_header
+      ~ColorXYZ.owns_header
+      ~ColorXYZ.get_labels
+      ~ColorXYZ.get_headers
+      ~ColorXYZ.rst_table
+      ~ColorXYZ.append_rst_to_doc
+      ~ColorXYZ.encode
+      ~ColorXYZ.replace
+      ~ColorXYZ.split
+      ~ColorXYZ.rsplit
+      ~ColorXYZ.join
+      ~ColorXYZ.capitalize
+      ~ColorXYZ.casefold
+      ~ColorXYZ.title
+      ~ColorXYZ.center
+      ~ColorXYZ.count
+      ~ColorXYZ.expandtabs
+      ~ColorXYZ.find
+      ~ColorXYZ.partition
+      ~ColorXYZ.index
+      ~ColorXYZ.ljust
+      ~ColorXYZ.lower
+      ~ColorXYZ.lstrip
+      ~ColorXYZ.rfind
+      ~ColorXYZ.rindex
+      ~ColorXYZ.rjust
+      ~ColorXYZ.rstrip
+      ~ColorXYZ.rpartition
+      ~ColorXYZ.splitlines
+      ~ColorXYZ.strip
+      ~ColorXYZ.swapcase
+      ~ColorXYZ.translate
+      ~ColorXYZ.upper
+      ~ColorXYZ.startswith
+      ~ColorXYZ.endswith
+      ~ColorXYZ.removeprefix
+      ~ColorXYZ.removesuffix
+      ~ColorXYZ.isascii
+      ~ColorXYZ.islower
+      ~ColorXYZ.isupper
+      ~ColorXYZ.istitle
+      ~ColorXYZ.isspace
+      ~ColorXYZ.isdecimal
+      ~ColorXYZ.isdigit
+      ~ColorXYZ.isnumeric
+      ~ColorXYZ.isalpha
+      ~ColorXYZ.isalnum
+      ~ColorXYZ.isidentifier
+      ~ColorXYZ.isprintable
+      ~ColorXYZ.zfill
+      ~ColorXYZ.format
+      ~ColorXYZ.format_map
+      ~ColorXYZ.maketrans
+      ~ColorXYZ.cieX_headers
+      ~ColorXYZ.cieY_headers
+      ~ColorXYZ.cieZ_headers
+      ~ColorXYZ.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ColorXYZ.CATEGORY
+      ~ColorXYZ.resolved_kind
+      ~ColorXYZ.resolved_tier
+      ~ColorXYZ.resolved_rembi_module
+      ~ColorXYZ.use_label
+      ~ColorXYZ.use_badge
+      ~ColorXYZ.X_MINIMUM
+      ~ColorXYZ.X_Q1
+      ~ColorXYZ.X_MEAN
+      ~ColorXYZ.X_MEDIAN
+      ~ColorXYZ.X_Q3
+      ~ColorXYZ.X_MAXIMUM
+      ~ColorXYZ.X_STDDEV
+      ~ColorXYZ.X_COEFF_VARIANCE
+      ~ColorXYZ.Y_MINIMUM
+      ~ColorXYZ.Y_Q1
+      ~ColorXYZ.Y_MEAN
+      ~ColorXYZ.Y_MEDIAN
+      ~ColorXYZ.Y_Q3
+      ~ColorXYZ.Y_MAXIMUM
+      ~ColorXYZ.Y_STDDEV
+      ~ColorXYZ.Y_COEFF_VARIANCE
+      ~ColorXYZ.Z_MINIMUM
+      ~ColorXYZ.Z_Q1
+      ~ColorXYZ.Z_MEAN
+      ~ColorXYZ.Z_MEDIAN
+      ~ColorXYZ.Z_Q3
+      ~ColorXYZ.Z_MAXIMUM
+      ~ColorXYZ.Z_STDDEV
+      ~ColorXYZ.Z_COEFF_VARIANCE
+      ~ColorXYZ.label
+      ~ColorXYZ.desc
+      ~ColorXYZ.bio_desc
+      ~ColorXYZ.image
+      ~ColorXYZ.pair
+      ~ColorXYZ.tier_override
+      ~ColorXYZ.derivation_type
+      ~ColorXYZ.derives_from
+      ~ColorXYZ.rembi_module_override
+   
+   

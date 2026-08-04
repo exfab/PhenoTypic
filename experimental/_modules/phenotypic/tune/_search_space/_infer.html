@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -615,15 +615,15 @@
 <span class="sd">:class:`~phenotypic.tune.InferredSearchSpace` proposal.</span>
 
 <span class="sd">Example:</span>
-<span class="sd">    ``GaussianBlur.sigma`` carries a ``TuneSpec`` (the annotations workstream), so</span>
+<span class="sd">    ``BlurGauss.sigma`` carries a ``TuneSpec`` (the annotations workstream), so</span>
 <span class="sd">    it resolves via Tier-1; ``ChanVeseDetector.mu`` is still un-annotated and</span>
 <span class="sd">    exercises the Tier-2 unbounded heuristic ``[d/4, d·4]``.</span>
 
 <span class="sd">    &gt;&gt;&gt; from phenotypic import ImagePipeline</span>
-<span class="sd">    &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">    &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
 <span class="sd">    &gt;&gt;&gt; from phenotypic.detect import ChanVeseDetector</span>
 <span class="sd">    &gt;&gt;&gt; from phenotypic.tune import infer_search_space</span>
-<span class="sd">    &gt;&gt;&gt; pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), ChanVeseDetector()])</span>
+<span class="sd">    &gt;&gt;&gt; pipe = ImagePipeline(ops=[BlurGauss(sigma=2.0), ChanVeseDetector()])</span>
 <span class="sd">    &gt;&gt;&gt; sigma = next(k for k in infer_search_space(pipe).knobs if k.key == &quot;0.sigma&quot;)</span>
 <span class="sd">    &gt;&gt;&gt; (sigma.source, sigma.domain.low, sigma.domain.high)</span>
 <span class="sd">    (&#39;tune_spec&#39;, 0.5, 5.0)</span>

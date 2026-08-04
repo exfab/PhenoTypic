@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -641,7 +641,7 @@
 
 <span class="sd">    - **ImageOperation:** Works on single, unaligned Image objects. The image may or may not</span>
 <span class="sd">      have grid information. Used for general-purpose preprocessing, detection, and measurement.</span>
-<span class="sd">      Examples: GaussianBlur, OtsuDetector, MeasureColorComposition.</span>
+<span class="sd">      Examples: BlurGauss, OtsuDetector, MeasureColorComposition.</span>
 
 <span class="sd">    - **GridOperation:** Works only on GridImage objects that have grid structure information</span>
 <span class="sd">      (row/column layout of wells on an agar plate). The operation assumes grid information</span>
@@ -784,12 +784,12 @@
 <span class="sd">        Type safety: GridOperation prevents misuse:</span>
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic import Image, GridImage</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
 <span class="sd">        &gt;&gt;&gt; image = Image(&#39;generic.jpg&#39;)  # Plain Image</span>
 <span class="sd">        &gt;&gt;&gt; grid_image = load_synth_yeast_plate()  # GridImage</span>
-<span class="sd">        &gt;&gt;&gt; # ImageOperation (GaussianBlur) accepts both</span>
-<span class="sd">        &gt;&gt;&gt; enhancer = GaussianBlur(sigma=2)</span>
+<span class="sd">        &gt;&gt;&gt; # ImageOperation (BlurGauss) accepts both</span>
+<span class="sd">        &gt;&gt;&gt; enhancer = BlurGauss(sigma=2)</span>
 <span class="sd">        &gt;&gt;&gt; result1 = enhancer.apply(image)       # OK: Image -&gt; Image</span>
 <span class="sd">        &gt;&gt;&gt; result2 = enhancer.apply(grid_image)  # OK: GridImage -&gt; GridImage</span>
 <span class="sd">        &gt;&gt;&gt; # GridOperation requires GridImage only</span>

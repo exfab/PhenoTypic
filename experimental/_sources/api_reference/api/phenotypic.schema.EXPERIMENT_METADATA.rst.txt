@@ -1,0 +1,108 @@
+phenotypic.schema.EXPERIMENT\_METADATA
+======================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: EXPERIMENT_METADATA
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~EXPERIMENT_METADATA.kind
+      ~EXPERIMENT_METADATA.category
+      ~EXPERIMENT_METADATA.tier
+      ~EXPERIMENT_METADATA.rembi_module
+      ~EXPERIMENT_METADATA.header_scheme
+      ~EXPERIMENT_METADATA.member_for_header
+      ~EXPERIMENT_METADATA.owns_header
+      ~EXPERIMENT_METADATA.get_labels
+      ~EXPERIMENT_METADATA.get_headers
+      ~EXPERIMENT_METADATA.rst_table
+      ~EXPERIMENT_METADATA.append_rst_to_doc
+      ~EXPERIMENT_METADATA.encode
+      ~EXPERIMENT_METADATA.replace
+      ~EXPERIMENT_METADATA.split
+      ~EXPERIMENT_METADATA.rsplit
+      ~EXPERIMENT_METADATA.join
+      ~EXPERIMENT_METADATA.capitalize
+      ~EXPERIMENT_METADATA.casefold
+      ~EXPERIMENT_METADATA.title
+      ~EXPERIMENT_METADATA.center
+      ~EXPERIMENT_METADATA.count
+      ~EXPERIMENT_METADATA.expandtabs
+      ~EXPERIMENT_METADATA.find
+      ~EXPERIMENT_METADATA.partition
+      ~EXPERIMENT_METADATA.index
+      ~EXPERIMENT_METADATA.ljust
+      ~EXPERIMENT_METADATA.lower
+      ~EXPERIMENT_METADATA.lstrip
+      ~EXPERIMENT_METADATA.rfind
+      ~EXPERIMENT_METADATA.rindex
+      ~EXPERIMENT_METADATA.rjust
+      ~EXPERIMENT_METADATA.rstrip
+      ~EXPERIMENT_METADATA.rpartition
+      ~EXPERIMENT_METADATA.splitlines
+      ~EXPERIMENT_METADATA.strip
+      ~EXPERIMENT_METADATA.swapcase
+      ~EXPERIMENT_METADATA.translate
+      ~EXPERIMENT_METADATA.upper
+      ~EXPERIMENT_METADATA.startswith
+      ~EXPERIMENT_METADATA.endswith
+      ~EXPERIMENT_METADATA.removeprefix
+      ~EXPERIMENT_METADATA.removesuffix
+      ~EXPERIMENT_METADATA.isascii
+      ~EXPERIMENT_METADATA.islower
+      ~EXPERIMENT_METADATA.isupper
+      ~EXPERIMENT_METADATA.istitle
+      ~EXPERIMENT_METADATA.isspace
+      ~EXPERIMENT_METADATA.isdecimal
+      ~EXPERIMENT_METADATA.isdigit
+      ~EXPERIMENT_METADATA.isnumeric
+      ~EXPERIMENT_METADATA.isalpha
+      ~EXPERIMENT_METADATA.isalnum
+      ~EXPERIMENT_METADATA.isidentifier
+      ~EXPERIMENT_METADATA.isprintable
+      ~EXPERIMENT_METADATA.zfill
+      ~EXPERIMENT_METADATA.format
+      ~EXPERIMENT_METADATA.format_map
+      ~EXPERIMENT_METADATA.maketrans
+      ~EXPERIMENT_METADATA.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~EXPERIMENT_METADATA.CATEGORY
+      ~EXPERIMENT_METADATA.resolved_kind
+      ~EXPERIMENT_METADATA.resolved_tier
+      ~EXPERIMENT_METADATA.resolved_rembi_module
+      ~EXPERIMENT_METADATA.use_label
+      ~EXPERIMENT_METADATA.use_badge
+      ~EXPERIMENT_METADATA.EXPERIMENT_ID
+      ~EXPERIMENT_METADATA.PROJECT
+      ~EXPERIMENT_METADATA.DATASET
+      ~EXPERIMENT_METADATA.PROTOCOL
+      ~EXPERIMENT_METADATA.NOTES
+      ~EXPERIMENT_METADATA.label
+      ~EXPERIMENT_METADATA.desc
+      ~EXPERIMENT_METADATA.bio_desc
+      ~EXPERIMENT_METADATA.image
+      ~EXPERIMENT_METADATA.pair
+      ~EXPERIMENT_METADATA.tier_override
+      ~EXPERIMENT_METADATA.derivation_type
+      ~EXPERIMENT_METADATA.derives_from
+      ~EXPERIMENT_METADATA.rembi_module_override
+   
+   

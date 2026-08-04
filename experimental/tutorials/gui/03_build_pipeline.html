@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="File Explorer" href="02_file_explorer.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -705,7 +705,7 @@ ports remain normal clickable buttons at every zoom level.</p>
 <h2>Compose a small pipeline<a class="headerlink" href="#compose-a-small-pipeline" title="Link to this heading">#</a></h2>
 <p>The walkthrough pipeline consists of:</p>
 <ol class="arabic simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code> - smooths each plate before thresholding.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BlurGauss</span></code> - smooths each plate before thresholding.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code> - produces the binary colony mask.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">MeasureShape</span></code> and <code class="docutils literal notranslate"><span class="pre">MeasureSize</span></code> - extract per-colony shape and area
 measurements.</p></li>
@@ -714,7 +714,7 @@ measurements.</p></li>
 <ol class="arabic simple">
 <li><p>Start with the floating <code class="docutils literal notranslate"><span class="pre">+</span></code> continuation port selected. It is the green
 target at the end of the map.</p></li>
-<li><p>Click <code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code> in the <code class="docutils literal notranslate"><span class="pre">Corrector</span></code> palette group. The node appears after
+<li><p>Click <code class="docutils literal notranslate"><span class="pre">BlurGauss</span></code> in the <code class="docutils literal notranslate"><span class="pre">Corrector</span></code> palette group. The node appears after
 <code class="docutils literal notranslate"><span class="pre">InputImage</span></code>, becomes selected, and the green target moves to the new tail.</p></li>
 <li><p>Click <code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code>, then <code class="docutils literal notranslate"><span class="pre">MeasureShape</span></code>, then <code class="docutils literal notranslate"><span class="pre">MeasureSize</span></code>. Each click
 appends to the current continuation target.</p></li>
@@ -722,7 +722,7 @@ appends to the current continuation target.</p></li>
 side loader.</p></li>
 <li><p>Click <code class="docutils literal notranslate"><span class="pre">Save</span></code> once the issue badge is clear.</p></li>
 </ol>
-<p><img alt="Builder chain with GaussianBlur, OtsuDetector, MeasureShape, and MeasureSize." src="../../_images/02_builder_chain.png" /></p>
+<p><img alt="Builder chain with BlurGauss, OtsuDetector, MeasureShape, and MeasureSize." src="../../_images/02_builder_chain.png" /></p>
 </section>
 <section id="ports-and-menus">
 <h2>Ports and menus<a class="headerlink" href="#ports-and-menus" title="Link to this heading">#</a></h2>

@@ -1,0 +1,111 @@
+phenotypic.schema.NEIGHBOR\_DIST
+================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: NEIGHBOR_DIST
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~NEIGHBOR_DIST.kind
+      ~NEIGHBOR_DIST.category
+      ~NEIGHBOR_DIST.tier
+      ~NEIGHBOR_DIST.rembi_module
+      ~NEIGHBOR_DIST.header_scheme
+      ~NEIGHBOR_DIST.member_for_header
+      ~NEIGHBOR_DIST.owns_header
+      ~NEIGHBOR_DIST.get_labels
+      ~NEIGHBOR_DIST.get_headers
+      ~NEIGHBOR_DIST.rst_table
+      ~NEIGHBOR_DIST.append_rst_to_doc
+      ~NEIGHBOR_DIST.encode
+      ~NEIGHBOR_DIST.replace
+      ~NEIGHBOR_DIST.split
+      ~NEIGHBOR_DIST.rsplit
+      ~NEIGHBOR_DIST.join
+      ~NEIGHBOR_DIST.capitalize
+      ~NEIGHBOR_DIST.casefold
+      ~NEIGHBOR_DIST.title
+      ~NEIGHBOR_DIST.center
+      ~NEIGHBOR_DIST.count
+      ~NEIGHBOR_DIST.expandtabs
+      ~NEIGHBOR_DIST.find
+      ~NEIGHBOR_DIST.partition
+      ~NEIGHBOR_DIST.index
+      ~NEIGHBOR_DIST.ljust
+      ~NEIGHBOR_DIST.lower
+      ~NEIGHBOR_DIST.lstrip
+      ~NEIGHBOR_DIST.rfind
+      ~NEIGHBOR_DIST.rindex
+      ~NEIGHBOR_DIST.rjust
+      ~NEIGHBOR_DIST.rstrip
+      ~NEIGHBOR_DIST.rpartition
+      ~NEIGHBOR_DIST.splitlines
+      ~NEIGHBOR_DIST.strip
+      ~NEIGHBOR_DIST.swapcase
+      ~NEIGHBOR_DIST.translate
+      ~NEIGHBOR_DIST.upper
+      ~NEIGHBOR_DIST.startswith
+      ~NEIGHBOR_DIST.endswith
+      ~NEIGHBOR_DIST.removeprefix
+      ~NEIGHBOR_DIST.removesuffix
+      ~NEIGHBOR_DIST.isascii
+      ~NEIGHBOR_DIST.islower
+      ~NEIGHBOR_DIST.isupper
+      ~NEIGHBOR_DIST.istitle
+      ~NEIGHBOR_DIST.isspace
+      ~NEIGHBOR_DIST.isdecimal
+      ~NEIGHBOR_DIST.isdigit
+      ~NEIGHBOR_DIST.isnumeric
+      ~NEIGHBOR_DIST.isalpha
+      ~NEIGHBOR_DIST.isalnum
+      ~NEIGHBOR_DIST.isidentifier
+      ~NEIGHBOR_DIST.isprintable
+      ~NEIGHBOR_DIST.zfill
+      ~NEIGHBOR_DIST.format
+      ~NEIGHBOR_DIST.format_map
+      ~NEIGHBOR_DIST.maketrans
+      ~NEIGHBOR_DIST.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NEIGHBOR_DIST.CATEGORY
+      ~NEIGHBOR_DIST.resolved_kind
+      ~NEIGHBOR_DIST.resolved_tier
+      ~NEIGHBOR_DIST.resolved_rembi_module
+      ~NEIGHBOR_DIST.use_label
+      ~NEIGHBOR_DIST.use_badge
+      ~NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL
+      ~NEIGHBOR_DIST.LEFT_DISTANCE
+      ~NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL
+      ~NEIGHBOR_DIST.RIGHT_DISTANCE
+      ~NEIGHBOR_DIST.ABOVE_NEIGHBOR_OBJ_LABEL
+      ~NEIGHBOR_DIST.ABOVE_DISTANCE
+      ~NEIGHBOR_DIST.UNDER_NEIGHBOR_OBJ_LABEL
+      ~NEIGHBOR_DIST.UNDER_DISTANCE
+      ~NEIGHBOR_DIST.label
+      ~NEIGHBOR_DIST.desc
+      ~NEIGHBOR_DIST.bio_desc
+      ~NEIGHBOR_DIST.image
+      ~NEIGHBOR_DIST.pair
+      ~NEIGHBOR_DIST.tier_override
+      ~NEIGHBOR_DIST.derivation_type
+      ~NEIGHBOR_DIST.derives_from
+      ~NEIGHBOR_DIST.rembi_module_override
+   
+   

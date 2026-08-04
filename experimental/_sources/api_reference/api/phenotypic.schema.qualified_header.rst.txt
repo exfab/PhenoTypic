@@ -1,0 +1,6 @@
+phenotypic.schema.qualified\_header
+===================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autofunction:: qualified_header

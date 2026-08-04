@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../_static/documentation_options.js?v=478834ab"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Tutorials" href="index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -700,7 +700,7 @@ integration. Does <strong>not</strong> include napari.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">[napari]</span></code> — The interactive napari desktop viewers (pulls napari + PyQt6).
 Required for <code class="docutils literal notranslate"><span class="pre">image.rgb.napari()</span></code> and related viewer methods, the point
 picker, and the napari sweep viewer (<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.gui.sweep</span></code>).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">[torch]</span></code> — PyTorch + SAM2 for <code class="docutils literal notranslate"><span class="pre">Sam2Detector</span></code> (Linux/macOS only).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[torch]</span></code> — PyTorch + SAM2 for <code class="docutils literal notranslate"><span class="pre">Sam2</span></code> (Linux/macOS only).</p></li>
 </ul>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Browser GUI hub (Plotly, Dash, Jupyter)</span>
 uv<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;phenotypic[gui]&quot;</span>
@@ -720,7 +720,7 @@ PhenoTypic and <code class="docutils literal notranslate"><span class="pre">micr
 <section id="deep-learning-detectors">
 <h2>Deep Learning Detectors<a class="headerlink" href="#deep-learning-detectors" title="Link to this heading">#</a></h2>
 <p>PhenoTypic ships several deep-learning colony detectors —
-<code class="docutils literal notranslate"><span class="pre">Sam2Detector</span></code>, <code class="docutils literal notranslate"><span class="pre">Sam3Detector</span></code>, <code class="docutils literal notranslate"><span class="pre">DinoSam2Detector</span></code>, <code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Sam2</span></code>, <code class="docutils literal notranslate"><span class="pre">Sam3</span></code>, <code class="docutils literal notranslate"><span class="pre">DinoSam2Detector</span></code>, <code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code>,
 <code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code>, and the conda-only <code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code>. This section
 covers <strong>installing</strong> the detector packages and <strong>pre-downloading</strong> their model
 weights. For detector usage, parameter tuning, device selection, and SLURM
@@ -743,12 +743,12 @@ how-to guide.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">[torch]</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Sam2Detector</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Sam2</span></code></p></td>
 <td><p>PyTorch + <code class="docutils literal notranslate"><span class="pre">sam2</span></code> from PyPI. Linux/macOS only — no Windows wheels
 (use WSL2).</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">[foundation]</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Sam3Detector</span></code>, <code class="docutils literal notranslate"><span class="pre">DinoSam2Detector</span></code>, <code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code>,
+<td><p><code class="docutils literal notranslate"><span class="pre">Sam3</span></code>, <code class="docutils literal notranslate"><span class="pre">DinoSam2Detector</span></code>, <code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code>,
 <code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">transformers</span></code> (&gt;=5.2.0) + <code class="docutils literal notranslate"><span class="pre">huggingface_hub</span></code> (pulls <code class="docutils literal notranslate"><span class="pre">torch</span></code>).</p></td>
 </tr>

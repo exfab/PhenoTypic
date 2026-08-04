@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -706,7 +706,7 @@
 <span class="sd">            surface a deterministic explanation.</span>
 
 <span class="sd">    Examples:</span>
-<span class="sd">        Build a one-op DAG (Input Image → GaussianBlur) and materialise</span>
+<span class="sd">        Build a one-op DAG (Input Image → BlurGauss) and materialise</span>
 <span class="sd">        it as an :class:`~phenotypic.ImagePipeline`. The synth-yeast</span>
 <span class="sd">        fixture is loaded only to anchor the example in the project&#39;s</span>
 <span class="sd">        microbiology context — the conversion does not touch image</span>
@@ -722,7 +722,7 @@
 <span class="sd">        &gt;&gt;&gt; input_block = scope.blocks[0]</span>
 <span class="sd">        &gt;&gt;&gt; blur = BlockNode(</span>
 <span class="sd">        ...     block_id=_new_block_id(),</span>
-<span class="sd">        ...     class_name=&quot;GaussianBlur&quot;,</span>
+<span class="sd">        ...     class_name=&quot;BlurGauss&quot;,</span>
 <span class="sd">        ...     params={},</span>
 <span class="sd">        ...     label=&quot;blur&quot;,</span>
 <span class="sd">        ... )</span>
@@ -1314,15 +1314,15 @@
 <span class="sd">        the mirrored op follows at index 1:</span>
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic import ImagePipeline</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.gui.builder._conversion_dag import (</span>
 <span class="sd">        ...     from_pipeline_dag,</span>
 <span class="sd">        ... )</span>
-<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline(ops=[GaussianBlur()], name=&quot;demo&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline(ops=[BlurGauss()], name=&quot;demo&quot;)</span>
 <span class="sd">        &gt;&gt;&gt; state = from_pipeline_dag(pipeline)</span>
 <span class="sd">        &gt;&gt;&gt; [b.class_name for b in state.root.blocks]</span>
-<span class="sd">        [&#39;InputImage&#39;, &#39;GaussianBlur&#39;]</span>
+<span class="sd">        [&#39;InputImage&#39;, &#39;BlurGauss&#39;]</span>
 <span class="sd">        &gt;&gt;&gt; _ = load_synth_yeast_plate()  # microbiology context anchor</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 

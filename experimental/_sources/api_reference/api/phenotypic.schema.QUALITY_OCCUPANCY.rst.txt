@@ -1,0 +1,106 @@
+phenotypic.schema.QUALITY\_OCCUPANCY
+====================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: QUALITY_OCCUPANCY
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~QUALITY_OCCUPANCY.kind
+      ~QUALITY_OCCUPANCY.category
+      ~QUALITY_OCCUPANCY.tier
+      ~QUALITY_OCCUPANCY.rembi_module
+      ~QUALITY_OCCUPANCY.header_scheme
+      ~QUALITY_OCCUPANCY.member_for_header
+      ~QUALITY_OCCUPANCY.owns_header
+      ~QUALITY_OCCUPANCY.get_labels
+      ~QUALITY_OCCUPANCY.get_headers
+      ~QUALITY_OCCUPANCY.rst_table
+      ~QUALITY_OCCUPANCY.append_rst_to_doc
+      ~QUALITY_OCCUPANCY.encode
+      ~QUALITY_OCCUPANCY.replace
+      ~QUALITY_OCCUPANCY.split
+      ~QUALITY_OCCUPANCY.rsplit
+      ~QUALITY_OCCUPANCY.join
+      ~QUALITY_OCCUPANCY.capitalize
+      ~QUALITY_OCCUPANCY.casefold
+      ~QUALITY_OCCUPANCY.title
+      ~QUALITY_OCCUPANCY.center
+      ~QUALITY_OCCUPANCY.count
+      ~QUALITY_OCCUPANCY.expandtabs
+      ~QUALITY_OCCUPANCY.find
+      ~QUALITY_OCCUPANCY.partition
+      ~QUALITY_OCCUPANCY.index
+      ~QUALITY_OCCUPANCY.ljust
+      ~QUALITY_OCCUPANCY.lower
+      ~QUALITY_OCCUPANCY.lstrip
+      ~QUALITY_OCCUPANCY.rfind
+      ~QUALITY_OCCUPANCY.rindex
+      ~QUALITY_OCCUPANCY.rjust
+      ~QUALITY_OCCUPANCY.rstrip
+      ~QUALITY_OCCUPANCY.rpartition
+      ~QUALITY_OCCUPANCY.splitlines
+      ~QUALITY_OCCUPANCY.strip
+      ~QUALITY_OCCUPANCY.swapcase
+      ~QUALITY_OCCUPANCY.translate
+      ~QUALITY_OCCUPANCY.upper
+      ~QUALITY_OCCUPANCY.startswith
+      ~QUALITY_OCCUPANCY.endswith
+      ~QUALITY_OCCUPANCY.removeprefix
+      ~QUALITY_OCCUPANCY.removesuffix
+      ~QUALITY_OCCUPANCY.isascii
+      ~QUALITY_OCCUPANCY.islower
+      ~QUALITY_OCCUPANCY.isupper
+      ~QUALITY_OCCUPANCY.istitle
+      ~QUALITY_OCCUPANCY.isspace
+      ~QUALITY_OCCUPANCY.isdecimal
+      ~QUALITY_OCCUPANCY.isdigit
+      ~QUALITY_OCCUPANCY.isnumeric
+      ~QUALITY_OCCUPANCY.isalpha
+      ~QUALITY_OCCUPANCY.isalnum
+      ~QUALITY_OCCUPANCY.isidentifier
+      ~QUALITY_OCCUPANCY.isprintable
+      ~QUALITY_OCCUPANCY.zfill
+      ~QUALITY_OCCUPANCY.format
+      ~QUALITY_OCCUPANCY.format_map
+      ~QUALITY_OCCUPANCY.maketrans
+      ~QUALITY_OCCUPANCY.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QUALITY_OCCUPANCY.CATEGORY
+      ~QUALITY_OCCUPANCY.resolved_kind
+      ~QUALITY_OCCUPANCY.resolved_tier
+      ~QUALITY_OCCUPANCY.resolved_rembi_module
+      ~QUALITY_OCCUPANCY.use_label
+      ~QUALITY_OCCUPANCY.use_badge
+      ~QUALITY_OCCUPANCY.FILLED
+      ~QUALITY_OCCUPANCY.EXPECTED
+      ~QUALITY_OCCUPANCY.VACANT
+      ~QUALITY_OCCUPANCY.label
+      ~QUALITY_OCCUPANCY.desc
+      ~QUALITY_OCCUPANCY.bio_desc
+      ~QUALITY_OCCUPANCY.image
+      ~QUALITY_OCCUPANCY.pair
+      ~QUALITY_OCCUPANCY.tier_override
+      ~QUALITY_OCCUPANCY.derivation_type
+      ~QUALITY_OCCUPANCY.derives_from
+      ~QUALITY_OCCUPANCY.rembi_module_override
+   
+   

@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="Analysis sub-app" href="08_analysis.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -681,9 +681,9 @@ parameters.</p>
 </section>
 <section id="step-2-add-the-main-pipeline">
 <h2>Step 2 - Add the main pipeline<a class="headerlink" href="#step-2-add-the-main-pipeline" title="Link to this heading">#</a></h2>
-<p>Click <code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code>, then <code class="docutils literal notranslate"><span class="pre">FilamentousFungiDetector</span></code>. Each palette click adds
+<p>Click <code class="docutils literal notranslate"><span class="pre">BlurGauss</span></code>, then <code class="docutils literal notranslate"><span class="pre">FilamentousFungiDetector</span></code>. Each palette click adds
 to the current green continuation target, so the main chain becomes
-<code class="docutils literal notranslate"><span class="pre">InputImage</span> <span class="pre">-&gt;</span> <span class="pre">GaussianBlur</span> <span class="pre">-&gt;</span> <span class="pre">FilamentousFungiDetector</span></code>.</p>
+<code class="docutils literal notranslate"><span class="pre">InputImage</span> <span class="pre">-&gt;</span> <span class="pre">BlurGauss</span> <span class="pre">-&gt;</span> <span class="pre">FilamentousFungiDetector</span></code>.</p>
 <p><img alt="Main linear chain with FilamentousFungiDetector selected and an empty inoculum_detector side value." src="../../_images/02_main_pipeline.png" /></p>
 <p><code class="docutils literal notranslate"><span class="pre">FilamentousFungiDetector</span></code> exposes the required <code class="docutils literal notranslate"><span class="pre">inoculum_detector</span></code> side value.
 While it is empty, the validation badge reports a blocking issue and global

@@ -31,7 +31,7 @@
       ContrastLog
       ContrastSigmoid
       FocusEdgeFrangi
-      GaussianBlur
+      BlurGauss
       SubtractGaussian
       GrayOpening
       FocusEdgeHessian

@@ -1,0 +1,110 @@
+phenotypic.schema.LINEAR\_CAP\_AND\_LAG\_MODEL
+==============================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: LINEAR_CAP_AND_LAG_MODEL
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~LINEAR_CAP_AND_LAG_MODEL.kind
+      ~LINEAR_CAP_AND_LAG_MODEL.category
+      ~LINEAR_CAP_AND_LAG_MODEL.tier
+      ~LINEAR_CAP_AND_LAG_MODEL.rembi_module
+      ~LINEAR_CAP_AND_LAG_MODEL.header_scheme
+      ~LINEAR_CAP_AND_LAG_MODEL.member_for_header
+      ~LINEAR_CAP_AND_LAG_MODEL.owns_header
+      ~LINEAR_CAP_AND_LAG_MODEL.get_labels
+      ~LINEAR_CAP_AND_LAG_MODEL.get_headers
+      ~LINEAR_CAP_AND_LAG_MODEL.rst_table
+      ~LINEAR_CAP_AND_LAG_MODEL.append_rst_to_doc
+      ~LINEAR_CAP_AND_LAG_MODEL.encode
+      ~LINEAR_CAP_AND_LAG_MODEL.replace
+      ~LINEAR_CAP_AND_LAG_MODEL.split
+      ~LINEAR_CAP_AND_LAG_MODEL.rsplit
+      ~LINEAR_CAP_AND_LAG_MODEL.join
+      ~LINEAR_CAP_AND_LAG_MODEL.capitalize
+      ~LINEAR_CAP_AND_LAG_MODEL.casefold
+      ~LINEAR_CAP_AND_LAG_MODEL.title
+      ~LINEAR_CAP_AND_LAG_MODEL.center
+      ~LINEAR_CAP_AND_LAG_MODEL.count
+      ~LINEAR_CAP_AND_LAG_MODEL.expandtabs
+      ~LINEAR_CAP_AND_LAG_MODEL.find
+      ~LINEAR_CAP_AND_LAG_MODEL.partition
+      ~LINEAR_CAP_AND_LAG_MODEL.index
+      ~LINEAR_CAP_AND_LAG_MODEL.ljust
+      ~LINEAR_CAP_AND_LAG_MODEL.lower
+      ~LINEAR_CAP_AND_LAG_MODEL.lstrip
+      ~LINEAR_CAP_AND_LAG_MODEL.rfind
+      ~LINEAR_CAP_AND_LAG_MODEL.rindex
+      ~LINEAR_CAP_AND_LAG_MODEL.rjust
+      ~LINEAR_CAP_AND_LAG_MODEL.rstrip
+      ~LINEAR_CAP_AND_LAG_MODEL.rpartition
+      ~LINEAR_CAP_AND_LAG_MODEL.splitlines
+      ~LINEAR_CAP_AND_LAG_MODEL.strip
+      ~LINEAR_CAP_AND_LAG_MODEL.swapcase
+      ~LINEAR_CAP_AND_LAG_MODEL.translate
+      ~LINEAR_CAP_AND_LAG_MODEL.upper
+      ~LINEAR_CAP_AND_LAG_MODEL.startswith
+      ~LINEAR_CAP_AND_LAG_MODEL.endswith
+      ~LINEAR_CAP_AND_LAG_MODEL.removeprefix
+      ~LINEAR_CAP_AND_LAG_MODEL.removesuffix
+      ~LINEAR_CAP_AND_LAG_MODEL.isascii
+      ~LINEAR_CAP_AND_LAG_MODEL.islower
+      ~LINEAR_CAP_AND_LAG_MODEL.isupper
+      ~LINEAR_CAP_AND_LAG_MODEL.istitle
+      ~LINEAR_CAP_AND_LAG_MODEL.isspace
+      ~LINEAR_CAP_AND_LAG_MODEL.isdecimal
+      ~LINEAR_CAP_AND_LAG_MODEL.isdigit
+      ~LINEAR_CAP_AND_LAG_MODEL.isnumeric
+      ~LINEAR_CAP_AND_LAG_MODEL.isalpha
+      ~LINEAR_CAP_AND_LAG_MODEL.isalnum
+      ~LINEAR_CAP_AND_LAG_MODEL.isidentifier
+      ~LINEAR_CAP_AND_LAG_MODEL.isprintable
+      ~LINEAR_CAP_AND_LAG_MODEL.zfill
+      ~LINEAR_CAP_AND_LAG_MODEL.format
+      ~LINEAR_CAP_AND_LAG_MODEL.format_map
+      ~LINEAR_CAP_AND_LAG_MODEL.maketrans
+      ~LINEAR_CAP_AND_LAG_MODEL.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LINEAR_CAP_AND_LAG_MODEL.CATEGORY
+      ~LINEAR_CAP_AND_LAG_MODEL.resolved_kind
+      ~LINEAR_CAP_AND_LAG_MODEL.resolved_tier
+      ~LINEAR_CAP_AND_LAG_MODEL.resolved_rembi_module
+      ~LINEAR_CAP_AND_LAG_MODEL.use_label
+      ~LINEAR_CAP_AND_LAG_MODEL.use_badge
+      ~LINEAR_CAP_AND_LAG_MODEL.v
+      ~LINEAR_CAP_AND_LAG_MODEL.s0
+      ~LINEAR_CAP_AND_LAG_MODEL.lam
+      ~LINEAR_CAP_AND_LAG_MODEL.alpha
+      ~LINEAR_CAP_AND_LAG_MODEL.smax
+      ~LINEAR_CAP_AND_LAG_MODEL.beta
+      ~LINEAR_CAP_AND_LAG_MODEL.mode
+      ~LINEAR_CAP_AND_LAG_MODEL.label
+      ~LINEAR_CAP_AND_LAG_MODEL.desc
+      ~LINEAR_CAP_AND_LAG_MODEL.bio_desc
+      ~LINEAR_CAP_AND_LAG_MODEL.image
+      ~LINEAR_CAP_AND_LAG_MODEL.pair
+      ~LINEAR_CAP_AND_LAG_MODEL.tier_override
+      ~LINEAR_CAP_AND_LAG_MODEL.derivation_type
+      ~LINEAR_CAP_AND_LAG_MODEL.derives_from
+      ~LINEAR_CAP_AND_LAG_MODEL.rembi_module_override
+   
+   

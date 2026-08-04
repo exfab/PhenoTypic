@@ -1,0 +1,111 @@
+phenotypic.schema.RADIAL\_EXPANSION
+===================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: RADIAL_EXPANSION
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RADIAL_EXPANSION.tier
+      ~RADIAL_EXPANSION.kind
+      ~RADIAL_EXPANSION.category
+      ~RADIAL_EXPANSION.rembi_module
+      ~RADIAL_EXPANSION.header_scheme
+      ~RADIAL_EXPANSION.member_for_header
+      ~RADIAL_EXPANSION.owns_header
+      ~RADIAL_EXPANSION.get_labels
+      ~RADIAL_EXPANSION.get_headers
+      ~RADIAL_EXPANSION.rst_table
+      ~RADIAL_EXPANSION.append_rst_to_doc
+      ~RADIAL_EXPANSION.encode
+      ~RADIAL_EXPANSION.replace
+      ~RADIAL_EXPANSION.split
+      ~RADIAL_EXPANSION.rsplit
+      ~RADIAL_EXPANSION.join
+      ~RADIAL_EXPANSION.capitalize
+      ~RADIAL_EXPANSION.casefold
+      ~RADIAL_EXPANSION.title
+      ~RADIAL_EXPANSION.center
+      ~RADIAL_EXPANSION.count
+      ~RADIAL_EXPANSION.expandtabs
+      ~RADIAL_EXPANSION.find
+      ~RADIAL_EXPANSION.partition
+      ~RADIAL_EXPANSION.index
+      ~RADIAL_EXPANSION.ljust
+      ~RADIAL_EXPANSION.lower
+      ~RADIAL_EXPANSION.lstrip
+      ~RADIAL_EXPANSION.rfind
+      ~RADIAL_EXPANSION.rindex
+      ~RADIAL_EXPANSION.rjust
+      ~RADIAL_EXPANSION.rstrip
+      ~RADIAL_EXPANSION.rpartition
+      ~RADIAL_EXPANSION.splitlines
+      ~RADIAL_EXPANSION.strip
+      ~RADIAL_EXPANSION.swapcase
+      ~RADIAL_EXPANSION.translate
+      ~RADIAL_EXPANSION.upper
+      ~RADIAL_EXPANSION.startswith
+      ~RADIAL_EXPANSION.endswith
+      ~RADIAL_EXPANSION.removeprefix
+      ~RADIAL_EXPANSION.removesuffix
+      ~RADIAL_EXPANSION.isascii
+      ~RADIAL_EXPANSION.islower
+      ~RADIAL_EXPANSION.isupper
+      ~RADIAL_EXPANSION.istitle
+      ~RADIAL_EXPANSION.isspace
+      ~RADIAL_EXPANSION.isdecimal
+      ~RADIAL_EXPANSION.isdigit
+      ~RADIAL_EXPANSION.isnumeric
+      ~RADIAL_EXPANSION.isalpha
+      ~RADIAL_EXPANSION.isalnum
+      ~RADIAL_EXPANSION.isidentifier
+      ~RADIAL_EXPANSION.isprintable
+      ~RADIAL_EXPANSION.zfill
+      ~RADIAL_EXPANSION.format
+      ~RADIAL_EXPANSION.format_map
+      ~RADIAL_EXPANSION.maketrans
+      ~RADIAL_EXPANSION.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RADIAL_EXPANSION.CATEGORY
+      ~RADIAL_EXPANSION.resolved_kind
+      ~RADIAL_EXPANSION.resolved_tier
+      ~RADIAL_EXPANSION.resolved_rembi_module
+      ~RADIAL_EXPANSION.use_label
+      ~RADIAL_EXPANSION.use_badge
+      ~RADIAL_EXPANSION.ROBUST_MEAN_RADIUS
+      ~RADIAL_EXPANSION.MEAN_RADIUS
+      ~RADIAL_EXPANSION.MEDIAN_RADIUS
+      ~RADIAL_EXPANSION.NUM_BRANCHES
+      ~RADIAL_EXPANSION.MAX_BRANCH_LENGTH
+      ~RADIAL_EXPANSION.RUNNER_LENGTH
+      ~RADIAL_EXPANSION.RUNNER_DETECTED
+      ~RADIAL_EXPANSION.CORE_RADIUS
+      ~RADIAL_EXPANSION.label
+      ~RADIAL_EXPANSION.desc
+      ~RADIAL_EXPANSION.bio_desc
+      ~RADIAL_EXPANSION.image
+      ~RADIAL_EXPANSION.pair
+      ~RADIAL_EXPANSION.tier_override
+      ~RADIAL_EXPANSION.derivation_type
+      ~RADIAL_EXPANSION.derives_from
+      ~RADIAL_EXPANSION.rembi_module_override
+   
+   

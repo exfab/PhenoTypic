@@ -1,0 +1,106 @@
+phenotypic.schema.QUALITY\_CHECK
+================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: QUALITY_CHECK
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~QUALITY_CHECK.kind
+      ~QUALITY_CHECK.category
+      ~QUALITY_CHECK.tier
+      ~QUALITY_CHECK.rembi_module
+      ~QUALITY_CHECK.header_scheme
+      ~QUALITY_CHECK.member_for_header
+      ~QUALITY_CHECK.owns_header
+      ~QUALITY_CHECK.get_labels
+      ~QUALITY_CHECK.get_headers
+      ~QUALITY_CHECK.rst_table
+      ~QUALITY_CHECK.append_rst_to_doc
+      ~QUALITY_CHECK.encode
+      ~QUALITY_CHECK.replace
+      ~QUALITY_CHECK.split
+      ~QUALITY_CHECK.rsplit
+      ~QUALITY_CHECK.join
+      ~QUALITY_CHECK.capitalize
+      ~QUALITY_CHECK.casefold
+      ~QUALITY_CHECK.title
+      ~QUALITY_CHECK.center
+      ~QUALITY_CHECK.count
+      ~QUALITY_CHECK.expandtabs
+      ~QUALITY_CHECK.find
+      ~QUALITY_CHECK.partition
+      ~QUALITY_CHECK.index
+      ~QUALITY_CHECK.ljust
+      ~QUALITY_CHECK.lower
+      ~QUALITY_CHECK.lstrip
+      ~QUALITY_CHECK.rfind
+      ~QUALITY_CHECK.rindex
+      ~QUALITY_CHECK.rjust
+      ~QUALITY_CHECK.rstrip
+      ~QUALITY_CHECK.rpartition
+      ~QUALITY_CHECK.splitlines
+      ~QUALITY_CHECK.strip
+      ~QUALITY_CHECK.swapcase
+      ~QUALITY_CHECK.translate
+      ~QUALITY_CHECK.upper
+      ~QUALITY_CHECK.startswith
+      ~QUALITY_CHECK.endswith
+      ~QUALITY_CHECK.removeprefix
+      ~QUALITY_CHECK.removesuffix
+      ~QUALITY_CHECK.isascii
+      ~QUALITY_CHECK.islower
+      ~QUALITY_CHECK.isupper
+      ~QUALITY_CHECK.istitle
+      ~QUALITY_CHECK.isspace
+      ~QUALITY_CHECK.isdecimal
+      ~QUALITY_CHECK.isdigit
+      ~QUALITY_CHECK.isnumeric
+      ~QUALITY_CHECK.isalpha
+      ~QUALITY_CHECK.isalnum
+      ~QUALITY_CHECK.isidentifier
+      ~QUALITY_CHECK.isprintable
+      ~QUALITY_CHECK.zfill
+      ~QUALITY_CHECK.format
+      ~QUALITY_CHECK.format_map
+      ~QUALITY_CHECK.maketrans
+      ~QUALITY_CHECK.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QUALITY_CHECK.CATEGORY
+      ~QUALITY_CHECK.resolved_kind
+      ~QUALITY_CHECK.resolved_tier
+      ~QUALITY_CHECK.resolved_rembi_module
+      ~QUALITY_CHECK.use_label
+      ~QUALITY_CHECK.use_badge
+      ~QUALITY_CHECK.FLAG
+      ~QUALITY_CHECK.METRIC
+      ~QUALITY_CHECK.STATUS
+      ~QUALITY_CHECK.label
+      ~QUALITY_CHECK.desc
+      ~QUALITY_CHECK.bio_desc
+      ~QUALITY_CHECK.image
+      ~QUALITY_CHECK.pair
+      ~QUALITY_CHECK.tier_override
+      ~QUALITY_CHECK.derivation_type
+      ~QUALITY_CHECK.derives_from
+      ~QUALITY_CHECK.rembi_module_override
+   
+   

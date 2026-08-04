@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=eec840cd"></script>
+    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.18.0" />
+  <meta name="docsearch:version" content="0.18.1" />
   </head>
   
   
@@ -609,10 +609,13 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">model_validator</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlotMeas</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">PlotMeas</span><span class="p">,</span>
+    <span class="n">PlotOutput</span><span class="p">,</span>
+    <span class="n">PlotPage</span><span class="p">,</span>
+    <span class="n">canonical_group_key</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span><span class="p">,</span> <span class="n">ColumnRefList</span><span class="p">,</span> <span class="n">is_metadata_header</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">._output</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlotOutput</span><span class="p">,</span> <span class="n">PlotPage</span><span class="p">,</span> <span class="n">canonical_group_key</span>
 
 
 <div class="viewcode-block" id="PlotMeasTimeSeries">
