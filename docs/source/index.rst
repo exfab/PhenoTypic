@@ -68,7 +68,7 @@ started.
 
       +++
 
-      .. button-ref:: measurements_ref/index
+      .. button-ref:: measurements_ref/measurements/index
          :ref-type: doc
          :click-parent:
          :color: secondary
@@ -124,7 +124,7 @@ started.
    how_to/index
    explanation/index
    extending/index
-   measurements_ref/index
+   measurements_ref/measurements/index
    api_reference/index
    contrib_guide/index
    downloads

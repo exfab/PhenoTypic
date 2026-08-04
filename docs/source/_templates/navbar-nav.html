@@ -79,7 +79,7 @@
       </button>
       <ul id="pst-nav-measurements" class="dropdown-menu">
         <li>
-          <a class="nav-link dropdown-item nav-internal{% if _pn == 'measurements_ref/index' or _pn.startswith('measurements_ref/measurements/') %} current active{% endif %}"
+          <a class="nav-link dropdown-item nav-internal{% if _pn.startswith('measurements_ref/measurements/') %} current active{% endif %}"
              href="{{ pathto('measurements_ref/measurements/index') }}">
             Measurements
           </a>

@@ -1,13 +1,14 @@
 """Generate the two-page Measurements reference from the public schema.
 
-At ``builder-inited`` time, this extension discovers every public
+At ``config-inited`` time, before Sphinx discovers source files, this extension
+discovers every public
 ``phenotypic.schema.MeasurementInfo`` class and writes two deterministic pages:
 Measurements and Metadata. Each canonical class contributes one linked section
 heading and its measurement table. It also copies packaged measurement images
 into the docs static tree so ``/_static/measurements/...`` references resolve.
 
 The pages are regenerated on every build, so new public schema classes surface
-automatically. Do not edit generated ``measurements_ref/*.rst`` files by hand;
+automatically. Do not edit generated ``measurements_ref/**/index.rst`` files by hand;
 edit the source enums or this extension instead.
 """
 
@@ -87,7 +88,7 @@ def _build_reference_page(
                 ".. toctree::",
                 "   :hidden:",
                 "",
-                "   metadata/index",
+                "   ../metadata/index",
                 "",
             ]
         )
@@ -127,7 +128,7 @@ def _build_pages(srcdir: str) -> None:
         info_cls for info_cls in public_infos if info_cls not in metadata_infos
     )
     _write(
-        output_dir / "index.rst",
+        output_dir / "measurements" / "index.rst",
         _build_reference_page(
             "Measurements", measurement_infos, metadata_child=True
         ),
@@ -138,16 +139,16 @@ def _build_pages(srcdir: str) -> None:
     )
 
 
-def _generate(app):
+def _generate(app, _config):
     _copy_measurement_assets(app.srcdir)
     _build_pages(app.srcdir)
     print(f"Generated {os.path.join(app.srcdir, 'measurements_ref')}")
 
 
 def setup(app):
-    app.connect("builder-inited", _generate)
+    app.connect("config-inited", _generate)
     return {
-        "version": "0.3",
+        "version": "0.4",
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }
