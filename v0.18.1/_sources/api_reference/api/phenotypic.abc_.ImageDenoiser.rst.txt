@@ -1,0 +1,62 @@
+phenotypic.abc\_.ImageDenoiser
+==============================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: ImageDenoiser
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ImageDenoiser.__init__
+      ~ImageDenoiser.apply
+      ~ImageDenoiser.construct
+      ~ImageDenoiser.copy
+      ~ImageDenoiser.dict
+      ~ImageDenoiser.from_json
+      ~ImageDenoiser.from_orm
+      ~ImageDenoiser.json
+      ~ImageDenoiser.model_construct
+      ~ImageDenoiser.model_copy
+      ~ImageDenoiser.model_dump
+      ~ImageDenoiser.model_dump_json
+      ~ImageDenoiser.model_json_schema
+      ~ImageDenoiser.model_parametrized_name
+      ~ImageDenoiser.model_post_init
+      ~ImageDenoiser.model_rebuild
+      ~ImageDenoiser.model_validate
+      ~ImageDenoiser.model_validate_json
+      ~ImageDenoiser.model_validate_strings
+      ~ImageDenoiser.parse_file
+      ~ImageDenoiser.parse_obj
+      ~ImageDenoiser.parse_raw
+      ~ImageDenoiser.schema
+      ~ImageDenoiser.schema_json
+      ~ImageDenoiser.to_json
+      ~ImageDenoiser.update_forward_refs
+      ~ImageDenoiser.validate
+      ~ImageDenoiser.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ImageDenoiser.model_computed_fields
+      ~ImageDenoiser.model_config
+      ~ImageDenoiser.model_extra
+      ~ImageDenoiser.model_fields
+      ~ImageDenoiser.model_fields_set
+   
+   

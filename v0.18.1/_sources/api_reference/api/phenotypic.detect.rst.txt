@@ -1,0 +1,56 @@
+﻿phenotypic.detect
+=================
+
+.. automodule:: phenotypic.detect
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      CannyDetector
+      ChanVeseDetector
+      CompositeDetector
+      FilamentousFungiDetector
+      TwoKFilamentousDetector
+      FilFinderDetector
+      HysteresisDetector
+      InoculumDetector
+      MadHysteresisDetector
+      IsodataDetector
+      LiDetector
+      UserThreshold
+      ManualGridPointDetector
+      ManualPointDetector
+      MeanDetector
+      MinimumDetector
+      OtsuDetector
+      RankOtsuDetector
+      RoundPeaksDetector
+      SecondaryOtsuDetector
+      SinePeakDetector
+      TriangleDetector
+      WatershedDetector
+      YenDetector
+   
+   
+
+   
+   
+   
+
+
+

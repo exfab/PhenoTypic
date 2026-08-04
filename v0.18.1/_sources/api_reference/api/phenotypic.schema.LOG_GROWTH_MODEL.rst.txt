@@ -1,0 +1,110 @@
+phenotypic.schema.LOG\_GROWTH\_MODEL
+====================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: LOG_GROWTH_MODEL
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~LOG_GROWTH_MODEL.kind
+      ~LOG_GROWTH_MODEL.category
+      ~LOG_GROWTH_MODEL.tier
+      ~LOG_GROWTH_MODEL.rembi_module
+      ~LOG_GROWTH_MODEL.header_scheme
+      ~LOG_GROWTH_MODEL.member_for_header
+      ~LOG_GROWTH_MODEL.owns_header
+      ~LOG_GROWTH_MODEL.get_labels
+      ~LOG_GROWTH_MODEL.get_headers
+      ~LOG_GROWTH_MODEL.rst_table
+      ~LOG_GROWTH_MODEL.append_rst_to_doc
+      ~LOG_GROWTH_MODEL.encode
+      ~LOG_GROWTH_MODEL.replace
+      ~LOG_GROWTH_MODEL.split
+      ~LOG_GROWTH_MODEL.rsplit
+      ~LOG_GROWTH_MODEL.join
+      ~LOG_GROWTH_MODEL.capitalize
+      ~LOG_GROWTH_MODEL.casefold
+      ~LOG_GROWTH_MODEL.title
+      ~LOG_GROWTH_MODEL.center
+      ~LOG_GROWTH_MODEL.count
+      ~LOG_GROWTH_MODEL.expandtabs
+      ~LOG_GROWTH_MODEL.find
+      ~LOG_GROWTH_MODEL.partition
+      ~LOG_GROWTH_MODEL.index
+      ~LOG_GROWTH_MODEL.ljust
+      ~LOG_GROWTH_MODEL.lower
+      ~LOG_GROWTH_MODEL.lstrip
+      ~LOG_GROWTH_MODEL.rfind
+      ~LOG_GROWTH_MODEL.rindex
+      ~LOG_GROWTH_MODEL.rjust
+      ~LOG_GROWTH_MODEL.rstrip
+      ~LOG_GROWTH_MODEL.rpartition
+      ~LOG_GROWTH_MODEL.splitlines
+      ~LOG_GROWTH_MODEL.strip
+      ~LOG_GROWTH_MODEL.swapcase
+      ~LOG_GROWTH_MODEL.translate
+      ~LOG_GROWTH_MODEL.upper
+      ~LOG_GROWTH_MODEL.startswith
+      ~LOG_GROWTH_MODEL.endswith
+      ~LOG_GROWTH_MODEL.removeprefix
+      ~LOG_GROWTH_MODEL.removesuffix
+      ~LOG_GROWTH_MODEL.isascii
+      ~LOG_GROWTH_MODEL.islower
+      ~LOG_GROWTH_MODEL.isupper
+      ~LOG_GROWTH_MODEL.istitle
+      ~LOG_GROWTH_MODEL.isspace
+      ~LOG_GROWTH_MODEL.isdecimal
+      ~LOG_GROWTH_MODEL.isdigit
+      ~LOG_GROWTH_MODEL.isnumeric
+      ~LOG_GROWTH_MODEL.isalpha
+      ~LOG_GROWTH_MODEL.isalnum
+      ~LOG_GROWTH_MODEL.isidentifier
+      ~LOG_GROWTH_MODEL.isprintable
+      ~LOG_GROWTH_MODEL.zfill
+      ~LOG_GROWTH_MODEL.format
+      ~LOG_GROWTH_MODEL.format_map
+      ~LOG_GROWTH_MODEL.maketrans
+      ~LOG_GROWTH_MODEL.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LOG_GROWTH_MODEL.CATEGORY
+      ~LOG_GROWTH_MODEL.resolved_kind
+      ~LOG_GROWTH_MODEL.resolved_tier
+      ~LOG_GROWTH_MODEL.resolved_rembi_module
+      ~LOG_GROWTH_MODEL.use_label
+      ~LOG_GROWTH_MODEL.use_badge
+      ~LOG_GROWTH_MODEL.R_FIT
+      ~LOG_GROWTH_MODEL.K_FIT
+      ~LOG_GROWTH_MODEL.N0_FIT
+      ~LOG_GROWTH_MODEL.LAM
+      ~LOG_GROWTH_MODEL.BETA
+      ~LOG_GROWTH_MODEL.GROWTH_RATE
+      ~LOG_GROWTH_MODEL.K_MAX
+      ~LOG_GROWTH_MODEL.label
+      ~LOG_GROWTH_MODEL.desc
+      ~LOG_GROWTH_MODEL.bio_desc
+      ~LOG_GROWTH_MODEL.image
+      ~LOG_GROWTH_MODEL.pair
+      ~LOG_GROWTH_MODEL.tier_override
+      ~LOG_GROWTH_MODEL.derivation_type
+      ~LOG_GROWTH_MODEL.derives_from
+      ~LOG_GROWTH_MODEL.rembi_module_override
+   
+   

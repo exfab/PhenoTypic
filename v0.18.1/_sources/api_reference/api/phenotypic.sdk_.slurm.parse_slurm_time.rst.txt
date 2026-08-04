@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm.parse\_slurm\_time
+=========================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autofunction:: parse_slurm_time

@@ -1,0 +1,67 @@
+phenotypic.enhance.ContrastSigmoid
+==================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: ContrastSigmoid
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ContrastSigmoid.__init__
+      ~ContrastSigmoid.apply
+      ~ContrastSigmoid.construct
+      ~ContrastSigmoid.copy
+      ~ContrastSigmoid.dict
+      ~ContrastSigmoid.from_json
+      ~ContrastSigmoid.from_orm
+      ~ContrastSigmoid.json
+      ~ContrastSigmoid.model_construct
+      ~ContrastSigmoid.model_copy
+      ~ContrastSigmoid.model_dump
+      ~ContrastSigmoid.model_dump_json
+      ~ContrastSigmoid.model_json_schema
+      ~ContrastSigmoid.model_parametrized_name
+      ~ContrastSigmoid.model_post_init
+      ~ContrastSigmoid.model_rebuild
+      ~ContrastSigmoid.model_validate
+      ~ContrastSigmoid.model_validate_json
+      ~ContrastSigmoid.model_validate_strings
+      ~ContrastSigmoid.parse_file
+      ~ContrastSigmoid.parse_obj
+      ~ContrastSigmoid.parse_raw
+      ~ContrastSigmoid.schema
+      ~ContrastSigmoid.schema_json
+      ~ContrastSigmoid.to_json
+      ~ContrastSigmoid.update_forward_refs
+      ~ContrastSigmoid.validate
+      ~ContrastSigmoid.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ContrastSigmoid.model_computed_fields
+      ~ContrastSigmoid.model_config
+      ~ContrastSigmoid.model_extra
+      ~ContrastSigmoid.model_fields
+      ~ContrastSigmoid.model_fields_set
+      ~ContrastSigmoid.cutoff
+      ~ContrastSigmoid.gain
+      ~ContrastSigmoid.inv
+      ~ContrastSigmoid.input_layer
+      ~ContrastSigmoid.norm
+   
+   

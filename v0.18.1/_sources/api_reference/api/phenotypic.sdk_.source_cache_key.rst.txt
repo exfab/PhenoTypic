@@ -1,0 +1,6 @@
+phenotypic.sdk\_.source\_cache\_key
+===================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: source_cache_key

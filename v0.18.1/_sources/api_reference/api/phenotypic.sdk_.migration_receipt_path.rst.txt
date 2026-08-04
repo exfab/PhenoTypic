@@ -1,0 +1,6 @@
+phenotypic.sdk\_.migration\_receipt\_path
+=========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: migration_receipt_path

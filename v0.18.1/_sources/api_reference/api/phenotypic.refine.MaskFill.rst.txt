@@ -1,0 +1,64 @@
+phenotypic.refine.MaskFill
+==========================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: MaskFill
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MaskFill.__init__
+      ~MaskFill.apply
+      ~MaskFill.construct
+      ~MaskFill.copy
+      ~MaskFill.dict
+      ~MaskFill.from_json
+      ~MaskFill.from_orm
+      ~MaskFill.json
+      ~MaskFill.model_construct
+      ~MaskFill.model_copy
+      ~MaskFill.model_dump
+      ~MaskFill.model_dump_json
+      ~MaskFill.model_json_schema
+      ~MaskFill.model_parametrized_name
+      ~MaskFill.model_post_init
+      ~MaskFill.model_rebuild
+      ~MaskFill.model_validate
+      ~MaskFill.model_validate_json
+      ~MaskFill.model_validate_strings
+      ~MaskFill.parse_file
+      ~MaskFill.parse_obj
+      ~MaskFill.parse_raw
+      ~MaskFill.schema
+      ~MaskFill.schema_json
+      ~MaskFill.to_json
+      ~MaskFill.update_forward_refs
+      ~MaskFill.validate
+      ~MaskFill.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MaskFill.model_computed_fields
+      ~MaskFill.model_config
+      ~MaskFill.model_extra
+      ~MaskFill.model_fields
+      ~MaskFill.model_fields_set
+      ~MaskFill.structure
+      ~MaskFill.origin
+   
+   

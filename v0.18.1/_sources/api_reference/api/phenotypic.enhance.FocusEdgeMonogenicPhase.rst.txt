@@ -1,0 +1,73 @@
+phenotypic.enhance.FocusEdgeMonogenicPhase
+==========================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: FocusEdgeMonogenicPhase
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FocusEdgeMonogenicPhase.__init__
+      ~FocusEdgeMonogenicPhase.apply
+      ~FocusEdgeMonogenicPhase.construct
+      ~FocusEdgeMonogenicPhase.copy
+      ~FocusEdgeMonogenicPhase.dict
+      ~FocusEdgeMonogenicPhase.from_json
+      ~FocusEdgeMonogenicPhase.from_orm
+      ~FocusEdgeMonogenicPhase.json
+      ~FocusEdgeMonogenicPhase.model_construct
+      ~FocusEdgeMonogenicPhase.model_copy
+      ~FocusEdgeMonogenicPhase.model_dump
+      ~FocusEdgeMonogenicPhase.model_dump_json
+      ~FocusEdgeMonogenicPhase.model_json_schema
+      ~FocusEdgeMonogenicPhase.model_parametrized_name
+      ~FocusEdgeMonogenicPhase.model_post_init
+      ~FocusEdgeMonogenicPhase.model_rebuild
+      ~FocusEdgeMonogenicPhase.model_validate
+      ~FocusEdgeMonogenicPhase.model_validate_json
+      ~FocusEdgeMonogenicPhase.model_validate_strings
+      ~FocusEdgeMonogenicPhase.parse_file
+      ~FocusEdgeMonogenicPhase.parse_obj
+      ~FocusEdgeMonogenicPhase.parse_raw
+      ~FocusEdgeMonogenicPhase.schema
+      ~FocusEdgeMonogenicPhase.schema_json
+      ~FocusEdgeMonogenicPhase.to_json
+      ~FocusEdgeMonogenicPhase.update_forward_refs
+      ~FocusEdgeMonogenicPhase.validate
+      ~FocusEdgeMonogenicPhase.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FocusEdgeMonogenicPhase.model_computed_fields
+      ~FocusEdgeMonogenicPhase.model_config
+      ~FocusEdgeMonogenicPhase.model_extra
+      ~FocusEdgeMonogenicPhase.model_fields
+      ~FocusEdgeMonogenicPhase.model_fields_set
+      ~FocusEdgeMonogenicPhase.n_scale
+      ~FocusEdgeMonogenicPhase.min_wavelength
+      ~FocusEdgeMonogenicPhase.mult
+      ~FocusEdgeMonogenicPhase.sigma_onf
+      ~FocusEdgeMonogenicPhase.k
+      ~FocusEdgeMonogenicPhase.deviation_gain
+      ~FocusEdgeMonogenicPhase.cutoff
+      ~FocusEdgeMonogenicPhase.g
+      ~FocusEdgeMonogenicPhase.noise_method
+      ~FocusEdgeMonogenicPhase.output
+      ~FocusEdgeMonogenicPhase.norm
+   
+   

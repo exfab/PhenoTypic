@@ -1,0 +1,69 @@
+phenotypic.detect.InoculumDetector
+==================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: InoculumDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~InoculumDetector.__init__
+      ~InoculumDetector.apply
+      ~InoculumDetector.construct
+      ~InoculumDetector.copy
+      ~InoculumDetector.dict
+      ~InoculumDetector.from_json
+      ~InoculumDetector.from_orm
+      ~InoculumDetector.json
+      ~InoculumDetector.model_construct
+      ~InoculumDetector.model_copy
+      ~InoculumDetector.model_dump
+      ~InoculumDetector.model_dump_json
+      ~InoculumDetector.model_json_schema
+      ~InoculumDetector.model_parametrized_name
+      ~InoculumDetector.model_post_init
+      ~InoculumDetector.model_rebuild
+      ~InoculumDetector.model_validate
+      ~InoculumDetector.model_validate_json
+      ~InoculumDetector.model_validate_strings
+      ~InoculumDetector.parse_file
+      ~InoculumDetector.parse_obj
+      ~InoculumDetector.parse_raw
+      ~InoculumDetector.schema
+      ~InoculumDetector.schema_json
+      ~InoculumDetector.to_json
+      ~InoculumDetector.update_forward_refs
+      ~InoculumDetector.validate
+      ~InoculumDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~InoculumDetector.model_computed_fields
+      ~InoculumDetector.model_config
+      ~InoculumDetector.model_extra
+      ~InoculumDetector.model_fields
+      ~InoculumDetector.model_fields_set
+      ~InoculumDetector.min_diameter
+      ~InoculumDetector.max_diameter
+      ~InoculumDetector.thresh_method
+      ~InoculumDetector.enable_gmm
+      ~InoculumDetector.gmm_n_components
+      ~InoculumDetector.gmm_separation_threshold
+      ~InoculumDetector.validate_obj_count
+   
+   

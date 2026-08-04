@@ -1,0 +1,1167 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.tune.score._reference_free_scorer &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/tune/score/_reference_free_scorer';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.18.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.18.1/_modules/phenotypic/tune/score/_reference_free_scorer.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.18.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.tune.score._reference_free_scorer</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.tune.score._reference_free_scorer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;The reference-free (no-ground-truth) segmentation-quality objective.</span>
+
+<span class="sd">``ReferenceFreeScorer`` scores a candidate segmentation **without a</span>
+<span class="sd">ground-truth mask** using a lean set of domain proxy terms drawn from the</span>
+<span class="sd">companion catalogue</span>
+<span class="sd">(``docs/superpowers/specs/param-sweep-redesign/reference-free-segmentation-metrics.md``):</span>
+
+<span class="sd">* **ShapeRegularity** — mean of per-colony shape-prior plausibility</span>
+<span class="sd">  (``Shape_Solidity``, ``Shape_Circularity``, ``1 − Shape_Eccentricity``),</span>
+<span class="sd">  reusing the public ``phenotypic.schema`` measurement columns (family C.2).</span>
+<span class="sd">* **Contrast** — Otsu between-class separation ``η = σ²_B / σ²_T`` of the</span>
+<span class="sd">  image&#39;s foreground vs. background grayscale (family A.3); a fixed-normalized</span>
+<span class="sd">  ``[0, 1]`` separation, *not* a min–max-over-the-grid score.</span>
+<span class="sd">* **SizeCV** — within-replicate coefficient of variation of ``Size_Area``,</span>
+<span class="sd">  folded by the bounded ``1 / (1 + CV)`` transform (family C.3).</span>
+<span class="sd">* **Count** — *optional* expected-vs-detected grid count, reused from</span>
+<span class="sd">  ``QCScorer`` when a path-configured ``count_check`` is supplied (family C.6).</span>
+
+<span class="sd">Every term is **fixed-normalized** to a natural-goodness value in ``[0, 1]``</span>
+<span class="sd">(higher = better; ``_TERM_SENSE = HIGHER_BETTER``, so the base</span>
+<span class="sd">:meth:`Scorer.score_image` complements each into **cost**) so the optimum cannot</span>
+<span class="sd">migrate when the parameter grid&#39;s endpoints change — the &quot;Böck trap&quot; (``§B.3``)</span>
+<span class="sd">that min–max-over-the-tested-set normalization falls into.</span>
+
+<span class="sd">The scorer is **gated** behind meta-validation (``D1``): :meth:`meta_validate`</span>
+<span class="sd">correlates the proxy against ground truth and caches an enable/abstain flag;</span>
+<span class="sd">:meth:`availability` is the cheap cached-boolean read. Until the gate runs and</span>
+<span class="sd">passes, :meth:`availability` returns ``False`` so the engine **fails safe** by</span>
+<span class="sd">degrading to :class:`QCScorer`.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">PrivateAttr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">SHAPE</span><span class="p">,</span> <span class="n">SIZE</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._orient</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sense</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._qc_scorer</span><span class="w"> </span><span class="kn">import</span> <span class="n">fold_expected_vs_detected_count</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._scorer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scorer</span>
+
+<span class="c1">#: Spearman ρ at or above which the proxy is trusted enough to *enable* the</span>
+<span class="c1">#: scorer (engineering bar, reference-free-metrics §E.4 — inference, not a</span>
+<span class="c1">#: cited cutoff).</span>
+<span class="n">_ENABLE_RHO</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span>
+<span class="c1">#: Spearman ρ at or above which fully *unattended* auto-tuning is allowed.</span>
+<span class="n">_UNATTENDED_RHO</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_clamp01</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Clamp a scalar into ``[0, 1]`` (``NaN`` → ``0.0``).</span>
+
+<span class="sd">    Fixed normalization with hard external bounds — the anti-gaming remedy for</span>
+<span class="sd">    the Böck instability (``§B.3``): the unit interval is decoupled from the</span>
+<span class="sd">    search grid. Defensive against measurement quirks (e.g. the synthetic</span>
+<span class="sd">    plate&#39;s ``Shape_Solidity`` exceeding ``1``).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        value: Any real scalar.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``value`` confined to ``[0, 1]``; ``0.0`` when ``value`` is ``NaN``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mf">1.0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">1.0</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_bounded_inverse</span><span class="p">(</span><span class="n">dispersion</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fold a non-negative dispersion to ``[0, 1]`` via ``1 / (1 + x)``.</span>
+
+<span class="sd">    Chen &amp; Murphy&#39;s bounded-score trick (``§C.1``/``§C.3``): ``x == 0`` (no</span>
+<span class="sd">    dispersion) → ``1.0`` (best), growing dispersion → ``0``, ``inf`` → ``0``.</span>
+<span class="sd">    Monotone decreasing, so lower variability scores higher.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        dispersion: A non-negative spread statistic (e.g. a coefficient of</span>
+<span class="sd">            variation); ``inf`` for an undefined/degenerate group.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The bounded score in ``[0, 1]`` (higher = better).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">dispersion</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+    <span class="k">if</span> <span class="n">dispersion</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">1.0</span>
+    <span class="k">return</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">dispersion</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ReferenceFreeScorer">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.ReferenceFreeScorer.html#phenotypic.tune.score.ReferenceFreeScorer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ReferenceFreeScorer</span><span class="p">(</span><span class="n">Scorer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;No-ground-truth proxy objective, gated behind meta-validation.</span>
+
+<span class="sd">    The lean proxy set (``§0a``/``§0b``) reuses the public ``phenotypic.schema``</span>
+<span class="sd">    measurement columns — ``Shape_*`` and ``Size_*`` — for the shape and size</span>
+<span class="sd">    terms (no geometry is recomputed), reads the image grayscale + mask for the</span>
+<span class="sd">    contrast term, and optionally reuses :class:`QCScorer`&#39;s expected-vs-detected</span>
+<span class="sd">    grid count. All terms are fixed-normalized to a natural-goodness value in</span>
+<span class="sd">    ``[0, 1]`` (higher = better); the base complements each into cost.</span>
+
+<span class="sd">    The scorer is **unavailable until meta-validated**: :meth:`availability`</span>
+<span class="sd">    returns ``False`` (so the engine degrades to :class:`QCScorer`) until</span>
+<span class="sd">    :meth:`meta_validate` correlates the proxy against ground truth and caches a</span>
+<span class="sd">    passing flag.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        count_check: An optional configured expected-vs-detected count check —</span>
+<span class="sd">            **configure it from a metadata path** (``metadata=&quot;layout.csv&quot;``)</span>
+<span class="sd">            so it round-trips through ``tuning_spec.json`` (mirrors</span>
+<span class="sd">            :class:`QCScorer`). When supplied, a ``&quot;Count&quot;`` term is added.</span>
+<span class="sd">        replicate_groupby: Optional metadata columns that group sibling</span>
+<span class="sd">            replicate colonies; the size-CV term is computed *within* each group</span>
+<span class="sd">            and averaged (``§C.3``). ``None`` treats the whole frame as one</span>
+<span class="sd">            group.</span>
+<span class="sd">        gt_masks_source: Optional path to a ground-truth mask source consumed by</span>
+<span class="sd">            the meta-validation gate (a name→mask mapping, mirroring</span>
+<span class="sd">            :class:`QCScorer`&#39;s metadata-path discipline so it serializes).</span>
+<span class="sd">            ``None`` means the gate cannot validate and abstains.</span>
+<span class="sd">        min_area: Minimum ``Size_Area`` (px) below which a colony is excluded</span>
+<span class="sd">            from the shape term — perimeter-derived metrics are unreliable at a</span>
+<span class="sd">            few pixels (``§C`` watch-out (a)). Default ``0`` keeps every colony.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import ImagePipeline</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.measure import MeasureShape, MeasureSize</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.tune.score import ReferenceFreeScorer</span>
+<span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
+<span class="sd">        &gt;&gt;&gt; pipe = ImagePipeline(</span>
+<span class="sd">        ...     ops=[OtsuDetector()], meas=[MeasureShape(), MeasureSize()]</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; measurements = pipe.measure(image, apply_post=False)</span>
+<span class="sd">        &gt;&gt;&gt; scorer = ReferenceFreeScorer()</span>
+<span class="sd">        &gt;&gt;&gt; sorted(scorer.score_image(image, measurements))</span>
+<span class="sd">        [&#39;Contrast&#39;, &#39;ShapeRegularity&#39;, &#39;SizeCV&#39;]</span>
+<span class="sd">        &gt;&gt;&gt; scorer.availability()  # fail-safe: gate has not run yet</span>
+<span class="sd">        False</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1">#: The optional grid-count term name (present iff ``count_check`` is set).</span>
+    <span class="n">count_term_name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Count&quot;</span>
+
+    <span class="c1">#: Every proxy term is bounded [0,1] goodness (fixed-normalized); the base</span>
+    <span class="c1">#: complements each into cost.</span>
+    <span class="n">_TERM_SENSE</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="n">Sense</span><span class="p">]</span> <span class="o">=</span> <span class="n">Sense</span><span class="o">.</span><span class="n">HIGHER_BETTER</span>
+
+    <span class="n">count_check</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ExpectedVsDetectedCount</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">replicate_groupby</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">gt_masks_source</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">min_area</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c1">#: Run-local cached gate verdict (default not-yet-run → ``False``,</span>
+    <span class="c1">#: fail-safe). A ``PrivateAttr`` so it never serializes — a reloaded scorer</span>
+    <span class="c1">#: re-validates and stays unavailable until it does.</span>
+    <span class="n">_meta_validated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1">#: The raw proxy-vs-GT Spearman ρ from the last :meth:`meta_validate` run,</span>
+    <span class="c1">#: kept distinct from the enable verdict so the stricter *unattended* bar</span>
+    <span class="c1">#: (:data:`_UNATTENDED_RHO`) is checked against the actual correlation rather</span>
+    <span class="c1">#: than conflated with the 0.7 enable decision. Run-local (``PrivateAttr``,</span>
+    <span class="c1">#: never serialized); ``-inf`` until the gate has run.</span>
+    <span class="n">_last_rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">))</span>
+
+    <span class="c1"># ----------------------------------------------------------------- #</span>
+    <span class="c1"># availability + the meta-validation gate (Task 2)</span>
+    <span class="c1"># ----------------------------------------------------------------- #</span>
+<div class="viewcode-block" id="ReferenceFreeScorer.availability">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.ReferenceFreeScorer.html#phenotypic.tune.score.ReferenceFreeScorer.availability">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">availability</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether the proxy has passed meta-validation (cheap cached read).</span>
+
+<span class="sd">        The cached :attr:`_meta_validated` flag is the only thing read — no GT</span>
+<span class="sd">        is loaded and no correlation is recomputed. Defaults to ``False``</span>
+<span class="sd">        (fail-safe) until :meth:`meta_validate` runs and passes, so the engine</span>
+<span class="sd">        degrades to :class:`QCScorer` rather than trusting an unvalidated proxy.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``True`` only after a passing :meth:`meta_validate`; ``False``</span>
+<span class="sd">            otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_meta_validated</span></div>
+
+
+<div class="viewcode-block" id="ReferenceFreeScorer.meta_validate">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.ReferenceFreeScorer.html#phenotypic.tune.score.ReferenceFreeScorer.meta_validate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">meta_validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gt_images</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">grid</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gate the proxy against ground truth, caching the enable/abstain flag.</span>
+
+<span class="sd">        Loads ground-truth masks via :meth:`_load_gt_masks`, computes the</span>
+<span class="sd">        proxy-vs-GT Spearman rank correlation, and caches</span>
+<span class="sd">        :attr:`_meta_validated` ``= ρ ≥`` :data:`_ENABLE_RHO`. **Fail-safe**: if</span>
+<span class="sd">        no GT is configured (or it resolves to nothing), the gate abstains and</span>
+<span class="sd">        the flag stays ``False``, so the engine keeps falling back to</span>
+<span class="sd">        :class:`QCScorer`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            gt_images: The annotated calibration images to validate against</span>
+<span class="sd">                (duck-typed; passed through to :meth:`_load_gt_masks`).</span>
+<span class="sd">            grid: The candidate parameter grid the proxy is asked to rank</span>
+<span class="sd">                (its argmax is compared against the true best in the deferred,</span>
+<span class="sd">                real-GT validation).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``True`` if the proxy passed (``ρ ≥`` enable threshold) and the</span>
+<span class="sd">            scorer is now :meth:`availability`-enabled; ``False`` on abstain.</span>
+
+<span class="sd">        # TODO(DEFERRED-WORK §1): validate against real annotated plates — run</span>
+<span class="sd">        # the proxy-vs-GT correlation on a real GT set and confirm the</span>
+<span class="sd">        # enable/abstain thresholds (and the argmax test) numerically. v1 ships</span>
+<span class="sd">        # only the gate machinery + abstain logic; ``_proxy_gt_spearman`` is a</span>
+<span class="sd">        # structural stub until an annotated calibration set exists.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">masks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_gt_masks</span><span class="p">(</span><span class="n">gt_images</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">masks</span><span class="p">:</span>
+            <span class="c1"># No ground truth → cannot certify the proxy → abstain (fail-safe).</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_meta_validated</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_last_rho</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proxy_gt_spearman</span><span class="p">(</span><span class="n">gt_images</span><span class="p">,</span> <span class="n">masks</span><span class="p">,</span> <span class="n">grid</span><span class="p">)</span>
+        <span class="c1"># Store the raw ρ so the stricter unattended bar reads the actual value;</span>
+        <span class="c1"># the enable verdict and the unattended verdict are distinct thresholds.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_rho</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_meta_validated</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">rho</span> <span class="o">&gt;=</span> <span class="n">_ENABLE_RHO</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_meta_validated</span></div>
+
+
+<div class="viewcode-block" id="ReferenceFreeScorer.is_unattended_safe">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.ReferenceFreeScorer.html#phenotypic.tune.score.ReferenceFreeScorer.is_unattended_safe">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_unattended_safe</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether the last gate run cleared the *unattended* auto-tuning bar.</span>
+
+<span class="sd">        A strictly stronger read than :meth:`availability`: unattended auto-tuning</span>
+<span class="sd">        needs ``ρ ≥`` :data:`_UNATTENDED_RHO` (0.8), checked against the **raw**</span>
+<span class="sd">        correlation :attr:`_last_rho` recorded by :meth:`meta_validate` — *not*</span>
+<span class="sd">        conflated with the 0.7 enable verdict. Because ``_last_rho`` is ``-inf``</span>
+<span class="sd">        until the gate runs, this returns ``False`` before meta-validation and</span>
+<span class="sd">        whenever the gate abstained (no GT), so it implies :meth:`availability`</span>
+<span class="sd">        but a proxy that only cleared the 0.7 enable bar is **not** unattended-safe.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``True`` only when the last gate run&#39;s ρ reached the unattended</span>
+<span class="sd">            threshold (``≥`` :data:`_UNATTENDED_RHO`); ``False`` otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_rho</span> <span class="o">&gt;=</span> <span class="n">_UNATTENDED_RHO</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_gt_masks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gt_images</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve the configured ground-truth mask source to a name→mask map.</span>
+
+<span class="sd">        Mirrors :class:`QCScorer`&#39;s metadata-path discipline: the source is a</span>
+<span class="sd">        serializable :attr:`gt_masks_source` path, resolved here at validation</span>
+<span class="sd">        time. ``None`` (no GT configured) resolves to an empty mapping so</span>
+<span class="sd">        :meth:`meta_validate` abstains.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            gt_images: The annotated images whose names key the returned map</span>
+<span class="sd">                (unused by the v1 structural loader beyond presence).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A mapping of image name → ground-truth mask. Empty when no GT source</span>
+<span class="sd">            is configured.</span>
+
+<span class="sd">        # TODO(DEFERRED-WORK §1): read real annotated masks from</span>
+<span class="sd">        # ``gt_masks_source`` (a directory of per-image masks) and key them by</span>
+<span class="sd">        # image name. v1 resolves the path only — an existing source yields no</span>
+<span class="sd">        # masks yet, so the gate abstains until real annotations exist.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">gt_masks_source</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+        <span class="c1"># Path resolves but carries no annotations in v1 → abstain (fail-safe).</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_proxy_gt_spearman</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">gt_images</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">masks</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">grid</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Spearman ρ between the proxy score and the GT reference metric.</span>
+
+<span class="sd">        The acceptance statistic of the meta-validation gate (``§E.4``): a rank</span>
+<span class="sd">        correlation (robust to monotone nonlinearity) between the proxy&#39;s</span>
+<span class="sd">        per-candidate scores and a GT-based reference (Dice/Jaccard).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            gt_images: The annotated calibration images.</span>
+<span class="sd">            masks: The resolved name→mask map from :meth:`_load_gt_masks`.</span>
+<span class="sd">            grid: The candidate parameter grid scored by both the proxy and GT.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The Spearman rank-correlation coefficient in ``[-1, 1]``.</span>
+
+<span class="sd">        # TODO(DEFERRED-WORK §1): compute the real proxy-vs-GT Spearman ρ. v1</span>
+<span class="sd">        # is a structural stub (returns ``0.0`` → abstain) overridden in tests;</span>
+<span class="sd">        # wiring the real correlation needs an annotated calibration set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="c1"># ----------------------------------------------------------------- #</span>
+    <span class="c1"># the proxy terms (Task 1)</span>
+    <span class="c1"># ----------------------------------------------------------------- #</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_score_terms</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Score one image&#39;s segmentation as fixed-normalized proxy terms.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The processed image — the contrast term reads its</span>
+<span class="sd">                ``gray``/``objmask`` accessors; the other terms read the frame.</span>
+<span class="sd">            measurements: The candidate pipeline&#39;s measurement frame, carrying</span>
+<span class="sd">                the category-prefixed ``Shape_*``/``Size_*`` columns.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A mapping of proxy term → natural goodness in ``[0, 1]`` (higher =</span>
+<span class="sd">            better): ``ShapeRegularity``, ``Contrast``, ``SizeCV``, and — when a</span>
+<span class="sd">            ``count_check`` is configured — ``Count``. The base complements these</span>
+<span class="sd">            goodness values to cost. Keys are stable across images so the</span>
+<span class="sd">            ``Evaluator`` can aggregate per term.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">empty</span> <span class="o">=</span> <span class="n">measurements</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="n">terms</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;ShapeRegularity&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shape_regularity</span><span class="p">(</span><span class="n">measurements</span><span class="p">,</span> <span class="n">empty</span><span class="p">),</span>
+            <span class="s2">&quot;Contrast&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contrast</span><span class="p">(</span><span class="n">image</span><span class="p">),</span>
+            <span class="s2">&quot;SizeCV&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_size_cv</span><span class="p">(</span><span class="n">measurements</span><span class="p">,</span> <span class="n">empty</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_check</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">terms</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">count_term_name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_count</span><span class="p">(</span><span class="n">measurements</span><span class="p">,</span> <span class="n">empty</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">terms</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_shape_regularity</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">empty</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mean shape-prior plausibility from the ``Shape_*`` columns.</span>
+
+<span class="sd">        Averages the available higher-is-better shape signals — solidity,</span>
+<span class="sd">        circularity, and ``1 − eccentricity`` — each clamped to ``[0, 1]``</span>
+<span class="sd">        (``§C.2``). Reuses the public schema columns; **never** recomputes</span>
+<span class="sd">        geometry from the mask. Colonies smaller than :attr:`min_area` are</span>
+<span class="sd">        excluded (perimeter metrics are unreliable at a few pixels). Returns the</span>
+<span class="sd">        neutral floor ``0.0`` when no usable shape column is present.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            measurements: The candidate measurement frame.</span>
+<span class="sd">            empty: Whether the frame is empty.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The mean shape-regularity score in ``[0, 1]``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">empty</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">measurements</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_area</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">AREA</span><span class="p">)</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="p">[</span><span class="n">frame</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">AREA</span><span class="p">)]</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_area</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="n">per_colony_means</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">SHAPE</span><span class="o">.</span><span class="n">SOLIDITY</span><span class="p">)</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">per_colony_means</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="nb">float</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SHAPE</span><span class="o">.</span><span class="n">SOLIDITY</span><span class="p">)]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">_clamp01</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">SHAPE</span><span class="o">.</span><span class="n">CIRCULARITY</span><span class="p">)</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">per_colony_means</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="nb">float</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SHAPE</span><span class="o">.</span><span class="n">CIRCULARITY</span><span class="p">)]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">_clamp01</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">SHAPE</span><span class="o">.</span><span class="n">ECCENTRICITY</span><span class="p">)</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">per_colony_means</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="nb">float</span><span class="p">(</span>
+                    <span class="n">frame</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SHAPE</span><span class="o">.</span><span class="n">ECCENTRICITY</span><span class="p">)]</span>
+                    <span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="n">_clamp01</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">e</span><span class="p">))</span>
+                    <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">per_colony_means</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="n">_clamp01</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">per_colony_means</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">per_colony_means</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_contrast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Otsu between-class separation ``η = σ²_B / σ²_T`` of fg vs. bg.</span>
+
+<span class="sd">        Reads ``image.gray`` and ``image.objmask`` to split foreground from</span>
+<span class="sd">        background, then returns the between-class fraction of total grayscale</span>
+<span class="sd">        variance (``§A.3``) — already in ``[0, 1]`` (fixed-normalized, no</span>
+<span class="sd">        min–max over the grid). Returns ``0.0`` for a degenerate image (no</span>
+<span class="sd">        variance, or an all-foreground / all-background mask).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The processed image exposing ``gray``/``objmask`` accessors;</span>
+<span class="sd">                ``None`` (no image) scores ``0.0``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The separation score ``η`` in ``[0, 1]`` (higher = better).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">gray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="n">total_var</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">gray</span><span class="o">.</span><span class="n">var</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">total_var</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="n">w_fg</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">w_fg</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">w_fg</span> <span class="o">&gt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="n">mu_fg</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">gray</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+        <span class="n">mu_bg</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">gray</span><span class="p">[</span><span class="o">~</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+        <span class="n">between_var</span> <span class="o">=</span> <span class="n">w_fg</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">w_fg</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">mu_fg</span> <span class="o">-</span> <span class="n">mu_bg</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="k">return</span> <span class="n">_clamp01</span><span class="p">(</span><span class="n">between_var</span> <span class="o">/</span> <span class="n">total_var</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_size_cv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">empty</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Within-replicate size uniformity from ``Size_Area`` (``§C.3``).</span>
+
+<span class="sd">        Computes the coefficient of variation of ``Size_Area`` *within* each</span>
+<span class="sd">        :attr:`replicate_groupby` group (the whole frame is one group when</span>
+<span class="sd">        unset), averages the per-group CVs, then folds the result to ``[0, 1]``</span>
+<span class="sd">        via :func:`_bounded_inverse` (lower variability → higher score). A</span>
+<span class="sd">        single-colony group contributes ``CV = 0`` (perfectly uniform).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            measurements: The candidate measurement frame.</span>
+<span class="sd">            empty: Whether the frame is empty.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The size-uniformity score in ``[0, 1]`` (higher = better); ``0.0``</span>
+<span class="sd">            when ``Size_Area`` is absent or empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">area_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">AREA</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">empty</span> <span class="ow">or</span> <span class="n">area_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">measurements</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">replicate_groupby</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span>
+            <span class="n">col</span> <span class="ow">in</span> <span class="n">measurements</span><span class="o">.</span><span class="n">columns</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">replicate_groupby</span>
+        <span class="p">):</span>
+            <span class="n">groups</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">grp</span><span class="p">[</span><span class="n">area_col</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">grp</span> <span class="ow">in</span> <span class="n">measurements</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">replicate_groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span>
+                <span class="p">)</span>
+            <span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">groups</span> <span class="o">=</span> <span class="p">[</span><span class="n">measurements</span><span class="p">[</span><span class="n">area_col</span><span class="p">]]</span>
+        <span class="n">cvs</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_coefficient_of_variation</span><span class="p">(</span><span class="n">grp</span><span class="p">)</span> <span class="k">for</span> <span class="n">grp</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cvs</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="n">_bounded_inverse</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">cvs</span><span class="p">)))</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_coefficient_of_variation</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The coefficient of variation ``σ / μ`` of one replicate group.</span>
+
+<span class="sd">        Uses the **sample** standard deviation (``ddof=1``, Bessel&#39;s correction):</span>
+<span class="sd">        a replicate group is a *sample* of the colony-size population, not the</span>
+<span class="sd">        whole population, so the unbiased estimator is the correct dispersion</span>
+<span class="sd">        (and it matches pandas&#39; ``Series.std`` default).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            values: A group&#39;s ``Size_Area`` values.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Sample ``std / mean`` (``0.0`` for a single value or a non-positive</span>
+<span class="sd">            mean).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">clean</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">clean</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="n">mean</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">clean</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">mean</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">clean</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="n">mean</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">empty</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The reused expected-vs-detected grid count term (``§C.6``).</span>
+
+<span class="sd">        Delegates to the configured :attr:`count_check` exactly as</span>
+<span class="sd">        :class:`QCScorer` does — runs the check, anchors each group&#39;s</span>
+<span class="sd">        ``QC_Count_Metric`` on the check&#39;s ``fail_threshold`` via</span>
+<span class="sd">        :func:`_threshold_anchored`, and averages across groups.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            measurements: The candidate measurement frame.</span>
+<span class="sd">            empty: Whether the frame is empty.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The normalized count score in ``[0, 1]`` (higher = better); ``0.0``</span>
+<span class="sd">            for an empty frame.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">empty</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_check</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="n">fold_expected_vs_detected_count</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count_check</span><span class="p">,</span> <span class="n">measurements</span><span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

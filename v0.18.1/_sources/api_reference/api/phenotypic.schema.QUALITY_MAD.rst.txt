@@ -1,0 +1,106 @@
+phenotypic.schema.QUALITY\_MAD
+==============================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: QUALITY_MAD
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~QUALITY_MAD.kind
+      ~QUALITY_MAD.category
+      ~QUALITY_MAD.tier
+      ~QUALITY_MAD.rembi_module
+      ~QUALITY_MAD.header_scheme
+      ~QUALITY_MAD.member_for_header
+      ~QUALITY_MAD.owns_header
+      ~QUALITY_MAD.get_labels
+      ~QUALITY_MAD.get_headers
+      ~QUALITY_MAD.rst_table
+      ~QUALITY_MAD.append_rst_to_doc
+      ~QUALITY_MAD.encode
+      ~QUALITY_MAD.replace
+      ~QUALITY_MAD.split
+      ~QUALITY_MAD.rsplit
+      ~QUALITY_MAD.join
+      ~QUALITY_MAD.capitalize
+      ~QUALITY_MAD.casefold
+      ~QUALITY_MAD.title
+      ~QUALITY_MAD.center
+      ~QUALITY_MAD.count
+      ~QUALITY_MAD.expandtabs
+      ~QUALITY_MAD.find
+      ~QUALITY_MAD.partition
+      ~QUALITY_MAD.index
+      ~QUALITY_MAD.ljust
+      ~QUALITY_MAD.lower
+      ~QUALITY_MAD.lstrip
+      ~QUALITY_MAD.rfind
+      ~QUALITY_MAD.rindex
+      ~QUALITY_MAD.rjust
+      ~QUALITY_MAD.rstrip
+      ~QUALITY_MAD.rpartition
+      ~QUALITY_MAD.splitlines
+      ~QUALITY_MAD.strip
+      ~QUALITY_MAD.swapcase
+      ~QUALITY_MAD.translate
+      ~QUALITY_MAD.upper
+      ~QUALITY_MAD.startswith
+      ~QUALITY_MAD.endswith
+      ~QUALITY_MAD.removeprefix
+      ~QUALITY_MAD.removesuffix
+      ~QUALITY_MAD.isascii
+      ~QUALITY_MAD.islower
+      ~QUALITY_MAD.isupper
+      ~QUALITY_MAD.istitle
+      ~QUALITY_MAD.isspace
+      ~QUALITY_MAD.isdecimal
+      ~QUALITY_MAD.isdigit
+      ~QUALITY_MAD.isnumeric
+      ~QUALITY_MAD.isalpha
+      ~QUALITY_MAD.isalnum
+      ~QUALITY_MAD.isidentifier
+      ~QUALITY_MAD.isprintable
+      ~QUALITY_MAD.zfill
+      ~QUALITY_MAD.format
+      ~QUALITY_MAD.format_map
+      ~QUALITY_MAD.maketrans
+      ~QUALITY_MAD.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QUALITY_MAD.CATEGORY
+      ~QUALITY_MAD.resolved_kind
+      ~QUALITY_MAD.resolved_tier
+      ~QUALITY_MAD.resolved_rembi_module
+      ~QUALITY_MAD.use_label
+      ~QUALITY_MAD.use_badge
+      ~QUALITY_MAD.MEDIAN
+      ~QUALITY_MAD.MAD
+      ~QUALITY_MAD.NUM_MEMBERS
+      ~QUALITY_MAD.label
+      ~QUALITY_MAD.desc
+      ~QUALITY_MAD.bio_desc
+      ~QUALITY_MAD.image
+      ~QUALITY_MAD.pair
+      ~QUALITY_MAD.tier_override
+      ~QUALITY_MAD.derivation_type
+      ~QUALITY_MAD.derives_from
+      ~QUALITY_MAD.rembi_module_override
+   
+   

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.generation\_staging\_path
+==========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: generation_staging_path

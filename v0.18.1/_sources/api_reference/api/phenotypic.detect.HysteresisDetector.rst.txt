@@ -1,0 +1,66 @@
+phenotypic.detect.HysteresisDetector
+====================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: HysteresisDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~HysteresisDetector.__init__
+      ~HysteresisDetector.apply
+      ~HysteresisDetector.construct
+      ~HysteresisDetector.copy
+      ~HysteresisDetector.dict
+      ~HysteresisDetector.from_json
+      ~HysteresisDetector.from_orm
+      ~HysteresisDetector.json
+      ~HysteresisDetector.model_construct
+      ~HysteresisDetector.model_copy
+      ~HysteresisDetector.model_dump
+      ~HysteresisDetector.model_dump_json
+      ~HysteresisDetector.model_json_schema
+      ~HysteresisDetector.model_parametrized_name
+      ~HysteresisDetector.model_post_init
+      ~HysteresisDetector.model_rebuild
+      ~HysteresisDetector.model_validate
+      ~HysteresisDetector.model_validate_json
+      ~HysteresisDetector.model_validate_strings
+      ~HysteresisDetector.parse_file
+      ~HysteresisDetector.parse_obj
+      ~HysteresisDetector.parse_raw
+      ~HysteresisDetector.schema
+      ~HysteresisDetector.schema_json
+      ~HysteresisDetector.to_json
+      ~HysteresisDetector.update_forward_refs
+      ~HysteresisDetector.validate
+      ~HysteresisDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~HysteresisDetector.model_computed_fields
+      ~HysteresisDetector.model_config
+      ~HysteresisDetector.model_extra
+      ~HysteresisDetector.model_fields
+      ~HysteresisDetector.model_fields_set
+      ~HysteresisDetector.low
+      ~HysteresisDetector.high
+      ~HysteresisDetector.ignore_zeros
+      ~HysteresisDetector.ignore_borders
+   
+   

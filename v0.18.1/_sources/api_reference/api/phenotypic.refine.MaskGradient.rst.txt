@@ -1,0 +1,64 @@
+phenotypic.refine.MaskGradient
+==============================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: MaskGradient
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MaskGradient.__init__
+      ~MaskGradient.apply
+      ~MaskGradient.construct
+      ~MaskGradient.copy
+      ~MaskGradient.dict
+      ~MaskGradient.from_json
+      ~MaskGradient.from_orm
+      ~MaskGradient.json
+      ~MaskGradient.model_construct
+      ~MaskGradient.model_copy
+      ~MaskGradient.model_dump
+      ~MaskGradient.model_dump_json
+      ~MaskGradient.model_json_schema
+      ~MaskGradient.model_parametrized_name
+      ~MaskGradient.model_post_init
+      ~MaskGradient.model_rebuild
+      ~MaskGradient.model_validate
+      ~MaskGradient.model_validate_json
+      ~MaskGradient.model_validate_strings
+      ~MaskGradient.parse_file
+      ~MaskGradient.parse_obj
+      ~MaskGradient.parse_raw
+      ~MaskGradient.schema
+      ~MaskGradient.schema_json
+      ~MaskGradient.to_json
+      ~MaskGradient.update_forward_refs
+      ~MaskGradient.validate
+      ~MaskGradient.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MaskGradient.model_computed_fields
+      ~MaskGradient.model_config
+      ~MaskGradient.model_extra
+      ~MaskGradient.model_fields
+      ~MaskGradient.model_fields_set
+      ~MaskGradient.shape
+      ~MaskGradient.width
+   
+   

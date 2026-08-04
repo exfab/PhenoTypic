@@ -1,0 +1,104 @@
+phenotypic.schema.CURATION
+==========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: CURATION
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CURATION.kind
+      ~CURATION.category
+      ~CURATION.tier
+      ~CURATION.rembi_module
+      ~CURATION.header_scheme
+      ~CURATION.member_for_header
+      ~CURATION.owns_header
+      ~CURATION.get_labels
+      ~CURATION.get_headers
+      ~CURATION.rst_table
+      ~CURATION.append_rst_to_doc
+      ~CURATION.encode
+      ~CURATION.replace
+      ~CURATION.split
+      ~CURATION.rsplit
+      ~CURATION.join
+      ~CURATION.capitalize
+      ~CURATION.casefold
+      ~CURATION.title
+      ~CURATION.center
+      ~CURATION.count
+      ~CURATION.expandtabs
+      ~CURATION.find
+      ~CURATION.partition
+      ~CURATION.index
+      ~CURATION.ljust
+      ~CURATION.lower
+      ~CURATION.lstrip
+      ~CURATION.rfind
+      ~CURATION.rindex
+      ~CURATION.rjust
+      ~CURATION.rstrip
+      ~CURATION.rpartition
+      ~CURATION.splitlines
+      ~CURATION.strip
+      ~CURATION.swapcase
+      ~CURATION.translate
+      ~CURATION.upper
+      ~CURATION.startswith
+      ~CURATION.endswith
+      ~CURATION.removeprefix
+      ~CURATION.removesuffix
+      ~CURATION.isascii
+      ~CURATION.islower
+      ~CURATION.isupper
+      ~CURATION.istitle
+      ~CURATION.isspace
+      ~CURATION.isdecimal
+      ~CURATION.isdigit
+      ~CURATION.isnumeric
+      ~CURATION.isalpha
+      ~CURATION.isalnum
+      ~CURATION.isidentifier
+      ~CURATION.isprintable
+      ~CURATION.zfill
+      ~CURATION.format
+      ~CURATION.format_map
+      ~CURATION.maketrans
+      ~CURATION.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CURATION.CATEGORY
+      ~CURATION.resolved_kind
+      ~CURATION.resolved_tier
+      ~CURATION.resolved_rembi_module
+      ~CURATION.use_label
+      ~CURATION.use_badge
+      ~CURATION.ERROR_CATEGORY
+      ~CURATION.label
+      ~CURATION.desc
+      ~CURATION.bio_desc
+      ~CURATION.image
+      ~CURATION.pair
+      ~CURATION.tier_override
+      ~CURATION.derivation_type
+      ~CURATION.derives_from
+      ~CURATION.rembi_module_override
+   
+   

@@ -1,0 +1,97 @@
+phenotypic.prefab.SpImagerPipeline
+==================================
+
+.. currentmodule:: phenotypic.prefab
+
+.. autoclass:: SpImagerPipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SpImagerPipeline.__init__
+      ~SpImagerPipeline.analyze
+      ~SpImagerPipeline.apply
+      ~SpImagerPipeline.apply_and_measure
+      ~SpImagerPipeline.apply_napari
+      ~SpImagerPipeline.apply_with_intermediates
+      ~SpImagerPipeline.benchmark_results
+      ~SpImagerPipeline.construct
+      ~SpImagerPipeline.copy
+      ~SpImagerPipeline.dict
+      ~SpImagerPipeline.from_json
+      ~SpImagerPipeline.from_orm
+      ~SpImagerPipeline.get_filters
+      ~SpImagerPipeline.get_meas
+      ~SpImagerPipeline.get_model
+      ~SpImagerPipeline.get_ops
+      ~SpImagerPipeline.get_plots
+      ~SpImagerPipeline.get_post
+      ~SpImagerPipeline.get_qc
+      ~SpImagerPipeline.json
+      ~SpImagerPipeline.measure
+      ~SpImagerPipeline.model_construct
+      ~SpImagerPipeline.model_copy
+      ~SpImagerPipeline.model_dump
+      ~SpImagerPipeline.model_dump_json
+      ~SpImagerPipeline.model_json_schema
+      ~SpImagerPipeline.model_parametrized_name
+      ~SpImagerPipeline.model_post_init
+      ~SpImagerPipeline.model_rebuild
+      ~SpImagerPipeline.model_validate
+      ~SpImagerPipeline.model_validate_json
+      ~SpImagerPipeline.model_validate_strings
+      ~SpImagerPipeline.parse_file
+      ~SpImagerPipeline.parse_obj
+      ~SpImagerPipeline.parse_raw
+      ~SpImagerPipeline.schema
+      ~SpImagerPipeline.schema_json
+      ~SpImagerPipeline.set_filters
+      ~SpImagerPipeline.set_meas
+      ~SpImagerPipeline.set_model
+      ~SpImagerPipeline.set_ops
+      ~SpImagerPipeline.set_plots
+      ~SpImagerPipeline.set_post
+      ~SpImagerPipeline.set_qc
+      ~SpImagerPipeline.to_json
+      ~SpImagerPipeline.update_forward_refs
+      ~SpImagerPipeline.validate
+      ~SpImagerPipeline.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SpImagerPipeline.desc
+      ~SpImagerPipeline.model_computed_fields
+      ~SpImagerPipeline.model_config
+      ~SpImagerPipeline.model_extra
+      ~SpImagerPipeline.model_fields
+      ~SpImagerPipeline.model_fields_set
+      ~SpImagerPipeline.name
+      ~SpImagerPipeline.desc_value
+      ~SpImagerPipeline.benchmark
+      ~SpImagerPipeline.verbose
+      ~SpImagerPipeline.reset
+      ~SpImagerPipeline.nrows
+      ~SpImagerPipeline.ncols
+      ~SpImagerPipeline.ops
+      ~SpImagerPipeline.meas
+      ~SpImagerPipeline.post
+      ~SpImagerPipeline.filters
+      ~SpImagerPipeline.model
+      ~SpImagerPipeline.qc
+      ~SpImagerPipeline.plots
+   
+   

@@ -1,0 +1,111 @@
+phenotypic.schema.ErrorCategory
+===============================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: ErrorCategory
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ErrorCategory.kind
+      ~ErrorCategory.category
+      ~ErrorCategory.tier
+      ~ErrorCategory.rembi_module
+      ~ErrorCategory.header_scheme
+      ~ErrorCategory.member_for_header
+      ~ErrorCategory.owns_header
+      ~ErrorCategory.get_labels
+      ~ErrorCategory.get_headers
+      ~ErrorCategory.rst_table
+      ~ErrorCategory.append_rst_to_doc
+      ~ErrorCategory.encode
+      ~ErrorCategory.replace
+      ~ErrorCategory.split
+      ~ErrorCategory.rsplit
+      ~ErrorCategory.join
+      ~ErrorCategory.capitalize
+      ~ErrorCategory.casefold
+      ~ErrorCategory.title
+      ~ErrorCategory.center
+      ~ErrorCategory.count
+      ~ErrorCategory.expandtabs
+      ~ErrorCategory.find
+      ~ErrorCategory.partition
+      ~ErrorCategory.index
+      ~ErrorCategory.ljust
+      ~ErrorCategory.lower
+      ~ErrorCategory.lstrip
+      ~ErrorCategory.rfind
+      ~ErrorCategory.rindex
+      ~ErrorCategory.rjust
+      ~ErrorCategory.rstrip
+      ~ErrorCategory.rpartition
+      ~ErrorCategory.splitlines
+      ~ErrorCategory.strip
+      ~ErrorCategory.swapcase
+      ~ErrorCategory.translate
+      ~ErrorCategory.upper
+      ~ErrorCategory.startswith
+      ~ErrorCategory.endswith
+      ~ErrorCategory.removeprefix
+      ~ErrorCategory.removesuffix
+      ~ErrorCategory.isascii
+      ~ErrorCategory.islower
+      ~ErrorCategory.isupper
+      ~ErrorCategory.istitle
+      ~ErrorCategory.isspace
+      ~ErrorCategory.isdecimal
+      ~ErrorCategory.isdigit
+      ~ErrorCategory.isnumeric
+      ~ErrorCategory.isalpha
+      ~ErrorCategory.isalnum
+      ~ErrorCategory.isidentifier
+      ~ErrorCategory.isprintable
+      ~ErrorCategory.zfill
+      ~ErrorCategory.format
+      ~ErrorCategory.format_map
+      ~ErrorCategory.maketrans
+      ~ErrorCategory.labels
+      ~ErrorCategory.from_label
+      ~ErrorCategory.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ErrorCategory.CATEGORY
+      ~ErrorCategory.resolved_kind
+      ~ErrorCategory.resolved_tier
+      ~ErrorCategory.resolved_rembi_module
+      ~ErrorCategory.use_label
+      ~ErrorCategory.use_badge
+      ~ErrorCategory.OVERSEGMENTED
+      ~ErrorCategory.UNDERSEGMENTED
+      ~ErrorCategory.MERGED
+      ~ErrorCategory.BACKGROUND_NOISE
+      ~ErrorCategory.DEBRIS
+      ~ErrorCategory.OTHER
+      ~ErrorCategory.label
+      ~ErrorCategory.desc
+      ~ErrorCategory.bio_desc
+      ~ErrorCategory.image
+      ~ErrorCategory.pair
+      ~ErrorCategory.tier_override
+      ~ErrorCategory.derivation_type
+      ~ErrorCategory.derives_from
+      ~ErrorCategory.rembi_module_override
+   
+   

@@ -1,0 +1,70 @@
+phenotypic.correction.ColorDenoise
+==================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: ColorDenoise
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ColorDenoise.__init__
+      ~ColorDenoise.apply
+      ~ColorDenoise.construct
+      ~ColorDenoise.copy
+      ~ColorDenoise.dict
+      ~ColorDenoise.from_json
+      ~ColorDenoise.from_orm
+      ~ColorDenoise.json
+      ~ColorDenoise.model_construct
+      ~ColorDenoise.model_copy
+      ~ColorDenoise.model_dump
+      ~ColorDenoise.model_dump_json
+      ~ColorDenoise.model_json_schema
+      ~ColorDenoise.model_parametrized_name
+      ~ColorDenoise.model_post_init
+      ~ColorDenoise.model_rebuild
+      ~ColorDenoise.model_validate
+      ~ColorDenoise.model_validate_json
+      ~ColorDenoise.model_validate_strings
+      ~ColorDenoise.parse_file
+      ~ColorDenoise.parse_obj
+      ~ColorDenoise.parse_raw
+      ~ColorDenoise.schema
+      ~ColorDenoise.schema_json
+      ~ColorDenoise.to_json
+      ~ColorDenoise.update_forward_refs
+      ~ColorDenoise.validate
+      ~ColorDenoise.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ColorDenoise.model_computed_fields
+      ~ColorDenoise.model_config
+      ~ColorDenoise.model_extra
+      ~ColorDenoise.model_fields
+      ~ColorDenoise.model_fields_set
+      ~ColorDenoise.sigma_psd
+      ~ColorDenoise.block_size
+      ~ColorDenoise.use_gat
+      ~ColorDenoise.gat_gain
+      ~ColorDenoise.gat_mu
+      ~ColorDenoise.gat_read_sigma
+      ~ColorDenoise.gat_scale_factor
+      ~ColorDenoise.norm
+   
+   

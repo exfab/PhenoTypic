@@ -1,0 +1,69 @@
+phenotypic.detect.CannyDetector
+===============================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: CannyDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CannyDetector.__init__
+      ~CannyDetector.apply
+      ~CannyDetector.construct
+      ~CannyDetector.copy
+      ~CannyDetector.dict
+      ~CannyDetector.from_json
+      ~CannyDetector.from_orm
+      ~CannyDetector.json
+      ~CannyDetector.model_construct
+      ~CannyDetector.model_copy
+      ~CannyDetector.model_dump
+      ~CannyDetector.model_dump_json
+      ~CannyDetector.model_json_schema
+      ~CannyDetector.model_parametrized_name
+      ~CannyDetector.model_post_init
+      ~CannyDetector.model_rebuild
+      ~CannyDetector.model_validate
+      ~CannyDetector.model_validate_json
+      ~CannyDetector.model_validate_strings
+      ~CannyDetector.parse_file
+      ~CannyDetector.parse_obj
+      ~CannyDetector.parse_raw
+      ~CannyDetector.schema
+      ~CannyDetector.schema_json
+      ~CannyDetector.to_json
+      ~CannyDetector.update_forward_refs
+      ~CannyDetector.validate
+      ~CannyDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CannyDetector.model_computed_fields
+      ~CannyDetector.model_config
+      ~CannyDetector.model_extra
+      ~CannyDetector.model_fields
+      ~CannyDetector.model_fields_set
+      ~CannyDetector.sigma
+      ~CannyDetector.low_threshold
+      ~CannyDetector.high_threshold
+      ~CannyDetector.use_quantiles
+      ~CannyDetector.min_size
+      ~CannyDetector.invert_edges
+      ~CannyDetector.connectivity
+   
+   

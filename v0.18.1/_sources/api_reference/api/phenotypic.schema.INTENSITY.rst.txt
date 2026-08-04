@@ -1,0 +1,115 @@
+phenotypic.schema.INTENSITY
+===========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: INTENSITY
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~INTENSITY.tier
+      ~INTENSITY.kind
+      ~INTENSITY.category
+      ~INTENSITY.rembi_module
+      ~INTENSITY.header_scheme
+      ~INTENSITY.member_for_header
+      ~INTENSITY.owns_header
+      ~INTENSITY.get_labels
+      ~INTENSITY.get_headers
+      ~INTENSITY.rst_table
+      ~INTENSITY.append_rst_to_doc
+      ~INTENSITY.encode
+      ~INTENSITY.replace
+      ~INTENSITY.split
+      ~INTENSITY.rsplit
+      ~INTENSITY.join
+      ~INTENSITY.capitalize
+      ~INTENSITY.casefold
+      ~INTENSITY.title
+      ~INTENSITY.center
+      ~INTENSITY.count
+      ~INTENSITY.expandtabs
+      ~INTENSITY.find
+      ~INTENSITY.partition
+      ~INTENSITY.index
+      ~INTENSITY.ljust
+      ~INTENSITY.lower
+      ~INTENSITY.lstrip
+      ~INTENSITY.rfind
+      ~INTENSITY.rindex
+      ~INTENSITY.rjust
+      ~INTENSITY.rstrip
+      ~INTENSITY.rpartition
+      ~INTENSITY.splitlines
+      ~INTENSITY.strip
+      ~INTENSITY.swapcase
+      ~INTENSITY.translate
+      ~INTENSITY.upper
+      ~INTENSITY.startswith
+      ~INTENSITY.endswith
+      ~INTENSITY.removeprefix
+      ~INTENSITY.removesuffix
+      ~INTENSITY.isascii
+      ~INTENSITY.islower
+      ~INTENSITY.isupper
+      ~INTENSITY.istitle
+      ~INTENSITY.isspace
+      ~INTENSITY.isdecimal
+      ~INTENSITY.isdigit
+      ~INTENSITY.isnumeric
+      ~INTENSITY.isalpha
+      ~INTENSITY.isalnum
+      ~INTENSITY.isidentifier
+      ~INTENSITY.isprintable
+      ~INTENSITY.zfill
+      ~INTENSITY.format
+      ~INTENSITY.format_map
+      ~INTENSITY.maketrans
+      ~INTENSITY.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~INTENSITY.CATEGORY
+      ~INTENSITY.resolved_kind
+      ~INTENSITY.resolved_tier
+      ~INTENSITY.resolved_rembi_module
+      ~INTENSITY.use_label
+      ~INTENSITY.use_badge
+      ~INTENSITY.INTEGRATED_INTENSITY
+      ~INTENSITY.DENSITY
+      ~INTENSITY.CONVEX_DENSITY
+      ~INTENSITY.MINIMUM_INTENSITY
+      ~INTENSITY.MAXIMUM_INTENSITY
+      ~INTENSITY.MEAN_INTENSITY
+      ~INTENSITY.MEDIAN_INTENSITY
+      ~INTENSITY.STANDARD_DEVIATION_INTENSITY
+      ~INTENSITY.COEFFICIENT_VARIANCE_INTENSITY
+      ~INTENSITY.Q1_INTENSITY
+      ~INTENSITY.Q3_INTENSITY
+      ~INTENSITY.IQR_INTENSITY
+      ~INTENSITY.label
+      ~INTENSITY.desc
+      ~INTENSITY.bio_desc
+      ~INTENSITY.image
+      ~INTENSITY.pair
+      ~INTENSITY.tier_override
+      ~INTENSITY.derivation_type
+      ~INTENSITY.derives_from
+      ~INTENSITY.rembi_module_override
+   
+   

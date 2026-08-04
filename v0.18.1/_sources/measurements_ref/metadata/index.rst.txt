@@ -1,0 +1,326 @@
+Metadata
+========
+
+.. _measurement-info-metadata:
+
+:doc:`METADATA </api_reference/api/phenotypic.schema.METADATA>`
+---------------------------------------------------------------
+
+.. list-table:: Category: **MetadataImage**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+     - Type
+   * - ``MetadataImage_UUID``
+     - The unique identifier of the image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataImage_ImageName``
+     - The name of the image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataImage_ParentImageName``
+     - The name of the parent image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataImage_ParentUUID``
+     - The UUID of the parent image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataImage_ImageFormat``
+     - The format of the image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataImage_ImageType``
+     - The type of the image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataImage_BitDepth``
+     - The bit depth of the image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataImage_FileSuffix``
+     - The file suffix of the original file the image was imported from
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+
+.. _measurement-info-acquisition-metadata:
+
+:doc:`ACQUISITION_METADATA </api_reference/api/phenotypic.schema.ACQUISITION_METADATA>`
+---------------------------------------------------------------------------------------
+
+.. list-table:: Category: **MetadataAcquisition**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+     - Type
+   * - ``MetadataAcquisition_ImagingDate``
+     - Date the image was acquired.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataAcquisition_Instrument``
+     - Imaging instrument or scanner model.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataAcquisition_Experimenter``
+     - Person who acquired the image or ran the experiment.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataAcquisition_Resolution``
+     - Image resolution (e.g. DPI or pixels per mm).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataAcquisition_ExposureTime``
+     - Camera exposure time.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+
+.. _measurement-info-condition-metadata:
+
+:doc:`CONDITION_METADATA </api_reference/api/phenotypic.schema.CONDITION_METADATA>`
+-----------------------------------------------------------------------------------
+
+.. list-table:: Category: **MetadataCondition**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+     - Type
+   * - ``MetadataCondition_Media``
+     - Growth medium name (e.g. YPD, SC, LB).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCondition_CarbonSource``
+     - Primary carbon source (e.g. glucose, galactose).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCondition_NitrogenSource``
+     - Primary nitrogen source.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCondition_pH``
+     - pH of the growth medium.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCondition_Supplement``
+     - Medium supplement or additive.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCondition_Antibiotic``
+     - Antibiotic added to the medium.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCondition_Inducer``
+     - Inducing agent (e.g. galactose, IPTG, doxycycline).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCondition_Treatment``
+     - Experimental treatment or perturbation.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCondition_Compound``
+     - Chemical compound or drug applied.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCondition_Concentration``
+     - Concentration of the compound or treatment.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCondition_Dose``
+     - Dose applied to the sample.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCondition_Stress``
+     - Applied stress condition (e.g. heat, osmotic, oxidative).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+
+.. _measurement-info-culture-metadata:
+
+:doc:`CULTURE_METADATA </api_reference/api/phenotypic.schema.CULTURE_METADATA>`
+-------------------------------------------------------------------------------
+
+.. list-table:: Category: **MetadataCulture**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+     - Type
+   * - ``MetadataCulture_Temperature``
+     - Culture temperature in degrees Celsius.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCulture_Time``
+     - Elapsed growth time.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCulture_TimeUnit``
+     - Unit for the Time value (e.g. hours, days).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCulture_Timepoint``
+     - Human-readable label for a discrete timepoint in a time series (e.g. '24h', 'stationary'); may be non-numeric. For the integer capture ordinal, use FrameIndex.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCulture_FrameIndex``
+     - 1-based ordinal index of the image within the time-course capture sequence; the monotonic-integer companion to the free-form Timepoint label.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCulture_Day``
+     - Day index of the experiment.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCulture_Generation``
+     - Generation or passage number.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCulture_Humidity``
+     - Relative humidity during culture.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataCulture_Atmosphere``
+     - Atmospheric condition (e.g. aerobic, anaerobic).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+
+.. _measurement-info-experiment-metadata:
+
+:doc:`EXPERIMENT_METADATA </api_reference/api/phenotypic.schema.EXPERIMENT_METADATA>`
+-------------------------------------------------------------------------------------
+
+.. list-table:: Category: **MetadataExperiment**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+     - Type
+   * - ``MetadataExperiment_ExperimentID``
+     - Unique identifier for the experiment.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataExperiment_Project``
+     - Project name or identifier.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataExperiment_Dataset``
+     - Dataset name (matches the CLI-emitted MetadataExperiment_Dataset column).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataExperiment_Protocol``
+     - Protocol name or version followed.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataExperiment_Notes``
+     - Free-text notes or comments.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+
+.. _measurement-info-genetic-metadata:
+
+:doc:`GENETIC_METADATA </api_reference/api/phenotypic.schema.GENETIC_METADATA>`
+-------------------------------------------------------------------------------
+
+.. list-table:: Category: **MetadataGenetic**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+     - Type
+   * - ``MetadataGenetic_Organism``
+     - Species or organism name (e.g. Saccharomyces cerevisiae).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataGenetic_Strain``
+     - Strain name or identifier (e.g. BY4741).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataGenetic_Genotype``
+     - Genotype description of the strain.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataGenetic_Background``
+     - Genetic background or parent strain.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataGenetic_Allele``
+     - Specific allele or mutation under study.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataGenetic_Plasmid``
+     - Plasmid carried by the sample.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataGenetic_SelectionMarker``
+     - Selectable marker gene (e.g. URA3, KanMX).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataGenetic_MatingType``
+     - Mating type for yeast (e.g. MATa, MATalpha).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataGenetic_Ploidy``
+     - Ploidy of the organism (e.g. haploid, diploid).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+
+.. _measurement-info-plate-metadata:
+
+:doc:`PLATE_METADATA </api_reference/api/phenotypic.schema.PLATE_METADATA>`
+---------------------------------------------------------------------------
+
+.. list-table:: Category: **MetadataPlate**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+     - Type
+   * - ``MetadataPlate_PlateID``
+     - Identifier of the assay/imaging plate.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataPlate_Batch``
+     - Experimental batch grouping.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataPlate_ArrayDensity``
+     - Colony array density, i.e. wells per plate (e.g. 96, 384, 1536).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataPlate_IncubatorPosition``
+     - Physical position of the plate within the incubator.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+
+.. _measurement-info-sample-metadata:
+
+:doc:`SAMPLE_METADATA </api_reference/api/phenotypic.schema.SAMPLE_METADATA>`
+-----------------------------------------------------------------------------
+
+.. list-table:: Category: **MetadataSample**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+     - Type
+   * - ``MetadataSample_SampleID``
+     - Unique identifier for the biological sample.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataSample_BioReplicate``
+     - Biological replicate identifier. Biological replicates are parallel measurements of biologically distinct samples that capture random biological variation.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataSample_CondReplicate``
+     - Experimental Conditional replicate identifier. An example  of an experimental replicate would be a pinned colony of  the same strain on another plate being subjected to the same conditions.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataSample_TechReplicate``
+     - Technical replicate identifier.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataSample_Clone``
+     - Clone or isolate identifier.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataSample_LibraryID``
+     - Source library or collection identifier (e.g. a deletion collection).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataSample_SourcePlate``
+     - Identifier of the source plate the sample was pinned from.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataSample_SourceWell``
+     - Well position on the source plate (e.g. A1). This can potentially be distinct from `Grid` values when using irregular or sparse grid parameters.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataSample_Barcode``
+     - Molecular or sample barcode.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataSample_Control``
+     - Control designation (e.g. positive, negative, blank).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+
+.. _measurement-info-study-metadata:
+
+:doc:`STUDY_METADATA </api_reference/api/phenotypic.schema.STUDY_METADATA>`
+---------------------------------------------------------------------------
+
+.. list-table:: Category: **MetadataStudy**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+     - Type
+   * - ``MetadataStudy_Title``
+     - Study title.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataStudy_Description``
+     - Free-text study description.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataStudy_PrivateUntilDate``
+     - Embargo date until which the study stays private.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataStudy_Keywords``
+     - Keywords describing the study.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataStudy_Author``
+     - Study author(s); delimited string when multiple.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataStudy_License``
+     - Data license (e.g. CC0, CC-BY-4.0).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataStudy_Funding``
+     - Funding statement or grant reference(s).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataStudy_Publications``
+     - Associated publication(s) or DOI(s).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataStudy_Links``
+     - Related links or external resource URLs.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataStudy_Acknowledgements``
+     - Acknowledgements text.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`

@@ -1,0 +1,110 @@
+phenotypic.schema.GRID\_LINREG\_STATS
+=====================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: GRID_LINREG_STATS
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GRID_LINREG_STATS.kind
+      ~GRID_LINREG_STATS.category
+      ~GRID_LINREG_STATS.tier
+      ~GRID_LINREG_STATS.rembi_module
+      ~GRID_LINREG_STATS.header_scheme
+      ~GRID_LINREG_STATS.member_for_header
+      ~GRID_LINREG_STATS.owns_header
+      ~GRID_LINREG_STATS.get_labels
+      ~GRID_LINREG_STATS.get_headers
+      ~GRID_LINREG_STATS.rst_table
+      ~GRID_LINREG_STATS.append_rst_to_doc
+      ~GRID_LINREG_STATS.encode
+      ~GRID_LINREG_STATS.replace
+      ~GRID_LINREG_STATS.split
+      ~GRID_LINREG_STATS.rsplit
+      ~GRID_LINREG_STATS.join
+      ~GRID_LINREG_STATS.capitalize
+      ~GRID_LINREG_STATS.casefold
+      ~GRID_LINREG_STATS.title
+      ~GRID_LINREG_STATS.center
+      ~GRID_LINREG_STATS.count
+      ~GRID_LINREG_STATS.expandtabs
+      ~GRID_LINREG_STATS.find
+      ~GRID_LINREG_STATS.partition
+      ~GRID_LINREG_STATS.index
+      ~GRID_LINREG_STATS.ljust
+      ~GRID_LINREG_STATS.lower
+      ~GRID_LINREG_STATS.lstrip
+      ~GRID_LINREG_STATS.rfind
+      ~GRID_LINREG_STATS.rindex
+      ~GRID_LINREG_STATS.rjust
+      ~GRID_LINREG_STATS.rstrip
+      ~GRID_LINREG_STATS.rpartition
+      ~GRID_LINREG_STATS.splitlines
+      ~GRID_LINREG_STATS.strip
+      ~GRID_LINREG_STATS.swapcase
+      ~GRID_LINREG_STATS.translate
+      ~GRID_LINREG_STATS.upper
+      ~GRID_LINREG_STATS.startswith
+      ~GRID_LINREG_STATS.endswith
+      ~GRID_LINREG_STATS.removeprefix
+      ~GRID_LINREG_STATS.removesuffix
+      ~GRID_LINREG_STATS.isascii
+      ~GRID_LINREG_STATS.islower
+      ~GRID_LINREG_STATS.isupper
+      ~GRID_LINREG_STATS.istitle
+      ~GRID_LINREG_STATS.isspace
+      ~GRID_LINREG_STATS.isdecimal
+      ~GRID_LINREG_STATS.isdigit
+      ~GRID_LINREG_STATS.isnumeric
+      ~GRID_LINREG_STATS.isalpha
+      ~GRID_LINREG_STATS.isalnum
+      ~GRID_LINREG_STATS.isidentifier
+      ~GRID_LINREG_STATS.isprintable
+      ~GRID_LINREG_STATS.zfill
+      ~GRID_LINREG_STATS.format
+      ~GRID_LINREG_STATS.format_map
+      ~GRID_LINREG_STATS.maketrans
+      ~GRID_LINREG_STATS.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GRID_LINREG_STATS.CATEGORY
+      ~GRID_LINREG_STATS.resolved_kind
+      ~GRID_LINREG_STATS.resolved_tier
+      ~GRID_LINREG_STATS.resolved_rembi_module
+      ~GRID_LINREG_STATS.use_label
+      ~GRID_LINREG_STATS.use_badge
+      ~GRID_LINREG_STATS.ROW_LINREG_M
+      ~GRID_LINREG_STATS.ROW_LINREG_B
+      ~GRID_LINREG_STATS.COL_LINREG_M
+      ~GRID_LINREG_STATS.COL_LINREG_B
+      ~GRID_LINREG_STATS.PRED_RR
+      ~GRID_LINREG_STATS.PRED_CC
+      ~GRID_LINREG_STATS.RESIDUAL_ERR
+      ~GRID_LINREG_STATS.label
+      ~GRID_LINREG_STATS.desc
+      ~GRID_LINREG_STATS.bio_desc
+      ~GRID_LINREG_STATS.image
+      ~GRID_LINREG_STATS.pair
+      ~GRID_LINREG_STATS.tier_override
+      ~GRID_LINREG_STATS.derivation_type
+      ~GRID_LINREG_STATS.derives_from
+      ~GRID_LINREG_STATS.rembi_module_override
+   
+   

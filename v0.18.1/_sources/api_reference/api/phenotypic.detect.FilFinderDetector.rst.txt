@@ -1,0 +1,70 @@
+phenotypic.detect.FilFinderDetector
+===================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: FilFinderDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FilFinderDetector.__init__
+      ~FilFinderDetector.apply
+      ~FilFinderDetector.construct
+      ~FilFinderDetector.copy
+      ~FilFinderDetector.dict
+      ~FilFinderDetector.from_json
+      ~FilFinderDetector.from_orm
+      ~FilFinderDetector.json
+      ~FilFinderDetector.model_construct
+      ~FilFinderDetector.model_copy
+      ~FilFinderDetector.model_dump
+      ~FilFinderDetector.model_dump_json
+      ~FilFinderDetector.model_json_schema
+      ~FilFinderDetector.model_parametrized_name
+      ~FilFinderDetector.model_post_init
+      ~FilFinderDetector.model_rebuild
+      ~FilFinderDetector.model_validate
+      ~FilFinderDetector.model_validate_json
+      ~FilFinderDetector.model_validate_strings
+      ~FilFinderDetector.parse_file
+      ~FilFinderDetector.parse_obj
+      ~FilFinderDetector.parse_raw
+      ~FilFinderDetector.schema
+      ~FilFinderDetector.schema_json
+      ~FilFinderDetector.to_json
+      ~FilFinderDetector.update_forward_refs
+      ~FilFinderDetector.validate
+      ~FilFinderDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FilFinderDetector.model_computed_fields
+      ~FilFinderDetector.model_config
+      ~FilFinderDetector.model_extra
+      ~FilFinderDetector.model_fields
+      ~FilFinderDetector.model_fields_set
+      ~FilFinderDetector.threshold
+      ~FilFinderDetector.output
+      ~FilFinderDetector.beamwidth_px
+      ~FilFinderDetector.prune_criteria
+      ~FilFinderDetector.relative_intensity_threshold
+      ~FilFinderDetector.branch_threshold_px
+      ~FilFinderDetector.max_prune_iterations
+      ~FilFinderDetector.rng_seed
+   
+   

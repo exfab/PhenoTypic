@@ -1,0 +1,6 @@
+phenotypic.sdk\_.analysis\_manifest\_path
+=========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: analysis_manifest_path

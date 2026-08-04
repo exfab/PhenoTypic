@@ -1,0 +1,112 @@
+phenotypic.schema.GENETIC\_METADATA
+===================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: GENETIC_METADATA
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GENETIC_METADATA.kind
+      ~GENETIC_METADATA.category
+      ~GENETIC_METADATA.tier
+      ~GENETIC_METADATA.rembi_module
+      ~GENETIC_METADATA.header_scheme
+      ~GENETIC_METADATA.member_for_header
+      ~GENETIC_METADATA.owns_header
+      ~GENETIC_METADATA.get_labels
+      ~GENETIC_METADATA.get_headers
+      ~GENETIC_METADATA.rst_table
+      ~GENETIC_METADATA.append_rst_to_doc
+      ~GENETIC_METADATA.encode
+      ~GENETIC_METADATA.replace
+      ~GENETIC_METADATA.split
+      ~GENETIC_METADATA.rsplit
+      ~GENETIC_METADATA.join
+      ~GENETIC_METADATA.capitalize
+      ~GENETIC_METADATA.casefold
+      ~GENETIC_METADATA.title
+      ~GENETIC_METADATA.center
+      ~GENETIC_METADATA.count
+      ~GENETIC_METADATA.expandtabs
+      ~GENETIC_METADATA.find
+      ~GENETIC_METADATA.partition
+      ~GENETIC_METADATA.index
+      ~GENETIC_METADATA.ljust
+      ~GENETIC_METADATA.lower
+      ~GENETIC_METADATA.lstrip
+      ~GENETIC_METADATA.rfind
+      ~GENETIC_METADATA.rindex
+      ~GENETIC_METADATA.rjust
+      ~GENETIC_METADATA.rstrip
+      ~GENETIC_METADATA.rpartition
+      ~GENETIC_METADATA.splitlines
+      ~GENETIC_METADATA.strip
+      ~GENETIC_METADATA.swapcase
+      ~GENETIC_METADATA.translate
+      ~GENETIC_METADATA.upper
+      ~GENETIC_METADATA.startswith
+      ~GENETIC_METADATA.endswith
+      ~GENETIC_METADATA.removeprefix
+      ~GENETIC_METADATA.removesuffix
+      ~GENETIC_METADATA.isascii
+      ~GENETIC_METADATA.islower
+      ~GENETIC_METADATA.isupper
+      ~GENETIC_METADATA.istitle
+      ~GENETIC_METADATA.isspace
+      ~GENETIC_METADATA.isdecimal
+      ~GENETIC_METADATA.isdigit
+      ~GENETIC_METADATA.isnumeric
+      ~GENETIC_METADATA.isalpha
+      ~GENETIC_METADATA.isalnum
+      ~GENETIC_METADATA.isidentifier
+      ~GENETIC_METADATA.isprintable
+      ~GENETIC_METADATA.zfill
+      ~GENETIC_METADATA.format
+      ~GENETIC_METADATA.format_map
+      ~GENETIC_METADATA.maketrans
+      ~GENETIC_METADATA.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GENETIC_METADATA.CATEGORY
+      ~GENETIC_METADATA.resolved_kind
+      ~GENETIC_METADATA.resolved_tier
+      ~GENETIC_METADATA.resolved_rembi_module
+      ~GENETIC_METADATA.use_label
+      ~GENETIC_METADATA.use_badge
+      ~GENETIC_METADATA.ORGANISM
+      ~GENETIC_METADATA.STRAIN
+      ~GENETIC_METADATA.GENOTYPE
+      ~GENETIC_METADATA.BACKGROUND
+      ~GENETIC_METADATA.ALLELE
+      ~GENETIC_METADATA.PLASMID
+      ~GENETIC_METADATA.SELECTION_MARKER
+      ~GENETIC_METADATA.MATING_TYPE
+      ~GENETIC_METADATA.PLOIDY
+      ~GENETIC_METADATA.label
+      ~GENETIC_METADATA.desc
+      ~GENETIC_METADATA.bio_desc
+      ~GENETIC_METADATA.image
+      ~GENETIC_METADATA.pair
+      ~GENETIC_METADATA.tier_override
+      ~GENETIC_METADATA.derivation_type
+      ~GENETIC_METADATA.derives_from
+      ~GENETIC_METADATA.rembi_module_override
+   
+   

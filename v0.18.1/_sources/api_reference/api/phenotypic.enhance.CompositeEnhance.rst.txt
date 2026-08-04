@@ -1,0 +1,65 @@
+phenotypic.enhance.CompositeEnhance
+===================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: CompositeEnhance
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CompositeEnhance.__init__
+      ~CompositeEnhance.apply
+      ~CompositeEnhance.construct
+      ~CompositeEnhance.copy
+      ~CompositeEnhance.dict
+      ~CompositeEnhance.from_json
+      ~CompositeEnhance.from_orm
+      ~CompositeEnhance.json
+      ~CompositeEnhance.model_construct
+      ~CompositeEnhance.model_copy
+      ~CompositeEnhance.model_dump
+      ~CompositeEnhance.model_dump_json
+      ~CompositeEnhance.model_json_schema
+      ~CompositeEnhance.model_parametrized_name
+      ~CompositeEnhance.model_post_init
+      ~CompositeEnhance.model_rebuild
+      ~CompositeEnhance.model_validate
+      ~CompositeEnhance.model_validate_json
+      ~CompositeEnhance.model_validate_strings
+      ~CompositeEnhance.parse_file
+      ~CompositeEnhance.parse_obj
+      ~CompositeEnhance.parse_raw
+      ~CompositeEnhance.schema
+      ~CompositeEnhance.schema_json
+      ~CompositeEnhance.to_json
+      ~CompositeEnhance.update_forward_refs
+      ~CompositeEnhance.validate
+      ~CompositeEnhance.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CompositeEnhance.model_computed_fields
+      ~CompositeEnhance.model_config
+      ~CompositeEnhance.model_extra
+      ~CompositeEnhance.model_fields
+      ~CompositeEnhance.model_fields_set
+      ~CompositeEnhance.ops
+      ~CompositeEnhance.mode
+      ~CompositeEnhance.norm
+   
+   

@@ -1,0 +1,90 @@
+phenotypic.detect.TwoKFilamentousDetector
+=========================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: TwoKFilamentousDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~TwoKFilamentousDetector.__init__
+      ~TwoKFilamentousDetector.apply
+      ~TwoKFilamentousDetector.construct
+      ~TwoKFilamentousDetector.copy
+      ~TwoKFilamentousDetector.dict
+      ~TwoKFilamentousDetector.from_json
+      ~TwoKFilamentousDetector.from_orm
+      ~TwoKFilamentousDetector.json
+      ~TwoKFilamentousDetector.model_construct
+      ~TwoKFilamentousDetector.model_copy
+      ~TwoKFilamentousDetector.model_dump
+      ~TwoKFilamentousDetector.model_dump_json
+      ~TwoKFilamentousDetector.model_json_schema
+      ~TwoKFilamentousDetector.model_parametrized_name
+      ~TwoKFilamentousDetector.model_post_init
+      ~TwoKFilamentousDetector.model_rebuild
+      ~TwoKFilamentousDetector.model_validate
+      ~TwoKFilamentousDetector.model_validate_json
+      ~TwoKFilamentousDetector.model_validate_strings
+      ~TwoKFilamentousDetector.parse_file
+      ~TwoKFilamentousDetector.parse_obj
+      ~TwoKFilamentousDetector.parse_raw
+      ~TwoKFilamentousDetector.schema
+      ~TwoKFilamentousDetector.schema_json
+      ~TwoKFilamentousDetector.to_json
+      ~TwoKFilamentousDetector.update_forward_refs
+      ~TwoKFilamentousDetector.validate
+      ~TwoKFilamentousDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TwoKFilamentousDetector.beta
+      ~TwoKFilamentousDetector.delta
+      ~TwoKFilamentousDetector.gamma
+      ~TwoKFilamentousDetector.gauss_n_iter
+      ~TwoKFilamentousDetector.model_computed_fields
+      ~TwoKFilamentousDetector.model_config
+      ~TwoKFilamentousDetector.model_extra
+      ~TwoKFilamentousDetector.model_fields
+      ~TwoKFilamentousDetector.model_fields_set
+      ~TwoKFilamentousDetector.branch_base
+      ~TwoKFilamentousDetector.n_orient
+      ~TwoKFilamentousDetector.min_wavelength
+      ~TwoKFilamentousDetector.k_strict
+      ~TwoKFilamentousDetector.k_loose
+      ~TwoKFilamentousDetector.seed_thresh
+      ~TwoKFilamentousDetector.cand_thresh
+      ~TwoKFilamentousDetector.center_detector
+      ~TwoKFilamentousDetector.background_subtractor
+      ~TwoKFilamentousDetector.max_colony_radius_px
+      ~TwoKFilamentousDetector.min_branch_width_px
+      ~TwoKFilamentousDetector.reconnection_tolerance
+      ~TwoKFilamentousDetector.max_gap_length
+      ~TwoKFilamentousDetector.border_margin_px
+      ~TwoKFilamentousDetector.frag_reach_px
+      ~TwoKFilamentousDetector.gap_crossing_penalty
+      ~TwoKFilamentousDetector.reconnect_scope
+      ~TwoKFilamentousDetector.gauss_sigma
+      ~TwoKFilamentousDetector.tile_size
+      ~TwoKFilamentousDetector.tile_overlap
+      ~TwoKFilamentousDetector.mad_window
+      ~TwoKFilamentousDetector.path_dilation_radius
+      ~TwoKFilamentousDetector.snr_margin
+      ~TwoKFilamentousDetector.coherence_window_radius
+   
+   

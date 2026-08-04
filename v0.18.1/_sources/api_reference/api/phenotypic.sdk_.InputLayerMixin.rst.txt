@@ -1,0 +1,59 @@
+phenotypic.sdk\_.InputLayerMixin
+================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: InputLayerMixin
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~InputLayerMixin.__init__
+      ~InputLayerMixin.construct
+      ~InputLayerMixin.copy
+      ~InputLayerMixin.dict
+      ~InputLayerMixin.from_orm
+      ~InputLayerMixin.json
+      ~InputLayerMixin.model_construct
+      ~InputLayerMixin.model_copy
+      ~InputLayerMixin.model_dump
+      ~InputLayerMixin.model_dump_json
+      ~InputLayerMixin.model_json_schema
+      ~InputLayerMixin.model_parametrized_name
+      ~InputLayerMixin.model_post_init
+      ~InputLayerMixin.model_rebuild
+      ~InputLayerMixin.model_validate
+      ~InputLayerMixin.model_validate_json
+      ~InputLayerMixin.model_validate_strings
+      ~InputLayerMixin.parse_file
+      ~InputLayerMixin.parse_obj
+      ~InputLayerMixin.parse_raw
+      ~InputLayerMixin.schema
+      ~InputLayerMixin.schema_json
+      ~InputLayerMixin.update_forward_refs
+      ~InputLayerMixin.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~InputLayerMixin.model_computed_fields
+      ~InputLayerMixin.model_config
+      ~InputLayerMixin.model_extra
+      ~InputLayerMixin.model_fields
+      ~InputLayerMixin.model_fields_set
+      ~InputLayerMixin.input_layer
+   
+   

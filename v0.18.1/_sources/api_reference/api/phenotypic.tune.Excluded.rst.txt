@@ -1,0 +1,61 @@
+phenotypic.tune.Excluded
+========================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: Excluded
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~Excluded.__init__
+      ~Excluded.construct
+      ~Excluded.copy
+      ~Excluded.dict
+      ~Excluded.from_orm
+      ~Excluded.json
+      ~Excluded.model_construct
+      ~Excluded.model_copy
+      ~Excluded.model_dump
+      ~Excluded.model_dump_json
+      ~Excluded.model_json_schema
+      ~Excluded.model_parametrized_name
+      ~Excluded.model_post_init
+      ~Excluded.model_rebuild
+      ~Excluded.model_validate
+      ~Excluded.model_validate_json
+      ~Excluded.model_validate_strings
+      ~Excluded.parse_file
+      ~Excluded.parse_obj
+      ~Excluded.parse_raw
+      ~Excluded.schema
+      ~Excluded.schema_json
+      ~Excluded.update_forward_refs
+      ~Excluded.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Excluded.model_computed_fields
+      ~Excluded.model_config
+      ~Excluded.model_extra
+      ~Excluded.model_fields
+      ~Excluded.model_fields_set
+      ~Excluded.key
+      ~Excluded.reason
+      ~Excluded.field_type
+   
+   

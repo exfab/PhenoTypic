@@ -1,0 +1,6 @@
+phenotypic.sdk\_.rembi\_manifest\_path
+======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: rembi_manifest_path

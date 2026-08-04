@@ -1,0 +1,106 @@
+phenotypic.schema.QUALITY\_ICC
+==============================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: QUALITY_ICC
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~QUALITY_ICC.kind
+      ~QUALITY_ICC.category
+      ~QUALITY_ICC.tier
+      ~QUALITY_ICC.rembi_module
+      ~QUALITY_ICC.header_scheme
+      ~QUALITY_ICC.member_for_header
+      ~QUALITY_ICC.owns_header
+      ~QUALITY_ICC.get_labels
+      ~QUALITY_ICC.get_headers
+      ~QUALITY_ICC.rst_table
+      ~QUALITY_ICC.append_rst_to_doc
+      ~QUALITY_ICC.encode
+      ~QUALITY_ICC.replace
+      ~QUALITY_ICC.split
+      ~QUALITY_ICC.rsplit
+      ~QUALITY_ICC.join
+      ~QUALITY_ICC.capitalize
+      ~QUALITY_ICC.casefold
+      ~QUALITY_ICC.title
+      ~QUALITY_ICC.center
+      ~QUALITY_ICC.count
+      ~QUALITY_ICC.expandtabs
+      ~QUALITY_ICC.find
+      ~QUALITY_ICC.partition
+      ~QUALITY_ICC.index
+      ~QUALITY_ICC.ljust
+      ~QUALITY_ICC.lower
+      ~QUALITY_ICC.lstrip
+      ~QUALITY_ICC.rfind
+      ~QUALITY_ICC.rindex
+      ~QUALITY_ICC.rjust
+      ~QUALITY_ICC.rstrip
+      ~QUALITY_ICC.rpartition
+      ~QUALITY_ICC.splitlines
+      ~QUALITY_ICC.strip
+      ~QUALITY_ICC.swapcase
+      ~QUALITY_ICC.translate
+      ~QUALITY_ICC.upper
+      ~QUALITY_ICC.startswith
+      ~QUALITY_ICC.endswith
+      ~QUALITY_ICC.removeprefix
+      ~QUALITY_ICC.removesuffix
+      ~QUALITY_ICC.isascii
+      ~QUALITY_ICC.islower
+      ~QUALITY_ICC.isupper
+      ~QUALITY_ICC.istitle
+      ~QUALITY_ICC.isspace
+      ~QUALITY_ICC.isdecimal
+      ~QUALITY_ICC.isdigit
+      ~QUALITY_ICC.isnumeric
+      ~QUALITY_ICC.isalpha
+      ~QUALITY_ICC.isalnum
+      ~QUALITY_ICC.isidentifier
+      ~QUALITY_ICC.isprintable
+      ~QUALITY_ICC.zfill
+      ~QUALITY_ICC.format
+      ~QUALITY_ICC.format_map
+      ~QUALITY_ICC.maketrans
+      ~QUALITY_ICC.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QUALITY_ICC.CATEGORY
+      ~QUALITY_ICC.resolved_kind
+      ~QUALITY_ICC.resolved_tier
+      ~QUALITY_ICC.resolved_rembi_module
+      ~QUALITY_ICC.use_label
+      ~QUALITY_ICC.use_badge
+      ~QUALITY_ICC.NUM_SUBJECTS
+      ~QUALITY_ICC.NUM_RATERS
+      ~QUALITY_ICC.NUM_MEMBERS
+      ~QUALITY_ICC.label
+      ~QUALITY_ICC.desc
+      ~QUALITY_ICC.bio_desc
+      ~QUALITY_ICC.image
+      ~QUALITY_ICC.pair
+      ~QUALITY_ICC.tier_override
+      ~QUALITY_ICC.derivation_type
+      ~QUALITY_ICC.derives_from
+      ~QUALITY_ICC.rembi_module_override
+   
+   

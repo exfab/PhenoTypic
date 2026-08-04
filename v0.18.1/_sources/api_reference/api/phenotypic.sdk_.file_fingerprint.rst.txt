@@ -1,0 +1,6 @@
+phenotypic.sdk\_.file\_fingerprint
+==================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: file_fingerprint

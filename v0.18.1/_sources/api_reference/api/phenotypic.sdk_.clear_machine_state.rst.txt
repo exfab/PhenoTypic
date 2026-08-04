@@ -1,0 +1,6 @@
+phenotypic.sdk\_.clear\_machine\_state
+======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: clear_machine_state

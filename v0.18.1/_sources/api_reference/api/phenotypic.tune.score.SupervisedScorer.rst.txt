@@ -1,0 +1,68 @@
+phenotypic.tune.score.SupervisedScorer
+======================================
+
+.. currentmodule:: phenotypic.tune.score
+
+.. autoclass:: SupervisedScorer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SupervisedScorer.__init__
+      ~SupervisedScorer.availability
+      ~SupervisedScorer.construct
+      ~SupervisedScorer.copy
+      ~SupervisedScorer.dict
+      ~SupervisedScorer.finalize
+      ~SupervisedScorer.from_orm
+      ~SupervisedScorer.json
+      ~SupervisedScorer.model_construct
+      ~SupervisedScorer.model_copy
+      ~SupervisedScorer.model_dump
+      ~SupervisedScorer.model_dump_json
+      ~SupervisedScorer.model_json_schema
+      ~SupervisedScorer.model_parametrized_name
+      ~SupervisedScorer.model_post_init
+      ~SupervisedScorer.model_rebuild
+      ~SupervisedScorer.model_validate
+      ~SupervisedScorer.model_validate_json
+      ~SupervisedScorer.model_validate_strings
+      ~SupervisedScorer.parse_file
+      ~SupervisedScorer.parse_obj
+      ~SupervisedScorer.parse_raw
+      ~SupervisedScorer.schema
+      ~SupervisedScorer.schema_json
+      ~SupervisedScorer.score_image
+      ~SupervisedScorer.update_forward_refs
+      ~SupervisedScorer.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SupervisedScorer.count_term_name
+      ~SupervisedScorer.model_computed_fields
+      ~SupervisedScorer.model_config
+      ~SupervisedScorer.model_extra
+      ~SupervisedScorer.model_fields
+      ~SupervisedScorer.model_fields_set
+      ~SupervisedScorer.region_term_name
+      ~SupervisedScorer.gt
+      ~SupervisedScorer.region_metric
+      ~SupervisedScorer.match_strategy
+      ~SupervisedScorer.iou_tau
+      ~SupervisedScorer.count_check
+   
+   

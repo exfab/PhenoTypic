@@ -1,0 +1,6 @@
+phenotypic.schema.header\_to\_module
+====================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autofunction:: header_to_module

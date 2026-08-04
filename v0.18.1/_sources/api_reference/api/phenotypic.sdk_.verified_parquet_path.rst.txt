@@ -1,0 +1,6 @@
+phenotypic.sdk\_.verified\_parquet\_path
+========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: verified_parquet_path

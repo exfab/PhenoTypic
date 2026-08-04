@@ -1,0 +1,62 @@
+phenotypic.abc\_.FocusEdge
+==========================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: FocusEdge
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FocusEdge.__init__
+      ~FocusEdge.apply
+      ~FocusEdge.construct
+      ~FocusEdge.copy
+      ~FocusEdge.dict
+      ~FocusEdge.from_json
+      ~FocusEdge.from_orm
+      ~FocusEdge.json
+      ~FocusEdge.model_construct
+      ~FocusEdge.model_copy
+      ~FocusEdge.model_dump
+      ~FocusEdge.model_dump_json
+      ~FocusEdge.model_json_schema
+      ~FocusEdge.model_parametrized_name
+      ~FocusEdge.model_post_init
+      ~FocusEdge.model_rebuild
+      ~FocusEdge.model_validate
+      ~FocusEdge.model_validate_json
+      ~FocusEdge.model_validate_strings
+      ~FocusEdge.parse_file
+      ~FocusEdge.parse_obj
+      ~FocusEdge.parse_raw
+      ~FocusEdge.schema
+      ~FocusEdge.schema_json
+      ~FocusEdge.to_json
+      ~FocusEdge.update_forward_refs
+      ~FocusEdge.validate
+      ~FocusEdge.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FocusEdge.model_computed_fields
+      ~FocusEdge.model_config
+      ~FocusEdge.model_extra
+      ~FocusEdge.model_fields
+      ~FocusEdge.model_fields_set
+   
+   

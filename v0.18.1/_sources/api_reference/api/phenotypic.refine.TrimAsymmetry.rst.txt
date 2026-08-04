@@ -1,0 +1,71 @@
+phenotypic.refine.TrimAsymmetry
+===============================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: TrimAsymmetry
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~TrimAsymmetry.__init__
+      ~TrimAsymmetry.apply
+      ~TrimAsymmetry.construct
+      ~TrimAsymmetry.copy
+      ~TrimAsymmetry.dict
+      ~TrimAsymmetry.from_json
+      ~TrimAsymmetry.from_orm
+      ~TrimAsymmetry.json
+      ~TrimAsymmetry.model_construct
+      ~TrimAsymmetry.model_copy
+      ~TrimAsymmetry.model_dump
+      ~TrimAsymmetry.model_dump_json
+      ~TrimAsymmetry.model_json_schema
+      ~TrimAsymmetry.model_parametrized_name
+      ~TrimAsymmetry.model_post_init
+      ~TrimAsymmetry.model_rebuild
+      ~TrimAsymmetry.model_validate
+      ~TrimAsymmetry.model_validate_json
+      ~TrimAsymmetry.model_validate_strings
+      ~TrimAsymmetry.parse_file
+      ~TrimAsymmetry.parse_obj
+      ~TrimAsymmetry.parse_raw
+      ~TrimAsymmetry.schema
+      ~TrimAsymmetry.schema_json
+      ~TrimAsymmetry.to_json
+      ~TrimAsymmetry.update_forward_refs
+      ~TrimAsymmetry.validate
+      ~TrimAsymmetry.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TrimAsymmetry.model_computed_fields
+      ~TrimAsymmetry.model_config
+      ~TrimAsymmetry.model_extra
+      ~TrimAsymmetry.model_fields
+      ~TrimAsymmetry.model_fields_set
+      ~TrimAsymmetry.symmetry_threshold
+      ~TrimAsymmetry.n_angular_bins
+      ~TrimAsymmetry.n_annuli
+      ~TrimAsymmetry.pelt_penalty
+      ~TrimAsymmetry.smoothing_window
+      ~TrimAsymmetry.method
+      ~TrimAsymmetry.beehive_threshold
+      ~TrimAsymmetry.min_cc_area
+      ~TrimAsymmetry.min_object_area
+   
+   

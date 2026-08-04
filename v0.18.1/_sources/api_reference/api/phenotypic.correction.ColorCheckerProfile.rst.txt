@@ -1,0 +1,77 @@
+phenotypic.correction.ColorCheckerProfile
+=========================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: ColorCheckerProfile
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ColorCheckerProfile.__init__
+      ~ColorCheckerProfile.construct
+      ~ColorCheckerProfile.copy
+      ~ColorCheckerProfile.dict
+      ~ColorCheckerProfile.fit
+      ~ColorCheckerProfile.from_json
+      ~ColorCheckerProfile.from_orm
+      ~ColorCheckerProfile.json
+      ~ColorCheckerProfile.model_construct
+      ~ColorCheckerProfile.model_copy
+      ~ColorCheckerProfile.model_dump
+      ~ColorCheckerProfile.model_dump_json
+      ~ColorCheckerProfile.model_json_schema
+      ~ColorCheckerProfile.model_parametrized_name
+      ~ColorCheckerProfile.model_post_init
+      ~ColorCheckerProfile.model_rebuild
+      ~ColorCheckerProfile.model_validate
+      ~ColorCheckerProfile.model_validate_json
+      ~ColorCheckerProfile.model_validate_strings
+      ~ColorCheckerProfile.parse_file
+      ~ColorCheckerProfile.parse_obj
+      ~ColorCheckerProfile.parse_raw
+      ~ColorCheckerProfile.report
+      ~ColorCheckerProfile.schema
+      ~ColorCheckerProfile.schema_json
+      ~ColorCheckerProfile.to_json
+      ~ColorCheckerProfile.update_forward_refs
+      ~ColorCheckerProfile.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ColorCheckerProfile.model_computed_fields
+      ~ColorCheckerProfile.model_config
+      ~ColorCheckerProfile.model_extra
+      ~ColorCheckerProfile.model_fields
+      ~ColorCheckerProfile.model_fields_set
+      ~ColorCheckerProfile.checker_type
+      ~ColorCheckerProfile.degree
+      ~ColorCheckerProfile.target_illuminant
+      ~ColorCheckerProfile.median_filter_size
+      ~ColorCheckerProfile.stddev_mag_threshold
+      ~ColorCheckerProfile.pad_checker
+      ~ColorCheckerProfile.min_swatch_area_frac
+      ~ColorCheckerProfile.core_fraction
+      ~ColorCheckerProfile.ridge_lambda
+      ~ColorCheckerProfile.outlier_sigma
+      ~ColorCheckerProfile.rois
+      ~ColorCheckerProfile.correction_matrix
+      ~ColorCheckerProfile.diagnostics
+      ~ColorCheckerProfile.is_fitted
+      ~ColorCheckerProfile.capture_metadata
+   
+   

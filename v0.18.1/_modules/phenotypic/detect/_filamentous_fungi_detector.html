@@ -1,0 +1,1251 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.detect._filamentous_fungi_detector &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/detect/_filamentous_fungi_detector';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.18.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.18.1/_modules/phenotypic/detect/_filamentous_fungi_detector.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.18.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.detect._filamentous_fungi_detector</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.detect._filamentous_fungi_detector</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">model_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Self</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">label</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridObjectDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">SubtractGaussian</span><span class="p">,</span>
+    <span class="n">ContrastStretching</span><span class="p">,</span>
+    <span class="n">FocusEdgePhase</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">FilamentousFungiReconnectStrategy</span><span class="p">,</span>
+    <span class="n">OperationField</span><span class="p">,</span>
+    <span class="n">TuneSpec</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">HysteresisDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect._inoculum_detector</span><span class="w"> </span><span class="kn">import</span> <span class="n">InoculumDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">KeepSectionLargest</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.reconnect</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ReconnectConfig</span><span class="p">,</span>
+    <span class="n">build_reconnect_cost</span><span class="p">,</span>
+    <span class="n">compute_full_image_app2_gi_cost</span><span class="p">,</span>
+    <span class="n">filter_mask_by_overlap</span><span class="p">,</span>
+    <span class="n">select_reconnect_fragments</span><span class="p">,</span>
+    <span class="n">markers_from_centroids</span><span class="p">,</span>
+    <span class="n">partition_by_grid_voronoi</span><span class="p">,</span>
+    <span class="n">reconnect_fragments_tiled</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="FilamentousFungiDetector">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.detect.FilamentousFungiDetector.html#phenotypic.detect.FilamentousFungiDetector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FilamentousFungiDetector</span><span class="p">(</span><span class="n">GridObjectDetector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect and individually label filamentous fungal colonies by two-stage inoculum-plus-hyphae detection with Euclidean Voronoi partition.</span>
+
+<span class="sd">    First detect compact inoculation centres with ``inoculum_detector``, then</span>
+<span class="sd">    capture the full hyphal network using phase-congruency edge detection</span>
+<span class="sd">    combined with Gaussian background subtraction. Disconnected branch</span>
+<span class="sd">    fragments are reconnected to their parent colonies via quality-filtered</span>
+<span class="sd">    Dijkstra pathfinding on a composite cost surface derived from phase</span>
+<span class="sd">    congruency energy, local texture, and orientation coherence. Inoculum</span>
+<span class="sd">    centroids seed a Euclidean Voronoi partition that assigns every fungal</span>
+<span class="sd">    pixel to its nearest colony, with connectivity-based correction enforcing</span>
+<span class="sd">    uniform labelling within each connected component.</span>
+
+<span class="sd">    For an algorithm overview and a comparison with other detection strategies,</span>
+<span class="sd">    see :doc:`/explanation/detection_strategies_compared` and</span>
+<span class="sd">    :doc:`/explanation/filamentous_fungi_algorithm`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Filamentous fungal colonies (*Aspergillus*, *Neurospora*,</span>
+<span class="sd">          *Trichoderma*) with irregular, spreading hyphal morphologies.</span>
+<span class="sd">        - Dense plates where neighbouring fungal colonies touch or overlap</span>
+<span class="sd">          and must be individually labelled.</span>
+<span class="sd">        - Time-course experiments tracking hyphal extension radially outward</span>
+<span class="sd">          from compact inoculation sites.</span>
+<span class="sd">        - Grid-based fungal culture plates where one colony per well must be</span>
+<span class="sd">          quantified separately.</span>
+<span class="sd">        - High-throughput fungal phenotyping screens requiring consistent</span>
+<span class="sd">          separation quality across hundreds of plates.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`WatershedDetector` when colonies are compact and roughly</span>
+<span class="sd">          circular (yeast or bacterial morphology).</span>
+<span class="sd">        - :class:`OtsuDetector` when fungi are well-separated and a single</span>
+<span class="sd">          binary mask suffices without individual colony labelling.</span>
+<span class="sd">        - :class:`CompositeDetector` when combining multiple detection</span>
+<span class="sd">          strategies is preferred over the two-stage centre-plus-hyphae</span>
+<span class="sd">          approach.</span>
+<span class="sd">        - :class:`InoculumDetector` when only the compact inoculation centres</span>
+<span class="sd">          are needed and full hyphal reconstruction is not required.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        inoculum_detector: ObjectDetector or ImagePipeline used to locate</span>
+<span class="sd">            compact fungal centres. Should produce small, tight regions at</span>
+<span class="sd">            inoculation points; centroids from this detector seed the final</span>
+<span class="sd">            Voronoi partition. When ``None`` (default), an internal</span>
+<span class="sd">            ``InoculumDetector`` + ``KeepSectionLargest`` pipeline is used.</span>
+<span class="sd">            Default: None.</span>
+
+<span class="sd">        # Scene-scale parameters — set these first; derived params follow</span>
+<span class="sd">        max_colony_radius_px: Expected maximum colony radius in pixels.</span>
+<span class="sd">            Acts as the master scene knob: proportionally scales</span>
+<span class="sd">            ``gauss_sigma``, ``tile_size``, and ``tile_overlap`` when those</span>
+<span class="sd">            are left at ``None``. A reasonable starting point is the radius</span>
+<span class="sd">            of the largest colony in pixels at your imaging resolution (e.g.</span>
+<span class="sd">            measure colony extent in your image viewer before setting this).</span>
+<span class="sd">            Reduce for short-incubation plates or high-well-count formats;</span>
+<span class="sd">            increase for slow-growing species with extensive radial growth.</span>
+<span class="sd">            Typical range: 50--400. Default: 250.0.</span>
+<span class="sd">        min_branch_width_px: Expected narrowest hyphal branch width in</span>
+<span class="sd">            pixels. Scales signal-detection parameters</span>
+<span class="sd">            (``pct_min_wavelength``, ``mad_window``, ``path_dilation_radius``,</span>
+<span class="sd">            ``snr_margin``, ``coherence_window_radius``) when those are left</span>
+<span class="sd">            at ``None``. Set to the thinnest hyphae visible at your imaging</span>
+<span class="sd">            resolution; the derived ``pct_min_wavelength``</span>
+<span class="sd">            (``2 × min_branch_width_px``) is clamped at the Nyquist floor</span>
+<span class="sd">            of 2 px. Typical range: 2--8. Default: 3.</span>
+
+<span class="sd">        # Detection control</span>
+<span class="sd">        ignore_borders: Drop objects touching the image border during</span>
+<span class="sd">            hysteresis-threshold branch detection. Enable (default) to avoid</span>
+<span class="sd">            partial colonies at plate edges; disable when genuine peripheral</span>
+<span class="sd">            hyphal growth must be retained. Default: True.</span>
+<span class="sd">        edge_noise_threshold: Noise-suppression multiplier ``k`` for the</span>
+<span class="sd">            phase congruency detector. Only features whose phase energy</span>
+<span class="sd">            exceeds the estimated noise mean plus ``k`` standard deviations of</span>
+<span class="sd">            the noise energy are accepted as real edges. Higher values suppress</span>
+<span class="sd">            agar texture artefacts at the cost of rejecting weak peripheral</span>
+<span class="sd">            hyphae; lower values recover fine structure but may pass background</span>
+<span class="sd">            noise on textured media. Typical range: 2.0--10.0. Default: 6.0.</span>
+
+<span class="sd">        # Reconnection quality</span>
+<span class="sd">        reconnection_tolerance: IQR multiplier for calibrating reconnection</span>
+<span class="sd">            path quality thresholds from confirmed calibration branches.</span>
+<span class="sd">            Thresholds are set at median ± ``reconnection_tolerance`` × IQR</span>
+<span class="sd">            across five quality metrics. Higher values accept more candidate</span>
+<span class="sd">            paths (permissive); lower values require paths to closely resemble</span>
+<span class="sd">            calibration branches (conservative). Typical range: 1.5--4.0.</span>
+<span class="sd">            Default: 2.5.</span>
+<span class="sd">        max_gap_length: Maximum contiguous stretch of high-cost pixels</span>
+<span class="sd">            tolerated along a reconnection path, in pixels. Paths containing</span>
+<span class="sd">            a window worse than the calibrated threshold are rejected as</span>
+<span class="sd">            routing through bare agar. Increase to bridge longer hyphal gaps;</span>
+<span class="sd">            decrease to reject longer detours through background. Typical</span>
+<span class="sd">            range: 10--100. Default: 30.</span>
+<span class="sd">        border_margin_px: Width of the border penalty ramp applied to</span>
+<span class="sd">            image-edge pixels in the Dijkstra cost surface. Prevents</span>
+<span class="sd">            reconnection paths from routing along plate borders instead of</span>
+<span class="sd">            through genuine hyphal corridors. Set to 0 to disable. Typical</span>
+<span class="sd">            range: 0--150. Default: 50.</span>
+<span class="sd">        frag_reach_px: Pre-screening radius in pixels. Fragments whose</span>
+<span class="sd">            nearest routable pixel exceeds this distance from the colony</span>
+<span class="sd">            boundary are discarded before Dijkstra, saving computation.</span>
+<span class="sd">            Fragments within this radius are forwarded for full</span>
+<span class="sd">            quality-filtered reconnection. Typical range: 5--40. Default: 10.</span>
+<span class="sd">        gap_crossing_penalty: Scaling factor for the distance-weighted gap</span>
+<span class="sd">            penalty applied to Dijkstra path costs. Higher values strongly</span>
+<span class="sd">            penalise traversal of bare agar far from the colony, keeping</span>
+<span class="sd">            paths near established structure; lower values allow longer</span>
+<span class="sd">            background detours. Typical range: 1.0--10.0. Default: 4.0.</span>
+<span class="sd">        reconnect_strategy: Reconnection edge-cost strategy. ``&quot;dijkstra&quot;``</span>
+<span class="sd">            preserves the legacy destination-only composite-cost recurrence.</span>
+<span class="sd">            ``&quot;app2_gwdt&quot;`` computes one full-image APP2 grey-weighted</span>
+<span class="sd">            distance transform from the detected foreground, applies its fixed</span>
+<span class="sd">            GI lookup, and uses source-faithful endpoint-averaged GI edge</span>
+<span class="sd">            costs. Default: ``&quot;dijkstra&quot;``.</span>
+
+<span class="sd">        # Scene-derivation overrides (leave at None to auto-derive)</span>
+<span class="sd">        gauss_sigma: Gaussian sigma for background subtraction, in pixels.</span>
+<span class="sd">            When ``None``, set to ``1.2 × max_colony_radius_px`` (300 px at</span>
+<span class="sd">            the default radius). Must exceed the largest colony radius so the</span>
+<span class="sd">            Gaussian estimates only the illumination gradient, not colony</span>
+<span class="sd">            signal. Typical range: 50--600. Default: None.</span>
+<span class="sd">        tile_size: Side length of square processing tiles in pixels. When</span>
+<span class="sd">            ``None``, set to ``int(round(4.8 × max_colony_radius_px))``</span>
+<span class="sd">            (1200 px at the default radius). Must be large enough to contain</span>
+<span class="sd">            an entire colony and its satellite fragments within one tile.</span>
+<span class="sd">            Typical range: 200--3000. Default: None.</span>
+<span class="sd">        tile_overlap: Overlap between adjacent tiles in pixels. When</span>
+<span class="sd">            ``None``, set to ``int(round(2.4 × max_colony_radius_px))``</span>
+<span class="sd">            (600 px at the default radius). Larger overlap ensures fragments</span>
+<span class="sd">            near tile boundaries are co-located with their parent colony in</span>
+<span class="sd">            at least one tile. Typical range: 50--1500. Default: None.</span>
+<span class="sd">        pct_min_wavelength: Minimum log-Gabor filter wavelength in pixels</span>
+<span class="sd">            for phase congruency detection. When ``None``, set to</span>
+<span class="sd">            ``2.0 × min_branch_width_px`` (6 px at the default width).</span>
+<span class="sd">            Must be ≥ 2 (Nyquist). Match to the thinnest hyphae width at</span>
+<span class="sd">            your imaging resolution. Typical range: 2--20. Default: None.</span>
+<span class="sd">        mad_window: Side length of the square median-filter kernel for local</span>
+<span class="sd">            MAD texture computation (must be odd). When ``None``, set to</span>
+<span class="sd">            ``2 × min_branch_width_px + 1`` forced odd (7 at the default</span>
+<span class="sd">            width). Should span approximately one branch diameter plus</span>
+<span class="sd">            background buffer on each side. Typical range: 3--21.</span>
+<span class="sd">            Default: None.</span>
+<span class="sd">        path_dilation_radius: Disk radius for dilating accepted reconnection</span>
+<span class="sd">            paths before painting colony labels. When ``None``, set to</span>
+<span class="sd">            ``max(1, round(0.5 × min_branch_width_px))`` (2 at the default</span>
+<span class="sd">            width). Also sets the inner band radius for path quality metrics.</span>
+<span class="sd">            Match to half the expected hyphal width. Typical range: 1--10.</span>
+<span class="sd">            Default: None.</span>
+<span class="sd">        snr_margin: Extra pixel margin beyond ``path_dilation_radius`` that</span>
+<span class="sd">            forms the background annular ring for local SNR estimation.</span>
+<span class="sd">            When ``None``, set to ``max(2, round(0.5 × min_branch_width_px))``</span>
+<span class="sd">            (2 at the default width). Keep narrow on dense hyphal networks</span>
+<span class="sd">            to avoid sampling adjacent hyphae as background. Typical range:</span>
+<span class="sd">            1--8. Default: None.</span>
+<span class="sd">        coherence_window_radius: Radius of the square averaging kernel for</span>
+<span class="sd">            orientation coherence computation. When ``None``, set to</span>
+<span class="sd">            ``round(5.0 × min_branch_width_px)`` (15 at the default width).</span>
+<span class="sd">            Larger radius captures long-range directional consistency;</span>
+<span class="sd">            reduce for highly curved or heavily branching networks. Typical</span>
+<span class="sd">            range: 5--50. Default: None.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` set to a binary mask of all</span>
+<span class="sd">        detected fungal pixels and ``objmap`` set to a labelled colony map</span>
+<span class="sd">        where each fungal colony receives a unique consecutive integer label</span>
+<span class="sd">        via Voronoi assignment.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If ``inoculum_detector`` is not an ObjectDetector or</span>
+<span class="sd">            ImagePipeline instance.</span>
+<span class="sd">        ValueError: If no inoculum centres are detected, or no detected</span>
+<span class="sd">            centres overlap with the branch structure after filtering.</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        [1] P. Kovesi, &quot;Phase congruency: A low-level image invariant,&quot;</span>
+<span class="sd">        *Psychol. Res.*, vol. 64, no. 2, pp. 136--148, 2000.</span>
+
+<span class="sd">        [2] E. W. Dijkstra, &quot;A note on two problems in connexion with</span>
+<span class="sd">        graphs,&quot; *Numer. Math.*, vol. 1, no. 1, pp. 269--271, 1959.</span>
+
+<span class="sd">    See Also:</span>
+<span class="sd">        :doc:`/tutorials/notebooks/10_detecting_filamentous_fungi`</span>
+<span class="sd">            Dedicated tutorial for filamentous fungi detection workflows.</span>
+<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm`</span>
+<span class="sd">            Guide for selecting the right detector for your plate images.</span>
+<span class="sd">        :doc:`/explanation/filamentous_fungi_algorithm`</span>
+<span class="sd">            Algorithm details for the two-stage detection and Voronoi</span>
+<span class="sd">            partition approach.</span>
+<span class="sd">        :doc:`/explanation/detection_strategies_compared`</span>
+<span class="sd">            Comparison of all detection strategies and their failure modes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__build_center_pipe</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="s2">&quot;ImagePipeline&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the default inoculum-center detection pipeline.</span>
+
+<span class="sd">        Constructed lazily (rather than as a class-body attribute) so</span>
+<span class="sd">        importing this module does not instantiate operations — the</span>
+<span class="sd">        pydantic v2 migration makes leaf operations uninstantiable until</span>
+<span class="sd">        their own migration phase completes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ImagePipeline</span><span class="p">(</span>
+                <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">InoculumDetector</span><span class="p">(),</span> <span class="n">KeepSectionLargest</span><span class="p">()]</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Scene-derivation multipliers (private; override in subclass to tune).</span>
+    <span class="c1"># Raw param = multiplier * scene knob (rounded to int where required).</span>
+    <span class="c1"># Declared ``ClassVar`` so they stay class-level constants (not pydantic</span>
+    <span class="c1"># fields) while remaining subclass-overridable, exactly as before.</span>
+    <span class="n">_GAUSS_SIGMA_PER_R</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.2</span>
+    <span class="n">_TILE_SIZE_PER_R</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">4.8</span>
+    <span class="n">_TILE_OVERLAP_PER_R</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.4</span>
+    <span class="n">_WAVELENGTH_PER_W</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">_MAD_WINDOW_PER_W</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">_PATH_DILATION_PER_W</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">_SNR_MARGIN_PER_W</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">_COHERENCE_RADIUS_PER_W</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">5.0</span>
+
+    <span class="c1"># Algorithm internals (hidden from the constructor; override in subclass</span>
+    <span class="c1"># to tune). ``ClassVar` keeps them out of ``model_fields`` so they are</span>
+    <span class="c1"># not constructor parameters, matching the pre-migration behaviour.</span>
+    <span class="n">beta</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span>  <span class="c1"># anisotropy exponent in composite cost</span>
+    <span class="n">gamma</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.2</span>  <span class="c1"># MAD penalty weight in composite cost numerator</span>
+    <span class="n">gauss_n_iter</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># SubtractGaussian iterations</span>
+    <span class="n">delta</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># Dijkstra radial retreat penalty</span>
+    <span class="n">pct_n_orient</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">8</span>  <span class="c1"># phase congruency angular resolution</span>
+
+    <span class="c1"># ── Inoculum detector (None → default pipeline, filled by validator) ──</span>
+    <span class="c1"># ``OperationField`` preserves the concrete detector/pipeline class</span>
+    <span class="c1"># across a JSON round-trip; ``| None`` keeps the unset sentinel that</span>
+    <span class="c1"># ``_derive_scene_params`` replaces with the default pipeline.</span>
+    <span class="n">inoculum_detector</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">OperationField</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># ── Scene parameters ──</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">max_colony_radius_px</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">50.0</span><span class="p">,</span> <span class="mf">500.0</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">250.0</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">min_branch_width_px</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">10</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">3</span>
+
+    <span class="c1"># ── Explicit user knobs ──</span>
+    <span class="c1"># Docstrings document each default + its qualitative direction but not an</span>
+    <span class="c1"># explicit range; the windows below are derived from the default + domain</span>
+    <span class="c1"># knowledge (search hints only, never validity bounds).</span>
+    <span class="n">ignore_borders</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">edge_noise_threshold</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">12.0</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">6.0</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">reconnection_tolerance</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">2.5</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">max_gap_length</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">60</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">30</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">border_margin_px</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">100</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">frag_reach_px</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">30</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">gap_crossing_penalty</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">4.0</span>
+    <span class="n">reconnect_strategy</span><span class="p">:</span> <span class="n">FilamentousFungiReconnectStrategy</span> <span class="o">=</span> <span class="s2">&quot;dijkstra&quot;</span>
+    <span class="n">reconnect_scope</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;branches&quot;</span><span class="p">,</span> <span class="s2">&quot;pseudo&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;branches&quot;</span>
+
+    <span class="c1"># ── Scene-derivation overrides (None → auto-derived by the validator) ──</span>
+    <span class="c1"># Auto-derived from max_colony_radius_px / min_branch_width_px when left at</span>
+    <span class="c1"># None, so they are never independent search targets (decision: tunable=False).</span>
+    <span class="n">gauss_sigma</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">tile_size</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">tile_overlap</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">pct_min_wavelength</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">mad_window</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">path_dilation_radius</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">snr_margin</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">coherence_window_radius</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_derive_scene_params</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fill the default pipeline and scene-derived parameters.</span>
+
+<span class="sd">        Reproduces the body of the pre-migration ``__init__``:</span>
+
+<span class="sd">        * a ``None`` ``inoculum_detector`` is replaced with the lazily</span>
+<span class="sd">          built default ``InoculumDetector`` + ``KeepSectionLargest``</span>
+<span class="sd">          pipeline (the field default cannot be a live pipeline because</span>
+<span class="sd">          operations are uninstantiable at class-definition time);</span>
+<span class="sd">        * each scene-derivation override left at ``None`` is computed</span>
+<span class="sd">          from ``max_colony_radius_px`` / ``min_branch_width_px`` using</span>
+<span class="sd">          the ``_*_PER_*`` multipliers, with ``mad_window`` forced odd.</span>
+
+<span class="sd">        Bad ``inoculum_detector`` types are rejected by the field&#39;s</span>
+<span class="sd">        ``ObjectDetector | ImagePipeline | None`` annotation before this</span>
+<span class="sd">        validator runs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_center_pipe</span><span class="p">()</span>
+
+        <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_colony_radius_px</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_branch_width_px</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">gauss_sigma</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gauss_sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_GAUSS_SIGMA_PER_R</span> <span class="o">*</span> <span class="n">R</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tile_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tile_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_TILE_SIZE_PER_R</span> <span class="o">*</span> <span class="n">R</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tile_overlap</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tile_overlap</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_TILE_OVERLAP_PER_R</span> <span class="o">*</span> <span class="n">R</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tile_size</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tile_overlap</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;tile_size must be greater than tile_overlap so &quot;</span>
+                    <span class="s2">&quot;sliding-window tiles advance by at least one pixel&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pct_min_wavelength</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pct_min_wavelength</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_WAVELENGTH_PER_W</span> <span class="o">*</span> <span class="n">w</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mad_window</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># mad_window must be odd; +1 on an even 2w keeps it odd.</span>
+            <span class="n">_mad_default</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_MAD_WINDOW_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">_mad_default</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">_mad_default</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mad_window</span> <span class="o">=</span> <span class="n">_mad_default</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">path_dilation_radius</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">path_dilation_radius</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+                    <span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_PATH_DILATION_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">))</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">snr_margin</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">snr_margin</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_SNR_MARGIN_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">coherence_window_radius</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coherence_window_radius</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+                    <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_COHERENCE_RADIUS_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="s1">&#39;GridImage&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;GridImage&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Detect and separate filamentous fungi using grid-based Voronoi partition.</span>
+
+<span class="sd">        Algorithm:</span>
+<span class="sd">        1. Run inoculum_detector to find fungal centers (full labeled regions)</span>
+<span class="sd">        2. Detect branches via dual-mask pipeline (Gaussian + phase congruency)</span>
+<span class="sd">        3. Filter centers, create grid markers, Voronoi assign with grid seeds</span>
+<span class="sd">        4. Identify pseudo-fragments (per-label CCs not overlapping inoculum)</span>
+<span class="sd">        5. Dijkstra reconnection of pseudo-fragments</span>
+<span class="sd">        6. Final Voronoi partition with grid markers</span>
+<span class="sd">        7. Set objmap with assignment results</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+
+        <span class="c1"># Validate that detectors are set before operation</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;inoculum_detector is required but not set. &quot;</span>
+                    <span class="s2">&quot;Provide a detector when creating FilamentousFungiDetector.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># ── PHASE 1: INOCULUM DETECTION ─────────────────────────────</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span><span class="p">,</span> <span class="n">ImagePipeline</span><span class="p">):</span>
+            <span class="n">inoculum_img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                                        <span class="n">reset</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">inoculum_img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">inoculum_objmask</span> <span class="o">=</span> <span class="n">inoculum_img</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span>
+
+        <span class="k">if</span> <span class="n">inoculum_img</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;No centers detected by inoculum_detector. Cannot perform &quot;</span>
+                    <span class="s2">&quot;separation. Try adjusting inoculum_detector parameters or using a &quot;</span>
+                    <span class="s2">&quot;different detection strategy.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;after center detection&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ── PHASE 2: BRANCH DETECTION ───────────────────────────────</span>
+        <span class="c1"># ContrastStretching-enhanced copy for dual-mask detection</span>
+        <span class="n">enhanced_work</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">ContrastStretching</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">enhanced_work</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">enhanced_arr</span> <span class="o">=</span> <span class="n">enhanced_work</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span>
+        <span class="n">enhanced_gray</span> <span class="o">=</span> <span class="n">enhanced_work</span><span class="o">.</span><span class="n">gray</span><span class="p">[:]</span>  <span class="c1"># capture before destructive call</span>
+
+        <span class="c1"># Mask A: Gauss branches (destructive: modifies enhanced_work in place)</span>
+        <span class="n">bg_removed_arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subtract_background</span><span class="p">(</span><span class="n">enhanced_work</span><span class="p">)</span>
+        <span class="k">del</span> <span class="n">enhanced_work</span>  <span class="c1"># no longer valid after destructive call</span>
+
+        <span class="c1"># Mask B: PCT branches</span>
+        <span class="n">pct_result</span> <span class="o">=</span> <span class="n">FocusEdgePhase</span><span class="p">(</span>
+                <span class="n">n_orient</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pct_n_orient</span><span class="p">,</span>
+                <span class="n">min_wavelength</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pct_min_wavelength</span><span class="p">,</span>
+                <span class="n">k</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">edge_noise_threshold</span><span class="p">,</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">_phasecong3</span><span class="p">(</span><span class="n">enhanced_arr</span><span class="p">)</span>
+
+        <span class="c1"># Overlap filter: keep Gauss labels with any PCT overlap</span>
+        <span class="n">fragmented_overall_detect_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_combine_bg_removed_with_pct</span><span class="p">(</span>
+                <span class="n">bg_removed_arr</span><span class="o">=</span><span class="n">bg_removed_arr</span><span class="p">,</span>
+                <span class="n">pct_sum</span><span class="o">=</span><span class="n">pct_result</span><span class="o">.</span><span class="n">pc_sum</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">_fragmented_detect_img</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">_fragmented_detect_img</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">fragmented_overall_detect_mat</span>
+        <span class="n">HysteresisDetector</span><span class="p">(</span>
+                <span class="n">low</span><span class="o">=</span><span class="s2">&quot;triangle&quot;</span><span class="p">,</span>
+                <span class="n">high</span><span class="o">=</span><span class="s2">&quot;otsu&quot;</span><span class="p">,</span>
+                <span class="n">ignore_zeros</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">ignore_borders</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ignore_borders</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">_fragmented_detect_img</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">overall_objmask</span> <span class="o">=</span> <span class="n">_fragmented_detect_img</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span>
+        <span class="k">del</span> <span class="n">_fragmented_detect_img</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;after dual-mask branch detection&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ── PHASE 3: CENTER FILTERING + GRID VORONOI ─────────────────</span>
+
+        <span class="c1"># The filtered structure that overlaps with the inoculum centers</span>
+        <span class="n">inoculum_structure_mask</span> <span class="o">=</span> <span class="n">filter_mask_by_overlap</span><span class="p">(</span>
+                <span class="n">overall_objmask</span><span class="p">,</span> <span class="n">inoculum_objmask</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">overlap_objmap</span> <span class="o">=</span> <span class="n">label</span><span class="p">(</span><span class="n">inoculum_structure_mask</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">overlap_objmap</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;No centers overlap with detected branch structure after &quot;</span>
+                    <span class="s2">&quot;filtering. Check that inoculum_detector picks up the same &quot;</span>
+                    <span class="s2">&quot;objects captured by the dual-mask branch detection.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;after overlap filtering&quot;</span><span class="p">)</span>
+
+        <span class="n">centroid_markers</span> <span class="o">=</span> <span class="n">markers_from_centroids</span><span class="p">(</span><span class="n">inoculum_img</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:])</span>
+
+        <span class="n">inoculum_structure_map</span> <span class="o">=</span> <span class="n">partition_by_grid_voronoi</span><span class="p">(</span><span class="n">centroid_markers</span><span class="p">,</span>
+                                                           <span class="n">inoculum_structure_mask</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">inoculum_structure_map</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="s2">&quot;Voronoi assignment produced empty result. &quot;</span>
+                    <span class="s2">&quot;Centroid markers may not overlap any foreground mask pixels.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span>
+                <span class="s2">&quot;after Voronoi assignment&quot;</span><span class="p">,</span>
+                <span class="n">include_process</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">include_tracemalloc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># ── PHASE 4: DIJKSTRA RECONNECTION ──────────────────────────</span>
+        <span class="n">colony_labels</span> <span class="o">=</span> <span class="n">inoculum_structure_map</span>
+
+        <span class="n">central_mask</span><span class="p">,</span> <span class="n">fragment_labels</span> <span class="o">=</span> <span class="n">select_reconnect_fragments</span><span class="p">(</span>
+                <span class="n">colony_labels</span><span class="p">,</span> <span class="n">inoculum_objmask</span><span class="p">,</span> <span class="n">overall_objmask</span><span class="p">,</span> <span class="n">inoculum_structure_mask</span><span class="p">,</span>
+                <span class="n">scope</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reconnect_scope</span><span class="p">,</span>
+                <span class="n">min_fragment_size</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_branch_width_px</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="n">app2_gi_cost</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reconnect_strategy</span> <span class="o">==</span> <span class="s2">&quot;app2_gwdt&quot;</span><span class="p">:</span>
+            <span class="n">app2_gi_cost</span> <span class="o">=</span> <span class="n">compute_full_image_app2_gi_cost</span><span class="p">(</span>
+                    <span class="n">enhanced_arr</span><span class="p">,</span>
+                    <span class="n">background</span><span class="o">=~</span><span class="n">overall_objmask</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="n">unmasked_cost</span><span class="p">,</span> <span class="n">cost_surface</span> <span class="o">=</span> <span class="n">build_reconnect_cost</span><span class="p">(</span>
+                <span class="n">pct_result</span><span class="o">.</span><span class="n">pc_sum</span><span class="p">,</span>
+                <span class="n">pct_result</span><span class="o">.</span><span class="n">M</span><span class="p">,</span>
+                <span class="n">pct_result</span><span class="o">.</span><span class="n">m</span><span class="p">,</span>
+                <span class="n">pct_result</span><span class="o">.</span><span class="n">orientation</span><span class="p">,</span>
+                <span class="n">enhanced_arr</span><span class="p">,</span>
+                <span class="n">colony_labels</span><span class="p">,</span>
+                <span class="n">central_mask</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_reconnect_config</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+        <span class="n">colony_labels</span> <span class="o">=</span> <span class="n">reconnect_fragments_tiled</span><span class="p">(</span>
+                <span class="n">colony_labels</span><span class="p">,</span>
+                <span class="n">fragment_labels</span><span class="p">,</span>
+                <span class="n">cost_surface</span><span class="p">,</span>
+                <span class="n">unmasked_cost</span><span class="p">,</span>
+                <span class="n">pct_result</span><span class="o">.</span><span class="n">pc_sum</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                <span class="n">enhanced_gray</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_reconnect_config</span><span class="p">(),</span>
+                <span class="n">app2_gi_cost</span><span class="o">=</span><span class="n">app2_gi_cost</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span>
+                <span class="s2">&quot;after Dijkstra reconnection&quot;</span><span class="p">,</span>
+                <span class="n">include_process</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">include_tracemalloc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># ── PHASE 5: FINAL VORONOI ────────────────────────────────────</span>
+        <span class="n">final_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">colony_labels</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="n">inoculum_structure_mask</span>
+        <span class="n">colony_labels</span> <span class="o">=</span> <span class="n">partition_by_grid_voronoi</span><span class="p">(</span><span class="n">centroid_markers</span><span class="p">,</span> <span class="n">final_mask</span><span class="p">)</span>
+
+        <span class="c1"># ── PHASE 6: WRITE RESULT ───────────────────────────────────</span>
+        <span class="k">if</span> <span class="n">colony_labels</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">:</span>
+            <span class="n">colony_labels</span> <span class="o">=</span> <span class="n">colony_labels</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">)</span>
+
+        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">colony_labels</span>
+
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span>
+                <span class="s2">&quot;final cleanup&quot;</span><span class="p">,</span>
+                <span class="n">include_process</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">include_tracemalloc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">image</span>
+
+    <span class="c1"># ── Phase 2 helpers ─────────────────────────────────────────────</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_subtract_background</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">enhanced_work</span><span class="p">:</span> <span class="s1">&#39;Image&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Subtracts the background of the input Image class. This potentially deletes</span>
+<span class="sd">        branches so is combined downstream with the PCT response&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">SubtractGaussian</span><span class="p">(</span>
+                <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">gauss_sigma</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">gauss_n_iter</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">enhanced_work</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_combine_bg_removed_with_pct</span><span class="p">(</span>
+            <span class="n">bg_removed_arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">pct_sum</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span>
+                <span class="n">bg_removed_arr</span><span class="p">,</span>
+                <span class="n">pct_sum</span><span class="p">,</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_reconnect_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ReconnectConfig</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Bundle scene-derived scalars for the sdk_.reconnect functions.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ReconnectConfig</span><span class="p">(</span>
+            <span class="n">beta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">beta</span><span class="p">,</span>
+            <span class="n">gamma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">gamma</span><span class="p">,</span>
+            <span class="n">delta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">delta</span><span class="p">,</span>
+            <span class="n">coherence_window_radius</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">coherence_window_radius</span><span class="p">,</span>
+            <span class="n">mad_window</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mad_window</span><span class="p">,</span>
+            <span class="n">gap_crossing_penalty</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">gap_crossing_penalty</span><span class="p">,</span>
+            <span class="n">border_margin_px</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">border_margin_px</span><span class="p">,</span>
+            <span class="n">frag_reach_px</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">frag_reach_px</span><span class="p">,</span>
+            <span class="n">tile_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tile_size</span><span class="p">,</span>
+            <span class="n">tile_overlap</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tile_overlap</span><span class="p">,</span>
+            <span class="n">max_gap_length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_gap_length</span><span class="p">,</span>
+            <span class="n">path_dilation_radius</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">path_dilation_radius</span><span class="p">,</span>
+            <span class="n">snr_margin</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">snr_margin</span><span class="p">,</span>
+            <span class="n">reconnection_tolerance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reconnection_tolerance</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

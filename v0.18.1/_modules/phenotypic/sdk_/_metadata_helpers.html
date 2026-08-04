@@ -1,0 +1,970 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.sdk_._metadata_helpers &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/sdk_/_metadata_helpers';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.18.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.18.1/_modules/phenotypic/sdk_/_metadata_helpers.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.18.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.sdk_._metadata_helpers</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.sdk_._metadata_helpers</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Single source of truth for the metadata column namespace.</span>
+
+<span class="sd">Replaces every hardcoded ``&quot;Metadata_&quot;`` prefix literal across the codebase.</span>
+<span class="sd">Prefixes and labels are derived from the ``phenotypic.schema`` metadata enums,</span>
+<span class="sd">so they track the per-enum ``category()`` strings automatically: while every</span>
+<span class="sd">metadata enum still returns ``&quot;Metadata&quot;`` the namespace collapses to a single</span>
+<span class="sd">``&quot;Metadata_&quot;`` prefix, and once the categories flip to per-topic</span>
+<span class="sd">``Metadata&lt;Topic&gt;`` strings these helpers pick up the new prefixes with no</span>
+<span class="sd">caller changes.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">lru_cache</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_schema</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+
+<span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_metadata_enums</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MeasurementInfo</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Every exported ``MeasurementInfo`` enum in the metadata namespace.</span>
+
+<span class="sd">    A metadata-namespace enum is one whose ``category()`` starts with</span>
+<span class="sd">    ``&quot;Metadata&quot;`` (the framework ``METADATA`` enum plus the experimental-tag</span>
+<span class="sd">    vocabulary). Cached: the schema export surface is fixed at import time.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_schema</span><span class="o">.</span><span class="n">__all__</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">_schema</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">MeasurementInfo</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">MeasurementInfo</span>
+            <span class="ow">and</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">obj</span><span class="o">.</span><span class="n">category</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Metadata&quot;</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+
+
+<span class="c1">#: Bio-semantic cluster order for the metadata front-block (category granularity).</span>
+<span class="c1">#: The human-facing column axis. REMBI (header_to_module / by_module / manifest)</span>
+<span class="c1">#: remains a SEPARATE provenance axis and is not affected by this ordering.</span>
+<span class="n">_METADATA_CLUSTER_ORDER</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="c1"># (1) Identity — who / where is this colony</span>
+    <span class="s2">&quot;MetadataSample&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MetadataPlate&quot;</span><span class="p">,</span>
+    <span class="c1"># (2) Strain — genetic identity</span>
+    <span class="s2">&quot;MetadataGenetic&quot;</span><span class="p">,</span>
+    <span class="c1"># (3) Condition — chemical then temporal/physical environment</span>
+    <span class="s2">&quot;MetadataCondition&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MetadataCulture&quot;</span><span class="p">,</span>
+    <span class="c1"># (4) Design &amp; provenance</span>
+    <span class="s2">&quot;MetadataExperiment&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MetadataStudy&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MetadataAcquisition&quot;</span><span class="p">,</span>
+    <span class="c1"># Framework per-image bookkeeping — last (relocated to the trailing region</span>
+    <span class="c1"># of the measurement frame by order_measurement_columns()).</span>
+    <span class="s2">&quot;MetadataImage&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_cluster_ordered_enums</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MeasurementInfo</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The metadata enums sorted by ``_METADATA_CLUSTER_ORDER`` (then stable).</span>
+
+<span class="sd">    An enum whose category is absent from the cluster order sorts last; the</span>
+<span class="sd">    coverage-gate test forbids that state, so it is a defensive fallback only.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">rank</span> <span class="o">=</span> <span class="p">{</span><span class="n">cat</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cat</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">_METADATA_CLUSTER_ORDER</span><span class="p">)}</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span>
+        <span class="nb">sorted</span><span class="p">(</span><span class="n">_metadata_enums</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="n">rank</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">category</span><span class="p">(),</span> <span class="nb">len</span><span class="p">(</span><span class="n">rank</span><span class="p">)))</span>
+    <span class="p">)</span>
+
+
+<span class="c1">#: Stride between metadata categories in ``canonical_metadata_order``. Must exceed</span>
+<span class="c1">#: the largest metadata enum&#39;s member count so per-category definition ranks never</span>
+<span class="c1">#: bleed into the next category.</span>
+<span class="n">_CATEGORY_STRIDE</span> <span class="o">=</span> <span class="mi">1000</span>
+
+
+<div class="viewcode-block" id="canonical_metadata_order">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.canonical_metadata_order.html#phenotypic.sdk_.canonical_metadata_order">[docs]</a>
+<span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">canonical_metadata_order</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Global rank for every known metadata header (cluster then definition order).</span>
+
+<span class="sd">    Cluster-order major, enum definition-order minor. A header absent from this</span>
+<span class="sd">    map is an unknown/uncategorized user tag; callers rank those last. The map is</span>
+<span class="sd">    derived entirely from the import-time schema enums, so it is cached. The</span>
+<span class="sd">    returned dict is read-only by contract; callers must not mutate it (mirrors</span>
+<span class="sd">    :func:`~phenotypic.schema.header_to_module`).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">enums</span> <span class="o">=</span> <span class="n">_cluster_ordered_enums</span><span class="p">()</span>
+    <span class="n">cat_rank</span> <span class="o">=</span> <span class="p">{</span><span class="n">e</span><span class="o">.</span><span class="n">category</span><span class="p">():</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">enums</span><span class="p">)}</span>
+    <span class="n">out</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">enum</span> <span class="ow">in</span> <span class="n">enums</span><span class="p">:</span>
+        <span class="c1"># A hard raise (not an ``assert``, which ``python -O`` strips) — a stride</span>
+        <span class="c1"># overflow would silently corrupt ordering, so it must fail loudly.</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">enum</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">_CATEGORY_STRIDE</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">enum</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">enum</span><span class="p">)</span><span class="si">}</span><span class="s2"> members, exceeding the &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;canonical-order category stride (</span><span class="si">{</span><span class="n">_CATEGORY_STRIDE</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">cat_rank</span><span class="p">[</span><span class="n">enum</span><span class="o">.</span><span class="n">category</span><span class="p">()]</span> <span class="o">*</span> <span class="n">_CATEGORY_STRIDE</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">member</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">enum</span><span class="p">):</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">member</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">i</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<div class="viewcode-block" id="order_measurement_columns">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.order_measurement_columns.html#phenotypic.sdk_.order_measurement_columns">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">order_measurement_columns</span><span class="p">(</span><span class="n">columns</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Canonical measurement-frame column order.</span>
+
+<span class="sd">    ``[front metadata] -&gt; [measurements] -&gt; [MetadataImage_*] -&gt; [info block]``.</span>
+
+<span class="sd">    Front (user/experimental) metadata is cluster/definition ordered via</span>
+<span class="sd">    :func:`canonical_metadata_order`; unknown/uncategorized ``Metadata_*`` tags fall</span>
+<span class="sd">    to the end of the front block alphabetically. The framework ``MetadataImage_*``</span>
+<span class="sd">    block is per-image provenance and trails the measurements. The per-object info</span>
+<span class="sd">    block (``Object_Label`` + ``Bbox_*`` / ``Grid_*``) is detected by name and moves</span>
+<span class="sd">    last. Measurements keep their incoming relative order.</span>
+
+<span class="sd">    Pure over column-name strings, so both the pandas (``df[...]``) and polars</span>
+<span class="sd">    (``df.select(...)``) paths reuse it.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">METADATA</span><span class="p">,</span> <span class="n">OBJECT</span>
+
+    <span class="n">rank</span> <span class="o">=</span> <span class="n">canonical_metadata_order</span><span class="p">()</span>
+    <span class="n">image_prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">METADATA</span><span class="o">.</span><span class="n">category</span><span class="p">()</span><span class="si">}</span><span class="s2">_&quot;</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">)</span>
+
+    <span class="n">front</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">image_meta</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">info</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">meas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">image_prefix</span><span class="p">):</span>
+            <span class="n">image_meta</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">is_metadata_header</span><span class="p">(</span><span class="n">c</span><span class="p">):</span>
+            <span class="n">front</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">c</span> <span class="o">==</span> <span class="n">label</span> <span class="ow">or</span> <span class="n">c</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Bbox_&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">c</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Grid_&quot;</span><span class="p">):</span>
+            <span class="n">info</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">meas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+    <span class="c1"># Unknown/uncategorized Metadata_* tags sort AFTER every known header. Ranks</span>
+    <span class="c1"># use a 1000-stride, so len(rank) (~72) is not a valid &quot;after everything&quot;</span>
+    <span class="c1"># sentinel — derive it from the actual max rank.</span>
+    <span class="n">unknown_rank</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">rank</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">front</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="p">(</span><span class="n">rank</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">unknown_rank</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">c</span><span class="p">)))</span>
+    <span class="c1"># Object_Label leads the info block; Bbox_*/Grid_* keep their incoming order</span>
+    <span class="c1"># (stable sort) so the trailing block matches #180&#39;s info-frame geometry order.</span>
+    <span class="n">info</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="n">label</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">front</span> <span class="o">+</span> <span class="n">meas</span> <span class="o">+</span> <span class="n">image_meta</span> <span class="o">+</span> <span class="n">info</span></div>
+
+
+
+<div class="viewcode-block" id="metadata_category_prefixes">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.metadata_category_prefixes.html#phenotypic.sdk_.metadata_category_prefixes">[docs]</a>
+<span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">metadata_category_prefixes</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;All metadata category prefixes (e.g. ``&#39;MetadataGenetic_&#39;``) in cluster order.</span>
+
+<span class="sd">    Ordered by the bio-semantic cluster order (``_METADATA_CLUSTER_ORDER``), then</span>
+<span class="sd">    deduplicated, so callers building bucket-priority lists get a stable, canonical</span>
+<span class="sd">    ordering. REMBI is a separate axis (see ``by_module`` / ``header_to_module``).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">seen</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="n">prefixes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">_cluster_ordered_enums</span><span class="p">():</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">category</span><span class="p">()</span><span class="si">}</span><span class="s2">_&quot;</span>
+        <span class="k">if</span> <span class="n">p</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+            <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="n">prefixes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">prefixes</span><span class="p">)</span></div>
+
+
+
+<span class="c1">#: Fallback prefix for metadata columns whose bare label is not in the</span>
+<span class="c1">#: recommended vocabulary (routed to REMBI ``Uncategorized``). Every metadata</span>
+<span class="c1">#: column — per-topic or generic — belongs to the ``Metadata`` family.</span>
+<span class="n">_GENERIC_PREFIX</span> <span class="o">=</span> <span class="s2">&quot;Metadata_&quot;</span>
+
+
+<div class="viewcode-block" id="is_metadata_header">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.is_metadata_header.html#phenotypic.sdk_.is_metadata_header">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_metadata_header</span><span class="p">(</span><span class="n">col</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;True if ``col`` is a metadata-family column.</span>
+
+<span class="sd">    Matches any per-topic ``Metadata&lt;Topic&gt;_`` prefix (e.g.</span>
+<span class="sd">    ``MetadataGenetic_``) *and* the generic ``Metadata_`` fallback used for</span>
+<span class="sd">    uncategorized user metadata, per the namespace design (spec §10.3): the</span>
+<span class="sd">    whole ``Metadata`` family is recognized, measurement/identity columns</span>
+<span class="sd">    (``Shape_``, ``Object_``, ...) are not.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">_GENERIC_PREFIX</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">metadata_category_prefixes</span><span class="p">()</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ensure_metadata_prefix">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.ensure_metadata_prefix.html#phenotypic.sdk_.ensure_metadata_prefix">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">ensure_metadata_prefix</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prefix a bare metadata label with its schema category, else generic.</span>
+
+<span class="sd">    ``Strain -&gt; MetadataGenetic_Strain`` (the owning enum&#39;s category); an</span>
+<span class="sd">    unknown ``Foo -&gt; Metadata_Foo`` (kept, uncategorized). Names that already</span>
+<span class="sd">    carry a metadata prefix -- any ``Metadata&lt;Topic&gt;_`` category prefix or the</span>
+<span class="sd">    generic ``Metadata_`` -- pass through unchanged.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">is_metadata_header</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="ow">or</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">_GENERIC_PREFIX</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">name</span>
+    <span class="n">category</span> <span class="o">=</span> <span class="n">metadata_category_for_label</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">category</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">category</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_GENERIC_PREFIX</span><span class="si">}{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_label_to_category</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Map each bare metadata label to the category of the enum that owns it.</span>
+
+<span class="sd">    The first enum (in schema export order) to declare a label wins, mirroring</span>
+<span class="sd">    the recommended-vocabulary contract where labels are unique across enums.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">out</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">_metadata_enums</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">category</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<div class="viewcode-block" id="metadata_category_for_label">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.metadata_category_for_label.html#phenotypic.sdk_.metadata_category_for_label">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">metadata_category_for_label</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Category that owns a bare label (``&#39;Strain&#39; -&gt; &#39;MetadataGenetic&#39;``), or None.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_label_to_category</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">label</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="metadata_only_mask">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.metadata_only_mask.html#phenotypic.sdk_.metadata_only_mask">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">metadata_only_mask</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="s2">&quot;pd.DataFrame&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;pd.Series&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mask of ``--metadata`` phantom rows; all-``False`` when unknowable.</span>
+
+<span class="sd">    A *phantom* row is one the CLI&#39;s ``--metadata`` left join carried through</span>
+<span class="sd">    from the metadata CSV even though no measured object matched its key — every</span>
+<span class="sd">    measurement/info column on it is null. Those rows are marked with the</span>
+<span class="sd">    :attr:`~phenotypic.schema.METADATA_MATCH.METADATA_ONLY` (``QC_MetadataOnly``)</span>
+<span class="sd">    boolean column.</span>
+
+<span class="sd">    The flag is CLI-only, so public analysis/post entry points that a user calls</span>
+<span class="sd">    on a hand-built or :meth:`~phenotypic._core._image.Image.measure` frame see</span>
+<span class="sd">    no flag at all. This helper degrades to an all-``False`` mask in that case,</span>
+<span class="sd">    which reproduces exactly the pre-left-join behavior for every caller.</span>
+
+<span class="sd">    The dtype check is deliberately **strict**: only a real boolean column is</span>
+<span class="sd">    trusted. An object/string column is rejected rather than coerced, because</span>
+<span class="sd">    ``pd.Series([&quot;False&quot;, &quot;True&quot;]).astype(bool)`` is ``[True, True]`` — the</span>
+<span class="sd">    string ``&quot;False&quot;`` is truthy — which would silently mark every row a</span>
+<span class="sd">    phantom. Rejecting costs nothing (it falls back to today&#39;s behavior); a</span>
+<span class="sd">    lenient coercion would corrupt every result. Both real CLI round-trips</span>
+<span class="sd">    preserve the dtype: parquet stores a native ``bool``, and polars&#39;</span>
+<span class="sd">    ``write_csv`` emits ``true``/``false``, which ``pd.read_csv`` parses to</span>
+<span class="sd">    ``bool``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        df: Any measurement-shaped DataFrame.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Boolean Series aligned to ``df.index``: ``True`` where the row is a</span>
+<span class="sd">        metadata-only phantom, ``False`` everywhere else (and everywhere when</span>
+<span class="sd">        the flag column is absent or not a boolean column).</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.sdk_ import metadata_only_mask</span>
+<span class="sd">        &gt;&gt;&gt; # A frame from a notebook ``image.measure()`` carries no flag.</span>
+<span class="sd">        &gt;&gt;&gt; metadata_only_mask(pd.DataFrame({&quot;Shape_Area&quot;: [10.0, 12.0]})).tolist()</span>
+<span class="sd">        [False, False]</span>
+<span class="sd">        &gt;&gt;&gt; # A CLI mirror does: the undetected strain is flagged.</span>
+<span class="sd">        &gt;&gt;&gt; mirror = pd.DataFrame({&quot;QC_MetadataOnly&quot;: [False, True]})</span>
+<span class="sd">        &gt;&gt;&gt; metadata_only_mask(mirror).tolist()</span>
+<span class="sd">        [False, True]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pandas.api.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_bool_dtype</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">METADATA_MATCH</span>
+
+    <span class="n">col</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">METADATA_MATCH</span><span class="o">.</span><span class="n">METADATA_ONLY</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">is_bool_dtype</span><span class="p">(</span><span class="n">col</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">col</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

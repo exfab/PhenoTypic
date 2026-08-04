@@ -1,0 +1,6 @@
+phenotypic.sdk\_.exceptions\_.NoImageDataError
+==============================================
+
+.. currentmodule:: phenotypic.sdk_.exceptions_
+
+.. autoexception:: NoImageDataError

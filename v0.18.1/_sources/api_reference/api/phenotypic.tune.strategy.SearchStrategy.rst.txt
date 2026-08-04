@@ -1,0 +1,28 @@
+phenotypic.tune.strategy.SearchStrategy
+=======================================
+
+.. currentmodule:: phenotypic.tune.strategy
+
+.. autoclass:: SearchStrategy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SearchStrategy.__init__
+      ~SearchStrategy.is_exhausted
+      ~SearchStrategy.register_result
+      ~SearchStrategy.suggest
+   
+   
+
+   
+   
+   

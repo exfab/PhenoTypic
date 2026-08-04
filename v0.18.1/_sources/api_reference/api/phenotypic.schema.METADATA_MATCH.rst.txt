@@ -1,0 +1,104 @@
+phenotypic.schema.METADATA\_MATCH
+=================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: METADATA_MATCH
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~METADATA_MATCH.kind
+      ~METADATA_MATCH.category
+      ~METADATA_MATCH.tier
+      ~METADATA_MATCH.rembi_module
+      ~METADATA_MATCH.header_scheme
+      ~METADATA_MATCH.member_for_header
+      ~METADATA_MATCH.owns_header
+      ~METADATA_MATCH.get_labels
+      ~METADATA_MATCH.get_headers
+      ~METADATA_MATCH.rst_table
+      ~METADATA_MATCH.append_rst_to_doc
+      ~METADATA_MATCH.encode
+      ~METADATA_MATCH.replace
+      ~METADATA_MATCH.split
+      ~METADATA_MATCH.rsplit
+      ~METADATA_MATCH.join
+      ~METADATA_MATCH.capitalize
+      ~METADATA_MATCH.casefold
+      ~METADATA_MATCH.title
+      ~METADATA_MATCH.center
+      ~METADATA_MATCH.count
+      ~METADATA_MATCH.expandtabs
+      ~METADATA_MATCH.find
+      ~METADATA_MATCH.partition
+      ~METADATA_MATCH.index
+      ~METADATA_MATCH.ljust
+      ~METADATA_MATCH.lower
+      ~METADATA_MATCH.lstrip
+      ~METADATA_MATCH.rfind
+      ~METADATA_MATCH.rindex
+      ~METADATA_MATCH.rjust
+      ~METADATA_MATCH.rstrip
+      ~METADATA_MATCH.rpartition
+      ~METADATA_MATCH.splitlines
+      ~METADATA_MATCH.strip
+      ~METADATA_MATCH.swapcase
+      ~METADATA_MATCH.translate
+      ~METADATA_MATCH.upper
+      ~METADATA_MATCH.startswith
+      ~METADATA_MATCH.endswith
+      ~METADATA_MATCH.removeprefix
+      ~METADATA_MATCH.removesuffix
+      ~METADATA_MATCH.isascii
+      ~METADATA_MATCH.islower
+      ~METADATA_MATCH.isupper
+      ~METADATA_MATCH.istitle
+      ~METADATA_MATCH.isspace
+      ~METADATA_MATCH.isdecimal
+      ~METADATA_MATCH.isdigit
+      ~METADATA_MATCH.isnumeric
+      ~METADATA_MATCH.isalpha
+      ~METADATA_MATCH.isalnum
+      ~METADATA_MATCH.isidentifier
+      ~METADATA_MATCH.isprintable
+      ~METADATA_MATCH.zfill
+      ~METADATA_MATCH.format
+      ~METADATA_MATCH.format_map
+      ~METADATA_MATCH.maketrans
+      ~METADATA_MATCH.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~METADATA_MATCH.CATEGORY
+      ~METADATA_MATCH.resolved_kind
+      ~METADATA_MATCH.resolved_tier
+      ~METADATA_MATCH.resolved_rembi_module
+      ~METADATA_MATCH.use_label
+      ~METADATA_MATCH.use_badge
+      ~METADATA_MATCH.METADATA_ONLY
+      ~METADATA_MATCH.label
+      ~METADATA_MATCH.desc
+      ~METADATA_MATCH.bio_desc
+      ~METADATA_MATCH.image
+      ~METADATA_MATCH.pair
+      ~METADATA_MATCH.tier_override
+      ~METADATA_MATCH.derivation_type
+      ~METADATA_MATCH.derives_from
+      ~METADATA_MATCH.rembi_module_override
+   
+   

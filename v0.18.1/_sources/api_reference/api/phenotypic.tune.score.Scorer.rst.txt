@@ -1,0 +1,61 @@
+phenotypic.tune.score.Scorer
+============================
+
+.. currentmodule:: phenotypic.tune.score
+
+.. autoclass:: Scorer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~Scorer.__init__
+      ~Scorer.availability
+      ~Scorer.construct
+      ~Scorer.copy
+      ~Scorer.dict
+      ~Scorer.finalize
+      ~Scorer.from_orm
+      ~Scorer.json
+      ~Scorer.model_construct
+      ~Scorer.model_copy
+      ~Scorer.model_dump
+      ~Scorer.model_dump_json
+      ~Scorer.model_json_schema
+      ~Scorer.model_parametrized_name
+      ~Scorer.model_post_init
+      ~Scorer.model_rebuild
+      ~Scorer.model_validate
+      ~Scorer.model_validate_json
+      ~Scorer.model_validate_strings
+      ~Scorer.parse_file
+      ~Scorer.parse_obj
+      ~Scorer.parse_raw
+      ~Scorer.schema
+      ~Scorer.schema_json
+      ~Scorer.score_image
+      ~Scorer.update_forward_refs
+      ~Scorer.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Scorer.model_computed_fields
+      ~Scorer.model_config
+      ~Scorer.model_extra
+      ~Scorer.model_fields
+      ~Scorer.model_fields_set
+   
+   

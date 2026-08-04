@@ -1,0 +1,6 @@
+phenotypic.sdk\_.atomic\_write\_with\_writer
+============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: atomic_write_with_writer

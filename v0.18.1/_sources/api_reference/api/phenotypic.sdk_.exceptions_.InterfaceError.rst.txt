@@ -1,0 +1,6 @@
+phenotypic.sdk\_.exceptions\_.InterfaceError
+============================================
+
+.. currentmodule:: phenotypic.sdk_.exceptions_
+
+.. autoexception:: InterfaceError

@@ -1,0 +1,304 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Tutorial 4: Building a Pipeline\n",
+    "\n",
+    "**Learning goals:**\n",
+    "\n",
+    "1. Create an `ImagePipeline` that chains multiple operations\n",
+    "2. Apply the pipeline to an image\n",
+    "3. Serialize (save) the pipeline to JSON\n",
+    "4. Reload the pipeline from JSON and re-apply it\n",
+    "\n",
+    "---\n",
+    "\n",
+    "In Tutorial 3 you applied enhancers and a detector one by one. That works, but it\n",
+    "quickly becomes tedious when your workflow has many steps. An **ImagePipeline** lets\n",
+    "you chain them into a single reusable workflow -- one object that remembers every\n",
+    "operation, every parameter, and applies them in the correct order every time."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Imports"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import phenotypic as pht\n",
+    "from phenotypic.data import load_yeast_plate\n",
+    "from phenotypic.enhance import BlurGauss, EnhanceLocalContrast\n",
+    "from phenotypic.detect import OtsuDetector"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Load the plate"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plate = load_yeast_plate()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Create a pipeline\n",
+    "\n",
+    "An `ImagePipeline` accepts a list of operations via the `ops` parameter.\n",
+    "Operations are applied in order -- enhancers first, then the detector.\n",
+    "The pipeline packages them into a single object you can apply, save, and share."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "pipeline = pht.ImagePipeline(\n",
+    "    ops=[\n",
+    "        BlurGauss(sigma=2.0),\n",
+    "        EnhanceLocalContrast(clip_limit=0.01),\n",
+    "        OtsuDetector(),\n",
+    "    ],\n",
+    "    name=\"my_first_pipeline\",\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Inspect the pipeline\n",
+    "\n",
+    "Printing a pipeline shows its full configuration as structured JSON --\n",
+    "including every operation and its parameters. This is handy for\n",
+    "double-checking your setup before you run anything."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(pipeline)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Apply the pipeline\n",
+    "\n",
+    "Call `.apply()` to run each operation in sequence. The method returns\n",
+    "the processed image. By default, `inplace=False`, so the original plate\n",
+    "is left unchanged -- a fresh copy is made internally."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "result = pipeline.apply(plate)\n",
+    "result.dash(overlay=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Well done -- you have detected colonies on the plate in a single call!\n",
+    "\n",
+    "Notice that the original `plate` still has no detection results.\n",
+    "That is the safety of `inplace=False` (the default). If you want to\n",
+    "modify the original image directly, pass `inplace=True`:\n",
+    "\n",
+    "```python\n",
+    "pipeline.apply(plate, inplace=True)  # modifies plate directly\n",
+    "```\n",
+    "\n",
+    "The default `inplace=False` is safer -- it keeps your raw data intact\n",
+    "so you can experiment freely."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Serialize the pipeline to JSON\n",
+    "\n",
+    "A key benefit of pipelines is **reproducibility**. You can save the\n",
+    "complete configuration -- operations, parameters, everything -- to a\n",
+    "JSON file. Share it with collaborators or reload it months later to\n",
+    "get the exact same results."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "pipeline_path = \"my_pipeline.json.pht-pipe\"\n",
+    "pipeline.to_json(pipeline_path)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "You can also get the JSON as a string (without saving to a file) by\n",
+    "calling `to_json()` with no arguments. Let's peek at what it looks like:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(pipeline.to_json())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Every operation class and its parameters are captured. The PhenoTypic\n",
+    "version is recorded too, so you will get a warning if you later load\n",
+    "the pipeline with a different version."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Reload the pipeline from JSON\n",
+    "\n",
+    "Use the `from_json()` class method to reconstruct a pipeline from a\n",
+    "saved file. The loaded pipeline is identical to the original."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "loaded = pht.ImagePipeline.from_json(pipeline_path)\n",
+    "print(loaded)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Apply the reloaded pipeline\n",
+    "\n",
+    "Let's confirm that the reloaded pipeline produces the same result.\n",
+    "We load a fresh plate and apply the pipeline we just deserialized."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "result2 = loaded.apply(load_yeast_plate())\n",
+    "result2.dash(overlay=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Same result -- full reproducibility. Whether you ran the pipeline\n",
+    "today or reload it next year, the output is identical."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Clean up"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "os.remove(pipeline_path)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Summary\n",
+    "\n",
+    "You have built your first `ImagePipeline`, applied it to a plate, saved\n",
+    "it to JSON, and reloaded it. Here is what you learned:\n",
+    "\n",
+    "- **`ImagePipeline(ops=[...])`** chains operations into a single reusable object.\n",
+    "- **`.apply(image)`** runs every operation in sequence and returns the processed image.\n",
+    "- **`inplace=False`** (default) keeps your original data safe; `inplace=True` modifies it directly.\n",
+    "- **`.to_json(filepath)`** saves the full pipeline configuration to a file.\n",
+    "- **`ImagePipeline.from_json(filepath)`** reconstructs an identical pipeline from that file.\n",
+    "\n",
+    "Pipelines are the core workflow tool in PhenoTypic -- they make your\n",
+    "analysis reproducible and shareable.\n",
+    "\n",
+    "---\n",
+    "\n",
+    "**Next up:** [Tutorial 5: Working with Detected Grid Plates](05_working_with_grid_plates.ipynb) --\n",
+    "learn how detected colonies can be assigned back to wells in an arrayed format."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbformat_minor": 4,
+   "pygments_lexer": "ipython3",
+   "version": "3.12.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

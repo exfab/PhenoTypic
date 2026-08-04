@@ -1,0 +1,6 @@
+phenotypic.sdk\_.paths\_fingerprint
+===================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: paths_fingerprint

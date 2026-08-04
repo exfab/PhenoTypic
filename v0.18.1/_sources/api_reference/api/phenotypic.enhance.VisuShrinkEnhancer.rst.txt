@@ -1,0 +1,73 @@
+phenotypic.enhance.VisuShrinkEnhancer
+=====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: VisuShrinkEnhancer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~VisuShrinkEnhancer.__init__
+      ~VisuShrinkEnhancer.apply
+      ~VisuShrinkEnhancer.construct
+      ~VisuShrinkEnhancer.copy
+      ~VisuShrinkEnhancer.dict
+      ~VisuShrinkEnhancer.from_json
+      ~VisuShrinkEnhancer.from_orm
+      ~VisuShrinkEnhancer.json
+      ~VisuShrinkEnhancer.model_construct
+      ~VisuShrinkEnhancer.model_copy
+      ~VisuShrinkEnhancer.model_dump
+      ~VisuShrinkEnhancer.model_dump_json
+      ~VisuShrinkEnhancer.model_json_schema
+      ~VisuShrinkEnhancer.model_parametrized_name
+      ~VisuShrinkEnhancer.model_post_init
+      ~VisuShrinkEnhancer.model_rebuild
+      ~VisuShrinkEnhancer.model_validate
+      ~VisuShrinkEnhancer.model_validate_json
+      ~VisuShrinkEnhancer.model_validate_strings
+      ~VisuShrinkEnhancer.parse_file
+      ~VisuShrinkEnhancer.parse_obj
+      ~VisuShrinkEnhancer.parse_raw
+      ~VisuShrinkEnhancer.schema
+      ~VisuShrinkEnhancer.schema_json
+      ~VisuShrinkEnhancer.to_json
+      ~VisuShrinkEnhancer.update_forward_refs
+      ~VisuShrinkEnhancer.validate
+      ~VisuShrinkEnhancer.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~VisuShrinkEnhancer.model_computed_fields
+      ~VisuShrinkEnhancer.model_config
+      ~VisuShrinkEnhancer.model_extra
+      ~VisuShrinkEnhancer.model_fields
+      ~VisuShrinkEnhancer.model_fields_set
+      ~VisuShrinkEnhancer.sigma
+      ~VisuShrinkEnhancer.wavelet
+      ~VisuShrinkEnhancer.mode
+      ~VisuShrinkEnhancer.wavelet_levels
+      ~VisuShrinkEnhancer.rescale_sigma
+      ~VisuShrinkEnhancer.norm
+      ~VisuShrinkEnhancer.use_gat
+      ~VisuShrinkEnhancer.gat_gain
+      ~VisuShrinkEnhancer.gat_mu
+      ~VisuShrinkEnhancer.gat_read_sigma
+      ~VisuShrinkEnhancer.gat_scale_factor
+   
+   

@@ -1,0 +1,108 @@
+phenotypic.schema.ColorHSV
+==========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: ColorHSV
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ColorHSV.tier
+      ~ColorHSV.kind
+      ~ColorHSV.category
+      ~ColorHSV.rembi_module
+      ~ColorHSV.header_scheme
+      ~ColorHSV.member_for_header
+      ~ColorHSV.owns_header
+      ~ColorHSV.get_labels
+      ~ColorHSV.get_headers
+      ~ColorHSV.rst_table
+      ~ColorHSV.append_rst_to_doc
+      ~ColorHSV.encode
+      ~ColorHSV.replace
+      ~ColorHSV.split
+      ~ColorHSV.rsplit
+      ~ColorHSV.join
+      ~ColorHSV.capitalize
+      ~ColorHSV.casefold
+      ~ColorHSV.title
+      ~ColorHSV.center
+      ~ColorHSV.count
+      ~ColorHSV.expandtabs
+      ~ColorHSV.find
+      ~ColorHSV.partition
+      ~ColorHSV.index
+      ~ColorHSV.ljust
+      ~ColorHSV.lower
+      ~ColorHSV.lstrip
+      ~ColorHSV.rfind
+      ~ColorHSV.rindex
+      ~ColorHSV.rjust
+      ~ColorHSV.rstrip
+      ~ColorHSV.rpartition
+      ~ColorHSV.splitlines
+      ~ColorHSV.strip
+      ~ColorHSV.swapcase
+      ~ColorHSV.translate
+      ~ColorHSV.upper
+      ~ColorHSV.startswith
+      ~ColorHSV.endswith
+      ~ColorHSV.removeprefix
+      ~ColorHSV.removesuffix
+      ~ColorHSV.isascii
+      ~ColorHSV.islower
+      ~ColorHSV.isupper
+      ~ColorHSV.istitle
+      ~ColorHSV.isspace
+      ~ColorHSV.isdecimal
+      ~ColorHSV.isdigit
+      ~ColorHSV.isnumeric
+      ~ColorHSV.isalpha
+      ~ColorHSV.isalnum
+      ~ColorHSV.isidentifier
+      ~ColorHSV.isprintable
+      ~ColorHSV.zfill
+      ~ColorHSV.format
+      ~ColorHSV.format_map
+      ~ColorHSV.maketrans
+      ~ColorHSV.robust_headers
+      ~ColorHSV.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ColorHSV.CATEGORY
+      ~ColorHSV.resolved_kind
+      ~ColorHSV.resolved_tier
+      ~ColorHSV.resolved_rembi_module
+      ~ColorHSV.use_label
+      ~ColorHSV.use_badge
+      ~ColorHSV.HUE_ROBUST_MEAN
+      ~ColorHSV.SATURATION_ROBUST_MEAN
+      ~ColorHSV.VALUE_ROBUST_MEAN
+      ~ColorHSV.HSV_CONE_VARIANCE
+      ~ColorHSV.label
+      ~ColorHSV.desc
+      ~ColorHSV.bio_desc
+      ~ColorHSV.image
+      ~ColorHSV.pair
+      ~ColorHSV.tier_override
+      ~ColorHSV.derivation_type
+      ~ColorHSV.derives_from
+      ~ColorHSV.rembi_module_override
+   
+   

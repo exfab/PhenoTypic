@@ -1,0 +1,6 @@
+phenotypic.sdk\_.exceptions\_.InvalidMapValueError
+==================================================
+
+.. currentmodule:: phenotypic.sdk_.exceptions_
+
+.. autoexception:: InvalidMapValueError

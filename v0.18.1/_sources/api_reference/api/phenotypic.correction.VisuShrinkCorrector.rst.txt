@@ -1,0 +1,74 @@
+phenotypic.correction.VisuShrinkCorrector
+=========================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: VisuShrinkCorrector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~VisuShrinkCorrector.__init__
+      ~VisuShrinkCorrector.apply
+      ~VisuShrinkCorrector.construct
+      ~VisuShrinkCorrector.copy
+      ~VisuShrinkCorrector.dict
+      ~VisuShrinkCorrector.from_json
+      ~VisuShrinkCorrector.from_orm
+      ~VisuShrinkCorrector.json
+      ~VisuShrinkCorrector.model_construct
+      ~VisuShrinkCorrector.model_copy
+      ~VisuShrinkCorrector.model_dump
+      ~VisuShrinkCorrector.model_dump_json
+      ~VisuShrinkCorrector.model_json_schema
+      ~VisuShrinkCorrector.model_parametrized_name
+      ~VisuShrinkCorrector.model_post_init
+      ~VisuShrinkCorrector.model_rebuild
+      ~VisuShrinkCorrector.model_validate
+      ~VisuShrinkCorrector.model_validate_json
+      ~VisuShrinkCorrector.model_validate_strings
+      ~VisuShrinkCorrector.parse_file
+      ~VisuShrinkCorrector.parse_obj
+      ~VisuShrinkCorrector.parse_raw
+      ~VisuShrinkCorrector.schema
+      ~VisuShrinkCorrector.schema_json
+      ~VisuShrinkCorrector.to_json
+      ~VisuShrinkCorrector.update_forward_refs
+      ~VisuShrinkCorrector.validate
+      ~VisuShrinkCorrector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~VisuShrinkCorrector.model_computed_fields
+      ~VisuShrinkCorrector.model_config
+      ~VisuShrinkCorrector.model_extra
+      ~VisuShrinkCorrector.model_fields
+      ~VisuShrinkCorrector.model_fields_set
+      ~VisuShrinkCorrector.sigma
+      ~VisuShrinkCorrector.wavelet
+      ~VisuShrinkCorrector.mode
+      ~VisuShrinkCorrector.wavelet_levels
+      ~VisuShrinkCorrector.convert2ycbcr
+      ~VisuShrinkCorrector.rescale_sigma
+      ~VisuShrinkCorrector.norm
+      ~VisuShrinkCorrector.use_gat
+      ~VisuShrinkCorrector.gat_gain
+      ~VisuShrinkCorrector.gat_mu
+      ~VisuShrinkCorrector.gat_read_sigma
+      ~VisuShrinkCorrector.gat_scale_factor
+   
+   

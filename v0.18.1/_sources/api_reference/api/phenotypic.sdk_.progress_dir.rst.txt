@@ -1,0 +1,6 @@
+phenotypic.sdk\_.progress\_dir
+==============================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: progress_dir

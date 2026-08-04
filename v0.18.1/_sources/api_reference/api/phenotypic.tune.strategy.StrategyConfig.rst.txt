@@ -1,0 +1,60 @@
+phenotypic.tune.strategy.StrategyConfig
+=======================================
+
+.. currentmodule:: phenotypic.tune.strategy
+
+.. autoclass:: StrategyConfig
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~StrategyConfig.__init__
+      ~StrategyConfig.build
+      ~StrategyConfig.construct
+      ~StrategyConfig.copy
+      ~StrategyConfig.dict
+      ~StrategyConfig.from_orm
+      ~StrategyConfig.json
+      ~StrategyConfig.model_construct
+      ~StrategyConfig.model_copy
+      ~StrategyConfig.model_dump
+      ~StrategyConfig.model_dump_json
+      ~StrategyConfig.model_json_schema
+      ~StrategyConfig.model_parametrized_name
+      ~StrategyConfig.model_post_init
+      ~StrategyConfig.model_rebuild
+      ~StrategyConfig.model_validate
+      ~StrategyConfig.model_validate_json
+      ~StrategyConfig.model_validate_strings
+      ~StrategyConfig.parse_file
+      ~StrategyConfig.parse_obj
+      ~StrategyConfig.parse_raw
+      ~StrategyConfig.schema
+      ~StrategyConfig.schema_json
+      ~StrategyConfig.update_forward_refs
+      ~StrategyConfig.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~StrategyConfig.model_computed_fields
+      ~StrategyConfig.model_config
+      ~StrategyConfig.model_extra
+      ~StrategyConfig.model_fields
+      ~StrategyConfig.model_fields_set
+      ~StrategyConfig.seed
+   
+   

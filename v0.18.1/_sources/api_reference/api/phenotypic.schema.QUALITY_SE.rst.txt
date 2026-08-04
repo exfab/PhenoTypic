@@ -1,0 +1,107 @@
+phenotypic.schema.QUALITY\_SE
+=============================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: QUALITY_SE
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~QUALITY_SE.kind
+      ~QUALITY_SE.category
+      ~QUALITY_SE.tier
+      ~QUALITY_SE.rembi_module
+      ~QUALITY_SE.header_scheme
+      ~QUALITY_SE.member_for_header
+      ~QUALITY_SE.owns_header
+      ~QUALITY_SE.get_labels
+      ~QUALITY_SE.get_headers
+      ~QUALITY_SE.rst_table
+      ~QUALITY_SE.append_rst_to_doc
+      ~QUALITY_SE.encode
+      ~QUALITY_SE.replace
+      ~QUALITY_SE.split
+      ~QUALITY_SE.rsplit
+      ~QUALITY_SE.join
+      ~QUALITY_SE.capitalize
+      ~QUALITY_SE.casefold
+      ~QUALITY_SE.title
+      ~QUALITY_SE.center
+      ~QUALITY_SE.count
+      ~QUALITY_SE.expandtabs
+      ~QUALITY_SE.find
+      ~QUALITY_SE.partition
+      ~QUALITY_SE.index
+      ~QUALITY_SE.ljust
+      ~QUALITY_SE.lower
+      ~QUALITY_SE.lstrip
+      ~QUALITY_SE.rfind
+      ~QUALITY_SE.rindex
+      ~QUALITY_SE.rjust
+      ~QUALITY_SE.rstrip
+      ~QUALITY_SE.rpartition
+      ~QUALITY_SE.splitlines
+      ~QUALITY_SE.strip
+      ~QUALITY_SE.swapcase
+      ~QUALITY_SE.translate
+      ~QUALITY_SE.upper
+      ~QUALITY_SE.startswith
+      ~QUALITY_SE.endswith
+      ~QUALITY_SE.removeprefix
+      ~QUALITY_SE.removesuffix
+      ~QUALITY_SE.isascii
+      ~QUALITY_SE.islower
+      ~QUALITY_SE.isupper
+      ~QUALITY_SE.istitle
+      ~QUALITY_SE.isspace
+      ~QUALITY_SE.isdecimal
+      ~QUALITY_SE.isdigit
+      ~QUALITY_SE.isnumeric
+      ~QUALITY_SE.isalpha
+      ~QUALITY_SE.isalnum
+      ~QUALITY_SE.isidentifier
+      ~QUALITY_SE.isprintable
+      ~QUALITY_SE.zfill
+      ~QUALITY_SE.format
+      ~QUALITY_SE.format_map
+      ~QUALITY_SE.maketrans
+      ~QUALITY_SE.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QUALITY_SE.CATEGORY
+      ~QUALITY_SE.resolved_kind
+      ~QUALITY_SE.resolved_tier
+      ~QUALITY_SE.resolved_rembi_module
+      ~QUALITY_SE.use_label
+      ~QUALITY_SE.use_badge
+      ~QUALITY_SE.VALUE
+      ~QUALITY_SE.MEAN
+      ~QUALITY_SE.CV
+      ~QUALITY_SE.NUM_REPLICATES
+      ~QUALITY_SE.label
+      ~QUALITY_SE.desc
+      ~QUALITY_SE.bio_desc
+      ~QUALITY_SE.image
+      ~QUALITY_SE.pair
+      ~QUALITY_SE.tier_override
+      ~QUALITY_SE.derivation_type
+      ~QUALITY_SE.derives_from
+      ~QUALITY_SE.rembi_module_override
+   
+   

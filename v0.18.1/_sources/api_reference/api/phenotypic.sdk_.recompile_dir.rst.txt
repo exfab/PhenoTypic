@@ -1,0 +1,6 @@
+phenotypic.sdk\_.recompile\_dir
+===============================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: recompile_dir

@@ -1,0 +1,62 @@
+phenotypic.abc\_.GridObjectRefiner
+==================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: GridObjectRefiner
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridObjectRefiner.__init__
+      ~GridObjectRefiner.apply
+      ~GridObjectRefiner.construct
+      ~GridObjectRefiner.copy
+      ~GridObjectRefiner.dict
+      ~GridObjectRefiner.from_json
+      ~GridObjectRefiner.from_orm
+      ~GridObjectRefiner.json
+      ~GridObjectRefiner.model_construct
+      ~GridObjectRefiner.model_copy
+      ~GridObjectRefiner.model_dump
+      ~GridObjectRefiner.model_dump_json
+      ~GridObjectRefiner.model_json_schema
+      ~GridObjectRefiner.model_parametrized_name
+      ~GridObjectRefiner.model_post_init
+      ~GridObjectRefiner.model_rebuild
+      ~GridObjectRefiner.model_validate
+      ~GridObjectRefiner.model_validate_json
+      ~GridObjectRefiner.model_validate_strings
+      ~GridObjectRefiner.parse_file
+      ~GridObjectRefiner.parse_obj
+      ~GridObjectRefiner.parse_raw
+      ~GridObjectRefiner.schema
+      ~GridObjectRefiner.schema_json
+      ~GridObjectRefiner.to_json
+      ~GridObjectRefiner.update_forward_refs
+      ~GridObjectRefiner.validate
+      ~GridObjectRefiner.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GridObjectRefiner.model_computed_fields
+      ~GridObjectRefiner.model_config
+      ~GridObjectRefiner.model_extra
+      ~GridObjectRefiner.model_fields
+      ~GridObjectRefiner.model_fields_set
+   
+   

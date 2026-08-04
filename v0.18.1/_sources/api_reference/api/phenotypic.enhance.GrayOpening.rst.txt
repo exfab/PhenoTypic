@@ -1,0 +1,65 @@
+phenotypic.enhance.GrayOpening
+==============================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: GrayOpening
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GrayOpening.__init__
+      ~GrayOpening.apply
+      ~GrayOpening.construct
+      ~GrayOpening.copy
+      ~GrayOpening.dict
+      ~GrayOpening.from_json
+      ~GrayOpening.from_orm
+      ~GrayOpening.json
+      ~GrayOpening.model_construct
+      ~GrayOpening.model_copy
+      ~GrayOpening.model_dump
+      ~GrayOpening.model_dump_json
+      ~GrayOpening.model_json_schema
+      ~GrayOpening.model_parametrized_name
+      ~GrayOpening.model_post_init
+      ~GrayOpening.model_rebuild
+      ~GrayOpening.model_validate
+      ~GrayOpening.model_validate_json
+      ~GrayOpening.model_validate_strings
+      ~GrayOpening.parse_file
+      ~GrayOpening.parse_obj
+      ~GrayOpening.parse_raw
+      ~GrayOpening.schema
+      ~GrayOpening.schema_json
+      ~GrayOpening.to_json
+      ~GrayOpening.update_forward_refs
+      ~GrayOpening.validate
+      ~GrayOpening.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GrayOpening.model_computed_fields
+      ~GrayOpening.model_config
+      ~GrayOpening.model_extra
+      ~GrayOpening.model_fields
+      ~GrayOpening.model_fields_set
+      ~GrayOpening.shape
+      ~GrayOpening.width
+      ~GrayOpening.n_iter
+   
+   

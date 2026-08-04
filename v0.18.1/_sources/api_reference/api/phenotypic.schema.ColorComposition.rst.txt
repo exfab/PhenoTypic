@@ -1,0 +1,116 @@
+phenotypic.schema.ColorComposition
+==================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: ColorComposition
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ColorComposition.tier
+      ~ColorComposition.kind
+      ~ColorComposition.category
+      ~ColorComposition.rembi_module
+      ~ColorComposition.header_scheme
+      ~ColorComposition.member_for_header
+      ~ColorComposition.owns_header
+      ~ColorComposition.get_labels
+      ~ColorComposition.get_headers
+      ~ColorComposition.rst_table
+      ~ColorComposition.append_rst_to_doc
+      ~ColorComposition.encode
+      ~ColorComposition.replace
+      ~ColorComposition.split
+      ~ColorComposition.rsplit
+      ~ColorComposition.join
+      ~ColorComposition.capitalize
+      ~ColorComposition.casefold
+      ~ColorComposition.title
+      ~ColorComposition.center
+      ~ColorComposition.count
+      ~ColorComposition.expandtabs
+      ~ColorComposition.find
+      ~ColorComposition.partition
+      ~ColorComposition.index
+      ~ColorComposition.ljust
+      ~ColorComposition.lower
+      ~ColorComposition.lstrip
+      ~ColorComposition.rfind
+      ~ColorComposition.rindex
+      ~ColorComposition.rjust
+      ~ColorComposition.rstrip
+      ~ColorComposition.rpartition
+      ~ColorComposition.splitlines
+      ~ColorComposition.strip
+      ~ColorComposition.swapcase
+      ~ColorComposition.translate
+      ~ColorComposition.upper
+      ~ColorComposition.startswith
+      ~ColorComposition.endswith
+      ~ColorComposition.removeprefix
+      ~ColorComposition.removesuffix
+      ~ColorComposition.isascii
+      ~ColorComposition.islower
+      ~ColorComposition.isupper
+      ~ColorComposition.istitle
+      ~ColorComposition.isspace
+      ~ColorComposition.isdecimal
+      ~ColorComposition.isdigit
+      ~ColorComposition.isnumeric
+      ~ColorComposition.isalpha
+      ~ColorComposition.isalnum
+      ~ColorComposition.isidentifier
+      ~ColorComposition.isprintable
+      ~ColorComposition.zfill
+      ~ColorComposition.format
+      ~ColorComposition.format_map
+      ~ColorComposition.maketrans
+      ~ColorComposition.all_headers
+      ~ColorComposition.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ColorComposition.CATEGORY
+      ~ColorComposition.resolved_kind
+      ~ColorComposition.resolved_tier
+      ~ColorComposition.resolved_rembi_module
+      ~ColorComposition.use_label
+      ~ColorComposition.use_badge
+      ~ColorComposition.BLACK_PCT
+      ~ColorComposition.WHITE_PCT
+      ~ColorComposition.GRAY_PCT
+      ~ColorComposition.PINK_PCT
+      ~ColorComposition.BROWN_PCT
+      ~ColorComposition.RED_PCT
+      ~ColorComposition.ORANGE_PCT
+      ~ColorComposition.YELLOW_PCT
+      ~ColorComposition.GREEN_PCT
+      ~ColorComposition.CYAN_PCT
+      ~ColorComposition.BLUE_PCT
+      ~ColorComposition.PURPLE_PCT
+      ~ColorComposition.label
+      ~ColorComposition.desc
+      ~ColorComposition.bio_desc
+      ~ColorComposition.image
+      ~ColorComposition.pair
+      ~ColorComposition.tier_override
+      ~ColorComposition.derivation_type
+      ~ColorComposition.derives_from
+      ~ColorComposition.rembi_module_override
+   
+   

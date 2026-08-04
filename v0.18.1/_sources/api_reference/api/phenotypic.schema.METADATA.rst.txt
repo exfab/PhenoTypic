@@ -1,0 +1,111 @@
+phenotypic.schema.METADATA
+==========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: METADATA
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~METADATA.kind
+      ~METADATA.category
+      ~METADATA.tier
+      ~METADATA.rembi_module
+      ~METADATA.header_scheme
+      ~METADATA.member_for_header
+      ~METADATA.owns_header
+      ~METADATA.get_labels
+      ~METADATA.get_headers
+      ~METADATA.rst_table
+      ~METADATA.append_rst_to_doc
+      ~METADATA.encode
+      ~METADATA.replace
+      ~METADATA.split
+      ~METADATA.rsplit
+      ~METADATA.join
+      ~METADATA.capitalize
+      ~METADATA.casefold
+      ~METADATA.title
+      ~METADATA.center
+      ~METADATA.count
+      ~METADATA.expandtabs
+      ~METADATA.find
+      ~METADATA.partition
+      ~METADATA.index
+      ~METADATA.ljust
+      ~METADATA.lower
+      ~METADATA.lstrip
+      ~METADATA.rfind
+      ~METADATA.rindex
+      ~METADATA.rjust
+      ~METADATA.rstrip
+      ~METADATA.rpartition
+      ~METADATA.splitlines
+      ~METADATA.strip
+      ~METADATA.swapcase
+      ~METADATA.translate
+      ~METADATA.upper
+      ~METADATA.startswith
+      ~METADATA.endswith
+      ~METADATA.removeprefix
+      ~METADATA.removesuffix
+      ~METADATA.isascii
+      ~METADATA.islower
+      ~METADATA.isupper
+      ~METADATA.istitle
+      ~METADATA.isspace
+      ~METADATA.isdecimal
+      ~METADATA.isdigit
+      ~METADATA.isnumeric
+      ~METADATA.isalpha
+      ~METADATA.isalnum
+      ~METADATA.isidentifier
+      ~METADATA.isprintable
+      ~METADATA.zfill
+      ~METADATA.format
+      ~METADATA.format_map
+      ~METADATA.maketrans
+      ~METADATA.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~METADATA.CATEGORY
+      ~METADATA.resolved_kind
+      ~METADATA.resolved_tier
+      ~METADATA.resolved_rembi_module
+      ~METADATA.use_label
+      ~METADATA.use_badge
+      ~METADATA.UUID
+      ~METADATA.IMAGE_NAME
+      ~METADATA.PARENT_IMAGE_NAME
+      ~METADATA.PARENT_UUID
+      ~METADATA.IMFORMAT
+      ~METADATA.IMAGE_TYPE
+      ~METADATA.BIT_DEPTH
+      ~METADATA.SUFFIX
+      ~METADATA.label
+      ~METADATA.desc
+      ~METADATA.bio_desc
+      ~METADATA.image
+      ~METADATA.pair
+      ~METADATA.tier_override
+      ~METADATA.derivation_type
+      ~METADATA.derives_from
+      ~METADATA.rembi_module_override
+   
+   

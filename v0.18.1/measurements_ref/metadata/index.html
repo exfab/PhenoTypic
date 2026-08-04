@@ -1,0 +1,1143 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Metadata &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'measurements_ref/metadata/index';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.18.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.18.1/measurements_ref/metadata/index.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="API Reference" href="../../api_reference/index.html" />
+    <link rel="prev" title="Measurements" href="../index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.18.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="#">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="#">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Metadata</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Measurements</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Metadata</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="metadata">
+<h1>Metadata<a class="headerlink" href="#metadata" title="Link to this heading">#</a></h1>
+<section id="measurement-info-metadata">
+<span id="id1"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.METADATA.html"><span class="doc">METADATA</span></a><a class="headerlink" href="#measurement-info-metadata" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table" id="id2">
+<caption><span class="caption-text">Category: <strong>MetadataImage</strong></span><a class="headerlink" href="#id2" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Column label</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataImage_UUID</span></code></p></td>
+<td><p>The unique identifier of the image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataImage_ImageName</span></code></p></td>
+<td><p>The name of the image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataImage_ParentImageName</span></code></p></td>
+<td><p>The name of the parent image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataImage_ParentUUID</span></code></p></td>
+<td><p>The UUID of the parent image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataImage_ImageFormat</span></code></p></td>
+<td><p>The format of the image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataImage_ImageType</span></code></p></td>
+<td><p>The type of the image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataImage_BitDepth</span></code></p></td>
+<td><p>The bit depth of the image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataImage_FileSuffix</span></code></p></td>
+<td><p>The file suffix of the original file the image was imported from</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="acquisition-metadata">
+<span id="measurement-info-acquisition-metadata"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.ACQUISITION_METADATA.html"><span class="doc">ACQUISITION_METADATA</span></a><a class="headerlink" href="#acquisition-metadata" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table" id="id3">
+<caption><span class="caption-text">Category: <strong>MetadataAcquisition</strong></span><a class="headerlink" href="#id3" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Column label</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataAcquisition_ImagingDate</span></code></p></td>
+<td><p>Date the image was acquired.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataAcquisition_Instrument</span></code></p></td>
+<td><p>Imaging instrument or scanner model.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataAcquisition_Experimenter</span></code></p></td>
+<td><p>Person who acquired the image or ran the experiment.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataAcquisition_Resolution</span></code></p></td>
+<td><p>Image resolution (e.g. DPI or pixels per mm).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataAcquisition_ExposureTime</span></code></p></td>
+<td><p>Camera exposure time.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="condition-metadata">
+<span id="measurement-info-condition-metadata"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.CONDITION_METADATA.html"><span class="doc">CONDITION_METADATA</span></a><a class="headerlink" href="#condition-metadata" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table" id="id4">
+<caption><span class="caption-text">Category: <strong>MetadataCondition</strong></span><a class="headerlink" href="#id4" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Column label</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Media</span></code></p></td>
+<td><p>Growth medium name (e.g. YPD, SC, LB).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_CarbonSource</span></code></p></td>
+<td><p>Primary carbon source (e.g. glucose, galactose).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_NitrogenSource</span></code></p></td>
+<td><p>Primary nitrogen source.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_pH</span></code></p></td>
+<td><p>pH of the growth medium.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Supplement</span></code></p></td>
+<td><p>Medium supplement or additive.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Antibiotic</span></code></p></td>
+<td><p>Antibiotic added to the medium.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Inducer</span></code></p></td>
+<td><p>Inducing agent (e.g. galactose, IPTG, doxycycline).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Treatment</span></code></p></td>
+<td><p>Experimental treatment or perturbation.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Compound</span></code></p></td>
+<td><p>Chemical compound or drug applied.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Concentration</span></code></p></td>
+<td><p>Concentration of the compound or treatment.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Dose</span></code></p></td>
+<td><p>Dose applied to the sample.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Stress</span></code></p></td>
+<td><p>Applied stress condition (e.g. heat, osmotic, oxidative).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="culture-metadata">
+<span id="measurement-info-culture-metadata"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.CULTURE_METADATA.html"><span class="doc">CULTURE_METADATA</span></a><a class="headerlink" href="#culture-metadata" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table" id="id5">
+<caption><span class="caption-text">Category: <strong>MetadataCulture</strong></span><a class="headerlink" href="#id5" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Column label</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Temperature</span></code></p></td>
+<td><p>Culture temperature in degrees Celsius.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Time</span></code></p></td>
+<td><p>Elapsed growth time.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_TimeUnit</span></code></p></td>
+<td><p>Unit for the Time value (e.g. hours, days).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Timepoint</span></code></p></td>
+<td><p>Human-readable label for a discrete timepoint in a time series (e.g. ‘24h’, ‘stationary’); may be non-numeric. For the integer capture ordinal, use FrameIndex.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_FrameIndex</span></code></p></td>
+<td><p>1-based ordinal index of the image within the time-course capture sequence; the monotonic-integer companion to the free-form Timepoint label.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Day</span></code></p></td>
+<td><p>Day index of the experiment.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Generation</span></code></p></td>
+<td><p>Generation or passage number.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Humidity</span></code></p></td>
+<td><p>Relative humidity during culture.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Atmosphere</span></code></p></td>
+<td><p>Atmospheric condition (e.g. aerobic, anaerobic).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="experiment-metadata">
+<span id="measurement-info-experiment-metadata"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.EXPERIMENT_METADATA.html"><span class="doc">EXPERIMENT_METADATA</span></a><a class="headerlink" href="#experiment-metadata" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table" id="id6">
+<caption><span class="caption-text">Category: <strong>MetadataExperiment</strong></span><a class="headerlink" href="#id6" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Column label</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataExperiment_ExperimentID</span></code></p></td>
+<td><p>Unique identifier for the experiment.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataExperiment_Project</span></code></p></td>
+<td><p>Project name or identifier.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataExperiment_Dataset</span></code></p></td>
+<td><p>Dataset name (matches the CLI-emitted MetadataExperiment_Dataset column).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataExperiment_Protocol</span></code></p></td>
+<td><p>Protocol name or version followed.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataExperiment_Notes</span></code></p></td>
+<td><p>Free-text notes or comments.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="genetic-metadata">
+<span id="measurement-info-genetic-metadata"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.GENETIC_METADATA.html"><span class="doc">GENETIC_METADATA</span></a><a class="headerlink" href="#genetic-metadata" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table" id="id7">
+<caption><span class="caption-text">Category: <strong>MetadataGenetic</strong></span><a class="headerlink" href="#id7" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Column label</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Organism</span></code></p></td>
+<td><p>Species or organism name (e.g. Saccharomyces cerevisiae).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Strain</span></code></p></td>
+<td><p>Strain name or identifier (e.g. BY4741).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Genotype</span></code></p></td>
+<td><p>Genotype description of the strain.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Background</span></code></p></td>
+<td><p>Genetic background or parent strain.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Allele</span></code></p></td>
+<td><p>Specific allele or mutation under study.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Plasmid</span></code></p></td>
+<td><p>Plasmid carried by the sample.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataGenetic_SelectionMarker</span></code></p></td>
+<td><p>Selectable marker gene (e.g. URA3, KanMX).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataGenetic_MatingType</span></code></p></td>
+<td><p>Mating type for yeast (e.g. MATa, MATalpha).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Ploidy</span></code></p></td>
+<td><p>Ploidy of the organism (e.g. haploid, diploid).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="plate-metadata">
+<span id="measurement-info-plate-metadata"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.PLATE_METADATA.html"><span class="doc">PLATE_METADATA</span></a><a class="headerlink" href="#plate-metadata" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table" id="id8">
+<caption><span class="caption-text">Category: <strong>MetadataPlate</strong></span><a class="headerlink" href="#id8" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Column label</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataPlate_PlateID</span></code></p></td>
+<td><p>Identifier of the assay/imaging plate.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataPlate_Batch</span></code></p></td>
+<td><p>Experimental batch grouping.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataPlate_ArrayDensity</span></code></p></td>
+<td><p>Colony array density, i.e. wells per plate (e.g. 96, 384, 1536).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataPlate_IncubatorPosition</span></code></p></td>
+<td><p>Physical position of the plate within the incubator.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="sample-metadata">
+<span id="measurement-info-sample-metadata"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.SAMPLE_METADATA.html"><span class="doc">SAMPLE_METADATA</span></a><a class="headerlink" href="#sample-metadata" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table" id="id9">
+<caption><span class="caption-text">Category: <strong>MetadataSample</strong></span><a class="headerlink" href="#id9" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Column label</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_SampleID</span></code></p></td>
+<td><p>Unique identifier for the biological sample.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_BioReplicate</span></code></p></td>
+<td><p>Biological replicate identifier. Biological replicates are parallel measurements of biologically distinct samples that capture random biological variation.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_CondReplicate</span></code></p></td>
+<td><p>Experimental Conditional replicate identifier. An example  of an experimental replicate would be a pinned colony of  the same strain on another plate being subjected to the same conditions.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_TechReplicate</span></code></p></td>
+<td><p>Technical replicate identifier.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_Clone</span></code></p></td>
+<td><p>Clone or isolate identifier.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_LibraryID</span></code></p></td>
+<td><p>Source library or collection identifier (e.g. a deletion collection).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_SourcePlate</span></code></p></td>
+<td><p>Identifier of the source plate the sample was pinned from.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_SourceWell</span></code></p></td>
+<td><p>Well position on the source plate (e.g. A1). This can potentially be distinct from <cite>Grid</cite> values when using irregular or sparse grid parameters.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_Barcode</span></code></p></td>
+<td><p>Molecular or sample barcode.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_Control</span></code></p></td>
+<td><p>Control designation (e.g. positive, negative, blank).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="study-metadata">
+<span id="measurement-info-study-metadata"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.STUDY_METADATA.html"><span class="doc">STUDY_METADATA</span></a><a class="headerlink" href="#study-metadata" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table" id="id10">
+<caption><span class="caption-text">Category: <strong>MetadataStudy</strong></span><a class="headerlink" href="#id10" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Column label</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataStudy_Title</span></code></p></td>
+<td><p>Study title.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataStudy_Description</span></code></p></td>
+<td><p>Free-text study description.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataStudy_PrivateUntilDate</span></code></p></td>
+<td><p>Embargo date until which the study stays private.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataStudy_Keywords</span></code></p></td>
+<td><p>Keywords describing the study.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataStudy_Author</span></code></p></td>
+<td><p>Study author(s); delimited string when multiple.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataStudy_License</span></code></p></td>
+<td><p>Data license (e.g. CC0, CC-BY-4.0).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataStudy_Funding</span></code></p></td>
+<td><p>Funding statement or grant reference(s).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataStudy_Publications</span></code></p></td>
+<td><p>Associated publication(s) or DOI(s).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataStudy_Links</span></code></p></td>
+<td><p>Related links or external resource URLs.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataStudy_Acknowledgements</span></code></p></td>
+<td><p>Acknowledgements text.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#measurement-info-metadata"><span class="xref std std-doc">METADATA</span></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#acquisition-metadata"><span class="xref std std-doc">ACQUISITION_METADATA</span></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#condition-metadata"><span class="xref std std-doc">CONDITION_METADATA</span></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#culture-metadata"><span class="xref std std-doc">CULTURE_METADATA</span></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#experiment-metadata"><span class="xref std std-doc">EXPERIMENT_METADATA</span></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#genetic-metadata"><span class="xref std std-doc">GENETIC_METADATA</span></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#plate-metadata"><span class="xref std std-doc">PLATE_METADATA</span></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sample-metadata"><span class="xref std std-doc">SAMPLE_METADATA</span></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#study-metadata"><span class="xref std std-doc">STUDY_METADATA</span></a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/measurements_ref/metadata/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

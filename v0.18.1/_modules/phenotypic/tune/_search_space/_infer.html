@@ -1,0 +1,1444 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.tune._search_space._infer &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/tune/_search_space/_infer';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.18.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.18.1/_modules/phenotypic/tune/_search_space/_infer.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.18.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.tune._search_space._infer</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.tune._search_space._infer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;``infer_search_space`` — mine a pipeline&#39;s pydantic fields into a proposal.</span>
+
+<span class="sd">This module implements the **flat, single-op** Tier-2 dispatch (the §4 heuristic</span>
+<span class="sd">table of ``search-space-inference.md``) plus the Tier-1 ``TuneSpec`` override</span>
+<span class="sd">(§3), and **one-level nested-op recursion** (§6): when ``recurse_nested=True``</span>
+<span class="sd">(the default), a list-valued ``OperationField`` is recursed exactly one level,</span>
+<span class="sd">emitting ``&quot;&lt;pos&gt;.&lt;field&gt;[&lt;i&gt;].&lt;leaf&gt;&quot;`` knobs. Single operation-valued fields</span>
+<span class="sd">are recorded as excluded because their bare dotted keys are not parseable by the</span>
+<span class="sd">runtime key grammar. The recursion is strictly additive; ``recurse_nested=False``</span>
+<span class="sd">yields the flat-only proposal.</span>
+
+<span class="sd">The inference core, :func:`_infer_field`, maps one operation field to either a</span>
+<span class="sd">:class:`~phenotypic.tune.Knob` (a tunable domain) or an</span>
+<span class="sd">:class:`~phenotypic.tune.Excluded` record (a field that could not / should not be</span>
+<span class="sd">tuned). :func:`infer_search_space` walks a live ``ImagePipeline``&#39;s ops in</span>
+<span class="sd">position order, builds the flat ``&quot;&lt;pos&gt;.&lt;field&gt;&quot;`` keys, and assembles the</span>
+<span class="sd">:class:`~phenotypic.tune.InferredSearchSpace` proposal.</span>
+
+<span class="sd">Example:</span>
+<span class="sd">    ``BlurGauss.sigma`` carries a ``TuneSpec`` (the annotations workstream), so</span>
+<span class="sd">    it resolves via Tier-1; ``ChanVeseDetector.mu`` is still un-annotated and</span>
+<span class="sd">    exercises the Tier-2 unbounded heuristic ``[d/4, d·4]``.</span>
+
+<span class="sd">    &gt;&gt;&gt; from phenotypic import ImagePipeline</span>
+<span class="sd">    &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
+<span class="sd">    &gt;&gt;&gt; from phenotypic.detect import ChanVeseDetector</span>
+<span class="sd">    &gt;&gt;&gt; from phenotypic.tune import infer_search_space</span>
+<span class="sd">    &gt;&gt;&gt; pipe = ImagePipeline(ops=[BlurGauss(sigma=2.0), ChanVeseDetector()])</span>
+<span class="sd">    &gt;&gt;&gt; sigma = next(k for k in infer_search_space(pipe).knobs if k.key == &quot;0.sigma&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; (sigma.source, sigma.domain.low, sigma.domain.high)</span>
+<span class="sd">    (&#39;tune_spec&#39;, 0.5, 5.0)</span>
+<span class="sd">    &gt;&gt;&gt; mu = next(k for k in infer_search_space(pipe).knobs if k.key == &quot;1.mu&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; mu.source</span>
+<span class="sd">    &#39;unbounded_heuristic&#39;</span>
+<span class="sd">    &gt;&gt;&gt; infer_search_space(pipe).needs_review</span>
+<span class="sd">    True</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">enum</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">types</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">typing</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Final</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">get_args</span><span class="p">,</span> <span class="n">get_origin</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">annotated_types</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">at</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._domains</span><span class="w"> </span><span class="kn">import</span> <span class="n">Categorical</span><span class="p">,</span> <span class="n">FloatRange</span><span class="p">,</span> <span class="n">IntRange</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._inferred</span><span class="w"> </span><span class="kn">import</span> <span class="n">Excluded</span><span class="p">,</span> <span class="n">ExcludeReason</span><span class="p">,</span> <span class="n">InferredSearchSpace</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._space</span><span class="w"> </span><span class="kn">import</span> <span class="n">Knob</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._targets</span><span class="w"> </span><span class="kn">import</span> <span class="n">KnobTarget</span><span class="p">,</span> <span class="n">parse_key</span><span class="p">,</span> <span class="n">with_op_class</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tune_spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
+
+<span class="c1">#: Multiplicative half-window for the unbounded heuristic: ``[d/f, d·f]``.</span>
+<span class="n">_DEFAULT_UNBOUNDED_FACTOR</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">4.0</span>
+<span class="c1">#: Span ratio (high/low) above which a range auto-trips ``log=True`` — &quot;spans</span>
+<span class="c1">#: more than one order of magnitude&quot; for the unbounded heuristic.</span>
+<span class="n">_LOG_SPAN_THRESHOLD</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">10.0</span>
+<span class="c1">#: Span ratio above which a *bounded* range auto-trips ``log=True`` (~100×).</span>
+<span class="n">_BOUNDED_LOG_SPAN_THRESHOLD</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">100.0</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_union_origin</span><span class="p">(</span><span class="n">origin</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``True`` for both ``typing.Union`` and PEP 604 unions.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">origin</span> <span class="ow">is</span> <span class="n">Union</span> <span class="ow">or</span> <span class="n">origin</span> <span class="ow">is</span> <span class="n">types</span><span class="o">.</span><span class="n">UnionType</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_walk_metadata</span><span class="p">(</span><span class="n">annotation</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Collect ``Annotated`` extras from anywhere in the annotation tree.</span>
+
+<span class="sd">    pydantic surfaces only the *outermost* ``Annotated`` extras in</span>
+<span class="sd">    ``model_fields[name].metadata``; a marker nested under ``Optional`` (the</span>
+<span class="sd">    natural ``Optional[Annotated[float, TuneSpec(...)]]``) would be missed. This</span>
+<span class="sd">    walks the tree — every ``__metadata__`` chain and ``get_args`` branch.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        annotation: A (possibly wrapped / nested) type annotation.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        All ``Annotated`` extra objects found at any depth.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">found</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">found</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">annotation</span><span class="p">,</span> <span class="s2">&quot;__metadata__&quot;</span><span class="p">,</span> <span class="p">()))</span>
+    <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">get_args</span><span class="p">(</span><span class="n">annotation</span><span class="p">):</span>
+        <span class="n">found</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_walk_metadata</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">found</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_has_marker</span><span class="p">(</span><span class="n">metadata</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``True`` if any metadata object has class ``name``.</span>
+
+<span class="sd">    Markers (``TuneSpec`` / ``_ColumnRefMarker`` / ``_OperationFieldMarker``)</span>
+<span class="sd">    are matched by class *name* rather than ``isinstance`` so this module never</span>
+<span class="sd">    has to import the GUI / tools markers — it reads only their presence.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">==</span> <span class="n">name</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_strip_optional</span><span class="p">(</span><span class="n">annotation</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``(inner, is_multi_union)`` for a ``T | None`` annotation.</span>
+
+<span class="sd">    For ``T | None`` (a union whose only non-``None`` member is ``T``) returns</span>
+<span class="sd">    ``(T, False)``. For a multi-type union with no ``None`` collapse target</span>
+<span class="sd">    returns ``(annotation, True)`` flagging it unsupported. Non-unions pass</span>
+<span class="sd">    through as ``(annotation, False)``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">origin</span> <span class="o">=</span> <span class="n">get_origin</span><span class="p">(</span><span class="n">annotation</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_union_origin</span><span class="p">(</span><span class="n">origin</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">annotation</span><span class="p">,</span> <span class="kc">False</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">get_args</span><span class="p">(</span><span class="n">annotation</span><span class="p">)</span>
+    <span class="n">non_none</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">args</span> <span class="k">if</span> <span class="n">a</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">non_none</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">non_none</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="kc">False</span>
+    <span class="c1"># A multi-type union (A | B, neither resolving to a single non-None T).</span>
+    <span class="k">return</span> <span class="n">annotation</span><span class="p">,</span> <span class="kc">True</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_core_type</span><span class="p">(</span><span class="n">annotation</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Strip an outer ``Annotated`` wrapper, returning the bare type.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">get_origin</span><span class="p">(</span><span class="n">annotation</span><span class="p">)</span> <span class="ow">is</span> <span class="n">typing</span><span class="o">.</span><span class="n">Annotated</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">get_args</span><span class="p">(</span><span class="n">annotation</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">annotation</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_to_float</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Coerce an ``annotated_types`` bound (a ``SupportsX`` value) to ``float``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_numeric_bounds</span><span class="p">(</span><span class="n">metadata</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract ``(low, high)`` from ``annotated_types`` constraints.</span>
+
+<span class="sd">    Reads ``Ge``/``Gt`` for the lower bound and ``Le``/``Lt`` for the upper,</span>
+<span class="sd">    and unwraps an ``Interval``. Strictness is recorded only implicitly — the</span>
+<span class="sd">    bound value itself is used as the (inclusive) search edge.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        metadata: The field&#39;s ``annotated_types`` constraint objects.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``(low, high)`` where each is ``None`` when that side is unbounded.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">low</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">high</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">at</span><span class="o">.</span><span class="n">Interval</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">ge</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">low</span> <span class="o">=</span> <span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">ge</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">gt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">low</span> <span class="o">=</span> <span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">gt</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">le</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">high</span> <span class="o">=</span> <span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">le</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">lt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">high</span> <span class="o">=</span> <span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">lt</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">at</span><span class="o">.</span><span class="n">Ge</span><span class="p">):</span>
+            <span class="n">low</span> <span class="o">=</span> <span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">ge</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">at</span><span class="o">.</span><span class="n">Gt</span><span class="p">):</span>
+            <span class="n">low</span> <span class="o">=</span> <span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">gt</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">at</span><span class="o">.</span><span class="n">Le</span><span class="p">):</span>
+            <span class="n">high</span> <span class="o">=</span> <span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">le</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">at</span><span class="o">.</span><span class="n">Lt</span><span class="p">):</span>
+            <span class="n">high</span> <span class="o">=</span> <span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">lt</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">low</span><span class="p">,</span> <span class="n">high</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_schema_description</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the field&#39;s docstring-derived description (``&quot;&quot;`` if absent).&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">props</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">op</span><span class="p">)</span><span class="o">.</span><span class="n">model_json_schema</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;properties&quot;</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># pragma: no cover - schema generation is robust here</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">props</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field_name</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_bounded_knob</span><span class="p">(</span>
+    <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">core</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">low</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">high</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Knob</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a ``bounded`` knob from explicit Field bounds.&quot;&quot;&quot;</span>
+    <span class="n">is_int</span> <span class="o">=</span> <span class="n">core</span> <span class="ow">is</span> <span class="nb">int</span>
+    <span class="n">log</span> <span class="o">=</span> <span class="n">low</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="n">high</span> <span class="o">/</span> <span class="n">low</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">_BOUNDED_LOG_SPAN_THRESHOLD</span>
+    <span class="k">if</span> <span class="n">is_int</span><span class="p">:</span>
+        <span class="n">domain</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">IntRange</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">low</span><span class="p">),</span> <span class="n">high</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">high</span><span class="p">),</span> <span class="n">log</span><span class="o">=</span><span class="n">log</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">domain</span> <span class="o">=</span> <span class="n">FloatRange</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="n">high</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="n">log</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Knob</span><span class="p">(</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">parse_key</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+        <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">&quot;bounded&quot;</span><span class="p">,</span>
+        <span class="n">needs_review</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_unbounded_knob_or_excluded</span><span class="p">(</span>
+    <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">core</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">factor</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">field_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Knob</span> <span class="o">|</span> <span class="n">Excluded</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply the ``[d/f, d·f]`` heuristic, or exclude a non-positive anchor.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Excluded</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;non_numeric&quot;</span><span class="p">,</span> <span class="n">field_type</span><span class="o">=</span><span class="n">field_type</span><span class="p">)</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">d</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># A non-positive anchor collapses/flips the multiplicative ``[d/f, d·f]``</span>
+        <span class="c1"># window — distinct from a genuinely non-numeric anchor above.</span>
+        <span class="k">return</span> <span class="n">Excluded</span><span class="p">(</span>
+            <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;non_positive_default&quot;</span><span class="p">,</span> <span class="n">field_type</span><span class="o">=</span><span class="n">field_type</span>
+        <span class="p">)</span>
+
+    <span class="n">low</span> <span class="o">=</span> <span class="n">d</span> <span class="o">/</span> <span class="n">factor</span>
+    <span class="n">high</span> <span class="o">=</span> <span class="n">d</span> <span class="o">*</span> <span class="n">factor</span>
+    <span class="n">is_int</span> <span class="o">=</span> <span class="n">core</span> <span class="ow">is</span> <span class="nb">int</span>
+    <span class="k">if</span> <span class="n">is_int</span><span class="p">:</span>
+        <span class="n">ilow</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">low</span><span class="p">)</span>
+        <span class="n">ihigh</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">high</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ilow</span> <span class="o">==</span> <span class="n">ihigh</span><span class="p">:</span>  <span class="c1"># widen a collapsed range so low &lt; high</span>
+            <span class="n">ilow</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="n">ihigh</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">log</span> <span class="o">=</span> <span class="n">ilow</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ihigh</span> <span class="o">/</span> <span class="n">ilow</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">_LOG_SPAN_THRESHOLD</span>
+        <span class="n">domain</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">IntRange</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="n">ilow</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="n">ihigh</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="n">log</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">log</span> <span class="o">=</span> <span class="n">low</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="n">high</span> <span class="o">/</span> <span class="n">low</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">_LOG_SPAN_THRESHOLD</span>
+        <span class="n">domain</span> <span class="o">=</span> <span class="n">FloatRange</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="n">high</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="n">log</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Knob</span><span class="p">(</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">parse_key</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+        <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">&quot;unbounded_heuristic&quot;</span><span class="p">,</span>
+        <span class="n">needs_review</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_find_tune_spec</span><span class="p">(</span><span class="n">metadata</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">TuneSpec</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the first ``TuneSpec`` in ``metadata`` (or ``None``).&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">m</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_assert_subset</span><span class="p">(</span>
+    <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">TuneSpec</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enforce ``TuneSpec[low, high] ⊆ [ge/gt, le/lt]`` at inference time.</span>
+
+<span class="sd">    Reads the four ``annotated_types`` bounds pydantic emits into the field</span>
+<span class="sd">    metadata (``Ge``/``Gt``/``Le``/``Lt``) and respects strictness: ``low &gt; gt``</span>
+<span class="sd">    / ``low &gt;= ge`` on the lower edge, ``high &lt; lt`` / ``high &lt;= le`` on the</span>
+<span class="sd">    upper. A ``TuneSpec`` that escapes a co-located ``Field`` constraint raises</span>
+<span class="sd">    a clear ``ValueError`` here (you cannot search where the value is invalid).</span>
+
+<span class="sd">    Caveat — **validator-enforced bounds are invisible.** This project usually</span>
+<span class="sd">    enforces numeric bounds in a ``field_validator``, not ``Field(ge=, le=)``;</span>
+<span class="sd">    those bounds live in imperative code, never in ``model_fields[name]</span>
+<span class="sd">    .metadata``, so this check cannot see them. A ``TuneSpec`` exceeding a</span>
+<span class="sd">    *validator*-enforced bound passes inference and only fails later at apply /</span>
+<span class="sd">    trial time — that apply-time backstop is the real guard.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        key: The field&#39;s root-relative key (for the error message).</span>
+<span class="sd">        spec: The ``TuneSpec`` carrying ``low``/``high``.</span>
+<span class="sd">        metadata: The combined field + annotation-tree metadata.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the ``TuneSpec`` range escapes the Field bounds.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">low</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">high</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="c1"># Expand any Interval into its component bounds so a single loop handles all.</span>
+    <span class="n">bounds</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">at</span><span class="o">.</span><span class="n">Interval</span><span class="p">):</span>
+            <span class="n">bounds</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_interval_to_bounds</span><span class="p">(</span><span class="n">m</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bounds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">bounds</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">at</span><span class="o">.</span><span class="n">Ge</span><span class="p">)</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">low</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">low</span> <span class="o">&lt;</span> <span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">ge</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;TuneSpec on </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> is not ⊆ its Field bound: low &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">low</span><span class="si">}</span><span class="s2"> &lt; ge </span><span class="si">{</span><span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">ge</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">at</span><span class="o">.</span><span class="n">Gt</span><span class="p">)</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">low</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">low</span> <span class="o">&lt;=</span> <span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">gt</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;TuneSpec on </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> is not ⊆ its Field bound: low &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">low</span><span class="si">}</span><span class="s2"> &lt;= gt </span><span class="si">{</span><span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">gt</span><span class="p">)</span><span class="si">}</span><span class="s2"> (strict)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">at</span><span class="o">.</span><span class="n">Le</span><span class="p">)</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">high</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">high</span> <span class="o">&gt;</span> <span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">le</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;TuneSpec on </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> is not ⊆ its Field bound: high &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">high</span><span class="si">}</span><span class="s2"> &gt; le </span><span class="si">{</span><span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">le</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">at</span><span class="o">.</span><span class="n">Lt</span><span class="p">)</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">high</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">high</span> <span class="o">&gt;=</span> <span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">lt</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;TuneSpec on </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> is not ⊆ its Field bound: high &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">high</span><span class="si">}</span><span class="s2"> &gt;= lt </span><span class="si">{</span><span class="n">_to_float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">lt</span><span class="p">)</span><span class="si">}</span><span class="s2"> (strict)&quot;</span>
+            <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_interval_to_bounds</span><span class="p">(</span><span class="n">interval</span><span class="p">:</span> <span class="n">at</span><span class="o">.</span><span class="n">Interval</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Expand an ``Interval`` into the equivalent ``Ge``/``Gt``/``Le``/``Lt`` set.&quot;&quot;&quot;</span>
+    <span class="n">out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">interval</span><span class="o">.</span><span class="n">ge</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">at</span><span class="o">.</span><span class="n">Ge</span><span class="p">(</span><span class="n">interval</span><span class="o">.</span><span class="n">ge</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">interval</span><span class="o">.</span><span class="n">gt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">at</span><span class="o">.</span><span class="n">Gt</span><span class="p">(</span><span class="n">interval</span><span class="o">.</span><span class="n">gt</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">interval</span><span class="o">.</span><span class="n">le</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">at</span><span class="o">.</span><span class="n">Le</span><span class="p">(</span><span class="n">interval</span><span class="o">.</span><span class="n">le</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">interval</span><span class="o">.</span><span class="n">lt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">at</span><span class="o">.</span><span class="n">Lt</span><span class="p">(</span><span class="n">interval</span><span class="o">.</span><span class="n">lt</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_tune_spec</span><span class="p">(</span>
+    <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">spec</span><span class="p">:</span> <span class="n">TuneSpec</span><span class="p">,</span>
+    <span class="n">core</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Knob</span> <span class="o">|</span> <span class="n">Excluded</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a Tier-1 ``Knob`` (or ``Excluded``) from an explicit ``TuneSpec``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        key: The field&#39;s root-relative key.</span>
+<span class="sd">        spec: The ``TuneSpec`` marker.</span>
+<span class="sd">        core: The bare (Optional/Annotated-stripped) field type.</span>
+<span class="sd">        metadata: The combined field + annotation-tree metadata (for the ⊆ check).</span>
+<span class="sd">        description: The field&#39;s docstring-derived description.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A ``Knob`` (``source=&quot;tune_spec&quot;``, ``needs_review=False``), or an</span>
+<span class="sd">        ``Excluded(reason=&quot;tune_spec_off&quot;)`` when ``tunable=False``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the ``TuneSpec`` range escapes a co-located Field bound.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">spec</span><span class="o">.</span><span class="n">tunable</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Excluded</span><span class="p">(</span>
+            <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;tune_spec_off&quot;</span><span class="p">,</span> <span class="n">field_type</span><span class="o">=</span><span class="n">_annotation_str</span><span class="p">(</span><span class="n">core</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="c1"># categories override -&gt; Categorical (no numeric ⊆ check applies).</span>
+    <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">categories</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Knob</span><span class="p">(</span>
+            <span class="n">target</span><span class="o">=</span><span class="n">parse_key</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+            <span class="n">domain</span><span class="o">=</span><span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">categories</span><span class="p">)),</span>
+            <span class="n">source</span><span class="o">=</span><span class="s2">&quot;tune_spec&quot;</span><span class="p">,</span>
+            <span class="n">needs_review</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">_assert_subset</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">low</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">spec</span><span class="o">.</span><span class="n">high</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># An incomplete numeric TuneSpec (no full range, no categories) can&#39;t</span>
+        <span class="c1"># form a domain — surface it rather than fabricate one.</span>
+        <span class="k">return</span> <span class="n">Excluded</span><span class="p">(</span>
+            <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;non_numeric&quot;</span><span class="p">,</span> <span class="n">field_type</span><span class="o">=</span><span class="n">_annotation_str</span><span class="p">(</span><span class="n">core</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">core</span> <span class="ow">is</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">step</span><span class="p">)</span> <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">step</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">1</span>
+        <span class="n">domain</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">IntRange</span><span class="p">(</span>
+            <span class="n">low</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">low</span><span class="p">),</span> <span class="n">high</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">high</span><span class="p">),</span> <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">log</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">domain</span> <span class="o">=</span> <span class="n">FloatRange</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">high</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">log</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Knob</span><span class="p">(</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">parse_key</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+        <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">&quot;tune_spec&quot;</span><span class="p">,</span>
+        <span class="n">needs_review</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_infer_field</span><span class="p">(</span>
+    <span class="n">op</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">position</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">field_info</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_DEFAULT_UNBOUNDED_FACTOR</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Knob</span> <span class="o">|</span> <span class="n">Excluded</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Map one operation field to a ``Knob`` or an ``Excluded`` record.</span>
+
+<span class="sd">    A Tier-1 ``TuneSpec`` (when present) wins over the heuristics (added in</span>
+<span class="sd">    P3-4); this is the Tier-2 type/constraint dispatch. The flat key is</span>
+<span class="sd">    ``&quot;&lt;position&gt;.&lt;field_name&gt;&quot;``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        op: The operation instance (for the current value + schema description).</span>
+<span class="sd">        position: The op&#39;s position in the pipeline (key prefix).</span>
+<span class="sd">        field_name: The pydantic field name.</span>
+<span class="sd">        field_info: ``type(op).model_fields[field_name]``.</span>
+<span class="sd">        factor: Multiplicative half-window for the unbounded heuristic.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A ``Knob`` (tunable) or an ``Excluded`` record.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">position</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">field_name</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">annotation</span> <span class="o">=</span> <span class="n">field_info</span><span class="o">.</span><span class="n">annotation</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="n">_schema_description</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">field_name</span><span class="p">)</span>
+    <span class="n">field_type</span> <span class="o">=</span> <span class="n">_annotation_str</span><span class="p">(</span><span class="n">annotation</span><span class="p">)</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field_info</span><span class="o">.</span><span class="n">default</span><span class="p">)</span>
+
+    <span class="c1"># pydantic lifts Field/annotated_types constraints onto ``field_info.metadata``</span>
+    <span class="c1"># and unwraps the outer ``Annotated``; markers nested deeper in the tree</span>
+    <span class="c1"># (TuneSpec/ColumnRef under Optional) are found by walking the annotation.</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">field_info</span><span class="o">.</span><span class="n">metadata</span><span class="p">)</span> <span class="o">+</span> <span class="n">_walk_metadata</span><span class="p">(</span><span class="n">annotation</span><span class="p">)</span>
+
+    <span class="c1"># Name-ref marker (ColumnRef) — an open set, excluded.</span>
+    <span class="k">if</span> <span class="n">_has_marker</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="s2">&quot;_ColumnRefMarker&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Excluded</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;name_ref&quot;</span><span class="p">,</span> <span class="n">field_type</span><span class="o">=</span><span class="n">field_type</span><span class="p">)</span>
+    <span class="c1"># Operation-valued field — handled by nested recursion (next chunk), not a</span>
+    <span class="c1"># scalar knob here.</span>
+    <span class="k">if</span> <span class="n">_has_marker</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="s2">&quot;_OperationFieldMarker&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Excluded</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;unsupported_type&quot;</span><span class="p">,</span> <span class="n">field_type</span><span class="o">=</span><span class="n">field_type</span><span class="p">)</span>
+
+    <span class="c1"># T | None -&gt; infer over T; multi-type union -&gt; unsupported.</span>
+    <span class="n">inner</span><span class="p">,</span> <span class="n">is_multi_union</span> <span class="o">=</span> <span class="n">_strip_optional</span><span class="p">(</span><span class="n">annotation</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">is_multi_union</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Excluded</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;unsupported_type&quot;</span><span class="p">,</span> <span class="n">field_type</span><span class="o">=</span><span class="n">field_type</span><span class="p">)</span>
+
+    <span class="n">core_inner</span> <span class="o">=</span> <span class="n">_core_type</span><span class="p">(</span><span class="n">_strip_optional</span><span class="p">(</span><span class="n">_core_type</span><span class="p">(</span><span class="n">inner</span><span class="p">))[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># Tier 1: an explicit ``TuneSpec`` wins over the Tier-2 heuristics.</span>
+    <span class="n">spec</span> <span class="o">=</span> <span class="n">_find_tune_spec</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">spec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_resolve_tune_spec</span><span class="p">(</span>
+            <span class="n">key</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">core_inner</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">description</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">_dispatch_core</span><span class="p">(</span>
+        <span class="n">key</span><span class="p">,</span>
+        <span class="n">core_inner</span><span class="p">,</span>
+        <span class="n">value</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="p">,</span>
+        <span class="n">factor</span><span class="o">=</span><span class="n">factor</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+        <span class="n">field_type</span><span class="o">=</span><span class="n">field_type</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_core</span><span class="p">(</span>
+    <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">core</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">factor</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">field_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Knob</span> <span class="o">|</span> <span class="n">Excluded</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tier-2 type dispatch over the bare (Optional/Annotated-stripped) type.&quot;&quot;&quot;</span>
+    <span class="c1"># ndarray (raw or NdArrayField) — not scalar-tunable.</span>
+    <span class="k">if</span> <span class="n">core</span> <span class="ow">is</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Excluded</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;ndarray&quot;</span><span class="p">,</span> <span class="n">field_type</span><span class="o">=</span><span class="n">field_type</span><span class="p">)</span>
+    <span class="c1"># Paths — open set.</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">core</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">core</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Excluded</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;path&quot;</span><span class="p">,</span> <span class="n">field_type</span><span class="o">=</span><span class="n">field_type</span><span class="p">)</span>
+
+    <span class="c1"># bool (check before int — bool is an int subclass).</span>
+    <span class="k">if</span> <span class="n">core</span> <span class="ow">is</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Knob</span><span class="p">(</span>
+            <span class="n">target</span><span class="o">=</span><span class="n">parse_key</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+            <span class="n">domain</span><span class="o">=</span><span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">)),</span>
+            <span class="n">source</span><span class="o">=</span><span class="s2">&quot;bool&quot;</span><span class="p">,</span>
+            <span class="n">needs_review</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Literal[...] -&gt; Categorical(literal members).</span>
+    <span class="k">if</span> <span class="n">get_origin</span><span class="p">(</span><span class="n">core</span><span class="p">)</span> <span class="ow">is</span> <span class="n">Literal</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Knob</span><span class="p">(</span>
+            <span class="n">target</span><span class="o">=</span><span class="n">parse_key</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+            <span class="n">domain</span><span class="o">=</span><span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">get_args</span><span class="p">(</span><span class="n">core</span><span class="p">))),</span>
+            <span class="n">source</span><span class="o">=</span><span class="s2">&quot;literal&quot;</span><span class="p">,</span>
+            <span class="n">needs_review</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Enum -&gt; Categorical(member *values*, not members). Storing the raw values</span>
+    <span class="c1"># keeps the domain JSON-native: ``model_dump(mode=&quot;json&quot;)`` →</span>
+    <span class="c1"># ``model_validate`` round-trips to the same Python type (a member would</span>
+    <span class="c1"># serialize to a bare string and reload as ``str``, losing the enum type).</span>
+    <span class="c1"># The build path re-applies a chosen value through the op constructor, whose</span>
+    <span class="c1"># field_validator coerces the value back to the enum, so apply still works.</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">core</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">core</span><span class="p">,</span> <span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Knob</span><span class="p">(</span>
+            <span class="n">target</span><span class="o">=</span><span class="n">parse_key</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+            <span class="n">domain</span><span class="o">=</span><span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">core</span><span class="p">)),</span>
+            <span class="n">source</span><span class="o">=</span><span class="s2">&quot;enum&quot;</span><span class="p">,</span>
+            <span class="n">needs_review</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Numeric (int / float).</span>
+    <span class="k">if</span> <span class="n">core</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="n">low</span><span class="p">,</span> <span class="n">high</span> <span class="o">=</span> <span class="n">_numeric_bounds</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">low</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">high</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_bounded_knob</span><span class="p">(</span>
+                <span class="n">key</span><span class="p">,</span> <span class="n">core</span><span class="p">,</span> <span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">description</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">_unbounded_knob_or_excluded</span><span class="p">(</span>
+            <span class="n">key</span><span class="p">,</span>
+            <span class="n">core</span><span class="p">,</span>
+            <span class="n">value</span><span class="p">,</span>
+            <span class="n">factor</span><span class="o">=</span><span class="n">factor</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+            <span class="n">field_type</span><span class="o">=</span><span class="n">field_type</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Free-form str (and anything else non-numeric / unrecognised).</span>
+    <span class="k">if</span> <span class="n">core</span> <span class="ow">is</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="c1"># Open set — excluded. ``non_numeric`` is the only fitting closed-set</span>
+        <span class="c1"># reason; it conservatively raises the proposal review flag.</span>
+        <span class="k">return</span> <span class="n">Excluded</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;non_numeric&quot;</span><span class="p">,</span> <span class="n">field_type</span><span class="o">=</span><span class="n">field_type</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Excluded</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;unsupported_type&quot;</span><span class="p">,</span> <span class="n">field_type</span><span class="o">=</span><span class="n">field_type</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_annotation_str</span><span class="p">(</span><span class="n">annotation</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Render an annotation for the ``Excluded.field_type`` display field.&quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">annotation</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">name</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">annotation</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_recursable_op</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``True`` for a leaf operation worth recursing into (not a pipeline).</span>
+
+<span class="sd">    A nested ``OperationField`` value may be a single leaf operation, a nested</span>
+<span class="sd">    ``ImagePipeline``, or ``None``. We recurse only into a leaf op — one that</span>
+<span class="sd">    exposes ``model_fields`` but is **not** itself a pipeline (a pipeline has</span>
+<span class="sd">    ``get_ops``, and recursing into its ops would be a different, deferred</span>
+<span class="sd">    naming scheme). ``None`` slots and pipelines are skipped.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="s2">&quot;model_fields&quot;</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;get_ops&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_reparent_key</span><span class="p">(</span><span class="n">child_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rewrite a depth-0 child key ``&quot;0.&lt;leaf&gt;&quot;`` as ``&quot;&lt;prefix&gt;.&lt;leaf&gt;&quot;``.</span>
+
+<span class="sd">    ``_infer_field`` always builds keys as ``&quot;&lt;position&gt;.&lt;field&gt;&quot;`` with the</span>
+<span class="sd">    position it is handed. When recursing, we infer each nested leaf field at a</span>
+<span class="sd">    throwaway position ``0`` and then splice the real nested prefix</span>
+<span class="sd">    (``&quot;1.ops[0]&quot;``) in front of the leaf name — so the canonical nested</span>
+<span class="sd">    key becomes ``&quot;1.ops[0].&lt;leaf&gt;&quot;``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">leaf</span> <span class="o">=</span> <span class="n">child_key</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">leaf</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_recurse_into_op</span><span class="p">(</span>
+    <span class="n">leaf_op</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">factor</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">conditional_on</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">KnobTarget</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Knob</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">Excluded</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Infer one nested op&#39;s scalar fields (depth cap = 1).</span>
+
+<span class="sd">    Applies the same Tier-1 → Tier-2 dispatch to each of ``leaf_op``&#39;s fields,</span>
+<span class="sd">    re-parents the resulting keys under ``prefix`` (``&quot;&lt;pos&gt;.&lt;field&gt;[&lt;i&gt;]&quot;`` or</span>
+<span class="sd">    ``&quot;&lt;pos&gt;.&lt;field&gt;&quot;``), and attaches ``conditional_on`` to every emitted knob.</span>
+<span class="sd">    The nested op&#39;s **own** operation-valued fields are excluded here — depth is</span>
+<span class="sd">    capped at one level (no chaining).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        leaf_op: The nested operation instance to recurse into.</span>
+<span class="sd">        prefix: The root-relative path of the nested slot (e.g.</span>
+<span class="sd">            ``&quot;1.ops[0]&quot;``).</span>
+<span class="sd">        factor: Multiplicative half-window for the unbounded heuristic.</span>
+<span class="sd">        conditional_on: Parent-presence gate to stamp on each nested knob (a</span>
+<span class="sd">            ``((key, value),)`` tuple), or ``None`` when the parent is not</span>
+<span class="sd">            presence-wrapped.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``(knobs, excluded)`` for the nested op&#39;s scalar fields.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">knobs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Knob</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">excluded</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Excluded</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field_info</span> <span class="ow">in</span> <span class="nb">type</span><span class="p">(</span><span class="n">leaf_op</span><span class="p">)</span><span class="o">.</span><span class="n">model_fields</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">_infer_field</span><span class="p">(</span><span class="n">leaf_op</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field_info</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="n">factor</span><span class="p">)</span>
+        <span class="n">new_key</span> <span class="o">=</span> <span class="n">_reparent_key</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">prefix</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">Knob</span><span class="p">):</span>
+            <span class="n">knobs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span>
+                    <span class="n">update</span><span class="o">=</span><span class="p">{</span>
+                        <span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="n">parse_key</span><span class="p">(</span><span class="n">new_key</span><span class="p">),</span>
+                        <span class="s2">&quot;conditional_on&quot;</span><span class="p">:</span> <span class="n">conditional_on</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">excluded</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="n">new_key</span><span class="p">}))</span>
+    <span class="k">return</span> <span class="n">knobs</span><span class="p">,</span> <span class="n">excluded</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_infer_nested_field</span><span class="p">(</span>
+    <span class="n">op</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">position</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">factor</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Knob</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">Excluded</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recurse one level into an operation-valued field&#39;s live value.</span>
+
+<span class="sd">    Reads ``op.&lt;field_name&gt;``. List members are indexed (``&lt;field&gt;[&lt;i&gt;]``) and</span>
+<span class="sd">    recursed via :func:`_recurse_into_op`; ``None`` slots, nested pipelines, and</span>
+<span class="sd">    single operation-valued fields are skipped.</span>
+
+<span class="sd">    ``conditional_on`` ties a nested knob to the parent&#39;s ``__enabled__`` **only</span>
+<span class="sd">    when the parent op is presence-wrapped** (``type(op)._tune_optional`` is</span>
+<span class="sd">    truthy). In v1 nested ops are never presence-wrapped and top-level presence</span>
+<span class="sd">    wrapping is not emitted by inference, so this resolves to ``None`` — kept</span>
+<span class="sd">    explicit so a future presence layer needs no change here.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        op: The parent operation instance owning the nested field.</span>
+<span class="sd">        position: The parent&#39;s position in the pipeline.</span>
+<span class="sd">        field_name: The operation-valued field name.</span>
+<span class="sd">        factor: Multiplicative half-window for the unbounded heuristic.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``(knobs, excluded)`` from the one-level recursion.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">field_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">conditional_on</span> <span class="o">=</span> <span class="n">_parent_presence_condition</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">position</span><span class="p">)</span>
+
+    <span class="n">knobs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Knob</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">excluded</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Excluded</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">member</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_recursable_op</span><span class="p">(</span><span class="n">member</span><span class="p">):</span>
+                <span class="k">continue</span>  <span class="c1"># skip None slots and nested pipelines (depth cap)</span>
+            <span class="n">prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">position</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">field_name</span><span class="si">}</span><span class="s2">[</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">]&quot;</span>
+            <span class="n">k</span><span class="p">,</span> <span class="n">e</span> <span class="o">=</span> <span class="n">_recurse_into_op</span><span class="p">(</span>
+                <span class="n">member</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="n">factor</span><span class="p">,</span> <span class="n">conditional_on</span><span class="o">=</span><span class="n">conditional_on</span>
+            <span class="p">)</span>
+            <span class="n">knobs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+            <span class="n">excluded</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">knobs</span><span class="p">,</span> <span class="n">excluded</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parent_presence_condition</span><span class="p">(</span>
+    <span class="n">op</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">KnobTarget</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the nested knob&#39;s ``conditional_on`` gate, or ``None``.</span>
+
+<span class="sd">    A nested knob is gated on its parent&#39;s ``__enabled__`` toggle **only** when</span>
+<span class="sd">    the parent op is presence-wrapped (``type(op)._tune_optional``). The gate is</span>
+<span class="sd">    a structured ``Presence`` **target** (not a bare string): the live</span>
+<span class="sd">    ``Knob.conditional_on`` is ``tuple[tuple[KnobTarget, Any], ...]``, and the</span>
+<span class="sd">    nested-recursion stamps it via ``model_copy`` (which bypasses ``Knob``&#39;s</span>
+<span class="sd">    string-coercion before-validator), so the parent must already be a target —</span>
+<span class="sd">    otherwise ``Knob.is_active`` (``ptarget.key``) would hit a raw ``str``. In v1</span>
+<span class="sd">    no op sets ``_tune_optional`` and inference emits no top-level presence knob,</span>
+<span class="sd">    so this returns ``None``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">op</span><span class="p">),</span> <span class="s2">&quot;_tune_optional&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="n">cls_name</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">op</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="k">return</span> <span class="p">((</span><span class="n">parse_key</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">position</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">cls_name</span><span class="si">}</span><span class="s2">.__enabled__&quot;</span><span class="p">),</span> <span class="kc">True</span><span class="p">),)</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="infer_search_space">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.infer_search_space.html#phenotypic.tune.infer_search_space">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">infer_search_space</span><span class="p">(</span>
+    <span class="n">pipeline</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">unbounded_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_DEFAULT_UNBOUNDED_FACTOR</span><span class="p">,</span>
+    <span class="n">recurse_nested</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InferredSearchSpace</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mine a pipeline into a generous, reviewable ``InferredSearchSpace``.</span>
+
+<span class="sd">    Walks the pipeline&#39;s ops in position order and infers each scalar field via</span>
+<span class="sd">    the Tier-2 type heuristics (Tier-1 ``TuneSpec`` override added in P3-4).</span>
+<span class="sd">    Knob keys are flat ``&quot;&lt;position&gt;.&lt;field&gt;&quot;`` paths.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        pipeline: A live ``ImagePipeline`` whose ``get_ops()`` yields the ops in</span>
+<span class="sd">            insertion order.</span>
+<span class="sd">        unbounded_factor: Multiplicative half-window ``[d/f, d·f]`` for the</span>
+<span class="sd">            unbounded numeric heuristic (default ``4.0`` → 16× span).</span>
+<span class="sd">        recurse_nested: Recurse **exactly one level** into operation-valued</span>
+<span class="sd">            (``OperationField``) fields — a single nested op or a list of them.</span>
+<span class="sd">            On by default; ``False`` yields the flat-only proposal (no nested</span>
+<span class="sd">            knobs), byte-identical to the pre-recursion space. The recursion is</span>
+<span class="sd">            strictly additive: a pipeline with no nested ops is unchanged.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The ``InferredSearchSpace`` proposal.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ops</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">pipeline</span><span class="o">.</span><span class="n">get_ops</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="n">knobs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Knob</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">excluded</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Excluded</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">position</span><span class="p">,</span> <span class="n">op</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ops</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field_info</span> <span class="ow">in</span> <span class="nb">type</span><span class="p">(</span><span class="n">op</span><span class="p">)</span><span class="o">.</span><span class="n">model_fields</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">_infer_field</span><span class="p">(</span>
+                <span class="n">op</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field_info</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="n">unbounded_factor</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">Knob</span><span class="p">):</span>
+                <span class="n">knobs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">excluded</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="c1"># One-level recursion into operation-valued fields. The flat pass</span>
+            <span class="c1"># above records the field as ``Excluded(unsupported_type)``; the</span>
+            <span class="c1"># nested leaves are emitted here (additive — keeps the marker record).</span>
+            <span class="k">if</span> <span class="n">recurse_nested</span> <span class="ow">and</span> <span class="n">_field_holds_operation</span><span class="p">(</span><span class="n">field_info</span><span class="p">):</span>
+                <span class="n">n_knobs</span><span class="p">,</span> <span class="n">n_excluded</span> <span class="o">=</span> <span class="n">_infer_nested_field</span><span class="p">(</span>
+                    <span class="n">op</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="n">unbounded_factor</span>
+                <span class="p">)</span>
+                <span class="n">knobs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">n_knobs</span><span class="p">)</span>
+                <span class="n">excluded</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">n_excluded</span><span class="p">)</span>
+    <span class="n">knobs</span> <span class="o">=</span> <span class="p">[</span><span class="n">_stamp_op_classes</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">ops</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">knobs</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">InferredSearchSpace</span><span class="p">(</span><span class="n">knobs</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">knobs</span><span class="p">),</span> <span class="n">excluded</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">excluded</span><span class="p">))</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_stamp_op_classes</span><span class="p">(</span><span class="n">knob</span><span class="p">:</span> <span class="n">Knob</span><span class="p">,</span> <span class="n">ops</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Knob</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fill ``op_class`` on a knob&#39;s own target **and** its conditional parents.</span>
+
+<span class="sd">    The knob&#39;s ``target`` is always stamped (posture C — every programmatic</span>
+<span class="sd">    target is wrong-op cross-checked). Each ``conditional_on`` parent target is</span>
+<span class="sd">    stamped too, so a presence-conditional knob&#39;s gate resolves against the</span>
+<span class="sd">    correct parent op once presence-wrapping is enabled. The latter is latent in</span>
+<span class="sd">    v1 (``_tune_optional`` is never set, so ``conditional_on`` is always</span>
+<span class="sd">    ``None``), but stamping defensively keeps a future presence layer correct</span>
+<span class="sd">    without a change here.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        knob: The inferred knob to enrich.</span>
+<span class="sd">        ops: The pipeline&#39;s ops in position order (the ``op_class`` source).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A copy of ``knob`` with ``op_class`` populated on its target and on every</span>
+<span class="sd">        ``conditional_on`` parent target.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">update</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="n">with_op_class</span><span class="p">(</span><span class="n">knob</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="n">ops</span><span class="p">)}</span>
+    <span class="k">if</span> <span class="n">knob</span><span class="o">.</span><span class="n">conditional_on</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">update</span><span class="p">[</span><span class="s2">&quot;conditional_on&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">with_op_class</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">ops</span><span class="p">),</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">parent</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">knob</span><span class="o">.</span><span class="n">conditional_on</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">knob</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="n">update</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_field_holds_operation</span><span class="p">(</span><span class="n">field_info</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``True`` if a field carries the ``_OperationFieldMarker``.</span>
+
+<span class="sd">    Detected by walking the annotation tree (the marker may sit under</span>
+<span class="sd">    ``Optional`` / inside a ``list``), matching by class *name* so this module</span>
+<span class="sd">    never imports the ``sdk_`` marker.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">field_info</span><span class="o">.</span><span class="n">metadata</span><span class="p">)</span> <span class="o">+</span> <span class="n">_walk_metadata</span><span class="p">(</span><span class="n">field_info</span><span class="o">.</span><span class="n">annotation</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_has_marker</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="s2">&quot;_OperationFieldMarker&quot;</span><span class="p">)</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;infer_search_space&quot;</span><span class="p">,</span> <span class="s2">&quot;_infer_field&quot;</span><span class="p">,</span> <span class="s2">&quot;ExcludeReason&quot;</span><span class="p">]</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

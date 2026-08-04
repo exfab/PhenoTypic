@@ -1,0 +1,1542 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>GPU-Accelerated Colony Detection &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'how_to/pages/gpu_detection_setup';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.18.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.18.1/how_to/pages/gpu_detection_setup.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="How To: Measure Colony Size and Intensity" href="../notebooks/measure_colony_size_intensity.html" />
+    <link rel="prev" title="How To: Merge Fragmented Detections" href="../notebooks/merge_fragmented_detections.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.18.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="../index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="../index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Correction &amp; Preprocessing</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/correct_grid_rotation.html">How To: Correct Grid Rotation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/enhance_low_contrast.html">How To: Enhance Low-Contrast Images</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/crop_and_pad.html">How To: Crop and Pad Images for Batch Consistency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/denoise_low_light.html">How To: Denoise Low-Light Images</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Detection &amp; Refinement</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/choose_detection_algorithm.html">How To: Choose a Detection Algorithm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/refine_noisy_boundaries.html">How To: Refine Noisy Detection Boundaries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/manual_grid_detection.html">How To: Manual Grid Detection When Automatic Fails</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/combine_detectors.html">How To: Combine Detectors with CompositeDetector</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/merge_fragmented_detections.html">How To: Merge Fragmented Detections</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">GPU-Accelerated Colony Detection</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Measurement &amp; Analysis</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/measure_colony_size_intensity.html">How To: Measure Colony Size and Intensity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/correct_edge_effects.html">How To: Correct Edge Effects in Plate Assays</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/fit_logistic_growth.html">How To: Fit Logistic Growth Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/assess_image_quality.html">How To: Assess Image Quality Before Pipeline Design</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CLI &amp; Infrastructure</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="rembi_metadata.html">Describe a run’s metadata with REMBI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="slurm_pipelines.html">SLURM Pipelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="polars_cpu_build.html">Choosing the polars CPU build (lts-cpu vs stock)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tuning.html">Hyperparameter Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tune_distributed_hpcc.html">Distributed Tuning on HPCC Clusters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui_hub.html">GUI hub</a></li>
+<li class="toctree-l1"><a class="reference internal" href="serialize_pipelines.html">Serialize and Share Pipelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hdf5_storage.html">Store Results in HDF5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generate_reports.html">Generate HTML Processing Reports</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">How-To Guides</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">GPU-Accelerated Colony Detection</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="gpu-accelerated-colony-detection">
+<h1>GPU-Accelerated Colony Detection<a class="headerlink" href="#gpu-accelerated-colony-detection" title="Link to this heading">#</a></h1>
+<p>Set up and use deep-learning-based colony detectors (SAM2, micro-sam, SAM3,
+DinoSam2) with GPU acceleration.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Behaviour change (this release).</strong> The DINO-backed detectors
+(<code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code>, <code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code>) previously fed every tile to the ViT
+backbone at a fixed 224x224 regardless of <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> – the checkpoint’s
+<em>classification</em> preset, not the tile you asked for. They now feed the
+backbone the tile at its native geometry, so native pixels per patch equal the
+backbone’s <code class="docutils literal notranslate"><span class="pre">patch_size</span></code> (14 for DINOv2, 16 for DINOv3) instead of collapsing to
+whatever 224 implied. Pipelines deserialized from JSON keep their pinned
+<code class="docutils literal notranslate"><span class="pre">tile_px</span></code> (<code class="docutils literal notranslate"><span class="pre">to_json()</span></code> writes every field), but <strong>will produce different,
+higher-resolution masks</strong> and cost substantially more GPU time – re-serialize
+to adopt the new <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> defaults described below. Separately,
+<code class="docutils literal notranslate"><span class="pre">Sam2.crop_n_layers</span></code> moves from <code class="docutils literal notranslate"><span class="pre">0</span></code> to <code class="docutils literal notranslate"><span class="pre">1</span></code> (~5.2x cost) for
+<strong>newly-constructed</strong> detectors only; existing serialized pipelines are
+unaffected.</p>
+</div>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h2>
+<p>The GPU detectors have different packaging constraints:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Detector</p></th>
+<th class="head"><p>Package(s) needed</p></th>
+<th class="head"><p>Available via</p></th>
+<th class="head"><p>CUDA-capable?</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Sam2</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">torch</span></code>, <code class="docutils literal notranslate"><span class="pre">torchvision</span></code>, <code class="docutils literal notranslate"><span class="pre">sam2</span></code></p></td>
+<td><p><strong>PyPI</strong> (ships in <code class="docutils literal notranslate"><span class="pre">phenotypic[torch]</span></code>)</p></td>
+<td><p>Yes — Linux + CUDA</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> (+ <code class="docutils literal notranslate"><span class="pre">torch</span></code>)</p></td>
+<td><p><strong>conda-forge only</strong>, not on PyPI</p></td>
+<td><p>CPU by default; user-managed CUDA possible</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Sam3</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">transformers</span></code>, <code class="docutils literal notranslate"><span class="pre">huggingface_hub</span></code> (+ <code class="docutils literal notranslate"><span class="pre">torch</span></code>)</p></td>
+<td><p><strong>PyPI</strong> (ships in <code class="docutils literal notranslate"><span class="pre">phenotypic[foundation]</span></code>); weights <strong>gated</strong></p></td>
+<td><p>Yes — Linux + CUDA</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DinoSam2Detector</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">transformers</span></code>, <code class="docutils literal notranslate"><span class="pre">sam2</span></code> (+ <code class="docutils literal notranslate"><span class="pre">torch</span></code>)</p></td>
+<td><p><strong>PyPI</strong> (ships in <code class="docutils literal notranslate"><span class="pre">phenotypic[foundation]</span></code>); DINOv2 weights <strong>ungated</strong></p></td>
+<td><p>Yes — Linux + CUDA</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<section id="per-model-license-posture">
+<h3>Per-model license posture<a class="headerlink" href="#per-model-license-posture" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Model</p></th>
+<th class="head"><p>Code license</p></th>
+<th class="head"><p>Weights license</p></th>
+<th class="head"><p>Gated?</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>SAM2</p></td>
+<td><p>Apache-2.0</p></td>
+<td><p>Apache-2.0</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-odd"><td><p>SAM3</p></td>
+<td><p>Apache-2.0 (<code class="docutils literal notranslate"><span class="pre">transformers</span></code>)</p></td>
+<td><p><strong>SAM License</strong> (commercial-OK)</p></td>
+<td><p><strong>Yes</strong> — accept on Hugging Face</p></td>
+</tr>
+<tr class="row-even"><td><p>DINOv2</p></td>
+<td><p>Apache-2.0</p></td>
+<td><p>Apache-2.0</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-odd"><td><p>DINOv3 (opt-in)</p></td>
+<td><p>Apache-2.0</p></td>
+<td><p><strong>DINOv3 License</strong> (custom Meta)</p></td>
+<td><p><strong>Yes</strong> — accept on Hugging Face</p></td>
+</tr>
+<tr class="row-even"><td><p>INSID3 method (<code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code>)</p></td>
+<td><p>Apache-2.0 (clean-room, no code vendored)</p></td>
+<td><p>DINOv3-native backbone (gated)</p></td>
+<td><p><strong>Yes</strong> (via DINOv3)</p></td>
+</tr>
+<tr class="row-odd"><td><p>FSSDINO method (<code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code>)</p></td>
+<td><p>paper <strong>CC BY-NC-SA</strong> (clean-room, no code vendored)</p></td>
+<td><p>DINOv2 default (ungated) / DINOv3 opt-in</p></td>
+<td><p>No (DINOv2) / Yes (DINOv3)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>PhenoTypic <strong>does not redistribute model weights</strong> — each weight is downloaded
+by you from the upstream source under that model’s license, which you accept
+(see <code class="docutils literal notranslate"><span class="pre">NOTICE</span></code> and <code class="docutils literal notranslate"><span class="pre">licenses/</span></code>). The two semantic detectors
+(<code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code>, <code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code>) carry no vendored upstream code: INSID3 is
+clean-room-reimplemented from its Apache-2.0 method (attributed), and FSSDINO is
+clean-room-reimplemented from the paper only (the reference repo is
+all-rights-reserved). When <code class="docutils literal notranslate"><span class="pre">dino_version=3</span></code> is selected, PhenoTypic displays
+“Built with DINOv3” per the DINOv3 License.</p>
+<p>PhenoTypic itself is distributed via PyPI and managed with <code class="docutils literal notranslate"><span class="pre">uv</span></code>. <code class="docutils literal notranslate"><span class="pre">micro_sam</span></code>
+is not published on PyPI, so it is <strong>not</strong> included in any <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code>
+extra. Users who need <code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code> must install <code class="docutils literal notranslate"><span class="pre">micro_sam</span></code>
+themselves; the tutorial recipe below uses <code class="docutils literal notranslate"><span class="pre">pixi</span></code> for that.</p>
+<blockquote>
+<div><p><strong>Installing the detector packages and downloading their weights is covered in
+the <a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>
+section of the Getting Started tutorial.</strong> In short: <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">add</span> <span class="pre">&quot;phenotypic[torch]&quot;</span></code>
+for SAM2, <code class="docutils literal notranslate"><span class="pre">&quot;phenotypic[foundation]&quot;</span></code> for the SAM3/DINO detectors, the <code class="docutils literal notranslate"><span class="pre">[gpu]</span></code>
+umbrella for all of them, and conda-forge <code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> for <code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code>.
+In a source checkout, use <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span> <span class="pre">--extra</span> <span class="pre">foundation</span></code> to install the same
+foundation-model dependencies. Gated SAM3/DINOv3 weights need a one-time
+Hugging Face license handshake (<code class="docutils literal notranslate"><span class="pre">hf</span> <span class="pre">auth</span> <span class="pre">login</span></code> after accepting the model
+license on Hugging Face).</p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code> is importable from <code class="docutils literal notranslate"><span class="pre">phenotypic.detect.nn</span></code> even when
+<code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> is missing; the <code class="docutils literal notranslate"><span class="pre">ImportError</span></code> is deferred to the first
+<code class="docutils literal notranslate"><span class="pre">apply()</span></code> call and points back at the installation instructions.</p>
+</section>
+</section>
+<section id="downloading-model-checkpoints">
+<h2>Downloading Model Checkpoints<a class="headerlink" href="#downloading-model-checkpoints" title="Link to this heading">#</a></h2>
+<p>Every detector downloads its checkpoints automatically on first use, and the
+<code class="docutils literal notranslate"><span class="pre">phenotypic.detect.nn</span></code> CLI (<code class="docutils literal notranslate"><span class="pre">download</span></code> / <code class="docutils literal notranslate"><span class="pre">list</span></code> / <code class="docutils literal notranslate"><span class="pre">clear</span></code>) pre-fetches and
+inspects them — essential before submitting SLURM jobs, since compute nodes
+often lack internet access. The full command set, cache-location environment
+variables (<code class="docutils literal notranslate"><span class="pre">TORCH_HOME</span></code>, <code class="docutils literal notranslate"><span class="pre">MICROSAM_CACHEDIR</span></code>, <code class="docutils literal notranslate"><span class="pre">HF_HOME</span></code>,
+<code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE</span></code>, …), and the login-node pre-staging workflow
+for gated foundation weights are documented in the
+<a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>
+tutorial section. The SLURM-specific staging is expanded under
+<a class="reference internal" href="#slurm-deployment"><span class="std std-ref">SLURM Deployment</span></a> below.</p>
+</section>
+<section id="using-sam2">
+<h2>Using Sam2<a class="headerlink" href="#using-sam2" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Sam2</span></code> wraps Meta’s SAM2 automatic mask generator. It lays a grid of
+prompt points over the RGB image, predicts masks at each point, filters by
+quality, and assembles a labelled object map.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam2</span>
+
+<span class="c1"># Basic usage with default parameters</span>
+<span class="n">detector</span> <span class="o">=</span> <span class="n">Sam2</span><span class="p">()</span>
+
+<span class="c1"># Tuned for dense plates with small colonies</span>
+<span class="n">detector</span> <span class="o">=</span> <span class="n">Sam2</span><span class="p">(</span>
+    <span class="n">model_size</span><span class="o">=</span><span class="s2">&quot;small&quot;</span><span class="p">,</span>
+    <span class="n">points_per_side</span><span class="o">=</span><span class="mi">48</span><span class="p">,</span>
+    <span class="n">pred_iou_thresh</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
+    <span class="n">min_mask_region_area</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Apply to an image (downloads checkpoint on first use)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">num_objects</span><span class="p">)</span>
+</pre></div>
+</div>
+<section id="parameter-tuning-for-colony-detection">
+<h3>Parameter tuning for colony detection<a class="headerlink" href="#parameter-tuning-for-colony-detection" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">points_per_side</span></code></strong> (default 32): Controls the density of the prompt grid.
+Use 16 for large, well-separated colonies. Increase to 48–64 for dense
+plates with many small colonies. Higher values increase inference time
+quadratically.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">points_per_batch</span></code></strong> (default 8): Controls how many existing prompt-grid
+points are decoded at once. Lower this first when a run exhausts GPU or unified
+memory. It changes throughput, not crop resolution, prompt positions, or prompt
+density.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">input_scaling</span></code></strong> (default <code class="docutils literal notranslate"><span class="pre">&quot;image_max&quot;</span></code>): Converts non-uint8 model input
+in bounded row chunks. The default retains historical per-image contrast
+normalization and performed better on the labeled uint16 accuracy fixture.
+Use <code class="docutils literal notranslate"><span class="pre">&quot;dtype_range&quot;</span></code> when absolute sensor-scale intensity must be preserved.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">pred_iou_thresh</span></code></strong> (default 0.7): Minimum predicted IoU for keeping a
+mask. Raise to 0.85–0.95 for conservative detection (fewer false
+positives); lower to 0.5 to catch faint or ambiguous colonies.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">stability_score_thresh</span></code></strong> (default 0.92): Filters masks by boundary
+stability. Higher values keep only masks with crisp edges.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">min_mask_region_area</span></code></strong> (default 100): Minimum mask area in pixels.
+Increase to suppress agar texture, dust, and other small artefacts that
+SAM2 segments as objects. Typical range: 50–500 depending on image
+resolution.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">model_size</span></code></strong> (default <code class="docutils literal notranslate"><span class="pre">&quot;tiny&quot;</span></code>): <code class="docutils literal notranslate"><span class="pre">&quot;tiny&quot;</span></code> is fastest and sufficient
+for most colony plates. Use <code class="docutils literal notranslate"><span class="pre">&quot;large&quot;</span></code> for maximum mask quality on
+publication figures.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">crop_n_layers</span></code></strong> (default 1): Number of additional crop-pyramid layers.
+SAM2’s encoder resizes the whole image to a fixed 1024x1024 square, so small
+colonies on a multi-megapixel plate can be lost to downsampling; each added
+layer re-tiles the image into nearer-native-resolution crops and merges them
+by NMS that prefers masks from smaller crops. <code class="docutils literal notranslate"><span class="pre">0</span></code> keeps a single full-image
+pass; the default <code class="docutils literal notranslate"><span class="pre">1</span></code> costs 5 encoder passes instead of 1 (~5.2x wall-clock)
+but recovered far more ground-truth colonies in measurement (see the
+behaviour-change notice above).</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">box_nms_thresh</span></code></strong> (default 0.7): Box-IoU cutoff for non-maximum
+suppression between the dense point grid’s redundant proposals <em>within</em> one
+crop – distinct from <code class="docutils literal notranslate"><span class="pre">crop_nms_thresh</span></code>, which deduplicates the same colony
+seen in two different overlapping crops.</p></li>
+</ul>
+</section>
+</section>
+<section id="using-microsamdetector">
+<h2>Using MicroSamDetector<a class="headerlink" href="#using-microsamdetector" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code> uses SAM models finetuned on large-scale microscopy
+datasets. It is particularly effective for brightfield and darkfield
+microscopy images of agar plates.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">MicroSamDetector</span>
+
+<span class="c1"># Default: ViT-Base light microscopy model</span>
+<span class="n">detector</span> <span class="o">=</span> <span class="n">MicroSamDetector</span><span class="p">()</span>
+
+<span class="c1"># Use the larger model for higher accuracy</span>
+<span class="n">detector</span> <span class="o">=</span> <span class="n">MicroSamDetector</span><span class="p">(</span><span class="n">model_type</span><span class="o">=</span><span class="s2">&quot;vit_l_lm&quot;</span><span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+</pre></div>
+</div>
+<section id="model-selection">
+<h3>Model selection<a class="headerlink" href="#model-selection" title="Link to this heading">#</a></h3>
+<p>Light microscopy models (recommended for agar plate imaging):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;vit_t_lm&quot;</span></code> – ViT-Tiny, fastest, good for rapid screening</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;vit_b_lm&quot;</span></code> – ViT-Base (default), best speed/accuracy trade-off</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;vit_l_lm&quot;</span></code> – ViT-Large, highest accuracy, most VRAM</p></li>
+</ul>
+<p>Electron microscopy models (for organelle segmentation):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;vit_b_em_organelles&quot;</span></code> – ViT-Base</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;vit_l_em_organelles&quot;</span></code> – ViT-Large</p></li>
+</ul>
+<p>Base SAM checkpoints (without microscopy finetuning):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;vit_t&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;vit_b&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;vit_l&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;vit_h&quot;</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="using-sam3">
+<h2>Using Sam3<a class="headerlink" href="#using-sam3" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Sam3</span></code> wraps Meta’s <strong>text-prompted</strong> SAM3 foundation model. Unlike
+SAM2’s dense point grid, SAM3 segments everything matching a short text
+<code class="docutils literal notranslate"><span class="pre">prompt</span></code> (default <code class="docutils literal notranslate"><span class="pre">&quot;colony&quot;</span></code>) in one true batched forward pass, then assembles
+the predicted instance masks into a labelled <code class="docutils literal notranslate"><span class="pre">objmap</span></code> (<code class="docutils literal notranslate"><span class="pre">output_kind=&quot;instance&quot;</span></code>).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam3</span>
+
+<span class="c1"># Override the prompt per run — SAM3 has no prompt-free &quot;segment everything&quot; mode.</span>
+<span class="n">det</span> <span class="o">=</span> <span class="n">Sam3</span><span class="p">(</span><span class="n">prompt</span><span class="o">=</span><span class="s2">&quot;yeast colony&quot;</span><span class="p">,</span> <span class="n">score_thresh</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>SAM3 weights are <strong>gated</strong> (SAM License). Accept the gate and authenticate
+once (see <a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>)
+before the first <code class="docutils literal notranslate"><span class="pre">apply()</span></code>.</p>
+<p><strong>Dense plates.</strong> SAM3 caps at 200 instances per forward. <code class="docutils literal notranslate"><span class="pre">facebook/sam3</span></code> is a
+gated repository whose processor config we cannot read (requests return 403),
+so the claim that it runs at 1008 px internally is carried as an
+<strong>assumption</strong>, not a verified fact. <code class="docutils literal notranslate"><span class="pre">Sam3</span></code> tiles large plates into
+fixed <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> crops with <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code>, infers each tile, and merges the
+per-tile instances by <strong>centroid-in-core assignment</strong>
+(<code class="docutils literal notranslate"><span class="pre">~phenotypic.detect.nn._helper._tiling.assign_by_centroid_core</span></code>): each instance is
+kept by the one tile whose core – the Voronoi cell of the tile centres –
+contains its centroid, so a colony straddling a seam is claimed by exactly one
+tile and the fragment a neighbouring tile saw is never kept as its own
+colony. There is no IoU-NMS deduplication step here; duplicates cannot occur
+by construction. Images that fit one tile run un-tiled.</p>
+<p>Key parameters:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">prompt</span></code> — free text describing the target (<code class="docutils literal notranslate"><span class="pre">&quot;colony&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;bacterial</span> <span class="pre">colony&quot;</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">score_thresh</span></code> / <code class="docutils literal notranslate"><span class="pre">mask_threshold</span></code> — instance-confidence and mask-probability
+cutoffs.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">min_mask_region_area</span></code> — drop masks smaller than this (default 100).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tile_px</span></code> / <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code> — dense-plate tiling controls (default 1008 / 0.15,
+the 1008 figure being the unverified assumption noted above). <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> is a
+compute/context knob, not a fidelity knob: attention cost is quadratic in
+tokens per tile, while the total tokens across the plate are roughly fixed,
+so a larger <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> costs more without segmenting any more finely.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tile_merge_iou</span></code> — <strong>deprecated and ignored.</strong> The cross-tile merge is
+centroid-in-core (above), which needs no IoU threshold. The field is
+retained only so pipelines serialized before this change still deserialize.</p></li>
+</ul>
+</section>
+<section id="using-dinosam2detector">
+<h2>Using DinoSam2Detector<a class="headerlink" href="#using-dinosam2detector" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">DinoSam2Detector</span></code> is a <strong>training-free</strong> instance detector that composes two
+ungated foundation models: SAM2’s automatic mask generator produces
+class-agnostic proposals, and a <strong>DINOv2</strong> backbone (Apache-2.0, ungated by
+default) supplies dense patch features. Each proposal is scored by cosine
+similarity of its pooled DINO feature to a foreground prototype; background-like
+proposals are dropped, near-duplicates merged by IoU, and survivors painted into
+a labelled <code class="docutils literal notranslate"><span class="pre">objmap</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">DinoSam2Detector</span>
+
+<span class="c1"># Recommended config is fully ungated (SAM2 Apache + DINOv2 Apache).</span>
+<span class="n">det</span> <span class="o">=</span> <span class="n">DinoSam2Detector</span><span class="p">(</span><span class="n">dino_size</span><span class="o">=</span><span class="s2">&quot;base&quot;</span><span class="p">,</span> <span class="n">similarity_thresh</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">dino_version</span></code> selects the backbone generation: <code class="docutils literal notranslate"><span class="pre">2</span></code> = DINOv2 (default, ungated),
+<code class="docutils literal notranslate"><span class="pre">3</span></code> = DINOv3 (gated opt-in). Selecting <code class="docutils literal notranslate"><span class="pre">dino_version=3</span></code> routes the snapshot pull
+through the DINOv3-License acceptance gate (pre-stage it with the
+<code class="docutils literal notranslate"><span class="pre">download</span> <span class="pre">--model-type</span> <span class="pre">dinov3</span> <span class="pre">--accept-license</span></code> command from the
+<a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>
+tutorial section). The default DINOv3 checkpoint id is
+<code class="docutils literal notranslate"><span class="pre">dinov3-vitb16-pretrain-lvd1689m</span></code>.</p>
+<p>Key parameters:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">dino_version</span></code> / <code class="docutils literal notranslate"><span class="pre">dino_size</span></code> — backbone generation (2/3) and size.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sam2_model_size</span></code> — SAM2 variant for the proposal generator.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">points_per_batch</span></code> — SAM2 proposal-decoder batch size (default 8). Lowering it
+reduces peak memory without reducing proposal density or crop resolution.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">similarity_thresh</span></code> — minimum cosine-to-prototype score to keep a proposal.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">merge_iou_thresh</span></code> — IoU above which two survivors are merged.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tile_px</span></code> / <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code> — geometry of the tiles the DINO backbone scores
+proposals against (defaults 518 / 0.15). Each SAM2 proposal is pooled from
+the tile whose core contains its centroid. Scoring against one whole-plate
+feature grid instead would leave every colony smaller than a single patch, so
+each proposal’s pooled feature would collapse to the same zero vector and the
+re-ranking would do no work.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">crop_n_layers</span></code> / <code class="docutils literal notranslate"><span class="pre">crop_nms_thresh</span></code> / <code class="docutils literal notranslate"><span class="pre">crop_overlap_ratio</span></code> /
+<code class="docutils literal notranslate"><span class="pre">crop_n_points_downscale_factor</span></code> — SAM2 crop-pyramid controls for the
+<em>proposal</em> half, forwarded to the same mask generator <code class="docutils literal notranslate"><span class="pre">Sam2</span></code> uses and
+documented under <a class="reference internal" href="#using-sam2"><span class="std std-ref">Using Sam2</span></a>. <code class="docutils literal notranslate"><span class="pre">crop_n_layers</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">1</span></code>
+here too.</p></li>
+</ul>
+</section>
+<section id="semantic-few-shot-detectors-insid3detector-fssdinodetector">
+<h2>Semantic few-shot detectors (<code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code>, <code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code>)<a class="headerlink" href="#semantic-few-shot-detectors-insid3detector-fssdinodetector" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code> (one-shot, in-context) and <code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code> (few-shot) are
+<strong>semantic</strong> detectors: they emit a binary <code class="docutils literal notranslate"><span class="pre">objmask</span></code> (<code class="docutils literal notranslate"><span class="pre">output_kind=&quot;semantic&quot;</span></code>),
+not their own instance labels. The mask auto-labels into the shared <code class="docutils literal notranslate"><span class="pre">objmap</span></code>
+backend exactly like a threshold detector, so the repo’s downstream watershed
+(<code class="docutils literal notranslate"><span class="pre">SeparateObjects</span></code>) turns it into instances — pair them with a separation step
+in your pipeline, just as you would <code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code>. Both run on a frozen DINO
+backbone and write only <code class="docutils literal notranslate"><span class="pre">objmask</span></code>; <code class="docutils literal notranslate"><span class="pre">objmap[:]</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> then equals <code class="docutils literal notranslate"><span class="pre">objmask[:]</span></code>.</p>
+<p>Both ship a <strong>curated colony exemplar</strong> (a reference colony RGB + its mask,
+rendered once from <code class="docutils literal notranslate"><span class="pre">load_synth_yeast_plate()</span></code>) as the <strong>default</strong> reference /
+support set, so they work out of the box. Supply your own annotated exemplar to
+transfer to a new colony appearance.</p>
+<section id="insid3detector-one-shot-in-context-dinov3-native-gated">
+<h3><code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code> — one-shot in-context (DINOv3-native, gated)<a class="headerlink" href="#insid3detector-one-shot-in-context-dinov3-native-gated" title="Link to this heading">#</a></h3>
+<p>A faithful clean-room reimplementation of INSID3 (Apache-2.0). Given a single
+<strong>reference image + reference mask</strong>, it pools an in-context prototype and
+cosine-matches every query patch — but first removes DINOv3’s <strong>positional bias</strong>
+(estimated by SVD and projected out, INSID3’s defining step) so patches match on
+appearance, not position. It is DINOv3-native (gated, <code class="docutils literal notranslate"><span class="pre">dino_version=3</span></code> default);
+a <code class="docutils literal notranslate"><span class="pre">dino_version=2</span></code> opt-in runs gate-free (the debias is then a near-no-op).</p>
+<p>Because <code class="docutils literal notranslate"><span class="pre">dino_version=3</span></code> is the default and DINOv3 weights are gated, the
+constructor now emits a <code class="docutils literal notranslate"><span class="pre">UserWarning</span></code> at construction time (rather than
+deferring the failure to first <code class="docutils literal notranslate"><span class="pre">apply()</span></code>) pointing at the Hugging Face access
+request and <code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE=dinov3</span></code>. Contrast
+<code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code> below, which defaults to the ungated DINOv2 backbone and so
+needs no access request. (Both detectors additionally warn at model-load time
+if <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> is not a multiple of the loaded backbone’s <code class="docutils literal notranslate"><span class="pre">patch_size</span></code> — which
+happens when you flip <code class="docutils literal notranslate"><span class="pre">dino_version</span></code> and leave <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> at the other
+backbone’s default.)</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code> is <strong>weak at its default <code class="docutils literal notranslate"><span class="pre">similarity_thresh=0.5</span></code></strong>. On the
+bundled synthetic plate it recovers only 8 of 96 colonies, and its own
+functional test lowers the floor to <code class="docutils literal notranslate"><span class="pre">similarity_thresh=0.0</span></code> to obtain a
+non-empty mask at all. This is a threshold-calibration problem that predates
+the resolution work described in the behaviour-change notice above, and it is
+independent of <code class="docutils literal notranslate"><span class="pre">tile_px</span></code>: the detection <em>rate</em> is the same on a small plate and
+on a plate twelve times its area. Tune <code class="docutils literal notranslate"><span class="pre">similarity_thresh</span></code> down for your own
+plates before trusting its output.</p>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Insid3Detector</span>
+
+<span class="c1"># Default: bundled exemplar + gated DINOv3 (accept the DINOv3 License first).</span>
+<span class="n">det</span> <span class="o">=</span> <span class="n">Insid3Detector</span><span class="p">(</span><span class="n">similarity_thresh</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+<span class="c1"># Override the in-context reference with your own annotated colony pair:</span>
+<span class="n">det</span> <span class="o">=</span> <span class="n">Insid3Detector</span><span class="p">(</span>
+    <span class="n">reference_image</span><span class="o">=</span><span class="s2">&quot;ref_plate.tiff&quot;</span><span class="p">,</span>
+    <span class="n">reference_mask</span><span class="o">=</span><span class="s2">&quot;ref_plate_mask.png&quot;</span><span class="p">,</span>
+    <span class="n">similarity_thresh</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Gate-free DINOv2 variant (no Hugging Face token needed):</span>
+<span class="n">det</span> <span class="o">=</span> <span class="n">Insid3Detector</span><span class="p">(</span><span class="n">dino_version</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">dino_size</span><span class="o">=</span><span class="s2">&quot;small&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Key parameters:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">reference_image</span></code> / <code class="docutils literal notranslate"><span class="pre">reference_mask</span></code> — the in-context exemplar (defaults to
+the bundled colony exemplar).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dino_version</span></code> / <code class="docutils literal notranslate"><span class="pre">dino_size</span></code> — backbone (3 = DINOv3 default/gated, 2 = DINOv2).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">similarity_thresh</span></code> — cosine cutoff binarising the match map.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">svd_components</span></code> — INSID3’s positional-debias strength (leading SVD directions
+removed; default 4 ≈ DINOv3’s register-token count; <code class="docutils literal notranslate"><span class="pre">0</span></code> disables the debias).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tile_px</span></code> / <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code> — large-plate tiling (defaults 512 / 0.15). <code class="docutils literal notranslate"><span class="pre">512</span> <span class="pre">=</span> <span class="pre">16</span> <span class="pre">*</span> <span class="pre">32</span></code> is an exact multiple of DINOv3’s patch size (16). Under the native
+processor geometry, native pixels per patch equal the backbone’s
+<code class="docutils literal notranslate"><span class="pre">patch_size</span></code> regardless of <code class="docutils literal notranslate"><span class="pre">tile_px</span></code>, so this is a compute/context choice,
+not a fidelity one: 512 and 1024 both resolve to 16.0 native px/patch, but
+1024 costs 2.6x more (attention is quadratic in tokens per tile, while the
+total tokens across the plate are roughly fixed). Raising it buys no extra
+detail. Note <code class="docutils literal notranslate"><span class="pre">config.image_size</span></code> reports 224 for DINOv3 — that is a
+classification preset, not a native-resolution signal, and is not used to
+pick this default.</p></li>
+</ul>
+</section>
+<section id="fssdinodetector-few-shot-dinov2-default-ungated">
+<h3><code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code> — few-shot (DINOv2 default, ungated)<a class="headerlink" href="#fssdinodetector-few-shot-dinov2-default-ungated" title="Link to this heading">#</a></h3>
+<p>A clean-room reimplementation <strong>from the paper only</strong> of FSSDINO
+(arXiv:2602.07550, CC BY-NC-SA; the reference repo is all-rights-reserved and is
+not vendored). From a <strong>support set</strong> it builds <code class="docutils literal notranslate"><span class="pre">n_clusters</span></code> class-specific
+prototypes (k-means) plus a Gram matrix (channel co-occurrence), scores each
+query patch by cosine to the prototypes and a Gram-refined energy, combines the
+maps (mean ⊙ max) and assigns foreground vs background by <code class="docutils literal notranslate"><span class="pre">argmax</span></code>. It defaults
+to <strong>DINOv2</strong> (ungated), so it runs gate-free.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">FssDinoDetector</span>
+
+<span class="c1"># Default: bundled one-shot exemplar + ungated DINOv2.</span>
+<span class="n">det</span> <span class="o">=</span> <span class="n">FssDinoDetector</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="c1"># A true few-shot support set:</span>
+<span class="n">det</span> <span class="o">=</span> <span class="n">FssDinoDetector</span><span class="p">(</span>
+    <span class="n">support_images</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;s1.tiff&quot;</span><span class="p">,</span> <span class="s2">&quot;s2.tiff&quot;</span><span class="p">,</span> <span class="s2">&quot;s3.tiff&quot;</span><span class="p">],</span>
+    <span class="n">support_masks</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;s1_mask.png&quot;</span><span class="p">,</span> <span class="s2">&quot;s2_mask.png&quot;</span><span class="p">,</span> <span class="s2">&quot;s3_mask.png&quot;</span><span class="p">],</span>
+    <span class="n">n_clusters</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Key parameters:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">support_images</span></code> / <code class="docutils literal notranslate"><span class="pre">support_masks</span></code> — the few-shot support set (defaults to the
+bundled one-shot colony exemplar).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">n_clusters</span></code> — class-specific prototypes per class (paper default 5).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">feature_layer</span></code> — transformer hidden-state layer for the dense features.
+FSSDINO’s “Semantic Selection Gap” finding is that intermediate layers often
+beat the last, but cannot be reliably selected unsupervised — so the default
+is <code class="docutils literal notranslate"><span class="pre">-1</span></code> (the last layer, the paper’s safe default).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dino_version</span></code> / <code class="docutils literal notranslate"><span class="pre">dino_size</span></code> — backbone (2 = DINOv2 default/ungated, 3 = DINOv3
+gated opt-in).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">similarity_thresh</span></code> — foreground-score floor on top of the fg-vs-bg argmax.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tile_px</span></code> / <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code> — large-plate tiling (defaults 518 / 0.15). <code class="docutils literal notranslate"><span class="pre">518</span> <span class="pre">=</span> <span class="pre">14</span> <span class="pre">*</span> <span class="pre">37</span></code> is an exact multiple of DINOv2’s patch size (14). Native pixels per
+patch equal the backbone’s <code class="docutils literal notranslate"><span class="pre">patch_size</span></code> regardless of <code class="docutils literal notranslate"><span class="pre">tile_px</span></code>, so 518 and
+1022 both resolve to 14.0 native px/patch — 1022 just costs 3.3x more
+(attention is quadratic in tokens per tile, while total tokens across the
+plate are roughly fixed). Smaller is cheaper at equal fidelity; raising it
+buys no extra detail.</p></li>
+</ul>
+</section>
+</section>
+<section id="pipeline-integration">
+<h2>Pipeline Integration<a class="headerlink" href="#pipeline-integration" title="Link to this heading">#</a></h2>
+<p>GPU detectors work like any other PhenoTypic operation in a pipeline:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pht</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam2</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">SizeMeasurer</span>
+
+<span class="n">pipeline</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">ImagePipeline</span><span class="p">(</span>
+    <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">Sam2</span><span class="p">(</span><span class="n">model_size</span><span class="o">=</span><span class="s2">&quot;tiny&quot;</span><span class="p">,</span> <span class="n">points_per_side</span><span class="o">=</span><span class="mi">32</span><span class="p">)],</span>
+    <span class="n">measurer</span><span class="o">=</span><span class="n">SizeMeasurer</span><span class="p">(),</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sam2_colony_pipeline&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Run the pipeline</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">operate</span><span class="p">([</span><span class="n">image</span><span class="p">])</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">measure</span><span class="p">([</span><span class="n">image</span><span class="p">])</span>
+</pre></div>
+</div>
+<section id="json-serialization">
+<h3>JSON serialization<a class="headerlink" href="#json-serialization" title="Link to this heading">#</a></h3>
+<p>Pipelines containing GPU detectors can be saved and loaded just like any
+other pipeline. The detector parameters are serialized; the model weights
+are not (they are re-downloaded or loaded from cache when needed):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Save</span>
+<span class="n">pipeline</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s2">&quot;sam2_pipeline.json&quot;</span><span class="p">)</span>
+
+<span class="c1"># Load -- works without torch installed (model loads lazily on apply)</span>
+<span class="n">restored</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="s2">&quot;sam2_pipeline.json&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Internal state (attributes prefixed with <code class="docutils literal notranslate"><span class="pre">_</span></code>, such as the loaded model) is
+excluded from serialization. The model is rebuilt transparently on the next
+call to <code class="docutils literal notranslate"><span class="pre">apply</span></code>.</p>
+</section>
+</section>
+<section id="local-staged-gpu-detection-cli">
+<h2>Local Staged GPU Detection (CLI)<a class="headerlink" href="#local-staged-gpu-detection-cli" title="Link to this heading">#</a></h2>
+<p>When you run a pipeline through the CLI (<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span></code>) and it contains
+a <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code>, detection runs as <strong>three internal stages</strong> rather than invoking
+the GPU model once per image. The segmentation model is built <strong>once</strong> and every
+image is streamed through it — far more efficient than the notebook per-image
+path when processing a directory:</p>
+<ol class="arabic simple">
+<li><p><strong>Stage 1 — CPU preprocess.</strong> Every prior <code class="docutils literal notranslate"><span class="pre">ImageOperation</span></code> (enhancers,
+corrections) is applied per image and the result is saved to the normal
+per-image HDF (<code class="docutils literal notranslate"><span class="pre">results/&lt;dataset&gt;/hdf/&lt;stem&gt;.h5</span></code>).</p></li>
+<li><p><strong>Stage 2 — resident-model GPU detect.</strong> The detector’s model is built once
+and kept resident while each staged HDF is streamed through
+<code class="docutils literal notranslate"><span class="pre">preprocess</span> <span class="pre">→</span> <span class="pre">infer_batch</span></code>. The labelled object map is written to a per-image
+<code class="docutils literal notranslate"><span class="pre">.npy</span></code> <strong>sidecar</strong> at <code class="docutils literal notranslate"><span class="pre">results/&lt;dataset&gt;/objmap/&lt;stem&gt;.npy</span></code>; the HDF is opened
+read-only here, so an interrupted run never corrupts it.</p></li>
+<li><p><strong>Stage 3 — CPU merge + measure.</strong> The sidecar is merged back into the image
+through the object-map accessor, the post-detector refiners and the
+measurement queue run, the HDF is re-saved atomically, and the sidecar is
+<strong>deleted</strong>.</p></li>
+</ol>
+<p>The output folder is identical to a single-pass run — staging is an internal
+optimization, not a different output contract.</p>
+<p><strong>Resume is content-defined.</strong> Re-running the same command classifies each image:
+a missing or invalid HDF selects Stage 1, a valid HDF without a sidecar selects
+Stage 2, and a valid HDF with a sidecar selects Stage 3. Stage 3 writes an atomic
+completion marker after publishing the parquet, HDF, and plot, then deletes the
+sidecar. Plain <code class="docutils literal notranslate"><span class="pre">--resume</span></code> automatically includes failed staged images.
+Progress is <strong>stage-tagged</strong> in the event log, so the run dashboard can show how
+far each image has moved through the three stages. If Stage 1 fails for an image
+(e.g. an unreadable file), Stages 2 and 3 skip it and record a structured failure
+instead of aborting the batch.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Forward run: detection stages automatically because the pipeline has a GpuDetector</span>
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>sam2_pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/
+
+<span class="c1"># Export just the object maps (runs Stages 1-2, then writes one objmap PNG per image)</span>
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>process<span class="w"> </span>--layer<span class="w"> </span>objmap<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--pipeline<span class="w"> </span>sam2_pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/
+</pre></div>
+</div>
+</section>
+<section id="slurm-deployment">
+<h2>SLURM Deployment<a class="headerlink" href="#slurm-deployment" title="Link to this heading">#</a></h2>
+<p>When a pipeline contains a <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code> operation (either <code class="docutils literal notranslate"><span class="pre">Sam2</span></code> or
+<code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code>), the CLI automatically adapts:</p>
+<p><strong>Local execution:</strong> Forward GPU runs use the staged engine above (the model
+loads once and streams every image); see “Local Staged GPU Detection”. The
+legacy per-image path (measure-only and non-objmap layer exports) still forces
+sequential processing (<code class="docutils literal notranslate"><span class="pre">n_jobs=1</span></code>) to avoid multiple workers competing for the
+same GPU.</p>
+<p><strong>SLURM execution:</strong> Automatically adds <code class="docutils literal notranslate"><span class="pre">--gpus-per-node=1</span></code> to the SLURM
+job if GPU resources were not explicitly requested.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># GPU resources are auto-requested when the pipeline contains a GpuDetector</span>
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>sam2_pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/
+
+<span class="c1"># Override with explicit SLURM GPU arguments</span>
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>sam2_pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--slurm<span class="w"> </span><span class="nv">slurm_gpus_per_node</span><span class="o">=</span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--slurm<span class="w"> </span><span class="nv">slurm_partition</span><span class="o">=</span>gpu
+</pre></div>
+</div>
+<p>Pre-cache checkpoints on the login node before submitting (see
+“Downloading Model Checkpoints” above).</p>
+<section id="slurm-staged-gpu-detection">
+<h3>SLURM Staged GPU Detection<a class="headerlink" href="#slurm-staged-gpu-detection" title="Link to this heading">#</a></h3>
+<p>A forward GPU run on SLURM (<code class="docutils literal notranslate"><span class="pre">--slurm</span> <span class="pre">...</span></code> with a <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code> pipeline) runs as
+the staged engine above, coordinated by an <strong>epoch-fenced dependent controller</strong>
+with <strong>per-stage resources</strong>:</p>
+<ul class="simple">
+<li><p><strong>Stage 1</strong> — a CPU array over images (preprocess → staged HDF), on the
+<code class="docutils literal notranslate"><span class="pre">--slurm</span></code> profile.</p></li>
+<li><p><strong>Stage 2</strong> — a GPU array over <strong>shards</strong> (<code class="docutils literal notranslate"><span class="pre">--gpu-shards</span> <span class="pre">N</span></code>): each task is one
+whole GPU running a resident model that streams its shard of HDFs to objmap
+sidecars, on the <code class="docutils literal notranslate"><span class="pre">--gpu-slurm</span></code> profile.</p></li>
+<li><p><strong>Stage 3</strong> — a CPU array over images (merge sidecar → measure), on the
+<code class="docutils literal notranslate"><span class="pre">--slurm</span></code> profile.</p></li>
+</ul>
+<p>Controllers wait with <code class="docutils literal notranslate"><span class="pre">afterany</span></code>, so a handful of per-image failures never block
+the next decision. Because Stage 2 writes a <code class="docutils literal notranslate"><span class="pre">.npy</span></code> sidecar with the HDF opened
+read-only, there is <strong>no HDF5 write-locking on the GPU nodes</strong>; Stages 1 &amp; 3
+write the HDF atomically (temp + rename) on CPU nodes.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># CPU partition for Stages 1 &amp; 3 (--slurm); GPU partition + 2 concurrent GPUs for Stage 2</span>
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>sam2_pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--slurm<span class="w"> </span><span class="nv">slurm_partition</span><span class="o">=</span>batch<span class="w"> </span>--slurm<span class="w"> </span><span class="nv">slurm_time</span><span class="o">=</span><span class="m">02</span>:00:00<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--gpu-slurm<span class="w"> </span><span class="nv">slurm_partition</span><span class="o">=</span>gpu<span class="w"> </span>--gpu-shards<span class="w"> </span><span class="m">2</span>
+</pre></div>
+</div>
+<p>GPU distribution uses <code class="docutils literal notranslate"><span class="pre">--gpu-shards</span></code> (whole GPUs, across nodes).
+<code class="docutils literal notranslate"><span class="pre">--gpu-workers-per-gpu</span></code> is reserved; the current worker uses one model per shard.
+<code class="docutils literal notranslate"><span class="pre">--gpu-slurm</span></code> inherits/deltas over <code class="docutils literal notranslate"><span class="pre">--slurm</span></code>, so shared keys
+(account, qos, time) carry over and only the GPU partition/account need
+restating; one GPU is requested automatically.</p>
+<p><strong>Walltime survival.</strong> Before a controller decides what comes next, it has a
+dependent recovery controller in the queue. After a Stage-2 array terminates,
+the controller checks valid HDFs, atomic sidecars, Stage-3 markers,
+and the current epoch’s terminal-failure journal. If retryable images remain,
+it submits another Stage-2 array and moves the recovery controller behind that
+array master. Workers do not install a walltime signal handler and do not call
+<code class="docutils literal notranslate"><span class="pre">scontrol</span> <span class="pre">requeue</span></code>.</p>
+<p>One unchanged retryable-set round is retried. If a second consecutive round
+makes no progress, the remaining images become terminal failures and Stage 3
+continues for completed images. All dynamic job IDs are written to the run
+ledger, which cancellation uses after atomically deactivating the epoch.</p>
+<p>Without <code class="docutils literal notranslate"><span class="pre">--wait</span></code>, the command prints <code class="docutils literal notranslate"><span class="pre">PROCESSING</span> <span class="pre">SUBMITTED</span></code> and returns. The
+dependent finalizer alone publishes aggregate measurements, QC, analyses,
+dashboard, HTML report, README, and the atomic completion marker. With
+<code class="docutils literal notranslate"><span class="pre">--wait</span></code>, the CLI monitors that marker; Ctrl+C only detaches monitoring.</p>
+<p><strong>Pre-staging gated weights.</strong> For offline compute nodes, download checkpoints on
+the login node first and export <code class="docutils literal notranslate"><span class="pre">HF_HUB_OFFLINE=1</span></code> (and <code class="docutils literal notranslate"><span class="pre">hf</span> <span class="pre">auth</span> <span class="pre">login</span></code> for gated
+Hugging Face models). Gated foundation-model weights are never bundled; accept
+their license once via <code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE=&lt;model&gt;</span></code> (see the
+<code class="docutils literal notranslate"><span class="pre">require_license_acceptance</span></code> hook).</p>
+<p><strong>Custom detectors on SLURM.</strong> Each SLURM stage worker is a fresh process that
+deserializes the pipeline with <code class="docutils literal notranslate"><span class="pre">ImagePipeline.from_json</span></code>, which resolves operation
+classes from the <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace. If your pipeline uses a detector defined
+<strong>outside</strong> the package, set
+<code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_PRELOAD_MODULES=your.module[,another.module]</span></code> — the worker imports
+each before deserializing, so a self-registering module can make its class
+resolvable on the compute node. <code class="docutils literal notranslate"><span class="pre">sbatch</span> <span class="pre">--export=ALL</span></code> (the default) propagates the
+variable.</p>
+</section>
+</section>
+<section id="device-selection">
+<h2>Device Selection<a class="headerlink" href="#device-selection" title="Link to this heading">#</a></h2>
+<p>Both detectors accept a <code class="docutils literal notranslate"><span class="pre">device</span></code> parameter that controls where inference runs.</p>
+<section id="automatic-detection-default">
+<h3>Automatic detection (default)<a class="headerlink" href="#automatic-detection-default" title="Link to this heading">#</a></h3>
+<p>With <code class="docutils literal notranslate"><span class="pre">device=&quot;auto&quot;</span></code> (the default), PhenoTypic probes accelerators in priority
+order:</p>
+<ol class="arabic simple">
+<li><p><strong>CUDA</strong> – NVIDIA GPUs</p></li>
+<li><p><strong>MPS</strong> – Apple Silicon (macOS)</p></li>
+<li><p><strong>XPU</strong> – Intel GPUs</p></li>
+<li><p><strong>HPU</strong> – Habana Gaudi accelerators</p></li>
+</ol>
+<p>If none is found, a <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> is raised.</p>
+</section>
+<section id="explicit-device">
+<h3>Explicit device<a class="headerlink" href="#explicit-device" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Force a specific device</span>
+<span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>   <span class="c1"># NVIDIA GPU</span>
+<span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;mps&quot;</span><span class="p">)</span>    <span class="c1"># Apple Silicon</span>
+<span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;xpu&quot;</span><span class="p">)</span>    <span class="c1"># Intel GPU</span>
+<span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>    <span class="c1"># CPU (very slow, but always available)</span>
+</pre></div>
+</div>
+<p>When an explicit accelerator is requested but unavailable, a <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>
+is raised with a descriptive message.</p>
+</section>
+<section id="resolve-device-utility">
+<h3><code class="docutils literal notranslate"><span class="pre">resolve_device()</span></code> utility<a class="headerlink" href="#resolve-device-utility" title="Link to this heading">#</a></h3>
+<p>The device resolution logic is available as a standalone function for custom
+workflows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn._helper._checkpoint_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_device</span>
+
+<span class="n">device</span> <span class="o">=</span> <span class="n">resolve_device</span><span class="p">(</span><span class="s2">&quot;auto&quot;</span><span class="p">)</span>           <span class="c1"># raises if no accelerator</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">resolve_device</span><span class="p">(</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="n">allow_cpu</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># falls back to CPU with warning</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="listing-and-clearing-models">
+<h2>Listing and Clearing Models<a class="headerlink" href="#listing-and-clearing-models" title="Link to this heading">#</a></h2>
+<section id="list-cached-checkpoints">
+<h3>List cached checkpoints<a class="headerlink" href="#list-cached-checkpoints" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>list
+</pre></div>
+</div>
+<p>This prints a table showing all cached SAM2 and micro-sam checkpoints with
+their file sizes and paths.</p>
+</section>
+<section id="clear-cached-checkpoints">
+<h3>Clear cached checkpoints<a class="headerlink" href="#clear-cached-checkpoints" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Clear all cached checkpoints (prompts for confirmation)</span>
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>clear
+
+<span class="c1"># Clear only SAM2 checkpoints</span>
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>clear<span class="w"> </span>--model-type<span class="w"> </span>sam2
+
+<span class="c1"># Clear only micro-sam checkpoints</span>
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>clear<span class="w"> </span>--model-type<span class="w"> </span>microsam
+</pre></div>
+</div>
+</section>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">#</a></h2>
+<section id="importerror-sam2-requires-the-sam2-package">
+<h3><code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">Sam2</span> <span class="pre">requires</span> <span class="pre">the</span> <span class="pre">sam2</span> <span class="pre">package</span></code><a class="headerlink" href="#importerror-sam2-requires-the-sam2-package" title="Link to this heading">#</a></h3>
+<p>PyTorch and the model packages are not installed. Install the <code class="docutils literal notranslate"><span class="pre">torch</span></code> extra:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;phenotypic[torch]&quot;</span>
+</pre></div>
+</div>
+<p>(Linux/macOS only — <code class="docutils literal notranslate"><span class="pre">sam2</span></code> is not packaged for Windows.)</p>
+</section>
+<section id="importerror-microsamdetector-requires-the-micro-sam-package">
+<h3><code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">MicroSamDetector</span> <span class="pre">requires</span> <span class="pre">the</span> <span class="pre">micro_sam</span> <span class="pre">package</span></code><a class="headerlink" href="#importerror-microsamdetector-requires-the-micro-sam-package" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> is conda-only and must be installed separately. See the
+<a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>
+tutorial section for the conda-forge / <code class="docutils literal notranslate"><span class="pre">pixi</span></code> recipe.</p>
+</section>
+<section id="runtimeerror-no-accelerator-available">
+<h3><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">No</span> <span class="pre">accelerator</span> <span class="pre">available</span></code><a class="headerlink" href="#runtimeerror-no-accelerator-available" title="Link to this heading">#</a></h3>
+<p>No GPU was detected. Options:</p>
+<ul class="simple">
+<li><p>Ensure your GPU drivers and CUDA toolkit are installed correctly.</p></li>
+<li><p>On macOS with Apple Silicon, ensure PyTorch &gt;= 2.0 with MPS support.</p></li>
+<li><p>Pass <code class="docutils literal notranslate"><span class="pre">device=&quot;cpu&quot;</span></code> to force CPU inference (very slow):</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="runtimeerror-device-cuda-requested-but-cuda-is-not-available">
+<h3><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">device='cuda'</span> <span class="pre">requested</span> <span class="pre">but</span> <span class="pre">CUDA</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">available</span></code><a class="headerlink" href="#runtimeerror-device-cuda-requested-but-cuda-is-not-available" title="Link to this heading">#</a></h3>
+<p>CUDA was explicitly requested but is not available. Check:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">nvidia-smi</span></code> shows your GPU.</p></li>
+<li><p>PyTorch was installed with CUDA support (<code class="docutils literal notranslate"><span class="pre">torch.cuda.is_available()</span></code>
+returns <code class="docutils literal notranslate"><span class="pre">True</span></code>).</p></li>
+<li><p>On SLURM, the job was submitted to a GPU partition.</p></li>
+</ul>
+</section>
+<section id="out-of-memory-oom-errors">
+<h3>Out of memory (OOM) errors<a class="headerlink" href="#out-of-memory-oom-errors" title="Link to this heading">#</a></h3>
+<p>SAM models require significant GPU memory. To reduce VRAM or unified-memory usage
+without lowering segmentation resolution:</p>
+<ul class="simple">
+<li><p>Lower <code class="docutils literal notranslate"><span class="pre">points_per_batch</span></code> first (for example, 4 instead of the default 8). This
+keeps the same prompt grid, crop pyramid, thresholds, and mask geometry.</p></li>
+<li><p>Both <code class="docutils literal notranslate"><span class="pre">input_scaling=&quot;dtype_range&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">input_scaling=&quot;image_max&quot;</span></code> use the
+same bounded row-chunk conversion, so this setting is not an OOM control.
+Keep the <code class="docutils literal notranslate"><span class="pre">&quot;image_max&quot;</span></code> default for the validated compatibility policy; use
+<code class="docutils literal notranslate"><span class="pre">&quot;dtype_range&quot;</span></code> only when absolute sensor-scale intensity is required.</p></li>
+<li><p>Use a smaller model: <code class="docutils literal notranslate"><span class="pre">Sam2(model_size=&quot;tiny&quot;)</span></code> instead of <code class="docutils literal notranslate"><span class="pre">&quot;large&quot;</span></code>.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">MicroSamDetector(model_type=&quot;vit_t_lm&quot;)</span></code> for the smallest micro-sam
+model.</p></li>
+<li><p>If memory is still insufficient, reduce <code class="docutils literal notranslate"><span class="pre">points_per_side</span></code> (for example, 16
+instead of 32), then reduce <code class="docutils literal notranslate"><span class="pre">crop_n_layers</span></code> or downscale the image. These later
+options reduce prompt density or effective segmentation resolution and can
+affect accuracy.</p></li>
+</ul>
+</section>
+<section id="checkpoint-not-found-on-slurm-compute-nodes">
+<h3>Checkpoint not found on SLURM compute nodes<a class="headerlink" href="#checkpoint-not-found-on-slurm-compute-nodes" title="Link to this heading">#</a></h3>
+<p>Compute nodes often lack internet access. Pre-download checkpoints on the
+login node:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--model-size<span class="w"> </span>tiny
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam<span class="w"> </span>--model-name<span class="w"> </span>vit_b_lm
+python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>list<span class="w">  </span><span class="c1"># verify</span>
+</pre></div>
+</div>
+<p>Ensure <code class="docutils literal notranslate"><span class="pre">TORCH_HOME</span></code> and <code class="docutils literal notranslate"><span class="pre">MICROSAM_CACHEDIR</span></code> (if customised) point to a
+shared filesystem accessible from compute nodes.</p>
+</section>
+<section id="illegal-instruction-core-dumped-on-a-slurm-compute-node">
+<h3><code class="docutils literal notranslate"><span class="pre">Illegal</span> <span class="pre">instruction</span> <span class="pre">(core</span> <span class="pre">dumped)</span></code> on a SLURM compute node<a class="headerlink" href="#illegal-instruction-core-dumped-on-a-slurm-compute-node" title="Link to this heading">#</a></h3>
+<p>A stage worker exits with code 132 and the SLURM <code class="docutils literal notranslate"><span class="pre">.err</span></code> log shows <code class="docutils literal notranslate"><span class="pre">Illegal</span> <span class="pre">instruction</span> <span class="pre">(core</span> <span class="pre">dumped)</span></code>. The node’s CPU is too old for the installed
+numpy/scipy/torch wheels (a pre-AVX node on a heterogeneous partition). This
+affects <strong>any</strong> PhenoTypic SLURM run, not just the staged GPU engine. Pin jobs to
+modern nodes — use a homogeneous modern partition, or add a SLURM feature
+constraint that excludes the old CPUs, e.g.:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>p.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/out/<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--slurm<span class="w"> </span><span class="nv">slurm_partition</span><span class="o">=</span>&lt;modern-partition&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--gpu-slurm<span class="w"> </span><span class="nv">slurm_partition</span><span class="o">=</span>&lt;gpu-partition&gt;
+</pre></div>
+</div>
+<p>(Stage 2’s GPU work runs on GPU nodes, which are typically consistent; the CPU
+Stages 1 &amp; 3 are the ones exposed to a heterogeneous CPU partition.)</p>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#per-model-license-posture">Per-model license posture</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#downloading-model-checkpoints">Downloading Model Checkpoints</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-sam2">Using Sam2</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#parameter-tuning-for-colony-detection">Parameter tuning for colony detection</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-microsamdetector">Using MicroSamDetector</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#model-selection">Model selection</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-sam3">Using Sam3</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-dinosam2detector">Using DinoSam2Detector</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#semantic-few-shot-detectors-insid3detector-fssdinodetector">Semantic few-shot detectors (<code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code>, <code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code>)</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#insid3detector-one-shot-in-context-dinov3-native-gated"><code class="docutils literal notranslate"><span class="pre">Insid3Detector</span></code> — one-shot in-context (DINOv3-native, gated)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fssdinodetector-few-shot-dinov2-default-ungated"><code class="docutils literal notranslate"><span class="pre">FssDinoDetector</span></code> — few-shot (DINOv2 default, ungated)</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pipeline-integration">Pipeline Integration</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#json-serialization">JSON serialization</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#local-staged-gpu-detection-cli">Local Staged GPU Detection (CLI)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#slurm-deployment">SLURM Deployment</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#slurm-staged-gpu-detection">SLURM Staged GPU Detection</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#device-selection">Device Selection</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#automatic-detection-default">Automatic detection (default)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#explicit-device">Explicit device</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#resolve-device-utility"><code class="docutils literal notranslate"><span class="pre">resolve_device()</span></code> utility</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#listing-and-clearing-models">Listing and Clearing Models</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#list-cached-checkpoints">List cached checkpoints</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#clear-cached-checkpoints">Clear cached checkpoints</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#troubleshooting">Troubleshooting</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#importerror-sam2-requires-the-sam2-package"><code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">Sam2</span> <span class="pre">requires</span> <span class="pre">the</span> <span class="pre">sam2</span> <span class="pre">package</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#importerror-microsamdetector-requires-the-micro-sam-package"><code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">MicroSamDetector</span> <span class="pre">requires</span> <span class="pre">the</span> <span class="pre">micro_sam</span> <span class="pre">package</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#runtimeerror-no-accelerator-available"><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">No</span> <span class="pre">accelerator</span> <span class="pre">available</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#runtimeerror-device-cuda-requested-but-cuda-is-not-available"><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">device='cuda'</span> <span class="pre">requested</span> <span class="pre">but</span> <span class="pre">CUDA</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">available</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#out-of-memory-oom-errors">Out of memory (OOM) errors</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#checkpoint-not-found-on-slurm-compute-nodes">Checkpoint not found on SLURM compute nodes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#illegal-instruction-core-dumped-on-a-slurm-compute-node"><code class="docutils literal notranslate"><span class="pre">Illegal</span> <span class="pre">instruction</span> <span class="pre">(core</span> <span class="pre">dumped)</span></code> on a SLURM compute node</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/how_to/pages/gpu_detection_setup.md.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

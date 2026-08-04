@@ -1,0 +1,1040 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>GUI hub &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=478834ab"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'how_to/pages/gui_hub';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.18.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.18.1/how_to/pages/gui_hub.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Serialize and Share Pipelines" href="serialize_pipelines.html" />
+    <link rel="prev" title="Distributed Tuning on HPCC Clusters" href="tune_distributed_hpcc.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.18.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="../index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="../index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Correction &amp; Preprocessing</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/correct_grid_rotation.html">How To: Correct Grid Rotation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/enhance_low_contrast.html">How To: Enhance Low-Contrast Images</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/crop_and_pad.html">How To: Crop and Pad Images for Batch Consistency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/denoise_low_light.html">How To: Denoise Low-Light Images</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Detection &amp; Refinement</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/choose_detection_algorithm.html">How To: Choose a Detection Algorithm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/refine_noisy_boundaries.html">How To: Refine Noisy Detection Boundaries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/manual_grid_detection.html">How To: Manual Grid Detection When Automatic Fails</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/combine_detectors.html">How To: Combine Detectors with CompositeDetector</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/merge_fragmented_detections.html">How To: Merge Fragmented Detections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gpu_detection_setup.html">GPU-Accelerated Colony Detection</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Measurement &amp; Analysis</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/measure_colony_size_intensity.html">How To: Measure Colony Size and Intensity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/correct_edge_effects.html">How To: Correct Edge Effects in Plate Assays</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/fit_logistic_growth.html">How To: Fit Logistic Growth Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/assess_image_quality.html">How To: Assess Image Quality Before Pipeline Design</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CLI &amp; Infrastructure</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="rembi_metadata.html">Describe a run’s metadata with REMBI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="slurm_pipelines.html">SLURM Pipelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="polars_cpu_build.html">Choosing the polars CPU build (lts-cpu vs stock)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tuning.html">Hyperparameter Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tune_distributed_hpcc.html">Distributed Tuning on HPCC Clusters</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">GUI hub</a></li>
+<li class="toctree-l1"><a class="reference internal" href="serialize_pipelines.html">Serialize and Share Pipelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hdf5_storage.html">Store Results in HDF5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generate_reports.html">Generate HTML Processing Reports</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">How-To Guides</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">GUI hub</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="gui-hub">
+<h1>GUI hub<a class="headerlink" href="#gui-hub" title="Link to this heading">#</a></h1>
+<p>Run the unified PhenoTypic web interface — pipeline builder, results viewer,
+and run console — under a single URL from any machine, including HPC clusters
+reached over SSH.</p>
+<section id="what-the-hub-is">
+<h2>What the hub is<a class="headerlink" href="#what-the-hub-is" title="Link to this heading">#</a></h2>
+<p>The hub is one Dash application that mounts three tools under sub-paths of a
+single server:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Path</p></th>
+<th class="head"><p>Tool</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/</span></code></p></td>
+<td><p>Home — sandbox tree, capability badges, tab navigation</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/builder/</span></code></p></td>
+<td><p>Pipeline builder (node-graph editor)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/results/</span></code></p></td>
+<td><p>Results viewer (OpenSeadragon overlays, measurement tables)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/run/</span></code></p></td>
+<td><p>Run console (submit local or SLURM jobs, tail logs, view dashboard)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>All four pages share a top-bar tab strip and a sidebar showing the sandbox
+directory tree. The server is single-user and frozen-at-launch: the file
+browser can only see the directory you pass via <code class="docutils literal notranslate"><span class="pre">--root</span></code>.</p>
+</section>
+<section id="launching-the-hub">
+<h2>Launching the hub<a class="headerlink" href="#launching-the-hub" title="Link to this heading">#</a></h2>
+<p>Two equivalent entry points boot the same server:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-gui<span class="w"> </span>--root<span class="w"> </span>./images<span class="w"> </span>--port<span class="w"> </span><span class="m">8050</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.gui<span class="w"> </span>--root<span class="w"> </span>./images<span class="w"> </span>--port<span class="w"> </span><span class="m">8050</span>
+</pre></div>
+</div>
+<p><strong>Options:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Flag</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Effect</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--root</span> <span class="pre">PATH</span></code></p></td>
+<td><p>current working directory</p></td>
+<td><p>Freezes the sandbox the file browser is allowed to see</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--host</span> <span class="pre">ADDR</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code></p></td>
+<td><p>Interface to bind; loopback-only by default</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--port</span> <span class="pre">N</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">8050</span></code></p></td>
+<td><p>TCP port</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--url-prefix</span> <span class="pre">PREFIX</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/</span></code></p></td>
+<td><p>Browser-visible path prefix for path-stripping proxies</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--debug</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Enable Dash auto-reload and verbose tracebacks</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The startup banner printed to stdout repeats the URL and the SSH-tunnel
+command for the bound port.</p>
+<section id="open-ondemand-path-prefix">
+<h3>Open OnDemand path prefix<a class="headerlink" href="#open-ondemand-path-prefix" title="Link to this heading">#</a></h3>
+<p>Open OnDemand proxies apps through a browser path such as
+<code class="docutils literal notranslate"><span class="pre">/node/&lt;node&gt;/&lt;port&gt;/</span></code> and forwards stripped paths to the local server. Pass
+that path, not the full URL, as <code class="docutils literal notranslate"><span class="pre">--url-prefix</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-gui<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--root<span class="w"> </span>/rhome/ejaco020<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--port<span class="w"> </span><span class="m">30099</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--url-prefix<span class="w"> </span>/node/hz01/30099/
+</pre></div>
+</div>
+<p>Then open the full proxy URL in your browser:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>https://ondemand.hpcc.ucr.edu/node/hz01/30099/
+</pre></div>
+</div>
+<p>The app does not infer node names, ports, or OOD domains. The default prefix is
+<code class="docutils literal notranslate"><span class="pre">/</span></code>, so local launches keep the usual <code class="docutils literal notranslate"><span class="pre">/builder/</span></code>, <code class="docutils literal notranslate"><span class="pre">/results/</span></code>, and <code class="docutils literal notranslate"><span class="pre">/run/</span></code>
+paths.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong><code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">gui</span></code> (without a hyphen) is not supported.</strong></p>
+<p>The existing <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> CLI is reserved for batch pipeline execution with
+explicit path options, not subcommands. Always use the hyphenated form
+<code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code> or the module form <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.gui</span></code>. Typing
+<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">phenotypic</span> <span class="pre">gui</span></code> will fail because <code class="docutils literal notranslate"><span class="pre">gui</span></code> is an unexpected positional
+argument.</p>
+</div>
+</section>
+</section>
+<section id="the-four-pages">
+<h2>The four pages<a class="headerlink" href="#the-four-pages" title="Link to this heading">#</a></h2>
+<section id="home">
+<h3>Home (<code class="docutils literal notranslate"><span class="pre">/</span></code>)<a class="headerlink" href="#home" title="Link to this heading">#</a></h3>
+<p>The landing page. The sidebar shows the sandbox directory tree; each entry
+carries zero or more capability badges:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Badge</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">img</span></code></p></td>
+<td><p>Directory contains image files</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cfg</span></code></p></td>
+<td><p>File is a PhenoTypic pipeline JSON</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">out</span></code></p></td>
+<td><p>Directory is a CLI output root (<code class="docutils literal notranslate"><span class="pre">deliverables/master_measurements.parquet</span></code> + <code class="docutils literal notranslate"><span class="pre">results/</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">?</span></code></p></td>
+<td><p>Directory could not be listed due to a permission error</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Hidden files (names starting with <code class="docutils literal notranslate"><span class="pre">.</span></code>) and symlinks whose targets fall outside
+the sandbox root are hidden by default. Two toggles in the sidebar header
+surface them. The Refresh button flushes the classifier’s LRU cache and
+re-classifies all visible nodes — use it after dropping new files into a
+directory.</p>
+</section>
+<section id="builder-builder">
+<h3>Builder (<code class="docutils literal notranslate"><span class="pre">/builder/</span></code>)<a class="headerlink" href="#builder-builder" title="Link to this heading">#</a></h3>
+<p>The existing node-graph pipeline builder, mounted under the hub prefix. Use it
+to compose <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> objects, set per-operation parameters, and export
+<code class="docutils literal notranslate"><span class="pre">pipeline.json</span></code>. The builder’s file picker is scoped to the same sandbox root
+as the rest of the hub.</p>
+</section>
+<section id="results-viewer-results">
+<h3>Results viewer (<code class="docutils literal notranslate"><span class="pre">/results/</span></code>)<a class="headerlink" href="#results-viewer-results" title="Link to this heading">#</a></h3>
+<p>The existing results viewer, accessible from the hub without a separate launch.
+The viewer starts with an empty-state landing page; click a directory with the
+<code class="docutils literal notranslate"><span class="pre">out</span></code> badge in the sidebar to load it.</p>
+<p><strong>Memory note.</strong> The viewer loads the master measurements parquet and per-image
+overlays into memory on first access. Navigating away and releasing the viewer
+frees the Python object graph, but process RSS may not return to the OS — the
+CPython allocator pools freed pages rather than returning them immediately.
+Subsequent access re-loads the data from disk.</p>
+</section>
+<section id="run-console-run">
+<h3>Run console (<code class="docutils literal notranslate"><span class="pre">/run/</span></code>)<a class="headerlink" href="#run-console-run" title="Link to this heading">#</a></h3>
+<p>Pick a pipeline JSON, an input directory, and an output directory from the
+sidebar or the inline file pickers. Toggle <strong>Local</strong> or <strong>SLURM</strong> mode, then
+click <strong>Validate</strong> (dry-run) or <strong>Run</strong>.</p>
+<p><strong>Validate</strong> runs the CLI with <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>: it validates the pipeline and lists
+the images that would be processed without writing any output. The log tail
+shows the result.</p>
+<p><strong>Run (Local)</strong> spawns <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">...</span></code> as a subprocess of the GUI
+process. See <a class="reference internal" href="../../tutorials/pages/cli_batch_processing.html"><span class="std std-doc">CLI Batch Processing</span></a> for
+the full list of CLI flags that the form exposes. Only one local run can be active at a time;
+the Run button is disabled while a local subprocess is live. SLURM submissions
+have no equivalent cap.</p>
+<p><strong>Run (SLURM)</strong> shells out to the CLI’s SLURM path. See
+<a class="reference internal" href="slurm_pipelines.html"><span class="std std-doc">SLURM Pipelines</span></a>. The submission runs on a background
+thread so the UI stays responsive. Once <code class="docutils literal notranslate"><span class="pre">progress/job_metadata.json</span></code> is
+written, the array primary job ID surfaces as <code class="docutils literal notranslate"><span class="pre">slurm-&lt;id&gt;</span></code> in the Recent Runs
+panel.</p>
+<p>The <strong>Recent Runs</strong> panel lists runs from the current session and historical
+runs rehydrated from the sandbox at boot time. Click a row to re-point the
+iframe at that run’s dashboard.</p>
+</section>
+</section>
+<section id="log-tail-and-iframe-dashboard">
+<h2>Log tail and iframe dashboard<a class="headerlink" href="#log-tail-and-iframe-dashboard" title="Link to this heading">#</a></h2>
+<p>Once a local run starts, stdout (and stderr, which is merged into stdout) is
+teed to <code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/.gui_log/stdout.log</span></code> and to a 5000-line in-memory ring
+buffer. The log-tail panel polls the ring buffer on a short interval.</p>
+<p>Once <code class="docutils literal notranslate"><span class="pre">dashboard.html</span></code> lands in the output directory’s <code class="docutils literal notranslate"><span class="pre">deliverables/</span></code>
+subfolder, the iframe panel points at
+<code class="docutils literal notranslate"><span class="pre">/runs/&lt;rel&gt;/deliverables/dashboard.html</span></code>. The <code class="docutils literal notranslate"><span class="pre">/runs/</span></code> route is registered on
+the hub’s Flask server directly — not under the dispatcher middleware — so the
+URL works regardless of which tab is active. The iframed dashboard polls its own
+progress files using relative URLs, which the <code class="docutils literal notranslate"><span class="pre">/runs/</span></code> route resolves inside the
+sandbox.</p>
+<p><strong>Cancel</strong> sends SIGTERM to the subprocess and waits up to 10 seconds. If the
+subprocess does not exit within that window, SIGKILL is sent. The GUI also
+registers an <code class="docutils literal notranslate"><span class="pre">atexit</span></code> hook so closing the hub with Ctrl-C propagates a SIGTERM
+to any live subprocesses before the process exits.</p>
+</section>
+<section id="ssh-tunnel-pattern">
+<h2>SSH-tunnel pattern<a class="headerlink" href="#ssh-tunnel-pattern" title="Link to this heading">#</a></h2>
+<p>When the hub runs on an HPC cluster, forward the port to your workstation in a
+separate terminal before opening the browser:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>-L<span class="w"> </span><span class="m">8050</span>:localhost:8050<span class="w"> </span>&lt;user&gt;@&lt;cluster&gt;
+</pre></div>
+</div>
+<p>Then open <code class="docutils literal notranslate"><span class="pre">http://localhost:8050/</span></code> locally. The default <code class="docutils literal notranslate"><span class="pre">--host</span> <span class="pre">127.0.0.1</span></code>
+binding means the server only accepts connections from <code class="docutils literal notranslate"><span class="pre">localhost</span></code>, so the
+tunnel is the only path in from outside the cluster.</p>
+<section id="running-the-gui-on-a-slurm-compute-node">
+<span id="gui-hub-slurm-tunnel"></span><h3>Running the GUI on a Slurm compute node<a class="headerlink" href="#running-the-gui-on-a-slurm-compute-node" title="Link to this heading">#</a></h3>
+<p>If you launch the GUI from inside a <code class="docutils literal notranslate"><span class="pre">srun</span></code> / <code class="docutils literal notranslate"><span class="pre">salloc</span></code> allocation, the server is
+bound to <code class="docutils literal notranslate"><span class="pre">localhost</span></code> on the <strong>compute node</strong>, not on the login node you SSH’d
+into. A single-hop tunnel to the login node will return
+<code class="docutils literal notranslate"><span class="pre">channel</span> <span class="pre">N:</span> <span class="pre">open</span> <span class="pre">failed:</span> <span class="pre">connect</span> <span class="pre">failed:</span> <span class="pre">Connection</span> <span class="pre">refused</span></code> because nothing is
+listening on the login node’s port. You need a two-hop tunnel.</p>
+<p>Pick the compute node hostname (visible in your shell prompt after the
+allocation lands, e.g. <code class="docutils literal notranslate"><span class="pre">&lt;user&gt;&#64;gpu12:~$</span></code>) and use one of the following:</p>
+<p><strong>Option 1 — <code class="docutils literal notranslate"><span class="pre">ProxyJump</span></code> from your workstation (simplest, single command):</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>-J<span class="w"> </span>&lt;user&gt;@&lt;cluster&gt;<span class="w"> </span>-L<span class="w"> </span><span class="m">8050</span>:localhost:8050<span class="w"> </span>&lt;user&gt;@&lt;compute-node&gt;
+</pre></div>
+</div>
+<p>This requires that the login node can SSH to the compute node without an
+extra password; that is the default on most Slurm clusters while you have an
+active allocation.</p>
+<p><strong>Option 2 — Nested SSH (works even if direct SSH to the compute node is
+blocked, as long as the login node permits forwarding):</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>-L<span class="w"> </span><span class="m">8050</span>:localhost:8050<span class="w"> </span>&lt;user&gt;@&lt;cluster&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>ssh<span class="w"> </span>-L<span class="w"> </span><span class="m">8050</span>:localhost:8050<span class="w"> </span>-N<span class="w"> </span>&lt;compute-node&gt;
+</pre></div>
+</div>
+<p><strong>Option 3 — Two terminals (useful when you want to keep the allocation shell
+interactive):</strong></p>
+<ol class="arabic">
+<li><p>Terminal A — start the GUI on the compute node:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>&lt;user&gt;@&lt;cluster&gt;
+srun<span class="w"> </span>-A<span class="w"> </span>&lt;account&gt;<span class="w"> </span>-p<span class="w"> </span>&lt;partition&gt;<span class="w"> </span>-t<span class="w"> </span><span class="m">4</span>:00:00<span class="w"> </span>--pty<span class="w"> </span>-c<span class="w"> </span><span class="m">8</span><span class="w"> </span>--mem<span class="o">=</span>32g<span class="w"> </span>bash<span class="w"> </span>-l
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.gui<span class="w"> </span>--root<span class="w"> </span>&lt;project-dir&gt;<span class="w"> </span>--port<span class="w"> </span><span class="m">8050</span>
+</pre></div>
+</div>
+</li>
+<li><p>Terminal B — open the two-hop tunnel from your workstation:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>-J<span class="w"> </span>&lt;user&gt;@&lt;cluster&gt;<span class="w"> </span>-L<span class="w"> </span><span class="m">8050</span>:localhost:8050<span class="w"> </span>-N<span class="w"> </span>&lt;user&gt;@&lt;compute-node&gt;
+</pre></div>
+</div>
+</li>
+</ol>
+<p>In all three options, open <code class="docutils literal notranslate"><span class="pre">http://localhost:8050/</span></code> on your workstation once
+the GUI logs <code class="docutils literal notranslate"><span class="pre">Dash</span> <span class="pre">is</span> <span class="pre">running</span> <span class="pre">on</span> <span class="pre">http://127.0.0.1:8050/</span></code>.</p>
+<p>To confirm the diagnosis if a tunnel keeps failing: from the <strong>login node</strong>,
+run <code class="docutils literal notranslate"><span class="pre">curl</span> <span class="pre">http://localhost:8050/</span></code>. It will fail (the GUI is on the compute
+node). From the <strong>compute node</strong>, the same <code class="docutils literal notranslate"><span class="pre">curl</span></code> succeeds. That mismatch is
+the symptom that you need a two-hop tunnel rather than a single-hop one.</p>
+</section>
+</section>
+<section id="cloud-deployment">
+<h2>Cloud deployment<a class="headerlink" href="#cloud-deployment" title="Link to this heading">#</a></h2>
+<p>Cloud deployment (multi-user, per-session sandbox roots, authentication) is a
+non-goal in v1. The hub is single-user with no auth gate. A
+<code class="docutils literal notranslate"><span class="pre">TODO(cloud-deploy)</span></code> in <code class="docutils literal notranslate"><span class="pre">src/phenotypic/gui/shell/_sandbox.py</span></code> marks the
+hook point for a future auth layer.</p>
+<p>Do not expose the hub on <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> without authentication — there is nothing
+stopping another user from reading files or submitting jobs through the
+unguarded API.</p>
+</section>
+<section id="standalone-tools">
+<h2>Standalone tools<a class="headerlink" href="#standalone-tools" title="Link to this heading">#</a></h2>
+<p>Each component can be launched independently for debugging:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Pipeline builder only</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.gui.builder<span class="w"> </span>--image-root<span class="w"> </span>./images
+
+<span class="c1"># Results viewer only</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.gui.results_viewer<span class="w"> </span>--output-root<span class="w"> </span>./out
+
+<span class="c1"># Run console only</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.gui.run_console<span class="w"> </span>--root<span class="w"> </span>./images
+</pre></div>
+</div>
+<p>All three accept <code class="docutils literal notranslate"><span class="pre">--host</span></code>, <code class="docutils literal notranslate"><span class="pre">--port</span></code>, and <code class="docutils literal notranslate"><span class="pre">--debug</span></code> with the same defaults as
+the hub launcher.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-the-hub-is">What the hub is</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#launching-the-hub">Launching the hub</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#open-ondemand-path-prefix">Open OnDemand path prefix</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-four-pages">The four pages</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#home">Home (<code class="docutils literal notranslate"><span class="pre">/</span></code>)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#builder-builder">Builder (<code class="docutils literal notranslate"><span class="pre">/builder/</span></code>)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#results-viewer-results">Results viewer (<code class="docutils literal notranslate"><span class="pre">/results/</span></code>)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#run-console-run">Run console (<code class="docutils literal notranslate"><span class="pre">/run/</span></code>)</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#log-tail-and-iframe-dashboard">Log tail and iframe dashboard</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ssh-tunnel-pattern">SSH-tunnel pattern</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-the-gui-on-a-slurm-compute-node">Running the GUI on a Slurm compute node</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cloud-deployment">Cloud deployment</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#standalone-tools">Standalone tools</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/how_to/pages/gui_hub.md.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

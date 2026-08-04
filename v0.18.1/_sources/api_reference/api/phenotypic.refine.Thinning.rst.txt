@@ -1,0 +1,63 @@
+phenotypic.refine.Thinning
+==========================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: Thinning
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~Thinning.__init__
+      ~Thinning.apply
+      ~Thinning.construct
+      ~Thinning.copy
+      ~Thinning.dict
+      ~Thinning.from_json
+      ~Thinning.from_orm
+      ~Thinning.json
+      ~Thinning.model_construct
+      ~Thinning.model_copy
+      ~Thinning.model_dump
+      ~Thinning.model_dump_json
+      ~Thinning.model_json_schema
+      ~Thinning.model_parametrized_name
+      ~Thinning.model_post_init
+      ~Thinning.model_rebuild
+      ~Thinning.model_validate
+      ~Thinning.model_validate_json
+      ~Thinning.model_validate_strings
+      ~Thinning.parse_file
+      ~Thinning.parse_obj
+      ~Thinning.parse_raw
+      ~Thinning.schema
+      ~Thinning.schema_json
+      ~Thinning.to_json
+      ~Thinning.update_forward_refs
+      ~Thinning.validate
+      ~Thinning.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Thinning.model_computed_fields
+      ~Thinning.model_config
+      ~Thinning.model_extra
+      ~Thinning.model_fields
+      ~Thinning.model_fields_set
+      ~Thinning.max_num_iter
+   
+   

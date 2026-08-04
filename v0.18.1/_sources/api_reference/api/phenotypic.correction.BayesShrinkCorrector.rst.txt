@@ -1,0 +1,74 @@
+phenotypic.correction.BayesShrinkCorrector
+==========================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: BayesShrinkCorrector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BayesShrinkCorrector.__init__
+      ~BayesShrinkCorrector.apply
+      ~BayesShrinkCorrector.construct
+      ~BayesShrinkCorrector.copy
+      ~BayesShrinkCorrector.dict
+      ~BayesShrinkCorrector.from_json
+      ~BayesShrinkCorrector.from_orm
+      ~BayesShrinkCorrector.json
+      ~BayesShrinkCorrector.model_construct
+      ~BayesShrinkCorrector.model_copy
+      ~BayesShrinkCorrector.model_dump
+      ~BayesShrinkCorrector.model_dump_json
+      ~BayesShrinkCorrector.model_json_schema
+      ~BayesShrinkCorrector.model_parametrized_name
+      ~BayesShrinkCorrector.model_post_init
+      ~BayesShrinkCorrector.model_rebuild
+      ~BayesShrinkCorrector.model_validate
+      ~BayesShrinkCorrector.model_validate_json
+      ~BayesShrinkCorrector.model_validate_strings
+      ~BayesShrinkCorrector.parse_file
+      ~BayesShrinkCorrector.parse_obj
+      ~BayesShrinkCorrector.parse_raw
+      ~BayesShrinkCorrector.schema
+      ~BayesShrinkCorrector.schema_json
+      ~BayesShrinkCorrector.to_json
+      ~BayesShrinkCorrector.update_forward_refs
+      ~BayesShrinkCorrector.validate
+      ~BayesShrinkCorrector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BayesShrinkCorrector.model_computed_fields
+      ~BayesShrinkCorrector.model_config
+      ~BayesShrinkCorrector.model_extra
+      ~BayesShrinkCorrector.model_fields
+      ~BayesShrinkCorrector.model_fields_set
+      ~BayesShrinkCorrector.sigma
+      ~BayesShrinkCorrector.wavelet
+      ~BayesShrinkCorrector.mode
+      ~BayesShrinkCorrector.wavelet_levels
+      ~BayesShrinkCorrector.convert2ycbcr
+      ~BayesShrinkCorrector.rescale_sigma
+      ~BayesShrinkCorrector.norm
+      ~BayesShrinkCorrector.use_gat
+      ~BayesShrinkCorrector.gat_gain
+      ~BayesShrinkCorrector.gat_mu
+      ~BayesShrinkCorrector.gat_read_sigma
+      ~BayesShrinkCorrector.gat_scale_factor
+   
+   

@@ -1,0 +1,115 @@
+phenotypic.schema.ColorLab
+==========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: ColorLab
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ColorLab.tier
+      ~ColorLab.kind
+      ~ColorLab.category
+      ~ColorLab.rembi_module
+      ~ColorLab.header_scheme
+      ~ColorLab.member_for_header
+      ~ColorLab.owns_header
+      ~ColorLab.get_labels
+      ~ColorLab.get_headers
+      ~ColorLab.rst_table
+      ~ColorLab.append_rst_to_doc
+      ~ColorLab.encode
+      ~ColorLab.replace
+      ~ColorLab.split
+      ~ColorLab.rsplit
+      ~ColorLab.join
+      ~ColorLab.capitalize
+      ~ColorLab.casefold
+      ~ColorLab.title
+      ~ColorLab.center
+      ~ColorLab.count
+      ~ColorLab.expandtabs
+      ~ColorLab.find
+      ~ColorLab.partition
+      ~ColorLab.index
+      ~ColorLab.ljust
+      ~ColorLab.lower
+      ~ColorLab.lstrip
+      ~ColorLab.rfind
+      ~ColorLab.rindex
+      ~ColorLab.rjust
+      ~ColorLab.rstrip
+      ~ColorLab.rpartition
+      ~ColorLab.splitlines
+      ~ColorLab.strip
+      ~ColorLab.swapcase
+      ~ColorLab.translate
+      ~ColorLab.upper
+      ~ColorLab.startswith
+      ~ColorLab.endswith
+      ~ColorLab.removeprefix
+      ~ColorLab.removesuffix
+      ~ColorLab.isascii
+      ~ColorLab.islower
+      ~ColorLab.isupper
+      ~ColorLab.istitle
+      ~ColorLab.isspace
+      ~ColorLab.isdecimal
+      ~ColorLab.isdigit
+      ~ColorLab.isnumeric
+      ~ColorLab.isalpha
+      ~ColorLab.isalnum
+      ~ColorLab.isidentifier
+      ~ColorLab.isprintable
+      ~ColorLab.zfill
+      ~ColorLab.format
+      ~ColorLab.format_map
+      ~ColorLab.maketrans
+      ~ColorLab.robust_headers
+      ~ColorLab.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ColorLab.CATEGORY
+      ~ColorLab.resolved_kind
+      ~ColorLab.resolved_tier
+      ~ColorLab.resolved_rembi_module
+      ~ColorLab.use_label
+      ~ColorLab.use_badge
+      ~ColorLab.L_STAR_GEOMEDIAN
+      ~ColorLab.A_STAR_GEOMEDIAN
+      ~ColorLab.B_STAR_GEOMEDIAN
+      ~ColorLab.L_STAR_MEDOID
+      ~ColorLab.A_STAR_MEDOID
+      ~ColorLab.B_STAR_MEDOID
+      ~ColorLab.DELTA_E2000_MEDIAN
+      ~ColorLab.DELTA_E2000_MEAN
+      ~ColorLab.DELTA_E2000_P95
+      ~ColorLab.LAB_TOTAL_VARIANCE
+      ~ColorLab.MEDOID_COLOR_HEX
+      ~ColorLab.label
+      ~ColorLab.desc
+      ~ColorLab.bio_desc
+      ~ColorLab.image
+      ~ColorLab.pair
+      ~ColorLab.tier_override
+      ~ColorLab.derivation_type
+      ~ColorLab.derives_from
+      ~ColorLab.rembi_module_override
+   
+   

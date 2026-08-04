@@ -1,0 +1,97 @@
+phenotypic.prefab.RoundPeaksPipeline
+====================================
+
+.. currentmodule:: phenotypic.prefab
+
+.. autoclass:: RoundPeaksPipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RoundPeaksPipeline.__init__
+      ~RoundPeaksPipeline.analyze
+      ~RoundPeaksPipeline.apply
+      ~RoundPeaksPipeline.apply_and_measure
+      ~RoundPeaksPipeline.apply_napari
+      ~RoundPeaksPipeline.apply_with_intermediates
+      ~RoundPeaksPipeline.benchmark_results
+      ~RoundPeaksPipeline.construct
+      ~RoundPeaksPipeline.copy
+      ~RoundPeaksPipeline.dict
+      ~RoundPeaksPipeline.from_json
+      ~RoundPeaksPipeline.from_orm
+      ~RoundPeaksPipeline.get_filters
+      ~RoundPeaksPipeline.get_meas
+      ~RoundPeaksPipeline.get_model
+      ~RoundPeaksPipeline.get_ops
+      ~RoundPeaksPipeline.get_plots
+      ~RoundPeaksPipeline.get_post
+      ~RoundPeaksPipeline.get_qc
+      ~RoundPeaksPipeline.json
+      ~RoundPeaksPipeline.measure
+      ~RoundPeaksPipeline.model_construct
+      ~RoundPeaksPipeline.model_copy
+      ~RoundPeaksPipeline.model_dump
+      ~RoundPeaksPipeline.model_dump_json
+      ~RoundPeaksPipeline.model_json_schema
+      ~RoundPeaksPipeline.model_parametrized_name
+      ~RoundPeaksPipeline.model_post_init
+      ~RoundPeaksPipeline.model_rebuild
+      ~RoundPeaksPipeline.model_validate
+      ~RoundPeaksPipeline.model_validate_json
+      ~RoundPeaksPipeline.model_validate_strings
+      ~RoundPeaksPipeline.parse_file
+      ~RoundPeaksPipeline.parse_obj
+      ~RoundPeaksPipeline.parse_raw
+      ~RoundPeaksPipeline.schema
+      ~RoundPeaksPipeline.schema_json
+      ~RoundPeaksPipeline.set_filters
+      ~RoundPeaksPipeline.set_meas
+      ~RoundPeaksPipeline.set_model
+      ~RoundPeaksPipeline.set_ops
+      ~RoundPeaksPipeline.set_plots
+      ~RoundPeaksPipeline.set_post
+      ~RoundPeaksPipeline.set_qc
+      ~RoundPeaksPipeline.to_json
+      ~RoundPeaksPipeline.update_forward_refs
+      ~RoundPeaksPipeline.validate
+      ~RoundPeaksPipeline.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RoundPeaksPipeline.desc
+      ~RoundPeaksPipeline.model_computed_fields
+      ~RoundPeaksPipeline.model_config
+      ~RoundPeaksPipeline.model_extra
+      ~RoundPeaksPipeline.model_fields
+      ~RoundPeaksPipeline.model_fields_set
+      ~RoundPeaksPipeline.name
+      ~RoundPeaksPipeline.desc_value
+      ~RoundPeaksPipeline.benchmark
+      ~RoundPeaksPipeline.verbose
+      ~RoundPeaksPipeline.reset
+      ~RoundPeaksPipeline.nrows
+      ~RoundPeaksPipeline.ncols
+      ~RoundPeaksPipeline.ops
+      ~RoundPeaksPipeline.meas
+      ~RoundPeaksPipeline.post
+      ~RoundPeaksPipeline.filters
+      ~RoundPeaksPipeline.model
+      ~RoundPeaksPipeline.qc
+      ~RoundPeaksPipeline.plots
+   
+   

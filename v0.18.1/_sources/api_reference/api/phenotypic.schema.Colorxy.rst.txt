@@ -1,0 +1,121 @@
+phenotypic.schema.Colorxy
+=========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: Colorxy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~Colorxy.tier
+      ~Colorxy.kind
+      ~Colorxy.category
+      ~Colorxy.rembi_module
+      ~Colorxy.header_scheme
+      ~Colorxy.member_for_header
+      ~Colorxy.owns_header
+      ~Colorxy.get_labels
+      ~Colorxy.get_headers
+      ~Colorxy.rst_table
+      ~Colorxy.append_rst_to_doc
+      ~Colorxy.encode
+      ~Colorxy.replace
+      ~Colorxy.split
+      ~Colorxy.rsplit
+      ~Colorxy.join
+      ~Colorxy.capitalize
+      ~Colorxy.casefold
+      ~Colorxy.title
+      ~Colorxy.center
+      ~Colorxy.count
+      ~Colorxy.expandtabs
+      ~Colorxy.find
+      ~Colorxy.partition
+      ~Colorxy.index
+      ~Colorxy.ljust
+      ~Colorxy.lower
+      ~Colorxy.lstrip
+      ~Colorxy.rfind
+      ~Colorxy.rindex
+      ~Colorxy.rjust
+      ~Colorxy.rstrip
+      ~Colorxy.rpartition
+      ~Colorxy.splitlines
+      ~Colorxy.strip
+      ~Colorxy.swapcase
+      ~Colorxy.translate
+      ~Colorxy.upper
+      ~Colorxy.startswith
+      ~Colorxy.endswith
+      ~Colorxy.removeprefix
+      ~Colorxy.removesuffix
+      ~Colorxy.isascii
+      ~Colorxy.islower
+      ~Colorxy.isupper
+      ~Colorxy.istitle
+      ~Colorxy.isspace
+      ~Colorxy.isdecimal
+      ~Colorxy.isdigit
+      ~Colorxy.isnumeric
+      ~Colorxy.isalpha
+      ~Colorxy.isalnum
+      ~Colorxy.isidentifier
+      ~Colorxy.isprintable
+      ~Colorxy.zfill
+      ~Colorxy.format
+      ~Colorxy.format_map
+      ~Colorxy.maketrans
+      ~Colorxy.x_headers
+      ~Colorxy.y_headers
+      ~Colorxy.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Colorxy.CATEGORY
+      ~Colorxy.resolved_kind
+      ~Colorxy.resolved_tier
+      ~Colorxy.resolved_rembi_module
+      ~Colorxy.use_label
+      ~Colorxy.use_badge
+      ~Colorxy.x_MINIMUM
+      ~Colorxy.x_Q1
+      ~Colorxy.x_MEAN
+      ~Colorxy.x_MEDIAN
+      ~Colorxy.x_Q3
+      ~Colorxy.x_MAXIMUM
+      ~Colorxy.x_STDDEV
+      ~Colorxy.x_COEFF_VARIANCE
+      ~Colorxy.y_MINIMUM
+      ~Colorxy.y_Q1
+      ~Colorxy.y_MEAN
+      ~Colorxy.y_MEDIAN
+      ~Colorxy.y_Q3
+      ~Colorxy.y_MAXIMUM
+      ~Colorxy.y_STDDEV
+      ~Colorxy.y_COEFF_VARIANCE
+      ~Colorxy.label
+      ~Colorxy.desc
+      ~Colorxy.bio_desc
+      ~Colorxy.image
+      ~Colorxy.pair
+      ~Colorxy.tier_override
+      ~Colorxy.derivation_type
+      ~Colorxy.derives_from
+      ~Colorxy.rembi_module_override
+   
+   

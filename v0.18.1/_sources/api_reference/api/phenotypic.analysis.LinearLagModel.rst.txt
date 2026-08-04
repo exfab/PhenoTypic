@@ -1,0 +1,80 @@
+phenotypic.analysis.LinearLagModel
+==================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: LinearLagModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~LinearLagModel.__init__
+      ~LinearLagModel.analyze
+      ~LinearLagModel.construct
+      ~LinearLagModel.copy
+      ~LinearLagModel.dict
+      ~LinearLagModel.figures
+      ~LinearLagModel.from_orm
+      ~LinearLagModel.inspect
+      ~LinearLagModel.iter_figures
+      ~LinearLagModel.json
+      ~LinearLagModel.model_construct
+      ~LinearLagModel.model_copy
+      ~LinearLagModel.model_dump
+      ~LinearLagModel.model_dump_json
+      ~LinearLagModel.model_func
+      ~LinearLagModel.model_json_schema
+      ~LinearLagModel.model_parametrized_name
+      ~LinearLagModel.model_post_init
+      ~LinearLagModel.model_rebuild
+      ~LinearLagModel.model_validate
+      ~LinearLagModel.model_validate_json
+      ~LinearLagModel.model_validate_strings
+      ~LinearLagModel.parse_file
+      ~LinearLagModel.parse_obj
+      ~LinearLagModel.parse_raw
+      ~LinearLagModel.report
+      ~LinearLagModel.results
+      ~LinearLagModel.schema
+      ~LinearLagModel.schema_json
+      ~LinearLagModel.show
+      ~LinearLagModel.update_forward_refs
+      ~LinearLagModel.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LinearLagModel.model_computed_fields
+      ~LinearLagModel.model_config
+      ~LinearLagModel.model_extra
+      ~LinearLagModel.model_fields
+      ~LinearLagModel.model_fields_set
+      ~LinearLagModel.prune_saturated
+      ~LinearLagModel.stderr_label
+      ~LinearLagModel.s0_prior
+      ~LinearLagModel.s0_prior_cv
+      ~LinearLagModel.s0_prior_sigma
+      ~LinearLagModel.s0_prior_groupby
+      ~LinearLagModel.time_label
+      ~LinearLagModel.loss
+      ~LinearLagModel.f_scale
+      ~LinearLagModel.verbose
+      ~LinearLagModel.on
+      ~LinearLagModel.groupby
+      ~LinearLagModel.agg_func
+      ~LinearLagModel.n_jobs
+   
+   

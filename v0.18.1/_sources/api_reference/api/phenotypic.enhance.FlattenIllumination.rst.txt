@@ -1,0 +1,66 @@
+phenotypic.enhance.FlattenIllumination
+======================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: FlattenIllumination
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FlattenIllumination.__init__
+      ~FlattenIllumination.apply
+      ~FlattenIllumination.construct
+      ~FlattenIllumination.copy
+      ~FlattenIllumination.dict
+      ~FlattenIllumination.from_json
+      ~FlattenIllumination.from_orm
+      ~FlattenIllumination.json
+      ~FlattenIllumination.model_construct
+      ~FlattenIllumination.model_copy
+      ~FlattenIllumination.model_dump
+      ~FlattenIllumination.model_dump_json
+      ~FlattenIllumination.model_json_schema
+      ~FlattenIllumination.model_parametrized_name
+      ~FlattenIllumination.model_post_init
+      ~FlattenIllumination.model_rebuild
+      ~FlattenIllumination.model_validate
+      ~FlattenIllumination.model_validate_json
+      ~FlattenIllumination.model_validate_strings
+      ~FlattenIllumination.parse_file
+      ~FlattenIllumination.parse_obj
+      ~FlattenIllumination.parse_raw
+      ~FlattenIllumination.schema
+      ~FlattenIllumination.schema_json
+      ~FlattenIllumination.to_json
+      ~FlattenIllumination.update_forward_refs
+      ~FlattenIllumination.validate
+      ~FlattenIllumination.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FlattenIllumination.model_computed_fields
+      ~FlattenIllumination.model_config
+      ~FlattenIllumination.model_extra
+      ~FlattenIllumination.model_fields
+      ~FlattenIllumination.model_fields_set
+      ~FlattenIllumination.sigma
+      ~FlattenIllumination.gamma_low
+      ~FlattenIllumination.gamma_high
+      ~FlattenIllumination.eps
+   
+   

@@ -1,0 +1,36 @@
+phenotypic.tune.TuneSpec
+========================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: TuneSpec
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~TuneSpec.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TuneSpec.low
+      ~TuneSpec.high
+      ~TuneSpec.step
+      ~TuneSpec.log
+      ~TuneSpec.categories
+      ~TuneSpec.tunable
+   
+   

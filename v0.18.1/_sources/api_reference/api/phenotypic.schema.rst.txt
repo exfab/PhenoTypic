@@ -1,0 +1,90 @@
+﻿phenotypic.schema
+=================
+
+.. automodule:: phenotypic.schema
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      parse_qualified_header
+      qualified_header
+      header_to_module
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      Entry
+      MeasurementInfo
+      REMBI_MODULE
+      METADATA
+      METADATA_MATCH
+      ACQUISITION_METADATA
+      CONDITION_METADATA
+      CULTURE_METADATA
+      EXPERIMENT_METADATA
+      GENETIC_METADATA
+      PLATE_METADATA
+      SAMPLE_METADATA
+      STUDY_METADATA
+      BBOX
+      ColorComposition
+      ColorHSV
+      ColorLab
+      Colorxy
+      ColorXYZ
+      CURATION
+      LINEAR_CAP_AND_LAG_MODEL
+      EDGE_CORRECTION
+      ErrorCategory
+      GRID
+      GRID_LINREG_STATS
+      NEIGHBOR_DIST
+      GRID_SPREAD
+      INTENSITY
+      LINEAR_LAG_MODEL
+      LOG_GROWTH_MODEL
+      MODEL_METRICS
+      OBJECT
+      QUALITY_CHECK
+      QUALITY_COUNT
+      QUALITY_ICC
+      QUALITY_MAD
+      QUALITY_OCCUPANCY
+      QUALITY_SE
+      QUALITY_TUKEY
+      QUALITY_ZMAX
+      RADIAL_EXPANSION
+      SHAPE
+      SIZE
+      ORIENTATION_ZONES
+      ORIENTATION_ZONE_DIAGNOSTIC
+      ORIENTATION_ZONE_PRIMARY
+      SYMMETRIC_ZONES
+      TEXTURE
+   
+   
+
+   
+   
+   
+
+
+

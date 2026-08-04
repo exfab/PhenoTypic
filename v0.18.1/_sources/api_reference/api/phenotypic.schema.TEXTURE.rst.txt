@@ -1,0 +1,116 @@
+phenotypic.schema.TEXTURE
+=========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: TEXTURE
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~TEXTURE.tier
+      ~TEXTURE.kind
+      ~TEXTURE.category
+      ~TEXTURE.rembi_module
+      ~TEXTURE.header_scheme
+      ~TEXTURE.member_for_header
+      ~TEXTURE.owns_header
+      ~TEXTURE.get_labels
+      ~TEXTURE.get_headers
+      ~TEXTURE.rst_table
+      ~TEXTURE.append_rst_to_doc
+      ~TEXTURE.encode
+      ~TEXTURE.replace
+      ~TEXTURE.split
+      ~TEXTURE.rsplit
+      ~TEXTURE.join
+      ~TEXTURE.capitalize
+      ~TEXTURE.casefold
+      ~TEXTURE.title
+      ~TEXTURE.center
+      ~TEXTURE.count
+      ~TEXTURE.expandtabs
+      ~TEXTURE.find
+      ~TEXTURE.partition
+      ~TEXTURE.index
+      ~TEXTURE.ljust
+      ~TEXTURE.lower
+      ~TEXTURE.lstrip
+      ~TEXTURE.rfind
+      ~TEXTURE.rindex
+      ~TEXTURE.rjust
+      ~TEXTURE.rstrip
+      ~TEXTURE.rpartition
+      ~TEXTURE.splitlines
+      ~TEXTURE.strip
+      ~TEXTURE.swapcase
+      ~TEXTURE.translate
+      ~TEXTURE.upper
+      ~TEXTURE.startswith
+      ~TEXTURE.endswith
+      ~TEXTURE.removeprefix
+      ~TEXTURE.removesuffix
+      ~TEXTURE.isascii
+      ~TEXTURE.islower
+      ~TEXTURE.isupper
+      ~TEXTURE.istitle
+      ~TEXTURE.isspace
+      ~TEXTURE.isdecimal
+      ~TEXTURE.isdigit
+      ~TEXTURE.isnumeric
+      ~TEXTURE.isalpha
+      ~TEXTURE.isalnum
+      ~TEXTURE.isidentifier
+      ~TEXTURE.isprintable
+      ~TEXTURE.zfill
+      ~TEXTURE.format
+      ~TEXTURE.format_map
+      ~TEXTURE.maketrans
+      ~TEXTURE.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TEXTURE.CATEGORY
+      ~TEXTURE.resolved_kind
+      ~TEXTURE.resolved_tier
+      ~TEXTURE.resolved_rembi_module
+      ~TEXTURE.use_label
+      ~TEXTURE.use_badge
+      ~TEXTURE.ANGULAR_SECOND_MOMENT
+      ~TEXTURE.CONTRAST
+      ~TEXTURE.CORRELATION
+      ~TEXTURE.VARIANCE
+      ~TEXTURE.INVERSE_DIFFERENCE_MOMENT
+      ~TEXTURE.SUM_AVERAGE
+      ~TEXTURE.SUM_VARIANCE
+      ~TEXTURE.SUM_ENTROPY
+      ~TEXTURE.ENTROPY
+      ~TEXTURE.DIFFERENCE_VARIANCE
+      ~TEXTURE.DIFFERENCE_ENTROPY
+      ~TEXTURE.IMC1
+      ~TEXTURE.IMC2
+      ~TEXTURE.label
+      ~TEXTURE.desc
+      ~TEXTURE.bio_desc
+      ~TEXTURE.image
+      ~TEXTURE.pair
+      ~TEXTURE.tier_override
+      ~TEXTURE.derivation_type
+      ~TEXTURE.derives_from
+      ~TEXTURE.rembi_module_override
+   
+   
