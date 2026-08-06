@@ -73,7 +73,29 @@ def test_build_pages_creates_exactly_two_reference_pages(
         path.relative_to(docs_root).as_posix()
         for path in docs_root.rglob("*.rst")
     )
-    assert pages == ["index.rst", "metadata/index.rst"]
+    assert pages == ["measurements/index.rst", "metadata/index.rst"]
+
+
+def test_setup_generates_pages_before_sphinx_source_discovery(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    extension = _load_extension(monkeypatch)
+    callbacks: dict[str, Any] = {}
+
+    class FakeApp:
+        srcdir = str(tmp_path)
+
+        def connect(self, event: str, callback: Any) -> None:
+            callbacks[event] = callback
+
+    extension.setup(FakeApp())
+
+    assert set(callbacks) == {"config-inited"}
+    callbacks["config-inited"](FakeApp(), object())
+    docs_root = tmp_path / "measurements_ref"
+    assert (docs_root / "measurements" / "index.rst").is_file()
+    assert (docs_root / "metadata" / "index.rst").is_file()
 
 
 def test_measurements_page_has_metadata_as_its_only_toctree_child(
@@ -81,10 +103,10 @@ def test_measurements_page_has_metadata_as_its_only_toctree_child(
     monkeypatch: MonkeyPatch,
 ) -> None:
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    measurements_page = (docs_root / "index.rst").read_text()
+    measurements_page = (docs_root / "measurements" / "index.rst").read_text()
     metadata_page = (docs_root / "metadata" / "index.rst").read_text()
 
-    assert ".. toctree::\n   :hidden:\n\n   metadata/index" in measurements_page
+    assert ".. toctree::\n   :hidden:\n\n   ../metadata/index" in measurements_page
     assert ".. toctree::" not in metadata_page
 
 
@@ -93,7 +115,7 @@ def test_every_canonical_public_class_appears_once_on_the_correct_page(
     monkeypatch: MonkeyPatch,
 ) -> None:
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    measurements_page = (docs_root / "index.rst").read_text()
+    measurements_page = (docs_root / "measurements" / "index.rst").read_text()
     metadata_page = (docs_root / "metadata" / "index.rst").read_text()
     combined = measurements_page + metadata_page
 
@@ -120,7 +142,7 @@ def test_class_order_follows_schema_export_order(
     monkeypatch: MonkeyPatch,
 ) -> None:
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    measurements_page = (docs_root / "index.rst").read_text()
+    measurements_page = (docs_root / "measurements" / "index.rst").read_text()
     metadata_page = (docs_root / "metadata" / "index.rst").read_text()
 
     public_classes = _canonical_public_classes()
@@ -176,7 +198,7 @@ def test_future_classes_are_discovered_and_partitioned_automatically(
     )
 
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    measurements_page = (docs_root / "index.rst").read_text()
+    measurements_page = (docs_root / "measurements" / "index.rst").read_text()
     metadata_page = (docs_root / "metadata" / "index.rst").read_text()
 
     assert _class_heading("FUTURE_MEASUREMENT") in measurements_page
@@ -190,7 +212,7 @@ def test_compatibility_alias_is_deduplicated_to_canonical_class(
     monkeypatch: MonkeyPatch,
 ) -> None:
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    measurements_page = (docs_root / "index.rst").read_text()
+    measurements_page = (docs_root / "measurements" / "index.rst").read_text()
 
     assert measurements_page.count(
         _class_heading("ORIENTATION_ZONE_DIAGNOSTIC")
@@ -221,7 +243,7 @@ def test_generated_tables_escape_rst_markup(
     monkeypatch: MonkeyPatch,
 ) -> None:
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    measurements_page = (docs_root / "index.rst").read_text()
+    measurements_page = (docs_root / "measurements" / "index.rst").read_text()
     metadata_page = (docs_root / "metadata" / "index.rst").read_text()
 
     assert ":mod:" not in metadata_page
