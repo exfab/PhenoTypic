@@ -42,18 +42,18 @@ class PlotColonyMetricOverTime(BaseModel, PlotMeas):
     on: ColumnRef
     strain_label: ColumnRef = str(GENETIC_METADATA.STRAIN)
     groupby: ColumnRefList = Field(
-        default_factory=lambda: [str(CONDITION_METADATA.MEDIA)]
+            default_factory=lambda: [str(CONDITION_METADATA.MEDIA)]
     )
     replicate_label: ColumnRef = str(SAMPLE_METADATA.BIO_REPLICATE)
     time: ColumnRef = str(CULTURE_METADATA.TIME)
     connect: bool = True
 
     def inspect(
-        self,
-        subject: Any = None,
-        *,
-        for_save: bool = False,
-        **overrides: Any,
+            self,
+            subject: Any = None,
+            *,
+            for_save: bool = False,
+            **overrides: Any,
     ) -> PlotOutput:
         """Build one page per configured colony grouping.
 
@@ -71,12 +71,12 @@ class PlotColonyMetricOverTime(BaseModel, PlotMeas):
             else self
         )
         delegate = PlotMeasTimeSeries(
-            page_by=[configured.strain_label],
-            environment_by=configured.groupby,
-            replicate_by=[configured.replicate_label],
-            time=configured.time,
-            measurements=[configured.on],
-            connect=configured.connect,
+                page_by=[configured.strain_label],
+                environment_by=configured.groupby,
+                replicate_by=[configured.replicate_label],
+                time=configured.time,
+                on=[configured.on],
+                connect=configured.connect,
         )
         return delegate.inspect(subject, for_save=for_save)
 

@@ -1,4 +1,4 @@
-"""PlotImage contract tests for ``MeasureSymmetricZones``.
+"""PlotImage contract tests for ``MeasureSymZones``.
 
 Verifies the pydantic operation gains the figure protocol (themed ``inspect``,
 a ``base_layer`` select Control, an ipywidgets ``.report()``, control-driven
@@ -16,8 +16,8 @@ import pytest
 
 from phenotypic import Image
 from phenotypic.abc_.plotting import PlotImage
-from phenotypic.measure import MeasureSymmetricZones
-from phenotypic.measure._measure_symmetric_zones import BASE_LAYER
+from phenotypic.measure import MeasureSymZones
+from phenotypic.measure._measure_symzones import BASE_LAYER
 from phenotypic.sdk_ import CONFIG_SUFFIX_OPERATION, ensure_typed_json_suffix
 from phenotypic.sdk_.viz.figures._theme import OKABE_ITO
 
@@ -30,9 +30,9 @@ def _circular_colony_image() -> Image:
     objmap = np.zeros(shape, dtype=np.int32)
     rr, ccx = np.ogrid[: shape[0], : shape[1]]
     dist_sq = (rr - cr) ** 2 + (ccx - cc) ** 2
-    gray[dist_sq < 35**2] = 120
-    gray[dist_sq < 18**2] = 40
-    objmap[dist_sq < 35**2] = 1
+    gray[dist_sq < 35 ** 2] = 120
+    gray[dist_sq < 18 ** 2] = 40
+    objmap[dist_sq < 35 ** 2] = 1
     image = Image(np.stack([gray, gray, gray], axis=-1))
     image.objmap[:] = objmap
     return image
@@ -43,7 +43,7 @@ def measured():
     # function-scoped: each test gets a fresh op so the per-instance diagnostic
     # cache (mutated by inspect/measure) never leaks across tests.
     image = _circular_colony_image()
-    op = MeasureSymmetricZones()
+    op = MeasureSymZones()
     op.measure(image)  # populates the diagnostic cache
     return op, image
 
@@ -118,9 +118,9 @@ def test_inspect_reuses_measurement_cache_for_same_image(measured, monkeypatch):
         raise AssertionError("inspect recomputed cached zone intermediates")
 
     monkeypatch.setattr(
-        MeasureSymmetricZones,
-        "_compute_intermediates",
-        _unexpected_recompute,
+            MeasureSymZones,
+            "_compute_intermediates",
+            _unexpected_recompute,
     )
 
     fig = op.inspect(image)
@@ -129,25 +129,25 @@ def test_inspect_reuses_measurement_cache_for_same_image(measured, monkeypatch):
 
 
 def test_inspect_recomputes_cache_after_measurement_parameter_change(
-    measured, monkeypatch
+        measured, monkeypatch
 ):
     op, image = measured
-    original_compute = MeasureSymmetricZones._compute_intermediates
+    original_compute = MeasureSymZones._compute_intermediates
     recomputed_labels: list[int | None] = []
 
     def record_recompute(self, subject, object_label=None, prop=None):
         recomputed_labels.append(object_label)
         return original_compute(
-            self,
-            subject,
-            object_label=object_label,
-            prop=prop,
+                self,
+                subject,
+                object_label=object_label,
+                prop=prop,
         )
 
     monkeypatch.setattr(
-        MeasureSymmetricZones,
-        "_compute_intermediates",
-        record_recompute,
+            MeasureSymZones,
+            "_compute_intermediates",
+            record_recompute,
     )
     op.tau_core = 0.85
 
@@ -156,8 +156,8 @@ def test_inspect_recomputes_cache_after_measurement_parameter_change(
     assert isinstance(fig, go.Figure)
     assert recomputed_labels
     assert (
-        getattr(op, "_MeasureSymmetricZones__cache_signature")
-        == op.model_dump_json()
+            getattr(op, "_MeasureSymmetricZones__cache_signature")
+            == op.model_dump_json()
     )
 
 
@@ -178,18 +178,18 @@ def test_inspect_rejects_invalid_base_layer(measured):
 
 
 def test_pydantic_schema_and_serialization_unchanged():
-    fields = set(MeasureSymmetricZones.model_fields)
-    props = set(MeasureSymmetricZones.model_json_schema()["properties"])
+    fields = set(MeasureSymZones.model_fields)
+    props = set(MeasureSymZones.model_json_schema()["properties"])
     # the mixin and its Control add nothing pydantic collects
     assert "base_layer" not in fields and "base_layer" not in props
-    op = MeasureSymmetricZones()
-    again = MeasureSymmetricZones.from_json(op.to_json())
-    assert isinstance(again, MeasureSymmetricZones)
+    op = MeasureSymZones()
+    again = MeasureSymZones.from_json(op.to_json())
+    assert isinstance(again, MeasureSymZones)
     assert again.model_dump() == op.model_dump()
 
 
 def test_operation_to_json_file_uses_typed_suffix(tmp_path):
-    op = MeasureSymmetricZones()
+    op = MeasureSymZones()
     filepath = tmp_path / "measure_symmetric_zones.json"
     typed_filepath = ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_OPERATION)
 
@@ -197,8 +197,8 @@ def test_operation_to_json_file_uses_typed_suffix(tmp_path):
 
     assert not filepath.exists()
     assert typed_filepath.exists()
-    again = MeasureSymmetricZones.from_json(typed_filepath)
-    assert isinstance(again, MeasureSymmetricZones)
+    again = MeasureSymZones.from_json(typed_filepath)
+    assert isinstance(again, MeasureSymZones)
     assert again.model_dump() == op.model_dump()
 
 

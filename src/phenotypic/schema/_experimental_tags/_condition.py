@@ -17,14 +17,15 @@ class CONDITION_METADATA(IdentityInfo):
 
     @classmethod
     def category(cls) -> str:
-        return "MetadataCondition"
+        return "MetadatasCondition"
 
     @classmethod
     def rembi_module(cls) -> REMBI_MODULE:
         return REMBI_MODULE.SPECIMEN_PREP
 
     MEDIA = Entry("Media", "Growth medium name (e.g. YPD, SC, LB).")
-    CARBON_SOURCE = Entry("CarbonSource", "Primary carbon source (e.g. glucose, galactose).")
+    CARBON_SOURCE = Entry("CarbonSource",
+                          "Primary carbon source (e.g. glucose, galactose).")
     NITROGEN_SOURCE = Entry("NitrogenSource", "Primary nitrogen source.")
     PH = Entry("pH", "pH of the growth medium.")
     SUPPLEMENT = Entry("Supplement", "Medium supplement or additive.")
@@ -32,6 +33,10 @@ class CONDITION_METADATA(IdentityInfo):
     INDUCER = Entry("Inducer", "Inducing agent (e.g. galactose, IPTG, doxycycline).")
     TREATMENT = Entry("Treatment", "Experimental treatment or perturbation.")
     COMPOUND = Entry("Compound", "Chemical compound or drug applied.")
-    CONCENTRATION = Entry("Concentration", "Concentration of the compound or treatment.")
+    CONCENTRATION = Entry("Concentration",
+                          "Concentration of the compound or treatment.")
     DOSE = Entry("Dose", "Dose applied to the sample.")
-    STRESS = Entry("Stress", "Applied stress condition (e.g. heat, osmotic, oxidative).")
+    STRESS = Entry("Stress",
+                   "Applied stress condition (e.g. heat, osmotic, oxidative).")
+    TEMPERATURE = Entry("Temperature", "Culture temperature in degrees Celsius.")
+    SALINITY = Entry("Salinity", "Salt Salinity")

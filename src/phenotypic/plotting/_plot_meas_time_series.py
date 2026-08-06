@@ -32,7 +32,7 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
         environment_by: Columns defining subplot columns within a page.
         replicate_by: Columns identifying biological or technical replicates.
         time: Numeric or ordered time column used on the x-axis.
-        measurements: Numeric measurement columns. An empty list selects
+        on: Numeric measurement columns. An empty list selects
             eligible columns automatically.
         connect: Whether to connect points within each replicate trace.
     """
@@ -40,26 +40,26 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
     model_config = ConfigDict(extra="forbid")
 
     page_by: ColumnRefList = Field(
-        default_factory=lambda: ["MetadataGenetic_Strain"]
+            default_factory=lambda: ["MetadataGenetic_Strain"]
     )
     environment_by: ColumnRefList
     replicate_by: ColumnRefList
     time: ColumnRef = "MetadataCulture_Time"
-    measurements: ColumnRefList = Field(default_factory=list)
+    on: ColumnRefList = Field(default_factory=list)
     connect: bool = True
 
     @model_validator(mode="after")
     def _validate_roles(self) -> "PlotMeasTimeSeries":
         roles = {
-            "page_by": self.page_by,
+            "page_by"       : self.page_by,
             "environment_by": self.environment_by,
-            "replicate_by": self.replicate_by,
+            "replicate_by"  : self.replicate_by,
         }
         for name, columns in roles.items():
             if not columns:
                 raise ValueError(f"{name} must contain at least one column")
             duplicates = sorted(
-                {column for column in columns if columns.count(column) > 1}
+                    {column for column in columns if columns.count(column) > 1}
             )
             if duplicates:
                 raise ValueError(f"{name} contains duplicate columns: {duplicates}")
@@ -70,17 +70,17 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
                 previous = claimed.get(column)
                 if previous is not None:
                     raise ValueError(
-                        f"column {column!r} cannot be used for both {previous} and {role}"
+                            f"column {column!r} cannot be used for both {previous} and {role}"
                     )
                 claimed[column] = role
         return self
 
     def inspect(
-        self,
-        subject: Any = None,
-        *,
-        for_save: bool = False,
-        **overrides: Any,
+            self,
+            subject: Any = None,
+            *,
+            for_save: bool = False,
+            **overrides: Any,
     ) -> PlotOutput:
         """Build one Plotly page per configured page grouping.
 
@@ -97,7 +97,7 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
         configured = self.model_copy(update=overrides) if overrides else self
         if not isinstance(subject, pd.DataFrame):
             raise TypeError(
-                "PlotMeasTimeSeries.inspect requires a pandas DataFrame subject"
+                    "PlotMeasTimeSeries.inspect requires a pandas DataFrame subject"
             )
         if subject.empty:
             return PlotOutput(pages=())
@@ -113,17 +113,17 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
             page_pairs = _group_pairs(configured.page_by, page_values)
             page_key = _canonical_group_key(page_pairs)
             pages.append(
-                PlotPage(
-                    key=page_key,
-                    label=_display_pairs(
-                        page_pairs, values_only=len(page_pairs) == 1
-                    ),
-                    metadata={
-                        column: _metadata_group_value(value)
-                        for column, value in page_pairs
-                    },
-                    figure=configured._build_page(page_frame, measurements),
-                )
+                    PlotPage(
+                            key=page_key,
+                            label=_display_pairs(
+                                    page_pairs, values_only=len(page_pairs) == 1
+                            ),
+                            metadata={
+                                column: _metadata_group_value(value)
+                                for column, value in page_pairs
+                            },
+                            figure=configured._build_page(page_frame, measurements),
+                    )
             )
         return PlotOutput(pages=tuple(pages))
 
@@ -137,32 +137,32 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
             *self.environment_by,
             *self.replicate_by,
             self.time,
-            *self.measurements,
+            *self.on,
         ]
         missing = [column for column in requested if column not in frame.columns]
         if missing:
             raise ValueError(f"measurement table is missing columns: {missing}")
         for role, columns in (
-            ("page_by", self.page_by),
-            ("environment_by", self.environment_by),
-            ("replicate_by", self.replicate_by),
+                ("page_by", self.page_by),
+                ("environment_by", self.environment_by),
+                ("replicate_by", self.replicate_by),
         ):
             for column in columns:
                 _validate_group_values(frame[column], role=role, column=column)
-        if self.measurements:
+        if self.on:
             nonnumeric = [
                 column
-                for column in self.measurements
+                for column in self.on
                 if not pd.api.types.is_numeric_dtype(frame[column])
             ]
             if nonnumeric:
                 raise ValueError(
-                    f"explicit measurements must be numeric: {nonnumeric}"
+                        f"explicit measurements must be numeric: {nonnumeric}"
                 )
 
     def _measurement_columns(self, frame: pd.DataFrame) -> list[str]:
-        if self.measurements:
-            return list(self.measurements)
+        if self.on:
+            return list(self.on)
         excluded = {
             *self.page_by,
             *self.environment_by,
@@ -175,22 +175,22 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
             column
             for column in frame.columns
             if column not in excluded
-            and pd.api.types.is_numeric_dtype(frame[column])
-            and not is_metadata_header(column)
-            and not column.startswith(("Object_", "Grid_", "Quality", "QC_"))
+               and pd.api.types.is_numeric_dtype(frame[column])
+               and not is_metadata_header(column)
+               and not column.startswith(("Object_", "Grid_", "Quality", "QC_"))
         ]
 
     def _build_page(
-        self,
-        frame: pd.DataFrame,
-        measurements: list[str],
+            self,
+            frame: pd.DataFrame,
+            measurements: list[str],
     ) -> Any:
         from plotly.subplots import make_subplots
         import plotly.graph_objects as go
 
         environments = list(_group_rows(frame, self.environment_by))
         environments.sort(
-            key=lambda item: _typed_group_key(self.environment_by, item[0])
+                key=lambda item: _typed_group_key(self.environment_by, item[0])
         )
         columns = len(environments)
         subplot_titles = []
@@ -199,61 +199,62 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
                 pairs = _group_pairs(self.environment_by, values)
                 subplot_titles.append(_display_pairs(pairs) if row_index == 0 else "")
         figure = make_subplots(
-            rows=len(measurements),
-            cols=columns,
-            subplot_titles=subplot_titles,
-            shared_xaxes=False,
-            vertical_spacing=min(0.12, 0.35 / max(len(measurements), 1)),
+                rows=len(measurements),
+                cols=columns,
+                subplot_titles=subplot_titles,
+                shared_xaxes=False,
+                vertical_spacing=min(0.12, 0.35 / max(len(measurements), 1)),
         )
 
         shown_legends: set[str] = set()
         for column_index, (_, environment_frame) in enumerate(environments, start=1):
             replicates = list(_group_rows(environment_frame, self.replicate_by))
             replicates.sort(
-                key=lambda item: _typed_group_key(self.replicate_by, item[0])
+                    key=lambda item: _typed_group_key(self.replicate_by, item[0])
             )
             for replicate_values, replicate_frame in replicates:
                 pairs = _group_pairs(self.replicate_by, replicate_values)
                 replicate_key = _canonical_group_key(pairs)
                 replicate_label = _display_pairs(pairs)
                 ordered = replicate_frame.sort_values(
-                    self.time, kind="mergesort"
+                        self.time, kind="mergesort"
                 )
                 for row_index, measurement in enumerate(measurements, start=1):
                     showlegend = replicate_key not in shown_legends
                     figure.add_trace(
-                        go.Scatter(
-                            x=ordered[self.time].tolist(),
-                            y=ordered[measurement].tolist(),
-                            mode="lines+markers" if self.connect else "markers",
-                            name=replicate_label,
-                            legendgroup=replicate_key,
-                            showlegend=showlegend,
-                        ),
-                        row=row_index,
-                        col=column_index,
+                            go.Scatter(
+                                    x=ordered[self.time].tolist(),
+                                    y=ordered[measurement].tolist(),
+                                    mode="lines+markers" if self.connect else "markers",
+                                    name=replicate_label,
+                                    legendgroup=replicate_key,
+                                    showlegend=showlegend,
+                            ),
+                            row=row_index,
+                            col=column_index,
                     )
                     if showlegend:
                         shown_legends.add(replicate_key)
             for row_index, measurement in enumerate(measurements, start=1):
-                figure.update_xaxes(title_text=self.time, row=row_index, col=column_index)
+                figure.update_xaxes(title_text=self.time, row=row_index,
+                                    col=column_index)
                 if column_index == 1:
                     figure.update_yaxes(
-                        title_text=measurement,
-                        row=row_index,
-                        col=column_index,
+                            title_text=measurement,
+                            row=row_index,
+                            col=column_index,
                     )
         figure.update_layout(
-            height=max(360, 300 * len(measurements)),
-            width=max(650, 450 * columns),
-            legend_title_text="Replicate",
+                height=max(360, 300 * len(measurements)),
+                width=max(650, 450 * columns),
+                legend_title_text="Replicate",
         )
         return figure
 
 
 def _group_rows(
-    frame: pd.DataFrame,
-    columns: list[str],
+        frame: pd.DataFrame,
+        columns: list[str],
 ) -> list[tuple[Any, pd.DataFrame]]:
     """Group rows without pandas' null-category or mixed-type coercion.
 
@@ -264,7 +265,7 @@ def _group_rows(
     grouped: dict[str, tuple[Any, list[int]]] = {}
     values_frame = frame.loc[:, columns]
     for position, row in enumerate(
-        values_frame.itertuples(index=False, name=None)
+            values_frame.itertuples(index=False, name=None)
     ):
         normalized = tuple(_normalize_group_value(value) for value in row)
         raw_values: Any = normalized[0] if len(normalized) == 1 else normalized
@@ -279,8 +280,8 @@ def _group_rows(
 
 
 def _group_pairs(
-    columns: list[str],
-    raw_values: Any,
+        columns: list[str],
+        raw_values: Any,
 ) -> list[tuple[str, Any]]:
     values = raw_values if isinstance(raw_values, tuple) else (raw_values,)
     return [
@@ -330,44 +331,45 @@ def _metadata_group_value(value: Any) -> str | int | float | bool | None:
         return value.isoformat()
     if isinstance(value, timedelta):
         nanoseconds = (
-            (value.days * 86_400 + value.seconds) * 1_000_000_000
-            + value.microseconds * 1_000
+                (value.days * 86_400 + value.seconds) * 1_000_000_000
+                + value.microseconds * 1_000
         )
         return f"{nanoseconds} ns"
     raise TypeError(
-        f"unsupported metadata grouping value {value!r} ({type(value).__name__})"
+            f"unsupported metadata grouping value {value!r} ({type(value).__name__})"
     )
 
 
 def _display_pairs(
-    pairs: list[tuple[str, Any]],
-    *,
-    values_only: bool = False,
+        pairs: list[tuple[str, Any]],
+        *,
+        values_only: bool = False,
 ) -> str:
     if values_only:
         value = pairs[0][1]
         return "<null>" if value is None else str(value)
     return ", ".join(
-        f"{column}={'<null>' if value is None else value}" for column, value in pairs
+            f"{column}={'<null>' if value is None else value}" for column, value in
+            pairs
     )
 
 
 def _validate_group_values(
-    series: pd.Series,
-    *,
-    role: str,
-    column: str,
+        series: pd.Series,
+        *,
+        role: str,
+        column: str,
 ) -> None:
     for value in series.drop_duplicates().tolist():
         try:
             normalized = _normalize_group_value(value)
         except (TypeError, ValueError) as exc:
             raise ValueError(
-                f"{role} column {column!r} contains unsupported grouping value {value!r}"
+                    f"{role} column {column!r} contains unsupported grouping value {value!r}"
             ) from exc
         if isinstance(normalized, float) and not math.isfinite(normalized):
             raise ValueError(
-                f"{role} column {column!r} contains infinite grouping value {value!r}"
+                    f"{role} column {column!r} contains infinite grouping value {value!r}"
             )
 
 

@@ -327,7 +327,7 @@ class MeasureFeatures(BaseOperation, ABC):
               pipeline from scratch is unnecessary and slow.
 
         Reference implementation:
-            :class:`phenotypic.measure.MeasureSymmetricZones`.
+            :class:`phenotypic.measure.MeasureSymZones`.
     """
 
     @validate_measure_integrity()

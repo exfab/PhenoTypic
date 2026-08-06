@@ -26,16 +26,16 @@ def _run(dtype):
     from phenotypic.prefab import FilamentousFungiPipeline
     from phenotypic.detect import ManualGridPointDetector
     from phenotypic.measure import (
-        MeasureSymmetricZones, MeasureSize, MeasureIntensity,
+        MeasureSymZones, MeasureSize, MeasureIntensity,
         MeasureShape, MeasureBounds, MeasureColor, MeasureTexture,
     )
 
     plate = load_fungi_plate()
     pipe = FilamentousFungiPipeline(
-        inoculum_detector=ManualGridPointDetector(
-            coord1=(230, 240), coord2=(630, 640), shape="disk", width=100,
-        ),
-        ignore_borders=False,
+            inoculum_detector=ManualGridPointDetector(
+                    coord1=(230, 240), coord2=(630, 640), shape="disk", width=100,
+            ),
+            ignore_borders=False,
     )
     t0 = time.perf_counter()
     plate = pipe.apply(plate)
@@ -44,13 +44,13 @@ def _run(dtype):
     objmap = np.asarray(plate.objmap[:]).copy()
     meas = {}
     ops = {
-        "symmetric_zones": MeasureSymmetricZones(),  # the tutorial measurement
-        "size": MeasureSize(),
-        "intensity": MeasureIntensity(),
-        "shape": MeasureShape(),
-        "bounds": MeasureBounds(),
-        "color": MeasureColor(),
-        "texture": MeasureTexture(),
+        "symmetric_zones": MeasureSymZones(),  # the tutorial measurement
+        "size"           : MeasureSize(),
+        "intensity"      : MeasureIntensity(),
+        "shape"          : MeasureShape(),
+        "bounds"         : MeasureBounds(),
+        "color"          : MeasureColor(),
+        "texture"        : MeasureTexture(),
     }
     for name, op in ops.items():
         try:
@@ -58,12 +58,12 @@ def _run(dtype):
         except Exception as e:  # noqa
             meas[name] = e
     return {
-        "gray_dtype": str(plate.gray[:].dtype),
+        "gray_dtype"  : str(plate.gray[:].dtype),
         "detect_dtype": str(plate.detect_mat[:].dtype),
-        "objmap": objmap,
-        "num_objects": int(plate.num_objects),
-        "elapsed": elapsed,
-        "meas": meas,
+        "objmap"      : objmap,
+        "num_objects" : int(plate.num_objects),
+        "elapsed"     : elapsed,
+        "meas"        : meas,
     }
 
 
@@ -92,15 +92,15 @@ def _seg_drift(a, b):
         obj_ious.append(i / u if u else 0.0)
     obj_ious = np.array(obj_ious) if obj_ious else np.array([1.0])
     return {
-        "fg_iou": iou,
-        "fg_pixels_a": int(fa.sum()),
-        "fg_pixels_b": int(fb.sum()),
-        "fg_pixel_delta": int(fb.sum()) - int(fa.sum()),
-        "mismatch_pixels": mismatch,
-        "total_pixels": int(a.size),
-        "exact_label_frac": exact_label,
-        "obj_iou_min": float(obj_ious.min()),
-        "obj_iou_mean": float(obj_ious.mean()),
+        "fg_iou"              : iou,
+        "fg_pixels_a"         : int(fa.sum()),
+        "fg_pixels_b"         : int(fb.sum()),
+        "fg_pixel_delta"      : int(fb.sum()) - int(fa.sum()),
+        "mismatch_pixels"     : mismatch,
+        "total_pixels"        : int(a.size),
+        "exact_label_frac"    : exact_label,
+        "obj_iou_min"         : float(obj_ious.min()),
+        "obj_iou_mean"        : float(obj_ious.mean()),
         "n_obj_iou_below_0.99": int(np.count_nonzero(obj_ious < 0.99)),
     }
 
@@ -110,12 +110,15 @@ def _meas_drift(ma, mb):
     for name in ma:
         da, db = ma[name], mb[name]
         if isinstance(da, Exception) or isinstance(db, Exception):
-            out[name] = f"err(a={isinstance(da,Exception)},b={isinstance(db,Exception)})"
+            out[
+                name] = f"err(a={isinstance(da, Exception)},b={isinstance(db, Exception)})"
             continue
         na = da.select_dtypes(include=[np.number]).astype(np.float64)
         nb = db.select_dtypes(include=[np.number]).astype(np.float64)
         cols = [c for c in na.columns if c in nb.columns]
-        max_rel = 0.0; max_abs = 0.0; worst = ""
+        max_rel = 0.0;
+        max_abs = 0.0;
+        worst = ""
         shape_mismatch = na.shape[0] != nb.shape[0]
         for c in cols:
             va, vb = na[c].values, nb[c].values
@@ -128,9 +131,9 @@ def _meas_drift(ma, mb):
                 max_rel, worst = float(rel), c
             max_abs = max(max_abs, float(np.nanmax(ad)) if ad.size else 0.0)
         out[name] = {
-            "rows_a": int(na.shape[0]), "rows_b": int(nb.shape[0]),
+            "rows_a"        : int(na.shape[0]), "rows_b": int(nb.shape[0]),
             "shape_mismatch": shape_mismatch,
-            "max_rel": max_rel, "max_abs": max_abs, "worst_col": worst,
+            "max_rel"       : max_rel, "max_abs": max_abs, "worst_col": worst,
         }
     return out
 
@@ -160,10 +163,12 @@ if __name__ == "__main__":
 
     print("\n=== MEASUREMENT DRIFT: float64 vs float32 ===")
     md = _meas_drift(f64["meas"], f32["meas"])
-    print(f"  {'measure':18s} {'rows_a':>6s} {'rows_b':>6s} {'shapeMM':>8s} {'max_rel':>11s} {'max_abs':>11s}  worst")
+    print(
+        f"  {'measure':18s} {'rows_a':>6s} {'rows_b':>6s} {'shapeMM':>8s} {'max_rel':>11s} {'max_abs':>11s}  worst")
     for name, m in md.items():
         if isinstance(m, str):
             print(f"  {name:18s} {m}")
         else:
-            print(f"  {name:18s} {m['rows_a']:6d} {m['rows_b']:6d} {str(m['shape_mismatch']):>8s} "
-                  f"{m['max_rel']:11.3e} {m['max_abs']:11.3e}  {m['worst_col']}")
+            print(
+                f"  {name:18s} {m['rows_a']:6d} {m['rows_b']:6d} {str(m['shape_mismatch']):>8s} "
+                f"{m['max_rel']:11.3e} {m['max_abs']:11.3e}  {m['worst_col']}")

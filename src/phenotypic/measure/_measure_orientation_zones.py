@@ -63,7 +63,7 @@ _DIAGNOSTIC_OUTWARD_METRICS = (
     "OutwardRotationMedianResultant",
 )
 
-# Okabe-Ito navy for figure text (matches MeasureSymmetricZones; family comes
+# Okabe-Ito navy for figure text (matches MeasureSymZones; family comes
 # from the phenotypic plotly template applied by @figure).
 _OI_NAVY = "#003660"
 _OI_ORANGE = "#E69F00"
@@ -85,20 +85,20 @@ _QUIVER_COHERENCE_BINS = (
     ("High C", 0.70, np.inf, 0.90),
 )
 
-# Base-layer selector for inspect(); mirrors MeasureSymmetricZones.BASE_LAYER
+# Base-layer selector for inspect(); mirrors MeasureSymZones.BASE_LAYER
 # but defaults to "detect_mat" (the tensor/segmentation source for this op).
 BASE_LAYER = Control(
-    label="Base layer",
-    kind="select",
-    default="detect_mat",
-    options=("rgb", "gray", "detect_mat"),
-    help="Image array rendered behind the orientation-field overlay.",
+        label="Base layer",
+        kind="select",
+        default="detect_mat",
+        options=("rgb", "gray", "detect_mat"),
+        help="Image array rendered behind the orientation-field overlay.",
 )
 
 _BEND_SCALE_PRESETS = {
-    "fine": (2.0, 4.0, 8.0),
+    "fine"    : (2.0, 4.0, 8.0),
     "balanced": (4.0, 8.0, 16.0),
-    "broad": (8.0, 16.0, 32.0),
+    "broad"   : (8.0, 16.0, 32.0),
 }
 
 # 72-vertex unit circle for zone-ring polygons (replicated locally from the
@@ -108,7 +108,7 @@ _CIRCLE_THETA = np.linspace(0.0, 2.0 * np.pi, _N_CIRCLE_PTS, endpoint=True)
 
 
 def _circle_xy(
-    cx: float, cy: float, r: float
+        cx: float, cy: float, r: float
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return (xs, ys) for a ``_N_CIRCLE_PTS``-vertex circle of radius ``r``.
 
@@ -176,9 +176,9 @@ def aggregate_orientation(phi, coherence, grad_phi, selector, eps=_EPS):
 
 
 def radial_relative_field(
-    phi: np.ndarray,
-    centre: tuple[float, float],
-    dist_map: np.ndarray,
+        phi: np.ndarray,
+        centre: tuple[float, float],
+        dist_map: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute local axial tilt from radial and its outward derivative.
 
@@ -207,9 +207,9 @@ def radial_relative_field(
 
 
 def signed_radial_relative_field(
-    phi: np.ndarray,
-    centre: tuple[float, float],
-    dist_map: np.ndarray,
+        phi: np.ndarray,
+        centre: tuple[float, float],
+        dist_map: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Compute signed radial-relative tilt and outward turning.
 
@@ -238,8 +238,8 @@ def signed_radial_relative_field(
     fiber_axis = phi + _FIBER_AXIS_OFFSET
     relative = fiber_axis - polar_angle
     signed_tilt = 0.5 * np.arctan2(
-        np.sin(2.0 * relative),
-        np.cos(2.0 * relative),
+            np.sin(2.0 * relative),
+            np.cos(2.0 * relative),
     )
 
     # Differentiate the continuous doubled-angle representation so the
@@ -249,16 +249,16 @@ def signed_radial_relative_field(
     cosine_y, cosine_x = np.gradient(cosine)
     sine_y, sine_x = np.gradient(sine)
     radial_x = np.divide(
-        delta_col,
-        dist_map,
-        out=np.zeros_like(delta_col),
-        where=dist_map > _EPS,
+            delta_col,
+            dist_map,
+            out=np.zeros_like(delta_col),
+            where=dist_map > _EPS,
     )
     radial_y = np.divide(
-        delta_row,
-        dist_map,
-        out=np.zeros_like(delta_row),
-        where=dist_map > _EPS,
+            delta_row,
+            dist_map,
+            out=np.zeros_like(delta_row),
+            where=dist_map > _EPS,
     )
     cosine_r = cosine_x * radial_x + cosine_y * radial_y
     sine_r = sine_x * radial_x + sine_y * radial_y
@@ -273,14 +273,14 @@ def signed_radial_relative_field(
 
 
 def aggregate_radial_relative(
-    absolute_tilt: np.ndarray,
-    outward_turning: np.ndarray,
-    polar_angle: np.ndarray,
-    coherence: np.ndarray,
-    dist_map: np.ndarray,
-    selector: np.ndarray,
-    n_angular_bins: int,
-    eps: float = _EPS,
+        absolute_tilt: np.ndarray,
+        outward_turning: np.ndarray,
+        polar_angle: np.ndarray,
+        coherence: np.ndarray,
+        dist_map: np.ndarray,
+        selector: np.ndarray,
+        n_angular_bins: int,
+        eps: float = _EPS,
 ) -> tuple[float, float, float]:
     """Aggregate radial-relative metrics with equal occupied-sector weight.
 
@@ -322,26 +322,26 @@ def aggregate_radial_relative(
     )
     if any(array.shape != absolute_tilt.shape for array in arrays[1:]):
         raise ValueError(
-            "radial-relative arrays and selector must share one shape"
+                "radial-relative arrays and selector must share one shape"
         )
     if n_angular_bins < 1:
         raise ValueError("n_angular_bins must be >= 1")
 
     valid = (
-        selector
-        & (dist_map > eps)
-        & np.isfinite(absolute_tilt)
-        & np.isfinite(outward_turning)
-        & np.isfinite(coherence)
-        & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
+            selector
+            & (dist_map > eps)
+            & np.isfinite(absolute_tilt)
+            & np.isfinite(outward_turning)
+            & np.isfinite(coherence)
+            & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
     )
     if not valid.any():
         return (np.nan, np.nan, 0.0)
 
     angle01 = np.mod(polar_angle[valid], 2.0 * np.pi) / (2.0 * np.pi)
     sector_ids = np.minimum(
-        (angle01 * n_angular_bins).astype(np.int64),
-        n_angular_bins - 1,
+            (angle01 * n_angular_bins).astype(np.int64),
+            n_angular_bins - 1,
     )
     weights = coherence[valid]
     tilts = absolute_tilt[valid]
@@ -357,10 +357,10 @@ def aggregate_radial_relative(
         if weight_sum <= eps:
             continue
         sector_tilts.append(
-            float(np.sum(sector_weights * tilts[chosen]) / weight_sum)
+                float(np.sum(sector_weights * tilts[chosen]) / weight_sum)
         )
         sector_turns.append(
-            float(np.sum(sector_weights * turns[chosen]) / weight_sum)
+                float(np.sum(sector_weights * turns[chosen]) / weight_sum)
         )
     if not sector_tilts:
         return (np.nan, np.nan, 0.0)
@@ -373,12 +373,12 @@ def aggregate_radial_relative(
 
 
 def _axial_sector_means(
-    signed_tilt: np.ndarray,
-    polar_angle: np.ndarray,
-    coherence: np.ndarray,
-    selector: np.ndarray,
-    n_angular_bins: int,
-    eps: float = _EPS,
+        signed_tilt: np.ndarray,
+        polar_angle: np.ndarray,
+        coherence: np.ndarray,
+        selector: np.ndarray,
+        n_angular_bins: int,
+        eps: float = _EPS,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return reliable coherence-weighted axial means by polar sector.
 
@@ -407,19 +407,19 @@ def _axial_sector_means(
     means = np.full(n_angular_bins, np.nan, dtype=np.float64)
     resultants = np.full(n_angular_bins, np.nan, dtype=np.float64)
     valid = (
-        selector
-        & np.isfinite(signed_tilt)
-        & np.isfinite(polar_angle)
-        & np.isfinite(coherence)
-        & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
+            selector
+            & np.isfinite(signed_tilt)
+            & np.isfinite(polar_angle)
+            & np.isfinite(coherence)
+            & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
     )
     if not valid.any():
         return means, resultants
 
     angle01 = np.mod(polar_angle[valid], 2.0 * np.pi) / (2.0 * np.pi)
     sector_ids = np.minimum(
-        (angle01 * n_angular_bins).astype(np.int64),
-        n_angular_bins - 1,
+            (angle01 * n_angular_bins).astype(np.int64),
+            n_angular_bins - 1,
     )
     tilts = signed_tilt[valid]
     weights = coherence[valid]
@@ -432,10 +432,10 @@ def _axial_sector_means(
         if weight_sum <= eps:
             continue
         mean_cosine = float(
-            np.sum(sector_weights * np.cos(2.0 * tilts[chosen])) / weight_sum
+                np.sum(sector_weights * np.cos(2.0 * tilts[chosen])) / weight_sum
         )
         mean_sine = float(
-            np.sum(sector_weights * np.sin(2.0 * tilts[chosen])) / weight_sum
+                np.sum(sector_weights * np.sin(2.0 * tilts[chosen])) / weight_sum
         )
         resultant = float(np.hypot(mean_cosine, mean_sine))
         if resultant < _RADIAL_RING_MIN_RESULTANT:
@@ -446,15 +446,15 @@ def _axial_sector_means(
 
 
 def radial_ring_orientation_profile(
-    signed_tilt: np.ndarray,
-    polar_angle: np.ndarray,
-    coherence: np.ndarray,
-    dist_map: np.ndarray,
-    structure_selector: np.ndarray,
-    inner_radius: float,
-    outer_radius: float,
-    ring_width: float,
-    n_angular_bins: int = _RADIAL_RELATIVE_N_SECTORS,
+        signed_tilt: np.ndarray,
+        polar_angle: np.ndarray,
+        coherence: np.ndarray,
+        dist_map: np.ndarray,
+        structure_selector: np.ndarray,
+        inner_radius: float,
+        outer_radius: float,
+        ring_width: float,
+        n_angular_bins: int = _RADIAL_RELATIVE_N_SECTORS,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Calculate a sectorized Sholl-style orientation profile.
 
@@ -491,9 +491,9 @@ def radial_ring_orientation_profile(
     if n_angular_bins < 1:
         raise ValueError("n_angular_bins must be >= 1")
     if (
-        not np.isfinite(inner_radius)
-        or not np.isfinite(outer_radius)
-        or outer_radius <= inner_radius
+            not np.isfinite(inner_radius)
+            or not np.isfinite(outer_radius)
+            or outer_radius <= inner_radius
     ):
         empty = np.empty(0, dtype=np.float64)
         empty_cells = np.empty((0, n_angular_bins), dtype=np.float64)
@@ -510,16 +510,16 @@ def radial_ring_orientation_profile(
     sector_resultant = np.full_like(sector_tilt, np.nan)
     for ring_index, start in enumerate(starts):
         ring_selector = (
-            structure_selector
-            & (dist_map >= start)
-            & (dist_map < start + ring_width)
+                structure_selector
+                & (dist_map >= start)
+                & (dist_map < start + ring_width)
         )
         means, resultants = _axial_sector_means(
-            signed_tilt,
-            polar_angle,
-            coherence,
-            ring_selector,
-            n_angular_bins,
+                signed_tilt,
+                polar_angle,
+                coherence,
+                ring_selector,
+                n_angular_bins,
         )
         sector_tilt[ring_index] = means
         sector_resultant[ring_index] = resultants
@@ -560,7 +560,7 @@ def cumulative_ring_rotation_profile(sector_tilt: np.ndarray) -> np.ndarray:
 
     for sector_index in range(sector_tilt.shape[1]):
         supported_rings = np.flatnonzero(
-            np.isfinite(sector_tilt[:, sector_index])
+                np.isfinite(sector_tilt[:, sector_index])
         )
         if supported_rings.size == 0:
             continue
@@ -568,46 +568,46 @@ def cumulative_ring_rotation_profile(sector_tilt: np.ndarray) -> np.ndarray:
         cumulative[start, sector_index] = 0.0
         for ring_index in range(start + 1, sector_tilt.shape[0]):
             if not (
-                np.isfinite(sector_tilt[ring_index - 1, sector_index])
-                and np.isfinite(sector_tilt[ring_index, sector_index])
+                    np.isfinite(sector_tilt[ring_index - 1, sector_index])
+                    and np.isfinite(sector_tilt[ring_index, sector_index])
             ):
                 break
             adjacent_change = 0.5 * np.arctan2(
-                np.sin(
-                    2.0
-                    * (
-                        sector_tilt[ring_index, sector_index]
-                        - sector_tilt[ring_index - 1, sector_index]
-                    )
-                ),
-                np.cos(
-                    2.0
-                    * (
-                        sector_tilt[ring_index, sector_index]
-                        - sector_tilt[ring_index - 1, sector_index]
-                    )
-                ),
+                    np.sin(
+                            2.0
+                            * (
+                                    sector_tilt[ring_index, sector_index]
+                                    - sector_tilt[ring_index - 1, sector_index]
+                            )
+                    ),
+                    np.cos(
+                            2.0
+                            * (
+                                    sector_tilt[ring_index, sector_index]
+                                    - sector_tilt[ring_index - 1, sector_index]
+                            )
+                    ),
             )
             if np.isclose(
-                abs(adjacent_change),
-                np.pi / 2.0,
-                atol=_EPS,
-                rtol=0.0,
+                    abs(adjacent_change),
+                    np.pi / 2.0,
+                    atol=_EPS,
+                    rtol=0.0,
             ):
                 break
             cumulative[ring_index, sector_index] = (
-                cumulative[ring_index - 1, sector_index] + adjacent_change
+                    cumulative[ring_index - 1, sector_index] + adjacent_change
             )
     return cumulative
 
 
 def radial_ring_sector_field(
-    ring_sector_values: np.ndarray,
-    polar_angle: np.ndarray,
-    dist_map: np.ndarray,
-    structure_selector: np.ndarray,
-    inner_radius: float,
-    ring_width: float,
+        ring_sector_values: np.ndarray,
+        polar_angle: np.ndarray,
+        dist_map: np.ndarray,
+        structure_selector: np.ndarray,
+        inner_radius: float,
+        ring_width: float,
 ) -> np.ndarray:
     """Paint ring-sector summaries back onto their contributing pixels.
 
@@ -632,8 +632,8 @@ def radial_ring_sector_field(
     if values.ndim != 2:
         raise ValueError("ring_sector_values must be a two-dimensional array")
     if (
-        polar_angle.shape != dist_map.shape
-        or structure_selector.shape != dist_map.shape
+            polar_angle.shape != dist_map.shape
+            or structure_selector.shape != dist_map.shape
     ):
         raise ValueError("radial-ring field arrays must share one shape")
     if not np.isfinite(inner_radius):
@@ -646,21 +646,21 @@ def radial_ring_sector_field(
     if n_rings == 0 or n_sectors == 0:
         return field
     eligible = (
-        structure_selector
-        & np.isfinite(dist_map)
-        & np.isfinite(polar_angle)
-        & (dist_map >= inner_radius)
+            structure_selector
+            & np.isfinite(dist_map)
+            & np.isfinite(polar_angle)
+            & (dist_map >= inner_radius)
     )
     rows, cols = np.nonzero(eligible)
     if rows.size == 0:
         return field
     ring_ids = np.floor(
-        (dist_map[rows, cols] - inner_radius) / ring_width
+            (dist_map[rows, cols] - inner_radius) / ring_width
     ).astype(np.int64)
     angle01 = np.mod(polar_angle[rows, cols], 2.0 * np.pi) / (2.0 * np.pi)
     sector_ids = np.minimum(
-        (angle01 * n_sectors).astype(np.int64),
-        n_sectors - 1,
+            (angle01 * n_sectors).astype(np.int64),
+            n_sectors - 1,
     )
     within_profile = (ring_ids >= 0) & (ring_ids < n_rings)
     rows = rows[within_profile]
@@ -675,9 +675,9 @@ def radial_ring_sector_field(
 
 
 def long_range_ring_rotation_profile(
-    ring_centres: np.ndarray,
-    sector_tilt: np.ndarray,
-    radial_lag: float,
+        ring_centres: np.ndarray,
+        sector_tilt: np.ndarray,
+        radial_lag: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Compare matching ring sectors across a fixed radial lag.
 
@@ -720,8 +720,8 @@ def long_range_ring_rotation_profile(
         inner = sector_tilt[inner_index]
         outer = sector_tilt[outer_index]
         delta = 0.5 * np.arctan2(
-            np.sin(2.0 * (outer - inner)),
-            np.cos(2.0 * (outer - inner)),
+                np.sin(2.0 * (outer - inner)),
+                np.cos(2.0 * (outer - inner)),
         )
         midpoint_rows.append(0.5 * (inner_radius + ring_centres[outer_index]))
         rotation_rows.append(delta)
@@ -734,10 +734,10 @@ def long_range_ring_rotation_profile(
 
 
 def aggregate_long_range_rotation(
-    pair_midpoints: np.ndarray,
-    signed_rotation: np.ndarray,
-    lower_radius: float,
-    upper_radius: float,
+        pair_midpoints: np.ndarray,
+        signed_rotation: np.ndarray,
+        lower_radius: float,
+        upper_radius: float,
 ) -> tuple[float, float, float]:
     """Aggregate fixed-lag ring rotations whose midpoint lies in one zone.
 
@@ -760,18 +760,18 @@ def aggregate_long_range_rotation(
     pair_midpoints = np.asarray(pair_midpoints, dtype=np.float64)
     signed_rotation = np.asarray(signed_rotation, dtype=np.float64)
     if (
-        signed_rotation.ndim != 2
-        or signed_rotation.shape[0] != pair_midpoints.size
+            signed_rotation.ndim != 2
+            or signed_rotation.shape[0] != pair_midpoints.size
     ):
         raise ValueError("signed_rotation rows must match pair_midpoints")
     if (
-        not np.isfinite(lower_radius)
-        or not np.isfinite(upper_radius)
-        or upper_radius <= lower_radius
+            not np.isfinite(lower_radius)
+            or not np.isfinite(upper_radius)
+            or upper_radius <= lower_radius
     ):
         return (np.nan, np.nan, np.nan)
     selected_rows = (pair_midpoints >= lower_radius) & (
-        pair_midpoints < upper_radius
+            pair_midpoints < upper_radius
     )
     if not selected_rows.any():
         return (np.nan, np.nan, 0.0)
@@ -785,8 +785,8 @@ def aggregate_long_range_rotation(
 
 
 def aggregate_paired_zone_rotation(
-    inner_sector_tilt: np.ndarray,
-    outer_sector_tilt: np.ndarray,
+        inner_sector_tilt: np.ndarray,
+        outer_sector_tilt: np.ndarray,
 ) -> tuple[float, float, float]:
     """Compare matching sector means between two broad radial zones.
 
@@ -810,8 +810,8 @@ def aggregate_paired_zone_rotation(
     if not valid.any():
         return (np.nan, np.nan, support)
     delta = 0.5 * np.arctan2(
-        np.sin(2.0 * (outer[valid] - inner[valid])),
-        np.cos(2.0 * (outer[valid] - inner[valid])),
+            np.sin(2.0 * (outer[valid] - inner[valid])),
+            np.cos(2.0 * (outer[valid] - inner[valid])),
     )
     return (float(np.mean(np.abs(delta))), float(np.mean(delta)), support)
 
@@ -857,7 +857,7 @@ def _downsample_quiver(phi, coherence, block):
             pb[i, j] = (
                 0.5
                 * np.arctan2(
-                    (cc * s2[rsl, csl]).sum(), (cc * c2[rsl, csl]).sum()
+                        (cc * s2[rsl, csl]).sum(), (cc * c2[rsl, csl]).sum()
                 )
                 if wsum > 1e-12
                 else np.nan
@@ -883,8 +883,8 @@ def _resultant_direction(phi, coherence, selector):
     if float(C.sum()) < _EPS:
         return np.nan
     return 0.5 * np.arctan2(
-        float((C * np.sin(2.0 * phi[selector])).sum()),
-        float((C * np.cos(2.0 * phi[selector])).sum()),
+            float((C * np.sin(2.0 * phi[selector])).sum()),
+            float((C * np.cos(2.0 * phi[selector])).sum()),
     )
 
 
@@ -959,7 +959,7 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
     outward_peak_window_rings: int = 3
     outward_min_run_rings: int = 6
     include_diagnostics: bool = False
-    # --- zone passthrough (defaults identical to MeasureSymmetricZones) ---
+    # --- zone passthrough (defaults identical to MeasureSymZones) ---
     n_annuli: int = 100
     pelt_penalty: float = 5.0
     symmetry_threshold: float = 4 / 6
@@ -975,10 +975,10 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
     # schema, and GUI form order follow the operation's functional parameters.
     quiver_block: int = 12
     # Per-object figure intermediates, populated by _operate. PrivateAttr keeps
-    # it out of model_dump()/JSON (mirrors MeasureSymmetricZones' cache pattern).
+    # it out of model_dump()/JSON (mirrors MeasureSymZones' cache pattern).
     _cache: dict = PrivateAttr(default_factory=dict)
     _cache_image_ref: "weakref.ReferenceType[object] | None" = PrivateAttr(
-        default=None
+            default=None
     )
     _cache_signature: str | None = PrivateAttr(default=None)
 
@@ -994,7 +994,7 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
     def _positive_radial_scale(cls, value: float) -> float:
         if not np.isfinite(value) or value <= 0:
             raise ValueError(
-                "radial_ring_width and long_range_lag must be finite and > 0"
+                    "radial_ring_width and long_range_lag must be finite and > 0"
             )
         return value
 
@@ -1002,13 +1002,13 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
     @classmethod
     def _valid_outward_peak_window(cls, value):
         if (
-            isinstance(value, (bool, np.bool_))
-            or not isinstance(value, (int, np.integer))
-            or value < 3
-            or value % 2 == 0
+                isinstance(value, (bool, np.bool_))
+                or not isinstance(value, (int, np.integer))
+                or value < 3
+                or value % 2 == 0
         ):
             raise ValueError(
-                "outward_peak_window_rings must be an odd integer >= 3"
+                    "outward_peak_window_rings must be an odd integer >= 3"
             )
         return int(value)
 
@@ -1016,9 +1016,9 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
     @classmethod
     def _valid_outward_minimum_run(cls, value):
         if (
-            isinstance(value, (bool, np.bool_))
-            or not isinstance(value, (int, np.integer))
-            or value < 3
+                isinstance(value, (bool, np.bool_))
+                or not isinstance(value, (int, np.integer))
+                or value < 3
         ):
             raise ValueError("outward_min_run_rings must be an integer >= 3")
         return int(value)
@@ -1027,31 +1027,31 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
     def _validate_long_range_scales(self):
         ratio = self.long_range_lag / self.radial_ring_width
         if ratio < 1.0 or not np.isclose(
-            ratio,
-            round(ratio),
-            atol=1e-9,
-            rtol=0.0,
+                ratio,
+                round(ratio),
+                atol=1e-9,
+                rtol=0.0,
         ):
             raise ValueError(
-                "long_range_lag must be an integer multiple of "
-                "radial_ring_width"
+                    "long_range_lag must be an integer multiple of "
+                    "radial_ring_width"
             )
         return self
 
     def _zone_params(self) -> ZoneSegmentationParams:
         return ZoneSegmentationParams(
-            n_annuli=self.n_annuli,
-            pelt_penalty=self.pelt_penalty,
-            symmetry_threshold=self.symmetry_threshold,
-            n_angular_bins=self.n_angular_bins,
-            smoothing_window=self.smoothing_window,
-            method=self.method,
-            extent_margin=self.extent_margin,
-            min_samples_per_ring=self.min_samples_per_ring,
-            tau_core=self.tau_core,
-            tau_dense=self.tau_dense,
-            tau_sparse=self.tau_sparse,
-            intensity_source=self.intensity_source,
+                n_annuli=self.n_annuli,
+                pelt_penalty=self.pelt_penalty,
+                symmetry_threshold=self.symmetry_threshold,
+                n_angular_bins=self.n_angular_bins,
+                smoothing_window=self.smoothing_window,
+                method=self.method,
+                extent_margin=self.extent_margin,
+                min_samples_per_ring=self.min_samples_per_ring,
+                tau_core=self.tau_core,
+                tau_dense=self.tau_dense,
+                tau_sparse=self.tau_sparse,
+                intensity_source=self.intensity_source,
         )
 
     def _resolve_tile(self, image, seg: ZoneSegmentation, prop, label2section):
@@ -1071,20 +1071,20 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
 
         min_row, min_col, max_row, max_col = prop.bbox
         object_radius_bound = max(
-            np.hypot(
-                row - seg.centroid_global[0], col - seg.centroid_global[1]
-            )
-            for row, col in (
-                (min_row, min_col),
-                (min_row, max_col),
-                (max_row, min_col),
-                (max_row, max_col),
-            )
+                np.hypot(
+                        row - seg.centroid_global[0], col - seg.centroid_global[1]
+                )
+                for row, col in (
+                    (min_row, min_col),
+                    (min_row, max_col),
+                    (max_row, min_col),
+                    (max_row, max_col),
+                )
         )
         r_max = max(
-            max(seg.sparse_end_radius, seg.symmetric_radius)
-            * (1 + self.extent_margin),
-            object_radius_bound + self.radial_ring_width,
+                max(seg.sparse_end_radius, seg.symmetric_radius)
+                * (1 + self.extent_margin),
+                object_radius_bound + self.radial_ring_width,
         )
         if hasattr(image, "grid") and seg.label in label2section:
             try:
@@ -1104,14 +1104,14 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                     )
                     H, W = section.objmap[:].shape[:2]
                     if (
-                        centre[0] - r_max >= 0
-                        and centre[0] + r_max <= H
-                        and centre[1] - r_max >= 0
-                        and centre[1] + r_max <= W
+                            centre[0] - r_max >= 0
+                            and centre[0] + r_max <= H
+                            and centre[1] - r_max >= 0
+                            and centre[1] + r_max <= W
                     ):
                         tile = np.asarray(
-                            getattr(section, self.intensity_source)[:],
-                            dtype=np.float64,
+                                getattr(section, self.intensity_source)[:],
+                                dtype=np.float64,
                         )
                         return tile, (section.objmap[:] == seg.label), centre
             except (KeyError, IndexError, ValueError, AttributeError):
@@ -1120,7 +1120,7 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         hw = image.gray[:].shape[:2]  # 2-tuple; image.shape is (H,W,3) for RGB
         sl = expand_slice_around_center(seg.centroid_global, r_max, hw)
         tile = np.asarray(
-            getattr(image, self.intensity_source)[sl], dtype=np.float64
+                getattr(image, self.intensity_source)[sl], dtype=np.float64
         )
         obj_mask = image.objmap[:][sl] == seg.label
         centre = (
@@ -1132,8 +1132,8 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
     def _zone_bounds(self, seg: ZoneSegmentation):
         return {
             "Overall": (0.0, seg.symmetric_radius),
-            "Dense": (seg.core_end_radius, seg.dense_end_radius),
-            "Sparse": (seg.dense_end_radius, seg.sparse_end_radius),
+            "Dense"  : (seg.core_end_radius, seg.dense_end_radius),
+            "Sparse" : (seg.dense_end_radius, seg.sparse_end_radius),
         }
 
     def _prep(self, image):
@@ -1147,15 +1147,15 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         from phenotypic.schema import GRID
 
         props = regionprops(
-            image.objmap[:],
-            intensity_image=image.gray[:].astype(np.float64, copy=False),
+                image.objmap[:],
+                intensity_image=image.gray[:].astype(np.float64, copy=False),
         )
         label2section = {}
         if hasattr(image, "grid"):
             info = image.grid.info()
             lab, rmi = str(OBJECT.LABEL), str(GRID.ROW_MAJOR_IDX)
             label2section = dict(
-                zip(info[lab].astype(int), info[rmi].astype(int))
+                    zip(info[lab].astype(int), info[rmi].astype(int))
             )
         return props, label2section
 
@@ -1172,13 +1172,13 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             if prop.area < 10:
                 continue
             seg = compute_zone_segmentation(
-                image, prop, params=self._zone_params()
+                    image, prop, params=self._zone_params()
             )
             tile, obj_mask, centre = self._resolve_tile(
-                image, seg, prop, label2section
+                    image, seg, prop, label2section
             )
             phi, coh, grad = orientation_field(
-                tile, self.sigma_d, self.sigma_i
+                    tile, self.sigma_d, self.sigma_i
             )
             dist_map = distance_from_point(tile.shape, centre)
             yield prop, seg, obj_mask, phi, coh, grad, dist_map, centre
@@ -1201,14 +1201,14 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         # Preserve no-argument notebook figures without retaining a full Image.
         self._cache_image_ref = weakref.ref(image)
         for (
-            prop,
-            seg,
-            obj_mask,
-            phi,
-            coh,
-            grad,
-            dist_map,
-            centre,
+                prop,
+                seg,
+                obj_mask,
+                phi,
+                coh,
+                grad,
+                dist_map,
+                centre,
         ) in self._iter_object_fields(image, props, label2section):
             (
                 outward_rotation,
@@ -1217,40 +1217,40 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                 long_range,
                 ring_profile,
             ) = self._fill_metrics(
-                base[prop.label],
-                seg,
-                obj_mask,
-                phi,
-                coh,
-                grad,
-                dist_map,
-                centre,
+                    base[prop.label],
+                    seg,
+                    obj_mask,
+                    phi,
+                    coh,
+                    grad,
+                    dist_map,
+                    centre,
             )
             # LEAN CACHE: store compact summaries only — NO full-res tile/phi/coh/
             # grad/dist_map and NO seg dataclass. Bounds memory to O(objects*blocks).
             self._cache[prop.label] = {
-                "centroid_global": tuple(seg.centroid_global),
-                "centre": centre,
-                "radii": {
-                    "core": seg.core_radius,
-                    "symmetric": seg.symmetric_radius,
-                    "core_end": seg.core_end_radius,
-                    "dense_end": seg.dense_end_radius,
+                "centroid_global" : tuple(seg.centroid_global),
+                "centre"          : centre,
+                "radii"           : {
+                    "core"      : seg.core_radius,
+                    "symmetric" : seg.symmetric_radius,
+                    "core_end"  : seg.core_end_radius,
+                    "dense_end" : seg.dense_end_radius,
                     "sparse_end": seg.sparse_end_radius,
                 },
-                "zones_computed": seg.zones_computed,
+                "zones_computed"  : seg.zones_computed,
                 "outward_rotation": outward_rotation,
-                "quiver": _downsample_quiver(
-                    phi, coh, self.quiver_block
+                "quiver"          : _downsample_quiver(
+                        phi, coh, self.quiver_block
                 ),  # block-res
-                "per_zone": per_zone,
-                "radial_relative": radial_relative,
-                "long_range": long_range,
-                "ring_profile": ring_profile,
+                "per_zone"        : per_zone,
+                "radial_relative" : radial_relative,
+                "long_range"      : long_range,
+                "ring_profile"    : ring_profile,
             }
         self._cache_signature = self.model_dump_json()
         return pd.DataFrame(
-            [base[p.label] for p in props], columns=[OBJECT.LABEL, *headers]
+                [base[p.label] for p in props], columns=[OBJECT.LABEL, *headers]
         )
 
     def _write_diagnostic(self, row: dict, header: str, value: float) -> None:
@@ -1259,14 +1259,14 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             row[header] = value
 
     def _fill_literal_crossing_metrics(
-        self,
-        row: dict,
-        seg: ZoneSegmentation,
-        obj_mask: np.ndarray,
-        phi: np.ndarray,
-        coherence: np.ndarray,
-        dist_map: np.ndarray,
-        centre: tuple[float, float],
+            self,
+            row: dict,
+            seg: ZoneSegmentation,
+            obj_mask: np.ndarray,
+            phi: np.ndarray,
+            coherence: np.ndarray,
+            dist_map: np.ndarray,
+            centre: tuple[float, float],
     ) -> dict[str, dict[str, float]]:
         """Write full-length literal-crossing primary and diagnostic metrics.
 
@@ -1286,9 +1286,9 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                     row[f"OrientZones_{metric}-Mask-{zone}"] = np.nan
                 for metric in _DIAGNOSTIC_OUTWARD_METRICS:
                     self._write_diagnostic(
-                        row,
-                        f"OrientZones_{metric}-Mask-{zone}",
-                        np.nan,
+                            row,
+                            f"OrientZones_{metric}-Mask-{zone}",
+                            np.nan,
                     )
             return primary_by_zone
 
@@ -1296,7 +1296,7 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             return _write_missing()
         inner_radius = float(seg.core_end_radius)
         outside_core = (
-            obj_mask & np.isfinite(dist_map) & (dist_map >= inner_radius)
+                obj_mask & np.isfinite(dist_map) & (dist_map >= inner_radius)
         )
         if not outside_core.any():
             return _write_missing()
@@ -1304,110 +1304,112 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         object_extent_radius = float(np.max(dist_map[outside_core]))
         radial_span = np.nextafter(object_extent_radius, np.inf) - inner_radius
         n_rings = max(
-            1,
-            int(np.ceil(radial_span / self.radial_ring_width)),
+                1,
+                int(np.ceil(radial_span / self.radial_ring_width)),
         )
         outer_radius = inner_radius + n_rings * self.radial_ring_width
         radii = (
-            inner_radius
-            + (np.arange(n_rings, dtype=np.float64) + 0.5)
-            * self.radial_ring_width
+                inner_radius
+                + (np.arange(n_rings, dtype=np.float64) + 0.5)
+                * self.radial_ring_width
         )
         selector = zone_selector(
-            dist_map,
-            inner_radius,
-            outer_radius,
-            obj_mask,
-            "Mask",
+                dist_map,
+                inner_radius,
+                outer_radius,
+                obj_mask,
+                "Mask",
         )
         transform = literal_skeleton_ring_crossings(
-            obj_mask,
-            phi + _FIBER_AXIS_OFFSET,
-            coherence,
-            dist_map,
-            centre,
-            radii,
-            selector=selector,
-            minimum_coherence=_RADIAL_RELATIVE_MIN_COHERENCE,
-            crossing_half_width=_LITERAL_CROSSING_HALF_WIDTH,
-            minimum_crossing_resultant=_RADIAL_RING_MIN_RESULTANT,
+                obj_mask,
+                phi + _FIBER_AXIS_OFFSET,
+                coherence,
+                dist_map,
+                centre,
+                radii,
+                selector=selector,
+                minimum_coherence=_RADIAL_RELATIVE_MIN_COHERENCE,
+                crossing_half_width=_LITERAL_CROSSING_HALF_WIDTH,
+                minimum_crossing_resultant=_RADIAL_RING_MIN_RESULTANT,
         )
         profile = literal_crossing_ring_profile(
-            transform,
-            minimum_points=_LITERAL_CROSSING_MIN_POINTS,
-            minimum_resultant=_RADIAL_RING_MIN_RESULTANT,
+                transform,
+                minimum_points=_LITERAL_CROSSING_MIN_POINTS,
+                minimum_resultant=_RADIAL_RING_MIN_RESULTANT,
         )
         bounds = {
             "Overall": (inner_radius, outer_radius),
-            "Dense": (
+            "Dense"  : (
                 inner_radius,
                 min(float(seg.dense_end_radius), outer_radius),
             ),
-            "Sparse": (
+            "Sparse" : (
                 max(float(seg.dense_end_radius), inner_radius),
                 outer_radius,
             ),
         }
         for zone, (lower, upper) in bounds.items():
             metrics = aggregate_literal_crossing_zone(
-                profile,
-                lower,
-                upper,
-                peak_window_rings=self.outward_peak_window_rings,
-                minimum_run_rings=self.outward_min_run_rings,
+                    profile,
+                    lower,
+                    upper,
+                    peak_window_rings=self.outward_peak_window_rings,
+                    minimum_run_rings=self.outward_min_run_rings,
             )
             primary_values = {
                 "OutwardRotationSustainedPeak": float(
-                    np.degrees(metrics.sustained_peak)
+                        np.degrees(metrics.sustained_peak)
                 ),
-                "OutwardRotationNet": float(np.degrees(metrics.net_rotation)),
-                "OutwardRotationRate": float(
-                    np.degrees(metrics.rotation_rate)
+                "OutwardRotationNet"          : float(np.degrees(metrics.net_rotation)),
+                "OutwardRotationRate"         : float(
+                        np.degrees(metrics.rotation_rate)
                 ),
-                "OutwardRotationConsistency": metrics.consistency,
+                "OutwardRotationConsistency"  : metrics.consistency,
             }
             for metric, value in primary_values.items():
                 row[f"OrientZones_{metric}-Mask-{zone}"] = value
             primary_by_zone[zone] = primary_values
 
             diagnostic_values = {
-                "OutwardRotationRawPeak": float(np.degrees(metrics.raw_peak)),
-                "OutwardRotationP90": float(np.degrees(metrics.percentile_90)),
-                "OutwardRotationP95": float(np.degrees(metrics.percentile_95)),
+                "OutwardRotationRawPeak"        : float(np.degrees(metrics.raw_peak)),
+                "OutwardRotationP90"            : float(
+                    np.degrees(metrics.percentile_90)),
+                "OutwardRotationP95"            : float(
+                    np.degrees(metrics.percentile_95)),
                 "OutwardRotationMedianMagnitude": float(
-                    np.degrees(metrics.median_magnitude)
+                        np.degrees(metrics.median_magnitude)
                 ),
-                "OutwardRotationAbsoluteArea": float(
-                    np.degrees(metrics.absolute_area)
+                "OutwardRotationAbsoluteArea"   : float(
+                        np.degrees(metrics.absolute_area)
                 ),
-                "OutwardRotationTotalVariation": float(
-                    np.degrees(metrics.total_variation)
+                "OutwardRotationTotalVariation" : float(
+                        np.degrees(metrics.total_variation)
                 ),
-                "OutwardRotationRateGradient": float(
-                    np.degrees(metrics.rate_gradient)
+                "OutwardRotationRateGradient"   : float(
+                        np.degrees(metrics.rate_gradient)
                 ),
-                "OutwardRotationRingSupport": metrics.ring_support,
-                "OutwardRotationRunSpanSupport": metrics.run_span_support,
+                "OutwardRotationRingSupport"    : metrics.ring_support,
+                "OutwardRotationRunSpanSupport" : metrics.run_span_support,
                 "OutwardRotationMedianResultant": metrics.median_resultant,
             }
             for metric, value in diagnostic_values.items():
                 self._write_diagnostic(
-                    row,
-                    f"OrientZones_{metric}-Mask-{zone}",
-                    value,
+                        row,
+                        f"OrientZones_{metric}-Mask-{zone}",
+                        value,
                 )
         return primary_by_zone
 
     def _fill_metrics(
-        self,
-        row,
-        seg,
-        obj_mask,
-        phi,
-        coh,
-        grad,
-        dist_map,
-        centre,
+            self,
+            row,
+            seg,
+            obj_mask,
+            phi,
+            coh,
+            grad,
+            dist_map,
+            centre,
     ):
         """Write public degree-based zone columns for one object.
 
@@ -1418,13 +1420,13 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         per_zone = {}
         radial_relative = {}
         outward_rotation = self._fill_literal_crossing_metrics(
-            row,
-            seg,
-            obj_mask,
-            phi,
-            coh,
-            dist_map,
-            centre,
+                row,
+                seg,
+                obj_mask,
+                phi,
+                coh,
+                dist_map,
+                centre,
         )
         signed_tilt, _signed_turning, outward_turning, polar_angle = (
             signed_radial_relative_field(phi, centre, dist_map)
@@ -1437,7 +1439,7 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                     R = t = cm = direction = np.nan
                 else:
                     sel = zone_selector(
-                        dist_map, r_lo, r_hi, obj_mask, variant
+                            dist_map, r_lo, r_hi, obj_mask, variant
                     )
                     R, t, cm = aggregate_orientation(phi, coh, grad, sel)
                     direction = _resultant_direction(phi, coh, sel)
@@ -1449,42 +1451,42 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                     direction,
                 )  # scalars only
                 self._write_diagnostic(
-                    row,
-                    f"OrientZones_Concentration-{variant}-{zone}",
-                    R,
+                        row,
+                        f"OrientZones_Concentration-{variant}-{zone}",
+                        R,
                 )
                 self._write_diagnostic(
-                    row,
-                    f"OrientZones_Turning-{variant}-{zone}",
-                    turning_degrees,
+                        row,
+                        f"OrientZones_Turning-{variant}-{zone}",
+                        turning_degrees,
                 )
                 self._write_diagnostic(
-                    row,
-                    f"OrientZones_Coherence-{variant}-{zone}",
-                    cm,
+                        row,
+                        f"OrientZones_Coherence-{variant}-{zone}",
+                        cm,
                 )
             valid_bounds = (
-                np.isfinite(r_lo) and np.isfinite(r_hi) and r_hi > r_lo
+                    np.isfinite(r_lo) and np.isfinite(r_hi) and r_hi > r_lo
             )
             if not zone_ok or not valid_bounds:
                 radial_tilt = radial_turning = radial_support = np.nan
             else:
                 structure_selector = zone_selector(
-                    dist_map,
-                    r_lo,
-                    r_hi,
-                    obj_mask,
-                    "Mask",
+                        dist_map,
+                        r_lo,
+                        r_hi,
+                        obj_mask,
+                        "Mask",
                 )
                 radial_tilt, radial_turning, radial_support = (
                     aggregate_radial_relative(
-                        absolute_tilt,
-                        outward_turning,
-                        polar_angle,
-                        coh,
-                        dist_map,
-                        structure_selector,
-                        _RADIAL_RELATIVE_N_SECTORS,
+                            absolute_tilt,
+                            outward_turning,
+                            polar_angle,
+                            coh,
+                            dist_map,
+                            structure_selector,
+                            _RADIAL_RELATIVE_N_SECTORS,
                     )
                 )
             radial_tilt_degrees = float(np.degrees(radial_tilt))
@@ -1495,28 +1497,28 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                 radial_support,
             )
             self._write_diagnostic(
-                row,
-                f"OrientZones_RadialTilt-Mask-{zone}",
-                radial_tilt_degrees,
+                    row,
+                    f"OrientZones_RadialTilt-Mask-{zone}",
+                    radial_tilt_degrees,
             )
             self._write_diagnostic(
-                row,
-                f"OrientZones_OutwardTurning-Mask-{zone}",
-                radial_turning_degrees,
+                    row,
+                    f"OrientZones_OutwardTurning-Mask-{zone}",
+                    radial_turning_degrees,
             )
             self._write_diagnostic(
-                row,
-                f"OrientZones_RadialSectorSupport-Mask-{zone}",
-                radial_support,
+                    row,
+                    f"OrientZones_RadialSectorSupport-Mask-{zone}",
+                    radial_support,
             )
         long_range, ring_profile = self._fill_long_range_metrics(
-            row,
-            seg,
-            obj_mask,
-            signed_tilt,
-            polar_angle,
-            coh,
-            dist_map,
+                row,
+                seg,
+                obj_mask,
+                signed_tilt,
+                polar_angle,
+                coh,
+                dist_map,
         )
         return (
             outward_rotation,
@@ -1527,14 +1529,14 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         )
 
     def _fill_long_range_metrics(
-        self,
-        row,
-        seg,
-        obj_mask,
-        signed_tilt,
-        polar_angle,
-        coherence,
-        dist_map,
+            self,
+            row,
+            seg,
+            obj_mask,
+            signed_tilt,
+            polar_angle,
+            coherence,
+            dist_map,
     ):
         """Write fixed-lag Sholl-style rotation metrics in public degrees.
 
@@ -1550,14 +1552,14 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         long_range["DenseToSparse"] = (np.nan, np.nan, np.nan)
         empty = np.empty(0, dtype=np.float64)
         ring_profile = {
-            "radii": empty,
-            "mean_absolute_tilt": empty.copy(),
-            "mean_signed_tilt": empty.copy(),
-            "support": empty.copy(),
-            "pair_midpoints": empty.copy(),
+            "radii"                 : empty,
+            "mean_absolute_tilt"    : empty.copy(),
+            "mean_signed_tilt"      : empty.copy(),
+            "support"               : empty.copy(),
+            "pair_midpoints"        : empty.copy(),
             "mean_absolute_rotation": empty.copy(),
-            "mean_signed_rotation": empty.copy(),
-            "pair_support": empty.copy(),
+            "mean_signed_rotation"  : empty.copy(),
+            "pair_support"          : empty.copy(),
         }
 
         metric_names = (
@@ -1567,7 +1569,7 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         )
 
         def _write_result(
-            name: str, result: tuple[float, float, float]
+                name: str, result: tuple[float, float, float]
         ) -> None:
             magnitude, signed, support = result
             magnitude_degrees = float(np.degrees(magnitude))
@@ -1577,9 +1579,9 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             values = (magnitude_degrees, signed_degrees, support)
             for metric, value in zip(metric_names, values):
                 self._write_diagnostic(
-                    row,
-                    f"OrientZones_{metric}-Mask-{name}",
-                    value,
+                        row,
+                        f"OrientZones_{metric}-Mask-{name}",
+                        value,
                 )
 
         if not seg.zones_computed:
@@ -1589,90 +1591,90 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
 
         inner_radius = float(seg.core_end_radius)
         outer_radius = min(
-            float(seg.sparse_end_radius),
-            float(seg.symmetric_radius),
+                float(seg.sparse_end_radius),
+                float(seg.symmetric_radius),
         )
         structure_selector = zone_selector(
-            dist_map,
-            inner_radius,
-            outer_radius,
-            obj_mask,
-            "Mask",
+                dist_map,
+                inner_radius,
+                outer_radius,
+                obj_mask,
+                "Mask",
         )
         ring_centres, ring_sector_tilt, _ring_resultant = (
             radial_ring_orientation_profile(
-                signed_tilt,
-                polar_angle,
-                coherence,
-                dist_map,
-                structure_selector,
-                inner_radius,
-                outer_radius,
-                self.radial_ring_width,
-                _RADIAL_RELATIVE_N_SECTORS,
+                    signed_tilt,
+                    polar_angle,
+                    coherence,
+                    dist_map,
+                    structure_selector,
+                    inner_radius,
+                    outer_radius,
+                    self.radial_ring_width,
+                    _RADIAL_RELATIVE_N_SECTORS,
             )
         )
         pair_midpoints, signed_rotation = long_range_ring_rotation_profile(
-            ring_centres,
-            ring_sector_tilt,
-            self.long_range_lag,
+                ring_centres,
+                ring_sector_tilt,
+                self.long_range_lag,
         )
         long_range_bounds = {
             "Overall": (inner_radius, outer_radius),
-            "Dense": (
+            "Dense"  : (
                 float(seg.core_end_radius),
                 min(float(seg.dense_end_radius), outer_radius),
             ),
-            "Sparse": (
+            "Sparse" : (
                 float(seg.dense_end_radius),
                 outer_radius,
             ),
         }
         for zone, (lower, upper) in long_range_bounds.items():
             result = aggregate_long_range_rotation(
-                pair_midpoints,
-                signed_rotation,
-                lower,
-                upper,
+                    pair_midpoints,
+                    signed_rotation,
+                    lower,
+                    upper,
             )
             _write_result(zone, result)
 
         dense_selector = zone_selector(
-            dist_map,
-            float(seg.core_end_radius),
-            float(seg.dense_end_radius),
-            obj_mask,
-            "Mask",
+                dist_map,
+                float(seg.core_end_radius),
+                float(seg.dense_end_radius),
+                obj_mask,
+                "Mask",
         )
         sparse_selector = zone_selector(
-            dist_map,
-            float(seg.dense_end_radius),
-            outer_radius,
-            obj_mask,
-            "Mask",
+                dist_map,
+                float(seg.dense_end_radius),
+                outer_radius,
+                obj_mask,
+                "Mask",
         )
         dense_sector_tilt, _dense_resultant = _axial_sector_means(
-            signed_tilt,
-            polar_angle,
-            coherence,
-            dense_selector,
-            _RADIAL_RELATIVE_N_SECTORS,
+                signed_tilt,
+                polar_angle,
+                coherence,
+                dense_selector,
+                _RADIAL_RELATIVE_N_SECTORS,
         )
         sparse_sector_tilt, _sparse_resultant = _axial_sector_means(
-            signed_tilt,
-            polar_angle,
-            coherence,
-            sparse_selector,
-            _RADIAL_RELATIVE_N_SECTORS,
+                signed_tilt,
+                polar_angle,
+                coherence,
+                sparse_selector,
+                _RADIAL_RELATIVE_N_SECTORS,
         )
         transition = aggregate_paired_zone_rotation(
-            dense_sector_tilt,
-            sparse_sector_tilt,
+                dense_sector_tilt,
+                sparse_sector_tilt,
         )
         _write_result("DenseToSparse", transition)
 
         def _summarize_cells(
-            cells: np.ndarray,
+                cells: np.ndarray,
         ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
             absolute = np.full(cells.shape[0], np.nan, dtype=np.float64)
             signed = np.full(cells.shape[0], np.nan, dtype=np.float64)
@@ -1686,20 +1688,20 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             return absolute, signed, support
 
         ring_absolute, ring_signed, ring_support = _summarize_cells(
-            ring_sector_tilt
+                ring_sector_tilt
         )
         pair_absolute, pair_signed, pair_support = _summarize_cells(
-            signed_rotation
+                signed_rotation
         )
         ring_profile = {
-            "radii": ring_centres,
-            "mean_absolute_tilt": np.degrees(ring_absolute),
-            "mean_signed_tilt": np.degrees(ring_signed),
-            "support": ring_support,
-            "pair_midpoints": pair_midpoints,
+            "radii"                 : ring_centres,
+            "mean_absolute_tilt"    : np.degrees(ring_absolute),
+            "mean_signed_tilt"      : np.degrees(ring_signed),
+            "support"               : ring_support,
+            "pair_midpoints"        : pair_midpoints,
             "mean_absolute_rotation": np.degrees(pair_absolute),
-            "mean_signed_rotation": np.degrees(pair_signed),
-            "pair_support": pair_support,
+            "mean_signed_rotation"  : np.degrees(pair_signed),
+            "pair_support"          : pair_support,
         }
         return long_range, ring_profile
 
@@ -1713,20 +1715,20 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         props, label2section = self._prep(image)
         canvas = np.full(image.gray[:].shape[:2], np.nan)
         for (
-            _prop,
-            seg,
-            _mask,
-            _phi,
-            coh,
-            _grad,
-            _dist,
-            centre,
+                _prop,
+                seg,
+                _mask,
+                _phi,
+                coh,
+                _grad,
+                _dist,
+                centre,
         ) in self._iter_object_fields(image, props, label2section):
             r0 = int(round(seg.centroid_global[0] - centre[0]))
             c0 = int(round(seg.centroid_global[1] - centre[1]))
             h, w = coh.shape
             r1, c1 = min(r0 + h, canvas.shape[0]), min(c0 + w, canvas.shape[1])
-            canvas[max(r0, 0) : r1, max(c0, 0) : c1] = coh[
+            canvas[max(r0, 0): r1, max(c0, 0): c1] = coh[
                 : r1 - max(r0, 0), : c1 - max(c0, 0)
             ]
         return canvas[::downsample, ::downsample]
@@ -1738,9 +1740,9 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         image = self._cached_image()
         if image is None:
             raise RuntimeError(
-                "MeasureOrientationZones: no live image subject is available. "
-                "Pass an image to .inspect()/.report(), or keep the measured "
-                "image alive for no-argument rendering."
+                    "MeasureOrientationZones: no live image subject is available. "
+                    "Pass an image to .inspect()/.report(), or keep the measured "
+                    "image alive for no-argument rendering."
             )
         return image
 
@@ -1755,23 +1757,23 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
     def _ensure_diagnostic_cache(self, image) -> None:
         """Measure ``image`` when its compact diagnostic cache is stale."""
         if (
-            not self._cache
-            or self._cached_image() is not image
-            or self._cache_signature != self.model_dump_json()
+                not self._cache
+                or self._cached_image() is not image
+                or self._cache_signature != self.model_dump_json()
         ):
             self.measure(image)
 
     @figure(
-        title="Orientation-field overlay",
-        primary=True,
-        controls={"base_layer": BASE_LAYER},
+            title="Orientation-field overlay",
+            primary=True,
+            controls={"base_layer": BASE_LAYER},
     )
     def inspect(
-        self,
-        image=None,
-        base_layer: Literal["rgb", "gray", "detect_mat"] = "detect_mat",
-        *,
-        for_save: bool = False,
+            self,
+            image=None,
+            base_layer: Literal["rgb", "gray", "detect_mat"] = "detect_mat",
+            *,
+            for_save: bool = False,
     ):
         """Plate overview of the pixels and local fiber axes being aggregated.
 
@@ -1815,7 +1817,7 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         if base_layer not in valid_base_layers:
             allowed = ", ".join(repr(value) for value in valid_base_layers)
             raise ValueError(
-                f"base_layer must be one of {allowed}; got {base_layer!r}"
+                    f"base_layer must be one of {allowed}; got {base_layer!r}"
             )
 
         if image is None:
@@ -1827,9 +1829,9 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         display_w = 900
         display_h = int(display_w * h / w)
         fig = plotly_imshow(
-            base,
-            title="Orientation zones: local fiber axes and measurement regions",
-            figsize=(display_w // 100, display_h // 100),
+                base,
+                title="Orientation zones: local fiber axes and measurement regions",
+                figsize=(display_w // 100, display_h // 100),
         )
         fig.update_coloraxes(showscale=False)
         fig.update_layout(legend=dict(groupclick="togglegroup"))
@@ -1842,44 +1844,44 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         self._add_mean_axis_traces(fig)
         self._add_metric_hover_trace(fig)
         fig.add_annotation(
-            text=(
-                "<b>Field:</b> short blue bars are local fiber axes "
-                "(tensor normal + 90°); length and opacity encode local "
-                "coherence C.<br>"
-                "<b>Signed outward turning:</b> the Spectral overlay shows "
-                "the full observed directional range in deg/px, centred at "
-                "zero.<br>Negative is counterclockwise and positive is "
-                "clockwise as growth moves outward. The inferred inoculum core is "
-                "excluded from this directional view.<br>"
-                "<b>Long range:</b> thin concentric circles sample the "
-                f"{self.radial_ring_width:g} px Sholl-style orientation bands; "
-                f"matching sectors {self.long_range_lag:g} px apart are compared "
-                "in degrees.<br>Hover the circles or colony centres for "
-                "ring and zone-to-zone summaries.<br>"
-                "<b>Selectors:</b> circles bound the radial zones; toggle mean "
-                "axes and the green detected-mask boundary.<br>"
-                "<b>Metrics:</b> hover colony centres for R, turning, and C. "
-                "R is common parallel alignment, not radial alignment.<br>Turning "
-                "is the coherence-weighted spatial change in the local axis. "
-                "Radial tilt compares each detected local axis with its outward "
-                "spoke; outward turning measures how that tilt changes radially."
-            ),
-            xref="paper",
-            yref="paper",
-            x=0.0,
-            y=-0.19,
-            xanchor="left",
-            yanchor="top",
-            align="left",
-            showarrow=False,
-            font=dict(color=_OI_NAVY, size=11),
+                text=(
+                    "<b>Field:</b> short blue bars are local fiber axes "
+                    "(tensor normal + 90°); length and opacity encode local "
+                    "coherence C.<br>"
+                    "<b>Signed outward turning:</b> the Spectral overlay shows "
+                    "the full observed directional range in deg/px, centred at "
+                    "zero.<br>Negative is counterclockwise and positive is "
+                    "clockwise as growth moves outward. The inferred inoculum core is "
+                    "excluded from this directional view.<br>"
+                    "<b>Long range:</b> thin concentric circles sample the "
+                    f"{self.radial_ring_width:g} px Sholl-style orientation bands; "
+                    f"matching sectors {self.long_range_lag:g} px apart are compared "
+                    "in degrees.<br>Hover the circles or colony centres for "
+                    "ring and zone-to-zone summaries.<br>"
+                    "<b>Selectors:</b> circles bound the radial zones; toggle mean "
+                    "axes and the green detected-mask boundary.<br>"
+                    "<b>Metrics:</b> hover colony centres for R, turning, and C. "
+                    "R is common parallel alignment, not radial alignment.<br>Turning "
+                    "is the coherence-weighted spatial change in the local axis. "
+                    "Radial tilt compares each detected local axis with its outward "
+                    "spoke; outward turning measures how that tilt changes radially."
+                ),
+                xref="paper",
+                yref="paper",
+                x=0.0,
+                y=-0.19,
+                xanchor="left",
+                yanchor="top",
+                align="left",
+                showarrow=False,
+                font=dict(color=_OI_NAVY, size=11),
         )
         fig.update_layout(margin=dict(b=350))
         fig.update_xaxes(range=[-0.5, w - 0.5], constrain="domain")
         fig.update_yaxes(
-            range=[h - 0.5, -0.5],
-            scaleanchor="x",
-            scaleratio=1,
+                range=[h - 0.5, -0.5],
+                scaleanchor="x",
+                scaleratio=1,
         )
         if for_save:
             for trace in fig.data:
@@ -1888,13 +1890,13 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         return fig
 
     @figure(
-        title="Cumulative radial rotation overlay",
-        controls={"base_layer": BASE_LAYER},
+            title="Cumulative radial rotation overlay",
+            controls={"base_layer": BASE_LAYER},
     )
     def cumulative_rotation_overlay(
-        self,
-        image=None,
-        base_layer: Literal["rgb", "gray", "detect_mat"] = "detect_mat",
+            self,
+            image=None,
+            base_layer: Literal["rgb", "gray", "detect_mat"] = "detect_mat",
     ):
         """Show accumulated ring-to-ring orientation change on the source layer.
 
@@ -1934,7 +1936,7 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         if base_layer not in valid_base_layers:
             allowed = ", ".join(repr(value) for value in valid_base_layers)
             raise ValueError(
-                f"base_layer must be one of {allowed}; got {base_layer!r}"
+                    f"base_layer must be one of {allowed}; got {base_layer!r}"
             )
         if image is None:
             image = self._require_cache_image()
@@ -1945,63 +1947,63 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         display_width = 900
         display_height = int(display_width * height / width)
         fig = plotly_imshow(
-            base,
-            title=(
-                "Cumulative radial rotation: accumulated change from the "
-                "first supported ring in each sector"
-            ),
-            figsize=(display_width // 100, display_height // 100),
+                base,
+                title=(
+                    "Cumulative radial rotation: accumulated change from the "
+                    "first supported ring in each sector"
+                ),
+                figsize=(display_width // 100, display_height // 100),
         )
         fig.update_coloraxes(showscale=False)
         self._add_cumulative_rotation_trace(fig, image, (height, width))
         self._add_long_range_ring_traces(fig)
         self._add_quiver_trace(fig)
         fig.add_annotation(
-            text=(
-                "<b>Cumulative rotation:</b> zero at each sector's first "
-                f"supported {self.radial_ring_width:g} px ring outside the "
-                "inoculum; "
-                "then the signed, seam-safe change between adjacent rings is "
-                "summed outward within each angular sector.<br>"
-                "Positive and negative values are opposite turning senses. "
-                "Signed unwrapping assumes adjacent-ring changes are less "
-                "than 90°. "
-                "Blank regions are the excluded inoculum, background, or a "
-                "sector after continuous radial support was lost. Short blue "
-                "bars show the local fiber axes and can be toggled in the "
-                "legend."
-            ),
-            xref="paper",
-            yref="paper",
-            x=0.0,
-            y=-0.19,
-            xanchor="left",
-            yanchor="top",
-            align="left",
-            showarrow=False,
-            font=dict(color=_OI_NAVY, size=11),
+                text=(
+                    "<b>Cumulative rotation:</b> zero at each sector's first "
+                    f"supported {self.radial_ring_width:g} px ring outside the "
+                    "inoculum; "
+                    "then the signed, seam-safe change between adjacent rings is "
+                    "summed outward within each angular sector.<br>"
+                    "Positive and negative values are opposite turning senses. "
+                    "Signed unwrapping assumes adjacent-ring changes are less "
+                    "than 90°. "
+                    "Blank regions are the excluded inoculum, background, or a "
+                    "sector after continuous radial support was lost. Short blue "
+                    "bars show the local fiber axes and can be toggled in the "
+                    "legend."
+                ),
+                xref="paper",
+                yref="paper",
+                x=0.0,
+                y=-0.19,
+                xanchor="left",
+                yanchor="top",
+                align="left",
+                showarrow=False,
+                font=dict(color=_OI_NAVY, size=11),
         )
         fig.update_layout(margin=dict(b=300))
         fig.update_xaxes(range=[-0.5, width - 0.5], constrain="domain")
         fig.update_yaxes(
-            range=[height - 0.5, -0.5],
-            scaleanchor="x",
-            scaleratio=1,
+                range=[height - 0.5, -0.5],
+                scaleanchor="x",
+                scaleratio=1,
         )
         return fig
 
     @figure(
-        title="Matched-ring cumulative fiber rotation overlay",
-        controls={"base_layer": BASE_LAYER},
+            title="Matched-ring cumulative fiber rotation overlay",
+            controls={"base_layer": BASE_LAYER},
     )
     def matched_cumulative_rotation_overlay(
-        self,
-        image=None,
-        base_layer: Literal["rgb", "gray", "detect_mat"] = "detect_mat",
-        *,
-        max_sector_shift: int = 2,
-        allow_gap_bridging: bool = False,
-        allow_restarts: bool = False,
+            self,
+            image=None,
+            base_layer: Literal["rgb", "gray", "detect_mat"] = "detect_mat",
+            *,
+            max_sector_shift: int = 2,
+            allow_gap_bridging: bool = False,
+            allow_restarts: bool = False,
     ):
         """Show fiber-axis rotation accumulated along nearby matched ring cells.
 
@@ -2053,10 +2055,10 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         if base_layer not in valid_base_layers:
             allowed = ", ".join(repr(value) for value in valid_base_layers)
             raise ValueError(
-                f"base_layer must be one of {allowed}; got {base_layer!r}"
+                    f"base_layer must be one of {allowed}; got {base_layer!r}"
             )
         if isinstance(max_sector_shift, bool) or not isinstance(
-            max_sector_shift, (int, np.integer)
+                max_sector_shift, (int, np.integer)
         ):
             raise ValueError("max_sector_shift must be an integer >= 0")
         if max_sector_shift < 0:
@@ -2074,21 +2076,21 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         display_width = 900
         display_height = int(display_width * height / width)
         fig = plotly_imshow(
-            base,
-            title=(
-                "Matched-ring cumulative fiber rotation: nearby annular "
-                "orientation cells are connected outward"
-            ),
-            figsize=(display_width // 100, display_height // 100),
+                base,
+                title=(
+                    "Matched-ring cumulative fiber rotation: nearby annular "
+                    "orientation cells are connected outward"
+                ),
+                figsize=(display_width // 100, display_height // 100),
         )
         fig.update_coloraxes(showscale=False)
         self._add_matched_cumulative_rotation_trace(
-            fig,
-            image,
-            (height, width),
-            max_sector_shift=max_sector_shift,
-            allow_gap_bridging=allow_gap_bridging,
-            allow_restarts=allow_restarts,
+                fig,
+                image,
+                (height, width),
+                max_sector_shift=max_sector_shift,
+                allow_gap_bridging=allow_gap_bridging,
+                allow_restarts=allow_restarts,
         )
         self._add_long_range_ring_traces(fig)
         path_note = (
@@ -2096,47 +2098,47 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             "white path. "
             if not allow_restarts
             else "White path lines are hidden because restarted segment "
-            "boundaries are not continuous trajectories. "
+                 "boundaries are not continuous trajectories. "
         )
         fig.add_annotation(
-            text=(
-                "<b>Matched-ring accumulation:</b> each geometric seed starts "
-                f"at its first supported {self.radial_ring_width:g} px ring. "
-                f"The next ring may move up to {max_sector_shift} nearby "
-                "10° sectors, guided by outward radial-relative tilt, fiber-axis "
-                "continuity, and orientation reliability.<br>"
-                f"Gap bridging is {'enabled' if allow_gap_bridging else 'disabled'}; "
-                f"segment restarts are {'enabled' if allow_restarts else 'disabled'}. "
-                "Skipped rings remain blank. Restarted segments reset to 0° and "
-                "are segment-relative rather than cumulative from the inoculum.<br>"
-                f"{path_note}Spectral colors use the fixed full range from "
-                "−180° to +180°. Blank regions are inoculum, background, or "
-                "terminated/unsupported paths."
-            ),
-            xref="paper",
-            yref="paper",
-            x=0.0,
-            y=-0.19,
-            xanchor="left",
-            yanchor="top",
-            align="left",
-            showarrow=False,
-            font=dict(color=_OI_NAVY, size=11),
+                text=(
+                    "<b>Matched-ring accumulation:</b> each geometric seed starts "
+                    f"at its first supported {self.radial_ring_width:g} px ring. "
+                    f"The next ring may move up to {max_sector_shift} nearby "
+                    "10° sectors, guided by outward radial-relative tilt, fiber-axis "
+                    "continuity, and orientation reliability.<br>"
+                    f"Gap bridging is {'enabled' if allow_gap_bridging else 'disabled'}; "
+                    f"segment restarts are {'enabled' if allow_restarts else 'disabled'}. "
+                    "Skipped rings remain blank. Restarted segments reset to 0° and "
+                    "are segment-relative rather than cumulative from the inoculum.<br>"
+                    f"{path_note}Spectral colors use the fixed full range from "
+                    "−180° to +180°. Blank regions are inoculum, background, or "
+                    "terminated/unsupported paths."
+                ),
+                xref="paper",
+                yref="paper",
+                x=0.0,
+                y=-0.19,
+                xanchor="left",
+                yanchor="top",
+                align="left",
+                showarrow=False,
+                font=dict(color=_OI_NAVY, size=11),
         )
         fig.update_layout(margin=dict(b=300))
         fig.update_xaxes(range=[-0.5, width - 0.5], constrain="domain")
         fig.update_yaxes(
-            range=[height - 0.5, -0.5],
-            scaleanchor="x",
-            scaleratio=1,
+                range=[height - 0.5, -0.5],
+                scaleanchor="x",
+                scaleratio=1,
         )
         return fig
 
     def fiber_bend_overlay(
-        self,
-        image=None,
-        base_layer: Literal["rgb", "gray", "detect_mat"] = "detect_mat",
-        scale_set: Literal["fine", "balanced", "broad"] = "balanced",
+            self,
+            image=None,
+            base_layer: Literal["rgb", "gray", "detect_mat"] = "detect_mat",
+            scale_set: Literal["fine", "balanced", "broad"] = "balanced",
     ):
         """Compare director-line curvature at three Q-averaging scales.
 
@@ -2179,12 +2181,12 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         if base_layer not in valid_base_layers:
             allowed = ", ".join(repr(value) for value in valid_base_layers)
             raise ValueError(
-                f"base_layer must be one of {allowed}; got {base_layer!r}"
+                    f"base_layer must be one of {allowed}; got {base_layer!r}"
             )
         if scale_set not in _BEND_SCALE_PRESETS:
             allowed = ", ".join(repr(value) for value in _BEND_SCALE_PRESETS)
             raise ValueError(
-                f"scale_set must be one of {allowed}; got {scale_set!r}"
+                    f"scale_set must be one of {allowed}; got {scale_set!r}"
             )
         if image is None:
             image = self._require_cache_image()
@@ -2194,9 +2196,9 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         height, width = base.shape[:2]
         scales = _BEND_SCALE_PRESETS[scale_set]
         rasters, raw_peaks, stride = self._bend_scale_rasters(
-            image,
-            (height, width),
-            scales,
+                image,
+                (height, width),
+                scales,
         )
         subplot_titles = [
             (
@@ -2206,11 +2208,11 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             for scale, peak in zip(scales, raw_peaks)
         ]
         fig = make_subplots(
-            rows=1,
-            cols=3,
-            shared_yaxes=True,
-            horizontal_spacing=0.025,
-            subplot_titles=subplot_titles,
+                rows=1,
+                cols=3,
+                shared_yaxes=True,
+                horizontal_spacing=0.025,
+                subplot_titles=subplot_titles,
         )
         raster_height, raster_width = rasters[0].shape
         raster_x = (np.arange(raster_width) + 0.5) * stride - 0.5
@@ -2228,65 +2230,65 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             rgb = np.asarray(display_base, dtype=np.float64)
             rgb = (rgb - base_min) / (base_max - base_min)
             display_base = np.clip(
-                np.nan_to_num(rgb, nan=0.0, posinf=1.0, neginf=0.0),
-                0.0,
-                1.0,
+                    np.nan_to_num(rgb, nan=0.0, posinf=1.0, neginf=0.0),
+                    0.0,
+                    1.0,
             )
             display_base = np.round(display_base * 255.0).astype(np.uint8)
         for column, (scale, raster) in enumerate(
-            zip(scales, rasters),
-            start=1,
+                zip(scales, rasters),
+                start=1,
         ):
             coloraxis_name = (
                 "coloraxis" if column == 1 else f"coloraxis{column}"
             )
             if base_is_rgb:
                 fig.add_trace(
-                    go.Image(
-                        z=display_base,
-                        x0=float(raster_x[0]),
-                        y0=float(raster_y[0]),
-                        dx=stride,
-                        dy=stride,
-                        hoverinfo="skip",
-                        name=base_layer,
-                    ),
-                    row=1,
-                    col=column,
+                        go.Image(
+                                z=display_base,
+                                x0=float(raster_x[0]),
+                                y0=float(raster_y[0]),
+                                dx=stride,
+                                dy=stride,
+                                hoverinfo="skip",
+                                name=base_layer,
+                        ),
+                        row=1,
+                        col=column,
                 )
             else:
                 fig.add_trace(
+                        go.Heatmap(
+                                x=raster_x,
+                                y=raster_y,
+                                z=display_base,
+                                colorscale=((0.0, "black"), (1.0, "white")),
+                                zmin=float(base_min),
+                                zmax=float(base_max),
+                                showscale=False,
+                                hoverinfo="skip",
+                                name=base_layer,
+                                showlegend=False,
+                        ),
+                        row=1,
+                        col=column,
+                )
+            fig.add_trace(
                     go.Heatmap(
-                        x=raster_x,
-                        y=raster_y,
-                        z=display_base,
-                        colorscale=((0.0, "black"), (1.0, "white")),
-                        zmin=float(base_min),
-                        zmax=float(base_max),
-                        showscale=False,
-                        hoverinfo="skip",
-                        name=base_layer,
-                        showlegend=False,
+                            x=raster_x,
+                            y=raster_y,
+                            z=raster,
+                            coloraxis=coloraxis_name,
+                            opacity=0.72,
+                            name=f"Fiber bend σ={scale:g} px",
+                            hovertemplate=(
+                                f"Q scale={scale:g} px<br>"
+                                "Fiber bend=%{z:.3f} deg/px<extra></extra>"
+                            ),
+                            connectgaps=False,
                     ),
                     row=1,
                     col=column,
-                )
-            fig.add_trace(
-                go.Heatmap(
-                    x=raster_x,
-                    y=raster_y,
-                    z=raster,
-                    coloraxis=coloraxis_name,
-                    opacity=0.72,
-                    name=f"Fiber bend σ={scale:g} px",
-                    hovertemplate=(
-                        f"Q scale={scale:g} px<br>"
-                        "Fiber bend=%{z:.3f} deg/px<extra></extra>"
-                    ),
-                    connectgaps=False,
-                ),
-                row=1,
-                col=column,
             )
         coloraxis_layout: dict[str, dict] = {}
         for column, peak in enumerate(raw_peaks, start=1):
@@ -2297,77 +2299,77 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             if not np.isfinite(full_range) or full_range <= _EPS:
                 full_range = float(np.finfo(np.float32).eps)
             coloraxis_layout[coloraxis_name] = dict(
-                colorscale="Viridis",
-                cmin=0.0,
-                cmax=full_range,
-                colorbar=dict(
-                    title=dict(text="Bend (deg/px)", side="top"),
-                    orientation="h",
-                    x=(column - 0.5) / 3.0,
-                    xanchor="center",
-                    y=-0.08,
-                    yanchor="top",
-                    len=0.27,
-                    thickness=12,
-                ),
+                    colorscale="Viridis",
+                    cmin=0.0,
+                    cmax=full_range,
+                    colorbar=dict(
+                            title=dict(text="Bend (deg/px)", side="top"),
+                            orientation="h",
+                            x=(column - 0.5) / 3.0,
+                            xanchor="center",
+                            y=-0.08,
+                            yanchor="top",
+                            len=0.27,
+                            thickness=12,
+                    ),
             )
         fig.update_layout(
-            title=(
-                "Multiscale fiber bend: curvature along the local director "
-                "field"
-            ),
-            width=1500,
-            height=max(520, min(1050, int(500 * height / width + 280))),
-            margin=dict(b=260),
-            showlegend=False,
-            **coloraxis_layout,
+                title=(
+                    "Multiscale fiber bend: curvature along the local director "
+                    "field"
+                ),
+                width=1500,
+                height=max(520, min(1050, int(500 * height / width + 280))),
+                margin=dict(b=260),
+                showlegend=False,
+                **coloraxis_layout,
         )
         for index in range(1, 4):
             xaxis_name = "xaxis" if index == 1 else f"xaxis{index}"
             yaxis_name = "yaxis" if index == 1 else f"yaxis{index}"
             xref = "x" if index == 1 else f"x{index}"
             fig.layout[xaxis_name].update(
-                range=[-0.5, width - 0.5],
-                constrain="domain",
-                showticklabels=False,
+                    range=[-0.5, width - 0.5],
+                    constrain="domain",
+                    showticklabels=False,
             )
             fig.layout[yaxis_name].update(
-                range=[height - 0.5, -0.5],
-                scaleanchor=xref,
-                scaleratio=1,
-                showticklabels=False,
+                    range=[height - 0.5, -0.5],
+                    scaleanchor=xref,
+                    scaleratio=1,
+                    showticklabels=False,
             )
         fig.add_annotation(
-            text=(
-                "<b>Interpretation:</b> brighter values are stronger local "
-                "curvature along the fiber-orientation field. Scale controls "
-                "Q-field averaging, not the structure-tensor scales. The "
-                "inoculum, background, low-coherence pixels, and mixed "
-                "scale-local orientations are blank.<br>"
-                "A feature that persists across scales is less likely to be a "
-                "single-scale texture artifact. Each panel uses its own full "
-                "raw range, so compare spatial persistence across panels, not "
-                "color brightness.<br>Bend is unsigned because a fiber director "
-                "has no intrinsic arrowhead. Existing radial and cumulative "
-                "figures remain the signed references."
-            ),
-            xref="paper",
-            yref="paper",
-            x=0.0,
-            y=-0.18,
-            xanchor="left",
-            yanchor="top",
-            align="left",
-            showarrow=False,
-            font=dict(color=_OI_NAVY, size=11),
+                text=(
+                    "<b>Interpretation:</b> brighter values are stronger local "
+                    "curvature along the fiber-orientation field. Scale controls "
+                    "Q-field averaging, not the structure-tensor scales. The "
+                    "inoculum, background, low-coherence pixels, and mixed "
+                    "scale-local orientations are blank.<br>"
+                    "A feature that persists across scales is less likely to be a "
+                    "single-scale texture artifact. Each panel uses its own full "
+                    "raw range, so compare spatial persistence across panels, not "
+                    "color brightness.<br>Bend is unsigned because a fiber director "
+                    "has no intrinsic arrowhead. Existing radial and cumulative "
+                    "figures remain the signed references."
+                ),
+                xref="paper",
+                yref="paper",
+                x=0.0,
+                y=-0.18,
+                xanchor="left",
+                yanchor="top",
+                align="left",
+                showarrow=False,
+                font=dict(color=_OI_NAVY, size=11),
         )
         return fig
 
     def _bend_scale_rasters(
-        self,
-        image,
-        image_shape: tuple[int, int],
-        scales: tuple[float, ...],
+            self,
+            image,
+            image_shape: tuple[int, int],
+            scales: tuple[float, ...],
     ) -> tuple[list[np.ndarray], list[float], int]:
         """Composite scale-local fiber bend into bounded plate rasters."""
         props, label2section = self._prep(image)
@@ -2381,45 +2383,45 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         ]
         raw_peaks = [0.0 for _scale in scales]
         for (
-            _prop,
-            seg,
-            obj_mask,
-            phi,
-            coherence,
-            _gradient,
-            dist_map,
-            centre,
+                _prop,
+                seg,
+                obj_mask,
+                phi,
+                coherence,
+                _gradient,
+                dist_map,
+                centre,
         ) in self._iter_object_fields(image, props, label2section):
             inner_radius = float(seg.core_end_radius)
             outer_radius = min(
-                float(seg.sparse_end_radius),
-                float(seg.symmetric_radius),
+                    float(seg.sparse_end_radius),
+                    float(seg.symmetric_radius),
             )
             if inner_radius <= _EPS or outer_radius <= inner_radius:
                 continue
             selector = zone_selector(
-                dist_map,
-                inner_radius,
-                outer_radius,
-                obj_mask,
-                "Mask",
+                    dist_map,
+                    inner_radius,
+                    outer_radius,
+                    obj_mask,
+                    "Mask",
             )
             origin_row = int(round(seg.centroid_global[0] - centre[0]))
             origin_col = int(round(seg.centroid_global[1] - centre[1]))
             for scale_index, scale in enumerate(scales):
                 bend, scale_resultant = fiber_bend_field(
-                    phi,
-                    coherence,
-                    selector,
-                    scale,
+                        phi,
+                        coherence,
+                        selector,
+                        scale,
                 )
                 valid = (
-                    selector
-                    & np.isfinite(bend)
-                    & np.isfinite(coherence)
-                    & np.isfinite(scale_resultant)
-                    & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
-                    & (scale_resultant >= _RADIAL_RING_MIN_RESULTANT)
+                        selector
+                        & np.isfinite(bend)
+                        & np.isfinite(coherence)
+                        & np.isfinite(scale_resultant)
+                        & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
+                        & (scale_resultant >= _RADIAL_RING_MIN_RESULTANT)
                 )
                 if not valid.any():
                     continue
@@ -2427,28 +2429,28 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                 global_rows = rows + origin_row
                 global_cols = cols + origin_col
                 inside = (
-                    (global_rows >= 0)
-                    & (global_rows < height)
-                    & (global_cols >= 0)
-                    & (global_cols < width)
+                        (global_rows >= 0)
+                        & (global_rows < height)
+                        & (global_cols >= 0)
+                        & (global_cols < width)
                 )
                 if not inside.any():
                     continue
                 values = np.degrees(bend[valid]).astype(np.float32)[inside]
                 raw_peaks[scale_index] = max(
-                    raw_peaks[scale_index],
-                    float(np.max(values)),
+                        raw_peaks[scale_index],
+                        float(np.max(values)),
                 )
                 flat_ids = (
-                    global_rows[inside] // stride
-                ) * raster_width + global_cols[inside] // stride
+                                   global_rows[inside] // stride
+                           ) * raster_width + global_cols[inside] // stride
                 np.maximum.at(maxima[scale_index], flat_ids, values)
         rasters: list[np.ndarray] = []
         for scale_maxima in maxima:
             raster = scale_maxima.reshape(raster_height, raster_width)
             raster = np.where(np.isfinite(raster), raster, np.nan).astype(
-                np.float32,
-                copy=False,
+                    np.float32,
+                    copy=False,
             )
             rasters.append(raster)
         return rasters, raw_peaks, stride
@@ -2477,10 +2479,10 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             profile = record.get("ring_profile", {})
             radii = np.asarray(profile.get("radii", []), dtype=float)
             absolute = np.asarray(
-                profile.get("mean_absolute_tilt", []), dtype=float
+                    profile.get("mean_absolute_tilt", []), dtype=float
             )
             signed = np.asarray(
-                profile.get("mean_signed_tilt", []), dtype=float
+                    profile.get("mean_signed_tilt", []), dtype=float
             )
             support = np.asarray(profile.get("support", []), dtype=float)
             if radii.size == 0:
@@ -2507,16 +2509,16 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                 ring_hover.append(hover)
 
             pair_midpoints = np.asarray(
-                profile.get("pair_midpoints", []), dtype=float
+                    profile.get("pair_midpoints", []), dtype=float
             )
             pair_absolute = np.asarray(
-                profile.get("mean_absolute_rotation", []), dtype=float
+                    profile.get("mean_absolute_rotation", []), dtype=float
             )
             pair_signed = np.asarray(
-                profile.get("mean_signed_rotation", []), dtype=float
+                    profile.get("mean_signed_rotation", []), dtype=float
             )
             pair_support = np.asarray(
-                profile.get("pair_support", []), dtype=float
+                    profile.get("pair_support", []), dtype=float
             )
             if pair_midpoints.size == 0:
                 continue
@@ -2543,72 +2545,72 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
 
         if ring_xs:
             fig.add_trace(
-                go.Scattergl(
-                    x=ring_xs,
-                    y=ring_ys,
-                    mode="lines",
-                    line=dict(color="rgba(255,255,255,0.72)", width=0.8),
-                    name=(
-                        f"Orientation rings ({self.radial_ring_width:g} px bands)"
-                    ),
-                    legendgroup="long-range-rings",
-                    legendgrouptitle_text="Long-range radial rotation",
-                    hoverinfo="skip",
-                )
+                    go.Scattergl(
+                            x=ring_xs,
+                            y=ring_ys,
+                            mode="lines",
+                            line=dict(color="rgba(255,255,255,0.72)", width=0.8),
+                            name=(
+                                f"Orientation rings ({self.radial_ring_width:g} px bands)"
+                            ),
+                            legendgroup="long-range-rings",
+                            legendgrouptitle_text="Long-range radial rotation",
+                            hoverinfo="skip",
+                    )
             )
             fig.add_trace(
-                go.Scatter(
-                    x=ring_marker_x,
-                    y=ring_marker_y,
-                    text=ring_hover,
-                    mode="markers",
-                    marker=dict(
-                        size=6,
-                        color="white",
-                        line=dict(color=_OI_NAVY, width=0.8),
-                    ),
-                    name="Ring orientation (hover)",
-                    legendgroup="long-range-rings",
-                    showlegend=False,
-                    hovertemplate="%{text}<extra></extra>",
-                )
+                    go.Scatter(
+                            x=ring_marker_x,
+                            y=ring_marker_y,
+                            text=ring_hover,
+                            mode="markers",
+                            marker=dict(
+                                    size=6,
+                                    color="white",
+                                    line=dict(color=_OI_NAVY, width=0.8),
+                            ),
+                            name="Ring orientation (hover)",
+                            legendgroup="long-range-rings",
+                            showlegend=False,
+                            hovertemplate="%{text}<extra></extra>",
+                    )
             )
         if pair_xs:
             fig.add_trace(
-                go.Scattergl(
-                    x=pair_xs,
-                    y=pair_ys,
-                    mode="lines",
-                    line=dict(color=_OI_ORANGE, width=1.2, dash="dot"),
-                    name=f"{self.long_range_lag:g} px pair midpoints",
-                    legendgroup="long-range-rings",
-                    hoverinfo="skip",
-                )
+                    go.Scattergl(
+                            x=pair_xs,
+                            y=pair_ys,
+                            mode="lines",
+                            line=dict(color=_OI_ORANGE, width=1.2, dash="dot"),
+                            name=f"{self.long_range_lag:g} px pair midpoints",
+                            legendgroup="long-range-rings",
+                            hoverinfo="skip",
+                    )
             )
             fig.add_trace(
-                go.Scatter(
-                    x=pair_marker_x,
-                    y=pair_marker_y,
-                    text=pair_hover,
-                    mode="markers",
-                    marker=dict(
-                        size=7,
-                        symbol="diamond",
-                        color=_OI_ORANGE,
-                        line=dict(color=_OI_NAVY, width=0.8),
-                    ),
-                    name="Long-range rotation (hover)",
-                    legendgroup="long-range-rings",
-                    showlegend=False,
-                    hovertemplate="%{text}<extra></extra>",
-                )
+                    go.Scatter(
+                            x=pair_marker_x,
+                            y=pair_marker_y,
+                            text=pair_hover,
+                            mode="markers",
+                            marker=dict(
+                                    size=7,
+                                    symbol="diamond",
+                                    color=_OI_ORANGE,
+                                    line=dict(color=_OI_NAVY, width=0.8),
+                            ),
+                            name="Long-range rotation (hover)",
+                            legendgroup="long-range-rings",
+                            showlegend=False,
+                            hovertemplate="%{text}<extra></extra>",
+                    )
             )
 
     def _add_signed_outward_turning_trace(
-        self,
-        fig,
-        image,
-        image_shape: tuple[int, int],
+            self,
+            fig,
+            image,
+            image_shape: tuple[int, int],
     ) -> None:
         """Overlay reliable signed outward turning as a bounded raster.
 
@@ -2630,22 +2632,22 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         raster_height = int(np.ceil(height / stride))
         raster_width = int(np.ceil(width / stride))
         raster = np.full(
-            (raster_height, raster_width),
-            np.nan,
-            dtype=np.float32,
+                (raster_height, raster_width),
+                np.nan,
+                dtype=np.float32,
         )
         positive_max = np.full(raster.size, -np.inf, dtype=np.float32)
         negative_abs_max = np.full(raster.size, -np.inf, dtype=np.float32)
         full_range = 0.0
         for (
-            _prop,
-            seg,
-            obj_mask,
-            phi,
-            coherence,
-            _gradient,
-            dist_map,
-            centre,
+                _prop,
+                seg,
+                obj_mask,
+                phi,
+                coherence,
+                _gradient,
+                dist_map,
+                centre,
         ) in self._iter_object_fields(image, props, label2section):
             _tilt, signed_turning, _magnitude, _polar = (
                 signed_radial_relative_field(phi, centre, dist_map)
@@ -2655,22 +2657,22 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             # density changepoint is found, which would erase the entire view.
             core_exclusion_radius = float(seg.core_end_radius)
             outer_radius = min(
-                float(seg.sparse_end_radius),
-                float(seg.symmetric_radius),
+                    float(seg.sparse_end_radius),
+                    float(seg.symmetric_radius),
             )
             selector = zone_selector(
-                dist_map,
-                core_exclusion_radius,
-                outer_radius,
-                obj_mask,
-                "Mask",
+                    dist_map,
+                    core_exclusion_radius,
+                    outer_radius,
+                    obj_mask,
+                    "Mask",
             )
             valid = (
-                selector
-                & (dist_map > _EPS)
-                & np.isfinite(signed_turning)
-                & np.isfinite(coherence)
-                & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
+                    selector
+                    & (dist_map > _EPS)
+                    & np.isfinite(signed_turning)
+                    & np.isfinite(coherence)
+                    & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
             )
             if not valid.any():
                 continue
@@ -2680,10 +2682,10 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             global_rows = rows + origin_row
             global_cols = cols + origin_col
             inside = (
-                (global_rows >= 0)
-                & (global_rows < height)
-                & (global_cols >= 0)
-                & (global_cols < width)
+                    (global_rows >= 0)
+                    & (global_rows < height)
+                    & (global_cols >= 0)
+                    & (global_cols < width)
             )
             if not inside.any():
                 continue
@@ -2691,24 +2693,24 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             values = values[inside]
             full_range = max(full_range, float(np.max(np.abs(values))))
             flat_ids = (
-                global_rows[inside] // stride
-            ) * raster_width + global_cols[inside] // stride
+                               global_rows[inside] // stride
+                       ) * raster_width + global_cols[inside] // stride
             positive = values >= 0.0
             np.maximum.at(
-                positive_max,
-                flat_ids[positive],
-                values[positive],
+                    positive_max,
+                    flat_ids[positive],
+                    values[positive],
             )
             negative = ~positive
             np.maximum.at(
-                negative_abs_max,
-                flat_ids[negative],
-                -values[negative],
+                    negative_abs_max,
+                    flat_ids[negative],
+                    -values[negative],
             )
         has_positive = np.isfinite(positive_max)
         has_negative = np.isfinite(negative_abs_max)
         choose_positive = has_positive & (
-            ~has_negative | (positive_max >= negative_abs_max)
+                ~has_negative | (positive_max >= negative_abs_max)
         )
         raster_flat = raster.ravel()
         raster_flat[choose_positive] = positive_max[choose_positive]
@@ -2720,43 +2722,43 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         if not np.isfinite(full_range) or full_range <= _EPS:
             full_range = float(np.finfo(np.float32).eps)
         fig.add_trace(
-            go.Heatmap(
-                x=(np.arange(raster_width) + 0.5) * stride - 0.5,
-                y=(np.arange(raster_height) + 0.5) * stride - 0.5,
-                z=raster,
-                colorscale="Spectral",
-                zmin=-full_range,
-                zmax=full_range,
-                zmid=0.0,
-                colorbar=dict(
-                    title=dict(
-                        text="Signed outward turning (deg/px)",
-                        side="top",
-                    ),
-                    orientation="h",
-                    x=0.45,
-                    xanchor="center",
-                    y=-0.075,
-                    yanchor="top",
-                    len=0.55,
-                    thickness=14,
-                ),
-                opacity=0.55,
-                name="Signed outward turning",
-                legendgroup="directional-turning",
-                legendgrouptitle_text="Directional diagnostic",
-                hovertemplate=(
-                    "Signed outward turning=%{z:.3f} deg/px<extra></extra>"
-                ),
-                connectgaps=False,
-            )
+                go.Heatmap(
+                        x=(np.arange(raster_width) + 0.5) * stride - 0.5,
+                        y=(np.arange(raster_height) + 0.5) * stride - 0.5,
+                        z=raster,
+                        colorscale="Spectral",
+                        zmin=-full_range,
+                        zmax=full_range,
+                        zmid=0.0,
+                        colorbar=dict(
+                                title=dict(
+                                        text="Signed outward turning (deg/px)",
+                                        side="top",
+                                ),
+                                orientation="h",
+                                x=0.45,
+                                xanchor="center",
+                                y=-0.075,
+                                yanchor="top",
+                                len=0.55,
+                                thickness=14,
+                        ),
+                        opacity=0.55,
+                        name="Signed outward turning",
+                        legendgroup="directional-turning",
+                        legendgrouptitle_text="Directional diagnostic",
+                        hovertemplate=(
+                            "Signed outward turning=%{z:.3f} deg/px<extra></extra>"
+                        ),
+                        connectgaps=False,
+                )
         )
 
     def _add_cumulative_rotation_trace(
-        self,
-        fig,
-        image,
-        image_shape: tuple[int, int],
+            self,
+            fig,
+            image,
+            image_shape: tuple[int, int],
     ) -> None:
         """Overlay cumulative ring-to-ring axial rotation in degrees."""
         import plotly.graph_objects as go
@@ -2767,62 +2769,62 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         raster_height = int(np.ceil(height / stride))
         raster_width = int(np.ceil(width / stride))
         raster = np.full(
-            (raster_height, raster_width),
-            np.nan,
-            dtype=np.float32,
+                (raster_height, raster_width),
+                np.nan,
+                dtype=np.float32,
         )
         strongest = np.full(raster.size, -np.inf, dtype=np.float32)
         signed_value = np.full(raster.size, np.nan, dtype=np.float32)
         full_range = 0.0
         for (
-            _prop,
-            seg,
-            obj_mask,
-            phi,
-            coherence,
-            _gradient,
-            dist_map,
-            centre,
+                _prop,
+                seg,
+                obj_mask,
+                phi,
+                coherence,
+                _gradient,
+                dist_map,
+                centre,
         ) in self._iter_object_fields(image, props, label2section):
             signed_tilt, _turning, _magnitude, polar_angle = (
                 signed_radial_relative_field(phi, centre, dist_map)
             )
             inner_radius = float(seg.core_end_radius)
             outer_radius = min(
-                float(seg.sparse_end_radius),
-                float(seg.symmetric_radius),
+                    float(seg.sparse_end_radius),
+                    float(seg.symmetric_radius),
             )
             structure_selector = zone_selector(
-                dist_map,
-                inner_radius,
-                outer_radius,
-                obj_mask,
-                "Mask",
+                    dist_map,
+                    inner_radius,
+                    outer_radius,
+                    obj_mask,
+                    "Mask",
             )
             _radii, sector_tilt, _resultant = radial_ring_orientation_profile(
-                signed_tilt,
-                polar_angle,
-                coherence,
-                dist_map,
-                structure_selector,
-                inner_radius,
-                outer_radius,
-                self.radial_ring_width,
-                _RADIAL_RELATIVE_N_SECTORS,
+                    signed_tilt,
+                    polar_angle,
+                    coherence,
+                    dist_map,
+                    structure_selector,
+                    inner_radius,
+                    outer_radius,
+                    self.radial_ring_width,
+                    _RADIAL_RELATIVE_N_SECTORS,
             )
             cumulative = cumulative_ring_rotation_profile(sector_tilt)
             reliable_structure = (
-                structure_selector
-                & np.isfinite(coherence)
-                & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
+                    structure_selector
+                    & np.isfinite(coherence)
+                    & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
             )
             local_field = radial_ring_sector_field(
-                cumulative,
-                polar_angle,
-                dist_map,
-                reliable_structure,
-                inner_radius,
-                self.radial_ring_width,
+                    cumulative,
+                    polar_angle,
+                    dist_map,
+                    reliable_structure,
+                    inner_radius,
+                    self.radial_ring_width,
             )
             valid = np.isfinite(local_field)
             if not valid.any():
@@ -2833,18 +2835,18 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             global_rows = rows + origin_row
             global_cols = cols + origin_col
             inside = (
-                (global_rows >= 0)
-                & (global_rows < height)
-                & (global_cols >= 0)
-                & (global_cols < width)
+                    (global_rows >= 0)
+                    & (global_rows < height)
+                    & (global_cols >= 0)
+                    & (global_cols < width)
             )
             if not inside.any():
                 continue
             values = np.degrees(local_field[valid]).astype(np.float32)[inside]
             full_range = max(full_range, float(np.max(np.abs(values))))
             flat_ids = (
-                global_rows[inside] // stride
-            ) * raster_width + global_cols[inside] // stride
+                               global_rows[inside] // stride
+                       ) * raster_width + global_cols[inside] // stride
             magnitudes = np.abs(values)
             order = np.lexsort((magnitudes, flat_ids))
             ordered_ids = flat_ids[order]
@@ -2866,47 +2868,47 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         if not np.isfinite(full_range) or full_range <= _EPS:
             full_range = float(np.finfo(np.float32).eps)
         fig.add_trace(
-            go.Heatmap(
-                x=(np.arange(raster_width) + 0.5) * stride - 0.5,
-                y=(np.arange(raster_height) + 0.5) * stride - 0.5,
-                z=raster,
-                colorscale="Spectral",
-                zmin=-full_range,
-                zmax=full_range,
-                zmid=0.0,
-                colorbar=dict(
-                    title=dict(
-                        text="Cumulative signed radial rotation (deg)",
-                        side="top",
-                    ),
-                    orientation="h",
-                    x=0.45,
-                    xanchor="center",
-                    y=-0.075,
-                    yanchor="top",
-                    len=0.55,
-                    thickness=14,
-                ),
-                opacity=0.58,
-                name="Cumulative radial rotation",
-                legendgroup="cumulative-radial-rotation",
-                legendgrouptitle_text="Cumulative directional diagnostic",
-                hovertemplate=(
-                    "Cumulative signed rotation=%{z:.2f}°<extra></extra>"
-                ),
-                connectgaps=False,
-            )
+                go.Heatmap(
+                        x=(np.arange(raster_width) + 0.5) * stride - 0.5,
+                        y=(np.arange(raster_height) + 0.5) * stride - 0.5,
+                        z=raster,
+                        colorscale="Spectral",
+                        zmin=-full_range,
+                        zmax=full_range,
+                        zmid=0.0,
+                        colorbar=dict(
+                                title=dict(
+                                        text="Cumulative signed radial rotation (deg)",
+                                        side="top",
+                                ),
+                                orientation="h",
+                                x=0.45,
+                                xanchor="center",
+                                y=-0.075,
+                                yanchor="top",
+                                len=0.55,
+                                thickness=14,
+                        ),
+                        opacity=0.58,
+                        name="Cumulative radial rotation",
+                        legendgroup="cumulative-radial-rotation",
+                        legendgrouptitle_text="Cumulative directional diagnostic",
+                        hovertemplate=(
+                            "Cumulative signed rotation=%{z:.2f}°<extra></extra>"
+                        ),
+                        connectgaps=False,
+                )
         )
 
     def _add_matched_cumulative_rotation_trace(
-        self,
-        fig,
-        image,
-        image_shape: tuple[int, int],
-        *,
-        max_sector_shift: int,
-        allow_gap_bridging: bool = False,
-        allow_restarts: bool = False,
+            self,
+            fig,
+            image,
+            image_shape: tuple[int, int],
+            *,
+            max_sector_shift: int,
+            allow_gap_bridging: bool = False,
+            allow_restarts: bool = False,
     ) -> None:
         """Overlay matched-ring cumulative fiber-axis rotation in degrees."""
         import plotly.graph_objects as go
@@ -2917,9 +2919,9 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         raster_height = int(np.ceil(height / stride))
         raster_width = int(np.ceil(width / stride))
         raster = np.full(
-            (raster_height, raster_width),
-            np.nan,
-            dtype=np.float32,
+                (raster_height, raster_width),
+                np.nan,
+                dtype=np.float32,
         )
         strongest = np.full(raster.size, -np.inf, dtype=np.float32)
         signed_value = np.full(raster.size, np.nan, dtype=np.float32)
@@ -2928,14 +2930,14 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         bridge_x: list[float | None] = []
         bridge_y: list[float | None] = []
         for (
-            _prop,
-            seg,
-            obj_mask,
-            phi,
-            coherence,
-            _gradient,
-            dist_map,
-            centre,
+                _prop,
+                seg,
+                obj_mask,
+                phi,
+                coherence,
+                _gradient,
+                dist_map,
+                centre,
         ) in self._iter_object_fields(image, props, label2section):
             _signed_tilt, _turning, _magnitude, polar_angle = (
                 signed_radial_relative_field(phi, centre, dist_map)
@@ -2943,55 +2945,55 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             fiber_axis = phi + _FIBER_AXIS_OFFSET
             inner_radius = float(seg.core_end_radius)
             outer_radius = min(
-                float(seg.sparse_end_radius),
-                float(seg.symmetric_radius),
+                    float(seg.sparse_end_radius),
+                    float(seg.symmetric_radius),
             )
             structure_selector = zone_selector(
-                dist_map,
-                inner_radius,
-                outer_radius,
-                obj_mask,
-                "Mask",
+                    dist_map,
+                    inner_radius,
+                    outer_radius,
+                    obj_mask,
+                    "Mask",
             )
             radii, sector_orientation, sector_resultant = (
                 radial_ring_orientation_profile(
-                    fiber_axis,
-                    polar_angle,
-                    coherence,
-                    dist_map,
-                    structure_selector,
-                    inner_radius,
-                    outer_radius,
-                    self.radial_ring_width,
-                    _RADIAL_RELATIVE_N_SECTORS,
+                        fiber_axis,
+                        polar_angle,
+                        coherence,
+                        dist_map,
+                        structure_selector,
+                        inner_radius,
+                        outer_radius,
+                        self.radial_ring_width,
+                        _RADIAL_RELATIVE_N_SECTORS,
                 )
             )
             cumulative, path_sectors = (
                 matched_ring_cumulative_rotation_profile(
-                    radii,
-                    sector_orientation,
-                    sector_resultant,
-                    max_sector_shift=max_sector_shift,
-                    allow_gap_bridging=allow_gap_bridging,
-                    allow_restarts=allow_restarts,
+                        radii,
+                        sector_orientation,
+                        sector_resultant,
+                        max_sector_shift=max_sector_shift,
+                        allow_gap_bridging=allow_gap_bridging,
+                        allow_restarts=allow_restarts,
                 )
             )
             ring_sector_values = matched_tracks_to_ring_sector_values(
-                cumulative,
-                path_sectors,
+                    cumulative,
+                    path_sectors,
             )
             reliable_structure = (
-                structure_selector
-                & np.isfinite(coherence)
-                & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
+                    structure_selector
+                    & np.isfinite(coherence)
+                    & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
             )
             local_field = radial_ring_sector_field(
-                ring_sector_values,
-                polar_angle,
-                dist_map,
-                reliable_structure,
-                inner_radius,
-                self.radial_ring_width,
+                    ring_sector_values,
+                    polar_angle,
+                    dist_map,
+                    reliable_structure,
+                    inner_radius,
+                    self.radial_ring_width,
             )
             valid = np.isfinite(local_field)
             origin_row = int(round(seg.centroid_global[0] - centre[0]))
@@ -3001,17 +3003,17 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                 global_rows = rows + origin_row
                 global_cols = cols + origin_col
                 inside = (
-                    (global_rows >= 0)
-                    & (global_rows < height)
-                    & (global_cols >= 0)
-                    & (global_cols < width)
+                        (global_rows >= 0)
+                        & (global_rows < height)
+                        & (global_cols >= 0)
+                        & (global_cols < width)
                 )
                 if inside.any():
                     values = np.degrees(local_field[valid]).astype(np.float32)
                     values = values[inside]
                     flat_ids = (
-                        global_rows[inside] // stride
-                    ) * raster_width + global_cols[inside] // stride
+                                       global_rows[inside] // stride
+                               ) * raster_width + global_cols[inside] // stride
                     magnitudes = np.abs(values)
                     order = np.lexsort((magnitudes, flat_ids))
                     ordered_ids = flat_ids[order]
@@ -3032,12 +3034,12 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
 
             n_sectors = sector_orientation.shape[1]
             sector_angles = (np.arange(n_sectors, dtype=np.float64) + 0.5) * (
-                2.0 * np.pi / float(n_sectors)
+                    2.0 * np.pi / float(n_sectors)
             )
             for seed_sector in range(n_sectors):
                 supported = np.flatnonzero(
-                    (path_sectors[:, seed_sector] >= 0)
-                    & np.isfinite(cumulative[:, seed_sector])
+                        (path_sectors[:, seed_sector] >= 0)
+                        & np.isfinite(cumulative[:, seed_sector])
                 )
                 if supported.size < 2:
                     continue
@@ -3048,10 +3050,10 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                 global_rows = local_rows + origin_row
                 global_cols = local_cols + origin_col
                 inside = (
-                    (global_rows >= 0.0)
-                    & (global_rows < height)
-                    & (global_cols >= 0.0)
-                    & (global_cols < width)
+                        (global_rows >= 0.0)
+                        & (global_rows < height)
+                        & (global_cols >= 0.0)
+                        & (global_cols < width)
                 )
                 if np.count_nonzero(inside) < 2:
                     continue
@@ -3060,89 +3062,89 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                 inside_rows = global_rows[inside]
                 for point_index in range(1, inside_rings.size):
                     is_bridge = (
-                        inside_rings[point_index]
-                        - inside_rings[point_index - 1]
-                        > 1
+                            inside_rings[point_index]
+                            - inside_rings[point_index - 1]
+                            > 1
                     )
                     target_x = bridge_x if is_bridge else path_x
                     target_y = bridge_y if is_bridge else path_y
                     target_x.extend(
-                        [
-                            float(inside_cols[point_index - 1]),
-                            float(inside_cols[point_index]),
-                            None,
-                        ]
+                            [
+                                float(inside_cols[point_index - 1]),
+                                float(inside_cols[point_index]),
+                                None,
+                            ]
                     )
                     target_y.extend(
-                        [
-                            float(inside_rows[point_index - 1]),
-                            float(inside_rows[point_index]),
-                            None,
-                        ]
+                            [
+                                float(inside_rows[point_index - 1]),
+                                float(inside_rows[point_index]),
+                                None,
+                            ]
                     )
 
         available = np.isfinite(strongest)
         raster.ravel()[available] = signed_value[available]
         if np.isfinite(raster).any():
             fig.add_trace(
-                go.Heatmap(
-                    x=(np.arange(raster_width) + 0.5) * stride - 0.5,
-                    y=(np.arange(raster_height) + 0.5) * stride - 0.5,
-                    z=raster,
-                    colorscale="Spectral",
-                    zmin=-180.0,
-                    zmax=180.0,
-                    zmid=0.0,
-                    colorbar=dict(
-                        title=dict(
-                            text="Matched cumulative fiber rotation (deg)",
-                            side="top",
-                        ),
-                        orientation="h",
-                        x=0.45,
-                        xanchor="center",
-                        y=-0.075,
-                        yanchor="top",
-                        len=0.55,
-                        thickness=14,
-                    ),
-                    opacity=0.68,
-                    name="Matched cumulative fiber rotation",
-                    legendgroup="matched-cumulative-rotation",
-                    legendgrouptitle_text="Matched-ring directional diagnostic",
-                    hovertemplate=(
-                        "Matched cumulative rotation=%{z:.2f}°<extra></extra>"
-                    ),
-                    connectgaps=False,
-                )
+                    go.Heatmap(
+                            x=(np.arange(raster_width) + 0.5) * stride - 0.5,
+                            y=(np.arange(raster_height) + 0.5) * stride - 0.5,
+                            z=raster,
+                            colorscale="Spectral",
+                            zmin=-180.0,
+                            zmax=180.0,
+                            zmid=0.0,
+                            colorbar=dict(
+                                    title=dict(
+                                            text="Matched cumulative fiber rotation (deg)",
+                                            side="top",
+                                    ),
+                                    orientation="h",
+                                    x=0.45,
+                                    xanchor="center",
+                                    y=-0.075,
+                                    yanchor="top",
+                                    len=0.55,
+                                    thickness=14,
+                            ),
+                            opacity=0.68,
+                            name="Matched cumulative fiber rotation",
+                            legendgroup="matched-cumulative-rotation",
+                            legendgrouptitle_text="Matched-ring directional diagnostic",
+                            hovertemplate=(
+                                "Matched cumulative rotation=%{z:.2f}°<extra></extra>"
+                            ),
+                            connectgaps=False,
+                    )
             )
         if path_x and not allow_restarts:
             fig.add_trace(
-                go.Scattergl(
-                    x=path_x,
-                    y=path_y,
-                    mode="lines",
-                    line=dict(color="rgba(255,255,255,0.58)", width=1.0),
-                    name="Matched outward ring paths",
-                    legendgroup="matched-cumulative-rotation",
-                    hoverinfo="skip",
-                )
+                    go.Scattergl(
+                            x=path_x,
+                            y=path_y,
+                            mode="lines",
+                            line=dict(color="rgba(255,255,255,0.58)", width=1.0),
+                            name="Matched outward ring paths",
+                            legendgroup="matched-cumulative-rotation",
+                            hoverinfo="skip",
+                    )
             )
         if bridge_x and not allow_restarts:
             fig.add_trace(
-                go.Scattergl(
-                    x=bridge_x,
-                    y=bridge_y,
-                    mode="lines",
-                    line=dict(
-                        color="rgba(255,255,255,0.48)",
-                        width=1.0,
-                        dash="dash",
-                    ),
-                    name="Bridged unsupported rings",
-                    legendgroup="matched-cumulative-rotation",
-                    hoverinfo="skip",
-                )
+                    go.Scattergl(
+                            x=bridge_x,
+                            y=bridge_y,
+                            mode="lines",
+                            line=dict(
+                                    color="rgba(255,255,255,0.48)",
+                                    width=1.0,
+                                    dash="dash",
+                            ),
+                            name="Bridged unsupported rings",
+                            legendgroup="matched-cumulative-rotation",
+                            hoverinfo="skip",
+                    )
             )
 
     @staticmethod
@@ -3159,25 +3161,25 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         if not mask.any():
             return
         fig.add_trace(
-            go.Contour(
-                z=mask,
-                autocontour=False,
-                contours=dict(
-                    start=0.5,
-                    end=0.5,
-                    size=1.0,
-                    coloring="lines",
-                    showlabels=False,
-                ),
-                line=dict(color=_OI_GREEN, width=1.5),
-                showscale=False,
-                showlegend=True,
-                name="Detected-mask selector",
-                legendgroup="selectors",
-                legendgrouptitle_text="Selectors",
-                visible="legendonly",
-                hoverinfo="skip",
-            )
+                go.Contour(
+                        z=mask,
+                        autocontour=False,
+                        contours=dict(
+                                start=0.5,
+                                end=0.5,
+                                size=1.0,
+                                coloring="lines",
+                                showlabels=False,
+                        ),
+                        line=dict(color=_OI_GREEN, width=1.5),
+                        showscale=False,
+                        showlegend=True,
+                        name="Detected-mask selector",
+                        legendgroup="selectors",
+                        legendgrouptitle_text="Selectors",
+                        visible="legendonly",
+                        hoverinfo="skip",
+                )
         )
 
     @staticmethod
@@ -3223,22 +3225,22 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                     if not np.isfinite(phi) or not np.isfinite(coh):
                         continue
                     if (
-                        np.hypot(
-                            rows[i, j] - centre_r,
-                            cols[i, j] - centre_c,
-                        )
-                        >= symmetric_radius
+                            np.hypot(
+                                    rows[i, j] - centre_r,
+                                    cols[i, j] - centre_c,
+                            )
+                            >= symmetric_radius
                     ):
                         continue
                     bin_idx = next(
-                        (
-                            idx
-                            for idx, (_, lower, upper, _) in enumerate(
-                                _QUIVER_COHERENCE_BINS
+                            (
+                                idx
+                                for idx, (_, lower, upper, _) in enumerate(
+                                    _QUIVER_COHERENCE_BINS
                             )
-                            if lower <= coh < upper
-                        ),
-                        None,
+                                if lower <= coh < upper
+                            ),
+                            None,
                     )
                     if bin_idx is None:
                         continue
@@ -3253,23 +3255,23 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                     xs.extend([cx - dx, cx + dx, None])
                     ys.extend([cy - dy, cy + dy, None])
         for (name, _lower, _upper, opacity), (xs, ys) in zip(
-            _QUIVER_COHERENCE_BINS,
-            binned_xy,
+                _QUIVER_COHERENCE_BINS,
+                binned_xy,
         ):
             if not xs:
                 continue
             fig.add_trace(
-                go.Scattergl(
-                    x=xs,
-                    y=ys,
-                    mode="lines",
-                    line=dict(color=_OI_SKY, width=1.6),
-                    opacity=opacity,
-                    name=f"Local fiber axis · {name}",
-                    legendgroup="fiber-axes",
-                    legendgrouptitle_text="Local fiber axes",
-                    hoverinfo="skip",
-                )
+                    go.Scattergl(
+                            x=xs,
+                            y=ys,
+                            mode="lines",
+                            line=dict(color=_OI_SKY, width=1.6),
+                            opacity=opacity,
+                            name=f"Local fiber axis · {name}",
+                            legendgroup="fiber-axes",
+                            legendgrouptitle_text="Local fiber axes",
+                            hoverinfo="skip",
+                    )
             )
 
     def _add_zone_ring_traces(self, fig) -> None:
@@ -3301,16 +3303,16 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             if not xs:
                 continue
             fig.add_trace(
-                go.Scatter(
-                    x=xs,
-                    y=ys,
-                    mode="lines",
-                    line=dict(color=color, width=1.5, dash=dash),
-                    name=name,
-                    legendgroup="rings",
-                    legendgrouptitle_text="Radial selectors",
-                    hoverinfo="skip",
-                )
+                    go.Scatter(
+                            x=xs,
+                            y=ys,
+                            mode="lines",
+                            line=dict(color=color, width=1.5, dash=dash),
+                            name=name,
+                            legendgroup="rings",
+                            legendgrouptitle_text="Radial selectors",
+                            hoverinfo="skip",
+                    )
             )
 
     def _add_mean_axis_traces(self, fig) -> None:
@@ -3353,17 +3355,17 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             if not axis_x:
                 continue
             fig.add_trace(
-                go.Scatter(
-                    x=axis_x,
-                    y=axis_y,
-                    mode="lines",
-                    line=dict(color=color, width=3.0),
-                    name=f"Mean fiber axis · {zone}",
-                    legendgroup="mean-axes",
-                    legendgrouptitle_text="Radial mean axes (length = R)",
-                    visible="legendonly",
-                    hoverinfo="skip",
-                )
+                    go.Scatter(
+                            x=axis_x,
+                            y=axis_y,
+                            mode="lines",
+                            line=dict(color=color, width=3.0),
+                            name=f"Mean fiber axis · {zone}",
+                            legendgroup="mean-axes",
+                            legendgrouptitle_text="Radial mean axes (length = R)",
+                            visible="legendonly",
+                            hoverinfo="skip",
+                    )
             )
 
     def _add_metric_hover_trace(self, fig) -> None:
@@ -3386,23 +3388,23 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             for zone in _ZONES:
                 values = record["outward_rotation"][zone]
                 lines.append(
-                    f"{zone}: Sustained peak="
-                    f"{_value(values['OutwardRotationSustainedPeak'], 2)}°, "
-                    f"Net={_value(values['OutwardRotationNet'], 2)}°, "
-                    f"Rate={_value(values['OutwardRotationRate'], 4)} deg/px, "
-                    f"Consistency="
-                    f"{_value(values['OutwardRotationConsistency'], 3)}"
+                        f"{zone}: Sustained peak="
+                        f"{_value(values['OutwardRotationSustainedPeak'], 2)}°, "
+                        f"Net={_value(values['OutwardRotationNet'], 2)}°, "
+                        f"Rate={_value(values['OutwardRotationRate'], 4)} deg/px, "
+                        f"Consistency="
+                        f"{_value(values['OutwardRotationConsistency'], 3)}"
                 )
             if self.include_diagnostics:
                 lines.extend(
-                    [
-                        "<b>Diagnostic orientation metrics</b>",
-                        "R = parallel concentration; T = turning (deg/px); "
-                        "C = coherence",
-                        "RTilt = absolute tilt from radial (deg); "
-                        "OutT = outward radial turning (deg/px); "
-                        "Support = reliable sector fraction (QC)",
-                    ]
+                        [
+                            "<b>Diagnostic orientation metrics</b>",
+                            "R = parallel concentration; T = turning (deg/px); "
+                            "C = coherence",
+                            "RTilt = absolute tilt from radial (deg); "
+                            "OutT = outward radial turning (deg/px); "
+                            "Support = reliable sector fraction (QC)",
+                        ]
                 )
                 for variant in _VARIANTS:
                     lines.append(f"<b>{variant} selector</b>")
@@ -3411,8 +3413,8 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                             (variant, zone)
                         ]
                         lines.append(
-                            f"{zone}: R={_value(R, 3)}, "
-                            f"T={_value(turning, 4)}, C={_value(coherence, 3)}"
+                                f"{zone}: R={_value(R, 3)}, "
+                                f"T={_value(turning, 4)}, C={_value(coherence, 3)}"
                         )
                 lines.append("<b>Detected structure · radial-relative</b>")
                 for zone in _ZONES:
@@ -3420,19 +3422,19 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                         "radial_relative"
                     ][zone]
                     lines.append(
-                        f"{zone}: RTilt={_value(radial_tilt, 3)}, "
-                        f"OutT={_value(radial_turning, 4)}, "
-                        f"Support={_value(radial_support, 3)}"
+                            f"{zone}: RTilt={_value(radial_tilt, 3)}, "
+                            f"OutT={_value(radial_turning, 4)}, "
+                            f"Support={_value(radial_support, 3)}"
                     )
                 lines.append(
-                    f"<b>Long range · {self.long_range_lag:g} px ring lag</b>"
+                        f"<b>Long range · {self.long_range_lag:g} px ring lag</b>"
                 )
                 for region in (*_ZONES, "DenseToSparse"):
                     magnitude, signed, support = record["long_range"][region]
                     lines.append(
-                        f"{region}: |Δ|={_value(magnitude, 2)}°, "
-                        f"signed Δ={_value(signed, 2)}°, "
-                        f"Support={_value(support, 3)}"
+                            f"{region}: |Δ|={_value(magnitude, 2)}°, "
+                            f"signed Δ={_value(signed, 2)}°, "
+                            f"Support={_value(support, 3)}"
                     )
             xs.append(float(cx))
             ys.append(float(cy))
@@ -3440,16 +3442,16 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         if not xs:
             return
         fig.add_trace(
-            go.Scatter(
-                x=xs,
-                y=ys,
-                mode="markers",
-                marker=dict(size=16, color="rgba(0, 0, 0, 0.01)"),
-                text=hover_text,
-                hovertemplate="%{text}<extra></extra>",
-                name="Zone metrics (hover centres)",
-                showlegend=False,
-            )
+                go.Scatter(
+                        x=xs,
+                        y=ys,
+                        mode="markers",
+                        marker=dict(size=16, color="rgba(0, 0, 0, 0.01)"),
+                        text=hover_text,
+                        hovertemplate="%{text}<extra></extra>",
+                        name="Zone metrics (hover centres)",
+                        showlegend=False,
+                )
         )
 
     def report(self, subject=None, *, show: bool = True, **overrides):
@@ -3481,7 +3483,7 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         """
         if overrides:
             raise ValueError(
-                f"report(): unsupported override(s) {sorted(overrides)}"
+                    f"report(): unsupported override(s) {sorted(overrides)}"
             )
         image = subject if subject is not None else self._require_cache_image()
         self._ensure_diagnostic_cache(image)
@@ -3519,13 +3521,13 @@ class _OrientationZonesReport(PlotImage):
 
         canvas = producer._coherence_canvas(image)
         fig = go.Figure(
-            go.Heatmap(
-                z=canvas,
-                colorscale="Viridis",
-                zmin=0,
-                zmax=1,
-                colorbar=dict(title="C"),
-            )
+                go.Heatmap(
+                        z=canvas,
+                        colorscale="Viridis",
+                        zmin=0,
+                        zmax=1,
+                        colorbar=dict(title="C"),
+                )
         )
         fig.update_yaxes(autorange="reversed")
         return fig
@@ -3542,10 +3544,10 @@ class _OrientationZonesReport(PlotImage):
 
         def _mean(zone: str, metric: str) -> float:
             return _safe_nanmean(
-                [
-                    record["outward_rotation"][zone][metric]
-                    for record in producer._cache.values()
-                ]
+                    [
+                        record["outward_rotation"][zone][metric]
+                        for record in producer._cache.values()
+                    ]
             )
 
         def _format(value: float, digits: int) -> str:
@@ -3554,13 +3556,13 @@ class _OrientationZonesReport(PlotImage):
         rows = []
         for zone in _ZONES:
             rows.append(
-                (
-                    zone,
-                    _format(_mean(zone, "OutwardRotationSustainedPeak"), 2),
-                    _format(_mean(zone, "OutwardRotationNet"), 2),
-                    _format(_mean(zone, "OutwardRotationRate"), 4),
-                    _format(_mean(zone, "OutwardRotationConsistency"), 3),
-                )
+                    (
+                        zone,
+                        _format(_mean(zone, "OutwardRotationSustainedPeak"), 2),
+                        _format(_mean(zone, "OutwardRotationNet"), 2),
+                        _format(_mean(zone, "OutwardRotationRate"), 4),
+                        _format(_mean(zone, "OutwardRotationConsistency"), 3),
+                    )
             )
         header = [
             "Zone",
@@ -3571,18 +3573,18 @@ class _OrientationZonesReport(PlotImage):
         ]
         cols = list(zip(*rows)) if rows else [(), (), (), (), ()]
         return go.Figure(
-            go.Table(
-                header=dict(values=header),
-                cells=dict(values=[list(c) for c in cols]),
-            )
+                go.Table(
+                        header=dict(values=header),
+                        cells=dict(values=[list(c) for c in cols]),
+                )
         )
 
     def report(
-        self,
-        subject=None,
-        *,
-        producer: "MeasureOrientationZones | None" = None,
-        **overrides,
+            self,
+            subject=None,
+            *,
+            producer: "MeasureOrientationZones | None" = None,
+            **overrides,
     ):
         """Compose the three panels into one stacked ``go.Figure``.
 
@@ -3602,11 +3604,11 @@ class _OrientationZonesReport(PlotImage):
         """
         if not isinstance(producer, MeasureOrientationZones):
             raise ValueError(
-                "report(): a MeasureOrientationZones producer is required"
+                    "report(): a MeasureOrientationZones producer is required"
             )
         if overrides:
             raise ValueError(
-                f"report(): unsupported override(s) {sorted(overrides)}"
+                    f"report(): unsupported override(s) {sorted(overrides)}"
             )
         if subject is None:
             raise ValueError("report(): an image subject is required")
@@ -3633,11 +3635,11 @@ class _OrientationZonesReport(PlotImage):
             for tbl in is_table
         ]
         composed = make_subplots(
-            rows=len(rendered),
-            cols=1,
-            subplot_titles=titles,
-            specs=row_specs,
-            vertical_spacing=0.06,
+                rows=len(rendered),
+                cols=1,
+                subplot_titles=titles,
+                specs=row_specs,
+                vertical_spacing=0.06,
         )
         # ``xy_row`` counts cartesian panels: a table cell creates no x/y axis,
         # so the Nth xy panel owns axis number N (mirrors GridFitReport.report).
@@ -3664,8 +3666,8 @@ class _OrientationZonesReport(PlotImage):
                         payload[key] = f"{axis}{axis_suffix}{suffix}"
                 composed.add_annotation(payload)
         composed.update_layout(
-            height=420 * len(rendered),
-            title_text="Orientation-Field Diagnostics",
+                height=420 * len(rendered),
+                title_text="Orientation-Field Diagnostics",
         )
         return apply_theme(composed)
 

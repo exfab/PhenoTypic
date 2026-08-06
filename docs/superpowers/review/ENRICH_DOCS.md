@@ -8894,7 +8894,7 @@ index 4c40d196..01a09f24 100644
 -    """Trim spurs and web-like noise beyond each colony's symmetric envelope.
 +    """Trim asymmetric spurs and reticulated noise beyond each colony's symmetric radius.
 
--    Reuses the symmetric-radius machinery from :class:`MeasureSymmetricZones`
+-    Reuses the symmetric-radius machinery from :class:`MeasureSymZones`
 -    to locate, per colony, the radius past which growth stops being angularly
 -    symmetric (``R_sym``). Every mask pixel beyond ``R_sym`` is a candidate for
 -    removal. Candidates are segmented into connected components and, when
@@ -8909,7 +8909,7 @@ index 4c40d196..01a09f24 100644
 +    while web-like reticulated components are discarded based on their
 +    holes-per-pixel density.
 
--    Compared to the measurement-time version in :class:`MeasureSymmetricZones`,
+-    Compared to the measurement-time version in :class:`MeasureSymZones`,
 -    this refiner is deliberately less harsh:
 +    For the underlying symmetric-radius algorithm, see
 +    :doc:`/explanation/refinement_strategies`.
@@ -8972,7 +8972,7 @@ index 4c40d196..01a09f24 100644
 +            Lower values push ``R_sym`` outward (less trimming); higher values
 +            pull it inward (more trimming). Practical window: 0.33--0.83.
 +            Default: 0.5 (3/6), intentionally looser than
-+            :class:`MeasureSymmetricZones` (4/6) so ``R_sym`` stays near the
++            :class:`MeasureSymZones` (4/6) so ``R_sym`` stays near the
 +            true colony edge rather than the inoculum core. On small colonies
 +            (radius < 30 px) with a coarse 6-sector grid, consider reducing
 +            ``n_angular_bins`` to 4 rather than lowering this threshold.

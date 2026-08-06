@@ -12,7 +12,7 @@ from ._measure_intensity import MeasureIntensity
 from ._measure_orientation_zones import MeasureOrientationZones
 from ._measure_shape import MeasureShape
 from ._measure_size import MeasureSize
-from ._measure_symmetric_zones import MeasureSymmetricZones
+from ._measure_symzones import MeasureSymZones
 from ._measure_texture import MeasureTexture
 from ._measure_grid_spread import MeasureGridSpread
 from ._measure_grid_linreg_stats import MeasureGridLinRegStats
@@ -29,7 +29,7 @@ __all__ = [
     "MeasureOrientationZones",
     "MeasureShape",
     "MeasureSize",
-    "MeasureSymmetricZones",
+    "MeasureSymZones",
     "MeasureTexture",
     "MeasureGridSpread",
     "MeasureGridLinRegStats",
