@@ -221,7 +221,6 @@ version = { attr = "phenotypic.__version__" }
     "data/*.png",
     "_assets/logos/*",
     "_assets/logos/*/*",
-    "_assets/vendor/*",
     "_assets/measurements/*",
     "_assets/measurements/*/*",
     "_assets/exemplars/*",

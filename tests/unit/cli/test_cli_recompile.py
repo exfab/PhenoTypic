@@ -1,9 +1,7 @@
 """Unit tests for the CLI recompile mode (``_handle_recompile``).
 
-Verifies that recompile mirrors the SLURM finalizer's post-aggregation
-pattern: it reads the freshly-written ``master_measurements.csv`` and
-dispatches analysis plugins via ``_run_analysis_plugins`` (not the
-DuckDB-based ``write_analysis_sidecar``).
+Verifies recompile routing, aggregation, overlay regeneration, manifest
+publication, and progress-dashboard regeneration.
 """
 
 from __future__ import annotations
@@ -19,8 +17,6 @@ from click.testing import CliRunner
 from phenotypic._cli._cli_utils import resolve_local_worker_count
 from phenotypic.sdk_ import (
     master_measurements_csv_path,
-    measurements_parquet_path,
-    progress_dir,
 )
 from phenotypic.phenotypicCLI import (
     _handle_recompile,
@@ -132,26 +128,17 @@ class TestRecompileCliRouting:
 
 
 class TestHandleRecompile:
-    """``_handle_recompile`` uses the finalizer analysis-plugin pattern."""
+    """``_handle_recompile`` republishes current supported artifacts."""
 
-    def test_dispatches_run_analysis_plugins_from_mirror_parquet(
+    def test_rebuilds_manifest_and_progress_dashboard(
         self, tmp_path: Path
     ) -> None:
-        import polars as pl
-
         output_dir = _make_fake_results(tmp_path)
 
         def _fake_aggregate(**_kwargs: object) -> Path:
-            # ``aggregate_measurements`` writes both the clean master archive
-            # and the post-applied mirror (via ``finalize_post_master_outputs``).
-            # Analysis plugins consume the mirror so they see the post-applied
-            # frame plus any joined external metadata.
             master = master_measurements_csv_path(output_dir)
             master.parent.mkdir(parents=True, exist_ok=True)
             master.write_text("col_a\n1\n", encoding="utf-8")
-            pl.DataFrame({"col_a": [1], "Metadata_Strain": ["WT"]}).write_parquet(
-                measurements_parquet_path(output_dir)
-            )
             return master
 
         with (
@@ -160,17 +147,11 @@ class TestHandleRecompile:
                 side_effect=_fake_aggregate,
             ),
             patch(
-                "phenotypic._cli._cli_chunk_writer._run_analysis_plugins"
-            ) as mock_plugins,
-            patch(
                 "phenotypic._cli._dashboard._manifest_builder.build_manifest"
             ) as mock_manifest,
             patch(
                 "phenotypic._cli._dashboard._generator.generate_dashboard"
             ) as mock_dashboard,
-            patch(
-                "phenotypic._cli._dashboard._analysis_data.write_analysis_sidecar"
-            ) as mock_sidecar,
         ):
             _handle_recompile(
                 output_dir=output_dir,
@@ -179,20 +160,6 @@ class TestHandleRecompile:
                 overlay_alpha=0.3,
                 n_jobs=1,
             )
-
-        mock_sidecar.assert_not_called()
-
-        mock_plugins.assert_called_once()
-        args = mock_plugins.call_args.args
-        assert args[0] == output_dir
-        assert args[1] == progress_dir(output_dir)
-        merged_df = args[2]
-        assert merged_df is not None
-        assert merged_df.height == 1
-        assert "col_a" in merged_df.columns
-        # Plugins must see metadata-joined columns from the mirror, not
-        # the clean master.
-        assert "Metadata_Strain" in merged_df.columns
 
         mock_manifest.assert_called_once()
         mock_dashboard.assert_called_once()
@@ -294,39 +261,3 @@ class TestRegenerateMissingOverlays:
 
         assert max_workers_seen == [8]
         assert len(submitted) == len(hdf_paths)
-
-    def test_plugin_dispatch_failure_does_not_crash(self, tmp_path: Path) -> None:
-        output_dir = _make_fake_results(tmp_path)
-
-        def _fake_aggregate(**_kwargs: object) -> Path:
-            master = master_measurements_csv_path(output_dir)
-            master.parent.mkdir(parents=True, exist_ok=True)
-            master.write_text("col_a\n1\n", encoding="utf-8")
-            return master
-
-        with (
-            patch(
-                "phenotypic._cli._cli_output_manager.aggregate_measurements",
-                side_effect=_fake_aggregate,
-            ),
-            patch(
-                "phenotypic._cli._cli_chunk_writer._run_analysis_plugins",
-                side_effect=RuntimeError("boom"),
-            ),
-            patch(
-                "phenotypic._cli._dashboard._manifest_builder.build_manifest"
-            ) as mock_manifest,
-            patch(
-                "phenotypic._cli._dashboard._generator.generate_dashboard"
-            ) as mock_dashboard,
-        ):
-            _handle_recompile(
-                output_dir=output_dir,
-                metadata_csv=None,
-                include_dataset_column=True,
-                overlay_alpha=0.3,
-                n_jobs=1,
-            )
-
-        mock_manifest.assert_called_once()
-        mock_dashboard.assert_called_once()

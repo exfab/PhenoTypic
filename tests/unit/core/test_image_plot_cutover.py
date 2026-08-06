@@ -10,7 +10,6 @@ import pytest
 from phenotypic import GridImage, Image
 from phenotypic._core._image_parts import ImageVisualizationHandler
 from phenotypic._core._image_parts import accessors
-from phenotypic.sdk_ import register
 
 
 def _image_with_objects() -> Image:
@@ -29,20 +28,14 @@ def test_image_plot_and_accessor_cache_are_removed() -> None:
 
 
 def test_legacy_plot_modules_and_registry_api_are_removed() -> None:
-    for name in (
-        "PlotterRegistry",
-        "available_plotters",
-        "get_plotter",
-        "register_plotter",
-    ):
-        assert name not in register.__all__
-        assert not hasattr(register, name)
+    sdk = importlib.import_module("phenotypic.sdk_")
+    assert not hasattr(sdk, "register")
 
     for module in (
         "phenotypic._core._image_parts._image_plot_handler",
         "phenotypic._core._image_parts.accessors._plot_accessor",
         "phenotypic._core._image_parts.accessors._dash_plot_accessor",
-        "phenotypic.sdk_.register._plotter_registry",
+        "phenotypic.sdk_.register",
     ):
         with pytest.raises(ModuleNotFoundError):
             importlib.import_module(module)

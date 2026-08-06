@@ -1,7 +1,7 @@
 """Checkpoint chunk writer for SLURM array jobs.
 
 Aggregates unchunked per-image Parquet files into dashboard chunks,
-rebuilds the combined analysis file, and updates the master CSV
+rebuilds the rolling combined measurement state, and updates the master CSV
 (:data:`~phenotypic.sdk_.MASTER_MEASUREMENTS_CSV`) so users can download
 partial results mid-run.
 
@@ -19,26 +19,23 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import click
 import polars as pl
 
 from ._cli_file_locking import file_lock
-from ._cli_output_manager import join_metadata
-from ._cli_utils import load_job_metadata, scan_parquets
+from ._cli_utils import scan_parquets
 from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 from phenotypic.sdk_ import (
     DIR_CHUNKS,
     CHUNK_STATE_JSON,
     CHUNK_MANIFEST_JSON,
-    overlay_manifest_path,
     DATASET_AGGREGATED_PARQUET,
     DIR_RESULTS,
     DIR_MEASUREMENTS,
     ChunkStateKey,
     ChunkManifestKey,
-    JobMetadataKey,
     PARQUET_WRITE_OPTIONS,
     atomic_write_json,
     atomic_write_with_writer,
@@ -99,7 +96,6 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
     )
     if not new_files:
         logger.info("No new measurement files to chunk")
-        _ensure_overlay_manifest(output_dir)
         return
 
     chunk_df = _read_and_concat(new_files)
@@ -148,34 +144,11 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
     combined = _incremental_combined(
         chunk_df, analysis_full_parquet_path(progress_dir)
     )
-    combined_with_metadata: Optional[pl.DataFrame] = None
     if combined is not None:
         atomic_write_with_writer(
             analysis_full_parquet_path(progress_dir),
             lambda p: combined.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
-
-        job_meta = load_job_metadata(progress_dir)
-        csv_str = (
-            job_meta.get(JobMetadataKey.METADATA_CSV) if job_meta else None
-        )
-        metadata_csv = Path(csv_str) if csv_str else None
-        # External metadata is intentionally kept out of the master archive,
-        # which stays a clean snapshot of what the workers measured. The
-        # join is computed in memory only for mid-run analysis-plugin
-        # dispatch so dashboard sidecars can still group by metadata
-        # columns; the on-disk mirror with the join lands at final
-        # aggregation via ``finalize_post_master_outputs``.
-        combined_with_metadata = combined
-        if metadata_csv is not None:
-            try:
-                combined_with_metadata = join_metadata(combined, metadata_csv)
-            except Exception:
-                logger.warning(
-                    "Metadata join failed; analysis plugins will run without metadata",
-                    exc_info=True,
-                )
-                combined_with_metadata = combined
 
         atomic_write_with_writer(
             master_measurements_csv_path(output_dir),
@@ -185,8 +158,6 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
             master_measurements_parquet_path(output_dir),
             lambda p: combined.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
-
-        _run_analysis_plugins(output_dir, progress_dir, combined_with_metadata)
 
     for ds_name, ds_df in chunk_df.group_by(str(EXPERIMENT_METADATA.DATASET)):
         _update_dataset_parquet(output_dir, str(ds_name[0]), ds_df)
@@ -349,51 +320,6 @@ def _rebuild_combined(chunks_dir: Path) -> pl.DataFrame | None:
 
 
 # ---------------------------------------------------------------------------
-# Metadata / analysis helpers
-# ---------------------------------------------------------------------------
-
-
-def _run_analysis_plugins(
-    output_dir: Path, progress_dir: Path, merged_df: Optional["pl.DataFrame"]
-) -> None:
-    """Dispatch to analysis plugins with the combined DataFrame.
-
-    Args:
-        output_dir: Root output directory.
-        progress_dir: Progress directory for sidecar files.
-        merged_df: Merged measurement DataFrame, or ``None``.
-    """
-    try:
-        from ._dashboard._analysis._prepare_context import (
-            AnalysisPrepareContext,
-        )
-        from phenotypic.sdk_.register import AnalysisPluginRegistry
-
-        # Trigger plugin registration
-        from ._dashboard._analysis import (  # noqa: F401
-            _image_viewer,
-            _raw_table,
-            _scatter_plot,
-            _summary_stats,
-        )
-    except ImportError:
-        logger.debug("Analysis plugins not available")
-        return
-
-    if merged_df is None:
-        return
-
-    ctx = AnalysisPrepareContext(
-        output_dir=output_dir, progress_dir=progress_dir, merged_df=merged_df
-    )
-    for name in AnalysisPluginRegistry.available():
-        plugin = AnalysisPluginRegistry.get(name)()
-        try:
-            plugin.prepare_data(ctx)
-        except Exception:
-            logger.exception("Plugin %r failed during prepare_data", name)
-
-
 def _update_dataset_parquet(
     output_dir: Path, dataset_name: str, new_df: pl.DataFrame
 ) -> None:
@@ -459,36 +385,6 @@ def _write_json(data: dict[str, Any], path: Path) -> None:
         path: Destination file (parent dirs created if needed).
     """
     atomic_write_json(path, data, sort_keys=False)
-
-
-def _ensure_overlay_manifest(output_dir: Path) -> None:
-    """Write overlay_manifest.json if it does not already exist.
-
-    Called on the early-return path when no new measurement files were found,
-    to ensure the overlay manifest is present even if previous plugin
-    runs were skipped or failed.
-    """
-    manifest_path = overlay_manifest_path(output_dir)
-    if manifest_path.exists():
-        return
-    try:
-        from ._dashboard._analysis._prepare_context import (
-            AnalysisPrepareContext,
-        )
-        from ._dashboard._analysis._image_viewer import ImageViewerPlugin
-
-        # ImageViewerPlugin.prepare_data writes the manifest under deliverables/
-        # (derived from output_dir) and never reads progress_dir; it remains a
-        # required AnalysisPrepareContext field, so derive it here rather than
-        # threading an unused parameter through this function.
-        ctx = AnalysisPrepareContext(
-            output_dir=output_dir,
-            progress_dir=progress_dir_helper(output_dir),
-            merged_df=None,
-        )
-        ImageViewerPlugin().prepare_data(ctx)
-    except Exception:
-        logger.warning("Failed to ensure overlay manifest", exc_info=True)
 
 
 if __name__ == "__main__":

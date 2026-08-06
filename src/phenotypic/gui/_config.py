@@ -30,7 +30,7 @@ to ``_io_constants.py``, not here.
 
 These are bare *filenames*, not paths. The user-facing run artifacts
 (``master_measurements.*``, ``measurements.*``, ``measurements_by_feature/``,
-``analysis.*``, ``dashboard.html``, ``analysis.html``,
+``analysis.*``, ``dashboard.html``,
 ``processing_report.html``, ``README.md``, ``pipeline.json``) now resolve
 under ``<output>/deliverables/`` — ``DELIVERABLES_DIRNAME`` (= ``"deliverables"``,
 backed by ``DIR_DELIVERABLES`` in :mod:`phenotypic.sdk_`). Join them via the

@@ -8,8 +8,6 @@ for persisting plate datasets and measurements.
 Advanced users can access GridInferenceMixin and FootprintMixin for creating custom
 grid-based operations and morphological footprints.
 
-The ``register`` submodule provides registry utilities for analysis dashboard plugins.
-
 The ``_io_constants`` submodule is the single source of truth for CLI ↔ GUI
 artifact filenames, directory names, JSON contract keys, and path helpers
 (re-exported here at package level for convenience).
@@ -20,7 +18,6 @@ from . import (
     constants_,
     exceptions_,
     napari_,
-    register,
     slurm,
     slurm_,
 )
@@ -45,8 +42,6 @@ from ._io_constants import (
     ANALYSIS_MANIFEST_FILENAME,
     ANALYSIS_MANIFEST_SCHEMA_VERSION,
     ANALYSIS_FULL_PARQUET,
-    ANALYSIS_HTML,
-    ANALYSIS_SCATTER_JSON,
     BEST_PARAMS_JSON,
     BEST_PIPELINE_JSON,
     CHUNK_LOCK,
@@ -90,7 +85,6 @@ from ._io_constants import (
     MASTER_MEASUREMENTS_PARQUET,
     MEASUREMENTS_CSV,
     MEASUREMENTS_PARQUET,
-    OVERLAY_MANIFEST_JSON,
     PARAM_IMPORTANCE_JSON,
     PARETO_FRONT_PARQUET,
     PIPELINE_JSON,
@@ -128,8 +122,6 @@ from ._io_constants import (
     # Path helpers
     analysis_full_parquet_path,
     analysis_manifest_path,
-    analysis_html_path,
-    analysis_scatter_json_path,
     best_pipeline_path,
     best_params_path,
     bytes_fingerprint,
@@ -185,7 +177,6 @@ from ._io_constants import (
     named_analysis_paths,
     metadata_csv_deliverable_path,
     matches_any_suffix,
-    overlay_manifest_path,
     param_importance_path,
     pareto_best_pipeline_path,
     pareto_dir,
@@ -291,7 +282,6 @@ __all__ = [
     "metadata_only_mask",
     "order_measurement_columns",
     "napari_",
-    "register",
     "slurm",
     "slurm_",
     "timed_execution",
@@ -310,8 +300,6 @@ __all__ = [
     "ERROR_ANALYSIS_CSV",
     "ERROR_ANALYSIS_HTML",
     "ERROR_ANALYSIS_PARQUET",
-    "ANALYSIS_HTML",
-    "ANALYSIS_SCATTER_JSON",
     "BEST_PARAMS_JSON",
     "BEST_PIPELINE_JSON",
     "CHUNK_LOCK",
@@ -336,7 +324,6 @@ __all__ = [
     "MASTER_MEASUREMENTS_PARQUET",
     "MEASUREMENTS_CSV",
     "MEASUREMENTS_PARQUET",
-    "OVERLAY_MANIFEST_JSON",
     "PARAM_IMPORTANCE_JSON",
     "PARETO_FRONT_PARQUET",
     "PIPELINE_JSON",
@@ -396,8 +383,6 @@ __all__ = [
     "BundleLayout",
     "analysis_full_parquet_path",
     "analysis_manifest_path",
-    "analysis_html_path",
-    "analysis_scatter_json_path",
     "best_pipeline_path",
     "best_params_path",
     "bytes_fingerprint",
@@ -455,7 +440,6 @@ __all__ = [
     "migrate_legacy_machine_state",
     "migrate_legacy_qc",
     "clear_machine_state",
-    "overlay_manifest_path",
     "param_importance_path",
     "pareto_best_pipeline_path",
     "pareto_dir",

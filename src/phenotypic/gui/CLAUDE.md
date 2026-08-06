@@ -187,7 +187,7 @@ filenames (e.g. test fixtures, CLI integration tests).
 paths. The user-facing run artifacts (`master_measurements.*`,
 `measurements.*`, `measurements_by_feature/`, named analysis tables plus
 `analysis_manifest.json`,
-`dashboard.html`, `analysis.html`, `processing_report.html`,
+`dashboard.html`, `processing_report.html`,
 `README.md`, `pipeline.json`) now live under `<output>/deliverables/`
 (`DELIVERABLES_DIRNAME` = `"deliverables"`, underlying
 `DIR_DELIVERABLES` in `phenotypic.sdk_`). Join them via the

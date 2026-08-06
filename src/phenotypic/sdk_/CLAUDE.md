@@ -69,7 +69,9 @@ ContrastAdjustment)` yields `['gamma', 'gain', 'norm', 'input_layer']`.
 ## Other Utilities
 
 - [`branch_pathfinding/`](branch_pathfinding/CLAUDE.md) — multi-source Dijkstra, cost-surface composition, fragment prescreening, path quality filtering, Voronoi partition. Used by `FilamentousFungiDetector`; cost surfaces are the caller's responsibility.
-- `register/` — operation self-registration; underpins the `PHENOTYPIC_PRELOAD_MODULES` workflow for resolving custom op classes defined outside the `phenotypic` namespace.
+- `PHENOTYPIC_PRELOAD_MODULES` imports custom operation modules before pipeline
+  deserialization so classes defined outside the `phenotypic` namespace can
+  self-register through their normal class-definition hooks.
 - `constants_.py` — framework constants for image data (image modes, image
   types, gamma encodings). `ConstantLabels` and framework-config enums
   (`GAMMA_ENCODINGS`, `PIPE_STATUS`) live here; they subclass `MeasurementInfo`,

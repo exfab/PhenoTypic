@@ -26,15 +26,15 @@ Module layout
       Use these from any caller that has the run root in scope:
       ``master_measurements_csv_path``, ``manifest_json_path``,
       ``job_metadata_path``, ``pipeline_json_path``, ``task_status_path``,
-      ``logs_dir``, ``slurm_scripts_dir``, ``analysis_html_path``,
-      ``processing_report_html_path``, ``measurements_by_feature_dir``,
+      ``logs_dir``, ``slurm_scripts_dir``, ``processing_report_html_path``,
+      ``measurements_by_feature_dir``,
       etc.
     - **`progress_dir_: Path`** — the already-resolved progress dir
       (i.e. ``output_dir / "progress"``). Used for helpers that produce
       paths to *internal mid-run artifacts* the SLURM sentinel + chunk
       writer hand around between each other:
-      ``analysis_full_parquet_path``, ``analysis_scatter_json_path``,
-      ``sentinel_resubmitted_path``, ``chunk_lock_path``, ``chunks_dir``,
+      ``analysis_full_parquet_path``, ``sentinel_resubmitted_path``,
+      ``chunk_lock_path``, ``chunks_dir``,
       ``chunk_parquet_path``, ``checkpoint_lock_path``, ``recompile_dir``,
       ``recompile_status_dir``. The trailing underscore on the parameter
       name disambiguates it from the ``progress_dir(output_dir)``
@@ -573,10 +573,6 @@ CHUNK_MANIFEST_JSON: Final[str] = "chunk_manifest.json"
 #: SLURM checkpoint chunk state (which per-image files have been chunked).
 CHUNK_STATE_JSON: Final[str] = "chunk_state.json"
 
-#: Manifest of overlay PNGs (one entry per per-image overlay). Lives alongside
-#: the overlays under ``<output>/deliverables/overlays/``.
-OVERLAY_MANIFEST_JSON: Final[str] = "overlay_manifest.json"
-
 #: Top-level dashboard manifest read by the dashboard HTML JS shim.
 #: Keys are documented in :class:`DashboardManifestKey`.
 MANIFEST_JSON: Final[str] = "manifest.json"
@@ -590,7 +586,7 @@ DATASET_AGGREGATED_PARQUET: Final[str] = "_dataset_aggregated.parquet"
 # Dashboard / log files
 # ---------------------------------------------------------------------------
 
-#: Generated HTML dashboard with charts + chunked-data viewer.
+#: Generated progress and failure dashboard.
 DASHBOARD_HTML: Final[str] = "dashboard.html"
 
 #: Per-run stdout capture written by the run console's local runner.
@@ -603,18 +599,13 @@ RUN_LOG_DIRNAME: Final[str] = ".gui_log"
 #: the CLI decides whether an output is otherwise fresh.
 GUI_LOG_FILENAMES: Final[frozenset[str]] = frozenset({STDOUT_LOG})
 
-#: Generated standalone analysis HTML emitted alongside the dashboard.
-ANALYSIS_HTML: Final[str] = "analysis.html"
-
 #: Top-level processing report HTML emitted by recompile mode.
 PROCESSING_REPORT_HTML: Final[str] = "processing_report.html"
 
-#: Mid-run combined Parquet that the chunk writer rewrites incrementally
-#: as new per-image measurements arrive (lives in ``DIR_PROGRESS``).
+#: Legacy-named rolling aggregation state that the chunk writer rewrites as
+#: per-image measurements arrive. It is unrelated to the retired static
+#: analysis dashboard and remains in ``DIR_PROGRESS`` for resumable runs.
 ANALYSIS_FULL_PARQUET: Final[str] = "analysis_full.parquet"
-
-#: Pre-computed scatter-plot data for the dashboard analysis pane.
-ANALYSIS_SCATTER_JSON: Final[str] = "analysis_scatter.json"
 
 #: Sentinel marker file written by the SLURM sentinel after a re-submission;
 #: presence prevents an infinite resubmission loop on the next checkpoint.
@@ -1521,16 +1512,6 @@ def chunk_state_path(output_dir: Path) -> Path:
     return progress_dir(output_dir) / CHUNK_STATE_JSON
 
 
-def overlay_manifest_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/overlays/overlay_manifest.json``."""
-    return overlays_dir(output_dir) / OVERLAY_MANIFEST_JSON
-
-
-def analysis_html_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/analysis.html``."""
-    return deliverables_dir(output_dir) / ANALYSIS_HTML
-
-
 def processing_report_html_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/processing_report.html``."""
     return deliverables_dir(output_dir) / PROCESSING_REPORT_HTML
@@ -1542,18 +1523,13 @@ def readme_md_path(output_dir: Path) -> Path:
 
 
 def analysis_full_parquet_path(progress_dir_: Path) -> Path:
-    """Return ``<progress>/analysis_full.parquet`` (incremental combined frame).
+    """Return the legacy-named rolling measurement aggregation state.
 
     Takes a *progress_dir* (not the run output root) since this file lives
-    inside ``progress/`` — it's an internal mid-run artifact, not a user-
-    facing output.
+    inside ``progress/``. It is an internal resumable-run artifact, not a
+    static-analysis sidecar or user-facing output.
     """
     return progress_dir_ / ANALYSIS_FULL_PARQUET
-
-
-def analysis_scatter_json_path(progress_dir_: Path) -> Path:
-    """Return ``<progress>/analysis_scatter.json``."""
-    return progress_dir_ / ANALYSIS_SCATTER_JSON
 
 
 def sentinel_resubmitted_path(progress_dir_: Path) -> Path:
@@ -1803,7 +1779,6 @@ class DashboardManifestKey:
     INPUT_PATH: Final[str] = "input_path"
     DATASETS: Final[str] = "datasets"
     FAILURE_CATEGORIES: Final[str] = "failure_categories"
-    ANALYSIS_DATA_VERSION: Final[str] = "analysis_data_version"
     SLURM_INFO: Final[str] = "slurm_info"
 
 

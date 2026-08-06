@@ -445,7 +445,6 @@ class TestPathHelpers:
         """Helpers that take ``progress_dir_`` (not ``output_dir``)."""
         from phenotypic.sdk_ import (
             analysis_full_parquet_path,
-            analysis_scatter_json_path,
             checkpoint_lock_path,
             chunk_lock_path,
             chunk_parquet_path,
@@ -464,18 +463,15 @@ class TestPathHelpers:
         assert checkpoint_lock_path(progress, "finalize") == progress / ".finalize_lock"
         assert chunk_lock_path(progress) == progress / ".chunk_lock"
         assert analysis_full_parquet_path(progress) == progress / "analysis_full.parquet"
-        assert analysis_scatter_json_path(progress) == progress / "analysis_scatter.json"
         assert sentinel_resubmitted_path(progress) == progress / "sentinel_resubmitted"
 
     def test_output_rooted_helpers(self, output: Path) -> None:
         """Helpers that take ``output_dir`` (the run root)."""
         from phenotypic.sdk_ import (
-            analysis_html_path,
             chunk_manifest_path,
             chunk_state_path,
             failures_jsonl_path,
             logs_dir,
-            overlay_manifest_path,
             processing_report_html_path,
             slurm_scripts_dir,
         )
@@ -483,14 +479,12 @@ class TestPathHelpers:
         prog = output / ".phenotypic" / "progress"
         assert logs_dir(output) == output / ".phenotypic" / "logs"
         assert slurm_scripts_dir(output) == output / ".phenotypic" / "slurm_scripts"
-        assert analysis_html_path(output) == output / "deliverables" / "analysis.html"
         assert processing_report_html_path(output) == (
             output / "deliverables" / "processing_report.html"
         )
         assert failures_jsonl_path(output) == prog / "failures.jsonl"
         assert chunk_manifest_path(output) == prog / "chunk_manifest.json"
         assert chunk_state_path(output) == prog / "chunk_state.json"
-        assert overlay_manifest_path(output) == output / "deliverables" / "overlays" / "overlay_manifest.json"
 
 
 # ---------------------------------------------------------------------------
@@ -533,13 +527,9 @@ class TestDeliverablesLayout:
             "pipeline_json_path": pipeline_json_path,
             "readme_md_path": readme_md_path,
         }
-        # analysis_html / processing_report_html are imported function-locally
-        from phenotypic.sdk_ import (
-            analysis_html_path,
-            processing_report_html_path,
-        )
+        # processing_report_html is imported function-locally
+        from phenotypic.sdk_ import processing_report_html_path
 
-        moved["analysis_html_path"] = analysis_html_path
         moved["processing_report_html_path"] = processing_report_html_path
 
         for name, helper in moved.items():
@@ -576,6 +566,23 @@ class TestDeliverablesLayout:
 # ---------------------------------------------------------------------------
 # Multi-objective Pareto deliverables (Phase 4 chunk C)
 # ---------------------------------------------------------------------------
+
+
+def test_retired_static_analysis_sdk_surface_is_absent() -> None:
+    """Removed static-dashboard names are not available through the SDK."""
+    import importlib
+
+    sdk = importlib.import_module("phenotypic.sdk_")
+    for name in (
+        "ANALYSIS_HTML",
+        "ANALYSIS_SCATTER_JSON",
+        "OVERLAY_MANIFEST_JSON",
+        "analysis_html_path",
+        "analysis_scatter_json_path",
+        "overlay_manifest_path",
+        "register",
+    ):
+        assert not hasattr(sdk, name)
 
 
 class TestParetoPaths:
@@ -690,7 +697,6 @@ class TestJsonContractKeys:
         assert DashboardManifestKey.INPUT_PATH == "input_path"
         assert DashboardManifestKey.DATASETS == "datasets"
         assert DashboardManifestKey.FAILURE_CATEGORIES == "failure_categories"
-        assert DashboardManifestKey.ANALYSIS_DATA_VERSION == "analysis_data_version"
         assert DashboardManifestKey.SLURM_INFO == "slurm_info"
 
     def test_dashboard_manifest_slurm_info_keys(self) -> None:

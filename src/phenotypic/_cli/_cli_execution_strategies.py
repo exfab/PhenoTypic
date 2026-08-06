@@ -55,6 +55,7 @@ from ._cli_constants import MAX_TRACEBACK_LINES
 from phenotypic.sdk_ import (
     JobMetadataKey,
     HdfAttr,
+    dashboard_html_path,
     event_log_path,
     atomic_write_json,
     job_metadata_path,
@@ -898,8 +899,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             generate_dashboard(output_dir, execution_mode="slurm")
             console.print(
                 f"[green]✓[/green] Dashboard: "
-                f"[bold]{output_dir / 'dashboard.html'}[/bold]  "
-                f"Analysis: [bold]{output_dir / 'analysis.html'}[/bold]\n"
+                f"[bold]{dashboard_html_path(output_dir)}[/bold]\n"
             )
 
         # Wait if requested
@@ -910,8 +910,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             final_results = self._monitor_progress(output_dir, datasets)
         else:
             click.echo("\nJobs submitted. Monitor progress with:")
-            click.echo(f"  Open: {output_dir / 'dashboard.html'}")
-            click.echo(f"  Analysis: {output_dir / 'analysis.html'}")
+            click.echo(f"  Open: {dashboard_html_path(output_dir)}")
             click.echo("  squeue -u $USER --array")
             click.echo(f"  tail -f {event_log_path(output_dir)}")
             final_results = None

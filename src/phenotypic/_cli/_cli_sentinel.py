@@ -147,17 +147,6 @@ def sentinel_main(
             ),
         )
 
-        # Update analysis sidecar data (partial results visible during run)
-        try:
-            from phenotypic._cli._dashboard._analysis_data import write_analysis_sidecar
-            _meta_csv = job_metadata.get(JobMetadataKey.METADATA_CSV)
-            write_analysis_sidecar(
-                output_dir,
-                metadata_csv=Path(_meta_csv) if _meta_csv else None,
-            )
-        except Exception:
-            logger.debug("Analysis sidecar write failed", exc_info=True)
-
         # Check completion status from the freshly-written manifest
         manifest_path = progress_dir / MANIFEST_JSON
         if manifest_path.exists():

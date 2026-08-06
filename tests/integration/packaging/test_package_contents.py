@@ -54,8 +54,7 @@ REQUIRED_WHEEL_PATHS = [
     "phenotypic/gui/run_console/_assets/run_console.css",
     "phenotypic/gui/analysis/_assets/analysis.css",
     "phenotypic/gui/tune/_assets/tune.css",
-    # Pre-existing globbed assets (regression guard for the original config).
-    "phenotypic/_assets/vendor/plotly.min.js",
+    # Pre-existing globbed asset (regression guard for the original config).
     "phenotypic/data/early_colony.png",
 ]
 
@@ -67,6 +66,11 @@ REQUIRED_THIRD_PARTY_LICENSES = {
     "tensor-voting-LGPL-3.0-claim.txt",
     "tricktrack-Apache-2.0.txt",
     "vaa3d-MIT.txt",
+}
+
+RETIRED_DASHBOARD_BUNDLES = {
+    "phenotypic/_assets/vendor/plotly.min.js",
+    "phenotypic/_assets/vendor/hyparquet.min.js",
 }
 
 
@@ -148,6 +152,14 @@ def test_wheel_contains_required_paths(built_dists):
 
 
 @pytest.mark.slow
+def test_wheel_omits_retired_dashboard_bundles(built_dists):
+    """Static-analysis browser bundles must not return to the wheel."""
+    with zipfile.ZipFile(built_dists["wheel"]) as zf:
+        names = set(zf.namelist())
+    assert RETIRED_DASHBOARD_BUNDLES.isdisjoint(names)
+
+
+@pytest.mark.slow
 def test_wheel_contains_fungi_port_license_texts(built_dists):
     """Every third-party license referenced by NOTICE ships in the wheel."""
     with zipfile.ZipFile(built_dists["wheel"]) as zf:
@@ -172,3 +184,4 @@ def test_sdist_contains_required_paths(built_dists):
                 flat.add("/".join(parts[idx + 1 :]))
     missing = [p for p in REQUIRED_WHEEL_PATHS if p not in flat]
     assert not missing, f"missing from sdist: {missing}"
+    assert RETIRED_DASHBOARD_BUNDLES.isdisjoint(flat)

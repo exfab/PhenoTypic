@@ -105,7 +105,6 @@ output_folder/
 |   +-- analysis_manifest.json        # Named-analysis artifact index and checksums
 |   +-- plots/                         # Configured plot outputs and page manifests
 |   +-- dashboard.html                # Live processing dashboard
-|   +-- analysis.html                 # Analysis & visualization
 |   +-- processing_report.html        # HTML summary report
 |   +-- overlays/                     # Detection overlay PNGs (per-dataset subfolders, one per input image)
 |   +-- README.md                     # This file
@@ -133,7 +132,10 @@ Each dataset directory contains the following folders:
 | `measurements/` | Parquet | Per-object measurements. |
 
 Detection overlay PNGs are written per input image under
-`deliverables/overlays/<dataset>/` (always written for forward runs)."""
+`deliverables/overlays/<dataset>/` (always written for forward runs).
+
+Use the Results Viewer and its `/analysis/` workspace for interactive result
+exploration."""
 
     def _generate_measurements_section(self) -> str:
         """Generate measurement documentation from pipeline's MeasureFeatures.
