@@ -62,8 +62,9 @@ While the subprocess is alive:
   order with stderr merged in.
 - Once the CLI writes `<output_dir>/deliverables/dashboard.html`, the
   iframe panel points at `/runs/<rel>/deliverables/dashboard.html` and the
-  live dashboard renders inside the run console — same dashboard you'd open
-  standalone, just iframed.
+  live progress dashboard renders directly, without a tab bar, inside the run
+  console. Use the Results Viewer or `/analysis/` app after publication for
+  result exploration.
 - Only one local run can be active at a time; the `Run` button stays
   disabled until the current run exits or you click `Cancel` (which
   sends SIGTERM, then SIGKILL after a 10-second grace period).

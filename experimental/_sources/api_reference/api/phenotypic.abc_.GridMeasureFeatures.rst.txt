@@ -22,6 +22,7 @@ phenotypic.abc\_.GridMeasureFeatures
       ~GridMeasureFeatures.dict
       ~GridMeasureFeatures.from_json
       ~GridMeasureFeatures.from_orm
+      ~GridMeasureFeatures.get_measurement_infoclasses
       ~GridMeasureFeatures.json
       ~GridMeasureFeatures.measure
       ~GridMeasureFeatures.model_construct

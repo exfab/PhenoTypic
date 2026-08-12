@@ -25,6 +25,7 @@ phenotypic.measure.MeasureOrientationZones
       ~MeasureOrientationZones.figures
       ~MeasureOrientationZones.from_json
       ~MeasureOrientationZones.from_orm
+      ~MeasureOrientationZones.get_measurement_infoclasses
       ~MeasureOrientationZones.inspect
       ~MeasureOrientationZones.iter_figures
       ~MeasureOrientationZones.json

@@ -69,47 +69,53 @@ Metadata
 :doc:`CONDITION_METADATA </api_reference/api/phenotypic.schema.CONDITION_METADATA>`
 -----------------------------------------------------------------------------------
 
-.. list-table:: Category: **MetadataCondition**
+.. list-table:: Category: **MetadatasCondition**
    :header-rows: 1
 
    * - Column label
      - Description
      - Type
-   * - ``MetadataCondition_Media``
+   * - ``MetadatasCondition_Media``
      - Growth medium name (e.g. YPD, SC, LB).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``MetadataCondition_CarbonSource``
+   * - ``MetadatasCondition_CarbonSource``
      - Primary carbon source (e.g. glucose, galactose).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``MetadataCondition_NitrogenSource``
+   * - ``MetadatasCondition_NitrogenSource``
      - Primary nitrogen source.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``MetadataCondition_pH``
+   * - ``MetadatasCondition_pH``
      - pH of the growth medium.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``MetadataCondition_Supplement``
+   * - ``MetadatasCondition_Supplement``
      - Medium supplement or additive.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``MetadataCondition_Antibiotic``
+   * - ``MetadatasCondition_Antibiotic``
      - Antibiotic added to the medium.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``MetadataCondition_Inducer``
+   * - ``MetadatasCondition_Inducer``
      - Inducing agent (e.g. galactose, IPTG, doxycycline).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``MetadataCondition_Treatment``
+   * - ``MetadatasCondition_Treatment``
      - Experimental treatment or perturbation.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``MetadataCondition_Compound``
+   * - ``MetadatasCondition_Compound``
      - Chemical compound or drug applied.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``MetadataCondition_Concentration``
+   * - ``MetadatasCondition_Concentration``
      - Concentration of the compound or treatment.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``MetadataCondition_Dose``
+   * - ``MetadatasCondition_Dose``
      - Dose applied to the sample.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``MetadataCondition_Stress``
+   * - ``MetadatasCondition_Stress``
      - Applied stress condition (e.g. heat, osmotic, oxidative).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadatasCondition_Temperature``
+     - Culture temperature in degrees Celsius.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadatasCondition_Salinity``
+     - Salt Salinity
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
 
 .. _measurement-info-culture-metadata:
@@ -123,9 +129,6 @@ Metadata
    * - Column label
      - Description
      - Type
-   * - ``MetadataCulture_Temperature``
-     - Culture temperature in degrees Celsius.
-     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``MetadataCulture_Time``
      - Elapsed growth time.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
@@ -239,6 +242,9 @@ Metadata
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``MetadataPlate_IncubatorPosition``
      - Physical position of the plate within the incubator.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``MetadataPlate_Configuration``
+     - The sample's array position configuration. Different configurations can be used to help identify and mitigate edge/neighbor effects.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
 
 .. _measurement-info-sample-metadata:

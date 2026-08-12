@@ -22,6 +22,7 @@ phenotypic.measure.MeasureGridLinRegStats
       ~MeasureGridLinRegStats.dict
       ~MeasureGridLinRegStats.from_json
       ~MeasureGridLinRegStats.from_orm
+      ~MeasureGridLinRegStats.get_measurement_infoclasses
       ~MeasureGridLinRegStats.json
       ~MeasureGridLinRegStats.measure
       ~MeasureGridLinRegStats.model_construct

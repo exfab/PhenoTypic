@@ -22,6 +22,7 @@ phenotypic.measure.MeasureSize
       ~MeasureSize.dict
       ~MeasureSize.from_json
       ~MeasureSize.from_orm
+      ~MeasureSize.get_measurement_infoclasses
       ~MeasureSize.json
       ~MeasureSize.measure
       ~MeasureSize.model_construct

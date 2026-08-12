@@ -765,7 +765,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureOrientationZones.html">phenotypic.measure.MeasureOrientationZones</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureShape.html">phenotypic.measure.MeasureShape</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureSize.html">phenotypic.measure.MeasureSize</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureSymmetricZones.html">phenotypic.measure.MeasureSymmetricZones</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureSymZones.html">phenotypic.measure.MeasureSymZones</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureTexture.html">phenotypic.measure.MeasureTexture</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpread.html">phenotypic.measure.MeasureGridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridLinRegStats.html">phenotypic.measure.MeasureGridLinRegStats</a></li>
@@ -883,8 +883,6 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.timed_execution.html">phenotypic.sdk_.timed_execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_full_parquet_path.html">phenotypic.sdk_.analysis_full_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_manifest_path.html">phenotypic.sdk_.analysis_manifest_path</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_html_path.html">phenotypic.sdk_.analysis_html_path</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_scatter_json_path.html">phenotypic.sdk_.analysis_scatter_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.best_pipeline_path.html">phenotypic.sdk_.best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.best_params_path.html">phenotypic.sdk_.best_params_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.bytes_fingerprint.html">phenotypic.sdk_.bytes_fingerprint</a></li>
@@ -942,7 +940,6 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_machine_state.html">phenotypic.sdk_.migrate_legacy_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_qc.html">phenotypic.sdk_.migrate_legacy_qc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html">phenotypic.sdk_.clear_machine_state</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.overlay_manifest_path.html">phenotypic.sdk_.overlay_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.param_importance_path.html">phenotypic.sdk_.param_importance_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_best_pipeline_path.html">phenotypic.sdk_.pareto_best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_dir.html">phenotypic.sdk_.pareto_dir</a></li>
@@ -1067,14 +1064,6 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.napari_.add_image_layer.html">phenotypic.sdk_.napari_.add_image_layer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.napari_.LabelEditorWidget.html">phenotypic.sdk_.napari_.LabelEditorWidget</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.napari_.PointPickerWidget.html">phenotypic.sdk_.napari_.PointPickerWidget</a></li>
-</ul>
-</details></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.register.html">phenotypic.sdk_.register</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.register.available_analysis_plugins.html">phenotypic.sdk_.register.available_analysis_plugins</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.register.get_analysis_plugin.html">phenotypic.sdk_.register.get_analysis_plugin</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.register.register_analysis.html">phenotypic.sdk_.register.register_analysis</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.register.AnalysisPluginRegistry.html">phenotypic.sdk_.register.AnalysisPluginRegistry</a></li>
-<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.register.BaseRegistry.html">phenotypic.sdk_.register.BaseRegistry</a></li>
 </ul>
 </details></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.slurm.html">phenotypic.sdk_.slurm</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -1497,67 +1486,70 @@ can influence shape interpretation (e.g., elongation along grid rows).</p></li>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.from_orm" title="phenotypic.abc_.GridMeasureFeatures.from_orm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_orm</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.json" title="phenotypic.abc_.GridMeasureFeatures.json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">json</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.get_measurement_infoclasses" title="phenotypic.abc_.GridMeasureFeatures.get_measurement_infoclasses"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_measurement_infoclasses</span></code></a></p></td>
+<td><p>Return the measurement schemas active for this operation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.json" title="phenotypic.abc_.GridMeasureFeatures.json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">json</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.measure" title="phenotypic.abc_.GridMeasureFeatures.measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measure</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.measure" title="phenotypic.abc_.GridMeasureFeatures.measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measure</span></code></a></p></td>
 <td><p>Compute grid edges and assign each detected object to a grid cell.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_construct" title="phenotypic.abc_.GridMeasureFeatures.model_construct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_construct</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_construct" title="phenotypic.abc_.GridMeasureFeatures.model_construct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_construct</span></code></a></p></td>
 <td><p>Creates a new instance of the <cite>Model</cite> class with validated data.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_copy" title="phenotypic.abc_.GridMeasureFeatures.model_copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_copy</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_copy" title="phenotypic.abc_.GridMeasureFeatures.model_copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_copy</span></code></a></p></td>
 <td><p>!!! abstract &quot;Usage Documentation&quot;</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_dump" title="phenotypic.abc_.GridMeasureFeatures.model_dump"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_dump</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_dump" title="phenotypic.abc_.GridMeasureFeatures.model_dump"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_dump</span></code></a></p></td>
 <td><p>!!! abstract &quot;Usage Documentation&quot;</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_dump_json" title="phenotypic.abc_.GridMeasureFeatures.model_dump_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_dump_json</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_dump_json" title="phenotypic.abc_.GridMeasureFeatures.model_dump_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_dump_json</span></code></a></p></td>
 <td><p>!!! abstract &quot;Usage Documentation&quot;</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_json_schema" title="phenotypic.abc_.GridMeasureFeatures.model_json_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_json_schema</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_json_schema" title="phenotypic.abc_.GridMeasureFeatures.model_json_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_json_schema</span></code></a></p></td>
 <td><p>Generates a JSON schema for a model class.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_parametrized_name" title="phenotypic.abc_.GridMeasureFeatures.model_parametrized_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_parametrized_name</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_parametrized_name" title="phenotypic.abc_.GridMeasureFeatures.model_parametrized_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_parametrized_name</span></code></a></p></td>
 <td><p>Compute the class name for parametrizations of generic classes.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_post_init" title="phenotypic.abc_.GridMeasureFeatures.model_post_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_post_init</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_post_init" title="phenotypic.abc_.GridMeasureFeatures.model_post_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_post_init</span></code></a></p></td>
 <td><p>Initialize logging and memory tracking after model construction.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_rebuild" title="phenotypic.abc_.GridMeasureFeatures.model_rebuild"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_rebuild</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_rebuild" title="phenotypic.abc_.GridMeasureFeatures.model_rebuild"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_rebuild</span></code></a></p></td>
 <td><p>Try to rebuild the pydantic-core schema for the model.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_validate" title="phenotypic.abc_.GridMeasureFeatures.model_validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_validate" title="phenotypic.abc_.GridMeasureFeatures.model_validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate</span></code></a></p></td>
 <td><p>Validate a pydantic model instance.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_validate_json" title="phenotypic.abc_.GridMeasureFeatures.model_validate_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate_json</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_validate_json" title="phenotypic.abc_.GridMeasureFeatures.model_validate_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate_json</span></code></a></p></td>
 <td><p>!!! abstract &quot;Usage Documentation&quot;</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_validate_strings" title="phenotypic.abc_.GridMeasureFeatures.model_validate_strings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate_strings</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.model_validate_strings" title="phenotypic.abc_.GridMeasureFeatures.model_validate_strings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate_strings</span></code></a></p></td>
 <td><p>Validate the given object with string data against the Pydantic model.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.parse_file" title="phenotypic.abc_.GridMeasureFeatures.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.parse_file" title="phenotypic.abc_.GridMeasureFeatures.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.parse_obj" title="phenotypic.abc_.GridMeasureFeatures.parse_obj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_obj</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.parse_obj" title="phenotypic.abc_.GridMeasureFeatures.parse_obj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_obj</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.parse_raw" title="phenotypic.abc_.GridMeasureFeatures.parse_raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_raw</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.parse_raw" title="phenotypic.abc_.GridMeasureFeatures.parse_raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_raw</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.schema" title="phenotypic.abc_.GridMeasureFeatures.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.schema" title="phenotypic.abc_.GridMeasureFeatures.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.schema_json" title="phenotypic.abc_.GridMeasureFeatures.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.schema_json" title="phenotypic.abc_.GridMeasureFeatures.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.to_json" title="phenotypic.abc_.GridMeasureFeatures.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.to_json" title="phenotypic.abc_.GridMeasureFeatures.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
 <td><p>Serialize this operation to JSON.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.update_forward_refs" title="phenotypic.abc_.GridMeasureFeatures.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.update_forward_refs" title="phenotypic.abc_.GridMeasureFeatures.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.validate" title="phenotypic.abc_.GridMeasureFeatures.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures.validate" title="phenotypic.abc_.GridMeasureFeatures.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -1898,6 +1890,26 @@ raised.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.GridMeasureFeatures.get_measurement_infoclasses">
+<span class="sig-name descname"><span class="pre">get_measurement_infoclasses</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.abc_.GridMeasureFeatures.get_measurement_infoclasses" title="Link to this definition">#</a></dt>
+<dd><p>Return the measurement schemas active for this operation.</p>
+<p>The default implementation discovers the singular
+<code class="docutils literal notranslate"><span class="pre">_measurement_infoclass</span></code> and plural <code class="docutils literal notranslate"><span class="pre">_measurement_infoclasses</span></code>
+declarations used by measurement operations. Subclasses only need to
+override this method when operation parameters enable or disable
+individual schemas.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Ordered, deduplicated measurement schema classes emitted by this
+operation instance.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)">type</a>[<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>], …]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2496,6 +2508,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GridMeasureFeatures.dict"><code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures.dict()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GridMeasureFeatures.from_json"><code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GridMeasureFeatures.from_orm"><code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures.from_orm()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GridMeasureFeatures.get_measurement_infoclasses"><code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures.get_measurement_infoclasses()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GridMeasureFeatures.json"><code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures.json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GridMeasureFeatures.model_computed_fields"><code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures.model_computed_fields</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GridMeasureFeatures.model_config"><code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures.model_config</span></code></a></li>

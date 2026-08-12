@@ -32,8 +32,6 @@
       timed_execution
       analysis_full_parquet_path
       analysis_manifest_path
-      analysis_html_path
-      analysis_scatter_json_path
       best_pipeline_path
       best_params_path
       bytes_fingerprint
@@ -91,7 +89,6 @@
       migrate_legacy_machine_state
       migrate_legacy_qc
       clear_machine_state
-      overlay_manifest_path
       param_importance_path
       pareto_best_pipeline_path
       pareto_dir
@@ -192,7 +189,6 @@
    constants_
    exceptions_
    napari_
-   register
    slurm
    slurm_
 

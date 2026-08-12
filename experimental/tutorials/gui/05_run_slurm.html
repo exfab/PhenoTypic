@@ -743,8 +743,10 @@ as cancelled.</p>
 and per-chunk job ids. The hub reads this file to surface the
 <code class="docutils literal notranslate"><span class="pre">slurm-&lt;id&gt;</span></code> row in Recent Runs — it does <strong>not</strong> parse Rich-formatted
 stdout (locale and terminal-width fragile).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/deliverables/dashboard.html</span></code>, published by the normal or
-staged finalizer once the run is complete.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/deliverables/dashboard.html</span></code>, created when the run is submitted
+so its Progress tab can track live work and failures. Normal and staged
+finalization refresh the same artifact; its Download tab retains the
+root-relative <code class="docutils literal notranslate"><span class="pre">wget</span></code> commands.</p></li>
 </ul>
 </section>
 <section id="operational-restart-guidance">

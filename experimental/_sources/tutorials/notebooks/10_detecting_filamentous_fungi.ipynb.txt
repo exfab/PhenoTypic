@@ -249,9 +249,9 @@
    },
    "outputs": [],
    "source": [
-    "from phenotypic.measure import MeasureSymmetricZones\n",
+    "from phenotypic.measure import MeasureSymZones\n",
     "\n",
-    "symmetric_radius = MeasureSymmetricZones()\n",
+    "symmetric_radius = MeasureSymZones()\n",
     "meas = symmetric_radius.measure(plate)\n",
     "\n",
     "symmetric_radius.inspect()"

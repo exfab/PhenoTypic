@@ -27,7 +27,7 @@
       MeasureOrientationZones
       MeasureShape
       MeasureSize
-      MeasureSymmetricZones
+      MeasureSymZones
       MeasureTexture
       MeasureGridSpread
       MeasureGridLinRegStats

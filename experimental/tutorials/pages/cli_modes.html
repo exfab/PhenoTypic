@@ -759,7 +759,7 @@ processing anything:</p>
 │   ├── measurements.{csv,parquet}          # post-applied mirror (the GUI reads this)
 │   ├── measurements_by_feature/            # one file per measurer
 │   ├── overlays/&lt;dataset&gt;/                 # detection overlay PNGs
-│   ├── dashboard.html, analysis.html, processing_report.html
+│   ├── dashboard.html, processing_report.html
 │   └── README.md                           # generated column documentation
 ├── results/&lt;dataset&gt;/
 │   ├── hdf/                # one .h5 per image — the reusable segmentation
@@ -769,6 +769,9 @@ processing anything:</p>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">hdf/</span></code> directory is what makes the other modes cheap: it holds each image’s
 object map, so <code class="docutils literal notranslate"><span class="pre">measure</span></code> never has to detect again.</p>
+<p><code class="docutils literal notranslate"><span class="pre">dashboard.html</span></code> is the run-progress and failure surface. Local runs show
+progress directly; SLURM runs add a Download tab. Explore measurements in the
+Results Viewer or the GUI <code class="docutils literal notranslate"><span class="pre">/analysis/</span></code> app.</p>
 <section id="scoping-a-run-while-you-iterate">
 <h3>Scoping a run while you iterate<a class="headerlink" href="#scoping-a-run-while-you-iterate" title="Link to this heading">#</a></h3>
 <p>Trying a new detector on a thousand plates to discover it splits every colony is
@@ -836,9 +839,8 @@ to <code class="docutils literal notranslate"><span class="pre">LiDetector</span
 <p><code class="docutils literal notranslate"><span class="pre">recompile</span></code> takes neither <code class="docutils literal notranslate"><span class="pre">--input</span></code> nor <code class="docutils literal notranslate"><span class="pre">--pipeline</span></code>; both are reloaded from the
 output root. It re-aggregates the per-image parquets into
 <code class="docutils literal notranslate"><span class="pre">master_measurements.csv</span></code>, regenerates any missing overlay PNGs from their HDFs,
-re-runs the analysis plugins, rebuilds the progress manifest, and regenerates
-the dashboard.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>recompile<span class="w"> </span>--output<span class="w"> </span>./out
+rebuilds the progress manifest, and regenerates the progress dashboard.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>recompile<span class="w"> </span>--output<span class="w"> </span>./out
 </pre></div>
 </div>
 <p>Reach for it when the <em>numbers</em> are right but the <em>presentation</em> is not:</p>

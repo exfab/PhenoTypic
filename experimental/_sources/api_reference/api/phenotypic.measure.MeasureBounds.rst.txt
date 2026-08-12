@@ -22,6 +22,7 @@ phenotypic.measure.MeasureBounds
       ~MeasureBounds.dict
       ~MeasureBounds.from_json
       ~MeasureBounds.from_orm
+      ~MeasureBounds.get_measurement_infoclasses
       ~MeasureBounds.json
       ~MeasureBounds.measure
       ~MeasureBounds.model_construct

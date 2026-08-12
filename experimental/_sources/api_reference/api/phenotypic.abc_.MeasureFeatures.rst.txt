@@ -22,6 +22,7 @@ phenotypic.abc\_.MeasureFeatures
       ~MeasureFeatures.dict
       ~MeasureFeatures.from_json
       ~MeasureFeatures.from_orm
+      ~MeasureFeatures.get_measurement_infoclasses
       ~MeasureFeatures.json
       ~MeasureFeatures.measure
       ~MeasureFeatures.model_construct

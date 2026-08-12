@@ -1,6 +1,0 @@
-phenotypic.sdk\_.register.get\_analysis\_plugin
-===============================================
-
-.. currentmodule:: phenotypic.sdk_.register
-
-.. autofunction:: get_analysis_plugin

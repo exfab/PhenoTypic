@@ -23,6 +23,7 @@ phenotypic.abc\_.GridFinder
       ~GridFinder.from_json
       ~GridFinder.from_orm
       ~GridFinder.get_col_edges
+      ~GridFinder.get_measurement_infoclasses
       ~GridFinder.get_row_edges
       ~GridFinder.json
       ~GridFinder.measure

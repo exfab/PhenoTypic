@@ -1,6 +1,0 @@
-phenotypic.sdk\_.register.register\_analysis
-============================================
-
-.. currentmodule:: phenotypic.sdk_.register
-
-.. autofunction:: register_analysis

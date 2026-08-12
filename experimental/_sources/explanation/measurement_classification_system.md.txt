@@ -57,5 +57,5 @@ A model fit on a primary phenotype is classified by its transformation:
 
 See also: [Measurement metrics and their biological meaning](measurement_metrics_biological_meaning.md)
 for per-metric detail, and the
-[measurement reference](../measurements_ref/index) for the Use/Tier badge on
+[measurement reference](../measurements_ref/measurements/index) for the Use/Tier badge on
 every column.

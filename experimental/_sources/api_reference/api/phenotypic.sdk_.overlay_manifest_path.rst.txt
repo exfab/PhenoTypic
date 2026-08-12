@@ -1,6 +1,0 @@
-phenotypic.sdk\_.overlay\_manifest\_path
-========================================
-
-.. currentmodule:: phenotypic.sdk_
-
-.. autofunction:: overlay_manifest_path

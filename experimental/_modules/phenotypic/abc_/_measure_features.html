@@ -617,7 +617,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">._base_operation</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseOperation</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationFailedError</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.funcs_</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_measure_integrity</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">OBJECT</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">catch_warnings_decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
@@ -927,8 +927,50 @@
 <span class="sd">              pipeline from scratch is unnecessary and slow.</span>
 
 <span class="sd">        Reference implementation:</span>
-<span class="sd">            :class:`phenotypic.measure.MeasureSymmetricZones`.</span>
+<span class="sd">            :class:`phenotypic.measure.MeasureSymZones`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MeasureFeatures.get_measurement_infoclasses">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasureFeatures.html#phenotypic.abc_.MeasureFeatures.get_measurement_infoclasses">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_measurement_infoclasses</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MeasurementInfo</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the measurement schemas active for this operation.</span>
+
+<span class="sd">        The default implementation discovers the singular</span>
+<span class="sd">        ``_measurement_infoclass`` and plural ``_measurement_infoclasses``</span>
+<span class="sd">        declarations used by measurement operations. Subclasses only need to</span>
+<span class="sd">        override this method when operation parameters enable or disable</span>
+<span class="sd">        individual schemas.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Ordered, deduplicated measurement schema classes emitted by this</span>
+<span class="sd">            operation instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">unwrap_private_default</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">MeasurementInfo</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">value</span>
+            <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="n">infos</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MeasurementInfo</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">single</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="s2">&quot;_measurement_infoclass&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">single</span> <span class="o">=</span> <span class="n">unwrap_private_default</span><span class="p">(</span><span class="n">single</span><span class="p">)</span>
+        <span class="n">plural</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="s2">&quot;_measurement_infoclasses&quot;</span><span class="p">,</span> <span class="p">())</span>
+        <span class="n">plural</span> <span class="o">=</span> <span class="n">unwrap_private_default</span><span class="p">(</span><span class="n">plural</span><span class="p">)</span>
+        <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">single</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">plural</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="n">candidates</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">plural</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">plural</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">plural</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">candidate</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                    <span class="nb">isinstance</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span>
+                    <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="n">MeasurementInfo</span><span class="p">)</span>
+                    <span class="ow">and</span> <span class="n">candidate</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">infos</span>
+            <span class="p">):</span>
+                <span class="n">infos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">infos</span><span class="p">)</span></div>
+
 
 <div class="viewcode-block" id="MeasureFeatures.measure">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasureFeatures.html#phenotypic.abc_.MeasureFeatures.measure">[docs]</a>

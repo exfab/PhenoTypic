@@ -23,6 +23,7 @@ phenotypic.grid.AutoGridFinder
       ~AutoGridFinder.from_json
       ~AutoGridFinder.from_orm
       ~AutoGridFinder.get_col_edges
+      ~AutoGridFinder.get_measurement_infoclasses
       ~AutoGridFinder.get_row_edges
       ~AutoGridFinder.json
       ~AutoGridFinder.measure

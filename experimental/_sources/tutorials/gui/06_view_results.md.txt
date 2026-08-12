@@ -30,9 +30,10 @@ populated viewer are:
        --output-root gui_tutorial_dataset/results --port 8051
    ```
 
-2. **Open `deliverables/dashboard.html`** in a browser. The dashboard is a
-   self-contained HTML report under the output directory's `deliverables/`
-   subfolder; you don't need a server to view it.
+2. **Open `deliverables/dashboard.html`** to monitor progress and inspect
+   failures. Local dashboards render progress directly; SLURM dashboards add
+   Progress and Download tabs. Use the Results Viewer or `/analysis/` app for
+   result exploration.
 
 The remaining screenshots come from the standalone launcher pointed at
 the output the [Run Locally](04_run_local.md) page produced.

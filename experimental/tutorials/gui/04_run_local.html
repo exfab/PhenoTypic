@@ -713,8 +713,9 @@ While the subprocess is alive:</p>
 order with stderr merged in.</p></li>
 <li><p>Once the CLI writes <code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/deliverables/dashboard.html</span></code>, the
 iframe panel points at <code class="docutils literal notranslate"><span class="pre">/runs/&lt;rel&gt;/deliverables/dashboard.html</span></code> and the
-live dashboard renders inside the run console — same dashboard you’d open
-standalone, just iframed.</p></li>
+live progress dashboard renders directly, without a tab bar, inside the run
+console. Use the Results Viewer or <code class="docutils literal notranslate"><span class="pre">/analysis/</span></code> app after publication for
+result exploration.</p></li>
 <li><p>Only one local run can be active at a time; the <code class="docutils literal notranslate"><span class="pre">Run</span></code> button stays
 disabled until the current run exits or you click <code class="docutils literal notranslate"><span class="pre">Cancel</span></code> (which
 sends SIGTERM, then SIGKILL after a 10-second grace period).</p></li>

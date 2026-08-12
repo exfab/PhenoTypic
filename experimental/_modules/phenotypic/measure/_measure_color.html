@@ -610,7 +610,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ndimage</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">OBJECT</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorXYZ</span><span class="p">,</span> <span class="n">Colorxy</span><span class="p">,</span> <span class="n">ColorLab</span><span class="p">,</span> <span class="n">ColorHSV</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.util</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">robust_color_center</span><span class="p">,</span>
@@ -676,6 +676,24 @@
     <span class="n">geomedian_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span>
     <span class="n">medoid_max_pixels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>
     <span class="n">random_seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="MeasureColor.get_measurement_infoclasses">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureColor.html#phenotypic.measure.MeasureColor.get_measurement_infoclasses">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_measurement_infoclasses</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MeasurementInfo</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the color schemas enabled for this operation instance.&quot;&quot;&quot;</span>
+        <span class="n">disabled</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MeasurementInfo</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_XYZ</span><span class="p">:</span>
+            <span class="n">disabled</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ColorXYZ</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_xy</span><span class="p">:</span>
+            <span class="n">disabled</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Colorxy</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span>
+                <span class="n">info</span>
+                <span class="k">for</span> <span class="n">info</span> <span class="ow">in</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_measurement_infoclasses</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">info</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">disabled</span>
+        <span class="p">)</span></div>
+
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
         <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>

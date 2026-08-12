@@ -632,7 +632,7 @@
 <span class="sd">        environment_by: Columns defining subplot columns within a page.</span>
 <span class="sd">        replicate_by: Columns identifying biological or technical replicates.</span>
 <span class="sd">        time: Numeric or ordered time column used on the x-axis.</span>
-<span class="sd">        measurements: Numeric measurement columns. An empty list selects</span>
+<span class="sd">        on: Numeric measurement columns. An empty list selects</span>
 <span class="sd">            eligible columns automatically.</span>
 <span class="sd">        connect: Whether to connect points within each replicate trace.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -640,26 +640,26 @@
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&quot;forbid&quot;</span><span class="p">)</span>
 
     <span class="n">page_by</span><span class="p">:</span> <span class="n">ColumnRefList</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
-        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;MetadataGenetic_Strain&quot;</span><span class="p">]</span>
+            <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;MetadataGenetic_Strain&quot;</span><span class="p">]</span>
     <span class="p">)</span>
     <span class="n">environment_by</span><span class="p">:</span> <span class="n">ColumnRefList</span>
     <span class="n">replicate_by</span><span class="p">:</span> <span class="n">ColumnRefList</span>
     <span class="n">time</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="s2">&quot;MetadataCulture_Time&quot;</span>
-    <span class="n">measurements</span><span class="p">:</span> <span class="n">ColumnRefList</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">on</span><span class="p">:</span> <span class="n">ColumnRefList</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">connect</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_validate_roles</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;PlotMeasTimeSeries&quot;</span><span class="p">:</span>
         <span class="n">roles</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;page_by&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">page_by</span><span class="p">,</span>
+            <span class="s2">&quot;page_by&quot;</span>       <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">page_by</span><span class="p">,</span>
             <span class="s2">&quot;environment_by&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment_by</span><span class="p">,</span>
-            <span class="s2">&quot;replicate_by&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">replicate_by</span><span class="p">,</span>
+            <span class="s2">&quot;replicate_by&quot;</span>  <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">replicate_by</span><span class="p">,</span>
         <span class="p">}</span>
         <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">columns</span> <span class="ow">in</span> <span class="n">roles</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">columns</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> must contain at least one column&quot;</span><span class="p">)</span>
             <span class="n">duplicates</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
-                <span class="p">{</span><span class="n">column</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span> <span class="k">if</span> <span class="n">columns</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">}</span>
+                    <span class="p">{</span><span class="n">column</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span> <span class="k">if</span> <span class="n">columns</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">}</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">duplicates</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> contains duplicate columns: </span><span class="si">{</span><span class="n">duplicates</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -670,7 +670,7 @@
                 <span class="n">previous</span> <span class="o">=</span> <span class="n">claimed</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">previous</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;column </span><span class="si">{</span><span class="n">column</span><span class="si">!r}</span><span class="s2"> cannot be used for both </span><span class="si">{</span><span class="n">previous</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2">&quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;column </span><span class="si">{</span><span class="n">column</span><span class="si">!r}</span><span class="s2"> cannot be used for both </span><span class="si">{</span><span class="n">previous</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2">&quot;</span>
                     <span class="p">)</span>
                 <span class="n">claimed</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">role</span>
         <span class="k">return</span> <span class="bp">self</span>
@@ -678,11 +678,11 @@
 <div class="viewcode-block" id="PlotMeasTimeSeries.inspect">
 <a class="viewcode-back" href="../../../api_reference/core/visualization_plotting.html#phenotypic.plotting.PlotMeasTimeSeries.inspect">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">inspect</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">subject</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">for_save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">overrides</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">subject</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="o">*</span><span class="p">,</span>
+            <span class="n">for_save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">overrides</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlotOutput</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Build one Plotly page per configured page grouping.</span>
 
@@ -699,7 +699,7 @@
         <span class="n">configured</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="n">overrides</span><span class="p">)</span> <span class="k">if</span> <span class="n">overrides</span> <span class="k">else</span> <span class="bp">self</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-                <span class="s2">&quot;PlotMeasTimeSeries.inspect requires a pandas DataFrame subject&quot;</span>
+                    <span class="s2">&quot;PlotMeasTimeSeries.inspect requires a pandas DataFrame subject&quot;</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="n">subject</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">PlotOutput</span><span class="p">(</span><span class="n">pages</span><span class="o">=</span><span class="p">())</span>
@@ -715,17 +715,17 @@
             <span class="n">page_pairs</span> <span class="o">=</span> <span class="n">_group_pairs</span><span class="p">(</span><span class="n">configured</span><span class="o">.</span><span class="n">page_by</span><span class="p">,</span> <span class="n">page_values</span><span class="p">)</span>
             <span class="n">page_key</span> <span class="o">=</span> <span class="n">_canonical_group_key</span><span class="p">(</span><span class="n">page_pairs</span><span class="p">)</span>
             <span class="n">pages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="n">PlotPage</span><span class="p">(</span>
-                    <span class="n">key</span><span class="o">=</span><span class="n">page_key</span><span class="p">,</span>
-                    <span class="n">label</span><span class="o">=</span><span class="n">_display_pairs</span><span class="p">(</span>
-                        <span class="n">page_pairs</span><span class="p">,</span> <span class="n">values_only</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">page_pairs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
-                    <span class="p">),</span>
-                    <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
-                        <span class="n">column</span><span class="p">:</span> <span class="n">_metadata_group_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-                        <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">page_pairs</span>
-                    <span class="p">},</span>
-                    <span class="n">figure</span><span class="o">=</span><span class="n">configured</span><span class="o">.</span><span class="n">_build_page</span><span class="p">(</span><span class="n">page_frame</span><span class="p">,</span> <span class="n">measurements</span><span class="p">),</span>
-                <span class="p">)</span>
+                    <span class="n">PlotPage</span><span class="p">(</span>
+                            <span class="n">key</span><span class="o">=</span><span class="n">page_key</span><span class="p">,</span>
+                            <span class="n">label</span><span class="o">=</span><span class="n">_display_pairs</span><span class="p">(</span>
+                                    <span class="n">page_pairs</span><span class="p">,</span> <span class="n">values_only</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">page_pairs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+                            <span class="p">),</span>
+                            <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+                                <span class="n">column</span><span class="p">:</span> <span class="n">_metadata_group_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                                <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">page_pairs</span>
+                            <span class="p">},</span>
+                            <span class="n">figure</span><span class="o">=</span><span class="n">configured</span><span class="o">.</span><span class="n">_build_page</span><span class="p">(</span><span class="n">page_frame</span><span class="p">,</span> <span class="n">measurements</span><span class="p">),</span>
+                    <span class="p">)</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">PlotOutput</span><span class="p">(</span><span class="n">pages</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">pages</span><span class="p">))</span></div>
 
@@ -743,32 +743,32 @@
             <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">environment_by</span><span class="p">,</span>
             <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">replicate_by</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span>
-            <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">measurements</span><span class="p">,</span>
+            <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">,</span>
         <span class="p">]</span>
         <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">column</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">requested</span> <span class="k">if</span> <span class="n">column</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;measurement table is missing columns: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">role</span><span class="p">,</span> <span class="n">columns</span> <span class="ow">in</span> <span class="p">(</span>
-            <span class="p">(</span><span class="s2">&quot;page_by&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">page_by</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;environment_by&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment_by</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;replicate_by&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">replicate_by</span><span class="p">),</span>
+                <span class="p">(</span><span class="s2">&quot;page_by&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">page_by</span><span class="p">),</span>
+                <span class="p">(</span><span class="s2">&quot;environment_by&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment_by</span><span class="p">),</span>
+                <span class="p">(</span><span class="s2">&quot;replicate_by&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">replicate_by</span><span class="p">),</span>
         <span class="p">):</span>
             <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
                 <span class="n">_validate_group_values</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="n">column</span><span class="p">],</span> <span class="n">role</span><span class="o">=</span><span class="n">role</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="n">column</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">measurements</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">:</span>
             <span class="n">nonnumeric</span> <span class="o">=</span> <span class="p">[</span>
                 <span class="n">column</span>
-                <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">measurements</span>
+                <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">on</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_numeric_dtype</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="n">column</span><span class="p">])</span>
             <span class="p">]</span>
             <span class="k">if</span> <span class="n">nonnumeric</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;explicit measurements must be numeric: </span><span class="si">{</span><span class="n">nonnumeric</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;explicit measurements must be numeric: </span><span class="si">{</span><span class="n">nonnumeric</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_measurement_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">measurements</span><span class="p">:</span>
-            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">measurements</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">)</span>
         <span class="n">excluded</span> <span class="o">=</span> <span class="p">{</span>
             <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">page_by</span><span class="p">,</span>
             <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">environment_by</span><span class="p">,</span>
@@ -781,22 +781,22 @@
             <span class="n">column</span>
             <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span>
             <span class="k">if</span> <span class="n">column</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">excluded</span>
-            <span class="ow">and</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_numeric_dtype</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="n">column</span><span class="p">])</span>
-            <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_metadata_header</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
-            <span class="ow">and</span> <span class="ow">not</span> <span class="n">column</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">&quot;Object_&quot;</span><span class="p">,</span> <span class="s2">&quot;Grid_&quot;</span><span class="p">,</span> <span class="s2">&quot;Quality&quot;</span><span class="p">,</span> <span class="s2">&quot;QC_&quot;</span><span class="p">))</span>
+               <span class="ow">and</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_numeric_dtype</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="n">column</span><span class="p">])</span>
+               <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_metadata_header</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
+               <span class="ow">and</span> <span class="ow">not</span> <span class="n">column</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">&quot;Object_&quot;</span><span class="p">,</span> <span class="s2">&quot;Grid_&quot;</span><span class="p">,</span> <span class="s2">&quot;Quality&quot;</span><span class="p">,</span> <span class="s2">&quot;QC_&quot;</span><span class="p">))</span>
         <span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_build_page</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-        <span class="n">measurements</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+            <span class="n">measurements</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">plotly.subplots</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_subplots</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
 
         <span class="n">environments</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_group_rows</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment_by</span><span class="p">))</span>
         <span class="n">environments</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span>
-            <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="n">_typed_group_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment_by</span><span class="p">,</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="n">_typed_group_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment_by</span><span class="p">,</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
         <span class="p">)</span>
         <span class="n">columns</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">environments</span><span class="p">)</span>
         <span class="n">subplot_titles</span> <span class="o">=</span> <span class="p">[]</span>
@@ -805,62 +805,63 @@
                 <span class="n">pairs</span> <span class="o">=</span> <span class="n">_group_pairs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment_by</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
                 <span class="n">subplot_titles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_display_pairs</span><span class="p">(</span><span class="n">pairs</span><span class="p">)</span> <span class="k">if</span> <span class="n">row_index</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
         <span class="n">figure</span> <span class="o">=</span> <span class="n">make_subplots</span><span class="p">(</span>
-            <span class="n">rows</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">measurements</span><span class="p">),</span>
-            <span class="n">cols</span><span class="o">=</span><span class="n">columns</span><span class="p">,</span>
-            <span class="n">subplot_titles</span><span class="o">=</span><span class="n">subplot_titles</span><span class="p">,</span>
-            <span class="n">shared_xaxes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-            <span class="n">vertical_spacing</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="mf">0.12</span><span class="p">,</span> <span class="mf">0.35</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">measurements</span><span class="p">),</span> <span class="mi">1</span><span class="p">)),</span>
+                <span class="n">rows</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">measurements</span><span class="p">),</span>
+                <span class="n">cols</span><span class="o">=</span><span class="n">columns</span><span class="p">,</span>
+                <span class="n">subplot_titles</span><span class="o">=</span><span class="n">subplot_titles</span><span class="p">,</span>
+                <span class="n">shared_xaxes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">vertical_spacing</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="mf">0.12</span><span class="p">,</span> <span class="mf">0.35</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">measurements</span><span class="p">),</span> <span class="mi">1</span><span class="p">)),</span>
         <span class="p">)</span>
 
         <span class="n">shown_legends</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">column_index</span><span class="p">,</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">environment_frame</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">environments</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
             <span class="n">replicates</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_group_rows</span><span class="p">(</span><span class="n">environment_frame</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">replicate_by</span><span class="p">))</span>
             <span class="n">replicates</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span>
-                <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="n">_typed_group_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">replicate_by</span><span class="p">,</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="n">_typed_group_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">replicate_by</span><span class="p">,</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="p">)</span>
             <span class="k">for</span> <span class="n">replicate_values</span><span class="p">,</span> <span class="n">replicate_frame</span> <span class="ow">in</span> <span class="n">replicates</span><span class="p">:</span>
                 <span class="n">pairs</span> <span class="o">=</span> <span class="n">_group_pairs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">replicate_by</span><span class="p">,</span> <span class="n">replicate_values</span><span class="p">)</span>
                 <span class="n">replicate_key</span> <span class="o">=</span> <span class="n">_canonical_group_key</span><span class="p">(</span><span class="n">pairs</span><span class="p">)</span>
                 <span class="n">replicate_label</span> <span class="o">=</span> <span class="n">_display_pairs</span><span class="p">(</span><span class="n">pairs</span><span class="p">)</span>
                 <span class="n">ordered</span> <span class="o">=</span> <span class="n">replicate_frame</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;mergesort&quot;</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;mergesort&quot;</span>
                 <span class="p">)</span>
                 <span class="k">for</span> <span class="n">row_index</span><span class="p">,</span> <span class="n">measurement</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">measurements</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
                     <span class="n">showlegend</span> <span class="o">=</span> <span class="n">replicate_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">shown_legends</span>
                     <span class="n">figure</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
-                        <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
-                            <span class="n">x</span><span class="o">=</span><span class="n">ordered</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
-                            <span class="n">y</span><span class="o">=</span><span class="n">ordered</span><span class="p">[</span><span class="n">measurement</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
-                            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;lines+markers&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">connect</span> <span class="k">else</span> <span class="s2">&quot;markers&quot;</span><span class="p">,</span>
-                            <span class="n">name</span><span class="o">=</span><span class="n">replicate_label</span><span class="p">,</span>
-                            <span class="n">legendgroup</span><span class="o">=</span><span class="n">replicate_key</span><span class="p">,</span>
-                            <span class="n">showlegend</span><span class="o">=</span><span class="n">showlegend</span><span class="p">,</span>
-                        <span class="p">),</span>
-                        <span class="n">row</span><span class="o">=</span><span class="n">row_index</span><span class="p">,</span>
-                        <span class="n">col</span><span class="o">=</span><span class="n">column_index</span><span class="p">,</span>
+                            <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                                    <span class="n">x</span><span class="o">=</span><span class="n">ordered</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                                    <span class="n">y</span><span class="o">=</span><span class="n">ordered</span><span class="p">[</span><span class="n">measurement</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                                    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;lines+markers&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">connect</span> <span class="k">else</span> <span class="s2">&quot;markers&quot;</span><span class="p">,</span>
+                                    <span class="n">name</span><span class="o">=</span><span class="n">replicate_label</span><span class="p">,</span>
+                                    <span class="n">legendgroup</span><span class="o">=</span><span class="n">replicate_key</span><span class="p">,</span>
+                                    <span class="n">showlegend</span><span class="o">=</span><span class="n">showlegend</span><span class="p">,</span>
+                            <span class="p">),</span>
+                            <span class="n">row</span><span class="o">=</span><span class="n">row_index</span><span class="p">,</span>
+                            <span class="n">col</span><span class="o">=</span><span class="n">column_index</span><span class="p">,</span>
                     <span class="p">)</span>
                     <span class="k">if</span> <span class="n">showlegend</span><span class="p">:</span>
                         <span class="n">shown_legends</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">replicate_key</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">row_index</span><span class="p">,</span> <span class="n">measurement</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">measurements</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-                <span class="n">figure</span><span class="o">.</span><span class="n">update_xaxes</span><span class="p">(</span><span class="n">title_text</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">row</span><span class="o">=</span><span class="n">row_index</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">column_index</span><span class="p">)</span>
+                <span class="n">figure</span><span class="o">.</span><span class="n">update_xaxes</span><span class="p">(</span><span class="n">title_text</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">row</span><span class="o">=</span><span class="n">row_index</span><span class="p">,</span>
+                                    <span class="n">col</span><span class="o">=</span><span class="n">column_index</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">column_index</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
                     <span class="n">figure</span><span class="o">.</span><span class="n">update_yaxes</span><span class="p">(</span>
-                        <span class="n">title_text</span><span class="o">=</span><span class="n">measurement</span><span class="p">,</span>
-                        <span class="n">row</span><span class="o">=</span><span class="n">row_index</span><span class="p">,</span>
-                        <span class="n">col</span><span class="o">=</span><span class="n">column_index</span><span class="p">,</span>
+                            <span class="n">title_text</span><span class="o">=</span><span class="n">measurement</span><span class="p">,</span>
+                            <span class="n">row</span><span class="o">=</span><span class="n">row_index</span><span class="p">,</span>
+                            <span class="n">col</span><span class="o">=</span><span class="n">column_index</span><span class="p">,</span>
                     <span class="p">)</span>
         <span class="n">figure</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
-            <span class="n">height</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="mi">360</span><span class="p">,</span> <span class="mi">300</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">measurements</span><span class="p">)),</span>
-            <span class="n">width</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="mi">650</span><span class="p">,</span> <span class="mi">450</span> <span class="o">*</span> <span class="n">columns</span><span class="p">),</span>
-            <span class="n">legend_title_text</span><span class="o">=</span><span class="s2">&quot;Replicate&quot;</span><span class="p">,</span>
+                <span class="n">height</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="mi">360</span><span class="p">,</span> <span class="mi">300</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">measurements</span><span class="p">)),</span>
+                <span class="n">width</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="mi">650</span><span class="p">,</span> <span class="mi">450</span> <span class="o">*</span> <span class="n">columns</span><span class="p">),</span>
+                <span class="n">legend_title_text</span><span class="o">=</span><span class="s2">&quot;Replicate&quot;</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">figure</span></div>
 
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_group_rows</span><span class="p">(</span>
-    <span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-    <span class="n">columns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">columns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Group rows without pandas&#39; null-category or mixed-type coercion.</span>
 
@@ -871,7 +872,7 @@
     <span class="n">grouped</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">values_frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">columns</span><span class="p">]</span>
     <span class="k">for</span> <span class="n">position</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
-        <span class="n">values_frame</span><span class="o">.</span><span class="n">itertuples</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="n">values_frame</span><span class="o">.</span><span class="n">itertuples</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
     <span class="p">):</span>
         <span class="n">normalized</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">_normalize_group_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">row</span><span class="p">)</span>
         <span class="n">raw_values</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">normalized</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">normalized</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">normalized</span>
@@ -886,8 +887,8 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_group_pairs</span><span class="p">(</span>
-    <span class="n">columns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-    <span class="n">raw_values</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">columns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">raw_values</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
     <span class="n">values</span> <span class="o">=</span> <span class="n">raw_values</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_values</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="n">raw_values</span><span class="p">,)</span>
     <span class="k">return</span> <span class="p">[</span>
@@ -937,44 +938,45 @@
         <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">timedelta</span><span class="p">):</span>
         <span class="n">nanoseconds</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">days</span> <span class="o">*</span> <span class="mi">86_400</span> <span class="o">+</span> <span class="n">value</span><span class="o">.</span><span class="n">seconds</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1_000_000_000</span>
-            <span class="o">+</span> <span class="n">value</span><span class="o">.</span><span class="n">microseconds</span> <span class="o">*</span> <span class="mi">1_000</span>
+                <span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">days</span> <span class="o">*</span> <span class="mi">86_400</span> <span class="o">+</span> <span class="n">value</span><span class="o">.</span><span class="n">seconds</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1_000_000_000</span>
+                <span class="o">+</span> <span class="n">value</span><span class="o">.</span><span class="n">microseconds</span> <span class="o">*</span> <span class="mi">1_000</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">nanoseconds</span><span class="si">}</span><span class="s2"> ns&quot;</span>
     <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;unsupported metadata grouping value </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2"> (</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;unsupported metadata grouping value </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2"> (</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">)&quot;</span>
     <span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_display_pairs</span><span class="p">(</span>
-    <span class="n">pairs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
-    <span class="o">*</span><span class="p">,</span>
-    <span class="n">values_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">pairs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">values_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">values_only</span><span class="p">:</span>
         <span class="n">value</span> <span class="o">=</span> <span class="n">pairs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">return</span> <span class="s2">&quot;&lt;null&gt;&quot;</span> <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
     <span class="k">return</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="s1">&#39;&lt;null&gt;&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="kc">None</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">pairs</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="s1">&#39;&lt;null&gt;&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="kc">None</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span>
+            <span class="n">pairs</span>
     <span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_validate_group_values</span><span class="p">(</span>
-    <span class="n">series</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
-    <span class="o">*</span><span class="p">,</span>
-    <span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">series</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">series</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">():</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">normalized</span> <span class="o">=</span> <span class="n">_normalize_group_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
         <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2"> column </span><span class="si">{</span><span class="n">column</span><span class="si">!r}</span><span class="s2"> contains unsupported grouping value </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2"> column </span><span class="si">{</span><span class="n">column</span><span class="si">!r}</span><span class="s2"> contains unsupported grouping value </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">&quot;</span>
             <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">normalized</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">normalized</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2"> column </span><span class="si">{</span><span class="n">column</span><span class="si">!r}</span><span class="s2"> contains infinite grouping value </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2"> column </span><span class="si">{</span><span class="n">column</span><span class="si">!r}</span><span class="s2"> contains infinite grouping value </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
 
 

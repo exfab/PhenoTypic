@@ -1,6 +1,0 @@
-phenotypic.sdk\_.analysis\_html\_path
-=====================================
-
-.. currentmodule:: phenotypic.sdk_
-
-.. autofunction:: analysis_html_path

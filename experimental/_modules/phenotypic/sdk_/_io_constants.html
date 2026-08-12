@@ -624,15 +624,15 @@
 <span class="sd">      Use these from any caller that has the run root in scope:</span>
 <span class="sd">      ``master_measurements_csv_path``, ``manifest_json_path``,</span>
 <span class="sd">      ``job_metadata_path``, ``pipeline_json_path``, ``task_status_path``,</span>
-<span class="sd">      ``logs_dir``, ``slurm_scripts_dir``, ``analysis_html_path``,</span>
-<span class="sd">      ``processing_report_html_path``, ``measurements_by_feature_dir``,</span>
+<span class="sd">      ``logs_dir``, ``slurm_scripts_dir``, ``processing_report_html_path``,</span>
+<span class="sd">      ``measurements_by_feature_dir``,</span>
 <span class="sd">      etc.</span>
 <span class="sd">    - **`progress_dir_: Path`** — the already-resolved progress dir</span>
 <span class="sd">      (i.e. ``output_dir / &quot;progress&quot;``). Used for helpers that produce</span>
 <span class="sd">      paths to *internal mid-run artifacts* the SLURM sentinel + chunk</span>
 <span class="sd">      writer hand around between each other:</span>
-<span class="sd">      ``analysis_full_parquet_path``, ``analysis_scatter_json_path``,</span>
-<span class="sd">      ``sentinel_resubmitted_path``, ``chunk_lock_path``, ``chunks_dir``,</span>
+<span class="sd">      ``analysis_full_parquet_path``, ``sentinel_resubmitted_path``,</span>
+<span class="sd">      ``chunk_lock_path``, ``chunks_dir``,</span>
 <span class="sd">      ``chunk_parquet_path``, ``checkpoint_lock_path``, ``recompile_dir``,</span>
 <span class="sd">      ``recompile_status_dir``. The trailing underscore on the parameter</span>
 <span class="sd">      name disambiguates it from the ``progress_dir(output_dir)``</span>
@@ -1228,10 +1228,6 @@
 <span class="c1">#: SLURM checkpoint chunk state (which per-image files have been chunked).</span>
 <span class="n">CHUNK_STATE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunk_state.json&quot;</span>
 
-<span class="c1">#: Manifest of overlay PNGs (one entry per per-image overlay). Lives alongside</span>
-<span class="c1">#: the overlays under ``&lt;output&gt;/deliverables/overlays/``.</span>
-<span class="n">OVERLAY_MANIFEST_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;overlay_manifest.json&quot;</span>
-
 <span class="c1">#: Top-level dashboard manifest read by the dashboard HTML JS shim.</span>
 <span class="c1">#: Keys are documented in :class:`DashboardManifestKey`.</span>
 <span class="n">MANIFEST_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;manifest.json&quot;</span>
@@ -1245,7 +1241,7 @@
 <span class="c1"># Dashboard / log files</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
-<span class="c1">#: Generated HTML dashboard with charts + chunked-data viewer.</span>
+<span class="c1">#: Generated progress and failure dashboard.</span>
 <span class="n">DASHBOARD_HTML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;dashboard.html&quot;</span>
 
 <span class="c1">#: Per-run stdout capture written by the run console&#39;s local runner.</span>
@@ -1258,18 +1254,13 @@
 <span class="c1">#: the CLI decides whether an output is otherwise fresh.</span>
 <span class="n">GUI_LOG_FILENAMES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="n">STDOUT_LOG</span><span class="p">})</span>
 
-<span class="c1">#: Generated standalone analysis HTML emitted alongside the dashboard.</span>
-<span class="n">ANALYSIS_HTML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis.html&quot;</span>
-
 <span class="c1">#: Top-level processing report HTML emitted by recompile mode.</span>
 <span class="n">PROCESSING_REPORT_HTML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;processing_report.html&quot;</span>
 
-<span class="c1">#: Mid-run combined Parquet that the chunk writer rewrites incrementally</span>
-<span class="c1">#: as new per-image measurements arrive (lives in ``DIR_PROGRESS``).</span>
+<span class="c1">#: Legacy-named rolling aggregation state that the chunk writer rewrites as</span>
+<span class="c1">#: per-image measurements arrive. It is unrelated to the retired static</span>
+<span class="c1">#: analysis dashboard and remains in ``DIR_PROGRESS`` for resumable runs.</span>
 <span class="n">ANALYSIS_FULL_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis_full.parquet&quot;</span>
-
-<span class="c1">#: Pre-computed scatter-plot data for the dashboard analysis pane.</span>
-<span class="n">ANALYSIS_SCATTER_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis_scatter.json&quot;</span>
 
 <span class="c1">#: Sentinel marker file written by the SLURM sentinel after a re-submission;</span>
 <span class="c1">#: presence prevents an infinite resubmission loop on the next checkpoint.</span>
@@ -2380,22 +2371,6 @@
 
 
 
-<div class="viewcode-block" id="overlay_manifest_path">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.overlay_manifest_path.html#phenotypic.sdk_.overlay_manifest_path">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">overlay_manifest_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/overlays/overlay_manifest.json``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">overlays_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">OVERLAY_MANIFEST_JSON</span></div>
-
-
-
-<div class="viewcode-block" id="analysis_html_path">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.analysis_html_path.html#phenotypic.sdk_.analysis_html_path">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">analysis_html_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/analysis.html``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">ANALYSIS_HTML</span></div>
-
-
-
 <div class="viewcode-block" id="processing_report_html_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.processing_report_html_path.html#phenotypic.sdk_.processing_report_html_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">processing_report_html_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
@@ -2415,21 +2390,13 @@
 <div class="viewcode-block" id="analysis_full_parquet_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.analysis_full_parquet_path.html#phenotypic.sdk_.analysis_full_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">analysis_full_parquet_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/analysis_full.parquet`` (incremental combined frame).</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the legacy-named rolling measurement aggregation state.</span>
 
 <span class="sd">    Takes a *progress_dir* (not the run output root) since this file lives</span>
-<span class="sd">    inside ``progress/`` — it&#39;s an internal mid-run artifact, not a user-</span>
-<span class="sd">    facing output.</span>
+<span class="sd">    inside ``progress/``. It is an internal resumable-run artifact, not a</span>
+<span class="sd">    static-analysis sidecar or user-facing output.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">ANALYSIS_FULL_PARQUET</span></div>
-
-
-
-<div class="viewcode-block" id="analysis_scatter_json_path">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.analysis_scatter_json_path.html#phenotypic.sdk_.analysis_scatter_json_path">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">analysis_scatter_json_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/analysis_scatter.json``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">ANALYSIS_SCATTER_JSON</span></div>
 
 
 
@@ -2739,7 +2706,6 @@
     <span class="n">INPUT_PATH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;input_path&quot;</span>
     <span class="n">DATASETS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;datasets&quot;</span>
     <span class="n">FAILURE_CATEGORIES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;failure_categories&quot;</span>
-    <span class="n">ANALYSIS_DATA_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis_data_version&quot;</span>
     <span class="n">SLURM_INFO</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;slurm_info&quot;</span></div>
 
 

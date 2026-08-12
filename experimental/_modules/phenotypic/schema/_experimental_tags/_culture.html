@@ -630,24 +630,23 @@
         <span class="k">return</span> <span class="n">REMBI_MODULE</span><span class="o">.</span><span class="n">SPECIMEN_PREP</span></div>
 
 
-    <span class="n">TEMPERATURE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Temperature&quot;</span><span class="p">,</span> <span class="s2">&quot;Culture temperature in degrees Celsius.&quot;</span><span class="p">)</span>
     <span class="n">TIME</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Time&quot;</span><span class="p">,</span> <span class="s2">&quot;Elapsed growth time.&quot;</span><span class="p">,</span>
                  <span class="n">rembi_module</span><span class="o">=</span><span class="n">REMBI_MODULE</span><span class="o">.</span><span class="n">BIOSAMPLE</span><span class="p">)</span>
     <span class="n">TIME_UNIT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;TimeUnit&quot;</span><span class="p">,</span> <span class="s2">&quot;Unit for the Time value (e.g. hours, days).&quot;</span><span class="p">,</span>
                       <span class="n">rembi_module</span><span class="o">=</span><span class="n">REMBI_MODULE</span><span class="o">.</span><span class="n">BIOSAMPLE</span><span class="p">)</span>
     <span class="n">TIMEPOINT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
-        <span class="s2">&quot;Timepoint&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Human-readable label for a discrete timepoint in a time series (e.g. &quot;</span>
-        <span class="s2">&quot;&#39;24h&#39;, &#39;stationary&#39;); may be non-numeric. For the integer capture &quot;</span>
-        <span class="s2">&quot;ordinal, use FrameIndex.&quot;</span><span class="p">,</span>
-        <span class="n">rembi_module</span><span class="o">=</span><span class="n">REMBI_MODULE</span><span class="o">.</span><span class="n">BIOSAMPLE</span><span class="p">,</span>
+            <span class="s2">&quot;Timepoint&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Human-readable label for a discrete timepoint in a time series (e.g. &quot;</span>
+            <span class="s2">&quot;&#39;24h&#39;, &#39;stationary&#39;); may be non-numeric. For the integer capture &quot;</span>
+            <span class="s2">&quot;ordinal, use FrameIndex.&quot;</span><span class="p">,</span>
+            <span class="n">rembi_module</span><span class="o">=</span><span class="n">REMBI_MODULE</span><span class="o">.</span><span class="n">BIOSAMPLE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">FRAME_INDEX</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
-        <span class="s2">&quot;FrameIndex&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;1-based ordinal index of the image within the time-course capture &quot;</span>
-        <span class="s2">&quot;sequence; the monotonic-integer companion to the free-form Timepoint &quot;</span>
-        <span class="s2">&quot;label.&quot;</span><span class="p">,</span>
-        <span class="n">rembi_module</span><span class="o">=</span><span class="n">REMBI_MODULE</span><span class="o">.</span><span class="n">BIOSAMPLE</span><span class="p">,</span>
+            <span class="s2">&quot;FrameIndex&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;1-based ordinal index of the image within the time-course capture &quot;</span>
+            <span class="s2">&quot;sequence; the monotonic-integer companion to the free-form Timepoint &quot;</span>
+            <span class="s2">&quot;label.&quot;</span><span class="p">,</span>
+            <span class="n">rembi_module</span><span class="o">=</span><span class="n">REMBI_MODULE</span><span class="o">.</span><span class="n">BIOSAMPLE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">DAY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Day&quot;</span><span class="p">,</span> <span class="s2">&quot;Day index of the experiment.&quot;</span><span class="p">)</span>
     <span class="n">GENERATION</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Generation&quot;</span><span class="p">,</span> <span class="s2">&quot;Generation or passage number.&quot;</span><span class="p">)</span>

@@ -22,6 +22,7 @@ phenotypic.measure.MeasureNeighborDist
       ~MeasureNeighborDist.dict
       ~MeasureNeighborDist.from_json
       ~MeasureNeighborDist.from_orm
+      ~MeasureNeighborDist.get_measurement_infoclasses
       ~MeasureNeighborDist.json
       ~MeasureNeighborDist.measure
       ~MeasureNeighborDist.model_construct

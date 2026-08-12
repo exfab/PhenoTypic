@@ -619,7 +619,7 @@
 <a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.CONDITION_METADATA.html#phenotypic.schema.CONDITION_METADATA.category">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;MetadataCondition&quot;</span></div>
+        <span class="k">return</span> <span class="s2">&quot;MetadatasCondition&quot;</span></div>
 
 
 <div class="viewcode-block" id="CONDITION_METADATA.rembi_module">
@@ -630,7 +630,8 @@
 
 
     <span class="n">MEDIA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Media&quot;</span><span class="p">,</span> <span class="s2">&quot;Growth medium name (e.g. YPD, SC, LB).&quot;</span><span class="p">)</span>
-    <span class="n">CARBON_SOURCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CarbonSource&quot;</span><span class="p">,</span> <span class="s2">&quot;Primary carbon source (e.g. glucose, galactose).&quot;</span><span class="p">)</span>
+    <span class="n">CARBON_SOURCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CarbonSource&quot;</span><span class="p">,</span>
+                          <span class="s2">&quot;Primary carbon source (e.g. glucose, galactose).&quot;</span><span class="p">)</span>
     <span class="n">NITROGEN_SOURCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;NitrogenSource&quot;</span><span class="p">,</span> <span class="s2">&quot;Primary nitrogen source.&quot;</span><span class="p">)</span>
     <span class="n">PH</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;pH&quot;</span><span class="p">,</span> <span class="s2">&quot;pH of the growth medium.&quot;</span><span class="p">)</span>
     <span class="n">SUPPLEMENT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Supplement&quot;</span><span class="p">,</span> <span class="s2">&quot;Medium supplement or additive.&quot;</span><span class="p">)</span>
@@ -638,9 +639,13 @@
     <span class="n">INDUCER</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Inducer&quot;</span><span class="p">,</span> <span class="s2">&quot;Inducing agent (e.g. galactose, IPTG, doxycycline).&quot;</span><span class="p">)</span>
     <span class="n">TREATMENT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Treatment&quot;</span><span class="p">,</span> <span class="s2">&quot;Experimental treatment or perturbation.&quot;</span><span class="p">)</span>
     <span class="n">COMPOUND</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Compound&quot;</span><span class="p">,</span> <span class="s2">&quot;Chemical compound or drug applied.&quot;</span><span class="p">)</span>
-    <span class="n">CONCENTRATION</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Concentration&quot;</span><span class="p">,</span> <span class="s2">&quot;Concentration of the compound or treatment.&quot;</span><span class="p">)</span>
+    <span class="n">CONCENTRATION</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Concentration&quot;</span><span class="p">,</span>
+                          <span class="s2">&quot;Concentration of the compound or treatment.&quot;</span><span class="p">)</span>
     <span class="n">DOSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Dose&quot;</span><span class="p">,</span> <span class="s2">&quot;Dose applied to the sample.&quot;</span><span class="p">)</span>
-    <span class="n">STRESS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Stress&quot;</span><span class="p">,</span> <span class="s2">&quot;Applied stress condition (e.g. heat, osmotic, oxidative).&quot;</span><span class="p">)</span></div>
+    <span class="n">STRESS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Stress&quot;</span><span class="p">,</span>
+                   <span class="s2">&quot;Applied stress condition (e.g. heat, osmotic, oxidative).&quot;</span><span class="p">)</span>
+    <span class="n">TEMPERATURE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Temperature&quot;</span><span class="p">,</span> <span class="s2">&quot;Culture temperature in degrees Celsius.&quot;</span><span class="p">)</span>
+    <span class="n">SALINITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Salinity&quot;</span><span class="p">,</span> <span class="s2">&quot;Salt Salinity&quot;</span><span class="p">)</span></div>
 
 </pre></div>
 

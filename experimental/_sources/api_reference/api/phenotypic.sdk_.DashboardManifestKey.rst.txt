@@ -26,7 +26,6 @@ phenotypic.sdk\_.DashboardManifestKey
 
    .. autosummary::
    
-      ~DashboardManifestKey.ANALYSIS_DATA_VERSION
       ~DashboardManifestKey.COMPLETED
       ~DashboardManifestKey.DATASETS
       ~DashboardManifestKey.EVENT_DIAGNOSTICS

@@ -82,7 +82,7 @@ out/
 │   ├── measurements.{csv,parquet}          # post-applied mirror (the GUI reads this)
 │   ├── measurements_by_feature/            # one file per measurer
 │   ├── overlays/<dataset>/                 # detection overlay PNGs
-│   ├── dashboard.html, analysis.html, processing_report.html
+│   ├── dashboard.html, processing_report.html
 │   └── README.md                           # generated column documentation
 ├── results/<dataset>/
 │   ├── hdf/                # one .h5 per image — the reusable segmentation
@@ -92,6 +92,10 @@ out/
 
 The `hdf/` directory is what makes the other modes cheap: it holds each image's
 object map, so `measure` never has to detect again.
+
+`dashboard.html` is the run-progress and failure surface. Local runs show
+progress directly; SLURM runs add a Download tab. Explore measurements in the
+Results Viewer or the GUI `/analysis/` app.
 
 ### Scoping a run while you iterate
 
@@ -168,11 +172,10 @@ to `LiDetector` in the pipeline you pass will not re-segment anything.
 `recompile` takes neither `--input` nor `--pipeline`; both are reloaded from the
 output root. It re-aggregates the per-image parquets into
 `master_measurements.csv`, regenerates any missing overlay PNGs from their HDFs,
-re-runs the analysis plugins, rebuilds the progress manifest, and regenerates
-the dashboard.
+rebuilds the progress manifest, and regenerates the progress dashboard.
 
 ```bash
-python -m phenotypic --mode recompile --output ./out
+uv run python -m phenotypic --mode recompile --output ./out
 ```
 
 Reach for it when the *numbers* are right but the *presentation* is not:

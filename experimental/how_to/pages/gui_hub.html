@@ -836,7 +836,9 @@ subfolder, the iframe panel points at
 the hub’s Flask server directly — not under the dispatcher middleware — so the
 URL works regardless of which tab is active. The iframed dashboard polls its own
 progress files using relative URLs, which the <code class="docutils literal notranslate"><span class="pre">/runs/</span></code> route resolves inside the
-sandbox.</p>
+sandbox. Local dashboards show progress without a tab bar; SLURM dashboards
+retain Progress and Download tabs. Result exploration lives in the Results
+Viewer and <code class="docutils literal notranslate"><span class="pre">/analysis/</span></code> app.</p>
 <p><strong>Cancel</strong> sends SIGTERM to the subprocess and waits up to 10 seconds. If the
 subprocess does not exit within that window, SIGKILL is sent. The GUI also
 registers an <code class="docutils literal notranslate"><span class="pre">atexit</span></code> hook so closing the hub with Ctrl-C propagates a SIGTERM
