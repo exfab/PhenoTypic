@@ -200,7 +200,7 @@ class TestMeasureSymmetricZones:
         op = MeasureSymZones()
 
         op.measure(image)
-        cache = op._MeasureSymmetricZones__cache_intermediates
+        cache = op._MeasureSymZones__cache_intermediates
         assert cache
         for intermediates in cache.values():
             for item in fields(intermediates):

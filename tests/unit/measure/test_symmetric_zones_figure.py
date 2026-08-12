@@ -156,7 +156,7 @@ def test_inspect_recomputes_cache_after_measurement_parameter_change(
     assert isinstance(fig, go.Figure)
     assert recomputed_labels
     assert (
-            getattr(op, "_MeasureSymmetricZones__cache_signature")
+            getattr(op, "_MeasureSymZones__cache_signature")
             == op.model_dump_json()
     )
 
@@ -164,10 +164,10 @@ def test_inspect_recomputes_cache_after_measurement_parameter_change(
 def test_measurement_cache_does_not_retain_whole_image(measured):
     op, image = measured
 
-    image_ref = getattr(op, "_MeasureSymmetricZones__cache_image_ref")
+    image_ref = getattr(op, "_MeasureSymZones__cache_image_ref")
     assert isinstance(image_ref, weakref.ReferenceType)
     assert image_ref() is image
-    assert not hasattr(op, "_MeasureSymmetricZones__cache_image")
+    assert not hasattr(op, "_MeasureSymZones__cache_image")
 
 
 def test_inspect_rejects_invalid_base_layer(measured):

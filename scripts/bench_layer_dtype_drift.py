@@ -21,9 +21,10 @@ import time
 import warnings
 from pathlib import Path
 
-warnings.filterwarnings("ignore")
 import numpy as np
 import pandas as pd
+
+warnings.filterwarnings("ignore")
 
 OUT = Path(tempfile.gettempdir()) / "phenotypic_bench_layer_dtype"
 
@@ -133,7 +134,7 @@ def compare(tag_a: str, tag_b: str):
     print(
         f"hdf5 total       : {ta / 1024:8.1f} -> {tb / 1024:8.1f} KiB  ({100 * (1 - tb / ta):+.1f}%)")
     for layer in sorted(a.get("hdf5_layers", {})):
-        la = a["hdf5_layers"][layer];
+        la = a["hdf5_layers"][layer]
         lb = b["hdf5_layers"].get(layer, 0)
         if la:
             print(
@@ -143,7 +144,7 @@ def compare(tag_a: str, tag_b: str):
     print(
         f"{'measure':18s} {'maxrel':>12s} {'maxabs':>12s} {'t_a(ms)':>9s} {'t_b(ms)':>9s} {'speedup':>8s}")
     for name in a["measures"]:
-        ma = a["measures"][name];
+        ma = a["measures"][name]
         mb = b["measures"].get(name, {})
         if "error" in ma or "error" in mb:
             print(f"{name:18s}  (error a={'error' in ma} b={'error' in mb})")
@@ -156,24 +157,24 @@ def compare(tag_a: str, tag_b: str):
         na = da.select_dtypes(include=[np.number]).astype(np.float64)
         nb = db.select_dtypes(include=[np.number]).astype(np.float64)
         cols = [c for c in na.columns if c in nb.columns]
-        max_rel = 0.0;
-        max_abs = 0.0;
+        max_rel = 0.0
+        max_abs = 0.0
         worst_col = ""
         for c in cols:
-            va = na[c].values;
+            va = na[c].values
             vb = nb[c].values
             if va.shape != vb.shape:
-                max_rel = float("nan");
+                max_rel = float("nan")
                 break
             absdiff = np.abs(va - vb)
             denom = np.maximum(np.abs(va), 1e-12)
             rel = np.nanmax(absdiff / denom) if absdiff.size else 0.0
             ab = np.nanmax(absdiff) if absdiff.size else 0.0
             if rel > max_rel:
-                max_rel = float(rel);
+                max_rel = float(rel)
                 worst_col = c
             max_abs = max(max_abs, float(ab))
-        ta_ms = ma["seconds"] * 1000;
+        ta_ms = ma["seconds"] * 1000
         tb_ms = mb["seconds"] * 1000
         speed = ta_ms / tb_ms if tb_ms else float("nan")
         print(f"{name:18s} {max_rel:12.3e} {max_abs:12.3e} {ta_ms:9.2f} {tb_ms:9.2f} "

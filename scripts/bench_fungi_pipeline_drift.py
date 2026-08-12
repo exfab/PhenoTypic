@@ -12,10 +12,11 @@ from __future__ import annotations
 import time
 import warnings
 
-warnings.filterwarnings("ignore")
 import numpy as np
 
 from phenotypic._core._image_parts._image_data_manager import ImageData
+
+warnings.filterwarnings("ignore")
 
 
 def _run(dtype):
@@ -116,8 +117,8 @@ def _meas_drift(ma, mb):
         na = da.select_dtypes(include=[np.number]).astype(np.float64)
         nb = db.select_dtypes(include=[np.number]).astype(np.float64)
         cols = [c for c in na.columns if c in nb.columns]
-        max_rel = 0.0;
-        max_abs = 0.0;
+        max_rel = 0.0
+        max_abs = 0.0
         worst = ""
         shape_mismatch = na.shape[0] != nb.shape[0]
         for c in cols:
