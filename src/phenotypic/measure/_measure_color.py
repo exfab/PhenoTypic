@@ -12,7 +12,7 @@ import logging
 from scipy import ndimage
 
 from phenotypic.abc_ import MeasureFeatures
-from phenotypic.schema import OBJECT
+from phenotypic.schema import MeasurementInfo, OBJECT
 from phenotypic.schema import ColorXYZ, Colorxy, ColorLab, ColorHSV
 from phenotypic.util import (
     robust_color_center,
@@ -76,6 +76,21 @@ class MeasureColor(MeasureFeatures):
     geomedian_tol: float = 1e-4
     medoid_max_pixels: int = 1000
     random_seed: int = 0
+
+    def get_measurement_infoclasses(
+            self,
+    ) -> tuple[type[MeasurementInfo], ...]:
+        """Return the color schemas enabled for this operation instance."""
+        disabled: set[type[MeasurementInfo]] = set()
+        if not self.include_XYZ:
+            disabled.add(ColorXYZ)
+        if not self.include_xy:
+            disabled.add(Colorxy)
+        return tuple(
+                info
+                for info in super().get_measurement_infoclasses()
+                if info not in disabled
+        )
 
     def _operate(self, image: Image) -> pd.DataFrame:
         objmap = image.objmap[:]

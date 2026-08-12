@@ -12,6 +12,7 @@ from pydantic import PrivateAttr, field_validator, model_validator
 from phenotypic.abc_ import MeasureFeatures
 from phenotypic.abc_.plotting import Control, PlotImage, figure
 from phenotypic.schema import (
+    MeasurementInfo,
     OBJECT,
     ORIENTATION_ZONE_DIAGNOSTIC,
     ORIENTATION_ZONE_PRIMARY,
@@ -981,6 +982,19 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             default=None
     )
     _cache_signature: str | None = PrivateAttr(default=None)
+
+    def get_measurement_infoclasses(
+            self,
+    ) -> tuple[type[MeasurementInfo], ...]:
+        """Return primary and optionally diagnostic orientation schemas."""
+        infos = super().get_measurement_infoclasses()
+        if self.include_diagnostics:
+            return infos
+        return tuple(
+                info
+                for info in infos
+                if info is not ORIENTATION_ZONE_DIAGNOSTIC
+        )
 
     @field_validator("sigma_d", "sigma_i")
     @classmethod

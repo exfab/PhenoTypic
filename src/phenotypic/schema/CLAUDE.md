@@ -152,8 +152,9 @@ the **base** labels; only run-specific surfaces (the CLI README) fill in the rea
    is inherited.
 4. In the producer, name columns via the helper and declare
    `_measurement_infoclass = <enum>` — that one attribute wires
-   split/output-key/recognition. (For the CLI README's measurement tables only, also add
-   the measurer to `_get_measurement_infoclasses` in `_cli/_cli_readme_generator.py`.)
+   split/output-key/recognition and CLI README documentation. When parameters
+   enable or disable individual schemas, override
+   `MeasureFeatures.get_measurement_infoclasses()` to return the active subset.
 
 A `MeasureFeatures` emits via the enum (never hand-built strings):
 

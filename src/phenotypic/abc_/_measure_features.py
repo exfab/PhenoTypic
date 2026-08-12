@@ -19,7 +19,7 @@ from functools import partial, wraps
 from ._base_operation import BaseOperation
 from phenotypic.sdk_.exceptions_ import OperationFailedError
 from phenotypic.sdk_.funcs_ import validate_measure_integrity
-from phenotypic.schema import OBJECT
+from phenotypic.schema import MeasurementInfo, OBJECT
 
 
 def catch_warnings_decorator(func):
@@ -329,6 +329,45 @@ class MeasureFeatures(BaseOperation, ABC):
         Reference implementation:
             :class:`phenotypic.measure.MeasureSymZones`.
     """
+
+    def get_measurement_infoclasses(
+            self,
+    ) -> tuple[type[MeasurementInfo], ...]:
+        """Return the measurement schemas active for this operation.
+
+        The default implementation discovers the singular
+        ``_measurement_infoclass`` and plural ``_measurement_infoclasses``
+        declarations used by measurement operations. Subclasses only need to
+        override this method when operation parameters enable or disable
+        individual schemas.
+
+        Returns:
+            Ordered, deduplicated measurement schema classes emitted by this
+            operation instance.
+        """
+        def unwrap_private_default(value):
+            if isinstance(value, type) and issubclass(value, MeasurementInfo):
+                return value
+            return getattr(value, "default", value)
+
+        infos: list[type[MeasurementInfo]] = []
+        single = getattr(type(self), "_measurement_infoclass", None)
+        single = unwrap_private_default(single)
+        plural = getattr(type(self), "_measurement_infoclasses", ())
+        plural = unwrap_private_default(plural)
+        candidates = [single]
+        if isinstance(plural, (list, tuple)):
+            candidates.extend(plural)
+        elif plural is not None:
+            candidates.append(plural)
+        for candidate in candidates:
+            if (
+                    isinstance(candidate, type)
+                    and issubclass(candidate, MeasurementInfo)
+                    and candidate not in infos
+            ):
+                infos.append(candidate)
+        return tuple(infos)
 
     @validate_measure_integrity()
     def measure(self, image: Image, include_meta: bool = False) -> pd.DataFrame:
