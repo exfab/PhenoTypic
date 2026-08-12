@@ -1,7 +1,7 @@
 """Tests for the consolidated ``phenotypic._assets`` package.
 
 Guards the single-source asset layout: the accessor resolves bundled
-logos/JS, the canonical app logos are present, and no duplicate logo files
+logos, the canonical app logos are present, and no duplicate logo files
 have crept back under ``logos/``.
 """
 
@@ -37,9 +37,9 @@ class TestAssetAccessor:
         assert (d / "light_logo_exfab.svg").exists()
         assert (d / "gradient_logo_exfab.svg").exists()
 
-    def test_vendor_js_present(self):
-        assert (ASSET_DIR / "vendor" / "plotly.min.js").exists()
-        assert (ASSET_DIR / "vendor" / "hyparquet.min.js").exists()
+    def test_retired_dashboard_vendor_js_is_absent(self):
+        assert not (ASSET_DIR / "vendor" / "plotly.min.js").exists()
+        assert not (ASSET_DIR / "vendor" / "hyparquet.min.js").exists()
 
 
 class TestNoDuplicateLogos:

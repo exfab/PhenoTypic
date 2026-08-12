@@ -23,7 +23,7 @@ a compatibility shim:
   coordinator, and `ImagePipeline.plots`;
 - delete `FigureProvider`, plotting-object `dash()` / `dashboard()`, `Image.plot`, and
   `--save-inspect` rather than carrying transitional aliases;
-- deeply convert `MeasureSymmetricZones` as the representative `PlotImage` producer;
+- deeply convert `MeasureSymZones` as the representative `PlotImage` producer;
 - convert the `ModelFitter` seam to `PlotAnalysis` so a configured
   `LinearLagModel` can be reused by identity in `plots`;
 - implement `PlotMeasTimeSeries` as the representative standalone, multi-page plot;
@@ -75,7 +75,7 @@ a plot without wrapping it in a second class or duplicating its settings. For ex
 the same `LinearLagModel` instance used by the pipeline model slot must be usable in
 `plots`, serialize once, deserialize once, and retain the analysis state populated by
 `analyze()`. The same rule applies to image-bound measurers such as
-`MeasureSymmetricZones`.
+`MeasureSymZones`.
 
 This design consolidates renderer behavior into
 `phenotypic.abc_.plotting.PhtPlot`, adds action-named lifecycle mixins beside it,
@@ -96,13 +96,13 @@ renderer dependency.
 2. Add a methods-only `phenotypic.abc_.plotting.PhtPlot` base mixin that owns the
    current `FigureProvider`
    behavior and introduces:
-   - `inspect()` for the primary saveable backend figure or multi-page output;
-   - `report()` for the complete composed or interactive report.
+    - `inspect()` for the primary saveable backend figure or multi-page output;
+    - `report()` for the complete composed or interactive report.
 3. Add action-named lifecycle subclasses:
-   - `PlotImage`;
-   - `PlotMeas`;
-   - `PlotAnalysis`;
-   - `PlotQc`.
+    - `PlotImage`;
+    - `PlotMeas`;
+    - `PlotAnalysis`;
+    - `PlotQc`.
 4. Add `plots` to `ImagePipeline`, accepting existing configured objects directly.
 5. Preserve object identity when a plot points to an operation, measurer, analyzer, or
    model already configured elsewhere in the pipeline. For recipe-backed QC, reuse the
@@ -116,7 +116,8 @@ renderer dependency.
    never by constructing a filename.
 9. Emit configured plot inspections under `deliverables/plots/` in all supported CLI
    execution paths.
-10. Refresh `PlotMeas`, `PlotAnalysis`, and `PlotQc` after the corresponding data changes
+10. Refresh `PlotMeas`, `PlotAnalysis`, and `PlotQc` after the corresponding data
+    changes
     in the GUI.
 11. Hard-cut the plotting-object methods `dash()` and `dashboard()` to `report()` while
     preserving the separate `Image.dash()` and image-channel `dash()` methods.
@@ -149,20 +150,20 @@ with GUI layout and is deliberately excluded.
 
 ## 4. Terminology and public names
 
-| Name | Meaning |
-|---|---|
-| `PhtPlot` | Renderer-neutral plotting capability and `@figure` composition base in `phenotypic.abc_.plotting` |
-| `PlotImage` | ABC mixin refreshed after a particular image completes its relevant pipeline stage |
-| `PlotMeas` | ABC mixin refreshed from the current aggregate post-applied measurements mirror |
-| `PlotAnalysis` | ABC mixin refreshed after a selected analysis table is updated |
-| `PlotQc` | ABC mixin refreshed after measurements, analysis, or QC state used by the plot is updated |
-| `PlotBinding` | Serialized wiring from a plot-capable object to a lifecycle and optional input |
-| `AnalysisInput` | Stable reference to a named analysis table |
-| `MeasurementInput` | Explicit reference to the current measurements mirror |
-| `AnalysisRegistry` | Runtime mapping from analysis ID to current table, producer, and artifacts |
-| `QcPlotSubject` | Runtime payload containing a resolved input table plus current QC state |
-| `PlotOutput` | Runtime-only ordered collection of zero or more named figure pages |
-| `PlotPage` | One deterministically named figure plus its display label and grouping metadata |
+| Name               | Meaning                                                                                           |
+|--------------------|---------------------------------------------------------------------------------------------------|
+| `PhtPlot`          | Renderer-neutral plotting capability and `@figure` composition base in `phenotypic.abc_.plotting` |
+| `PlotImage`        | ABC mixin refreshed after a particular image completes its relevant pipeline stage                |
+| `PlotMeas`         | ABC mixin refreshed from the current aggregate post-applied measurements mirror                   |
+| `PlotAnalysis`     | ABC mixin refreshed after a selected analysis table is updated                                    |
+| `PlotQc`           | ABC mixin refreshed after measurements, analysis, or QC state used by the plot is updated         |
+| `PlotBinding`      | Serialized wiring from a plot-capable object to a lifecycle and optional input                    |
+| `AnalysisInput`    | Stable reference to a named analysis table                                                        |
+| `MeasurementInput` | Explicit reference to the current measurements mirror                                             |
+| `AnalysisRegistry` | Runtime mapping from analysis ID to current table, producer, and artifacts                        |
+| `QcPlotSubject`    | Runtime payload containing a resolved input table plus current QC state                           |
+| `PlotOutput`       | Runtime-only ordered collection of zero or more named figure pages                                |
+| `PlotPage`         | One deterministically named figure plus its display label and grouping metadata                   |
 
 The action-first class names are intentional. They describe what the mixin makes the
 class do, while the `Plot*` prefix groups them in API completion.
@@ -218,7 +219,7 @@ class PlotDiagnostics(BaseModel, PlotImage):
 Existing Pydantic classes add only a capability mixin:
 
 ```python
-class MeasureSymmetricZones(MeasureFeatures, PlotImage):
+class MeasureSymZones(MeasureFeatures, PlotImage):
     ...
 
 
@@ -384,15 +385,15 @@ Implementation and review must not use a global text replacement for `.dash()`.
 The subclasses identify refresh timing. They do not own table paths and do not add
 Pydantic fields.
 
-| Class | Trigger | Default resolved subject |
-|---|---|---|
-| `PlotImage` | one image finalized | the same `Image` instance used by the operation or measurer |
-| `PlotMeas` | measurement mirror updated | current post-applied measurements DataFrame |
-| `PlotAnalysis` | selected analysis updated | input selected by the binding |
-| `PlotQc` | selected input or QC state updated | a `QcPlotSubject` containing the selected input and current QC context |
+| Class          | Trigger                            | Default resolved subject                                               |
+|----------------|------------------------------------|------------------------------------------------------------------------|
+| `PlotImage`    | one image finalized                | the same `Image` instance used by the operation or measurer            |
+| `PlotMeas`     | measurement mirror updated         | current post-applied measurements DataFrame                            |
+| `PlotAnalysis` | selected analysis updated          | input selected by the binding                                          |
+| `PlotQc`       | selected input or QC state updated | a `QcPlotSubject` containing the selected input and current QC context |
 
 The class's pipeline role does not determine its plot lifecycle. For example,
-`MeasureSymmetricZones` is a measurer, but its `inspect(image=...)` consumes image state,
+`MeasureSymZones` is a measurer, but its `inspect(image=...)` consumes image state,
 so it implements `PlotImage`, not `PlotMeas`.
 
 ## 7. Pipeline configuration and object identity
@@ -411,15 +412,15 @@ Example:
 
 ```python
 lag = LinearLagModel(
-    on="Size_Area",
-    groupby=["MetadataGenetic_Strain"],
+        on="Size_Area",
+        groupby=["MetadataGenetic_Strain"],
 )
-zones = MeasureSymmetricZones()
+zones = MeasureSymZones()
 
 pipeline = ImagePipeline(
-    meas={"zones": zones},
-    model=lag,
-    plots=[zones, lag],
+        meas={"zones": zones},
+        model=lag,
+        plots=[zones, lag],
 )
 ```
 
@@ -635,7 +636,8 @@ without rewriting pipeline configuration.
 
 When a `PlotAnalysis` object is the same object as an analysis producer, such as the
 pipeline's `LinearLagModel`, the coordinator does not construct or fit a second model.
-The normal analysis stage calls `analyze()` on that object, registers its returned table,
+The normal analysis stage calls `analyze()` on that object, registers its returned
+table,
 and only then invokes `inspect()` or `report()` on the already-populated producer.
 
 A standalone `PlotAnalysis` consuming another analysis receives the dynamically
@@ -926,12 +928,12 @@ guess which rendering method or artifact to call.
 
 Events:
 
-| Event | Updated plots |
-|---|---|
-| measurement mirror loaded or curated | `PlotMeas`; measurement-bound standalone `PlotQc`; then analysis and QC reruns as configured |
-| analysis table replaced | dependent `PlotAnalysis` and `PlotQc` |
-| QC database rebuilt or review state changed | dependent `PlotQc` |
-| selected image changed and image data is available | relevant `PlotImage` |
+| Event                                              | Updated plots                                                                                |
+|----------------------------------------------------|----------------------------------------------------------------------------------------------|
+| measurement mirror loaded or curated               | `PlotMeas`; measurement-bound standalone `PlotQc`; then analysis and QC reruns as configured |
+| analysis table replaced                            | dependent `PlotAnalysis` and `PlotQc`                                                        |
+| QC database rebuilt or review state changed        | dependent `PlotQc`                                                                           |
+| selected image changed and image data is available | relevant `PlotImage`                                                                         |
 
 A recipe-backed `PlotQc` refresh waits for the QC rebuild so its `QcPlotSubject`
 contains the matching analyzed check and database. A standalone measurement-bound
@@ -986,8 +988,8 @@ absent while `Image.napari()` and protected `Image.dash()` surfaces still work.
 Two existing Plotly-capable diagnostics are migrated because they exercise the new
 `PlotImage` contract and remain useful in pipeline deliverables:
 
-| Existing class | New class | New use |
-|---|---|---|
+| Existing class       | New class         | New use                                               |
+|----------------------|-------------------|-------------------------------------------------------|
 | `DiagnosticsPlotter` | `PlotDiagnostics` | `PlotDiagnostics().report(image)` or pipeline `plots` |
 | `DetectModesPlotter` | `PlotDetectModes` | `PlotDetectModes().report(image)` or pipeline `plots` |
 
@@ -1143,7 +1145,7 @@ The feature is complete when:
 
 1. a `LinearLagModel` can be configured once, placed in `plots`, serialized once by
    reference, deserialized to one shared object, analyzed, and rendered;
-2. `MeasureSymmetricZones` can be configured once in `meas` and reused as a
+2. `MeasureSymZones` can be configured once in `meas` and reused as a
    `PlotImage` without a wrapper;
 3. configured CLI plot inspections appear under `deliverables/plots/` in every
    supported execution strategy;

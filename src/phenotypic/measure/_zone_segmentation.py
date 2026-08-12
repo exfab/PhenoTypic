@@ -1,6 +1,6 @@
 """Shared colony-ness → zone-radii segmentation pipeline for one detected object.
 
-Extracted verbatim from :class:`MeasureSymmetricZones` so that both the
+Extracted verbatim from :class:`MeasureSymZones` so that both the
 symmetric-zones measurer and the orientation-field measurer can obtain the same
 concentric zone geometry (core / dense / sparse radii, inoculum centre, and the
 per-ring diagnostic profiles) from a single side-effect-free entry point,
@@ -8,7 +8,7 @@ per-ring diagnostic profiles) from a single side-effect-free entry point,
 
 Single responsibility: turn one detected object into its concentric zone
 geometry. Behaviour is byte-identical to the pre-extraction
-``MeasureSymmetricZones._compute_intermediates`` (regression-guarded).
+``MeasureSymZones._compute_intermediates`` (regression-guarded).
 """
 
 from __future__ import annotations
@@ -150,7 +150,7 @@ def compute_zone_segmentation(
 ) -> ZoneSegmentation:
     """Compute concentric zone geometry (core/dense/sparse radii) for one object.
 
-    Pure relocation of ``MeasureSymmetricZones._compute_intermediates``. Reads
+    Pure relocation of ``MeasureSymZones._compute_intermediates``. Reads
     ``params.<name>`` where the method read ``self.<name>``; calls the relocated
     module-level helpers; also records ``centroid_global`` (plate-frame inoculum
     centre) on the returned record.
@@ -169,9 +169,9 @@ def compute_zone_segmentation(
         target_prop = prop
     else:
         props = regionprops(
-            image.objmap[:],
-            intensity_image=image.gray[:].astype(np.float64, copy=False),
-    )
+                image.objmap[:],
+                intensity_image=image.gray[:].astype(np.float64, copy=False),
+        )
 
         target_prop = max(props, key=lambda p: p.area)
 

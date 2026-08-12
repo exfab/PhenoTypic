@@ -190,9 +190,6 @@ class TestRunManifestCoercion:
                 "phenotypic._cli._dashboard._manifest_builder.build_manifest"
             ),
             patch(
-                "phenotypic._cli._cli_chunk_writer._run_analysis_plugins"
-            ),
-            patch(
                 "phenotypic._cli._dashboard._generator.generate_dashboard"
             ),
         ):
@@ -227,9 +224,6 @@ class TestRunFinalizeCoercion:
                 "phenotypic._cli._dashboard._manifest_builder.build_manifest"
             ) as mock_build_manifest,
             patch(
-                "phenotypic._cli._cli_chunk_writer._run_analysis_plugins"
-            ) as mock_plugins,
-            patch(
                 "phenotypic._cli._dashboard._generator.generate_dashboard"
             ) as mock_dashboard,
         ):
@@ -255,7 +249,6 @@ class TestRunFinalizeCoercion:
         assert manifest_kwargs["datasets"] == EXPECTED_TOTALS
         assert all(isinstance(v, int) for v in manifest_kwargs["datasets"].values())
 
-        mock_plugins.assert_called_once()
         mock_dashboard.assert_called_once()
 
     def test_no_metadata_file_early_exits(self, tmp_path: Path) -> None:
@@ -324,9 +317,6 @@ class TestRunFinalizeCoercion:
                 side_effect=publish_manifest,
             ),
             patch(
-                "phenotypic._cli._cli_chunk_writer._run_analysis_plugins"
-            ),
-            patch(
                 "phenotypic._cli._dashboard._generator.generate_dashboard"
             ),
         ):
@@ -379,9 +369,6 @@ class TestRunFinalizeCoercion:
             patch(
                 "phenotypic._cli._dashboard._manifest_builder.build_manifest",
                 side_effect=publish_failed_manifest,
-            ),
-            patch(
-                "phenotypic._cli._cli_chunk_writer._run_analysis_plugins"
             ),
             patch(
                 "phenotypic._cli._dashboard._generator.generate_dashboard"

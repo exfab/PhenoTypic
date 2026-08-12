@@ -1,4 +1,4 @@
-"""Tests for MeasureSymmetricZones — mask-based radial symmetry operator."""
+"""Tests for MeasureSymZones — mask-based radial symmetry operator."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from phenotypic import Image
-from phenotypic.measure import MeasureSymmetricZones
+from phenotypic.measure import MeasureSymZones
 
 
 # ---------------------------------------------------------------------------
@@ -173,7 +173,7 @@ def _make_lopsided_colony(
 
 
 class TestMeasureSymmetricZones:
-    """Synthetic-colony ground-truth tests for MeasureSymmetricZones."""
+    """Synthetic-colony ground-truth tests for MeasureSymZones."""
 
     # -- column-name constants (match the SYMMETRIC_ZONES enum, category "SymZones") --
     CORE_COL = "SymZones_CoreRadius"
@@ -190,17 +190,17 @@ class TestMeasureSymmetricZones:
     def test_diagnostic_cache_owns_arrays_without_retaining_image(self):
         """Compact per-object arrays may persist, but the plate image may not."""
         gray, objmap = _make_circular_colony(
-            shape=(120, 120),
-            center=(60, 60),
-            core_radius=15,
-            outer_radius=35,
+                shape=(120, 120),
+                center=(60, 60),
+                core_radius=15,
+                outer_radius=35,
         )
         image = _make_image_with_objmap(gray, objmap)
         image_ref = weakref.ref(image)
-        op = MeasureSymmetricZones()
+        op = MeasureSymZones()
 
         op.measure(image)
-        cache = op._MeasureSymmetricZones__cache_intermediates
+        cache = op._MeasureSymZones__cache_intermediates
         assert cache
         for intermediates in cache.values():
             for item in fields(intermediates):
@@ -228,7 +228,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricZones()
+        op = MeasureSymZones()
         df = op.measure(image)
 
         assert isinstance(df, pd.DataFrame)
@@ -278,7 +278,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricZones()
+        op = MeasureSymZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -317,7 +317,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricZones()
+        op = MeasureSymZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -367,7 +367,7 @@ class TestMeasureSymmetricZones:
 
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricZones()
+        op = MeasureSymZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -412,7 +412,7 @@ class TestMeasureSymmetricZones:
 
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricZones()
+        op = MeasureSymZones()
         # Must not raise.
         df = op.measure(image)
 
@@ -481,7 +481,7 @@ class TestMeasureSymmetricZones:
 
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricZones()
+        op = MeasureSymZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -507,7 +507,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricZones()
+        op = MeasureSymZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -558,7 +558,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricZones()
+        op = MeasureSymZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -607,7 +607,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricZones()
+        op = MeasureSymZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -639,7 +639,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricZones()
+        op = MeasureSymZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -687,15 +687,15 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricZones()
+        op = MeasureSymZones()
         op.measure(image)  # populates the diagnostic cache
 
         default_fig = op.inspect(image)
         assert any(
-            getattr(t, "visible", True) == "legendonly" for t in default_fig.data
+                getattr(t, "visible", True) == "legendonly" for t in default_fig.data
         ), "default inspect() must keep at least one legend-only overlay"
 
         for_save_fig = op.inspect(image, for_save=True)
         assert all(
-            getattr(t, "visible", True) != "legendonly" for t in for_save_fig.data
+                getattr(t, "visible", True) != "legendonly" for t in for_save_fig.data
         ), "inspect(for_save=True) must reveal every legend-only trace"

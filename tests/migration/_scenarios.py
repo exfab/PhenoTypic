@@ -416,7 +416,7 @@ CURATED_EXTRAS: tuple[_CuratedExtra, ...] = (
             "MeasureColor", "with_xy", {"include_xy": True}
     ),
     _CuratedExtra(
-            "MeasureSymmetricZones",
+            "MeasureSymZones",
             "intensity_method",
             {"method": "intensity", "n_annuli": 60},
     ),

@@ -168,9 +168,12 @@ User-facing run outputs live under `<output>/deliverables/` (hard cutover):
 `measurements_by_feature/<feature>.{csv,parquet}`,
 `<AnalysisClass>.{csv,parquet}`, `analysis_manifest.json`,
 `plots/<plot-id>/...`,
-`dashboard.html`, `analysis.html`, `processing_report.html`, `README.md`,
+`dashboard.html`, `processing_report.html`, `README.md`,
 `pipeline.json`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
-**per-image** parquets in `results/<ds>/measurements/` (and the rest of `results/`)
+dashboard is progress-only: local runs render progress directly, while SLURM
+runs add Progress and Download tabs. Use the Results Viewer or the GUI
+`/analysis/` app for interactive exploration. The **per-image** parquets in
+`results/<ds>/measurements/` (and the rest of `results/`)
 stay at the output-dir **root**. Machine state lives under
 `.phenotypic/`: `progress_dir(output)` resolves
 `<output>/.phenotypic/progress/` and `processing_state_path(output)` resolves
@@ -203,10 +206,10 @@ rows** — metadata + join keys populated, every measurement/info column null, a
 `QC_MetadataOnly=true` (`schema.METADATA_MATCH`) — which is how a user sees the strains
 that were never detected. Measurement rows with no metadata are still dropped
 (measurements are the join's right frame). `join_metadata(df, csv, *, how=...)` defaults
-to `how="inner"`: **only** `finalize_post_master_outputs` passes `how="left"`. The
-mid-run `_cli_chunk_writer` and the dashboard `_analysis_data` sidecar keep `inner` on
-purpose — they join against a **partial** frame, where a left join would flag every
-not-yet-processed strain as missing.
+to `how="inner"`: **only** `finalize_post_master_outputs` passes `how="left"`.
+The mid-run `_cli_chunk_writer` does not join external metadata; it publishes clean
+rolling and master measurement state until finalization creates the metadata-joined
+mirror.
 
 `QC_MetadataOnly` is a **user-facing output column, not internal machinery** — it is how a
 user filters the mirror for "which strains went undetected". Analysis/QC/post code must
@@ -215,7 +218,7 @@ saw the CLI and carry no flag), so they detect a phantom the same way they detec
 missing value: **drop/ignore NaN**. A phantom row is null in every measurement/info column,
 so NaN-native math (`notna()`, `nanpercentile`, `np.isfinite`, `dropna`) handles it, needs
 no flag column to exist, and is automatically a no-op on frames that have none.
-Feed analysis plugins/dashboards from `measurements.parquet`, not
+Feed configured analysis and GUI result exploration from `measurements.parquet`, not
 `master_measurements.*`.
 
 **Finalize for FINAL master writes.** Any code path that writes

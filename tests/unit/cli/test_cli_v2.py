@@ -2495,7 +2495,7 @@ class TestAggregateMeasurements:
         ), [rec.message for rec in caplog.records]
 
         # …and the helper returns the clean master so downstream callers
-        # (e.g. _run_analysis_plugins in the recompile worker) don't see
+        # (e.g. finalization steps in the recompile worker) don't see
         # half-applied post columns.
         assert returned.equals(master_df)
 

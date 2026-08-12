@@ -64,8 +64,10 @@ Key artifacts are:
   and per-chunk job ids. The hub reads this file to surface the
   `slurm-<id>` row in Recent Runs — it does **not** parse Rich-formatted
   stdout (locale and terminal-width fragile).
-- `<output_dir>/deliverables/dashboard.html`, published by the normal or
-  staged finalizer once the run is complete.
+- `<output_dir>/deliverables/dashboard.html`, created when the run is submitted
+  so its Progress tab can track live work and failures. Normal and staged
+  finalization refresh the same artifact; its Download tab retains the
+  root-relative `wget` commands.
 
 ## Operational restart guidance
 

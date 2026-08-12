@@ -69,7 +69,7 @@ class TrimAsymmetry(ObjectRefiner):
             Lower values push ``R_sym`` outward (less trimming); higher values
             pull it inward (more trimming). Practical window: 0.33--0.83.
             Default: 0.5 (3/6), intentionally looser than
-            :class:`MeasureSymmetricZones` (4/6) so ``R_sym`` stays near the
+            :class:`MeasureSymZones` (4/6) so ``R_sym`` stays near the
             true colony edge rather than the inoculum core. On small colonies
             (radius < 30 px) with a coarse 6-sector grid, consider reducing
             ``n_angular_bins`` to 4 rather than lowering this threshold.

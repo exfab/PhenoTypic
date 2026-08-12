@@ -153,7 +153,9 @@ subfolder, the iframe panel points at
 the hub's Flask server directly — not under the dispatcher middleware — so the
 URL works regardless of which tab is active. The iframed dashboard polls its own
 progress files using relative URLs, which the `/runs/` route resolves inside the
-sandbox.
+sandbox. Local dashboards show progress without a tab bar; SLURM dashboards
+retain Progress and Download tabs. Result exploration lives in the Results
+Viewer and `/analysis/` app.
 
 **Cancel** sends SIGTERM to the subprocess and waits up to 10 seconds. If the
 subprocess does not exit within that window, SIGKILL is sent. The GUI also

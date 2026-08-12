@@ -105,7 +105,6 @@ output_folder/
 |   +-- analysis_manifest.json        # Named-analysis artifact index and checksums
 |   +-- plots/                         # Configured plot outputs and page manifests
 |   +-- dashboard.html                # Live processing dashboard
-|   +-- analysis.html                 # Analysis & visualization
 |   +-- processing_report.html        # HTML summary report
 |   +-- overlays/                     # Detection overlay PNGs (per-dataset subfolders, one per input image)
 |   +-- README.md                     # This file
@@ -133,7 +132,10 @@ Each dataset directory contains the following folders:
 | `measurements/` | Parquet | Per-object measurements. |
 
 Detection overlay PNGs are written per input image under
-`deliverables/overlays/<dataset>/` (always written for forward runs)."""
+`deliverables/overlays/<dataset>/` (always written for forward runs).
+
+Use the Results Viewer and its `/analysis/` workspace for interactive result
+exploration."""
 
     def _generate_measurements_section(self) -> str:
         """Generate measurement documentation from pipeline's MeasureFeatures.
@@ -198,50 +200,10 @@ No measurements configured in this pipeline."""
     def _get_measurement_infoclasses(self, measurer) -> list[type]:
         """Extract MeasurementInfo classes associated with a MeasureFeatures instance.
 
-        Looks for class attributes that are MeasurementInfo subclasses or
-        references to measurement info in the measurer's implementation.
+        Uses the operation-level schema contract so built-in and custom
+        measurers are documented without a second class-name registry.
         """
-        from phenotypic.schema import (
-            SHAPE,
-            INTENSITY,
-            TEXTURE,
-            ColorLab,
-            ColorHSV,
-            ColorComposition,
-            SIZE,
-            BBOX,
-            GRID_SPREAD,
-            GRID_LINREG_STATS,
-            NEIGHBOR_DIST,
-            ORIENTATION_ZONE_DIAGNOSTIC,
-            ORIENTATION_ZONE_PRIMARY,
-        )
-
-        # Map measurer class names to their MeasurementInfo classes
-        measurer_to_info: dict[str, list[type]] = {
-            "MeasureShape": [SHAPE],
-            "MeasureIntensity": [INTENSITY],
-            "MeasureTexture": [TEXTURE],
-            "MeasureColor": [ColorLab, ColorHSV],
-            "MeasureColorComposition": [ColorComposition],
-            "MeasureSize": [SIZE],
-            "MeasureBounds": [BBOX],
-            "MeasureGridLinRegStats": [GRID_LINREG_STATS],
-            "MeasureGridSpread": [GRID_SPREAD],
-            "MeasureNeighborDist": [NEIGHBOR_DIST],
-            "MeasureOrientationZones": [
-                ORIENTATION_ZONE_PRIMARY,
-                ORIENTATION_ZONE_DIAGNOSTIC,
-            ],
-        }
-
-        class_name = measurer.__class__.__name__
-        infos = measurer_to_info.get(class_name, [])
-        if class_name == "MeasureOrientationZones" and not getattr(
-            measurer, "include_diagnostics", False
-        ):
-            return infos[:1]
-        return infos
+        return list(measurer.get_measurement_infoclasses())
 
     def _generate_measurement_table(self, info_cls) -> str:
         """Generate markdown table for a MeasurementInfo class."""

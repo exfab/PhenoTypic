@@ -1,4 +1,4 @@
-"""Bundled static assets (logos + dashboard JS) for PhenoTypic.
+"""Bundled static assets for PhenoTypic.
 
 Canonical home for every image/JS file the runtime or docs build ships.
 Resolve assets through this module rather than re-spelling the package path.
@@ -10,9 +10,6 @@ Layout::
         LogoArtOnly.png      #   CLI dashboard logo
         dashboard_logo.svg   #   GUI logo
         200x150/ 400x150/ 500x500/ 500x500_png/   # brand variant library
-      vendor/                # third-party JS bundled by the CLI dashboard
-        plotly.min.js
-        hyparquet.min.js
 """
 
 from __future__ import annotations
@@ -63,8 +60,8 @@ def asset_bytes(relpath: str) -> bytes:
     """Read an asset's raw bytes by POSIX-style relative path.
 
     Args:
-        relpath: Path relative to the asset root, e.g.
-            ``"logos/LogoArtOnly.png"`` or ``"vendor/plotly.min.js"``.
+        relpath: Path relative to the asset root, such as
+            ``"logos/LogoArtOnly.png"``.
 
     Returns:
         The file's bytes.

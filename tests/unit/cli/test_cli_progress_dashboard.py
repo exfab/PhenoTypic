@@ -47,7 +47,7 @@ from phenotypic._cli._dashboard._manifest_builder import (
 )
 from phenotypic._cli._dashboard import generate_dashboard
 from phenotypic._cli._cli_sentinel_scripts import generate_sentinel_script
-from phenotypic.sdk_ import analysis_html_path, dashboard_html_path, logs_dir
+from phenotypic.sdk_ import dashboard_html_path, logs_dir
 from phenotypic.sdk_ import progress_dir as _progress_dir
 
 
@@ -419,6 +419,7 @@ class TestManifestBuilder:
         assert manifest["is_complete"] is False
         assert "ValueError" in manifest["failure_categories"]
         assert "gui_record_generation" not in manifest
+        assert "analysis_data_version" not in manifest
 
     def test_local_gui_manifest_carries_exact_generation(self, tmp_dir):
         progress_dir = tmp_dir / "progress"
@@ -710,7 +711,7 @@ class TestDashboard:
     def test_generates_html(self, tmp_dir):
         generate_dashboard(tmp_dir)
         assert dashboard_html_path(tmp_dir).exists()
-        assert analysis_html_path(tmp_dir).exists()
+        assert not (tmp_dir / "deliverables" / "analysis.html").exists()
 
     def test_html_contains_key_elements(self, tmp_dir):
         generate_dashboard(tmp_dir)
@@ -725,62 +726,46 @@ class TestDashboard:
         """Generated pages fetch every machine-state asset from the hidden cache."""
         generate_dashboard(tmp_dir)
         dashboard = dashboard_html_path(tmp_dir).read_text()
-        analysis = analysis_html_path(tmp_dir).read_text()
-        pages = (dashboard, analysis)
 
         canonical_prefix = (
             'const PROGRESS_PREFIX = ROOT_PREFIX + ".phenotypic/progress/";'
         )
-        assert all(canonical_prefix in page for page in pages)
-        assert all("ROOT_PREFIX + 'progress/" not in page for page in pages)
+        assert canonical_prefix in dashboard
+        assert "ROOT_PREFIX + 'progress/" not in dashboard
 
         assert "PROGRESS_PREFIX + 'manifest.json" in dashboard
         assert "PROGRESS_PREFIX + 'failures.jsonl" in dashboard
-        for asset in (
-            "manifest.json",
-            "plotly.min.js",
-            "hyparquet.min.js",
-            "analysis_full.parquet",
-            "analysis_stats.json",
-        ):
-            assert f"PROGRESS_PREFIX + '{asset}" in analysis
 
     def test_creates_dir_if_missing(self, tmp_dir):
         new_dir = tmp_dir / "new_output"
         generate_dashboard(new_dir)
         assert dashboard_html_path(new_dir).exists()
-        assert analysis_html_path(new_dir).exists()
+        assert not (new_dir / "deliverables" / "analysis.html").exists()
 
-    def test_contains_tab_structure(self, tmp_dir):
-        generate_dashboard(tmp_dir)
+    def test_local_mode_has_no_tab_bar(self, tmp_dir):
+        generate_dashboard(tmp_dir, execution_mode="local")
         html = dashboard_html_path(tmp_dir).read_text()
-        assert "tab-progress" in html
-        assert "tab-readme" in html
-        assert "tab-download" in html
-        assert "switchTab" in html
-        # Analysis is now a separate page, linked from dashboard
-        assert "analysis.html" in html
-        assert "tab-analysis" not in html
-
-    def test_contains_marked_js(self, tmp_dir):
-        generate_dashboard(tmp_dir)
-        html = dashboard_html_path(tmp_dir).read_text()
-        assert "marked" in html
+        assert 'class="tab-bar"' not in html
+        assert 'id="progress-panel"' in html
+        assert 'id="tab-progress"' not in html
+        assert 'id="tab-download"' not in html
+        assert "switchTab" not in html
+        assert "README.md" not in html
+        assert "analysis.html" not in html
 
     def test_local_mode_hides_download_tab(self, tmp_dir):
         generate_dashboard(tmp_dir, execution_mode="local")
         html = dashboard_html_path(tmp_dir).read_text()
         assert 'EXECUTION_MODE = "local"' in html
+        assert "wget" not in html
 
     def test_slurm_mode_enables_download_tab(self, tmp_dir):
         generate_dashboard(tmp_dir, execution_mode="slurm")
         html = dashboard_html_path(tmp_dir).read_text()
         assert 'EXECUTION_MODE = "slurm"' in html
-
-    def test_readme_fetch_path(self, tmp_dir):
-        generate_dashboard(tmp_dir)
-        html = dashboard_html_path(tmp_dir).read_text()
-        assert "README.md" in html
+        assert "tab-progress" in html
+        assert "tab-download" in html
+        assert "switchTab" in html
 
     def test_download_tab_wget_content(self, tmp_dir):
         generate_dashboard(tmp_dir, execution_mode="slurm")
@@ -792,7 +777,7 @@ class TestDashboard:
         assert "--password='" in html
 
     def test_download_url_autodetect_js(self, tmp_dir):
-        generate_dashboard(tmp_dir)
+        generate_dashboard(tmp_dir, execution_mode="slurm")
         html = dashboard_html_path(tmp_dir).read_text()
         assert "getBaseUrl" in html
         assert "window.location" in html
@@ -813,19 +798,41 @@ class TestDashboard:
         html = dashboard_html_path(tmp_dir).read_text()
         assert "data:image/png;base64," in html
 
-    def test_js_sidecars_written_from_assets_vendor(self, tmp_dir):
-        """plotly.min.js / hyparquet.min.js are copied from
-        phenotypic/_assets/vendor into the run's progress/ dir. This is the
-        end-to-end guard for the relocated vendor assets (and the wheel
-        packaging bug they previously triggered).
-        """
+    def test_retired_static_analysis_artifacts_are_not_generated(self, tmp_dir):
         generate_dashboard(tmp_dir)
-        prog = _progress_dir(tmp_dir)  # run's progress/ dir under .phenotypic/
-        plotly = prog / "plotly.min.js"
-        hyparquet = prog / "hyparquet.min.js"
-        assert plotly.exists() and hyparquet.exists()
-        # Plotly is multi-MB; a truncated/missing copy would be tiny.
-        assert plotly.stat().st_size > 1_000_000
+        prog = _progress_dir(tmp_dir)
+        assert not (tmp_dir / "deliverables" / "analysis.html").exists()
+        for name in (
+            "plotly.min.js",
+            "hyparquet.min.js",
+            "analysis_stats.json",
+            "analysis_scatter.json",
+        ):
+            assert not (prog / name).exists()
+        assert not (
+            tmp_dir / "deliverables" / "overlays" / "overlay_manifest.json"
+        ).exists()
+
+    def test_existing_retired_artifacts_are_left_untouched(self, tmp_dir):
+        deliverables = tmp_dir / "deliverables"
+        deliverables.mkdir(parents=True)
+        prog = _progress_dir(tmp_dir)
+        prog.mkdir(parents=True)
+        overlays = deliverables / "overlays"
+        overlays.mkdir()
+        legacy_artifacts = {
+            deliverables / "analysis.html": "legacy analysis",
+            prog / "analysis_scatter.json": "legacy scatter",
+            prog / "analysis_stats.json": "legacy stats",
+            overlays / "overlay_manifest.json": "legacy overlays",
+        }
+        for path, content in legacy_artifacts.items():
+            path.write_text(content, encoding="utf-8")
+
+        generate_dashboard(tmp_dir)
+
+        for path, content in legacy_artifacts.items():
+            assert path.read_text(encoding="utf-8") == content
 
 
 # ──────────────────────────────────────────────────────────────────────

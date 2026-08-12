@@ -122,7 +122,8 @@ Design:
 Verification:
 
 - `uv run pytest tests/unit/test_xdist_workers.py`
-- `uv run pytest tests/unit/gui/test_check_features_md.py tests/unit/gui/test_check_workflows_md.py`
+-
+`uv run pytest tests/unit/gui/test_check_features_md.py tests/unit/gui/test_check_workflows_md.py`
 - `uv run pytest tests/unit/gui/test_reference_generators.py`
 - `uv run python scripts/generate_validation_reference.py --check`
 - `uv run python scripts/generate_dispatch_reference.py --check`
@@ -361,7 +362,7 @@ Design:
   angular-profile, and symmetric-radius helpers into
   `phenotypic.sdk_._symmetric_zone_common`, because the helper is shared by the
   measure and refine packages.
-  Keep `MeasureSymmetricZones` as the richer measurer and `TrimAsymmetry` as a
+  Keep `MeasureSymZones` as the richer measurer and `TrimAsymmetry` as a
   refiner. Name intentional default differences explicitly.
 
 Verification:

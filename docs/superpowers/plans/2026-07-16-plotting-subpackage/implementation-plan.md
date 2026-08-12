@@ -22,7 +22,7 @@ hiding it behind compatibility shims. The pilot includes:
 - CLI-side QC plot subjects and analyzed-check reuse;
 - hard removal of `FigureProvider`, plotting-object `dash()` / `dashboard()`,
   `Image.plot`, and `--save-inspect`;
-- a deep `MeasureSymmetricZones` conversion, the `ModelFitter` analysis seam, and the
+- a deep `MeasureSymZones` conversion, the `ModelFitter` analysis seam, and the
   new `PlotMeasTimeSeries` class.
 
 The implementation includes event-driven GUI refresh for configured measurement,
@@ -136,18 +136,18 @@ always consumes the post-applied mirror and has no input setting.
 - Keep imports lazy so importing the ABC package does not import Plotly, Matplotlib,
   Dash, ipywidgets, or the runtime `phenotypic.plotting` package.
 - Migrate custom report composers individually:
-  - grid-fit reporting;
-  - color-correction reporting and operation wrappers;
-  - orientation-zone reporting and operation wrappers.
-- Convert `MeasureSymmetricZones` to `MeasureFeatures, PlotImage`. Preserve its
+    - grid-fit reporting;
+    - color-correction reporting and operation wrappers;
+    - orientation-zone reporting and operation wrappers.
+- Convert `MeasureSymZones` to `MeasureFeatures, PlotImage`. Preserve its
   per-image private cache, controls, theming, `for_save` flattening, Pydantic schema,
   and operation JSON.
 - Convert `ModelFitter` to `SetAnalyzer, PlotAnalysis, ABC`:
-  - extract its existing Plotly logic into a private builder;
-  - expose keyword-only `inspect(..., for_save=False)` and `report(**plot_kwargs)`;
-  - prevent `tmax` from being mistaken for a subject;
-  - reuse populated private analysis state when the plot is the producer;
-  - keep Matplotlib `show()` for non-plotting fallback consumers.
+    - extract its existing Plotly logic into a private builder;
+    - expose keyword-only `inspect(..., for_save=False)` and `report(**plot_kwargs)`;
+    - prevent `tmax` from being mistaken for a subject;
+    - reuse populated private analysis state when the plot is the producer;
+    - keep Matplotlib `show()` for non-plotting fallback consumers.
 - Rename plotting-object `dash()` / `dashboard()` to `report()` without changing
   `Image.dash()` or image-channel `dash()` methods.
 
@@ -176,10 +176,10 @@ always consumes the post-applied mirror and has no input setting.
 - Extend class resolution to built-in `phenotypic.plotting` types and qualified custom
   classes.
 - Preserve bindings during staged splitting:
-  - measurer-bound and inline `PlotImage` plots run in Stage 3;
-  - post-GPU operation-bound `PlotImage` plots also run in Stage 3;
-  - aggregate bindings remain with finalization;
-  - pre-GPU or GPU-detector `PlotImage` references fail early in this pilot.
+    - measurer-bound and inline `PlotImage` plots run in Stage 3;
+    - post-GPU operation-bound `PlotImage` plots also run in Stage 3;
+    - aggregate bindings remain with finalization;
+    - pre-GPU or GPU-detector `PlotImage` references fail early in this pilot.
 - Ensure the canonical persisted pipeline contains the complete aggregate bindings,
   while worker pipelines contain only bindings valid in that stage.
 
@@ -210,11 +210,11 @@ always consumes the post-applied mirror and has no input setting.
 ### Cluster 5: CLI coordinator and QC subjects
 
 - Replace the `--save-inspect` duck-typed loop with configured lifecycle dispatch:
-  1. per-image apply and measure, then `PlotImage.inspect(for_save=True)` on the same
-     `Image` instance;
-  2. finalize the post-applied/metadata-joined mirror, then `PlotMeas`;
-  3. run and publish analyses, register their tables, then `PlotAnalysis`;
-  4. run and publish QC, then `PlotQc`.
+    1. per-image apply and measure, then `PlotImage.inspect(for_save=True)` on the same
+       `Image` instance;
+    2. finalize the post-applied/metadata-joined mirror, then `PlotMeas`;
+    3. run and publish analyses, register their tables, then `PlotAnalysis`;
+    4. run and publish QC, then `PlotQc`.
 - Change the QC runner to return successful modules containing `instance_id`, the
   exact analyzed check instance, and its table specification. Existing callers may
   ignore the return. Return only modules whose tables were actually published to the
@@ -222,11 +222,11 @@ always consumes the post-applied mirror and has no input setting.
 - Construct `QcPlotSubject` with the resolved table/input, exact analyzed check,
   database path, and immutable review-state snapshot.
 - Emit:
-  - single-page image plots at
-    `deliverables/plots/<plot-id>/<dataset>/<image-stem>-<stable-hash>.png`, with the
-    hash derived from the original dataset/image-stem pair;
-  - multi-page image plots under an invocation directory with a manifest;
-  - aggregate plots at `deliverables/plots/<plot-id>/<page>.png` plus manifest.
+    - single-page image plots at
+      `deliverables/plots/<plot-id>/<dataset>/<image-stem>-<stable-hash>.png`, with the
+      hash derived from the original dataset/image-stem pair;
+    - multi-page image plots under an invocation directory with a manifest;
+    - aggregate plots at `deliverables/plots/<plot-id>/<page>.png` plus manifest.
 - Keep plot failures best-effort and log plot ID, page key, lifecycle, and failure
   phase. Never suppress measurement, analysis, QC, or manifest publication.
 - Remove `--save-inspect` from CLI options, config/state, SLURM command generation,
@@ -287,7 +287,7 @@ Required tests:
 
 - `PhtPlot` discovery, primary selection, controls, report composition, lazy imports,
   Pydantic schema purity, and absence of `dash()` / `dashboard()` aliases.
-- `MeasureSymmetricZones` cache identity, controls, static export, serialization, and
+- `MeasureSymZones` cache identity, controls, static export, serialization, and
   automatic local/measure-only CLI output without a flag.
 - `ModelFitter` report kwargs, GUI control introspection, analyze-once behavior, and
   `LinearLagModel` same-instance plotting.

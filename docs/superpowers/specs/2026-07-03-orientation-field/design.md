@@ -12,36 +12,41 @@
 
 ## 1. Motivation & summary
 
-A new Regime-B `MeasureFeatures` operator, **`MeasureOrientationZones`**, that quantifies
+A new Regime-B `MeasureFeatures` operator, **`MeasureOrientationZones`**, that
+quantifies
 hyphal **concentration** (alignment `R`) and **turning** (coherence-weighted `⟨|∇φ|⟩`)
 from the structure-tensor orientation field, reported **overall** and per **dense** /
 **sparse** growth zone.
 
-It reuses the zone segmentation already produced by `MeasureSymmetricZones` (core / dense
-/ sparse concentric radii from the colony-ness profile) but computes an *orientation* read
+It reuses the zone segmentation already produced by `MeasureSymZones` (core / dense
+/ sparse concentric radii from the colony-ness profile) but computes an *orientation*
+read
 of each zone rather than a radial-symmetry read. Crucially, because the detected mask is
 imperfect (it misses sections and is only trustworthy for the **radial extent**), the
 orientation field is computed over a **mask-free tile** and aggregated over **radially
 defined** regions bounded by the symmetric radius — not over raw mask pixels. A raw-mask
-variant is emitted alongside the radial one purely so the mask's distortion can be *seen*.
+variant is emitted alongside the radial one purely so the mask's distortion can be
+*seen*.
 
 ---
 
 ## 2. Output schema
 
-New header enum **`ORIENTATION_ZONES`** in `src/phenotypic/schema/_orientation_zones.py`,
+New header enum **`ORIENTATION_ZONES`** in
+`src/phenotypic/schema/_orientation_zones.py`,
 category prefix **`OrientZones`**, mirroring `SYMMETRIC_ZONES`. Per object:
 
 **Regions** `{Overall, Dense, Sparse}` × **variants** `{Radial, Mask}` × **metrics**
 `{Concentration, Turning, Coherence}`.
 
-| Metric | Meaning | Units / range |
-|---|---|---|
+| Metric          | Meaning                                                            | Units / range       |
+|-----------------|--------------------------------------------------------------------|---------------------|
 | `Concentration` | coherence-weighted resultant length `R` of the doubled-angle field | dimensionless [0,1] |
-| `Turning` | coherence-weighted mean `⟨|∇φ|⟩` | rad/px (rad/µm with scale) |
-| `Coherence` | mean coherence `⟨C⟩` over the selector — confidence/QC readout | dimensionless [0,1] |
+| `Turning`       | coherence-weighted mean `⟨                                         | ∇φ                  |⟩` | rad/px (rad/µm with scale) |
+| `Coherence`     | mean coherence `⟨C⟩` over the selector — confidence/QC readout     | dimensionless [0,1] |
 
-Column headers (18 + label), pattern `OrientZones_<Metric>-<Variant>-<Zone>` — a **single
+Column headers (18 + label), pattern `OrientZones_<Metric>-<Variant>-<Zone>` — a *
+*single
 underscore** after the category, then the metric-specific fields (`Metric`, `Variant`,
 `Zone`) **hyphen-joined** so parsing is trivial: `header.split("_", 1)` peels off the
 category and `.split("-")` on the remainder yields `[Metric, Variant, Zone]`.
@@ -62,7 +67,8 @@ OrientZones_Coherence-Radial-Sparse        OrientZones_Coherence-Mask-Sparse
 
 **Regions are radial** (centred on the inoculum centre, using the zone radii from §3):
 `Overall = disk(0 .. symmetric_radius)`, `Dense = ring(core_end .. dense_end)`,
-`Sparse = ring(dense_end .. sparse_end)`. The *core* zone is intentionally omitted for now
+`Sparse = ring(dense_end .. sparse_end)`. The *core* zone is intentionally omitted for
+now
 (trivial to add later — see §11).
 
 Schema authoring follows the project rule: author `label`/`desc` only; **leave
@@ -75,21 +81,22 @@ Schema authoring follows the project rule: author `label`/`desc` only; **leave
 ### 3.1 Shared zone-segmentation helper (extraction + regression guard)
 
 Extract the colony-ness → zone-radii pipeline and per-object geometry out of
-`MeasureSymmetricZones._compute_intermediates` into a reusable module:
+`MeasureSymZones._compute_intermediates` into a reusable module:
 
 - **New:** `src/phenotypic/measure/_zone_segmentation.py`
-  - `@dataclass ZoneSegmentation` carrying the common core: `label`, `bbox_slice`
-    (expanded), `centroid_rc` (local), `centroid_global`, `dist_map` (expanded),
-    `intensity_crop`, `obj_mask` (expanded), `core_radius`, `symmetric_radius`,
-    `core_end_radius`, `dense_end_radius`, `sparse_end_radius`, `zones_computed`.
-  - `compute_zone_segmentation(image, prop, *, params) -> ZoneSegmentation` runs the
-    existing pipeline (PELT core → Sholl angular → symmetric radius → colony-ness →
-    threshold-crossing radii → expanded crop) and returns the dataclass.
-- **Refactor:** `MeasureSymmetricZones._compute_intermediates` becomes a thin wrapper that
+    - `@dataclass ZoneSegmentation` carrying the common core: `label`, `bbox_slice`
+      (expanded), `centroid_rc` (local), `centroid_global`, `dist_map` (expanded),
+      `intensity_crop`, `obj_mask` (expanded), `core_radius`, `symmetric_radius`,
+      `core_end_radius`, `dense_end_radius`, `sparse_end_radius`, `zones_computed`.
+    - `compute_zone_segmentation(image, prop, *, params) -> ZoneSegmentation` runs the
+      existing pipeline (PELT core → Sholl angular → symmetric radius → colony-ness →
+      threshold-crossing radii → expanded crop) and returns the dataclass.
+- **Refactor:** `MeasureSymZones._compute_intermediates` becomes a thin wrapper that
   calls `compute_zone_segmentation` and then adds its diagnostic-only fields
-  (density_profile, sholl_counts, angular_R_profile, per-angle envelope, zone areas). Its
+  (density_profile, sholl_counts, angular_R_profile, per-angle envelope, zone areas).
+  Its
   public columns and `inspect()` behaviour stay **byte-identical**.
-- **Regression guard (mandatory):** a test asserts `MeasureSymmetricZones().measure(img)`
+- **Regression guard (mandatory):** a test asserts `MeasureSymZones().measure(img)`
   produces an identical DataFrame before/after the extraction on
   `load_synth_yeast_plate()` (golden-value or self-consistency check).
 
@@ -119,7 +126,8 @@ The structure tensor is computed over a **mask-free tile**:
   (`r_max·(1+extent_margin)` around the centre), used for non-grid images.
 
 Both are supersets of the `symmetric_radius` disk (the aggregation is bounded there), so
-they agree within the relevant area; the grid section is preferred per the requirement to
+they agree within the relevant area; the grid section is preferred per the requirement
+to
 "read the field over the grid section." The op computes its own `dist_map` and centre in
 the chosen tile's frame so radial selectors are consistent.
 
@@ -137,7 +145,8 @@ C = √((Jyy−Jxx)² + 4Jxy²) / (Jxx+Jyy + eps)          # coherence ∈ [0,1]
 
 Reuse existing structure-tensor helpers where available (`util/image_metrics.py`,
 `sdk_/branch_pathfinding/_cost_surface.py`) rather than reimplementing; factor a small
-shared `orientation_field(I, sigma_d, sigma_i) -> (phi, coherence, grad_phi)` if none fits
+shared `orientation_field(I, sigma_d, sigma_i) -> (phi, coherence, grad_phi)` if none
+fits
 cleanly. Params: `sigma_d` (default ~1.5, ≈ hypha width), `sigma_i` (default ~4.0).
 
 ### 4.3 Zone selectors & aggregation
@@ -161,7 +170,8 @@ Coherence       =   mean_{S} C
 
 - Object area < 10 px → all metrics `NaN`.
 - Zone with zero width (e.g. collapsed `symmetric_radius`, `dense_end == core_end`) or
-  `Σ_S C < eps` → that region's metrics `NaN` (can't define orientation), distinct from a
+  `Σ_S C < eps` → that region's metrics `NaN` (can't define orientation), distinct from
+  a
   legitimate low value.
 - Non-grid image → expanded-crop fallback (no error).
 - `zones_computed == False` (symmetric envelope collapsed) → Dense/Sparse `NaN`; Overall
@@ -171,7 +181,8 @@ Coherence       =   mean_{S} C
 
 ## 6. Visualization
 
-Two figure surfaces, following the codebase conventions (`@figure` decorator; `inspect()`
+Two figure surfaces, following the codebase conventions (`@figure` decorator;
+`inspect()`
 = the single *saveable* primary figure and CLI `--save-inspect` surface; `dashboard()` =
 a richer composed notebook figure that is **not** the save surface).
 
@@ -179,13 +190,15 @@ a richer composed notebook figure that is **not** the save surface).
 
 `@figure(primary=True, controls={"base_layer": BASE_LAYER})`,
 `inspect(self, image=None, base_layer="detect_mat", *, for_save=False) -> go.Figure`.
-Plate-level plotly overview (like `MeasureSymmetricZones.inspect()`), with
+Plate-level plotly overview (like `MeasureSymZones.inspect()`), with
 legend-toggleable layers:
 
-- **A — coherence-modulated quiver:** one short segment per ~8–16 px block; angle = block
+- **A — coherence-modulated quiver:** one short segment per ~8–16 px block; angle =
+  block
   `φ`, **length + opacity ∝ block-mean `C`**; a *single* NaN-separated `Scattergl` trace
   so it stays fast plate-wide.
-- **Zone rings:** symmetric-radius circle + core/dense/sparse boundary circles per object
+- **Zone rings:** symmetric-radius circle + core/dense/sparse boundary circles per
+  object
   (reuse the existing circle/annulus polygon helpers).
 - **C — per-zone summary glyph:** the resultant `R` arrow per zone (direction = mean
   orientation, length ∝ `R`) plus a small text badge of `R`/turning for both variants.
@@ -194,7 +207,8 @@ legend-toggleable layers:
 ### 6.2 `dashboard()` — composed notebook diagnostic (adds **B**)
 
 `dashboard(self, image=None, show=True) -> go.Figure` returning one vertically-composed
-`make_subplots` figure (the `AutoGridFinder.dashboard()` / `GridFitReport.dash()` pattern),
+`make_subplots` figure (the `AutoGridFinder.dashboard()` / `GridFitReport.dash()`
+pattern),
 built by a transient `_OrientationZonesReport` `FigureProvider` whose control-free
 `@figure` panels compose into:
 
@@ -210,13 +224,13 @@ built by a transient `_OrientationZonesReport` `FigureProvider` whose control-fr
 
 ## 7. Parameters
 
-| Param | Default | Meaning |
-|---|---|---|
-| `intensity_source` | `"detect_mat"` | image array for the structure tensor (`"gray"` alt) |
-| `sigma_d` | `1.5` | Gaussian-derivative (gradient) scale ≈ hypha width |
-| `sigma_i` | `4.0` | structure-tensor integration scale |
-| `quiver_block` | `12` | inspect quiver downsample block (px) |
-| *(zone params)* | — | `n_annuli`, `pelt_penalty`, `symmetry_threshold`, `tau_core/dense/sparse`, `extent_margin`, `min_samples_per_ring`, `method` — passed through to `compute_zone_segmentation`, same defaults as `MeasureSymmetricZones` |
+| Param              | Default        | Meaning                                                                                                                                                                                                          |
+|--------------------|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `intensity_source` | `"detect_mat"` | image array for the structure tensor (`"gray"` alt)                                                                                                                                                              |
+| `sigma_d`          | `1.5`          | Gaussian-derivative (gradient) scale ≈ hypha width                                                                                                                                                               |
+| `sigma_i`          | `4.0`          | structure-tensor integration scale                                                                                                                                                                               |
+| `quiver_block`     | `12`           | inspect quiver downsample block (px)                                                                                                                                                                             |
+| *(zone params)*    | —              | `n_annuli`, `pelt_penalty`, `symmetry_threshold`, `tau_core/dense/sparse`, `extent_margin`, `min_samples_per_ring`, `method` — passed through to `compute_zone_segmentation`, same defaults as `MeasureSymZones` |
 
 Keyword-only pydantic fields; normalization/guards in `field_validator`s per project
 conventions (`adding-an-operation`).
@@ -225,16 +239,17 @@ conventions (`adding-an-operation`).
 
 ## 8. Testing
 
-- **Regression (blocking):** `MeasureSymmetricZones` output unchanged after the §3.1
+- **Regression (blocking):** `MeasureSymZones` output unchanged after the §3.1
   extraction, on `load_synth_yeast_plate()`.
 - **Analytic phantoms** for the orientation field (synthetic intensity tiles with known
   answers):
-  - parallel bundle → `R → 1`, turning `→ 0`;
-  - smoothly fanning/rotating field → turning high, `R` moderate;
-  - isotropic random → `R → 0`, coherence `→ 0`, metrics `NaN` if `ΣC ≈ 0`.
+    - parallel bundle → `R → 1`, turning `→ 0`;
+    - smoothly fanning/rotating field → turning high, `R` moderate;
+    - isotropic random → `R → 0`, coherence `→ 0`, metrics `NaN` if `ΣC ≈ 0`.
 - **Zone-restriction correctness:** a phantom with different orientation in the dense vs
   sparse ring yields the expected per-zone values.
-- **Invariances:** rotating the phantom leaves `R` magnitude & turning invariant while the
+- **Invariances:** rotating the phantom leaves `R` magnitude & turning invariant while
+  the
   resultant *direction* rotates; scale-covariance of turning.
 - **Radial vs Mask:** agree when the ring is mask-filled; diverge (documented) when mask
   holes are injected.
@@ -246,6 +261,7 @@ conventions (`adding-an-operation`).
 ## 9. File inventory
 
 **New**
+
 - `src/phenotypic/schema/_orientation_zones.py` — `ORIENTATION_ZONES` enum.
 - `src/phenotypic/measure/_zone_segmentation.py` — `ZoneSegmentation` +
   `compute_zone_segmentation`.
@@ -255,6 +271,7 @@ conventions (`adding-an-operation`).
   `tests/unit/measure/test_zone_segmentation_regression.py`.
 
 **Changed**
+
 - `src/phenotypic/measure/_measure_symmetric_zones.py` — refactor
   `_compute_intermediates` to consume `compute_zone_segmentation` (no behaviour change).
 - `src/phenotypic/measure/__init__.py`, `src/phenotypic/schema/__init__.py` — exports.
@@ -266,11 +283,15 @@ conventions (`adding-an-operation`).
 
 - **Core zone:** omitted per scope; adding a `*_Core_*` triple is mechanical once the
   dense/sparse pattern lands.
-- **Entropy:** `Field_OrientEntropy` per zone is a natural third metric; deferred (keep the
+- **Entropy:** `Field_OrientEntropy` per zone is a natural third metric; deferred (keep
+  the
   first cut to concentration + turning + coherence).
-- **`R`/turning unification:** the single-scalar `{R, coherence-weighted ⟨|∇φ|⟩}` framing
+- **`R`/turning unification:** the single-scalar `{R, coherence-weighted ⟨|∇φ|⟩}`
+  framing
   is already the output; no further reduction planned.
-- **Per-object zoom in `inspect()`:** if the plate-wide quiver is heavy, add a per-object
+- **Per-object zoom in `inspect()`:** if the plate-wide quiver is heavy, add a
+  per-object
   zoomed panel later.
-- **Prune variants:** once the Radial-vs-Mask comparison has served its purpose, drop the
+- **Prune variants:** once the Radial-vs-Mask comparison has served its purpose, drop
+  the
   Mask variant (mask is unreliable) to halve the column count.

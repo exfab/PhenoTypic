@@ -27,6 +27,7 @@
    .. autosummary::
    
       ~_DagBuilderState.open_port_menu
+      ~_DagBuilderState.pending_aux_replacement
       ~_DagBuilderState.pending_delete_block_id
       ~_DagBuilderState.selected_block_id
       ~_DagBuilderState.selected_edge_id

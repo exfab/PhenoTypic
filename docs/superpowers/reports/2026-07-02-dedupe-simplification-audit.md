@@ -24,38 +24,38 @@ contracts, or where extraction would make future changes safer.
 
 ## Tracking
 
-| ID | Priority | Area | Status | Follow-up | Verification focus |
-|---|---:|---|---|---|---|
-| DEDUPE-001 | P1 | Detection threshold registry | Spec drafted | `docs/superpowers/specs/2026-07-03-high-priority-dedupe-cleanup/design.md` | Detector output parity, method validation, nbins handling |
-| DEDUPE-002 | P1 | CLI measurement-source discovery | Spec drafted | `docs/superpowers/specs/2026-07-03-high-priority-dedupe-cleanup/design.md` | Parquet discovery order, aggregated-file preference, image-name normalization |
-| DEDUPE-003 | P1 | Staged GPU stage tags | Spec drafted | `docs/superpowers/specs/2026-07-03-high-priority-dedupe-cleanup/design.md` | Legacy events, invalid stages, terminal-stage aggregation |
-| DEDUPE-004 | P1 | Dash URL-prefix injection | Spec drafted | `docs/superpowers/specs/2026-07-03-high-priority-dedupe-cleanup/design.md` | Escaping, mounted prefixes, app factory parity |
-| DEDUPE-005 | P1 | Grid peak detector workflow | Spec drafted | `docs/superpowers/specs/2026-07-03-high-priority-dedupe-cleanup/design.md` | Round/Sine detector parity on synthetic plates |
-| DEDUPE-006 | P2 | Sine grid edge estimator | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Edge arrays and NCC parity |
-| DEDUPE-007 | P2 | SLURM script rendering | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Generated script snapshots and live smoke tests |
-| DEDUPE-008 | P2 | Atomic writes and parquet policy | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Partial-write safety, compression options |
-| DEDUPE-009 | P2 | GUI/design tokens | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Generated CSS and visual parity |
-| DEDUPE-010 | P2 | OpenSeadragon vendor assets and loader | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Offline asset loading and prefixUrl behavior |
-| DEDUPE-011 | P2 | Dash app bootstrap | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | App factory config and shared static registration |
-| DEDUPE-012 | P2 | Wavelet denoise operation pattern | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Operation schema and numerical output parity |
-| DEDUPE-013 | P2 | QC status labels/ranks/colors | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | QC summary and Plotly color parity |
-| DEDUPE-014 | P2 | Linear growth model heuristics | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Fitted parameter arrays and bounds parity |
-| DEDUPE-015 | P2 | HDF writer retry lifecycle | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Lock recovery, SWMR behavior, cleanup |
-| DEDUPE-016 | P2 | Morphological footprint resolution | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Footprint shape/default parity |
-| DEDUPE-017 | P2 | ColorChecker defaults | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Helper/profile default consistency |
-| DEDUPE-018 | P2 | Symmetric-zone parameter pattern | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Refiner/measurer defaults and diagnostics |
-| DEDUPE-019 | P2 | pytest xdist worker hook | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | `pytest -n auto` behavior on local and SLURM envs |
-| DEDUPE-020 | P2 | GUI ledger validators | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Escaped-pipe Markdown parsing and CI checks |
-| DEDUPE-021 | P2 | Reference generator runners | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | `--check` failure output and stale-output messaging |
-| DEDUPE-022 | P3 | Image layer closed set | Tracked | Later spec | CLI choices, HDF validation, process-only exports |
-| DEDUPE-023 | P3 | Dashboard analysis CSS fragments | Tracked | Later spec | Static dashboard rendering |
-| DEDUPE-024 | P3 | Docs templates | Tracked | Later spec | Sphinx output parity |
-| DEDUPE-025 | P3 | CLI test fixtures | Tracked | Opportunistic | Test readability only |
-| DEDUPE-026 | P3 | GUI output-root test seeding | Tracked | Opportunistic | Test fixture parity |
-| DEDUPE-027 | P3 | Builder DAG fixture paths | Tracked | Opportunistic | Test fixture path correctness |
-| DEDUPE-028 | P3 | Profiling script logs | Tracked | Opportunistic | Benchmark log output parity |
-| DEDUPE-029 | P3 | Plot style token re-spelling | Tracked | Opportunistic | Diagnostic figure color parity |
-| DEDUPE-030 | P3 | Small repeated helpers | Tracked | Opportunistic | Local unit tests |
+| ID         | Priority | Area                                   | Status       | Follow-up                                                                    | Verification focus                                                            |
+|------------|---------:|----------------------------------------|--------------|------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| DEDUPE-001 |       P1 | Detection threshold registry           | Spec drafted | `docs/superpowers/specs/2026-07-03-high-priority-dedupe-cleanup/design.md`   | Detector output parity, method validation, nbins handling                     |
+| DEDUPE-002 |       P1 | CLI measurement-source discovery       | Spec drafted | `docs/superpowers/specs/2026-07-03-high-priority-dedupe-cleanup/design.md`   | Parquet discovery order, aggregated-file preference, image-name normalization |
+| DEDUPE-003 |       P1 | Staged GPU stage tags                  | Spec drafted | `docs/superpowers/specs/2026-07-03-high-priority-dedupe-cleanup/design.md`   | Legacy events, invalid stages, terminal-stage aggregation                     |
+| DEDUPE-004 |       P1 | Dash URL-prefix injection              | Spec drafted | `docs/superpowers/specs/2026-07-03-high-priority-dedupe-cleanup/design.md`   | Escaping, mounted prefixes, app factory parity                                |
+| DEDUPE-005 |       P1 | Grid peak detector workflow            | Spec drafted | `docs/superpowers/specs/2026-07-03-high-priority-dedupe-cleanup/design.md`   | Round/Sine detector parity on synthetic plates                                |
+| DEDUPE-006 |       P2 | Sine grid edge estimator               | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Edge arrays and NCC parity                                                    |
+| DEDUPE-007 |       P2 | SLURM script rendering                 | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Generated script snapshots and live smoke tests                               |
+| DEDUPE-008 |       P2 | Atomic writes and parquet policy       | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Partial-write safety, compression options                                     |
+| DEDUPE-009 |       P2 | GUI/design tokens                      | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Generated CSS and visual parity                                               |
+| DEDUPE-010 |       P2 | OpenSeadragon vendor assets and loader | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Offline asset loading and prefixUrl behavior                                  |
+| DEDUPE-011 |       P2 | Dash app bootstrap                     | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | App factory config and shared static registration                             |
+| DEDUPE-012 |       P2 | Wavelet denoise operation pattern      | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Operation schema and numerical output parity                                  |
+| DEDUPE-013 |       P2 | QC status labels/ranks/colors          | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | QC summary and Plotly color parity                                            |
+| DEDUPE-014 |       P2 | Linear growth model heuristics         | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Fitted parameter arrays and bounds parity                                     |
+| DEDUPE-015 |       P2 | HDF writer retry lifecycle             | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Lock recovery, SWMR behavior, cleanup                                         |
+| DEDUPE-016 |       P2 | Morphological footprint resolution     | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Footprint shape/default parity                                                |
+| DEDUPE-017 |       P2 | ColorChecker defaults                  | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Helper/profile default consistency                                            |
+| DEDUPE-018 |       P2 | Symmetric-zone parameter pattern       | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Refiner/measurer defaults and diagnostics                                     |
+| DEDUPE-019 |       P2 | pytest xdist worker hook               | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | `pytest -n auto` behavior on local and SLURM envs                             |
+| DEDUPE-020 |       P2 | GUI ledger validators                  | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | Escaped-pipe Markdown parsing and CI checks                                   |
+| DEDUPE-021 |       P2 | Reference generator runners            | Spec drafted | `docs/superpowers/specs/2026-07-03-medium-priority-dedupe-cleanup/design.md` | `--check` failure output and stale-output messaging                           |
+| DEDUPE-022 |       P3 | Image layer closed set                 | Tracked      | Later spec                                                                   | CLI choices, HDF validation, process-only exports                             |
+| DEDUPE-023 |       P3 | Dashboard analysis CSS fragments       | Tracked      | Later spec                                                                   | Static dashboard rendering                                                    |
+| DEDUPE-024 |       P3 | Docs templates                         | Tracked      | Later spec                                                                   | Sphinx output parity                                                          |
+| DEDUPE-025 |       P3 | CLI test fixtures                      | Tracked      | Opportunistic                                                                | Test readability only                                                         |
+| DEDUPE-026 |       P3 | GUI output-root test seeding           | Tracked      | Opportunistic                                                                | Test fixture parity                                                           |
+| DEDUPE-027 |       P3 | Builder DAG fixture paths              | Tracked      | Opportunistic                                                                | Test fixture path correctness                                                 |
+| DEDUPE-028 |       P3 | Profiling script logs                  | Tracked      | Opportunistic                                                                | Benchmark log output parity                                                   |
+| DEDUPE-029 |       P3 | Plot style token re-spelling           | Tracked      | Opportunistic                                                                | Diagnostic figure color parity                                                |
+| DEDUPE-030 |       P3 | Small repeated helpers                 | Tracked      | Opportunistic                                                                | Local unit tests                                                              |
 
 ## P1 Findings
 
@@ -385,7 +385,7 @@ shared by profile fields and helper signatures.
 
 ### DEDUPE-018: Symmetric-Zone Parameter Pattern
 
-`TrimAsymmetry` and `MeasureSymmetricZones` share radial-density, PELT,
+`TrimAsymmetry` and `MeasureSymZones` share radial-density, PELT,
 angular-coverage, smoothing, and method parameters. Some defaults have already
 diverged.
 
@@ -451,17 +451,17 @@ The following are lower-risk or test/docs-only cleanup candidates. They are
 worth addressing opportunistically but should not block the high-priority
 cleanup spec.
 
-| ID | Area | Evidence | Suggested extraction |
-|---|---|---|---|
-| DEDUPE-022 | Image layer closed set | CLI choices, process-only maps, HDF validation, layer saving | Runtime tuple and layer maps near `ProcessOnlyLayer` |
-| DEDUPE-023 | Dashboard analysis CSS | Dashboard analysis plugins | Shared analysis-control/table CSS |
-| DEDUPE-024 | Docs templates | Sphinx class and image-accessor templates | Canonical template or Jinja include |
-| DEDUPE-025 | CLI test fixtures | CLI unit/integration conftests and integration tests | Shared CLI fixture and argv builder |
-| DEDUPE-026 | GUI output-root test seeding | Viewer and output-root tests | `seed_output_root(...)` helper |
-| DEDUPE-027 | Builder DAG fixture paths | Builder unit/integration/e2e tests | `tests/fixtures/paths.py` helper |
-| DEDUPE-028 | Profiling script logs | `profile_tests.py`, `profile_docs.py` | Shared benchmark log emitter |
-| DEDUPE-029 | Plot style token re-spelling | Diagnostic modules and Plotly theme | Import sanctioned tokens |
-| DEDUPE-030 | Small repeated helpers | BM3D stage converter, negative margin validators, lock caches, NN image readers | Local shared helpers only when touching nearby code |
+| ID         | Area                         | Evidence                                                                        | Suggested extraction                                 |
+|------------|------------------------------|---------------------------------------------------------------------------------|------------------------------------------------------|
+| DEDUPE-022 | Image layer closed set       | CLI choices, process-only maps, HDF validation, layer saving                    | Runtime tuple and layer maps near `ProcessOnlyLayer` |
+| DEDUPE-023 | Dashboard analysis CSS       | Dashboard analysis plugins                                                      | Shared analysis-control/table CSS                    |
+| DEDUPE-024 | Docs templates               | Sphinx class and image-accessor templates                                       | Canonical template or Jinja include                  |
+| DEDUPE-025 | CLI test fixtures            | CLI unit/integration conftests and integration tests                            | Shared CLI fixture and argv builder                  |
+| DEDUPE-026 | GUI output-root test seeding | Viewer and output-root tests                                                    | `seed_output_root(...)` helper                       |
+| DEDUPE-027 | Builder DAG fixture paths    | Builder unit/integration/e2e tests                                              | `tests/fixtures/paths.py` helper                     |
+| DEDUPE-028 | Profiling script logs        | `profile_tests.py`, `profile_docs.py`                                           | Shared benchmark log emitter                         |
+| DEDUPE-029 | Plot style token re-spelling | Diagnostic modules and Plotly theme                                             | Import sanctioned tokens                             |
+| DEDUPE-030 | Small repeated helpers       | BM3D stage converter, negative margin validators, lock caches, NN image readers | Local shared helpers only when touching nearby code  |
 
 ## High-Priority Spec Seed
 
@@ -471,7 +471,8 @@ must be independently reviewable and behavior-preserving.
 ### Candidate Files Added
 
 - `src/phenotypic/detect/_thresholding_registry.py`
-- `src/phenotypic/detect/_grid_peak_base.py` or `src/phenotypic/detect/_grid_peak_common.py`
+- `src/phenotypic/detect/_grid_peak_base.py` or
+  `src/phenotypic/detect/_grid_peak_common.py`
 - `src/phenotypic/_cli/_measurement_sources.py`
 - `src/phenotypic/_cli/_stages.py`
 - `tests/unit/detect/test_thresholding_helpers.py`

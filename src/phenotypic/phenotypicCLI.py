@@ -64,8 +64,8 @@ Examples:
     # Recompile a previous output directory: re-aggregate the master
     # measurements CSV, fill in any overlay PNGs missing under
     # deliverables/overlays/<ds>/ by reloading their HDFs (threaded across
-    # --njobs workers, alpha from --overlay-alpha), rerun analysis
-    # plugins, rebuild the manifest, and regenerate the HTML dashboard.
+    # --njobs workers, alpha from --overlay-alpha), rebuild the manifest,
+    # and regenerate the progress dashboard.
     # Existing overlays are left untouched.  Pipeline JSON is NOT
     # required:
     uv run python -m phenotypic --mode recompile --output <previous-output-dir>
@@ -205,7 +205,6 @@ from phenotypic.sdk_ import (
     dataset_measurements_dir,
     load_image_from_hdf,
     clear_machine_state,
-    measurements_parquet_path,
     processing_report_html_path,
     progress_dir,
     RUN_LOG_DIRNAME,
@@ -1898,19 +1897,6 @@ def phenotypic_cli(
                     err=True,
                 )
 
-            # Write analysis sidecar data for the dashboard
-            try:
-                from phenotypic._cli._dashboard._analysis_data import (
-                    write_analysis_sidecar,
-                )
-
-                write_analysis_sidecar(
-                    output_dir, metadata_csv=config.metadata_csv
-                )
-            except Exception:
-                finalization_succeeded = False
-                logger.warning("Analysis sidecar write failed", exc_info=True)
-
         # Generate HTML report
         click.echo("Generating HTML report...")
         report_gen = HTMLReportGenerator()
@@ -2280,7 +2266,7 @@ def _handle_recompile_slurm(
     console.print(f"[green]Job metadata: {metadata_path}[/green]")
 
     generate_dashboard(output_dir, execution_mode="slurm")
-    console.print(f"[green]Dashboard: {output_dir / 'dashboard.html'}[/green]")
+    console.print(f"[green]Dashboard: {dashboard_html_path(output_dir)}[/green]")
 
     if wait:
         console.print(
@@ -2291,7 +2277,7 @@ def _handle_recompile_slurm(
         console.print("[bold green]SLURM recompilation complete[/bold green]")
     else:
         click.echo("\nRecompile jobs submitted. Monitor progress with:")
-        click.echo(f"  Open: {output_dir / 'dashboard.html'}")
+        click.echo(f"  Open: {dashboard_html_path(output_dir)}")
         click.echo("  squeue -u $USER --array")
         from phenotypic.sdk_ import logs_dir
 
@@ -2419,8 +2405,8 @@ def _handle_recompile(
 
     Auto-discovers datasets under ``output_dir/results``, re-aggregates
     measurement Parquet files into ``master_measurements.csv``,
-    regenerates any missing overlay PNGs from their HDFs, runs
-    analysis plugins, rebuilds the progress manifest, and regenerates
+    regenerates any missing overlay PNGs from their HDFs, rebuilds
+    the progress manifest, and regenerates
     the HTML dashboard.
 
     Args:
@@ -2440,7 +2426,6 @@ def _handle_recompile(
     """
     from rich.console import Console
 
-    from phenotypic._cli._cli_chunk_writer import _run_analysis_plugins
     from phenotypic._cli._cli_output_manager import aggregate_measurements
     from phenotypic._cli._cli_utils import load_job_metadata
     from phenotypic._cli._dashboard import (
@@ -2476,30 +2461,6 @@ def _handle_recompile(
 
     console.print("[cyan]Checking for missing overlays...")
     _regenerate_missing_overlays(output_dir, overlay_alpha, n_jobs)
-
-    console.print("[cyan]Running analysis plugins...")
-    try:
-        import polars as pl
-
-        # Plugins consume the post-applied mirror (which carries the
-        # external metadata join) so dashboard sidecars match what the
-        # GUI viewer and per-feature splits see. The master archive is
-        # intentionally metadata-free.
-        mirror_path = measurements_parquet_path(output_dir)
-        merged_df: Optional[pl.DataFrame] = None
-        if mirror_path.exists():
-            try:
-                merged_df = pl.read_parquet(mirror_path)
-            except Exception:
-                logger.warning(
-                    "Failed to read measurements mirror for analysis plugins",
-                    exc_info=True,
-                )
-        _run_analysis_plugins(output_dir, prog_dir, merged_df)
-        console.print("[green]Analysis plugins complete")
-    except Exception:
-        logger.warning("Analysis plugin dispatch failed", exc_info=True)
-        console.print("[yellow]Analysis plugin dispatch failed (see logs)")
 
     console.print("[cyan]Rebuilding manifest...")
     prog_dir.mkdir(parents=True, exist_ok=True)

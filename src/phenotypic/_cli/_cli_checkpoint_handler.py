@@ -13,7 +13,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Optional, cast
+from typing import cast
 
 import click
 
@@ -27,7 +27,6 @@ from phenotypic.sdk_ import (
     atomic_write_json,
     checkpoint_lock_filename,
     event_log_path,
-    measurements_parquet_path,
     processing_report_html_path,
     resolve_manifest_json_path,
     resolve_execution_mode,
@@ -281,16 +280,6 @@ def _run_finalize(
         logger.warning(message)
     _check_epoch()
 
-    try:
-        from ._dashboard._analysis_data import write_analysis_sidecar
-
-        write_analysis_sidecar(output_dir, metadata_csv=metadata_csv)
-        _check_epoch()
-    except Exception:
-        if epoch is not None:
-            raise
-        logger.warning("Analysis sidecar write failed", exc_info=True)
-
     # Final manifest
     from ._dashboard._manifest_builder import (
         build_manifest,
@@ -311,27 +300,6 @@ def _run_finalize(
             JobMetadataKey.PROCESSING_GENERATION
         ),
     )
-    _check_epoch()
-
-    # Final analysis plugins
-    from ._cli_chunk_writer import _run_analysis_plugins
-
-    import polars as pl
-
-    # Analysis plugins consume the post-applied mirror (which carries the
-    # external metadata join) so dashboard sidecars match what the GUI
-    # viewer and per-feature splits see. The master archive is intentionally
-    # metadata-free and would regress plugin grouping if used here.
-    mirror_path = measurements_parquet_path(output_dir)
-    merged_df: Optional[pl.DataFrame] = None
-    if mirror_path.exists():
-        try:
-            merged_df = pl.read_parquet(mirror_path)
-        except Exception:
-            logger.warning(
-                "Failed to read measurements mirror for analysis plugins"
-            )
-    _run_analysis_plugins(output_dir, progress_dir, merged_df)
     _check_epoch()
 
     # Regenerate dashboard

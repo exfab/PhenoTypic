@@ -337,7 +337,7 @@ def _write_master_outputs_from_shards(output_dir: Path) -> Any | None:
         )
 
     # Seeding ``measurements.{csv,parquet}``, persisting pipeline.json,
-    # emitting analysis, and per-feature splits all happen in
+    # emitting configured analysis outputs, and per-feature splits all happen in
     # ``_run_post_master_steps`` via ``finalize_post_master_outputs`` so
     # the post-applied frame seeded into the GUI mirror matches the one
     # fed to the analysis chain.
@@ -350,8 +350,7 @@ def _run_post_master_steps(
     task: dict[str, Any],
     merged_df: Any | None,
 ) -> None:
-    """Run split, analysis plugins, manifest rebuild, and dashboard generation."""
-    from ._cli_chunk_writer import _run_analysis_plugins
+    """Run final outputs, rebuild the manifest, and generate the dashboard."""
     from ._cli_output_manager import (
         _load_pipeline_from_output_dir,
         finalize_post_master_outputs,
@@ -359,35 +358,24 @@ def _run_post_master_steps(
     from ._cli_utils import load_job_metadata
     from ._dashboard import regenerate_dashboard_artifacts
 
-    plugin_df: Any | None = merged_df
     if merged_df is not None:
         # Single canonical post-master finalize: applies post to a copy of
         # the clean master, joins the external metadata CSV (when given)
         # onto the post-applied frame, seeds ``measurements.{csv,parquet}``,
-        # persists ``pipeline.json``, emits analysis, and writes per-feature
-        # splits — same path the forward CLI takes. Reuse the returned
-        # post-applied (and metadata-joined) frame for analysis-plugin
-        # dispatch so plugins see the same data the analysis chain and the
-        # GUI viewer see.
+        # persists ``pipeline.json``, emits configured analysis outputs, and
+        # writes per-feature splits, matching the forward CLI path.
         pipeline = _load_pipeline_from_output_dir(output_dir)
         metadata_csv_str = task.get(JobMetadataKey.METADATA_CSV)
         metadata_csv = (
             Path(str(metadata_csv_str)) if metadata_csv_str else None
         )
         no_qc = bool(task.get(JobMetadataKey.NO_QC, False))
-        plugin_df = finalize_post_master_outputs(
+        finalize_post_master_outputs(
             output_dir,
             merged_df,
             pipeline,
             metadata_csv=metadata_csv,
             no_qc=no_qc,
-        )
-
-    try:
-        _run_analysis_plugins(output_dir, progress_dir, plugin_df)
-    except Exception:
-        logger.warning(
-            "Analysis plugin dispatch failed during recompile", exc_info=True
         )
 
     job_meta = load_job_metadata(progress_dir)

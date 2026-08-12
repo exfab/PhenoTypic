@@ -14,78 +14,24 @@ import logging
 from pathlib import Path
 
 from phenotypic._assets import asset_bytes
-from phenotypic.sdk_.register import AnalysisPluginRegistry
 from phenotypic.sdk_ import (
     DashboardManifestKey,
     DIR_PHENOTYPIC,
     DIR_PROGRESS,
-    analysis_html_path,
     atomic_write_json,
     dashboard_html_path,
     manifest_json_path,
 )
 from phenotypic.sdk_.typing_ import ExecutionMode
 
-from ._vendor_js import MARKED_MIN_JS
-
 logger = logging.getLogger(__name__)
 
 
-def _get_analysis_plugins() -> list:
-    """Return registered analysis plugins sorted by sort_order."""
-    # Import triggers plugin registration
-    from . import _analysis  # noqa: F401
-
-    plugins = []
-    for name in AnalysisPluginRegistry.available():
-        try:
-            cls = AnalysisPluginRegistry.get(name)
-            plugins.append(cls())
-        except Exception:
-            logger.warning("Failed to instantiate analysis plugin %r", name)
-    plugins.sort(key=lambda p: p.sort_order)
-    return plugins
-
-
-def _build_analysis_subtabs(plugins: list) -> str:
-    """Build analysis sub-tab HTML from registered plugins."""
-    if not plugins:
-        return '<div class="analysis-empty">No analysis plugins available.</div>'
-
-    # Sub-tab buttons
-    buttons = []
-    for i, p in enumerate(plugins):
-        active = " active" if i == 0 else ""
-        buttons.append(
-                f'<button class="sub-tab-btn{active}" '
-                f"onclick=\"switchSubTab('{p.call_name}')\">{p.display_name}</button>"
-        )
-
-    # Sub-tab content panels
-    panels = []
-    for i, p in enumerate(plugins):
-        active = " active" if i == 0 else ""
-        panels.append(
-                f'<div class="sub-tab-content{active}" id="subtab-{p.call_name}">'
-                f"{p.html()}</div>"
-        )
-
-    return (
-            '<div class="analysis-sub-tabs">\n          '
-            + "\n          ".join(buttons)
-            + "\n        </div>\n        "
-            + "\n        ".join(panels)
-    )
-
-
 def generate_dashboard(output_dir: Path, *, execution_mode: ExecutionMode = "local") -> None:
-    """Write ``dashboard.html`` and ``analysis.html`` into ``deliverables/``.
+    """Write the live progress ``dashboard.html`` into ``deliverables/``.
 
-    Both HTML artifacts are user-facing deliverables, so they land in
-    ``<output>/deliverables/`` (via :func:`dashboard_html_path` /
-    :func:`analysis_html_path`). The JS sidecars they lazy-load stay in
-    ``<output>/.phenotypic/progress/`` and the HTML re-bases its relative
-    fetches with ``../`` accordingly.
+    The dashboard is a user-facing deliverable, while the manifest and failure
+    records it polls stay in ``<output>/.phenotypic/progress/``.
 
     Args:
         output_dir: Root output directory.
@@ -93,19 +39,11 @@ def generate_dashboard(output_dir: Path, *, execution_mode: ExecutionMode = "loc
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     dashboard_path = dashboard_html_path(output_dir)
-    # dashboard_path/analysis_path share the deliverables/ parent; these HTML
-    # writers don't go through the atomic writer, so create it explicitly.
+    # This HTML writer does not go through the atomic writer, so create its
+    # deliverables parent explicitly.
     dashboard_path.parent.mkdir(parents=True, exist_ok=True)
     dashboard_path.write_text(_build_html(execution_mode), encoding="utf-8")
     logger.info("Dashboard written to %s", dashboard_path)
-
-    analysis_path = analysis_html_path(output_dir)
-    analysis_path.write_text(_build_analysis_html(), encoding="utf-8")
-    logger.info("Analysis page written to %s", analysis_path)
-
-    # Write JS sidecars for lazy loading by the Analysis page
-    _write_js_sidecar(output_dir, "plotly.min.js", "Plotly.js")
-    _write_js_sidecar(output_dir, "hyparquet.min.js", "hyparquet.js")
 
 
 def regenerate_dashboard_artifacts(
@@ -170,29 +108,6 @@ def regenerate_dashboard_artifacts(
         atomic_write_json(path, payload, sort_keys=False)
 
 
-def _write_js_sidecar(output_dir: Path, filename: str, label: str) -> None:
-    """Copy a vendored JS asset to the progress directory as a sidecar file.
-
-    Args:
-        output_dir: Root output directory.
-        filename: Asset filename (e.g. ``"plotly.min.js"``).
-        label: Human-readable name for log messages (e.g. ``"Plotly.js"``).
-    """
-    from phenotypic.sdk_ import progress_dir
-
-    prog_dir = progress_dir(output_dir)
-    prog_dir.mkdir(parents=True, exist_ok=True)
-    dest = prog_dir / filename
-    try:
-        src_data = asset_bytes(f"vendor/{filename}")
-        if dest.exists() and dest.stat().st_size == len(src_data):
-            return
-        dest.write_bytes(src_data)
-        logger.debug("%s sidecar written to %s", label, dest)
-    except (OSError, ModuleNotFoundError, TypeError):
-        logger.debug("%s asset not found -- feature will not be available", label)
-
-
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
@@ -210,35 +125,11 @@ def _build_html(execution_mode: str) -> str:
         "  <title>PhenoTypic Dashboard</title>\n"
         "  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n"
         "  <link href=\"https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap\" rel=\"stylesheet\">\n"
-        f"  <style>\n{_build_css(None)}\n  </style>\n"
+        f"  <style>\n{_build_css()}\n  </style>\n"
         "</head>\n"
         "<body>\n"
-        f"{_build_body(execution_mode, logo_data_uri, None)}\n"
-        f"  <script>\n{MARKED_MIN_JS}\n  </script>\n"
-        f"  <script>\n{_build_js(execution_mode, None)}\n  </script>\n"
-        "</body>\n"
-        "</html>\n"
-    )
-
-
-def _build_analysis_html() -> str:
-    """Assemble a self-contained analysis HTML page."""
-    logo_data_uri = _load_logo_data_uri()
-    plugins = _get_analysis_plugins()
-    return (
-        "<!DOCTYPE html>\n"
-        "<html lang=\"en\">\n"
-        "<head>\n"
-        "  <meta charset=\"UTF-8\">\n"
-        "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-        "  <title>PhenoTypic Analysis</title>\n"
-        "  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n"
-        "  <link href=\"https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap\" rel=\"stylesheet\">\n"
-        f"  <style>\n{_build_css(plugins)}\n  </style>\n"
-        "</head>\n"
-        "<body>\n"
-        f"{_build_analysis_body(logo_data_uri, plugins)}\n"
-        f"  <script>\n{_build_analysis_js(plugins)}\n  </script>\n"
+        f"{_build_body(execution_mode, logo_data_uri)}\n"
+        f"  <script>\n{_build_js(execution_mode)}\n  </script>\n"
         "</body>\n"
         "</html>\n"
     )
@@ -255,7 +146,7 @@ def _load_logo_data_uri() -> str:
         return ""
 
 
-def _build_css(plugins: list | None = None) -> str:
+def _build_css() -> str:
     """Return the inline CSS block for the dashboard."""
     base_css = """\
     /* ── Reset & Base ─────────────────────────────────────────── */
@@ -805,27 +696,6 @@ def _build_css(plugins: list | None = None) -> str:
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* ── README ──────────────────────────────────────────────── */
-    .readme-container {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
-      padding: var(--sp-8) var(--sp-10);
-      line-height: 1.7;
-      color: var(--color-body);
-      box-shadow: var(--shadow-sm);
-    }
-    .readme-container h1 { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 400; color: var(--color-heading); margin: var(--sp-6) 0 var(--sp-3); border-bottom: 1px solid var(--color-rule); padding-bottom: var(--sp-2); }
-    .readme-container h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 400; color: var(--color-heading); margin: var(--sp-5) 0 var(--sp-3); }
-    .readme-container h3 { font-family: var(--font-display); font-size: var(--text-md); font-weight: 400; color: var(--color-heading); margin: var(--sp-4) 0 var(--sp-2); }
-    .readme-container code { background: #edf2f7; color: var(--color-navy); padding: 1px 5px; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.88em; }
-    .readme-container pre { background: var(--color-bg); border: 1px solid var(--color-border); padding: var(--sp-4); border-radius: var(--radius); overflow-x: auto; margin: var(--sp-3) 0; }
-    .readme-container pre code { background: none; padding: 0; }
-    .readme-container table { border-collapse: collapse; width: 100%; margin: var(--sp-3) 0; }
-    .readme-container th, .readme-container td { border: 1px solid var(--color-rule); padding: var(--sp-2) var(--sp-3); text-align: left; }
-    .readme-container th { background: var(--color-bg); font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 500; color: var(--color-heading); text-transform: uppercase; letter-spacing: 0.08em; }
-    .readme-loading { color: var(--color-muted); font-size: var(--text-sm); }
-
     /* ── Download ────────────────────────────────────────────── */
     .download-container {
       background: var(--color-surface);
@@ -893,159 +763,28 @@ def _build_css(plugins: list | None = None) -> str:
       .card-value { font-size: var(--text-xl); }
     }
 
-    /* ── Analysis Tab ─────────────────────────────────────────── */
-    .analysis-container {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
-      padding: var(--sp-5) var(--sp-6);
-      box-shadow: var(--shadow-sm);
-    }
-    .analysis-banner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: var(--sp-3) var(--sp-5);
-      background: rgba(86,180,233,0.08);
-      border-left: 4px solid #56B4E9;
-      border-radius: var(--radius);
-      margin-bottom: var(--sp-4);
-      font-size: var(--text-sm);
-      color: #0B5E87;
-    }
-    .analysis-banner-btn {
-      background: var(--color-navy);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      padding: 0.3rem 0.75rem;
-      font-family: var(--font-body);
-      font-size: 11px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background var(--transition);
-    }
-    .analysis-banner-btn:hover { background: #004a8a; }
-    .analysis-sub-tabs {
-      display: flex;
-      gap: var(--sp-1);
-      margin-bottom: var(--sp-5);
-      border-bottom: 2px solid var(--color-rule);
-    }
-    .sub-tab-btn {
-      background: none;
-      border: none;
-      color: var(--color-muted);
-      font-family: var(--font-body);
-      font-size: var(--text-sm);
-      font-weight: 500;
-      padding: 10px 16px;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
-      transition: color var(--transition), border-color var(--transition);
-    }
-    .sub-tab-btn:hover { color: var(--color-body); border-color: var(--color-border); }
-    .sub-tab-btn.active { color: var(--color-navy); border-bottom-color: var(--color-navy); }
-    .sub-tab-content { display: none; }
-    .sub-tab-content.active { display: block; }
-    .analysis-empty {
-      color: var(--color-muted);
-      font-size: var(--text-sm);
-      padding: var(--sp-8) 0;
-      text-align: center;
-    }
-    .analysis-sample-label {
-      font-family: var(--font-mono);
-      font-size: var(--text-xs);
-      color: var(--color-muted);
-      margin-bottom: var(--sp-3);
-    }"""
-
-    # Append plugin CSS
-    plugin_css = "\n".join(p.css() for p in (plugins or []))
-    return base_css + "\n" + plugin_css
+    """
+    return base_css
 
 
-def _build_body(execution_mode: str, logo_data_uri: str = "",
-                plugins: list | None = None) -> str:
+def _build_body(execution_mode: str, logo_data_uri: str = "") -> str:
     """Return the HTML body content (no <body> tags)."""
     logo_html = (
         f'<div class="header-logo"><img src="{logo_data_uri}" alt="PhenoTypic"></div>'
         if logo_data_uri
         else ""
     )
-    return f"""\
-  <div class="container">
-    <!-- Header -->
-    <div class="header">
-      <div class="header-title-group">
-        {logo_html}
-        <h1>PhenoTypic Processing Dashboard</h1>
-      </div>
-      <div class="header-right">
-        <span class="input-path" id="input-path" style="display:none"></span>
-        <span id="last-updated"></span>
-        <span id="status-badge" class="status-badge status-live">
-          <span class="pulse-dot"></span> Live
-        </span>
-      </div>
-    </div>
-
+    tab_bar = ""
+    download_panel = ""
+    progress_attrs = ' id="progress-panel"'
+    if execution_mode == "slurm":
+        progress_attrs = ' class="tab-content active" id="tab-progress"'
+        tab_bar = """\
     <div class="tab-bar">
       <button class="tab-btn active" onclick="switchTab('progress')">Progress</button>
-      <a href="analysis.html" class="tab-btn" style="text-decoration:none">Analysis</a>
-      <button class="tab-btn" onclick="switchTab('readme')">README</button>
-      <button class="tab-btn" id="download-tab-btn" onclick="switchTab('download')"
-              style="display:none">Download</button>
-    </div>
-
-    <div class="tab-content active" id="tab-progress">
-      <!-- Summary cards -->
-      <div class="cards" id="cards"></div>
-
-      <!-- Overall progress bar -->
-      <div class="progress-section">
-        <div class="progress-header">
-          <span class="progress-title">Overall Progress</span>
-          <span class="progress-pct" id="progress-pct">0%</span>
-        </div>
-        <div class="progress-track">
-          <div class="progress-fill" id="progress-fill" style="width:0%"></div>
-        </div>
-      </div>
-
-      <!-- Active batch / SLURM -->
-      <div class="slurm-section" id="slurm-section" style="display:none">
-        <h2>SLURM Batch Status</h2>
-        <div class="chunk-grid" id="chunk-grid"></div>
-      </div>
-
-      <!-- Per-dataset breakdown -->
-      <div class="datasets-section">
-        <h2>Datasets</h2>
-        <div id="datasets-list"></div>
-      </div>
-
-      <!-- Failure category chart -->
-      <div class="chart-section">
-        <h2>Failure Categories</h2>
-        <div id="failure-chart"></div>
-      </div>
-
-      <!-- Recent failures table -->
-      <div class="failures-section">
-        <h2>Recent Failures</h2>
-        <div id="failures-table-container"></div>
-      </div>
-    </div>
-
-    <div class="tab-content" id="tab-readme">
-      <div class="readme-container" id="readme-content">
-        <div class="readme-loading">Loading README...</div>
-      </div>
-    </div>
-
+      <button class="tab-btn" onclick="switchTab('download')">Download</button>
+    </div>"""
+        download_panel = """\
     <div class="tab-content" id="tab-download">
       <div class="download-container">
         <h2>Download Results</h2>
@@ -1086,21 +825,80 @@ def _build_body(execution_mode: str, logo_data_uri: str = "",
           Everything (measurements, overlays, logs, checkpoints):</p>
         <div class="download-cmd" id="cmd-full"></div>
       </div>
+    </div>"""
+
+    return f"""\
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-title-group">
+        {logo_html}
+        <h1>PhenoTypic Processing Dashboard</h1>
+      </div>
+      <div class="header-right">
+        <span class="input-path" id="input-path" style="display:none"></span>
+        <span id="last-updated"></span>
+        <span id="status-badge" class="status-badge status-live">
+          <span class="pulse-dot"></span> Live
+        </span>
+      </div>
     </div>
+
+{tab_bar}
+
+    <div{progress_attrs}>
+      <!-- Summary cards -->
+      <div class="cards" id="cards"></div>
+
+      <!-- Overall progress bar -->
+      <div class="progress-section">
+        <div class="progress-header">
+          <span class="progress-title">Overall Progress</span>
+          <span class="progress-pct" id="progress-pct">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Active batch / SLURM -->
+      <div class="slurm-section" id="slurm-section" style="display:none">
+        <h2>SLURM Batch Status</h2>
+        <div class="chunk-grid" id="chunk-grid"></div>
+      </div>
+
+      <!-- Per-dataset breakdown -->
+      <div class="datasets-section">
+        <h2>Datasets</h2>
+        <div id="datasets-list"></div>
+      </div>
+
+      <!-- Failure category chart -->
+      <div class="chart-section">
+        <h2>Failure Categories</h2>
+        <div id="failure-chart"></div>
+      </div>
+
+      <!-- Recent failures table -->
+      <div class="failures-section">
+        <h2>Recent Failures</h2>
+        <div id="failures-table-container"></div>
+      </div>
+    </div>
+
+{download_panel}
 
   </div>"""
 
 
 def _build_js(
     execution_mode: str,
-    plugins: list | None = None,
     root_prefix: str = "../",
 ) -> str:
     """Return the inline JavaScript for the dashboard.
 
     Args:
         execution_mode: ``"local"`` or ``"slurm"``.
-        plugins: Optional analysis plugins whose JS is appended.
         root_prefix: Relative path from the generated HTML back to the
             output root. The dashboard lives in ``deliverables/`` while
             machine state lives in ``.phenotypic/progress/`` and results
@@ -1111,7 +909,6 @@ def _build_js(
     const EXECUTION_MODE = "{execution_mode}";
     // Path from this HTML (in deliverables/) back to the output root, where
     // results/ lives. Machine-state sidecars use the canonical hidden cache.
-    // Sibling files (README.md, measurements.*) move with the HTML and stay bare.
     const ROOT_PREFIX = "{root_prefix}";
     const PROGRESS_PREFIX = ROOT_PREFIX + "{DIR_PHENOTYPIC}/{DIR_PROGRESS}/";
     let refreshTimer = null;
@@ -1166,31 +963,11 @@ def _build_js(
     }}
 
     // ── Tab Switching ──────────────────────────────────────────
-    let readmeLoaded = false;
     function switchTab(tabId) {{
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.getElementById('tab-' + tabId).classList.add('active');
       document.querySelector('[onclick*="' + tabId + '"]').classList.add('active');
-      if (tabId === 'readme' && !readmeLoaded) loadReadme();
-    }}
-
-    // ── README Loading ─────────────────────────────────────────
-    async function loadReadme() {{
-      try {{
-        const resp = await fetch('README.md?' + Date.now());
-        if (!resp.ok) {{
-          document.getElementById('readme-content').innerHTML =
-            '<div class="readme-loading">README.md not found.</div>';
-          return;
-        }}
-        const md = await resp.text();
-        document.getElementById('readme-content').innerHTML = marked.parse(md);
-        readmeLoaded = true;
-      }} catch(e) {{
-        document.getElementById('readme-content').innerHTML =
-          '<div class="readme-loading">Could not load README.md.</div>';
-      }}
     }}
 
     // ── Download URL Helpers ───────────────────────────────────
@@ -1453,7 +1230,8 @@ def _build_js(
         hint.id = 'fetch-error-hint';
         hint.style.cssText = 'padding:12px 16px;background:rgba(213,94,0,0.08);color:#D55E00;' +
           'border-radius:6px;margin-bottom:16px;font-size:var(--text-sm)';
-        const container = document.querySelector('.tab-content.active');
+        const container = document.getElementById('tab-progress') ||
+          document.getElementById('progress-panel');
         if (container) container.prepend(hint);
       }}
       hint.innerHTML = 'Cannot load <code>' + PROGRESS_PREFIX + 'manifest.json</code> (' + esc(String(reason)) +
@@ -1545,625 +1323,25 @@ def _build_js(
     refresh();
     refreshTimer = setInterval(refresh, REFRESH_MS);
 
-    // Show Download tab if SLURM mode
     if (EXECUTION_MODE === 'slurm') {{
-      const dlBtn = document.getElementById('download-tab-btn');
-      if (dlBtn) dlBtn.style.display = '';
+      // Auto-populate the SLURM download helper from window.location.
+      const detected = getBaseUrl();
+      if (detected) {{
+        document.getElementById('dl-url').value = detected;
+        document.getElementById('dl-cutdirs').value = getCutDirs();
+      }}
+      updateCommands();
     }}
 
-    // Auto-populate URL from window.location
-    const detected = getBaseUrl();
-    if (detected) {{
-      document.getElementById('dl-url').value = detected;
-      document.getElementById('dl-cutdirs').value = getCutDirs();
-    }}
-    updateCommands();
-
 """
-    # Append plugin JS
-    plugin_js = "\n".join(p.js() for p in (plugins or []))
-    return framework_js + "\n" + plugin_js
-
-
-def _build_analysis_body(logo_data_uri: str, plugins: list) -> str:
-    """Return the HTML body content for the analysis page."""
-    logo_html = (
-        f'<div class="header-logo"><img src="{logo_data_uri}" alt="PhenoTypic"></div>'
-        if logo_data_uri
-        else ""
-    )
-    return f"""\
-  <div class="container">
-    <div class="header">
-      <div class="header-title-group">
-        {logo_html}
-        <h1>PhenoTypic Analysis</h1>
-      </div>
-      <div class="header-right">
-        <a href="dashboard.html" class="tab-btn" style="text-decoration:none">&larr; Dashboard</a>
-        <span id="last-updated"></span>
-      </div>
-    </div>
-    <div class="analysis-container">
-      <div class="analysis-banner" id="analysis-banner" style="display:none">
-        <span>New data available</span>
-        <button class="analysis-banner-btn" onclick="refreshAnalysisData()">Refresh</button>
-      </div>
-      {_build_analysis_subtabs(plugins)}
-    </div>
-  </div>"""
-
-
-def _build_analysis_js(plugins: list, root_prefix: str = "../") -> str:
-    """Return the inline JavaScript for the analysis page.
-
-    Args:
-        plugins: Analysis plugins whose JS is appended.
-        root_prefix: Relative path from the generated HTML back to the
-            output root. The analysis page lives in ``deliverables/`` while
-            machine state lives in ``.phenotypic/progress/``, so the default
-            ``"../"`` re-roots every machine-state URL. Sibling files
-            (``measurements.parquet``) move with the HTML and stay bare.
-    """
-    # Declared once here and referenced everywhere below. The rest of this
-    # builder is a plain (non-f) string, so ROOT_PREFIX is interpolated only
-    # in this short preamble and used via string concatenation thereafter.
-    root_prefix_js = f"""\
-    // Path from this HTML (in deliverables/) back to the output root, where
-    // machine-state sidecars live. Sibling files (measurements.parquet) stay bare.
-    const ROOT_PREFIX = "{root_prefix}";
-    const PROGRESS_PREFIX = ROOT_PREFIX + "{DIR_PHENOTYPIC}/{DIR_PROGRESS}/";
-"""
-    framework_js = """\
-    // ── Helpers ────────────────────────────────────────────────
-    function esc(s) {
-      const d = document.createElement('div');
-      d.textContent = s;
-      return d.innerHTML;
-    }
-
-    // ── Analysis State ────────────────────────────────────────
-    let analysisData = {};
-    let analysisDataVersion = null;
-    let analysisInitialized = {};
-    let sharedParquetState = {
-      allData: {},
-      allColumns: [],
-      numericCols: [],
-      catCols: [],
-      nRows: 0,
-      loaded: false,
-      loading: null
-    };
-    const _scriptCache = {};
-
-    function loadScript(src, globalName) {
-      if (_scriptCache[src]) return _scriptCache[src];
-      _scriptCache[src] = new Promise((resolve, reject) => {
-        if (window[globalName]) { resolve(); return; }
-        const s = document.createElement('script');
-        s.src = src;
-        s.onload = resolve;
-        s.onerror = () => reject(new Error('Failed to load ' + src));
-        document.head.appendChild(s);
-      });
-      return _scriptCache[src];
-    }
-    function loadPlotly() { return loadScript(PROGRESS_PREFIX + 'plotly.min.js', 'Plotly'); }
-    function loadHyparquet() { return loadScript(PROGRESS_PREFIX + 'hyparquet.min.js', 'hyparquet'); }
-
-    function _appendParquetRows(rows) {
-      if (rows.length === 0) return;
-      var cols = Object.keys(rows[0]);
-      for (var ci = 0; ci < cols.length; ci++) {
-        var col = cols[ci];
-        if (sharedParquetState.allColumns.indexOf(col) < 0) {
-          sharedParquetState.allColumns.push(col);
-        }
-        var existing = sharedParquetState.allData[col] || [];
-        var newVals = [];
-        for (var ri = 0; ri < rows.length; ri++) {
-          newVals.push(rows[ri][col]);
-        }
-        sharedParquetState.allData[col] = existing.concat(newVals);
-      }
-      sharedParquetState.nRows += rows.length;
-      sharedParquetState.numericCols = [];
-      sharedParquetState.catCols = [];
-      for (var ni = 0; ni < sharedParquetState.allColumns.length; ni++) {
-        var c = sharedParquetState.allColumns[ni];
-        var sample = sharedParquetState.allData[c];
-        if (!sample || sample.length === 0) continue;
-        var isNumeric = false;
-        for (var si = 0; si < Math.min(sample.length, 10); si++) {
-          if (sample[si] !== null && sample[si] !== undefined && !isNaN(sample[si]) && typeof sample[si] === 'number') {
-            isNumeric = true;
-            break;
-          }
-        }
-        if (isNumeric) {
-          sharedParquetState.numericCols.push(c);
-        } else {
-          sharedParquetState.catCols.push(c);
-        }
-      }
-    }
-
-    function _loadParquetFile(url) {
-      return fetch(url + '?' + Date.now()).then(function(resp) {
-        if (!resp.ok) throw new Error('Failed to fetch ' + url);
-        return resp.arrayBuffer();
-      }).then(function(buf) {
-        return new Promise(function(resolve, reject) {
-          try {
-            hyparquet.parquetRead({
-              file: {
-                byteLength: buf.byteLength,
-                slice: function(start, end) { return buf.slice(start, end); }
-              },
-              onComplete: function(rows) {
-                _appendParquetRows(rows);
-                resolve();
-              }
-            });
-          } catch(ex) { reject(ex); }
-        });
-      });
-    }
-
-    function loadSharedParquet() {
-      if (sharedParquetState.loaded) return Promise.resolve();
-      if (sharedParquetState.loading) return sharedParquetState.loading;
-      sharedParquetState.loading = _loadParquetFile('measurements.parquet')
-        .then(function() {
-          sharedParquetState.loaded = true;
-          sharedParquetState.loading = null;
-        })
-        .catch(function() {
-          return _loadParquetFile(PROGRESS_PREFIX + 'analysis_full.parquet')
-            .then(function() {
-              sharedParquetState.loaded = true;
-              sharedParquetState.loading = null;
-            });
-        })
-        .catch(function(e) {
-          console.warn('Parquet loading failed:', e);
-          sharedParquetState.loading = null;
-          throw e;
-        });
-      return sharedParquetState.loading;
-    }
-
-    function switchSubTab(tabId) {
-      document.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.sub-tab-content').forEach(c => c.classList.remove('active'));
-      document.getElementById('subtab-' + tabId).classList.add('active');
-      document.querySelectorAll('.sub-tab-btn').forEach(b => {
-        if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + tabId + "'")) b.classList.add('active');
-      });
-      if (!analysisInitialized[tabId]) {
-        initSubTab(tabId);
-      }
-    }
-
-    async function initSubTab(tabId) {
-      await fetchAnalysisData();
-      await Promise.allSettled([loadPlotly(), loadHyparquet()]);
-      await loadSharedParquet();
-      analysisInitialized[tabId] = true;
-      renderSubTab(tabId);
-    }
-
-    async function fetchAnalysisData() {
-      const sources = [
-        { key: 'stats', url: PROGRESS_PREFIX + 'analysis_stats.json' },
-        { key: 'overlay', url: 'overlays/overlay_manifest.json' },
-      ];
-      for (const src of sources) {
-        try {
-          const resp = await fetch(src.url + '?' + Date.now());
-          if (resp.ok) analysisData[src.key] = await resp.json();
-        } catch(e) { /* file not ready yet */ }
-      }
-    }
-
-    async function refreshAnalysisData() {
-      sharedParquetState = {allData:{}, allColumns:[], numericCols:[], catCols:[], nRows:0, loaded:false, loading:null};
-      await fetchAnalysisData();
-      analysisInitialized = {};
-      const active = document.querySelector('.sub-tab-content.active');
-      if (active) {
-        const tabId = active.id.replace('subtab-', '');
-        await initSubTab(tabId);
-      }
-      document.getElementById('analysis-banner').style.display = 'none';
-    }
-
-    function renderSubTab(tabId) {
-      var fn = window['initAnalysis_' + tabId];
-      if (typeof fn === 'function') fn();
-    }
-
-    // ── Auto-refresh polling ──────────────────────────────────
-    let _refreshTimer = null;
-    async function _pollManifest() {
-      try {
-        const resp = await fetch(PROGRESS_PREFIX + 'manifest.json?' + Date.now());
-        if (!resp.ok) return;
-        const data = await resp.json();
-        const newVersion = data.analysis_data_version || 0;
-        if (analysisDataVersion !== null && newVersion > analysisDataVersion) {
-          document.getElementById('analysis-banner').style.display = '';
-        }
-        analysisDataVersion = newVersion;
-        document.getElementById('last-updated').textContent =
-          'Updated ' + new Date().toLocaleTimeString();
-      } catch(e) { /* ignore */ }
-    }
-
-    // ── Boot ──────────────────────────────────────────────────
-    (async function() {
-      await _pollManifest();
-      _refreshTimer = setInterval(_pollManifest, 10000);
-      const activeSubTab = document.querySelector('.sub-tab-content.active');
-      if (activeSubTab) {
-        const subId = activeSubTab.id.replace('subtab-', '');
-        initSubTab(subId);
-      }
-    })();
-"""
-    # Shared transform helpers available to all analysis plugins
-    transform_js = """\
-
-    // ── Stat Helpers ────────────────────────────────────────────
-    // Basic statistical functions used by transform helpers and plugins.
-
-    function isNum(v) {
-      return v !== null && v !== undefined && !isNaN(v);
-    }
-
-    function statCount(arr) {
-      var c = 0;
-      for (var i = 0; i < arr.length; i++) {
-        if (isNum(arr[i])) c++;
-      }
-      return c;
-    }
-
-    function statMean(arr) {
-      var s = 0, c = 0;
-      for (var i = 0; i < arr.length; i++) {
-        if (isNum(arr[i])) { s += arr[i]; c++; }
-      }
-      return c > 0 ? s / c : null;
-    }
-
-    function statStd(arr, mean) {
-      if (mean === null) return null;
-      var s = 0, c = 0;
-      for (var i = 0; i < arr.length; i++) {
-        if (isNum(arr[i])) { s += (arr[i] - mean) * (arr[i] - mean); c++; }
-      }
-      return c > 1 ? Math.sqrt(s / (c - 1)) : null;
-    }
-
-    function statMedian(arr) {
-      var clean = [];
-      for (var i = 0; i < arr.length; i++) {
-        if (isNum(arr[i])) clean.push(arr[i]);
-      }
-      if (clean.length === 0) return null;
-      clean.sort(function(a, b) { return a - b; });
-      var mid = Math.floor(clean.length / 2);
-      if (clean.length % 2 !== 0) return clean[mid];
-      return (clean[mid - 1] + clean[mid]) / 2;
-    }
-
-    function statMin(arr) {
-      var m = Infinity;
-      for (var i = 0; i < arr.length; i++) {
-        if (isNum(arr[i]) && arr[i] < m) m = arr[i];
-      }
-      return m === Infinity ? null : m;
-    }
-
-    function statMax(arr) {
-      var m = -Infinity;
-      for (var i = 0; i < arr.length; i++) {
-        if (isNum(arr[i]) && arr[i] > m) m = arr[i];
-      }
-      return m === -Infinity ? null : m;
-    }
-
-    // ── Transform Helpers ────────────────────────────────────────
-    // Shared data transform functions for analysis plugins.
-    // All accept `data` (column-name → value-array, e.g. statsState.allData)
-    // and `indices` (filtered row indices from getFilteredIndices()).
-
-    /**
-     * Filter indices to rows where data[field][i] === value.
-     */
-    function filterByCategory(data, indices, field, value) {
-      var result = [];
-      var col = data[field];
-      if (!col) return result;
-      for (var i = 0; i < indices.length; i++) {
-        var idx = indices[i];
-        if (col[idx] === value) {
-          result.push(idx);
-        }
-      }
-      return result;
-    }
-
-    /**
-     * Filter indices to rows where min <= data[field][i] <= max.
-     * Skips null/undefined/NaN values.
-     */
-    function filterByRange(data, indices, field, min, max) {
-      var result = [];
-      var col = data[field];
-      if (!col) return result;
-      for (var i = 0; i < indices.length; i++) {
-        var idx = indices[i];
-        var v = col[idx];
-        if (isNum(v) && v >= min && v <= max) {
-          result.push(idx);
-        }
-      }
-      return result;
-    }
-
-    /**
-     * Group-by summary statistics for bar charts with error bars.
-     * Returns {groups: string[], means: number[], stdevs: number[], ns: number[]}.
-     */
-    function groupSummary(data, indices, groupField, valueField) {
-      var empty = { groups: [], means: [], stdevs: [], ns: [] };
-      if (!data[groupField] || !data[valueField]) return empty;
-
-      var groupCol = data[groupField];
-      var valueCol = data[valueField];
-      var buckets = {};
-      var seenGroups = {};
-
-      for (var i = 0; i < indices.length; i++) {
-        var idx = indices[i];
-        var g = groupCol[idx];
-        var v = valueCol[idx];
-        if (g === null || g === undefined) continue;
-        var key = String(g);
-        if (!seenGroups[key]) {
-          seenGroups[key] = true;
-          buckets[key] = [];
-        }
-        if (isNum(v)) buckets[key].push(v);
-      }
-
-      var groups = [];
-      for (var k in seenGroups) {
-        if (seenGroups.hasOwnProperty(k)) groups.push(k);
-      }
-      groups.sort();
-
-      var means = [], stdevs = [], ns = [];
-      for (var j = 0; j < groups.length; j++) {
-        var vals = buckets[groups[j]];
-        var n = vals.length;
-        ns.push(n);
-        if (n === 0) {
-          means.push(null);
-          stdevs.push(null);
-        } else {
-          var m = statMean(vals);
-          means.push(m);
-          stdevs.push(n >= 2 ? statStd(vals, m) : null);
-        }
-      }
-      return { groups: groups, means: means, stdevs: stdevs, ns: ns };
-    }
-
-    /**
-     * Collect raw numeric values per group for box/strip plots.
-     * Returns plain object: {groupName: number[], ...} with sorted keys.
-     */
-    function groupedArrays(data, indices, groupField, valueField) {
-      if (!data[groupField] || !data[valueField]) return {};
-
-      var groupCol = data[groupField];
-      var valueCol = data[valueField];
-      var buckets = {};
-      var seenGroups = {};
-
-      for (var i = 0; i < indices.length; i++) {
-        var idx = indices[i];
-        var g = groupCol[idx];
-        var v = valueCol[idx];
-        if (g === null || g === undefined) continue;
-        var key = String(g);
-        if (!seenGroups[key]) {
-          seenGroups[key] = true;
-          buckets[key] = [];
-        }
-        if (isNum(v)) buckets[key].push(v);
-      }
-
-      var sortedKeys = [];
-      for (var k in seenGroups) {
-        if (seenGroups.hasOwnProperty(k)) sortedKeys.push(k);
-      }
-      sortedKeys.sort();
-
-      var result = {};
-      for (var j = 0; j < sortedKeys.length; j++) {
-        result[sortedKeys[j]] = buckets[sortedKeys[j]];
-      }
-      return result;
-    }
-
-    /**
-     * Build scatter-plot arrays, optionally grouped.
-     * Returns {groupName: {x: number[], y: number[]}, ...}.
-     * If no groupField, uses single key "all".
-     */
-    function scatterArrays(data, indices, xField, yField, groupField) {
-      if (!data[xField] || !data[yField]) return {};
-
-      var xCol = data[xField];
-      var yCol = data[yField];
-      var hasGroup = groupField && groupField !== '' && data[groupField];
-      var gCol = hasGroup ? data[groupField] : null;
-
-      var groups = {};
-      for (var i = 0; i < indices.length; i++) {
-        var idx = indices[i];
-        var xi = xCol[idx];
-        var yi = yCol[idx];
-        if (!isNum(xi) || !isNum(yi)) continue;
-        var g = hasGroup ? String(gCol[idx]) : 'all';
-        if (!groups[g]) groups[g] = { x: [], y: [] };
-        groups[g].x.push(xi);
-        groups[g].y.push(yi);
-      }
-
-      if (!hasGroup) return groups;
-
-      var keys = [];
-      for (var k in groups) {
-        if (groups.hasOwnProperty(k)) keys.push(k);
-      }
-      keys.sort();
-
-      var result = {};
-      for (var j = 0; j < keys.length; j++) {
-        result[keys[j]] = groups[keys[j]];
-      }
-      return result;
-    }
-
-    /**
-     * Z-score normalization within group.
-     * Returns number[] aligned 1:1 with indices (NaN for non-numeric values).
-     */
-    function zscoreWithinGroup(data, indices, valueField, groupField) {
-      var n = indices.length;
-      if (!data[valueField] || !data[groupField]) {
-        var nanArr = [];
-        for (var a = 0; a < n; a++) nanArr.push(NaN);
-        return nanArr;
-      }
-
-      var valCol = data[valueField];
-      var grpCol = data[groupField];
-
-      // Partition indices by group (store position in indices array)
-      var groupMap = {};
-      for (var i = 0; i < n; i++) {
-        var g = String(grpCol[indices[i]]);
-        if (!groupMap[g]) groupMap[g] = [];
-        groupMap[g].push(i);
-      }
-
-      // Per-group mean and stdev
-      var groupStats = {};
-      for (var gk in groupMap) {
-        if (!groupMap.hasOwnProperty(gk)) continue;
-        var positions = groupMap[gk];
-        var sum = 0, count = 0;
-        for (var p = 0; p < positions.length; p++) {
-          var v = valCol[indices[positions[p]]];
-          if (isNum(v)) { sum += v; count++; }
-        }
-        var mean = count > 0 ? sum / count : 0;
-        var sqSum = 0;
-        for (var q = 0; q < positions.length; q++) {
-          var v2 = valCol[indices[positions[q]]];
-          if (isNum(v2)) { sqSum += (v2 - mean) * (v2 - mean); }
-        }
-        var stdev = count > 0 ? Math.sqrt(sqSum / count) : 0;
-        groupStats[gk] = { mean: mean, stdev: stdev };
-      }
-
-      // Map each index to its z-score
-      var result = new Array(n);
-      for (var r = 0; r < n; r++) {
-        var rv = valCol[indices[r]];
-        var rg = String(grpCol[indices[r]]);
-        var stats = groupStats[rg];
-        if (!isNum(rv)) {
-          result[r] = NaN;
-        } else if (stats.stdev === 0) {
-          result[r] = 0;
-        } else {
-          result[r] = (rv - stats.mean) / stats.stdev;
-        }
-      }
-      return result;
-    }
-
-    /**
-     * Pivot to dense matrix for heatmaps.
-     * Returns {rowLabels: string[], colLabels: string[], z: number[][]}.
-     * Multiple values per cell are averaged. Missing cells are NaN.
-     */
-    function pivotToMatrix(data, indices, rowField, colField, valueField) {
-      if (!data[rowField] || !data[colField] || !data[valueField]) {
-        return { rowLabels: [], colLabels: [], z: [] };
-      }
-
-      var rowCol = data[rowField];
-      var colCol = data[colField];
-      var valCol = data[valueField];
-
-      // Collect unique labels
-      var rowSet = {}, colSet = {};
-      for (var i = 0; i < indices.length; i++) {
-        var r = rowCol[indices[i]];
-        var c = colCol[indices[i]];
-        if (r !== null && r !== undefined) rowSet[r] = true;
-        if (c !== null && c !== undefined) colSet[c] = true;
-      }
-
-      var rowLabels = Object.keys(rowSet).sort();
-      var colLabels = Object.keys(colSet).sort();
-
-      // Build lookup maps
-      var rowIdx = {}, colIdx = {};
-      for (i = 0; i < rowLabels.length; i++) rowIdx[rowLabels[i]] = i;
-      for (i = 0; i < colLabels.length; i++) colIdx[colLabels[i]] = i;
-
-      // Initialize accumulators
-      var nRows = rowLabels.length, nCols = colLabels.length;
-      var sum = [], count = [], z = [];
-      for (i = 0; i < nRows; i++) {
-        sum[i] = []; count[i] = []; z[i] = [];
-        for (var j = 0; j < nCols; j++) {
-          sum[i][j] = 0; count[i][j] = 0; z[i][j] = NaN;
-        }
-      }
-
-      // Accumulate values
-      for (i = 0; i < indices.length; i++) {
-        var rv = rowCol[indices[i]];
-        var cv = colCol[indices[i]];
-        var v = valCol[indices[i]];
-        if (!isNum(v)) continue;
-        if (rv === null || rv === undefined || cv === null || cv === undefined) continue;
-        var ri = rowIdx[rv], ci = colIdx[cv];
-        sum[ri][ci] += v;
-        count[ri][ci] += 1;
-      }
-
-      // Compute means
-      for (i = 0; i < nRows; i++) {
-        for (j = 0; j < nCols; j++) {
-          if (count[i][j] > 0) z[i][j] = sum[i][j] / count[i][j];
-        }
-      }
-
-      return { rowLabels: rowLabels, colLabels: colLabels, z: z };
-    }
-"""
-    # Append plugin JS
-    plugin_js = "\n".join(p.js() for p in (plugins or []))
-    return root_prefix_js + "\n" + framework_js + "\n" + transform_js + "\n" + plugin_js
+    if execution_mode != "slurm":
+        helpers_start = framework_js.index("    // ── Tab Switching")
+        helpers_end = framework_js.index("    // ── Render: Summary Cards")
+        framework_js = (
+            framework_js[:helpers_start] + framework_js[helpers_end:]
+        )
+        boot_start = framework_js.index(
+            "    if (EXECUTION_MODE === 'slurm')"
+        )
+        framework_js = framework_js[:boot_start]
+    return framework_js

@@ -25,10 +25,15 @@ class PLATE_METADATA(IdentityInfo):
     PLATE_ID = Entry("PlateID", "Identifier of the assay/imaging plate.")
     BATCH = Entry("Batch", "Experimental batch grouping.")
     ARRAY_DENSITY = Entry(
-        "ArrayDensity",
-        "Colony array density, i.e. wells per plate (e.g. 96, 384, 1536).",
+            "ArrayDensity",
+            "Colony array density, i.e. wells per plate (e.g. 96, 384, 1536).",
     )
     INCUBATOR_POSITION = Entry(
-        "IncubatorPosition",
-        "Physical position of the plate within the incubator.",
+            "IncubatorPosition",
+            "Physical position of the plate within the incubator.",
+    )
+    CONFIGURATION = Entry(
+            "Configuration",
+            "The sample's array position configuration. Different configurations can be"
+            " used to help identify and mitigate edge/neighbor effects.",
     )

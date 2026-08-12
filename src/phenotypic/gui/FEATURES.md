@@ -518,7 +518,7 @@ under both standalone and dispatcher-mounted launches.
 
 | Feature                          | Element                               | Expected behaviour                                            | Status     | Test layer  | Test ref                                                                                         |
 |----------------------------------|---------------------------------------|---------------------------------------------------------------|------------|-------------|--------------------------------------------------------------------------------------------------|
-| `dashboard.html` iframe          | Run console main pane                 | Iframes `/runs/<rel>/dashboard.html` for in-progress runs     | ✅ shipping | e2e         | tests/e2e/gui/test_iframe_postmessage.py::test_iframe_loads_runs_blueprint_url                   |
+| Progress dashboard iframe        | Run console main pane                 | Iframes `/runs/<rel>/deliverables/dashboard.html`; local dashboards show progress directly and SLURM dashboards expose Progress and Download tabs | ✅ shipping | e2e         | tests/e2e/gui/test_iframe_postmessage.py::test_iframe_loads_runs_blueprint_url                   |
 | postMessage (dashboard → parent) | JS in `_cli/_dashboard/_generator.py` | Guarded by `window.parent !== window`; standalone path silent | ✅ shipping | integration | tests/integration/gui/test_postmessage_listener.py::test_postshell_event_guarded_by_parent_check |
 
 ## Cross-cutting infrastructure

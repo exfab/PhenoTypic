@@ -1,75 +1,175 @@
 # MeasureOrientationZones Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:
+> subagent-driven-development (recommended) or superpowers:executing-plans to implement
+> this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a Regime-B `MeasureFeatures` operator `MeasureOrientationZones` that quantifies hyphal **concentration** (`R`), **turning** (`⟨|∇φ|⟩`), and **coherence** from the structure-tensor orientation field, reported **overall** and per **dense**/**sparse** growth zone, reusing the zone segmentation of `MeasureSymmetricZones`.
+**Goal:** Add a Regime-B `MeasureFeatures` operator `MeasureOrientationZones` that
+quantifies hyphal **concentration** (`R`), **turning** (`⟨|∇φ|⟩`), and **coherence**
+from the structure-tensor orientation field, reported **overall** and per **dense**/*
+*sparse** growth zone, reusing the zone segmentation of `MeasureSymZones`.
 
-**Architecture:** First extract the colony-ness → zone-radii pipeline out of `MeasureSymmetricZones` into a shared, side-effect-free `_zone_segmentation.py` module (pure refactor, byte-identical, regression-guarded). Then add a self-contained `orientation_field()` structure-tensor helper. Then build the new operator on top of both: per object it obtains scalar zone radii + inoculum centre from `compute_zone_segmentation`, computes the orientation field over a **mask-free tile** (grid section when available, expanded crop otherwise), and aggregates coherence-weighted metrics over **radially defined** regions bounded by the symmetric radius, in both a `Radial` and a raw-`Mask` variant. Two Plotly figure surfaces follow the repo `FigureProvider` convention: `inspect()` (saveable primary, ships quiver + per-zone glyphs) and `dashboard()` (composed diagnostic adding a coherence heatmap).
+**Architecture:** First extract the colony-ness → zone-radii pipeline out of
+`MeasureSymZones` into a shared, side-effect-free `_zone_segmentation.py` module (pure
+refactor, byte-identical, regression-guarded). Then add a self-contained
+`orientation_field()` structure-tensor helper. Then build the new operator on top of
+both: per object it obtains scalar zone radii + inoculum centre from
+`compute_zone_segmentation`, computes the orientation field over a **mask-free tile** (
+grid section when available, expanded crop otherwise), and aggregates coherence-weighted
+metrics over **radially defined** regions bounded by the symmetric radius, in both a
+`Radial` and a raw-`Mask` variant. Two Plotly figure surfaces follow the repo
+`FigureProvider` convention: `inspect()` (saveable primary, ships quiver + per-zone
+glyphs) and `dashboard()` (composed diagnostic adding a coherence heatmap).
 
-**Tech Stack:** Python 3, numpy, `scipy.ndimage` (Gaussian derivatives, EDT), scikit-image (`regionprops`), pandas, pydantic v2 (keyword-only operation fields), Plotly (`graph_objects`, `make_subplots`), pytest. Package manager/runner: `uv` (never bare `python`/`pip`).
+**Tech Stack:** Python 3, numpy, `scipy.ndimage` (Gaussian derivatives, EDT),
+scikit-image (`regionprops`), pandas, pydantic v2 (keyword-only operation fields),
+Plotly (`graph_objects`, `make_subplots`), pytest. Package manager/runner: `uv` (never
+bare `python`/`pip`).
 
 ## Global Constraints
 
 - **Runner:** all commands via `uv run …`. Never bare `python`/`pip`.
-- **Worktree:** all work happens in `/Users/alex/Projects/PhenoTypic/.worktrees/orientation-field` on branch `orientation-field`. All paths below are repo-relative to that worktree root.
-- **Operations are pydantic v2 models:** no `__init__`; parameters are annotated class-level fields; **keyword-only** construction; input normalization/guards go in `field_validator`s. Operations subclass the relevant ABC; algorithm body is `_operate(self, image) -> pd.DataFrame`.
-- **Call convention:** `MeasureFeatures` subclasses run via `.measure(image)`; detectors via `.apply(image)`. Never `op(image)`.
-- **Measurement columns are category-prefixed** and assembled as `f"{ENUM.category()}_{member.label}"`. This op's headers are `OrientZones_<Metric>-<Variant>-<Zone>` — a single underscore after the category, then Metric/Variant/Zone hyphen-joined so `header.split("_", 1)` peels the category and `.split("-")` yields `[Metric, Variant, Zone]`. `Metric ∈ {Concentration, Turning, Coherence}`, `Variant ∈ {Radial, Mask}`, `Zone ∈ {Overall, Dense, Sparse}` (18 columns + `Object_Label`).
-- **Schema authoring rule (hard):** author `label` and `desc` only. **Leave `bio_desc=""` and `image=None`** — biological-relevance text is human-authored, never machine-generated. `ORIENTATION_ZONES` is a `DescriptiveTrait` (tier 2).
-- **Docstrings:** Google-style everywhere; every doctest must be runnable on `load_synth_yeast_plate()` / `load_synth_filamentous_plate()` (both return a `GridImage` with objmap preloaded).
-- **`inspect()` is reserved** across the codebase for the single *saveable* primary figure consumed by the CLI `--save-inspect` flag. The richer composed diagnostic is exposed as `dashboard()` (mirroring `AutoGridFinder.dashboard()`), returning a composed `go.Figure`.
-- **Extraction discipline:** the §Task-1 refactor changes **no** observable behaviour of `MeasureSymmetricZones`; land it green (regression test passing) before building anything new.
-- **Immutability/memory:** operations return copies; images are large — avoid unnecessary intermediate allocations; read accessors as `image.detect_mat[:]`, `image.gray[:]`, `image.objmap[:]`.
+- **Worktree:** all work happens in
+  `/Users/alex/Projects/PhenoTypic/.worktrees/orientation-field` on branch
+  `orientation-field`. All paths below are repo-relative to that worktree root.
+- **Operations are pydantic v2 models:** no `__init__`; parameters are annotated
+  class-level fields; **keyword-only** construction; input normalization/guards go in
+  `field_validator`s. Operations subclass the relevant ABC; algorithm body is
+  `_operate(self, image) -> pd.DataFrame`.
+- **Call convention:** `MeasureFeatures` subclasses run via `.measure(image)`; detectors
+  via `.apply(image)`. Never `op(image)`.
+- **Measurement columns are category-prefixed** and assembled as
+  `f"{ENUM.category()}_{member.label}"`. This op's headers are
+  `OrientZones_<Metric>-<Variant>-<Zone>` — a single underscore after the category, then
+  Metric/Variant/Zone hyphen-joined so `header.split("_", 1)` peels the category and
+  `.split("-")` yields `[Metric, Variant, Zone]`.
+  `Metric ∈ {Concentration, Turning, Coherence}`, `Variant ∈ {Radial, Mask}`,
+  `Zone ∈ {Overall, Dense, Sparse}` (18 columns + `Object_Label`).
+- **Schema authoring rule (hard):** author `label` and `desc` only. *
+  *Leave `bio_desc=""` and `image=None`** — biological-relevance text is human-authored,
+  never machine-generated. `ORIENTATION_ZONES` is a `DescriptiveTrait` (tier 2).
+- **Docstrings:** Google-style everywhere; every doctest must be runnable on
+  `load_synth_yeast_plate()` / `load_synth_filamentous_plate()` (both return a
+  `GridImage` with objmap preloaded).
+- **`inspect()` is reserved** across the codebase for the single *saveable* primary
+  figure consumed by the CLI `--save-inspect` flag. The richer composed diagnostic is
+  exposed as `dashboard()` (mirroring `AutoGridFinder.dashboard()`), returning a
+  composed `go.Figure`.
+- **Extraction discipline:** the §Task-1 refactor changes **no** observable behaviour of
+  `MeasureSymZones`; land it green (regression test passing) before building anything
+  new.
+- **Immutability/memory:** operations return copies; images are large — avoid
+  unnecessary intermediate allocations; read accessors as `image.detect_mat[:]`,
+  `image.gray[:]`, `image.objmap[:]`.
 
 ---
 
 ## File Structure
 
 **New files**
-- `src/phenotypic/measure/_zone_segmentation.py` — `ZoneSegmentation` dataclass, `ZoneSegmentationParams` dataclass, `compute_zone_segmentation(...)`, and the relocated pure segmentation helpers + module constants. Single responsibility: turn one detected object into its concentric zone geometry.
-- `src/phenotypic/util/_orientation_field.py` — `orientation_field(intensity, sigma_d, sigma_i) -> (phi, coherence, grad_phi)`. Single responsibility: structure-tensor orientation field on a 2-D intensity tile.
-- `src/phenotypic/schema/_orientation_zones.py` — `ORIENTATION_ZONES` header enum (18 members).
-- `src/phenotypic/measure/_measure_orientation_zones.py` — `MeasureOrientationZones` operator + pure aggregation helpers + `inspect()` + `dashboard()` + transient `_OrientationZonesReport`.
-- `tests/unit/measure/test_zone_segmentation_regression.py` — golden-equality regression guard for the extraction.
-- `tests/unit/measure/test_orientation_field.py` — analytic-phantom tests for the `orientation_field` helper and the aggregation helpers.
-- `tests/unit/measure/test_measure_orientation_zones.py` — operator behaviour, zone restriction, invariances, Radial-vs-Mask, edge cases, figure smoke tests.
-- `tests/unit/measure/_golden/symmetric_zones_yeast.parquet`, `…_filamentous.parquet` — captured baselines (committed).
+
+- `src/phenotypic/measure/_zone_segmentation.py` — `ZoneSegmentation` dataclass,
+  `ZoneSegmentationParams` dataclass, `compute_zone_segmentation(...)`, and the
+  relocated pure segmentation helpers + module constants. Single responsibility: turn
+  one detected object into its concentric zone geometry.
+- `src/phenotypic/util/_orientation_field.py` —
+  `orientation_field(intensity, sigma_d, sigma_i) -> (phi, coherence, grad_phi)`. Single
+  responsibility: structure-tensor orientation field on a 2-D intensity tile.
+- `src/phenotypic/schema/_orientation_zones.py` — `ORIENTATION_ZONES` header enum (18
+  members).
+- `src/phenotypic/measure/_measure_orientation_zones.py` — `MeasureOrientationZones`
+  operator + pure aggregation helpers + `inspect()` + `dashboard()` + transient
+  `_OrientationZonesReport`.
+- `tests/unit/measure/test_zone_segmentation_regression.py` — golden-equality regression
+  guard for the extraction.
+- `tests/unit/measure/test_orientation_field.py` — analytic-phantom tests for the
+  `orientation_field` helper and the aggregation helpers.
+- `tests/unit/measure/test_measure_orientation_zones.py` — operator behaviour, zone
+  restriction, invariances, Radial-vs-Mask, edge cases, figure smoke tests.
+- `tests/unit/measure/_golden/symmetric_zones_yeast.parquet`, `…_filamentous.parquet` —
+  captured baselines (committed).
 
 **Modified files**
-- `src/phenotypic/measure/_measure_symmetric_zones.py` — relocate segmentation staticmethods + `_SymmetryIntermediates` into `_zone_segmentation.py`; `_compute_intermediates` becomes a thin delegator to `compute_zone_segmentation`. No column/inspect changes.
+
+- `src/phenotypic/measure/_measure_symmetric_zones.py` — relocate segmentation
+  staticmethods + `_SymmetryIntermediates` into `_zone_segmentation.py`;
+  `_compute_intermediates` becomes a thin delegator to `compute_zone_segmentation`. No
+  column/inspect changes.
 - `src/phenotypic/measure/__init__.py` — export `MeasureOrientationZones`.
 - `src/phenotypic/schema/__init__.py` — export `ORIENTATION_ZONES`.
 
 **Execution ordering / dependencies**
-- **Task 1** (extraction) is a prerequisite for Task 5. It is independent of Tasks 2 and 3.
-- **Task 2** (`orientation_field`) and **Task 3** (schema enum) are independent of Task 1 and of each other — can be done in any order / parallel.
+
+- **Task 1** (extraction) is a prerequisite for Task 5. It is independent of Tasks 2 and
+  3.
+- **Task 2** (`orientation_field`) and **Task 3** (schema enum) are independent of Task
+  1 and of each other — can be done in any order / parallel.
 - **Task 4** (operator core) depends on Tasks 1, 2, 3.
-- **Task 5** (`inspect()`) depends on Task 4. **Task 6** (`dashboard()`) depends on Task 5.
+- **Task 5** (`inspect()`) depends on Task 4. **Task 6** (`dashboard()`) depends on Task
+  5.
 
 ---
 
 ### Task 1: Extract shared zone-segmentation helper (pure refactor + regression guard)
 
 **Files:**
+
 - Create: `src/phenotypic/measure/_zone_segmentation.py`
 - Modify: `src/phenotypic/measure/_measure_symmetric_zones.py`
 - Test: `tests/unit/measure/test_zone_segmentation_regression.py`
-- Golden: `tests/unit/measure/_golden/symmetric_zones_yeast.parquet`, `…_filamentous.parquet`
+- Golden: `tests/unit/measure/_golden/symmetric_zones_yeast.parquet`,
+  `…_filamentous.parquet`
 
 **Interfaces:**
+
 - Produces:
-  - `@dataclass ZoneSegmentation` — the full per-object segmentation record: **all** fields currently on `_SymmetryIntermediates` (`label`, `bbox_slice`, `centroid_rc`, `density_profile`, `annulus_radii`, `core_radius`, `sholl_counts`, `angular_R_profile`, `angular_coverage`, `symmetric_radius`, `mean_expansion`, `max_expansion`, `obj_mask`, `dist_map`, `gray_crop`, `core_end_radius`, `dense_end_radius`, `sparse_end_radius`, `r_outer_full_per_angle`, `core_area`, `dense_area`, `sparse_area`, `colony_ness_profile`, `mean_profile`, `variance_profile`, `count_profile`, `I_core`, `I_agar`, `zones_computed`) **plus one new field** `centroid_global: tuple[float, float] = (0.0, 0.0)` (plate-frame inoculum centre; frame origin of `dist_map`/`obj_mask`/`gray_crop` = `(bbox_slice[0].start, bbox_slice[1].start)`).
-  - `@dataclass(frozen=True) ZoneSegmentationParams` with fields (name/default identical to the current `MeasureSymmetricZones` pydantic fields): `n_annuli: int = 100`, `pelt_penalty: float = 5.0`, `symmetry_threshold: float = 4/6`, `n_angular_bins: int = 6`, `smoothing_window: int = 3`, `method: str = "distance"`, `extent_margin: float = 0.05`, `min_samples_per_ring: int = 5`, `tau_core: float = 0.9`, `tau_dense: float = 0.5`, `tau_sparse: float = 0.1`, `intensity_source: str = "gray"`.
-  - `compute_zone_segmentation(image, prop, *, params: ZoneSegmentationParams) -> ZoneSegmentation`.
-  - Relocated module-level pure functions (dropped `@staticmethod`, identical bodies): `distance_from_point`, `expand_slice_around_center`, `compute_radial_density_profile`, `find_core_radius`, `extract_mask_boundary`, `compute_sholl_angular_profile`, `find_symmetric_radius`, `compute_radial_expansion`, `per_angle_mask_envelope`, `build_theta_r_maps`, `accumulate_radial_profile`, `accumulate_mask_per_annulus`, `compute_colony_ness_profile`, `extract_zone_radii`, `compute_zone_areas`, and module constants `_N_ANGULAR_SECTORS = 360`, `_ZONE_RADIAL_SMOOTHING = 3`.
-    **Note (15 helpers, not 14):** `_extract_mask_boundary` (currently `_measure_symmetric_zones.py:765`) is a 15th staticmethod that `_compute_sholl_angular_profile` (line ~840) and `_compute_radial_expansion` (line ~997) call via a hardcoded `MeasureSymmetricZones._extract_mask_boundary(...)` reference. It MUST be relocated too, and those two call sites rewritten to the bare module function `extract_mask_boundary(...)` — otherwise the relocated bodies reference a deleted/foreign symbol and create an import cycle or `AttributeError`. `min_boundary_per_annulus` (default 8) stays a hardcoded arg on `compute_sholl_angular_profile`, intentionally **not** promoted to `ZoneSegmentationParams` (matches current behaviour).
+    - `@dataclass ZoneSegmentation` — the full per-object segmentation record: **all**
+      fields currently on `_SymmetryIntermediates` (`label`, `bbox_slice`,
+      `centroid_rc`, `density_profile`, `annulus_radii`, `core_radius`, `sholl_counts`,
+      `angular_R_profile`, `angular_coverage`, `symmetric_radius`, `mean_expansion`,
+      `max_expansion`, `obj_mask`, `dist_map`, `gray_crop`, `core_end_radius`,
+      `dense_end_radius`, `sparse_end_radius`, `r_outer_full_per_angle`, `core_area`,
+      `dense_area`, `sparse_area`, `colony_ness_profile`, `mean_profile`,
+      `variance_profile`, `count_profile`, `I_core`, `I_agar`, `zones_computed`) **plus
+      one new field** `centroid_global: tuple[float, float] = (0.0, 0.0)` (plate-frame
+      inoculum centre; frame origin of `dist_map`/`obj_mask`/`gray_crop` =
+      `(bbox_slice[0].start, bbox_slice[1].start)`).
+    - `@dataclass(frozen=True) ZoneSegmentationParams` with fields (name/default
+      identical to the current `MeasureSymZones` pydantic fields):
+      `n_annuli: int = 100`, `pelt_penalty: float = 5.0`,
+      `symmetry_threshold: float = 4/6`, `n_angular_bins: int = 6`,
+      `smoothing_window: int = 3`, `method: str = "distance"`,
+      `extent_margin: float = 0.05`, `min_samples_per_ring: int = 5`,
+      `tau_core: float = 0.9`, `tau_dense: float = 0.5`, `tau_sparse: float = 0.1`,
+      `intensity_source: str = "gray"`.
+    -
+    `compute_zone_segmentation(image, prop, *, params: ZoneSegmentationParams) -> ZoneSegmentation`.
+    - Relocated module-level pure functions (dropped `@staticmethod`, identical bodies):
+      `distance_from_point`, `expand_slice_around_center`,
+      `compute_radial_density_profile`, `find_core_radius`, `extract_mask_boundary`,
+      `compute_sholl_angular_profile`, `find_symmetric_radius`,
+      `compute_radial_expansion`, `per_angle_mask_envelope`, `build_theta_r_maps`,
+      `accumulate_radial_profile`, `accumulate_mask_per_annulus`,
+      `compute_colony_ness_profile`, `extract_zone_radii`, `compute_zone_areas`, and
+      module constants `_N_ANGULAR_SECTORS = 360`, `_ZONE_RADIAL_SMOOTHING = 3`.
+      **Note (15 helpers, not 14):** `_extract_mask_boundary` (currently
+      `_measure_symmetric_zones.py:765`) is a 15th staticmethod that
+      `_compute_sholl_angular_profile` (line ~840) and `_compute_radial_expansion` (
+      line ~997) call via a hardcoded `MeasureSymZones._extract_mask_boundary(...)`
+      reference. It MUST be relocated too, and those two call sites rewritten to the
+      bare module function `extract_mask_boundary(...)` — otherwise the relocated bodies
+      reference a deleted/foreign symbol and create an import cycle or `AttributeError`.
+      `min_boundary_per_annulus` (default 8) stays a hardcoded arg on
+      `compute_sholl_angular_profile`, intentionally **not** promoted to
+      `ZoneSegmentationParams` (matches current behaviour).
 
 - [ ] **Step 1: Capture the golden baseline on the CURRENT (unrefactored) code**
 
-Write `tests/unit/measure/test_zone_segmentation_regression.py` with a one-shot capture guarded by an env flag, then a comparison test:
+Write `tests/unit/measure/test_zone_segmentation_regression.py` with a one-shot capture
+guarded by an env flag, then a comparison test:
 
 ```python
-"""Regression guard: MeasureSymmetricZones output is byte-identical across the
+"""Regression guard: MeasureSymZones output is byte-identical across the
 zone-segmentation extraction refactor (Task 1 of the orientation-field plan)."""
 from __future__ import annotations
 
@@ -80,17 +180,17 @@ import pandas as pd
 import pytest
 
 from phenotypic.data import load_synth_yeast_plate, load_synth_filamentous_plate
-from phenotypic.measure import MeasureSymmetricZones
+from phenotypic.measure import MeasureSymZones
 
 _GOLDEN_DIR = Path(__file__).parent / "_golden"
 _CASES = {
-    "yeast": load_synth_yeast_plate,
+    "yeast"      : load_synth_yeast_plate,
     "filamentous": load_synth_filamentous_plate,
 }
 
 
 def _measure(loader) -> pd.DataFrame:
-    return MeasureSymmetricZones().measure(loader())
+    return MeasureSymZones().measure(loader())
 
 
 @pytest.mark.parametrize("name", sorted(_CASES))
@@ -107,8 +207,8 @@ def test_symmetric_zones_matches_golden(name):
 
 
 @pytest.mark.skipif(
-    os.environ.get("PHENOTYPIC_CAPTURE_GOLDEN") != "1",
-    reason="golden capture only runs when PHENOTYPIC_CAPTURE_GOLDEN=1",
+        os.environ.get("PHENOTYPIC_CAPTURE_GOLDEN") != "1",
+        reason="golden capture only runs when PHENOTYPIC_CAPTURE_GOLDEN=1",
 )
 def test_capture_golden():
     _GOLDEN_DIR.mkdir(exist_ok=True)
@@ -118,26 +218,49 @@ def test_capture_golden():
 
 - [ ] **Step 2: Generate the golden files from the current code, then commit them**
 
-Run: `PHENOTYPIC_CAPTURE_GOLDEN=1 uv run pytest tests/unit/measure/test_zone_segmentation_regression.py::test_capture_golden -v`
+Run:
+`PHENOTYPIC_CAPTURE_GOLDEN=1 uv run pytest tests/unit/measure/test_zone_segmentation_regression.py::test_capture_golden -v`
 Expected: PASS; two parquet files created under `tests/unit/measure/_golden/`.
 
 Then verify the comparison test passes against the freshly captured baseline:
-Run: `uv run pytest tests/unit/measure/test_zone_segmentation_regression.py -k matches_golden -v`
+Run:
+`uv run pytest tests/unit/measure/test_zone_segmentation_regression.py -k matches_golden -v`
 Expected: 2 PASS.
 
 ```bash
 git add tests/unit/measure/test_zone_segmentation_regression.py tests/unit/measure/_golden/
-git commit -m "test(measure): golden baseline for MeasureSymmetricZones before zone-segmentation extraction"
+git commit -m "test(measure): golden baseline for MeasureSymZones before zone-segmentation extraction"
 ```
 
-- [ ] **Step 3: Create `_zone_segmentation.py` — relocate constants, dataclass, and the 14 pure helpers**
+- [ ] **Step 3: Create `_zone_segmentation.py` — relocate constants, dataclass, and the
+  14 pure helpers**
 
-Read `src/phenotypic/measure/_measure_symmetric_zones.py` and move, **verbatim in body**, into the new module:
-1. Constants `_N_ANGULAR_SECTORS = 360` and `_ZONE_RADIAL_SMOOTHING = 3` (currently lines ~30–31).
-2. The `_SymmetryIntermediates` dataclass (currently lines ~58–101) → rename to `ZoneSegmentation`; append the new field `centroid_global: tuple[float, float] = (0.0, 0.0)`.
-3. The **15** `@staticmethod` helpers (currently at lines ~257, ~273, ~698, ~734, ~765 [`_extract_mask_boundary`], ~784, ~904, ~972, ~1010, ~1047, ~1085, ~1151, ~1171, ~1219, ~1285) → module-level functions with the leading underscore dropped from the public name where convenient, keeping bodies identical. Suggested public names: `distance_from_point`, `expand_slice_around_center`, `compute_radial_density_profile`, `find_core_radius`, `extract_mask_boundary`, `compute_sholl_angular_profile`, `find_symmetric_radius`, `compute_radial_expansion`, `per_angle_mask_envelope`, `build_theta_r_maps`, `accumulate_radial_profile`, `accumulate_mask_per_annulus`, `compute_colony_ness_profile`, `extract_zone_radii`, `compute_zone_areas`. **After relocating, grep the two callers of `_extract_mask_boundary` (inside `compute_sholl_angular_profile` and `compute_radial_expansion`) and rewrite `MeasureSymmetricZones._extract_mask_boundary(...)` → `extract_mask_boundary(...)`.**
+Read `src/phenotypic/measure/_measure_symmetric_zones.py` and move, **verbatim in body
+**, into the new module:
 
-Copy the exact imports these helpers need (numpy, `scipy.ndimage` funcs, `skimage.measure.regionprops`, `ruptures`/PELT dependency, `uniform_filter1d`, etc.) from the top of `_measure_symmetric_zones.py`.
+1. Constants `_N_ANGULAR_SECTORS = 360` and `_ZONE_RADIAL_SMOOTHING = 3` (currently
+   lines ~30–31).
+2. The `_SymmetryIntermediates` dataclass (currently lines ~58–101) → rename to
+   `ZoneSegmentation`; append the new field
+   `centroid_global: tuple[float, float] = (0.0, 0.0)`.
+3. The **15** `@staticmethod` helpers (currently at lines ~257, ~273, ~698, ~734, ~765 [
+   `_extract_mask_boundary`], ~784, ~904, ~972, ~1010, ~1047, ~1085, ~1151, ~1171, ~
+   1219, ~1285) → module-level functions with the leading underscore dropped from the
+   public name where convenient, keeping bodies identical. Suggested public names:
+   `distance_from_point`, `expand_slice_around_center`,
+   `compute_radial_density_profile`, `find_core_radius`, `extract_mask_boundary`,
+   `compute_sholl_angular_profile`, `find_symmetric_radius`, `compute_radial_expansion`,
+   `per_angle_mask_envelope`, `build_theta_r_maps`, `accumulate_radial_profile`,
+   `accumulate_mask_per_annulus`, `compute_colony_ness_profile`, `extract_zone_radii`,
+   `compute_zone_areas`. **After relocating, grep the two callers
+   of `_extract_mask_boundary` (inside `compute_sholl_angular_profile`
+   and `compute_radial_expansion`) and
+   rewrite `MeasureSymZones._extract_mask_boundary(...)` → `extract_mask_boundary(...)`.
+   **
+
+Copy the exact imports these helpers need (numpy, `scipy.ndimage` funcs,
+`skimage.measure.regionprops`, `ruptures`/PELT dependency, `uniform_filter1d`, etc.)
+from the top of `_measure_symmetric_zones.py`.
 
 Add the params dataclass:
 
@@ -164,13 +287,15 @@ class ZoneSegmentationParams:
 
 - [ ] **Step 4: Move the pipeline body into `compute_zone_segmentation`**
 
-Copy the **entire body** of the current `MeasureSymmetricZones._compute_intermediates` (lines ~301–587) into a new module-level function in `_zone_segmentation.py`:
+Copy the **entire body** of the current `MeasureSymZones._compute_intermediates` (
+lines ~301–587) into a new module-level function in `_zone_segmentation.py`:
 
 ```python
-def compute_zone_segmentation(image, prop=None, *, params: ZoneSegmentationParams) -> ZoneSegmentation:
+def compute_zone_segmentation(image, prop=None, *,
+                              params: ZoneSegmentationParams) -> ZoneSegmentation:
     """Compute concentric zone geometry (core/dense/sparse radii) for one object.
 
-    Pure relocation of MeasureSymmetricZones._compute_intermediates. Reads
+    Pure relocation of MeasureSymZones._compute_intermediates. Reads
     ``params.<name>`` where the method read ``self.<name>``; calls the relocated
     module-level helpers; also records ``centroid_global`` (plate-frame inoculum
     centre) on the returned record.
@@ -179,15 +304,23 @@ def compute_zone_segmentation(image, prop=None, *, params: ZoneSegmentationParam
 ```
 
 Mechanical edits while copying:
+
 - Replace every `self.<param>` read with `params.<param>` (the 12 params above).
 - Replace every `self._<helper>(...)` call with the relocated module function name.
 - Replace `_SymmetryIntermediates(...)` constructions with `ZoneSegmentation(...)`.
-- At the point where the expanded crop is built (current Stage 9b, the `center_global` variable), pass `centroid_global=tuple(center_global)` into the final `ZoneSegmentation(...)`. For the early-exit branches (tiny object, collapsed symmetric radius), set `centroid_global` to the object's plate-frame centroid (`(bbox_slice[0].start + centroid_rc[0], bbox_slice[1].start + centroid_rc[1])`) so it is always populated.
+- At the point where the expanded crop is built (current Stage 9b, the `center_global`
+  variable), pass `centroid_global=tuple(center_global)` into the final
+  `ZoneSegmentation(...)`. For the early-exit branches (tiny object, collapsed symmetric
+  radius), set `centroid_global` to the object's plate-frame centroid (
+  `(bbox_slice[0].start + centroid_rc[0], bbox_slice[1].start + centroid_rc[1])`) so it
+  is always populated.
 
 - [ ] **Step 5: Reduce `_compute_intermediates` to a thin delegator**
 
 In `_measure_symmetric_zones.py`:
-1. Delete the relocated dataclass, constants, and 15 staticmethods (including `_extract_mask_boundary`).
+
+1. Delete the relocated dataclass, constants, and 15 staticmethods (including
+   `_extract_mask_boundary`).
 2. Add imports:
    ```python
    from phenotypic.measure._zone_segmentation import (
@@ -218,11 +351,15 @@ In `_measure_symmetric_zones.py`:
            intensity_source=self.intensity_source,
        )
    ```
-   Note: the current `_compute_intermediates` resolves `prop` from `object_label` when `prop is None` (Stage 1). Preserve that: if the relocated `compute_zone_segmentation` expects a `prop`, keep the object-resolution logic (regionprops lookup by label) as the first lines of `compute_zone_segmentation` so the delegator can pass `prop=None`.
+   Note: the current `_compute_intermediates` resolves `prop` from `object_label` when
+   `prop is None` (Stage 1). Preserve that: if the relocated `compute_zone_segmentation`
+   expects a `prop`, keep the object-resolution logic (regionprops lookup by label) as
+   the first lines of `compute_zone_segmentation` so the delegator can pass `prop=None`.
 
 - [ ] **Step 6: Verify byte-identical behaviour**
 
-Run: `uv run pytest tests/unit/measure/test_zone_segmentation_regression.py -k matches_golden -v`
+Run:
+`uv run pytest tests/unit/measure/test_zone_segmentation_regression.py -k matches_golden -v`
 Expected: 2 PASS (output unchanged after extraction).
 
 Run the existing symmetric-zones suite to confirm nothing else moved:
@@ -231,16 +368,18 @@ Expected: all PASS.
 
 - [ ] **Step 7: Type-check and lint the touched files**
 
-Run: `uv run mypy src/phenotypic/measure/_zone_segmentation.py src/phenotypic/measure/_measure_symmetric_zones.py`
+Run:
+`uv run mypy src/phenotypic/measure/_zone_segmentation.py src/phenotypic/measure/_measure_symmetric_zones.py`
 Expected: no new errors.
-Run: `uv run ruff check --fix src/phenotypic/measure/_zone_segmentation.py src/phenotypic/measure/_measure_symmetric_zones.py`
+Run:
+`uv run ruff check --fix src/phenotypic/measure/_zone_segmentation.py src/phenotypic/measure/_measure_symmetric_zones.py`
 Expected: clean.
 
 - [ ] **Step 8: Commit**
 
 ```bash
 git add src/phenotypic/measure/_zone_segmentation.py src/phenotypic/measure/_measure_symmetric_zones.py
-git commit -m "refactor(measure): extract shared zone-segmentation helper from MeasureSymmetricZones"
+git commit -m "refactor(measure): extract shared zone-segmentation helper from MeasureSymZones"
 ```
 
 ---
@@ -248,11 +387,17 @@ git commit -m "refactor(measure): extract shared zone-segmentation helper from M
 ### Task 2: `orientation_field()` structure-tensor helper
 
 **Files:**
+
 - Create: `src/phenotypic/util/_orientation_field.py`
 - Test: `tests/unit/measure/test_orientation_field.py`
 
 **Interfaces:**
-- Produces: `orientation_field(intensity: np.ndarray, sigma_d: float = 1.5, sigma_i: float = 4.0, *, eps: float = 1e-12) -> tuple[np.ndarray, np.ndarray, np.ndarray]` returning `(phi, coherence, grad_phi)`, each shape `intensity.shape`, dtype float64. `phi ∈ (-π/2, π/2]` (radians), `coherence ∈ [0, 1]`, `grad_phi ≥ 0` (rad/px, doubled-angle / π-safe).
+
+- Produces:
+  `orientation_field(intensity: np.ndarray, sigma_d: float = 1.5, sigma_i: float = 4.0, *, eps: float = 1e-12) -> tuple[np.ndarray, np.ndarray, np.ndarray]`
+  returning `(phi, coherence, grad_phi)`, each shape `intensity.shape`, dtype float64.
+  `phi ∈ (-π/2, π/2]` (radians), `coherence ∈ [0, 1]`, `grad_phi ≥ 0` (rad/px,
+  doubled-angle / π-safe).
 
 - [ ] **Step 1: Write failing tests for the helper (analytic phantoms)**
 
@@ -297,7 +442,8 @@ def test_output_shapes_and_ranges():
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/unit/measure/test_orientation_field.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'phenotypic.util._orientation_field'`.
+Expected: FAIL with
+`ModuleNotFoundError: No module named 'phenotypic.util._orientation_field'`.
 
 - [ ] **Step 3: Implement the helper**
 
@@ -363,7 +509,9 @@ Expected: 3 PASS.
 - [ ] **Step 5: Type-check, lint, commit**
 
 Run: `uv run mypy src/phenotypic/util/_orientation_field.py`
-Run: `uv run ruff check --fix src/phenotypic/util/_orientation_field.py tests/unit/measure/test_orientation_field.py`
+Run:
+`uv run ruff check --fix src/phenotypic/util/_orientation_field.py tests/unit/measure/test_orientation_field.py`
+
 ```bash
 git add src/phenotypic/util/_orientation_field.py tests/unit/measure/test_orientation_field.py
 git commit -m "feat(util): add structure-tensor orientation_field helper"
@@ -374,16 +522,23 @@ git commit -m "feat(util): add structure-tensor orientation_field helper"
 ### Task 3: `ORIENTATION_ZONES` schema enum
 
 **Files:**
+
 - Create: `src/phenotypic/schema/_orientation_zones.py`
 - Modify: `src/phenotypic/schema/__init__.py`
-- Test: fold assertions into `tests/unit/measure/test_measure_orientation_zones.py` (created in Task 4); a standalone import check runs here.
+- Test: fold assertions into `tests/unit/measure/test_measure_orientation_zones.py` (
+  created in Task 4); a standalone import check runs here.
 
 **Interfaces:**
-- Produces: `ORIENTATION_ZONES` — a `DescriptiveTrait` enum with `category() == "OrientZones"` and 18 members whose `.value` (header) is `OrientZones_<Metric>-<Variant>-<Zone>`. Inherits `get_labels()` / `get_headers()` from `MeasurementInfo`.
+
+- Produces: `ORIENTATION_ZONES` — a `DescriptiveTrait` enum with
+  `category() == "OrientZones"` and 18 members whose `.value` (header) is
+  `OrientZones_<Metric>-<Variant>-<Zone>`. Inherits `get_labels()` / `get_headers()`
+  from `MeasurementInfo`.
 
 - [ ] **Step 1: Write the enum module**
 
-Model it on `src/phenotypic/schema/_symmetric_zones.py`. Author `label`/`desc` only; leave `bio_desc`/`image` at their defaults.
+Model it on `src/phenotypic/schema/_symmetric_zones.py`. Author `label`/`desc` only;
+leave `bio_desc`/`image` at their defaults.
 
 ```python
 """Public header schema for MeasureOrientationZones (category ``OrientZones``).
@@ -468,15 +623,21 @@ class ORIENTATION_ZONES(DescriptiveTrait):
     COHERENCE_MASK_SPARSE = Entry("Coherence-Mask-Sparse", _desc("Coherence", "Mask", "Sparse"))
 ```
 
-Import paths (confirmed against `_symmetric_zones.py`): `from ._measurement_info import Entry`, `from ._tiers import DescriptiveTrait`. Calling the module-level `_desc(...)` in the class body is ordinary Python — the calls execute before the enum metaclass runs, so this is legal (no need to inline the strings).
+Import paths (confirmed against `_symmetric_zones.py`):
+`from ._measurement_info import Entry`, `from ._tiers import DescriptiveTrait`. Calling
+the module-level `_desc(...)` in the class body is ordinary Python — the calls execute
+before the enum metaclass runs, so this is legal (no need to inline the strings).
 
 - [ ] **Step 2: Export it**
 
-In `src/phenotypic/schema/__init__.py`, add `from ._orientation_zones import ORIENTATION_ZONES` next to the `SYMMETRIC_ZONES` import and add `"ORIENTATION_ZONES"` to `__all__`.
+In `src/phenotypic/schema/__init__.py`, add
+`from ._orientation_zones import ORIENTATION_ZONES` next to the `SYMMETRIC_ZONES` import
+and add `"ORIENTATION_ZONES"` to `__all__`.
 
 - [ ] **Step 3: Smoke-verify header assembly and count**
 
 Run:
+
 ```bash
 uv run python -c "
 from phenotypic.schema import ORIENTATION_ZONES as OZ
@@ -491,12 +652,15 @@ for h in hs:
 print('ok', len(hs))
 "
 ```
+
 Expected: `ok 18`.
 
 - [ ] **Step 4: Type-check, lint, commit**
 
 Run: `uv run mypy src/phenotypic/schema/_orientation_zones.py`
-Run: `uv run ruff check --fix src/phenotypic/schema/_orientation_zones.py src/phenotypic/schema/__init__.py`
+Run:
+`uv run ruff check --fix src/phenotypic/schema/_orientation_zones.py src/phenotypic/schema/__init__.py`
+
 ```bash
 git add src/phenotypic/schema/_orientation_zones.py src/phenotypic/schema/__init__.py
 git commit -m "feat(schema): add ORIENTATION_ZONES header enum (OrientZones)"
@@ -507,18 +671,37 @@ git commit -m "feat(schema): add ORIENTATION_ZONES header enum (OrientZones)"
 ### Task 4: `MeasureOrientationZones` operator core (metrics)
 
 **Files:**
+
 - Create: `src/phenotypic/measure/_measure_orientation_zones.py`
 - Modify: `src/phenotypic/measure/__init__.py`
 - Test: `tests/unit/measure/test_measure_orientation_zones.py`
 
 **Interfaces:**
-- Consumes: `compute_zone_segmentation`, `ZoneSegmentationParams`, `ZoneSegmentation`, `distance_from_point`, `expand_slice_around_center` (Task 1); `orientation_field` (Task 2); `ORIENTATION_ZONES` (Task 3); `MeasureFeatures` ABC; `OBJECT` label enum from `phenotypic.schema`.
+
+- Consumes: `compute_zone_segmentation`, `ZoneSegmentationParams`, `ZoneSegmentation`,
+  `distance_from_point`, `expand_slice_around_center` (Task 1); `orientation_field` (
+  Task 2); `ORIENTATION_ZONES` (Task 3); `MeasureFeatures` ABC; `OBJECT` label enum from
+  `phenotypic.schema`.
 - Produces:
-  - `class MeasureOrientationZones(MeasureFeatures, FigureProvider)` with keyword-only pydantic fields: `intensity_source: str = "detect_mat"`, `sigma_d: float = 1.5`, `sigma_i: float = 4.0`, `quiver_block: int = 12`, plus the 12 zone passthrough fields (same names/defaults as `ZoneSegmentationParams`, except `intensity_source` which the op reuses for both the field and the tensor input).
-  - `_operate(self, image) -> pd.DataFrame` (18 columns + `Object_Label`).
-  - Instance helpers: `_prep(image) -> (props, label2section)`; `_iter_object_fields(image, props, label2section)` (the single heavy-compute generator, reused by `_operate` and `_coherence_canvas`); `_resolve_tile(...)`; `_fill_metrics(...)`; `_coherence_canvas(image, downsample=4)` (dashboard-only, recompute-and-discard).
-  - Pure module-level helpers (unit-tested): `zone_selector(dist_map, r_lo, r_hi, obj_mask, variant)`, `aggregate_orientation(phi, coherence, grad_phi, selector, eps)`, `_downsample_quiver(phi, coherence, block)`, `_resultant_direction(phi, coherence, selector)`.
-  - **Lean compact cache** `self._cache[label]`: scalars (`centroid_global`, `centre`, `radii`, `zones_computed`), the block-resolution `quiver`, and the scalar `per_zone` map — **no** full-res arrays, **no** `seg` dataclass.
+    - `class MeasureOrientationZones(MeasureFeatures, FigureProvider)` with keyword-only
+      pydantic fields: `intensity_source: str = "detect_mat"`, `sigma_d: float = 1.5`,
+      `sigma_i: float = 4.0`, `quiver_block: int = 12`, plus the 12 zone passthrough
+      fields (same names/defaults as `ZoneSegmentationParams`, except `intensity_source`
+      which the op reuses for both the field and the tensor input).
+    - `_operate(self, image) -> pd.DataFrame` (18 columns + `Object_Label`).
+    - Instance helpers: `_prep(image) -> (props, label2section)`;
+      `_iter_object_fields(image, props, label2section)` (the single heavy-compute
+      generator, reused by `_operate` and `_coherence_canvas`); `_resolve_tile(...)`;
+      `_fill_metrics(...)`; `_coherence_canvas(image, downsample=4)` (dashboard-only,
+      recompute-and-discard).
+    - Pure module-level helpers (unit-tested):
+      `zone_selector(dist_map, r_lo, r_hi, obj_mask, variant)`,
+      `aggregate_orientation(phi, coherence, grad_phi, selector, eps)`,
+      `_downsample_quiver(phi, coherence, block)`,
+      `_resultant_direction(phi, coherence, selector)`.
+    - **Lean compact cache** `self._cache[label]`: scalars (`centroid_global`, `centre`,
+      `radii`, `zones_computed`), the block-resolution `quiver`, and the scalar
+      `per_zone` map — **no** full-res arrays, **no** `seg` dataclass.
 
 - [ ] **Step 1: Write failing tests for the pure aggregation helpers**
 
@@ -600,7 +783,8 @@ def test_zone_restriction_inner_vs_outer_orientation():
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `uv run pytest tests/unit/measure/test_measure_orientation_zones.py -v`
-Expected: FAIL (`ModuleNotFoundError` / `ImportError: cannot import name 'MeasureOrientationZones'`).
+Expected: FAIL (`ModuleNotFoundError` /
+`ImportError: cannot import name 'MeasureOrientationZones'`).
 
 - [ ] **Step 3: Implement the pure helpers + operator skeleton**
 
@@ -665,7 +849,10 @@ def aggregate_orientation(phi, coherence, grad_phi, selector, eps=_EPS):
 
 - [ ] **Step 4: Implement the operator fields + `_operate`**
 
-Add the class. Mirror `MeasureSymmetricZones` field declarations for the 12 passthrough params (copy their defaults and any `field_validator`s). `intensity_source` is shared (default `"detect_mat"` here) and drives both the tensor input and the zone-segmentation intensity.
+Add the class. Mirror `MeasureSymZones` field declarations for the 12 passthrough
+params (copy their defaults and any `field_validator`s). `intensity_source` is shared (
+default `"detect_mat"` here) and drives both the tensor input and the zone-segmentation
+intensity.
 
 ```python
 class MeasureOrientationZones(MeasureFeatures, FigureProvider):
@@ -686,7 +873,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         n_annuli, pelt_penalty, symmetry_threshold, n_angular_bins,
         smoothing_window, method, extent_margin, min_samples_per_ring,
         tau_core, tau_dense, tau_sparse: passed through to the shared zone
-            segmentation (same meaning/defaults as MeasureSymmetricZones).
+            segmentation (same meaning/defaults as MeasureSymZones).
 
     Examples:
         >>> from phenotypic.data import load_synth_filamentous_plate
@@ -701,7 +888,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
     sigma_d: float = 1.5
     sigma_i: float = 4.0
     quiver_block: int = 12
-    # --- zone passthrough (defaults identical to MeasureSymmetricZones) ---
+    # --- zone passthrough (defaults identical to MeasureSymZones) ---
     n_annuli: int = 100
     pelt_penalty: float = 5.0
     symmetry_threshold: float = 4 / 6
@@ -714,7 +901,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
     tau_dense: float = 0.5
     tau_sparse: float = 0.1
     # Per-object figure intermediates, populated by _operate. PrivateAttr keeps
-    # it out of model_dump()/JSON (mirrors MeasureSymmetricZones' cache pattern).
+    # it out of model_dump()/JSON (mirrors MeasureSymZones' cache pattern).
     _cache: dict = PrivateAttr(default_factory=dict)
     _cache_image: "object | None" = PrivateAttr(default=None)
 
@@ -727,12 +914,15 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
 
     def _zone_params(self) -> ZoneSegmentationParams:
         return ZoneSegmentationParams(
-            n_annuli=self.n_annuli, pelt_penalty=self.pelt_penalty,
-            symmetry_threshold=self.symmetry_threshold, n_angular_bins=self.n_angular_bins,
-            smoothing_window=self.smoothing_window, method=self.method,
-            extent_margin=self.extent_margin, min_samples_per_ring=self.min_samples_per_ring,
-            tau_core=self.tau_core, tau_dense=self.tau_dense, tau_sparse=self.tau_sparse,
-            intensity_source=self.intensity_source,
+                n_annuli=self.n_annuli, pelt_penalty=self.pelt_penalty,
+                symmetry_threshold=self.symmetry_threshold,
+                n_angular_bins=self.n_angular_bins,
+                smoothing_window=self.smoothing_window, method=self.method,
+                extent_margin=self.extent_margin,
+                min_samples_per_ring=self.min_samples_per_ring,
+                tau_core=self.tau_core, tau_dense=self.tau_dense,
+                tau_sparse=self.tau_sparse,
+                intensity_source=self.intensity_source,
         )
 
     def _resolve_tile(self, image, seg: ZoneSegmentation, prop, label2section):
@@ -749,7 +939,9 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         r_max disk around the centre (crowded/overgrown plate).
         """
         from skimage.measure import regionprops
-        r_max = max(seg.sparse_end_radius, seg.symmetric_radius) * (1 + self.extent_margin)
+
+        r_max = max(seg.sparse_end_radius, seg.symmetric_radius) * (
+                    1 + self.extent_margin)
         if hasattr(image, "grid") and seg.label in label2section:
             try:
                 section = image.grid[label2section[seg.label]]
@@ -763,23 +955,25 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
                     H, W = section.objmap[:].shape[:2]
                     if (centre[0] - r_max >= 0 and centre[0] + r_max <= H
                             and centre[1] - r_max >= 0 and centre[1] + r_max <= W):
-                        tile = np.asarray(getattr(section, self.intensity_source)[:], dtype=np.float64)
+                        tile = np.asarray(getattr(section, self.intensity_source)[:],
+                                          dtype=np.float64)
                         return tile, (section.objmap[:] == seg.label), centre
             except (KeyError, IndexError, ValueError, AttributeError):
                 pass
         # Fallback: expanded crop on the full plate (non-grid / clipped section).
-        hw = image.gray[:].shape[:2]            # 2-tuple; image.shape is (H,W,3) for RGB
+        hw = image.gray[:].shape[:2]  # 2-tuple; image.shape is (H,W,3) for RGB
         sl = expand_slice_around_center(seg.centroid_global, r_max, hw)
         tile = np.asarray(getattr(image, self.intensity_source)[sl], dtype=np.float64)
         obj_mask = (image.objmap[:][sl] == seg.label)
-        centre = (seg.centroid_global[0] - sl[0].start, seg.centroid_global[1] - sl[1].start)
+        centre = (seg.centroid_global[0] - sl[0].start,
+                  seg.centroid_global[1] - sl[1].start)
         return tile, obj_mask, centre
 
     def _zone_bounds(self, seg: ZoneSegmentation):
         return {
             "Overall": (0.0, seg.symmetric_radius),
-            "Dense": (seg.core_end_radius, seg.dense_end_radius),
-            "Sparse": (seg.dense_end_radius, seg.sparse_end_radius),
+            "Dense"  : (seg.core_end_radius, seg.dense_end_radius),
+            "Sparse" : (seg.dense_end_radius, seg.sparse_end_radius),
         }
 
     def _prep(self, image):
@@ -791,8 +985,10 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         """
         from skimage.measure import regionprops
         from phenotypic.schema import GRID
+
         props = regionprops(image.objmap[:],
-                            intensity_image=image.gray[:].astype(np.float64, copy=False))
+                            intensity_image=image.gray[:].astype(np.float64,
+                                                                 copy=False))
         label2section = {}
         if hasattr(image, "grid"):
             info = image.grid.info()
@@ -827,24 +1023,29 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             r = {OBJECT.LABEL: prop.label}
             r.update({h: np.nan for h in headers})
             base[prop.label] = r
-        self._cache.clear()          # compact per-object figure records only
-        self._cache_image = image    # single reference (not a copy) for no-arg figures
-        for prop, seg, obj_mask, phi, coh, grad, dist_map, centre in \
+        self._cache.clear()  # compact per-object figure records only
+        self._cache_image = image  # single reference (not a copy) for no-arg figures
+        for prop, seg, obj_mask, phi, coh, grad, dist_map, centre in
                 self._iter_object_fields(image, props, label2section):
-            per_zone = self._fill_metrics(base[prop.label], seg, obj_mask, phi, coh, grad, dist_map)
+            per_zone = self._fill_metrics(base[prop.label], seg, obj_mask, phi, coh,
+                                          grad, dist_map)
             # LEAN CACHE: store compact summaries only — NO full-res tile/phi/coh/
             # grad/dist_map and NO seg dataclass. Bounds memory to O(objects*blocks).
             self._cache[prop.label] = {
                 "centroid_global": tuple(seg.centroid_global),
-                "centre": centre,
-                "radii": {"core": seg.core_radius, "symmetric": seg.symmetric_radius,
-                          "core_end": seg.core_end_radius, "dense_end": seg.dense_end_radius,
-                          "sparse_end": seg.sparse_end_radius},
-                "zones_computed": seg.zones_computed,
-                "quiver": _downsample_quiver(phi, coh, self.quiver_block),  # block-res
-                "per_zone": per_zone,
+                "centre"         : centre,
+                "radii"          : {"core"      : seg.core_radius,
+                                    "symmetric" : seg.symmetric_radius,
+                                    "core_end"  : seg.core_end_radius,
+                                    "dense_end" : seg.dense_end_radius,
+                                    "sparse_end": seg.sparse_end_radius},
+                "zones_computed" : seg.zones_computed,
+                "quiver"         : _downsample_quiver(phi, coh, self.quiver_block),
+                # block-res
+                "per_zone"       : per_zone,
             }
-        return pd.DataFrame([base[p.label] for p in props], columns=[OBJECT.LABEL, *headers])
+        return pd.DataFrame([base[p.label] for p in props],
+                            columns=[OBJECT.LABEL, *headers])
 
     def _fill_metrics(self, row, seg, obj_mask, phi, coh, grad, dist_map):
         """Write the 18 columns for one object; return the compact per_zone dict."""
@@ -858,7 +1059,7 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
                     sel = zone_selector(dist_map, r_lo, r_hi, obj_mask, variant)
                     R, t, cm = aggregate_orientation(phi, coh, grad, sel)
                     direction = _resultant_direction(phi, coh, sel)
-                per_zone[(variant, zone)] = (R, t, cm, direction)   # scalars only
+                per_zone[(variant, zone)] = (R, t, cm, direction)  # scalars only
                 row[f"OrientZones_Concentration-{variant}-{zone}"] = R
                 row[f"OrientZones_Turning-{variant}-{zone}"] = t
                 row[f"OrientZones_Coherence-{variant}-{zone}"] = cm
@@ -873,13 +1074,14 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
         """
         props, label2section = self._prep(image)
         canvas = np.full(image.gray[:].shape[:2], np.nan)
-        for _prop, seg, _mask, _phi, coh, _grad, _dist, centre in \
+        for _prop, seg, _mask, _phi, coh, _grad, _dist, centre in
                 self._iter_object_fields(image, props, label2section):
             r0 = int(round(seg.centroid_global[0] - centre[0]))
             c0 = int(round(seg.centroid_global[1] - centre[1]))
             h, w = coh.shape
             r1, c1 = min(r0 + h, canvas.shape[0]), min(c0 + w, canvas.shape[1])
-            canvas[max(r0, 0):r1, max(c0, 0):c1] = coh[: r1 - max(r0, 0), : c1 - max(c0, 0)]
+            canvas[max(r0, 0):r1, max(c0, 0):c1] = coh[
+                : r1 - max(r0, 0), : c1 - max(c0, 0)]
         return canvas[::downsample, ::downsample]
 ```
 
@@ -930,7 +1132,7 @@ the heavy `seg` dataclass. This bounds persistent memory to **O(objects × block
 large plates). `inspect()` renders entirely from this compact cache (no recompute);
 `dashboard()`'s coherence heatmap recomputes full-res on demand via
 `_coherence_canvas` and discards it. `self._cache_image` is a single reference (not
-a copy), matching `MeasureSymmetricZones`.
+a copy), matching `MeasureSymZones`.
 
 **Design note (grid-section tile — verified 2026-07-03):** the tile comes from
 `image.grid[section_idx]` (in `_resolve_tile`), not hand-rolled edge slicing —
@@ -943,7 +1145,9 @@ crop only when the symmetric radius exceeds the section.
 
 - [ ] **Step 5: Export the operator**
 
-In `src/phenotypic/measure/__init__.py` add `from ._measure_orientation_zones import MeasureOrientationZones` and add `"MeasureOrientationZones"` to `__all__`.
+In `src/phenotypic/measure/__init__.py` add
+`from ._measure_orientation_zones import MeasureOrientationZones` and add
+`"MeasureOrientationZones"` to `__all__`.
 
 - [ ] **Step 6: Run the Task-4 tests**
 
@@ -1021,14 +1225,18 @@ def test_measure_cache_is_compact():
 ```
 
 Run: `uv run pytest tests/unit/measure/test_measure_orientation_zones.py -v`
-Expected: all PASS (including the compact-cache guard). If the grid-section tile mis-resolves on the fixture, fix `_resolve_tile` before proceeding.
+Expected: all PASS (including the compact-cache guard). If the grid-section tile
+mis-resolves on the fixture, fix `_resolve_tile` before proceeding.
 
 - [ ] **Step 8: Type-check, lint, doctest, commit**
 
 Run: `uv run mypy src/phenotypic/measure/_measure_orientation_zones.py`
-Run: `uv run ruff check --fix src/phenotypic/measure/_measure_orientation_zones.py tests/unit/measure/test_measure_orientation_zones.py`
-Run: `uv run pytest --doctest-modules src/phenotypic/measure/_measure_orientation_zones.py`
+Run:
+`uv run ruff check --fix src/phenotypic/measure/_measure_orientation_zones.py tests/unit/measure/test_measure_orientation_zones.py`
+Run:
+`uv run pytest --doctest-modules src/phenotypic/measure/_measure_orientation_zones.py`
 Expected: doctest PASS.
+
 ```bash
 git add src/phenotypic/measure/_measure_orientation_zones.py src/phenotypic/measure/__init__.py tests/unit/measure/test_measure_orientation_zones.py
 git commit -m "feat(measure): add MeasureOrientationZones operator (metrics)"
@@ -1039,12 +1247,18 @@ git commit -m "feat(measure): add MeasureOrientationZones operator (metrics)"
 ### Task 5: `inspect()` — saveable primary figure (quiver + per-zone glyphs + rings)
 
 **Files:**
+
 - Modify: `src/phenotypic/measure/_measure_orientation_zones.py`
 - Test: `tests/unit/measure/test_measure_orientation_zones.py`
 
 **Interfaces:**
-- Consumes: the per-object `self._cache` populated in `_operate` (Task 4); `@figure`, `BASE_LAYER`-style `Control`, shared viz helpers `plotly_imshow` / `add_plotly_obj_labels` (confirm import paths against `_measure_symmetric_zones.py`).
-- Produces: `inspect(self, image=None, base_layer="detect_mat", *, for_save=False) -> go.Figure`, decorated `@figure(title=..., primary=True, controls={"base_layer": BASE_LAYER})`.
+
+- Consumes: the per-object `self._cache` populated in `_operate` (Task 4); `@figure`,
+  `BASE_LAYER`-style `Control`, shared viz helpers `plotly_imshow` /
+  `add_plotly_obj_labels` (confirm import paths against `_measure_symmetric_zones.py`).
+- Produces:
+  `inspect(self, image=None, base_layer="detect_mat", *, for_save=False) -> go.Figure`,
+  decorated `@figure(title=..., primary=True, controls={"base_layer": BASE_LAYER})`.
 
 - [ ] **Step 1: Write a smoke test for `inspect()`**
 
@@ -1061,12 +1275,15 @@ def test_inspect_builds_figure():
     assert isinstance(fig_save, go.Figure)
 ```
 
-Run: `uv run pytest tests/unit/measure/test_measure_orientation_zones.py::test_inspect_builds_figure -v`
+Run:
+`uv run pytest tests/unit/measure/test_measure_orientation_zones.py::test_inspect_builds_figure -v`
 Expected: FAIL (`AttributeError`/no `inspect`).
 
 - [ ] **Step 2: Define the `BASE_LAYER` control and the `inspect()` figure**
 
-Copy the `BASE_LAYER = Control(...)` definition from `_measure_symmetric_zones.py` (label "Base layer", kind "select", default `"detect_mat"`, options `("rgb","gray","detect_mat")`). Implement:
+Copy the `BASE_LAYER = Control(...)` definition from `_measure_symmetric_zones.py` (
+label "Base layer", kind "select", default `"detect_mat"`, options
+`("rgb","gray","detect_mat")`). Implement:
 
 ```python
 @figure(title="Orientation-field overlay", primary=True, controls={"base_layer": BASE_LAYER})
@@ -1091,12 +1308,29 @@ def inspect(self, image=None, base_layer="detect_mat", *, for_save=False):
     return fig
 ```
 
-Implement three private trace builders that read **only the compact `self._cache`** (no recompute):
-- `_add_quiver_trace(fig)`: for each cached object, read the pre-downsampled `quiver = (rows, cols, phi_block, coh_block)` (already block-resolution — no tile access). Draw one short segment per block (length + opacity ∝ `coh_block`, skip NaN blocks) as a **single NaN-separated** `Scattergl` trace across all objects (append `None` between segments). Convert block (row,col)+`phi_block` to plate-frame x/y using the tile's plate origin `origin = (centroid_global[0] − centre[0], centroid_global[1] − centre[1])` (both cached per record).
-- `_add_zone_ring_traces(fig)`: circle polygons at the cached `radii["symmetric"|"core_end"|"dense_end"|"sparse_end"]` centred at the cached `centroid_global` (reuse a 72-vertex circle helper — replicate the small `_circle_xy` from `_measure_symmetric_zones.py` locally or import it).
-- `_add_resultant_glyph_traces(fig)`: per object per zone, read the cached `per_zone[(variant, zone)] = (R, turning, coh, direction)`; draw the resultant arrow from `centroid_global` (angle = cached `direction`, length ∝ `R`), plus a text badge of `R`/turning for the `Radial` variant. No recompute — `direction` was stored in `_fill_metrics`.
+Implement three private trace builders that read **only the compact `self._cache`** (no
+recompute):
 
-Keep NaN zones/objects skipped. `self._cache_image` is set in `_operate` (Task 4); add the guard:
+- `_add_quiver_trace(fig)`: for each cached object, read the pre-downsampled
+  `quiver = (rows, cols, phi_block, coh_block)` (already block-resolution — no tile
+  access). Draw one short segment per block (length + opacity ∝ `coh_block`, skip NaN
+  blocks) as a **single NaN-separated** `Scattergl` trace across all objects (append
+  `None` between segments). Convert block (row,col)+`phi_block` to plate-frame x/y using
+  the tile's plate origin
+  `origin = (centroid_global[0] − centre[0], centroid_global[1] − centre[1])` (both
+  cached per record).
+- `_add_zone_ring_traces(fig)`: circle polygons at the cached
+  `radii["symmetric"|"core_end"|"dense_end"|"sparse_end"]` centred at the cached
+  `centroid_global` (reuse a 72-vertex circle helper — replicate the small `_circle_xy`
+  from `_measure_symmetric_zones.py` locally or import it).
+- `_add_resultant_glyph_traces(fig)`: per object per zone, read the cached
+  `per_zone[(variant, zone)] = (R, turning, coh, direction)`; draw the resultant arrow
+  from `centroid_global` (angle = cached `direction`, length ∝ `R`), plus a text badge
+  of `R`/turning for the `Radial` variant. No recompute — `direction` was stored in
+  `_fill_metrics`.
+
+Keep NaN zones/objects skipped. `self._cache_image` is set in `_operate` (Task 4); add
+the guard:
 
 ```python
 def _require_cache_image(self):
@@ -1105,17 +1339,21 @@ def _require_cache_image(self):
     return self._cache_image
 ```
 
-Also import the 72-vertex circle helper `_circle_xy` from `_measure_symmetric_zones` if it is module-accessible; otherwise replicate the tiny function locally (it is a pure `(cx, cy, r) -> (xs, ys)` polygon).
+Also import the 72-vertex circle helper `_circle_xy` from `_measure_symmetric_zones` if
+it is module-accessible; otherwise replicate the tiny function locally (it is a pure
+`(cx, cy, r) -> (xs, ys)` polygon).
 
 - [ ] **Step 3: Run the smoke test**
 
-Run: `uv run pytest tests/unit/measure/test_measure_orientation_zones.py::test_inspect_builds_figure -v`
+Run:
+`uv run pytest tests/unit/measure/test_measure_orientation_zones.py::test_inspect_builds_figure -v`
 Expected: PASS.
 
 - [ ] **Step 4: Full-file test, lint, commit**
 
 Run: `uv run pytest tests/unit/measure/test_measure_orientation_zones.py -v`
 Run: `uv run ruff check --fix src/phenotypic/measure/_measure_orientation_zones.py`
+
 ```bash
 git add src/phenotypic/measure/_measure_orientation_zones.py tests/unit/measure/test_measure_orientation_zones.py
 git commit -m "feat(measure): add MeasureOrientationZones.inspect() overview figure"
@@ -1126,12 +1364,18 @@ git commit -m "feat(measure): add MeasureOrientationZones.inspect() overview fig
 ### Task 6: `dashboard()` — composed diagnostic (adds coherence heatmap)
 
 **Files:**
+
 - Modify: `src/phenotypic/measure/_measure_orientation_zones.py`
 - Test: `tests/unit/measure/test_measure_orientation_zones.py`
 
 **Interfaces:**
-- Consumes: `self._cache`, `inspect()` (Task 5), the `FigureProvider` composition pattern (`iter_figures` / `_render_spec` / `make_subplots`) as used by `GridFitReport.dash()` and `AutoGridFinder.dashboard()`.
-- Produces: `dashboard(self, image=None, show=True) -> go.Figure`, plus a transient `_OrientationZonesReport(FigureProvider)` whose control-free `@figure` panels compose into one vertically-stacked figure.
+
+- Consumes: `self._cache`, `inspect()` (Task 5), the `FigureProvider` composition
+  pattern (`iter_figures` / `_render_spec` / `make_subplots`) as used by
+  `GridFitReport.dash()` and `AutoGridFinder.dashboard()`.
+- Produces: `dashboard(self, image=None, show=True) -> go.Figure`, plus a transient
+  `_OrientationZonesReport(FigureProvider)` whose control-free `@figure` panels compose
+  into one vertically-stacked figure.
 
 - [ ] **Step 1: Write a smoke test for `dashboard()`**
 
@@ -1151,7 +1395,8 @@ def test_dashboard_builds_composed_figure():
     assert any(getattr(tr, "type", None) == "heatmap" for tr in fig.data)
 ```
 
-Run: `uv run pytest tests/unit/measure/test_measure_orientation_zones.py::test_dashboard_builds_composed_figure -v`
+Run:
+`uv run pytest tests/unit/measure/test_measure_orientation_zones.py::test_dashboard_builds_composed_figure -v`
 Expected: FAIL.
 
 - [ ] **Step 2: Implement the transient report + `dashboard()`**
@@ -1242,19 +1487,25 @@ def dashboard(self, image=None, show=True):
     return fig
 ```
 
-Confirm `iter_figures()`/`_render_spec()` signatures against `FigureProvider` and `GridFitReport.dash()`; apply the house theme the same way `GridFitReport` does if it wraps the composed figure (e.g. `apply_theme(composed)`).
+Confirm `iter_figures()`/`_render_spec()` signatures against `FigureProvider` and
+`GridFitReport.dash()`; apply the house theme the same way `GridFitReport` does if it
+wraps the composed figure (e.g. `apply_theme(composed)`).
 
 - [ ] **Step 3: Run smoke test**
 
-Run: `uv run pytest tests/unit/measure/test_measure_orientation_zones.py::test_dashboard_builds_composed_figure -v`
+Run:
+`uv run pytest tests/unit/measure/test_measure_orientation_zones.py::test_dashboard_builds_composed_figure -v`
 Expected: PASS.
 
 - [ ] **Step 4: Full suite for the module, type-check, lint, commit**
 
-Run: `uv run pytest tests/unit/measure/test_measure_orientation_zones.py tests/unit/measure/test_orientation_field.py tests/unit/measure/test_zone_segmentation_regression.py -v`
+Run:
+`uv run pytest tests/unit/measure/test_measure_orientation_zones.py tests/unit/measure/test_orientation_field.py tests/unit/measure/test_zone_segmentation_regression.py -v`
 Expected: all PASS.
 Run: `uv run mypy src/phenotypic/measure/_measure_orientation_zones.py`
-Run: `uv run ruff check --fix src/phenotypic/measure/_measure_orientation_zones.py tests/unit/measure/test_measure_orientation_zones.py`
+Run:
+`uv run ruff check --fix src/phenotypic/measure/_measure_orientation_zones.py tests/unit/measure/test_measure_orientation_zones.py`
+
 ```bash
 git add src/phenotypic/measure/_measure_orientation_zones.py tests/unit/measure/test_measure_orientation_zones.py
 git commit -m "feat(measure): add MeasureOrientationZones.dashboard() composed diagnostic"
@@ -1264,19 +1515,56 @@ git commit -m "feat(measure): add MeasureOrientationZones.dashboard() composed d
 
 Run: `uv run pytest tests/unit/measure -v`
 Expected: all PASS (symmetric-zones golden regression still green; new tests green).
-Run: `uv run python -c "from phenotypic.measure import MeasureOrientationZones; from phenotypic.schema import ORIENTATION_ZONES; print('exports ok')"`
+Run:
+`uv run python -c "from phenotypic.measure import MeasureOrientationZones; from phenotypic.schema import ORIENTATION_ZONES; print('exports ok')"`
 Expected: `exports ok`.
 
 ---
 
 ## Deferred (out of scope for this plan)
 
-Per spec §11, these are intentionally **not** implemented now: the `Core` zone triple, an orientation-entropy metric, per-object zoom panels in `inspect()`, and pruning the `Mask` variant. They are mechanical to add once the dense/sparse/overall pattern lands.
+Per spec §11, these are intentionally **not** implemented now: the `Core` zone triple,
+an orientation-entropy metric, per-object zoom panels in `inspect()`, and pruning the
+`Mask` variant. They are mechanical to add once the dense/sparse/overall pattern lands.
 
 ## Self-Review Notes
 
-- **Spec coverage:** §2 schema → Task 3; §3.1 extraction + regression → Task 1; §3.2 operator → Task 4; §4.1 tile selection → Task 4 `_resolve_tile` (grid section via `image.grid[idx]`, expanded-crop fallback); §4.2 field → Task 2; §4.3 selectors/aggregation → Task 4 helpers; §5 NaN semantics → Task 4 `_fill_metrics` (+ Task 4 tests); §6.1 inspect → Task 5; §6.2 dashboard → Task 6; §7 params → Task 4 fields; §8 testing → Tasks 1–6 tests; §9 file inventory → File Structure above.
-- **Memory design (lean caching):** `measure()` retains only compact per-object records (scalars + block-downsampled quiver) — O(objects × blocks), ~1–3 MB/plate — never full-res `tile`/`phi`/`coherence`/`grad_phi`/`dist_map` or the `seg` dataclass. `inspect()` renders from that cache with no recompute; `dashboard()`'s coherence heatmap recomputes full-res via `_coherence_canvas` and discards it. `test_measure_cache_is_compact` (Task 4 Step 7) guards against regression. The heavy compute lives in the single `_iter_object_fields` generator (DRY across `_operate` and `_coherence_canvas`).
-- **Type consistency:** `ZoneSegmentationParams` field set is identical in Task 1 (definition) and Task 4 (`_zone_params`); `zone_selector`/`aggregate_orientation` signatures are identical across Task 4 definition and Task 5/6 reuse; header pattern `OrientZones_<Metric>-<Variant>-<Zone>` is identical in Task 3 (enum labels) and Task 4 (`_fill_metrics` f-strings) — the Task-3 smoke test and Task-4 header assertions cross-check they match.
-- **Verify-before-code hooks flagged inline:** the `Control`/`FigureProvider`/`figure` re-export from `phenotypic.abc_` and `iter_figures()`/`_render_spec()` signatures must be confirmed against `_measure_symmetric_zones.py:~23` and `GridFitReport.dash()` during implementation (each step says so). Import paths for `Entry`/`DescriptiveTrait` (`schema/_measurement_info` / `_tiers`) and `plotly_imshow`/`add_plotly_obj_labels` (`phenotypic.sdk_._plotly_helpers`) are resolved.
-- **Plan-review fixes applied (2026-07-03):** (1) `_extract_mask_boundary` added as a 15th relocated helper with its two hardcoded callers rewritten — otherwise Task 1 breaks with an import cycle; (2) `regionprops(..., intensity_image=image.gray[:])` so `method="intensity"` doesn't crash; (3) the grid-section tile is obtained via the verified public `image.grid[section_idx]` (object-aware cropped Image) with the crop origin recovered exactly from the centroid identity, not hand-rolled edge slicing; the expanded-crop fallback uses `image.gray[:].shape[:2]` (not the RGB 3-tuple `image.shape`) and fires only when the section fails to cover the r_max disk; `grid.info()` is computed once per image; (4) `Literal[...]` typing for `method`/`intensity_source`; (5) `_cache`/`_cache_image` via `PrivateAttr`; (6) Task 6 uses a custom `GridFitReport`-style `dash()` override so the `go.Table` panel renders. Author docstrings fresh — do **not** copy `MeasureSymmetricZones.n_angular_bins`'s stale "Defaults to 36" (the default is 6).
+- **Spec coverage:** §2 schema → Task 3; §3.1 extraction + regression → Task 1; §3.2
+  operator → Task 4; §4.1 tile selection → Task 4 `_resolve_tile` (grid section via
+  `image.grid[idx]`, expanded-crop fallback); §4.2 field → Task 2; §4.3
+  selectors/aggregation → Task 4 helpers; §5 NaN semantics → Task 4 `_fill_metrics` (+
+  Task 4 tests); §6.1 inspect → Task 5; §6.2 dashboard → Task 6; §7 params → Task 4
+  fields; §8 testing → Tasks 1–6 tests; §9 file inventory → File Structure above.
+- **Memory design (lean caching):** `measure()` retains only compact per-object
+  records (scalars + block-downsampled quiver) — O(objects × blocks), ~1–3 MB/plate —
+  never full-res `tile`/`phi`/`coherence`/`grad_phi`/`dist_map` or the `seg` dataclass.
+  `inspect()` renders from that cache with no recompute; `dashboard()`'s coherence
+  heatmap recomputes full-res via `_coherence_canvas` and discards it.
+  `test_measure_cache_is_compact` (Task 4 Step 7) guards against regression. The heavy
+  compute lives in the single `_iter_object_fields` generator (DRY across `_operate` and
+  `_coherence_canvas`).
+- **Type consistency:** `ZoneSegmentationParams` field set is identical in Task 1 (
+  definition) and Task 4 (`_zone_params`); `zone_selector`/`aggregate_orientation`
+  signatures are identical across Task 4 definition and Task 5/6 reuse; header pattern
+  `OrientZones_<Metric>-<Variant>-<Zone>` is identical in Task 3 (enum labels) and Task
+  4 (`_fill_metrics` f-strings) — the Task-3 smoke test and Task-4 header assertions
+  cross-check they match.
+- **Verify-before-code hooks flagged inline:** the `Control`/`FigureProvider`/`figure`
+  re-export from `phenotypic.abc_` and `iter_figures()`/`_render_spec()` signatures must
+  be confirmed against `_measure_symmetric_zones.py:~23` and `GridFitReport.dash()`
+  during implementation (each step says so). Import paths for `Entry`/
+  `DescriptiveTrait` (`schema/_measurement_info` / `_tiers`) and `plotly_imshow`/
+  `add_plotly_obj_labels` (`phenotypic.sdk_._plotly_helpers`) are resolved.
+- **Plan-review fixes applied (2026-07-03):** (1) `_extract_mask_boundary` added as a
+  15th relocated helper with its two hardcoded callers rewritten — otherwise Task 1
+  breaks with an import cycle; (2) `regionprops(..., intensity_image=image.gray[:])` so
+  `method="intensity"` doesn't crash; (3) the grid-section tile is obtained via the
+  verified public `image.grid[section_idx]` (object-aware cropped Image) with the crop
+  origin recovered exactly from the centroid identity, not hand-rolled edge slicing; the
+  expanded-crop fallback uses `image.gray[:].shape[:2]` (not the RGB 3-tuple
+  `image.shape`) and fires only when the section fails to cover the r_max disk;
+  `grid.info()` is computed once per image; (4) `Literal[...]` typing for `method`/
+  `intensity_source`; (5) `_cache`/`_cache_image` via `PrivateAttr`; (6) Task 6 uses a
+  custom `GridFitReport`-style `dash()` override so the `go.Table` panel renders. Author
+  docstrings fresh — do **not** copy `MeasureSymZones.n_angular_bins`'s stale "Defaults
+  to 36" (the default is 6).

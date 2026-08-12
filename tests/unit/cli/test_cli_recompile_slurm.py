@@ -544,9 +544,6 @@ def test_finalizer_writes_master_outputs_and_rebuilds_dashboard(
 
     with (
         patch(
-            "phenotypic._cli._cli_chunk_writer._run_analysis_plugins"
-        ) as mock_plugins,
-        patch(
             "phenotypic._cli._dashboard._manifest_builder.build_manifest"
         ) as mock_manifest,
         patch(
@@ -585,7 +582,6 @@ def test_finalizer_writes_master_outputs_and_rebuilds_dashboard(
         pl.read_csv(measurements_csv_path(output_dir))["Size_Area"].to_list()
         == [1, 2]
     )
-    mock_plugins.assert_called_once()
     mock_manifest.assert_called_once()
     mock_dashboard.assert_called_once_with(output_dir, execution_mode="local")
     status = json.loads(

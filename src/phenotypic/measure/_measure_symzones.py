@@ -1,6 +1,6 @@
 """Mask-based radial expansion and symmetry measurement operator.
 
-Implements :class:`MeasureSymmetricZones`, a branch-free operator that answers
+Implements :class:`MeasureSymZones`, a branch-free operator that answers
 two colony-level questions directly from the binary object mask: how far has
 growth progressed past the inoculum, and out to what radius does that growth
 remain angularly uniform?
@@ -36,7 +36,7 @@ _SymmetryIntermediates: TypeAlias = ZoneSegmentation
 
 
 def _own_intermediate_arrays(
-    intermediates: _SymmetryIntermediates,
+        intermediates: _SymmetryIntermediates,
 ) -> _SymmetryIntermediates:
     """Return compact intermediates whose arrays own their memory.
 
@@ -50,6 +50,7 @@ def _own_intermediate_arrays(
         if isinstance((value := getattr(intermediates, item.name)), np.ndarray)
     }
     return replace(intermediates, **owned)
+
 
 _NEIGHBOR_KERNEL = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.int32)
 
@@ -81,7 +82,7 @@ BASE_LAYER = Control(
 )
 
 
-class MeasureSymmetricZones(MeasureFeatures, PlotImage):
+class MeasureSymZones(MeasureFeatures, PlotImage):
     """Measure colony radial expansion and angular symmetry from the object mask alone.
 
     Quantifies each colony by four scalars derived directly from its binary
@@ -227,7 +228,7 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
     # ``napari()`` can reuse the per-object intermediates. Pure runtime
     # state — never a constructor parameter — so modeled as private attrs.
     __cache_image_ref: "weakref.ReferenceType[Image] | None" = PrivateAttr(
-        default=None
+            default=None
     )
     __cache_intermediates: "dict[int, _SymmetryIntermediates]" = PrivateAttr(
             default_factory=dict)
@@ -362,7 +363,7 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
         image = self.__cached_image()
         if image is None:
             raise RuntimeError(
-                    "MeasureSymmetricZones: no live image subject is available. "
+                    "MeasureSymZones: no live image subject is available. "
                     "Pass an image to .inspect(), or keep the measured image "
                     "alive for no-argument rendering."
             )
@@ -466,7 +467,7 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
         """
         cx, cy = centroid_xy
         angles_deg: np.ndarray = np.arange(
-            0, _N_ANGULAR_SECTORS, stride, dtype=np.int32
+                0, _N_ANGULAR_SECTORS, stride, dtype=np.int32
         )
         theta = np.deg2rad(angles_deg)
         radii = r_per_angle[angles_deg].astype(np.float64)
@@ -503,7 +504,7 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
             raise ValueError(f"stride must be positive, got {stride}")
         cx, cy = centroid_xy
         angles_deg: np.ndarray = np.arange(
-            0, _N_ANGULAR_SECTORS, stride, dtype=np.int32
+                0, _N_ANGULAR_SECTORS, stride, dtype=np.int32
         )
         theta = np.deg2rad(angles_deg)
         r_out = r_outer_per_angle[angles_deg].astype(np.float64)
@@ -565,7 +566,7 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
         if base_layer not in valid_base_layers:
             allowed = ", ".join(repr(value) for value in valid_base_layers)
             raise ValueError(
-                f"base_layer must be one of {allowed}; got {base_layer!r}"
+                    f"base_layer must be one of {allowed}; got {base_layer!r}"
             )
 
         if image is None:
@@ -577,8 +578,8 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
         )
         intermediates_cache: dict[int, _SymmetryIntermediates] = {}
         cache_is_current = (
-            self.__cached_image() is image
-            and self.__cache_signature == self.model_dump_json()
+                self.__cached_image() is image
+                and self.__cache_signature == self.model_dump_json()
         )
         for prop in props:
             if (
@@ -617,7 +618,8 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
         fig.update_layout(
                 title=dict(
                         text=f"Symmetric Radius -- {len(intermediates_cache)} objects",
-                        font=dict(color=_OI_NAVY),  # family from the phenotypic template
+                        font=dict(color=_OI_NAVY),
+                        # family from the phenotypic template
                 ),
                 height=overview_h,
         )
@@ -664,7 +666,7 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
         )
         fig.update_coloraxes(showscale=False)
 
-        MeasureSymmetricZones._add_overlay_traces(
+        MeasureSymZones._add_overlay_traces(
                 fig, image, intermediates_cache,
         )
         return fig
@@ -737,7 +739,7 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
                 intermediates_cache.values(), key=lambda x: x.label,
         )
         for inter in sorted_inters:
-            xs, ys = MeasureSymmetricZones._object_polygon_xy(
+            xs, ys = MeasureSymZones._object_polygon_xy(
                     inter.obj_mask, inter.bbox_slice, _OBJMAP_POLYGON_TOLERANCE,
             )
             if xs is None or ys is None:
@@ -799,7 +801,7 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
                     _N_ANGULAR_SECTORS, inter.sparse_end_radius, dtype=np.float64,
             )
 
-            sxs, sys = MeasureSymmetricZones._polar_annulus_xy(
+            sxs, sys = MeasureSymZones._polar_annulus_xy(
                     cxy, r_dense_arr, r_outer_arr, _ZONE_POLYGON_STRIDE,
             )
             sparse_xs.extend(sxs.tolist())
@@ -807,7 +809,7 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
             sparse_ys.extend(sys.tolist())
             sparse_ys.append(float("nan"))
 
-            dxs, dys = MeasureSymmetricZones._polar_annulus_xy(
+            dxs, dys = MeasureSymZones._polar_annulus_xy(
                     cxy, r_core_arr, r_dense_arr, _ZONE_POLYGON_STRIDE,
             )
             dense_xs.extend(dxs.tolist())
@@ -815,7 +817,7 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
             dense_ys.extend(dys.tolist())
             dense_ys.append(float("nan"))
 
-            cxs, cys = MeasureSymmetricZones._polar_polygon_xy(
+            cxs, cys = MeasureSymZones._polar_polygon_xy(
                     cxy, r_core_arr, _ZONE_POLYGON_STRIDE,
             )
             zcore_xs.extend(cxs.tolist())
@@ -921,7 +923,7 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
             slc = inter.bbox_slice
             r0, c0 = int(slc[0].start), int(slc[1].start)
             cxy = (inter.centroid_rc[1] + c0, inter.centroid_rc[0] + r0)
-            xs, ys = MeasureSymmetricZones._polar_polygon_xy(
+            xs, ys = MeasureSymZones._polar_polygon_xy(
                     cxy, r_env, _ZONE_POLYGON_STRIDE,
             )
             env_x.extend(xs.tolist())
@@ -937,6 +939,6 @@ class MeasureSymmetricZones(MeasureFeatures, PlotImage):
             ))
 
 
-MeasureSymmetricZones.__doc__ = SYMMETRIC_ZONES.append_rst_to_doc(
-        MeasureSymmetricZones
+MeasureSymZones.__doc__ = SYMMETRIC_ZONES.append_rst_to_doc(
+        MeasureSymZones
 )

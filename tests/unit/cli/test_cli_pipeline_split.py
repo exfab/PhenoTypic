@@ -5,7 +5,7 @@ from phenotypic.enhance import BlurGauss
 from phenotypic.detect import OtsuDetector
 from phenotypic.refine import SmallObjectRemover
 from phenotypic.measure import MeasureSize
-from phenotypic.measure import MeasureSymmetricZones
+from phenotypic.measure import MeasureSymZones
 from phenotypic.abc_.plotting import PlotImage
 from phenotypic._cli._cli_pipeline_split import (
     split_pipeline_at_gpu,
@@ -16,8 +16,8 @@ from tests._fakes.fake_gpu_detector import FakeGpuDetector
 
 def test_splits_at_first_gpu_detector():
     pipe = ImagePipeline(
-        ops=[BlurGauss(), FakeGpuDetector(), SmallObjectRemover()],
-        meas=[MeasureSize()],
+            ops=[BlurGauss(), FakeGpuDetector(), SmallObjectRemover()],
+            meas=[MeasureSize()],
     )
     plan = split_pipeline_at_gpu(pipe)
     assert isinstance(plan, StagePlan)
@@ -41,9 +41,9 @@ def test_rejects_no_gpu_detector():
 
 
 def test_measurer_plot_binding_survives_into_stage_three():
-    zones = MeasureSymmetricZones()
+    zones = MeasureSymZones()
     pipe = ImagePipeline(
-        ops=[FakeGpuDetector()], meas={"zones": zones}, plots=[zones]
+            ops=[FakeGpuDetector()], meas={"zones": zones}, plots=[zones]
     )
     plan = split_pipeline_at_gpu(pipe)
     assert plan.post_pipeline.get_plots()[0].plot is zones

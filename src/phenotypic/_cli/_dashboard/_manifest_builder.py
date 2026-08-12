@@ -31,10 +31,6 @@ from phenotypic.sdk_ import (
     DashboardManifestKey,
     DashboardManifestSlurmInfoKey,
     atomic_write_json,
-    analysis_scatter_json_path,
-    analysis_full_parquet_path,
-    chunks_dir,
-    master_measurements_parquet_path,
     resolve_event_log_path,
 )
 from phenotypic.sdk_.typing_ import ExecutionMode
@@ -430,29 +426,6 @@ def detect_silent_failures(
     return detected_failures
 
 
-def _get_analysis_data_version(progress_dir: Path) -> int:
-    """Return the maximum modification time across analysis data sources.
-
-    Checks ``analysis_scatter.json``, ``analysis_full.parquet``,
-    the ``progress/chunks/`` directory, and ``master_measurements.parquet``,
-    returning the most recent mtime so the dashboard detects when new
-    data is available.
-    """
-    candidates = [
-        analysis_scatter_json_path(progress_dir),
-        analysis_full_parquet_path(progress_dir),
-        chunks_dir(progress_dir),
-        master_measurements_parquet_path(progress_dir.parent),
-    ]
-    max_mtime = 0
-    for path in candidates:
-        try:
-            max_mtime = max(max_mtime, int(path.stat().st_mtime))
-        except OSError:
-            continue
-    return max_mtime
-
-
 # ---------------------------------------------------------------------------
 # Manifest builder
 # ---------------------------------------------------------------------------
@@ -675,9 +648,6 @@ def build_manifest(
         DashboardManifestKey.INPUT_PATH: input_path,
         DashboardManifestKey.DATASETS: per_dataset,
         DashboardManifestKey.FAILURE_CATEGORIES: failure_categories,
-        DashboardManifestKey.ANALYSIS_DATA_VERSION: _get_analysis_data_version(
-            progress_dir
-        ),
         DashboardManifestKey.EVENT_DIAGNOSTICS: {
             "malformed_events": diagnostics.malformed_events,
             "unknown_image_events": diagnostics.unknown_image_events,
