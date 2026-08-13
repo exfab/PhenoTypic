@@ -61,7 +61,7 @@ This shapes three design choices that would otherwise look arbitrary:
   "created": "2026-08-12T13:40:02Z",
   "approved_at": "2026-08-12T13:52:17Z",
   "question": "Does phase-based edge detection beat the filamentous prefab on the low-contrast plates?",
-  "assay": "assay.json",
+  "assay": "assays/plates.assay.json",
   "dataset": {"images": "data/plates", "metadata_csv": "data/tune_layout.csv",
               "n_images": 42, "digest": "sha256:1a4c…"},
   "objective": {"scorer": {"class": "QCScorer",

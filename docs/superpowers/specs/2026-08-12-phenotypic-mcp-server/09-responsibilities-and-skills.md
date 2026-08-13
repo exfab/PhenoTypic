@@ -518,7 +518,7 @@ The implementation plan should treat per-harness support as one task each, with
 - ~~OQ-9.1 skill packaging~~ → in-repo authoring plus a
   `phenotypic-mcp setup` installer (§9.7).
 - ~~OQ-9.2 assay scope~~ → **per-dataset**, at
-  `<workspace>/assays/<dataset>.assay.json` (§9.3.5).
+  `<workspace>/assays/<dataset>.assay.json` (§9.3.7).
 - ~~OQ-9.3 assay validation~~ → **structure and provenance only**. The server
   checks shape, required keys, and `source ∈ {human, probe, metadata,
   inferred}`; it never validates biological values, so the domain vocabulary can
