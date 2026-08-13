@@ -6,8 +6,9 @@ Date: 2026-08-12
 ## 3.0 Conventions binding every tool
 
 **Naming.** `<group>_<verb>`, flat, no dots — `pipeline_put`, never `pipeline.put`.
-24 tools in six groups: catalog (3), pipeline (5), workspace (4), tune (5, §4),
-deploy (3, §5), campaign (4, §8).
+28 tools in eight groups: catalog (3), pipeline (5), workspace (4),
+tune (5, §4), deploy (3, §5), campaign (4, §8), subset (2, §10),
+promotion (2, §10).
 
 **Every tool returns the same envelope.**
 
@@ -397,7 +398,9 @@ two produces a tool that looks informative and tells the agent nothing.
   "tune":{"distributed_backend":"postgres","journal_backend_enabled":false},
   "in_flight":{"local":0,"slurm":2},
   "rehydrate_ms":184,
-  "counts":{"pipelines":3,"tune_specs":3,"campaigns":1,"studies":1,"runs":0}}}
+  "counts":{"pipelines":3,"tune_specs":3,"assays":1,"subsets":1,
+             "campaigns":1,"studies":1,"runs":0},
+  "active_subset":"subsets/plates-dev-24.subset.json"}}
 ```
 
 `tune.journal_backend_enabled` reflects §7 P1: while `false`, a SLURM tune
@@ -409,7 +412,7 @@ workspace-immutability rule (§2.2) and rehydration cost visible.
 
 | Arg | Type | Meaning |
 |---|---|---|
-| `kind` | `"pipelines" \| "tune_specs" \| "campaigns" \| "studies" \| "runs" \| "all"` | Filter |
+| `kind` | `"pipelines" \| "tune_specs" \| "assays" \| "subsets" \| "campaigns" \| "studies" \| "runs" \| "all"` | Filter |
 | `status` | `str?` | For studies/runs: `RunRegistry` status |
 
 `tune_specs` was missing from the first draft, which left authored specs

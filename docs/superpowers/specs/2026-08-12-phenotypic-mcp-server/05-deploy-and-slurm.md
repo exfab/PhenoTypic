@@ -160,7 +160,9 @@ Same arguments as `deploy_plan`, plus:
 
 | Arg | Type | Default | Meaning |
 |---|---|---|---|
+| `scope` | `"subset" \| "full"` | `"subset"` | `full` targets `subset.parent` and additionally requires `promotion_token` (§10.5) |
 | `plan_token` | `str` | — | **Required.** From a matching `deploy_plan`, or from an approved campaign arm |
+| `promotion_token` | `str?` | `null` | **Required when `scope: "full"`.** From `promotion_approve` |
 | `resume` | `bool` | `false` | Continue an interrupted run |
 | `retry_failures` | `bool` | `false` | Requires `resume` |
 | `restart` | `bool` | `false` | Clear machine state and start over |

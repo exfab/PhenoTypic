@@ -10,11 +10,18 @@ A design for an MCP server that lets an LLM agent build `ImagePipeline`
 configurations, tune them with `phenotypic.tune`, and deploy them over datasets
 — locally or on SLURM.
 
-The intended UX is **collaborative planning, then delegated execution**: you and
-the agent characterize the assay, decide upfront what is worth trying, write that
-agreement down as a *campaign*, and the agent then executes it across parallel
-subagents without you in the loop. §8 describes the flow and §9 the division of
-labour; read those two first if you want the shape before the mechanics.
+The intended UX is **collaborative planning, then delegated execution, on a
+subset**: you and the agent characterize the assay and pick a development
+subset, decide what is worth trying, write that agreement down as a *campaign*,
+and the agent executes it across parallel subagents without you in the loop —
+**bounded to the subset**. The full dataset is touched once, after a separate
+human promotion. §8 describes the flow, §9 the division of labour, §10 the
+subset and the promotion gate; read those three first if you want the shape
+before the mechanics.
+
+Two gates, asking different questions: **campaign approval** ("is this a
+sensible experiment?") before subset compute, and **promotion** ("is this winner
+worth the full dataset?") before the expensive irreversible step.
 
 **Mechanism and judgment are deliberately separated.** §1–§8 specify what the
 server does and refuses. §9 specifies what the *agent* should know — how to
@@ -35,6 +42,7 @@ the server makes wrong things impossible; the skills make right things likely.
 | 7 | [07-prerequisites.md](07-prerequisites.md) | P1 JournalStorage backend, P2 promotion, P3 catalog+descriptor, P4 `--screen` guard, rollout |
 | 8 | [08-workflow-and-campaigns.md](08-workflow-and-campaigns.md) | The phased UX and the campaign artifact |
 | 9 | [09-responsibilities-and-skills.md](09-responsibilities-and-skills.md) | Server-vs-skill boundary, assay triage, prefab-first construction, the four bundled skills |
+| 10 | [10-subsets-and-promotion.md](10-subsets-and-promotion.md) | The development subset as the unit of work, and the promotion gate before full-dataset compute |
 
 ## Executable evidence
 

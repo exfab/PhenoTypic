@@ -118,6 +118,8 @@ accumulate run outputs.
 │   └── <name>.setup.json.pht-tune    # authored TuningSpec
 ├── assays/
 │   └── <dataset>.assay.json          # §9.3 assay profile
+├── subsets/
+│   └── <name>.subset.json            # §10.2 development subset
 ├── campaigns/
 │   └── <name>/campaign.json          # §8.2 the agreed plan
 ├── studies/
@@ -144,8 +146,8 @@ accumulate run outputs.
                           gui_launch_owner.json}
 ```
 
-Only `pipelines/`, `tune/`, `assays/`, `campaigns/`, `studies/`, `runs/` are this
-server's invention.
+Only `pipelines/`, `tune/`, `assays/`, `subsets/`, `campaigns/`, `studies/`,
+`runs/` are this server's invention.
 **Everything inside `studies/<name>/` and `runs/<name>/` is written by the
 existing engines**, at paths owned by `sdk_/_io_constants.py`. The server never
 hand-joins a filename; it calls the helper (`tuning_spec_path`,

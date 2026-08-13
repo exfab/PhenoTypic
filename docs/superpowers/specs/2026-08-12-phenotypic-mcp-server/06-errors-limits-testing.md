@@ -42,6 +42,11 @@ human prose and may change.
 | `plan_required` | error | `deploy_start` without a `plan_token` (§5.4) |
 | `plan_stale` | error | Plan token's pipeline/images/compute digest no longer matches |
 | `campaign_not_approved` | error | `campaign_start` on a `draft` campaign |
+| `promotion_required` | error | `deploy_start {scope:"full"}` without a `promotion_token` (§10.5) |
+| `promotion_stale` | error | Promotion token's pipeline or parent-dataset digest changed since the review |
+| `campaign_arm_scope_full` | error | A campaign deploy arm targeting the full dataset — campaigns are subset-scoped (§10.4) |
+| `amendment_exceeds_envelope` | error | A mid-campaign amendment outside the approved budget, profile, or scorer |
+| `subset_too_small_for_heldout` | **warning** | Subset below `min_heldout_plates`, so the generalization gap degrades to noise |
 | `arm_scorer_mismatch` | error | A campaign arm's scorer differs from the campaign scorer (§8.2) |
 | `screening_unsupported_on_slurm` | error | `--screen` + SLURM, which silently drops screening today (§7 P4). **Conditional on OQ-4.1** — if screening is not exposed at all, this code does not ship. |
 | `output_not_empty` | error | Deploy target non-empty; names `run_name`/`resume`/`restart` |

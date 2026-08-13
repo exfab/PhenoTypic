@@ -14,6 +14,10 @@ Phase 0 — TRIAGE (human + agent)
   (filamentous / round / mixed), colony-vs-background contrast, colony
   separation, plate format, imaging modality. Some of this only you know;
   some is measurable from a probe. Produces assay.json (§9.3).
+
+  ALSO establishes the DEVELOPMENT SUBSET (§10) — you name it, or the agent
+  samples it with a recorded method. Everything below runs on the subset;
+  the full dataset is touched only after a separate promotion gate.
         │
         ▼
 Phase 1 — PLAN (human + agent, conversational, W0 + bounded W1)
@@ -418,15 +422,18 @@ An exploration that begins from an empty pipeline should say why in its trail.
 
 ## 8.8 Open questions
 
-- **OQ-8.1 — should a campaign be able to include deploy arms?** As written a
-  campaign is a *tuning* comparison and deployment is a separate step after a
-  winner is chosen. The alternative is a campaign that also carries "then deploy
-  the winner to dataset X", making the whole study→deploy chain one approved
-  unit. That is more automation past the human checkpoint — attractive for
-  overnight work, but it means a full-dataset run launches without you seeing
-  the winner first.
-- **OQ-8.2 — re-planning mid-campaign.** If an arm fails early (as `watershed`
-  does above), should the agent be able to amend the campaign and add a
-  replacement arm autonomously, or does an amendment require a fresh
-  `campaign_approve`? The strict reading — amendment needs approval — protects
-  the checkpoint but may strand an overnight campaign on one bad arm.
+*(None outstanding.)*
+
+**Resolved since first draft:**
+
+- ~~OQ-8.1 deploy arms~~ and ~~OQ-8.2 mid-campaign amendment~~ → **both granted,
+  scoped to the development subset (§10.4)**. A campaign may carry a deploy arm
+  and may replace a failed arm autonomously, provided the replacement stays
+  inside the approved budget, profile, and scorer. Neither can reach the full
+  dataset: that requires a separate human **promotion** (§10.5).
+
+  Scoping development to a subset is what made both permissions safe to grant.
+  The danger in "deploy arms" was never automation as such — it was unattended
+  *full-dataset* compute on an unreviewed pipeline. Bound the loop to a subset
+  and the campaign spends bounded, cheap compute, while the expensive
+  irreversible step keeps its own gate.
