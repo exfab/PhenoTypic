@@ -183,7 +183,7 @@ def _resolve_typed_output(
     except (OSError, RuntimeError) as exc:
         raise RunRequestSafetyError("Output target cannot be inspected") from exc
     try:
-        relative_path = str(resolved.relative_to(sandbox.root))
+        relative_path = resolved.relative_to(sandbox.root).as_posix()
     except ValueError as exc:  # pragma: no cover - SandboxRoot already proves this.
         raise RunRequestSafetyError("Output directory escapes the GUI sandbox") from exc
     if not relative_path or relative_path == ".":

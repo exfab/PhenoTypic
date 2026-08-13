@@ -156,6 +156,29 @@ def test_external_source_cas_rejection_reloads_before_later_save(
     assert saved["filters"] == {}
 
 
+def test_content_fingerprint_ignores_mtime_only_drift(tmp_path: Path) -> None:
+    """An unchanged recipe is not stale when only its timestamp changes."""
+    state = _seed_recipe(tmp_path)
+    original_mtime = state.path.stat().st_mtime_ns
+
+    os.utime(
+        state.path,
+        ns=(original_mtime + 1_000_000_000, original_mtime + 1_000_000_000),
+    )
+
+    assert state.path.stat().st_mtime_ns != original_mtime
+    assert state.is_stale() is False
+
+
+def test_content_fingerprint_treats_deletion_as_stale(tmp_path: Path) -> None:
+    """Deleting a fingerprinted recipe invalidates the loaded state."""
+    state = _seed_recipe(tmp_path)
+
+    state.path.unlink()
+
+    assert state.is_stale() is True
+
+
 class _ParamEditContext:
     """Small callback-context stand-in for one scalar parameter edit."""
 

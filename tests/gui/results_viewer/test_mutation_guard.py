@@ -139,8 +139,13 @@ def _discover(root: Path) -> OutputRoot:
 
 def _tree_snapshot(
     root: Path,
+    *,
+    ignored_files: tuple[Path, ...] = (),
 ) -> tuple[tuple[str, ...], dict[str, tuple[bytes, int]]]:
     """Capture exact file bytes and mtimes for before/after mutation diffs."""
+    ignored_keys = {
+        path.relative_to(root).as_posix() for path in ignored_files
+    }
     directories = tuple(
         sorted(
             path.relative_to(root).as_posix()
@@ -155,6 +160,7 @@ def _tree_snapshot(
         )
         for path in root.rglob("*")
         if path.is_file()
+        and path.relative_to(root).as_posix() not in ignored_keys
     }
     return directories, files
 
@@ -382,12 +388,17 @@ def test_real_qc_rebuild_rechecks_with_synced_temp_before_replace(
     output.layout.qc_dir.mkdir(parents=True, exist_ok=True)
     output.layout.qc_duckdb.write_bytes(b"prior generation")
     owner.with_suffix(".lock").touch()
-    qc_publication_lock_path(output.layout.qc_duckdb).touch()
+    qc_lock = qc_publication_lock_path(output.layout.qc_duckdb)
+    qc_lock.touch()
+    lock_files = (owner.with_suffix(".lock"), qc_lock)
     output = _discover(source)
     guard = OutputMutationGuard(output, "generation-qc-rebuild")
     preflight = preflight_qc_rebuild(output.layout)
     assert preflight.ready
-    before_dirs, before_files = _tree_snapshot(source)
+    before_dirs, before_files = _tree_snapshot(
+        source,
+        ignored_files=lock_files,
+    )
     mutation_saw_synced_temp = False
 
     def _interleaving_guard() -> bool:
@@ -418,13 +429,17 @@ def test_real_qc_rebuild_rechecks_with_synced_temp_before_replace(
             publication_guard=_interleaving_guard,
         )
 
-    after_dirs, after_files = _tree_snapshot(source)
+    after_dirs, after_files = _tree_snapshot(
+        source,
+        ignored_files=lock_files,
+    )
     owner_key = owner.relative_to(source).as_posix()
     assert mutation_saw_synced_temp
     assert after_dirs == before_dirs
     assert after_files.pop(owner_key)[0] == b"{malformed"
     before_files.pop(owner_key)
     assert after_files == before_files
+    assert all(path.is_file() for path in lock_files)
     assert not list(source.rglob("*.tmp"))
 
 
@@ -454,12 +469,17 @@ def test_real_qc_rebuild_rechecks_synced_receipt_before_replace(
     output = _discover(source)
     output.layout.qc_dir.mkdir(parents=True, exist_ok=True)
     owner.with_suffix(".lock").touch()
-    qc_publication_lock_path(output.layout.qc_duckdb).touch()
+    qc_lock = qc_publication_lock_path(output.layout.qc_duckdb)
+    qc_lock.touch()
+    lock_files = (owner.with_suffix(".lock"), qc_lock)
     output = _discover(source)
     guard = OutputMutationGuard(output, "generation-qc-receipt")
     preflight = preflight_qc_rebuild(output.layout)
     assert preflight.ready
-    before_dirs, before_files = _tree_snapshot(source)
+    before_dirs, before_files = _tree_snapshot(
+        source,
+        ignored_files=lock_files,
+    )
     mutation_saw_synced_receipt = False
 
     def _interleaving_guard() -> bool:
@@ -487,13 +507,17 @@ def test_real_qc_rebuild_rechecks_synced_receipt_before_replace(
             publication_guard=_interleaving_guard,
         )
 
-    after_dirs, after_files = _tree_snapshot(source)
+    after_dirs, after_files = _tree_snapshot(
+        source,
+        ignored_files=lock_files,
+    )
     owner_key = owner.relative_to(source).as_posix()
     assert mutation_saw_synced_receipt
     assert after_dirs == before_dirs
     assert after_files.pop(owner_key)[0] == b"{malformed"
     before_files.pop(owner_key)
     assert after_files == before_files
+    assert all(path.is_file() for path in lock_files)
     assert not list(source.rglob("*.tmp"))
 
 

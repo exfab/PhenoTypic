@@ -13,6 +13,7 @@ from threading import RLock
 from typing import Literal, Mapping, TypedDict
 
 from pydantic import ValidationError
+from typing_extensions import NotRequired
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
@@ -54,6 +55,7 @@ class SetupPathPayload(TypedDict):
     absolute_path_at_selection: str
     sandbox_fingerprint: str
     selected_at: str
+    selection_id: NotRequired[str]
 
 
 @dataclass(frozen=True)
@@ -361,10 +363,11 @@ def setup_path_payload(
     return {
         "version": 2,
         "kind": kind,
-        "relative_path": str(resolved.relative_to(sandbox.root)) or ".",
+        "relative_path": resolved.relative_to(sandbox.root).as_posix() or ".",
         "absolute_path_at_selection": str(resolved),
         "sandbox_fingerprint": sandbox_fingerprint(sandbox),
         "selected_at": datetime.now(timezone.utc).isoformat(timespec="microseconds"),
+        "selection_id": secrets.token_hex(16),
     }
 
 

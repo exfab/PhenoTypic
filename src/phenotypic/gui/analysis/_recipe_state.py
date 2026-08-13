@@ -1025,24 +1025,20 @@ class RecipeState:
         Callers should refuse to :meth:`save` until the staleness is
         cleared so we don't overwrite a fresh seed with a stale recipe.
         """
-        if self.seed_mtime_ns is None:
-            if self.seed_source_fingerprint is None:
-                return self._tracked_path().exists()
+        if self.seed_source_fingerprint is not None:
             return (
                 self._current_source_fingerprint()
                 != self.seed_source_fingerprint
             )
+        if self.seed_mtime_ns is None:
+            return self._tracked_path().exists()
         tracked_path = self._tracked_path()
         try:
             current = tracked_path.stat().st_mtime_ns
         except FileNotFoundError:
             # File deleted out from under us; treat as stale.
             return True
-        if current != self.seed_mtime_ns:
-            return True
-        if self.seed_source_fingerprint is None:
-            return False
-        return self._current_source_fingerprint() != self.seed_source_fingerprint
+        return current != self.seed_mtime_ns
 
     def _current_source_fingerprint(self) -> str:
         """Return the exact revision of the currently tracked config path."""

@@ -17,7 +17,7 @@ class CONDITION_METADATA(IdentityInfo):
 
     @classmethod
     def category(cls) -> str:
-        return "MetadatasCondition"
+        return "MetadataCondition"
 
     @classmethod
     def rembi_module(cls) -> REMBI_MODULE:
@@ -38,5 +38,4 @@ class CONDITION_METADATA(IdentityInfo):
     DOSE = Entry("Dose", "Dose applied to the sample.")
     STRESS = Entry("Stress",
                    "Applied stress condition (e.g. heat, osmotic, oxidative).")
-    TEMPERATURE = Entry("Temperature", "Culture temperature in degrees Celsius.")
     SALINITY = Entry("Salinity", "Salt Salinity")

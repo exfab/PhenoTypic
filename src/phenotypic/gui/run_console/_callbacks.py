@@ -146,7 +146,7 @@ def _shorten_path(path_str: Optional[str], sandbox: SandboxRoot) -> str:
         return "(none)"
     p = Path(path_str)
     try:
-        return str(p.relative_to(sandbox.root))
+        return p.relative_to(sandbox.root).as_posix()
     except ValueError:
         return path_str
 
@@ -517,7 +517,7 @@ def _resolved_output_identity(
     if state.output_dir is None:
         raise ValueError("output_dir is required")
     output_dir = sandbox.resolve(state.output_dir)
-    return output_dir, str(output_dir.relative_to(sandbox.root))
+    return output_dir, output_dir.relative_to(sandbox.root).as_posix()
 
 
 def _run_receipt(record: RunRecord) -> dict[str, str]:

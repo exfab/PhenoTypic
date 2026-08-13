@@ -75,7 +75,7 @@ class PlotColonyMetricOverTime(BaseModel, PlotMeas):
                 environment_by=configured.groupby,
                 replicate_by=[configured.replicate_label],
                 time=configured.time,
-                on=[configured.on],
+                measurements=[configured.on],
                 connect=configured.connect,
         )
         return delegate.inspect(subject, for_save=for_save)
