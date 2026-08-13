@@ -9,10 +9,18 @@ The server is not designed for an agent to wander a parameter space unattended.
 The workflow is **collaborative planning, then delegated execution**:
 
 ```
+Phase 0 — TRIAGE (human + agent)
+  Characterize the ASSAY before any pipeline exists: organism morphology
+  (filamentous / round / mixed), colony-vs-background contrast, colony
+  separation, plate format, imaging modality. Some of this only you know;
+  some is measurable from a probe. Produces assay.json (§9.3).
+        │
+        ▼
 Phase 1 — PLAN (human + agent, conversational, all W0)
-  You and the agent decide together what is worth trying: which topologies,
-  which knobs, which scorer, which compute. Nothing is submitted. Every tool
-  used here is read-only or writes only draft artifacts.
+  Driven by the assay profile: prefab pipelines FIRST (§9.4), probed and
+  compared, tuned before anything custom is authored. You and the agent
+  settle topologies, knobs, scorer, compute. Nothing is submitted; every
+  tool here is read-only or writes only draft artifacts.
         │
         ▼
   A CAMPAIGN: the agreed set of arms, written down, reviewed by you.
@@ -52,7 +60,8 @@ This shapes three design choices that would otherwise look arbitrary:
   "status": "approved",
   "created": "2026-08-12T13:40:02Z",
   "approved_at": "2026-08-12T13:52:17Z",
-  "question": "Does phase-based edge detection beat Otsu on the low-contrast plates?",
+  "question": "Does phase-based edge detection beat the filamentous prefab on the low-contrast plates?",
+  "assay": "assay.json",
   "dataset": {"images": "data/plates", "metadata_csv": "data/tune_layout.csv",
               "n_images": 42, "digest": "sha256:1a4c…"},
   "objective": {"scorer": {"class": "QCScorer",
@@ -61,15 +70,25 @@ This shapes three design choices that would otherwise look arbitrary:
   "budget": {"trials_per_arm": 200, "max_concurrent_arms": 3},
   "compute": {"profile": "cpu-bulk", "n_workers": 8},
   "arms": [
-    {"id": "otsu",      "pipeline": "pipelines/otsu-base.json.pht-pipe",
-     "tune_spec": "tune/otsu-base.setup.json.pht-tune",   "rationale": "baseline"},
-    {"id": "phase",     "pipeline": "pipelines/phase-edge.json.pht-pipe",
-     "tune_spec": "tune/phase-edge.setup.json.pht-tune",  "rationale": "the hypothesis"},
+    {"id": "prefab-fil", "pipeline": "pipelines/filamentous-prefab.json.pht-pipe",
+     "tune_spec": "tune/filamentous-prefab.setup.json.pht-tune",
+     "rationale": "baseline — FilamentousFungiPipeline, the assay-matched prefab"},
+    {"id": "phase", "pipeline": "pipelines/phase-edge.json.pht-pipe",
+     "tune_spec": "tune/phase-edge.setup.json.pht-tune",
+     "rationale": "the hypothesis",
+     "prefab_baseline": {"pipeline": "FilamentousFungiPipeline", "best_cost": 0.31}},
     {"id": "watershed", "pipeline": "pipelines/watershed.json.pht-pipe",
      "tune_spec": "tune/watershed.setup.json.pht-tune",   "rationale": "control"}
   ]
 }
 ```
+
+**Arms reference the assay, and custom arms cite the prefab they beat.**
+`prefab_baseline` is the §9.4 convention: an arm whose pipeline is not a prefab
+or prefab derivative records which prefab came closest and how it scored. The
+server validates the field's *shape* and that the referenced study exists, but
+does not require it — "custom before prefab is usually premature" is judgment,
+which §9.1 places in a skill, not in the server.
 
 **One scorer for the whole campaign.** Arms are only comparable if they are
 scored the same way; a campaign whose arms carry different scorers produces a
@@ -172,13 +191,23 @@ overfitting the calibration split is visible as such rather than crowned.
 What the planning conversation actually looks like, tool by tool:
 
 ```
-you:   "low-contrast plates, Otsu is under-segmenting. What else could we try?"
+you:   "new Aspergillus set, low-contrast plates. Otsu is under-segmenting."
 
-agent: catalog_operations {category:"Detector"}
-       catalog_operation_detail {name:"FocusEdgePhase"}
-       → proposes three arms in prose, with rationale
+agent: [skill: phenotypic-assay-triage]
+       → asks: morphology? expected colonies/plate? → you: "filamentous, 96"
+       pipeline_probe with FilamentousFungiPipeline to measure contrast/separation
+       → writes assay.json: morphology filamentous (human), contrast low (probe),
+         separation touching (probe), 8x12 arrayed
 
-you:   "try those three, but the phase one should also tune the blur"
+agent: [skill: phenotypic-pipeline-construction — prefab-first]
+       catalog_operations {category:"Prefab"}
+       → assay says filamentous + touching → candidates:
+         FilamentousFungiPipeline, HeavyWatershedPipeline
+       pipeline_probe both on the same 2 images
+       → filamentous prefab: 61 objects; watershed: 44. Neither near 96.
+       → "I'd tune the filamentous prefab first rather than author anything new."
+
+you:   "do that, but also try a phase-based edge arm as the hypothesis"
 
 agent: pipeline_put {name:"phase-edge", …, dry_run:true}     # nothing written
        tune_space   {pipeline_id:"phase-edge"}               # 9 targets, QCScorer available

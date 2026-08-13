@@ -11,10 +11,16 @@ configurations, tune them with `phenotypic.tune`, and deploy them over datasets
 — locally or on SLURM.
 
 The intended UX is **collaborative planning, then delegated execution**: you and
-the agent decide upfront what is worth trying, that agreement is written down as
-a *campaign*, and the agent then executes it across parallel subagents without
-you in the loop. §8 is the section that describes this; read it first if you
-want the shape before the mechanics.
+the agent characterize the assay, decide upfront what is worth trying, write that
+agreement down as a *campaign*, and the agent then executes it across parallel
+subagents without you in the loop. §8 describes the flow and §9 the division of
+labour; read those two first if you want the shape before the mechanics.
+
+**Mechanism and judgment are deliberately separated.** §1–§8 specify what the
+server does and refuses. §9 specifies what the *agent* should know — how to
+triage an organism's traits, why prefab pipelines come before custom ones, how to
+read a leaderboard — and ships that as bundled skills. The rule dividing them:
+the server makes wrong things impossible; the skills make right things likely.
 
 ## Sections
 
@@ -27,7 +33,8 @@ want the shape before the mechanics.
 | 5 | [05-deploy-and-slurm.md](05-deploy-and-slurm.md) | SLURM profiles and caps, plan-then-submit, deploy, status, cancellation |
 | 6 | [06-errors-limits-testing.md](06-errors-limits-testing.md) | Error taxonomy, limits, safety boundary, test plan |
 | 7 | [07-prerequisites.md](07-prerequisites.md) | P1 JournalStorage backend, P2 promotion, P3 catalog+descriptor, P4 `--screen` guard, rollout |
-| 8 | [08-workflow-and-campaigns.md](08-workflow-and-campaigns.md) | The three-phase UX and the campaign artifact |
+| 8 | [08-workflow-and-campaigns.md](08-workflow-and-campaigns.md) | The phased UX and the campaign artifact |
+| 9 | [09-responsibilities-and-skills.md](09-responsibilities-and-skills.md) | Server-vs-skill boundary, assay triage, prefab-first construction, the four bundled skills |
 
 ## Executable evidence
 
@@ -65,6 +72,9 @@ that must pass on the target cluster mount before P1 is implemented.
 | 6.1 | §6.6 | Surface all GUI DAG advisory kinds on every `pipeline_put`, or a curated subset? |
 | 8.1 | §8.6 | Should a campaign be able to carry a deploy arm, launching a full run past the human checkpoint? |
 | 8.2 | §8.6 | Can the agent amend a campaign mid-flight, or does an amendment need re-approval? |
+| 9.1 | §9.7 | Do the bundled skills ship in `.claude/skills/` (versioned with the tool contract) or inside the installed package? |
+| 9.2 | §9.7 | Is `assay.json` per-workspace or per-dataset? |
+| 9.3 | §9.7 | Should the server validate `assay.json` against a schema, or keep domain vocabulary out of the server entirely? |
 
 **Resolved:** topology (stdio on the login node) · parallelism (agent-side
 fan-out) · state (on-disk workspace, `RunRegistry` reused rather than a new
