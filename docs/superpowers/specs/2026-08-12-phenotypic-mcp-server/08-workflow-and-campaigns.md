@@ -76,8 +76,8 @@ This shapes three design choices that would otherwise look arbitrary:
   "approved_at": "2026-08-12T13:52:17Z",
   "question": "Does phase-based edge detection beat the filamentous prefab on the low-contrast plates?",
   "assay": "assays/plates.assay.json",
-  "dataset": {"images": "data/plates", "metadata_csv": "data/tune_layout.csv",
-              "n_images": 42, "digest": "sha256:1a4c…"},
+  "subset_id": "subsets/plates-dev-24.subset.json",
+  "metadata_csv": "data/tune_layout.csv",
   "objective": {"scorer": {"class": "QCScorer",
                            "params": {"check": {"metadata": "data/tune_layout.csv"}}},
                 "sense": "cost in [0,1], lower is better"},
@@ -183,7 +183,7 @@ Takes the campaign body above; defaults `status: "draft"`. Validates
 | Scorer is available and portable | `availability()` + the `QCScorer` path rule (§4.2) |
 | Compute profile exists; overrides within caps | §5.2 |
 | Arms resolve to distinct storage URLs | The H2 guard (§7) |
-| Dataset resolves and is non-empty | `SandboxRoot` + directory scan |
+| `subset_id` resolves to a registered subset, non-empty, ≥ `min_heldout_plates` | The subset artifact (§10.2); a raw path is refused with `subset_required` |
 
 The response is the **review document** — this is what you read before saying go:
 

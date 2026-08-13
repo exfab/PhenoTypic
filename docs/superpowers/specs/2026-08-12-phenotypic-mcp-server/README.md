@@ -1,7 +1,7 @@
 # PhenoTypic MCP Server — Design Spec
 
-**Status:** draft. §1–§8 reviewed by independent reviewers and revised
-(three blockers found and fixed); §9–§10 pending review.
+**Status:** draft. All ten sections reviewed by independent reviewers and
+revised — six blockers found and fixed across five review passes.
 **Date:** 2026-08-12
 
 ## What this is
@@ -42,7 +42,7 @@ the server makes wrong things impossible; the skills make right things likely.
 | 7 | [07-prerequisites.md](07-prerequisites.md) | P1 JournalStorage backend, P2 promotion, P3 catalog+descriptor, P4 `--screen` guard, rollout |
 | 8 | [08-workflow-and-campaigns.md](08-workflow-and-campaigns.md) | The phased UX and the campaign artifact |
 | 9 | [09-responsibilities-and-skills.md](09-responsibilities-and-skills.md) | Server-vs-skill boundary, assay triage, prefab-first construction, the four bundled skills |
-| 10 | [10-subsets-and-promotion.md](10-subsets-and-promotion.md) | The development subset as the unit of work, and the promotion gate before full-dataset compute |
+| 10 | [10-subsets-and-promotion.md](10-subsets-and-promotion.md) | The development subset as the unit of work, the `SubsetSelector` hierarchy, and the promotion gate before full-dataset compute |
 
 ## Executable evidence
 
@@ -72,7 +72,9 @@ that must pass on the target cluster mount before P1 is implemented.
 - **Two hard refusals:** no `--overwrite` (it is `shutil.rmtree`), and no raw
   sbatch passthrough (`parse_slurm_args` constrains neither keys nor values).
 - **Development happens on a subset.** The full dataset is touched once, behind
-  a promotion gate separate from campaign approval (§10).
+  a promotion gate separate from campaign approval (§10). Subset-scoped tools
+  take a `subset_id`, not a path, so the boundary is enforced rather than
+  merely asserted.
 
 ## Open questions
 

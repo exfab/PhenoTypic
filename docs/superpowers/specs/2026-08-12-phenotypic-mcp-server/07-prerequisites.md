@@ -246,7 +246,13 @@ Two pieces:
    `header_scheme()`-dispatching column derivation for `produces_columns` and
    `catalog_measurements`, which is *not* the ~40-line job first estimated
    (`TEXTURE.get_headers()` raises `TypeError` without a `scale`; see §3.1).
-3. **A directory-level digest helper.** `campaign_status.comparable` (§8.3) must
+3. **The `phenotypic/subset/` subpackage** — `SubsetSelector` ABC plus
+   `RandomSubsetSelector`, `MetadataGroupSubsetSelector`, and the
+   `EmbeddingSubsetSelector` placeholder (§10.3). Must be added to
+   `_find_class_in_phenotypic`'s submodule list in the same change that
+   reconciles it with `OperationRegistry.discover()`, so selectors resolve and
+   serialize by bare class name like every other extensible class.
+4. **A directory-level digest helper.** `campaign_status.comparable` (§8.3) must
    detect two arms tuned against different image sets, and nothing today can:
    `bytes_fingerprint`, `file_fingerprint` (`sdk_/_io_constants.py:154,166`) and
    `pipeline_content_digest` are all single-file, and `TuningSpec` records no

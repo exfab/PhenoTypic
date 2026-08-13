@@ -73,7 +73,7 @@ new row in the skill-owned registry (§9.3.4).
 {
   "schema_version": 1,
   "name": "exfab-fungal-2026-08",
-  "dataset": {"path": "data/plates", "digest": "sha256:1a4c…", "n_images": 42},
+  "dataset": {"path": "data/plates", "digest": "sha256:1a4c…", "n_images": 480},
   "traits": {
     "organism.morphology": {
       "value": "filamentous",
@@ -170,18 +170,39 @@ metrics; round assays want size and shape.
 **`colony.contrast_vs_background`** — `high | moderate | low`
 
 *Determined by:* **probe**, and this one needs an operational definition or it is
-vibes. Proposed measure: Otsu's between-class variance ratio on `detect_mat`,
-η = σ²_B / σ²_T ∈ [0, 1] — precisely the separability Otsu maximizes, so it is
-principled rather than invented.
+vibes. Measure: Otsu's between-class variance ratio, η = σ²_B / σ²_T ∈ [0, 1] —
+precisely the separability Otsu maximizes.
+
+**It must be computed threshold-wise, not mask-wise.** The one existing
+implementation, `ReferenceFreeScorer._contrast`
+(`tune/score/_reference_free_scorer.py:377-409`), reads `image.gray` **and
+`image.objmask`** — i.e. it needs a detector to have already run. That is
+circular for a trait whose entire purpose is to *choose* the detector, and it is
+not reusable here.
+
+The server computes η itself, pre-detection, from the layer histogram alone:
+
+```python
+t  = skimage.filters.threshold_otsu(layer)   # the scalar threshold
+fg = layer >= t
+w  = fg.mean()
+eta = w * (1 - w) * (layer[fg].mean() - layer[~fg].mean())**2 / layer.var()
+```
+
+Same formula as `_contrast`, with the Otsu **threshold** defining the two
+classes instead of an object mask. `skimage.filters.threshold_otsu` returns only
+the scalar and discards the variance it maximized, so this is ~8 lines of numpy
+in the probe worker — not a call into any phenotypic API. It runs on
+`detect_mat` when a pipeline exists, and on `gray` during bare triage before one
+does; the probe reports which layer it used.
 
 | Band | η | Status |
 |---|---|---|
-| `high` | ≥ 0.75 | **Provisional cut points.** The *measure* is principled; the *bands* need calibrating against real plates before they mean anything. |
+| `high` | ≥ 0.75 | **Provisional cut points** (OQ-9.4). The *measure* is principled and now computable; the *bands* need calibrating against real plates before they mean anything. |
 | `moderate` | 0.45 – 0.75 | |
 | `low` | < 0.45 | |
 
-*Drives:* whether enhancement or detection is the bottleneck; whether
-`HeavyOtsuPipeline` can work at all.
+*Drives:* whether enhancement or detection is the bottleneck.
 
 **`colony.separation`** — `well_separated | touching | confluent`
 
@@ -271,10 +292,13 @@ traits:
 rules:                              # trait signals -> candidate prefabs (§9.4)
   - when: {organism.morphology: filamentous}
     prefer: [FilamentousFungiPipeline]
+  - when: {organism.morphology: round, colony.separation: well_separated,
+           colony.contrast_vs_background: high}
+    prefer: [RoundPeaksPipeline]
+  - when: {organism.morphology: round, colony.separation: well_separated}
+    prefer: [RoundPeaksPipeline, HeavyRoundPeaksPipeline]
   - when: {organism.morphology: round, colony.separation: touching}
     prefer: [HeavyWatershedPipeline, HeavyRoundPeaksPipeline]
-  - when: {colony.contrast_vs_background: high, colony.separation: well_separated}
-    prefer: [HeavyOtsuPipeline]
 ```
 
 Three properties this buys:
@@ -341,15 +365,22 @@ was filamentous and contrast was low.*
 Seven ship today (`phenotypic.prefab`), and they are validated, documented
 chains rather than examples. Their real intents:
 
-| Prefab | Intent (from its docstring) |
-|---|---|
-| `FilamentousFungiPipeline` | Filamentous fungi detection with `DenoiseBlockMatch` denoising and spatial measurements |
-| `RoundPeaksPipeline` | Round colonies, lightweight peak-based detection |
-| `HeavyRoundPeaksPipeline` | Round colonies, peak detection with full refinement |
-| `HeavyWatershedPipeline` | Watershed segmentation for **touching** colonies |
-| `HeavyOtsuPipeline` | Multi-stage Otsu thresholding with refinement |
-| `GridSectionPipeline` | Per-section processing on grid plates |
-| `SpImagerPipeline` | Light processing for SpImager-sourced images |
+| Prefab | Intent (from its docstring) | ops |
+|---|---|---|
+| `RoundPeaksPipeline` | Round colonies, lightweight peak-based detection | **2** |
+| `FilamentousFungiPipeline` | Filamentous fungi, `DenoiseBlockMatch` + spatial measurements | **3** |
+| `SpImagerPipeline` | SpImager-sourced images | **4** |
+| `GridSectionPipeline` | Per-section processing on grid plates | **13** |
+| `HeavyWatershedPipeline` | Watershed segmentation for **touching** colonies | **15** |
+| `HeavyRoundPeaksPipeline` | Round colonies, peak detection with full refinement | **18** |
+| `HeavyOtsuPipeline` | Multi-stage Otsu thresholding with refinement | **19** |
+
+Op counts are measured, not estimated, and they are ordered here because
+**cost order is not obvious from the names.** `SpImagerPipeline` is labelled
+"light" but includes `DenoiseBlockMatch` (BM3D) — the very op whose addition is
+what marks the `Heavy*` variants heavy — so a probe of it is not cheap despite
+the label. An agent ordering candidates by expected cost should use this column,
+not the adjective in the docstring.
 
 ### Assay profile → candidate prefabs
 
@@ -358,16 +389,28 @@ This table is the human-readable rendering of the `rules:` block in
 of judgment an expert may override, and extended by adding a rule rather than by
 editing prose.
 
+Rules are evaluated **most-specific-first**, and morphology dominates: it
+constrains which detector family can work at all, whereas contrast and
+separation only modulate how much enhancement and refinement are needed.
+
 | Assay signal | First candidates |
 |---|---|
-| `morphology: filamentous` | `FilamentousFungiPipeline` |
-| `morphology: round` + `separation: well_separated` | `RoundPeaksPipeline`, then `HeavyRoundPeaksPipeline` |
-| `morphology: round` + `separation: touching` | `HeavyWatershedPipeline`, then `HeavyRoundPeaksPipeline` |
-| `contrast: high` + `separation: well_separated` | `HeavyOtsuPipeline` (cheapest that can work) |
-| `contrast: low` | Prefer the refinement-heavy variants; expect enhancement to matter more than detector choice |
-| `plate.format: arrayed` and dense | `GridSectionPipeline` |
-| `imaging.modality: spimager` | `SpImagerPipeline` |
+| `morphology: filamentous` | `FilamentousFungiPipeline` (3) |
+| `morphology: round` + `separation: well_separated` + `contrast: high` | `RoundPeaksPipeline` (2) — genuinely the cheapest that can work |
+| `morphology: round` + `separation: well_separated` + `contrast: moderate\|low` | `RoundPeaksPipeline` (2), then `HeavyRoundPeaksPipeline` (18) |
+| `morphology: round` + `separation: touching` | `HeavyWatershedPipeline` (15), then `HeavyRoundPeaksPipeline` (18) |
+| `plate.format: arrayed` and dense | `GridSectionPipeline` (13) |
+| `imaging.modality: spimager` | `SpImagerPipeline` (4) |
 | `morphology: mixed` | Two arms — the filamentous and round candidates — rather than one compromise pipeline |
+| `contrast: low` (modifier, not a rule) | Expect enhancement to matter more than detector choice; prefer the refinement-heavy variant of whichever family morphology selected |
+
+`HeavyOtsuPipeline` (19 ops) is deliberately **not** a first candidate for any
+signal. An earlier draft listed it under `contrast: high + well_separated` as
+"cheapest that can work" — it is the *most* expensive of the seven, and that
+same assay also matches the `RoundPeaksPipeline` row at 2 ops. Two overlapping
+rows recommending pipelines 9× apart in cost is exactly the kind of error a
+rules table makes visible and a prose paragraph hides. Reach for `HeavyOtsu`
+when the cheaper family has been tried and failed, not first.
 
 ### The procedure
 
@@ -410,13 +453,23 @@ tools do it*.
 ### `phenotypic-assay-triage`
 
 **When:** at the start of any new dataset, before any pipeline exists.
-**Produces:** `assay.json`.
-**Procedure:** ask the human for morphology and expected colony count per plate;
-read imaging metadata; run one `pipeline_probe` with a prefab candidate to
-measure contrast and separation; record every field with its `source`; state
-explicitly which fields are guesses.
+**Produces:** `assays/<dataset>.assay.json` **and** `subsets/<name>.subset.json`.
+**Tools:** `assay_put`, `assay_get`, `subset_put`, `subset_get`,
+`pipeline_probe`, `catalog_operations`.
+**Procedure:**
+
+1. Ask the human for morphology and expected colony count per plate — these are
+   not measurable (§9.3.3).
+2. Read imaging metadata for modality and bit depth.
+3. **Establish the development subset** (§10): ask the human to name one, or
+   sample with a recorded method and seed. Everything downstream runs on it.
+4. Probe 2–4 subset images to measure contrast (η) and separation.
+5. `assay_put` with every trait carrying its `source`; `subset_put` with the
+   measured `coverage` range.
+
 **Hard rule it teaches:** never write `source: "human"` for something the human
-did not say.
+did not say. A guess is `inferred`, and it must be stated as a guess wherever it
+drives a decision.
 
 ### `phenotypic-pipeline-construction`
 
@@ -444,12 +497,25 @@ overfitting the split is not a winner.
 ### `phenotypic-deploy-and-verify`
 
 **When:** a winner exists and a full dataset is to be processed.
-**Procedure:** `deploy_plan` and show the node-hour estimate *before* asking;
-submit; poll `manifest.json` rather than trusting exit codes; on completion,
-verify against the mirror (`measurements.*`), not the master, and report
-`QC_MetadataOnly` rows separately from detections.
-**Hard rule it teaches:** deletion and overwrite are the human's job at a shell.
-If the output directory is occupied, ask — do not find a way around it.
+**Tools:** `deploy_plan`, `promotion_request`, `promotion_approve`,
+`deploy_start`, `deploy_status`, `workspace_cancel`.
+**Procedure:**
+
+1. `promotion_request` — assemble the decision: winner provenance, subset score
+   and held-out gap, measured full-dataset estimate, coverage warnings.
+2. **Show the human that response and wait.** This is the gate; it is not
+   optional and it is not something the agent can conclude on its own.
+3. `promotion_approve` only after they say so, then
+   `deploy_plan {scope:"full"}` → `deploy_start {scope:"full"}`.
+4. Poll `manifest.json`, not exit codes — without `--wait` the CLI exits 0 on
+   submission.
+5. Verify against the mirror (`measurements.*`), never the master, and report
+   `QC_MetadataOnly` rows separately from detections.
+
+**Hard rules it teaches:** deletion and overwrite are the human's job at a
+shell — if the output directory is occupied, ask rather than routing around it.
+And a coverage warning on the promotion review is a reason to *say something*,
+not a formality to pass through.
 
 ## 9.6 Skill/server boundary — worked cases
 

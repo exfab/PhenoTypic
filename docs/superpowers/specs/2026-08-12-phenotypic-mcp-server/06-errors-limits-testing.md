@@ -46,7 +46,11 @@ human prose and may change.
 | `promotion_stale` | error | Promotion token's pipeline or parent-dataset digest changed since the review |
 | `campaign_arm_scope_full` | error | A campaign deploy arm targeting the full dataset — campaigns are subset-scoped (§10.4) |
 | `amendment_exceeds_envelope` | error | A mid-campaign amendment outside the approved budget, profile, or scorer |
-| `subset_too_small_for_heldout` | **warning** | Subset below `min_heldout_plates`, so the generalization gap degrades to noise |
+| `subset_required` | error | A subset-scoped tool given a raw parent path instead of a `subset_id` (§10.3.1) |
+| `subset_too_small` | error | Subset below `min_heldout_plates` (6): `derive_split` returns an EMPTY held-out set, so there is no gap at all |
+| `subset_too_small_for_heldout` | **warning** | Subset under ~15: a single held-out plate makes the gap a one-sample estimate |
+| `selector_unavailable` | error | `SubsetSelector.availability()` is `False` — e.g. `EmbeddingSubsetSelector`, which raises rather than falling back to random (§10.3) |
+| `group_key_not_in_metadata` | error | `MetadataGroupSubsetSelector.group_key` names no column in the metadata CSV |
 | `arm_scorer_mismatch` | error | A campaign arm's scorer differs from the campaign scorer (§8.2) |
 | `screening_unsupported_on_slurm` | error | `--screen` + SLURM, which silently drops screening today (§7 P4). **Conditional on OQ-4.1** — if screening is not exposed at all, this code does not ship. |
 | `output_not_empty` | error | Deploy target non-empty; names `run_name`/`resume`/`restart` |
@@ -138,6 +142,12 @@ ones most likely to rot into tautologies.
   `time` in all three accepted formats (`240`, `04:00:00`, `0-04:00:00`).
 - **Refusals are refusals:** no argument combination reaches `--overwrite`, a
   reserved sbatch key, or a non-overridable profile key.
+- **The embedding placeholder actually raises.** `EmbeddingSubsetSelector`
+  must be shown to raise `NotImplementedError` and to report
+  `availability() == (False, ...)` — never to return a random selection. A
+  placeholder that silently degrades would stamp `method: "EmbeddingSubsetSelector"`
+  onto an artifact describing a subset with none of the claimed visual coverage,
+  and nothing downstream could contradict it.
 - **Sandbox escape, adversarially.** §6.4 has no authentication — `SandboxRoot`
   *is* the entire security boundary — so it gets an explicit hostile test rather
   than relying on the blanket one-test-per-code rule: `..` traversal, symlinks

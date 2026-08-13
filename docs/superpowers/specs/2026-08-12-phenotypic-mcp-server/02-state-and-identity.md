@@ -237,12 +237,13 @@ the whole chain is otherwise lost.
 **The dataset hop is load-bearing for `campaign_status.comparable` (§8.3)**: two
 arms tuned against different image sets cannot be honestly ranked, and nothing
 in the existing artifacts records which images a study used. So the `tune.start`
-lineage event carries it explicitly:
+lineage event carries the **subset** it ran on — which §10.3.1 also makes the
+tool argument, so the two cannot disagree:
 
 ```json
 {"ts":"…","event":"tune.start","id":"studies/edge-v3-tpe",
  "parent":"pipelines/edge-v3.json.pht-pipe",
- "dataset":{"path":"data/plates","digest":"sha256:1a4c…","n_images":42}}
+ "subset":{"id":"subsets/plates-dev-24.subset.json","digest":"sha256:77b2…","n_images":24}}
 ```
 
 `digest` needs a **directory-level fingerprint helper, which does not exist** —

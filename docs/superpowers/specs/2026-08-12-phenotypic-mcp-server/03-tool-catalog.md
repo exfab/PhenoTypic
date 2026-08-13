@@ -6,9 +6,9 @@ Date: 2026-08-12
 ## 3.0 Conventions binding every tool
 
 **Naming.** `<group>_<verb>`, flat, no dots — `pipeline_put`, never `pipeline.put`.
-28 tools in eight groups: catalog (3), pipeline (5), workspace (4),
-tune (5, §4), deploy (3, §5), campaign (4, §8), subset (2, §10),
-promotion (2, §10).
+31 tools in nine groups: catalog (3), pipeline (5), workspace (4),
+assay (2, §9.3), **subset (3, §10.3)**, tune (5, §4), deploy (3, §5),
+campaign (4, §8), promotion (2, §10.5).
 
 **Every tool returns the same envelope.**
 
@@ -426,6 +426,24 @@ owner-record rows are distinguishable from manifest-only ones (§2.4).
 `{id, reason?}`. Routes to `cancel_generation` / `cancel_staged_jobs` /
 `LocalRunner.stop`. **Scoped to runs this server holds a `RunRegistry` record
 for**, so an agent cannot reach another session's work.
+
+### `assay_put` / `assay_get` (`W0`)
+
+The assay profile (§9.3) needs a call path, or its validation contract describes
+logic nothing invokes.
+
+`assay_put {dataset, traits, overwrite?, dry_run?}` writes
+`assays/<dataset>.assay.json`. It validates the **envelope only** (§9.3.5): each
+trait has `value` and `source`; `source ∈ {human, probe, metadata, inferred}`;
+`evidence` present and its `probe_ref` resolvable when `source: "probe"`. It
+never validates a biological value, and it **preserves unknown trait keys
+verbatim** rather than rejecting them — which means this is the one place in the
+server that must *not* use pydantic's `extra="forbid"`. The model is an explicit
+`traits: dict[str, TraitEnvelope]`, so unknown keys are ordinary data, not extra
+fields.
+
+`assay_get {dataset}` reads it back, echoing which traits are `human`-sourced
+(and therefore uncheckable) versus `probe`-sourced.
 
 ### `workspace_lineage`
 

@@ -43,8 +43,11 @@ the other:
   "name": "plates-dev-24",
   "parent": {"path": "data/plates", "digest": "sha256:1a4c…", "n_images": 480},
   "selection": {
-    "method": "user_named",
-    "note": "Alex picked these to span the low- and high-contrast batches"
+    "method": "MetadataGroupSubsetSelector",
+    "params": {"n": 24, "seed": 0, "metadata": "data/tune_layout.csv",
+               "group_key": "Metadata_Batch", "allocation": "equal"},
+    "rationale": "8 batches x 3 plates each; equal allocation so the two rare
+                  low-contrast batches are not swamped by the six common ones"
   },
   "images": ["plateA_01.tif", "plateA_07.tif", "…"],
   "n_images": 24,
@@ -62,37 +65,183 @@ Three things it must record, because each one changes how much the results mean:
 - **`parent` with a digest** — so a promotion can verify the full dataset has not
   changed since development, and so `campaign_status.comparable` (§8.3) has its
   dataset identity.
-- **`selection.method`** — how these images were chosen. `user_named` and
-  `stratified` support very different confidence in the result.
+- **`selection`** — the selector class, its params, and its seed. A
+  `RandomSubsetSelector` and a `MetadataGroupSubsetSelector` support very
+  different confidence in the result, and a recorded seed makes either
+  reproducible.
 - **`coverage`** — what range of assay traits the subset actually spans, measured
   during triage. A subset that contains only easy plates will tune to a pipeline
   that fails on the hard ones, and nothing downstream can detect that from the
   cost alone.
 
-## 10.3 Where subsets come from
+## 10.3 Where subsets come from — the selector hierarchy
 
-**v1 — the agent does not invent subsets.**
+Subset selection is a **pluggable strategy**, following the same pattern as
+every other extensible thing in this codebase: a pydantic ABC, concrete
+subclasses, `{class, params}` serialization, and resolution by bare class name.
 
-| Method | v1 | How |
+### `SubsetSelector` — the base class
+
+New public subpackage `phenotypic/subset/`, added to
+`_find_class_in_phenotypic`'s submodule list so selectors serialize and resolve
+exactly like operations and scorers do.
+
+```python
+class SubsetSelector(BaseModel, ABC):
+    """Choose a development subset from a parent image set.
+
+    Args:
+        n: Target subset size.
+        seed: RNG seed; recorded on the artifact so a selection is reproducible.
+    """
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+
+    n: int = Field(..., ge=1)
+    seed: int = 0
+
+    @abstractmethod
+    def _select(self, candidates: list[ImageRef]) -> list[str]: ...
+
+    def availability(self) -> tuple[bool, str]: ...   # (usable?, why not)
+    def cost_class(self) -> Literal["W0", "W1", "W2"]: ...
+
+    def select(self, candidates: list[ImageRef]) -> SubsetSelection:
+        """Template: check availability, delegate, then dedup, order, and
+        record the rationale so the artifact explains itself."""
+```
+
+`SubsetSelection` is frozen and carries `images`, `method`, `params`, `seed`,
+and a human-readable `rationale` — which becomes `selection` on the subset
+artifact (§10.2).
+
+Two methods worth calling out:
+
+- **`availability()`** mirrors `Scorer.availability()` (§4.1), so
+  `subset_generate` can report which selectors are usable *before* the agent
+  commits — the same affordance that stops the most common tuning failure.
+- **`cost_class()`** is what keeps an expensive selector from being smuggled
+  into triage. Selection cost is not uniform, and the difference is structural:
+
+  | Selector | Cost | Because |
+  |---|---|---|
+  | `RandomSubsetSelector` | `W0` | Needs only the file list |
+  | `MetadataGroupSubsetSelector` | `W0` | Needs only the metadata CSV, which already exists |
+  | `EmbeddingSubsetSelector` | `W2` | Must encode **every parent image** |
+
+  An earlier draft deferred all stratification to a future iteration on the
+  grounds that stratifying requires measuring the whole dataset. That was too
+  blunt: it is true of *trait* and *embedding* stratification, and false of
+  **metadata** stratification, where the grouping already exists on disk. So
+  metadata sampling ships now.
+
+### The three selectors
+
+**`RandomSubsetSelector`** — uniform without replacement, seeded.
+
+```json
+{"class": "RandomSubsetSelector", "params": {"n": 24, "seed": 0}}
+```
+
+Honest and unstratified. The right default when no metadata exists, and the
+right *baseline* even when it does.
+
+**`MetadataGroupSubsetSelector`** — sample across metadata groups.
+
+```json
+{"class": "MetadataGroupSubsetSelector",
+ "params": {"n": 24, "seed": 0,
+            "metadata": "data/tune_layout.csv",
+            "group_key": "Metadata_Batch",
+            "allocation": "proportional"}}
+```
+
+| Param | Meaning |
+|---|---|
+| `group_key` | A metadata column naming each plate's group |
+| `allocation` | `proportional` (mirror group sizes) or `equal` (same count per group, so a rare condition is not lost) |
+| `min_per_group` | Floor per group; groups smaller than it are taken whole |
+
+**`group_key` is deliberately the same vocabulary the tune split already uses.**
+`_resolve_groups(images, group_key)` (`tune/_evaluation/_split.py:114-133`)
+resolves it via `image.metadata.get(group_key)`, and `infer_group_key`
+(`_evaluation/_held_out.py:53`) derives it from `scorer.check.groupby[0]`.
+Reusing it buys a real property: **a subset stratified by the same key the
+held-out split groups by will actually have ≥2 groups to hold out**, so
+`derive_split` reaches Tier 2 (whole-group hold-out) instead of falling back to
+the within-group tier with its `within_group_caveat`. Choosing a different key
+here silently degrades the generalization estimate.
+
+**`EmbeddingSubsetSelector`** — placeholder, and it **fails loudly**.
+
+```json
+{"class": "EmbeddingSubsetSelector",
+ "params": {"n": 24, "seed": 0, "model": "<unset>", "strategy": "kmeans_medoids"}}
+```
+
+Intended shape: embed every parent image with a vision model, cluster, and take
+medoids — giving visual coverage without any metadata or hand-labelling.
+
+Until implemented, `availability()` returns
+`(False, "EmbeddingSubsetSelector is not implemented; no embedding backend is configured")`
+and `_select` **raises `NotImplementedError`**. It does **not** silently fall
+back to random. A placeholder that quietly degrades to a different strategy is
+the worst possible failure here: the artifact would record
+`method: "embedding"`, the agent and the human would both believe the subset had
+visual coverage, and nothing would contradict them. Per the project's
+test-integrity rule, a check that cannot run must fail rather than skip — the
+same logic applies to a selector that cannot select.
+
+Its `cost_class()` returns `W2` even while unimplemented, so the routing story
+is already correct when it lands: embedding a 480-image parent is a scheduled
+job, not a planning step.
+
+### `subset_generate` (`W0` or as `cost_class()` reports)
+
+| Arg | Type | Default | Meaning |
+|---|---|---|---|
+| `name` | `str` | — | Workspace subset name |
+| `parent` | `str` | — | Parent image directory |
+| `selector` | `object` | — | `{class, params}` |
+| `dry_run` | `bool` | `false` | Return the selection without writing |
+
+Returns the chosen images, the per-group allocation when applicable, and the
+recorded rationale. `subset_put` (explicit list) and `subset_get` remain, so a
+human-picked subset is still first-class — `user_named` is a selection method,
+not a lesser one.
+
+Because selectors resolve by bare class name like every other extensible class,
+adding a fourth is a new subclass plus one `__init__.py` export. No tool
+signature changes, no schema bump.
+
+## 10.3.1 How the boundary is *enforced*
+
+"The full dataset is touched exactly once" is a claim about mechanism, and a
+claim like that is worth nothing unless something refuses.
+
+The refusal cannot be `deploy_start` alone. `tune_start` and `pipeline_probe`
+both take a raw `images` path, and `W2` tune work is explicitly allowed to run
+unattended and to route to a full `sbatch` fleet — so an ordinary `tune_start`
+pointed at the parent directory would spend full-dataset compute without ever
+approaching the promotion gate.
+
+**So subset-scoped tools take a `subset_id`, not a path:**
+
+| Tool | Before | Now |
 |---|---|---|
-| `user_named` | **yes** | You give a list, a glob, or a directory. The honest default. |
-| `first_n` / `random_n` | **yes** | Mechanical sampling with a recorded seed. Cheap, and honestly labelled as unstratified. |
-| `stratified` | **seam reserved** | Sample to span the assay-trait range — the future iteration |
+| `pipeline_probe` | `images: str` | `subset_id: str` (path form allowed only when no subset is registered) |
+| `tune_start` | `images: str` | `subset_id: str` |
+| `campaign_put` | `dataset.images` path | `subset_id`, recorded on the campaign |
+| `deploy_start` | `images` + `scope` | `subset_id` + `scope`; `scope:"full"` resolves to `subset.parent` |
 
-The seam matters more than the feature. `selection.method` is an open string
-with a recorded `note` and, for sampled methods, a `seed`; adding `stratified`
-later means a new method value and a generator, **not** a schema change or a new
-tool signature. This is the same extensibility discipline as the trait map
-(§9.3.0): the artifact's shape is fixed, its vocabulary is not.
+The server resolves `subset_id` → the subset's recorded `images` list and passes
+*those* to the engine. A raw parent path in a subset-scoped phase is refused
+with `code: "subset_required"`. This also gives `campaign_status.comparable`
+(§8.3) its dataset identity for free: every arm in a campaign shares one
+`subset_id`, so arms are comparable by construction rather than by after-the-fact
+digest comparison.
 
-`subset_put` (`W0`) writes one; `subset_get` reads it back with coverage.
-A future `subset_generate` slots in beside them without disturbing either.
-
-**Why the agent does not auto-generate subsets in v1:** a stratified sample needs
-trait measurements across the *whole* dataset to stratify on, which means probing
-far more than four images — turning a `W0`/`W1` planning step into a substantial
-compute job. That is a real feature with a real cost, and it deserves its own
-design rather than being smuggled into triage.
+The single exception is `scope: "full"`, which is the *point* of the promotion
+gate and is guarded by `promotion_token`.
 
 ## 10.4 What runs unattended (resolves OQ-8.1 and OQ-8.2)
 
@@ -116,14 +265,24 @@ The envelope is what you actually agreed to, and it is checkable.
 
 ## 10.5 The promotion gate
 
-`promotion_request` (`W0`) → `promotion_approve` (`W0`) → `deploy_start {scope: "full"}`
+```
+promotion_request → [human says yes] → promotion_approve
+                                            ↓
+                          deploy_plan  {scope:"full"}   ← plan_token for the PARENT
+                                            ↓
+                          deploy_start {scope:"full"}   ← plan_token + promotion_token
+```
 
-`deploy_start` gains a `scope` argument:
+**Both** `deploy_plan` and `deploy_start` take `scope`. This matters: a campaign
+arm can mint a `plan_token` only for `scope:"subset"` (§10.4), so a full-dataset
+run has no other way to obtain one — the plan must be drawn explicitly against
+the parent, which is also what produces the sbatch preview and array sizing for
+480 images rather than 24.
 
-| `scope` | Requires | Meaning |
+| `scope` | Requires | Runs against |
 |---|---|---|
-| `"subset"` (default) | `plan_token` | Runs against the subset. Reachable from a campaign arm. |
-| `"full"` | `plan_token` **and** `promotion_token` | Runs against `subset.parent` |
+| `"subset"` (default) | `plan_token` | the subset's image list; reachable from a campaign arm |
+| `"full"` | `plan_token` (scope=full) **and** `promotion_token` | `subset.parent` |
 
 `promotion_request` assembles the decision you are actually making, in one
 response:
@@ -138,9 +297,11 @@ response:
   "full":{"path":"data/plates","n_images":480,"digest_matches_parent":true},
   "estimate":{"node_hours":18.4,"basis":"subset run: 3.4 s/image measured"},
   "warnings":[
-    {"code":"subset_coverage_gap",
-     "message":"Subset spans contrast_eta 0.22–0.71; no high-contrast plate included. 
-                113 of 480 parent images were not represented by any measured trait range."}]}}
+    {"code":"subset_coverage_unverified",
+     "message":"Subset spans contrast_eta 0.22–0.71 across 4 measured images. The
+                parent's 480 images were NOT characterized, so whether the subset
+                represents them is unknown, not confirmed. Selection was
+                'user_named'."}]}}
 ```
 
 Two properties this must have:
@@ -149,9 +310,15 @@ Two properties this must have:
   per-image timing, so the full-dataset node-hour figure has a basis. This is the
   strongest argument for subset-first development independent of safety: it makes
   the cost of the expensive step *knowable* before you commit.
-- **Coverage gaps are surfaced as warnings, not buried.** A winner tuned on 24
-  easy plates may fail on the hard ones, and cost alone cannot reveal that. The
-  promotion review is the only place a human can catch it.
+- **Coverage is reported honestly, including its limits.** A winner tuned on 24
+  easy plates may fail on the hard ones, and cost alone cannot reveal that. But
+  v1 measures traits only on the subset — §10.3 rules full-parent
+  characterization out of scope precisely because it is a substantial compute
+  job. So the warning says the subset's range is **unverified against the
+  parent**, not that a specific number of parent images fall outside it.
+  Claiming the latter would require exactly the dataset-wide probing v1 defers,
+  and asserting it anyway would be the more dangerous error: a false assurance
+  of representativeness is worse than an admitted unknown.
 
 `promotion_approve` records the decision, mints the token, and appends a lineage
 row. The token is bound to `(pipeline digest, parent digest, scope)` — if the
@@ -169,9 +336,18 @@ provenance so the artifact and the transcript agree, not authentication.
   `coverage` and the promotion warning are the mitigations; neither is a
   guarantee, and `user_named` selection puts the responsibility with you.
 - **A subset small enough to be cheap may be too small for the held-out split.**
-  `HeldOutConfig.min_heldout_plates` defaults to 6, so a subset under ~12 images
-  cannot support a meaningful generalization gap. `subset_put` warns below that
-  threshold rather than letting the gap silently degrade to noise.
+  The real cliff is sharp and sits at 6: `derive_split`
+  (`tune/_evaluation/_split.py:191-199`) returns `kind="none"` with an **empty**
+  held-out set when `n_plates < min_heldout_plates` (default 6,
+  `_evaluation/_held_out.py:48`) — every plate becomes calibration and the
+  generalization gap is not merely noisy but absent. Above 6 there is no second
+  discontinuity: Tier 3 sizing is `n_held = max(1, round(0.2 · n))`, growing
+  smoothly (1 plate at n=6–9, 2 at 10–12, 3 at 13–17).
+
+  So `subset_put` **errors** below 6 and **warns** below roughly 15, where a
+  single held-out plate makes the gap a one-sample estimate. An earlier draft
+  cited "~12" as following from `min_heldout_plates = 6`; nothing in the split
+  logic produces 12, and the real hazard is the hard zero at 6.
 - **Subset compute is bounded but not free.** An unattended campaign with deploy
   arms still consumes an allocation. The campaign budget and profile caps (§5.2)
   are what bound it, and they bind on subset runs exactly as on any other.
