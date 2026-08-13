@@ -92,10 +92,60 @@ which §9.1 places in a skill, not in the server.
 
 **One scorer for the whole campaign.** Arms are only comparable if they are
 scored the same way; a campaign whose arms carry different scorers produces a
-leaderboard that means nothing. `campaign_put` therefore takes the scorer at
-campaign level and **rejects** an arm whose tune spec disagrees, with
+leaderboard that means nothing. `campaign_put` takes the scorer at campaign
+level and **rejects** an arm whose tune spec disagrees, with
 `code: "arm_scorer_mismatch"`. This is the single most valuable invariant the
 campaign concept adds.
+
+### How that comparison is actually computed
+
+Naming the mechanism is not pedantry — **both obvious implementations are
+wrong**, and each fails in a different direction. Reproduced against the real
+classes:
+
+```python
+s1 = QCScorer(check=ExpectedVsDetectedCount(metadata=<DataFrame>, groupby=[...]))
+s2 = QCScorer(check=ExpectedVsDetectedCount(metadata=<same DataFrame>, groupby=[...]))
+
+s1 == s2
+# ValueError: The truth value of a DataFrame is ambiguous.
+```
+
+`ExpectedVsDetectedCount.metadata` is typed `pd.DataFrame | str`
+(`analysis/qc/_expected_vs_detected.py:42-58`) — a public pydantic field, so
+pydantic's generated `__eq__` walks into it and pandas raises.
+
+The natural workaround is worse:
+
+```python
+s1.model_dump(mode="json")   # {"check": {"metadata": None, ...}}
+s3.model_dump(mode="json")   # s3 built from a COMPLETELY DIFFERENT layout
+s1_dump == s3_dump           # True
+```
+
+`_serialize_metadata` (`_expected_vs_detected.py:253`) emits `None` for any
+DataFrame-backed metadata, so a dict comparison collapses every DataFrame-backed
+scorer to one sentinel and declares them all equal — **silently producing
+exactly the meaningless leaderboard this invariant exists to prevent.**
+
+So the mechanism is ordered, and the order is load-bearing:
+
+1. **Reject non-portable scorers first.** Any scorer whose `model_dump(mode="json")`
+   contains a round-trip-lossy `None` where a source was configured is rejected
+   with `scorer_not_portable` (§4.2) — *before* any comparison is attempted. This
+   is already required independently, because a SLURM worker reloads the spec
+   from disk and a DataFrame-backed check cannot be reconstructed
+   (`model_validate({"metadata": None, …})` raises with "a check serialized from
+   an in-memory DataFrame has no source path to round-trip").
+2. **Then compare `model_dump(mode="json")`** — safe, because every surviving
+   scorer is path-configured and serializes faithfully.
+3. **Never use `==` on scorer objects.** Not anywhere, not as a shortcut.
+
+`campaign_put`'s validation order partly self-defends today — arms' tune specs
+are reloaded from `.pht-tune` JSON, and MCP arguments arrive as JSON, so a live
+DataFrame cannot reach the request path. But that is incidental, not designed:
+any future code comparing a campaign's declared scorer against an already-parsed
+`deliverables/tuning_spec.json.pht-tune` object would hit case 1 directly.
 
 **`status` is provenance, not security.** The server cannot verify that a human
 approved anything; `campaign_approve` is a call the agent makes *after* you say
@@ -158,6 +208,18 @@ Each arm launches through the ordinary `tune_start` path — `RunRegistry.alloca
 `workspace_list` and in the GUI. A campaign is an *organizing layer*, not a
 parallel execution engine.
 
+**Arm → study naming is explicit and persisted.** §2.2 forbids auto-suffixing,
+so `campaign_start` does not invent names silently: each arm's study is
+`studies/<campaign-name>-<arm-id>`, and the resolved `study_id` is **written back
+into `campaign.json`** on the arm. A collision with an existing study is an
+error naming both, not a silent rename. Without this, `campaign_status`'s
+per-arm `study_id` would have no defined source.
+
+**`campaign_start` snapshots the campaign it launched** rather than re-reading it
+during fan-out, so a concurrent `campaign_approve` or amendment (OQ-8.2) cannot
+change the arm set mid-launch. Writes to `campaign.json` are atomic and CAS on
+`status` (§2.6).
+
 ### `campaign_status` (`W0`) — one call, all arms
 
 ```json
@@ -178,10 +240,28 @@ parallel execution engine.
 ```
 
 `comparable` is false — with an explanation — when arms cannot be honestly
-ranked: a scorer drifted, an arm ran on a different dataset digest, or an arm
-failed too heavily for its best trial to be meaningful. **A leaderboard that
-silently ranks incomparable things is worse than no leaderboard**, so the field
-is mandatory in the response rather than inferred by the reader.
+ranked. **A leaderboard that silently ranks incomparable things is worse than no
+leaderboard**, so the field is mandatory in the response rather than inferred by
+the reader.
+
+Its three causes, and where each gets its data — because one of them needed
+plumbing that did not exist:
+
+| Cause | Data source |
+|---|---|
+| Scorer drift between arms | The campaign-level scorer vs each arm's resolved `deliverables/tuning_spec.json.pht-tune`, compared by the ordered mechanism in §8.2 |
+| An arm failed too heavily for its best trial to mean anything | `failed` / `completed` counts from the study store |
+| **Arms ran on different datasets** | The `tune.start` **lineage** event (§2.5) |
+
+That last row is not free. `TuningSpec` has **no dataset field**
+(`tune/_spec.py:162-171`) — `--images` is a launch-time CLI argument recorded
+nowhere in the resolved spec — and no directory-level digest helper exists in the
+codebase (`bytes_fingerprint`, `file_fingerprint`, and `pipeline_content_digest`
+are all single-file). So §2.5 adds a `dataset` block to the `tune.start` lineage
+event, and §7 P3 adds the directory-digest helper. Until both land,
+`campaign_status` must report dataset comparability as **unknown**, not assume
+it — claiming a comparison the artifacts cannot support is the failure this flag
+exists to prevent.
 
 `gap` surfaces the held-out generalization check, so an arm that won by
 overfitting the calibration split is visible as such rather than crowned.

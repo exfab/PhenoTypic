@@ -116,6 +116,10 @@ accumulate run outputs.
 │   └── <name>.json.pht-pipe          # ImagePipeline.to_json()
 ├── tune/
 │   └── <name>.setup.json.pht-tune    # authored TuningSpec
+├── assays/
+│   └── <dataset>.assay.json          # §9.3 assay profile
+├── campaigns/
+│   └── <name>/campaign.json          # §8.2 the agreed plan
 ├── studies/
 │   └── <name>/                       # a tune output_dir
 │       ├── trials.parquet            # NOTE: output root, not deliverables/
@@ -140,7 +144,8 @@ accumulate run outputs.
                           gui_launch_owner.json}
 ```
 
-Only `pipelines/`, `tune/`, `studies/`, `runs/` are this server's invention.
+Only `pipelines/`, `tune/`, `assays/`, `campaigns/`, `studies/`, `runs/` are this
+server's invention.
 **Everything inside `studies/<name>/` and `runs/<name>/` is written by the
 existing engines**, at paths owned by `sdk_/_io_constants.py`. The server never
 hand-joins a filename; it calls the helper (`tuning_spec_path`,
@@ -220,11 +225,29 @@ journal should not pretend otherwise:
 | pipeline → study | **yes** | `TuningSpec.pipeline` is *embedded*, not referenced (`tune/_spec.py:165`); the resolved spec at `deliverables/tuning_spec.json.pht-tune` can be content-hashed and matched against `pipelines/*` |
 | study → its winner | **yes** | `deliverables/best_pipeline.json.pht-pipe` |
 | run → pipeline | **yes** | `job_metadata.json` `PIPELINE_PATH` |
+| **dataset → study** | **no** | `TuningSpec` has **no dataset field** (`tune/_spec.py:162-171`); `--images` is a launch-time CLI argument recorded nowhere in the resolved spec |
 | exported winner → the `pipelines/` copy the agent then deployed | **no** | nothing records the copy |
 
-Only the last hop is genuinely unrecoverable, and it is the one an agent
-traverses constantly. The journal exists for that, plus cheap chronology — not
-because the whole chain is otherwise lost.
+Two hops are genuinely unrecoverable, and both are ones an agent traverses
+constantly. The journal exists for those, plus cheap chronology — not because
+the whole chain is otherwise lost.
+
+**The dataset hop is load-bearing for `campaign_status.comparable` (§8.3)**: two
+arms tuned against different image sets cannot be honestly ranked, and nothing
+in the existing artifacts records which images a study used. So the `tune.start`
+lineage event carries it explicitly:
+
+```json
+{"ts":"…","event":"tune.start","id":"studies/edge-v3-tpe",
+ "parent":"pipelines/edge-v3.json.pht-pipe",
+ "dataset":{"path":"data/plates","digest":"sha256:1a4c…","n_images":42}}
+```
+
+`digest` needs a **directory-level fingerprint helper, which does not exist** —
+`bytes_fingerprint` / `file_fingerprint` (`sdk_/_io_constants.py:154,166`) and
+`pipeline_content_digest` are all single-file. A stable digest over
+`(relative path, size, mtime_ns)` for each image, sorted, is sufficient and
+cheap; it is listed as new work in §7 P3 rather than assumed.
 
 `<workspace>/.phenotypic-mcp/lineage.jsonl`, append-only:
 
@@ -265,6 +288,7 @@ three of the four hops reconstructible.
 | Run record mutation | generation-fenced CAS | `RunRegistry.compare_and_set` |
 | Local image compute | one process-wide `LocalComputeSlot` | new, §1.5 |
 | Artifact writes | `atomic_write_text` + explicit-overwrite policy | `sdk_` helpers, §2.2 |
+| `campaign.json` mutation | `atomic_write_text` + a status transition guard: `approve` and any amendment CAS on `status`, and **`campaign_start` snapshots the campaign it launched** rather than re-reading mid-fan-out | new, §8.3 |
 | Lineage journal | `atomic_append` under file lock, **via `asyncio.to_thread`** | existing pattern, §2.5 |
 | Operation registry | immutable after discovery | `get_registry()` |
 

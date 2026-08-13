@@ -44,7 +44,7 @@ human prose and may change.
 | `plan_stale` | error | Plan token's pipeline/images/compute digest no longer matches |
 | `campaign_not_approved` | error | `campaign_start` on a `draft` campaign |
 | `arm_scorer_mismatch` | error | A campaign arm's scorer differs from the campaign scorer (§8.2) |
-| `screening_unsupported_on_slurm` | error | `--screen` + SLURM, which silently drops screening today (§7 P4) |
+| `screening_unsupported_on_slurm` | error | `--screen` + SLURM, which silently drops screening today (§7 P4). **Conditional on OQ-4.1** — if screening is not exposed at all, this code does not ship. |
 | `output_not_empty` | error | Deploy target non-empty; names `run_name`/`resume`/`restart` |
 | `resume_incompatible` | error | Pre-validated `validate_resume_compatibility` mismatch; names the field |
 | `scheduler_jobs_active` | error | Resume/restart while ledgered jobs are live |
@@ -96,9 +96,18 @@ must treat catalog text as documentation, not as instruction.**
 
 ## 6.5 Testing
 
-The project's test-integrity rules bind here: a check that cannot run must
-**fail**, not skip; and a test must be **proven able to fail** by reintroducing
-the bug it guards.
+The project's test-integrity rules bind here, and they bind **generally**, not
+only where this section calls them out:
+
+> **Every test below must be proven able to fail** — by reintroducing the bug it
+> guards, or by a one-line mutation of the code under test — before it is
+> trusted. A cap-enforcement test that would keep passing with the comparison
+> deleted proves nothing. A check that cannot run must **fail**, not skip.
+
+An earlier draft applied this only to the import-purity gate and the P1 script.
+That was a misreading of a project-wide rule as a per-case one: the round-trip,
+error-code, cap, and refusal tests below need the same treatment, and are the
+ones most likely to rot into tautologies.
 
 ### Unit — the `_services` promotion (P2)
 
@@ -125,6 +134,17 @@ the bug it guards.
   `time` in all three accepted formats (`240`, `04:00:00`, `0-04:00:00`).
 - **Refusals are refusals:** no argument combination reaches `--overwrite`, a
   reserved sbatch key, or a non-overridable profile key.
+- **Sandbox escape, adversarially.** §6.4 has no authentication — `SandboxRoot`
+  *is* the entire security boundary — so it gets an explicit hostile test rather
+  than relying on the blanket one-test-per-code rule: `..` traversal, symlinks
+  pointing outside, absolute paths, and the cross-platform cases this project
+  must support (Windows drive letters, UNC paths, case-insensitive filesystems).
+  Path-escape semantics are a classic cross-platform gap and a generic pass will
+  under-cover them.
+- **`deploy_plan` writes nothing under the output directory.** Assert the output
+  directory is byte-identical before and after a plan call — this is what keeps
+  the extracted `build_array_script_spec` (§5.3) from regressing back into the
+  file-writing generator and silently breaking `output_not_empty`.
 
 ### Concurrency
 

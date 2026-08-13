@@ -68,7 +68,6 @@ that must pass on the target cluster mount before P1 is implemented.
 | 2.1 | §2.7 | Should authored tune specs also be written to the GUI's preset dir so they appear in its Load dropdown? |
 | 3.2 | §3.5 | Should `pipeline_probe` render overlay PNGs the agent cannot see? |
 | 4.1 | §4.7 | Expose screening at all, given §7 P4 shows `--screen` + `--slurm` is a silent no-op today? |
-| 4.3 | §4.7 | Should `tune_export_best` also write `trials.parquet` for distributed studies, since no `--recompile` exists? |
 | 6.1 | §6.6 | Surface all GUI DAG advisory kinds on every `pipeline_put`, or a curated subset? |
 | 8.1 | §8.6 | Should a campaign be able to carry a deploy arm, launching a full run past the human checkpoint? |
 | 8.2 | §8.6 | Can the agent amend a campaign mid-flight, or does an amendment need re-approval? |

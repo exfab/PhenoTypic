@@ -14,7 +14,7 @@ the whole path are:
 - four reserved keys dropped with a warning — `array`, `output`, `error`,
   `job-name` (`sdk_/slurm/_sbatch.py:20`);
 - an **advisory-only** warning past `MAX_SLURM_TIME_MINUTES` (10080 = 7 days,
-  `_cli_constants.py:23`) — it does not block.
+  `_cli_constants.py:24`) — it does not block.
 
 So an unconstrained agent can name a partition that does not exist, request
 seven days on a shared queue, or bill an account that is not yours. Exposing
@@ -101,7 +101,26 @@ Array width is additionally floored by the live cluster: `get_slurm_array_limit`
 
 Deploying to a cluster is the one place an agent can consume a large amount of
 somebody else's compute. `deploy_plan` makes the ask inspectable first, and it
-performs **no** submission and **no** writes outside a scratch render.
+performs **no** submission and **no** writes under the run's output directory.
+
+**This requires a refactor, not a call-through.** The only existing generator
+that produces a full sbatch script, `generate_array_job_script`
+(`_cli/_cli_slurm_array_scripts.py:116-368`), has real side effects under the
+*real* output directory: `script_dir.mkdir(...)` (`:184-185`), `log_dir.mkdir(...)`
+(`:198`), and `write_slurm_array_script` → `path.write_text(...)` +
+`path.chmod(0o755)` (`sdk_/slurm/_script_rendering.py:133-147`).
+
+Calling it for a "preview" would populate `<output_dir>/.phenotypic/slurm_scripts/`
+and `logs/` **before you approve anything** — and would then trip
+`deploy_start`'s own `output_not_empty` check (§5.4) on the directory the
+preview swore it only looked at.
+
+`SlurmArrayScriptSpec.render()` *is* already pure. What is entangled is the
+~150 lines of argument, `cmd_parts`, and dispatch-block construction that build
+the spec inside `generate_array_job_script` alongside the write. So P2 gains a
+task: **extract `build_array_script_spec(...) -> SlurmArrayScriptSpec`** with no
+I/O, and have both the real generator and `deploy_plan` call it. This is a fifth
+genuinely new piece of work (§1.6), previously invisible in that accounting.
 
 | Arg | Type | Default | Meaning |
 |---|---|---|---|
@@ -175,25 +194,51 @@ status is polled (§5.5). This matches the CLI's own default.
 
 `resume` preconditions are checked by the server *before* submitting, because
 the CLI's failure mode is `sys.exit(1)` inside a subprocess, which reaches the
-agent as an opaque non-zero exit. The server pre-validates what
-`validate_resume_compatibility` will check — the **`pipeline_sha256` content
-digest** (not the path), `input_path`, `image_type`, grid `nrows`/`ncols`,
-`bit_depth`, `detect_mode`, `process_only_layer` — and reports the specific
-mismatch. It also refuses while ledgered SLURM jobs are still live, which the
-CLI likewise blocks.
+agent as an opaque non-zero exit.
+
+**The server imports and calls `validate_resume_compatibility` directly** rather
+than re-enumerating its field list. `ExecutionConfig` (`_cli/_cli_types.py:95`)
+is a plain dataclass constructible without Click, and every field compared is a
+raw CLI-supplied value rather than something derived from image inspection — so
+the check genuinely replays before submission.
+
+Re-enumerating was the first draft's approach and it was already wrong: the
+published list omitted `include_dataset_column`, `overlay_alpha`, and
+`save_overlays`, which `validate_resume_compatibility`
+(`_cli/_cli_state_management.py:304-319`) also checks when present in the saved
+state. A hand-maintained mirror of another module's validation drifts silently
+and reintroduces exactly the opaque-exit failure this pre-check exists to
+prevent. Calling the real function cannot drift.
+
+One caveat the server must handle: `input_path` is compared by literal
+`Path`/string equality with no `resolve_path=True` normalization on the `--input`
+option, so the server must serialize the path exactly as the original run's
+state recorded it or get a spurious mismatch.
+
+It also refuses while ledgered SLURM jobs are live, which the CLI likewise
+blocks.
 
 ### GPU staging is automatic, and the plan says so
 
-A pipeline containing a `GpuDetector` (`pipeline_requires_gpu`) triggers the
-staged engine — CPU preprocess → resident-model GPU detect → CPU measure — not
-per-image processing. On SLURM that becomes an epoch-fenced controller with
-Stages 1 & 3 on the CPU profile and Stage 2 as a GPU array.
+A pipeline containing a `GpuDetector` (`pipeline_requires_gpu`) *usually*
+triggers the staged engine — CPU preprocess → resident-model GPU detect → CPU
+measure — not per-image processing. On SLURM that becomes an epoch-fenced
+controller with Stages 1 & 3 on the CPU profile and Stage 2 as a GPU array.
 
-The agent does not opt into this and cannot opt out. What it must do is name a
-**GPU profile** for Stage 2 via `compute.gpu_profile`, which maps to
-`--gpu-slurm` and inherits/deltas over the CPU profile. `deploy_plan` reports
-`staged_gpu: true` and shows both profiles, so the compute ask is never a
-surprise.
+**It is not unconditional, and `deploy_plan` must report the real answer.**
+`uses_staged_gpu_strategy` (`_cli_execution_strategies.py:1058-1068`) routes to
+the staged engine only when `process_only_layer` is `None` (any mode) or
+`"objmap"` (local only). So `mode="process"` with a `layer` other than `objmap`
+falls back to ordinary per-image `AutonomousSLURMStrategy` — which still
+auto-adds `slurm_gpus_per_node=1` (`:705-710`) but loads the model per image
+instead of once. `deploy_plan`'s `staged_gpu` flag reflects the actual dispatch,
+because a user told "staged" who then gets per-image model loading will see
+wildly different cost than the estimate promised.
+
+The agent does not opt into staging and cannot opt out of it. What it must do is
+name a **GPU profile** for Stage 2 via `compute.gpu_profile`, which maps to
+`--gpu-slurm` and inherits/deltas over the CPU profile (`{**cpu, **gpu}`,
+`_cli_staged_slurm.py:92`). `deploy_plan` shows both profiles.
 
 ## 5.5 `deploy_status` (`W0`) — poll
 
@@ -220,6 +265,14 @@ plus `run_completion.json` (ordinary) or `staged_finalization_complete.json`
   "terminal_marker":null,
   "last_updated":"2026-08-12T15:22:04.881Z"}}
 ```
+
+This response is a **projection over `manifest.json`, not a verbatim relay.**
+Most field names pass through unchanged, but `slurm` here renames the manifest's
+`slurm_info` key (`DashboardManifestSlurmInfoKey`,
+`sdk_/_io_constants.py:1785-1797`); its sub-keys (`chunk_job_ids`,
+`active_chunks`, …) are unchanged. Naming the projection explicitly matters
+because every *other* field does relay verbatim, so an unflagged rename reads as
+a transcription slip.
 
 On SLURM the manifest is refreshed mid-run by an in-array sentinel task. An
 external process can force a refresh by invoking the same handler —

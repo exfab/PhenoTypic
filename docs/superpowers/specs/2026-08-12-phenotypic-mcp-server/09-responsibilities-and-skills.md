@@ -53,28 +53,82 @@ agent does not.
 
 So Phase 1 (§8.1) opens with an **assay triage**, producing a durable artifact:
 
-`<workspace>/assay.json`
+### 9.3.0 The extensibility rule
+
+Traits that narrow pipeline construction will keep being discovered — medium
+opacity, incubation timepoint, dimorphic switching, plate lid glare. A schema
+with a fixed field set would need a **server release per trait**, which is
+precisely the coupling §9.1 exists to prevent.
+
+So the artifact is an **open map of traits under a uniform envelope**:
+
+> **The server validates the shape of a trait, never the set of traits.**
+
+Adding a trait requires no server change, no schema bump, and no code — only a
+new row in the skill-owned registry (§9.3.4).
+
+`<workspace>/assays/<dataset>.assay.json`
 
 ```json
 {
   "schema_version": 1,
   "name": "exfab-fungal-2026-08",
-  "organism": {
-    "morphology": "filamentous",        // filamentous | round | mixed | unknown
-    "source": "human",                  // human | inferred | probe
-    "notes": "Aspergillus spp., hyphal spread expected by 72 h"
-  },
-  "colony": {
-    "contrast_vs_background": "low",    // high | moderate | low
-    "separation": "touching",           // well_separated | touching | confluent
-    "pigmentation_informative": true,
-    "source": "probe"
-  },
-  "plate": {"format": "arrayed", "nrows": 8, "ncols": 12},
-  "imaging": {"modality": "flatbed_scanner", "bit_depth": 16, "source": "metadata"},
-  "evidence": {"probe": "runs from pipeline_probe on 2 images", "images_seen": 2}
+  "dataset": {"path": "data/plates", "digest": "sha256:1a4c…", "n_images": 42},
+  "traits": {
+    "organism.morphology": {
+      "value": "filamentous",
+      "source": "human",
+      "note": "Aspergillus spp., hyphal spread expected by 72 h"
+    },
+    "colony.contrast_vs_background": {
+      "value": "low",
+      "source": "probe",
+      "evidence": {"measure": "otsu_eta", "measured": 0.31,
+                   "probe_ref": ".phenotypic-mcp/probes/filamentous-prefab/"}
+    },
+    "colony.separation": {
+      "value": "touching",
+      "source": "probe",
+      "evidence": {"measure": "expected_vs_detected", "measured": 61, "expected": 96}
+    },
+    "plate.format":  {"value": "arrayed", "source": "human"},
+    "plate.nrows":   {"value": 8,  "source": "human"},
+    "plate.ncols":   {"value": 12, "source": "human"},
+    "imaging.modality":  {"value": "flatbed_scanner", "source": "metadata"},
+    "imaging.bit_depth": {"value": 16, "source": "metadata"},
+
+    "medium.opacity": {"value": "opaque", "source": "human"}
+  }
 }
 ```
+
+That last entry is the point: `medium.opacity` is a trait added *after* v1. It
+required a registry row in the skill and **nothing else** — no server change, no
+`schema_version` bump, no migration.
+
+### 9.3.0.1 The trait envelope
+
+Every entry in `traits` has the same shape, and this is the only structure the
+server knows:
+
+| Key | Required | Meaning |
+|---|---|---|
+| `value` | yes | Scalar or bool. The server does not interpret it. |
+| `source` | yes | One of the four provenance values (§9.3.1). **The only closed enum.** |
+| `evidence` | when `source: "probe"` | `{measure, measured, …}` — the named measure and its number, so the claim is auditable and the bands recalibratable |
+| `note` | no | Free text for a human reader |
+| `confidence` | no | Optional `[0,1]`; reserved for traits that later warrant it |
+
+**Unknown trait keys round-trip verbatim.** The server preserves any trait it
+does not recognize, rather than dropping or rejecting it — the opposite of
+pydantic's `extra="forbid"` used elsewhere in this codebase, and a deliberate
+inversion. An older server reading a newer skill's assay must not silently
+discard a trait; silent loss of a trait that drove a pipeline decision would
+make the artifact actively misleading. Forward compatibility is a correctness
+property here, not a convenience.
+
+**Trait keys are dotted and namespaced** (`<group>.<trait>`), so a new group
+(`medium.*`, `growth.*`, `stress.*`) needs no structural change either.
 
 ### 9.3.1 Provenance vocabulary — the only enum the server enforces
 
@@ -176,24 +230,102 @@ set them also surfaces the evidence that contradicts them. That asymmetry is why
 `source` is mandatory and why a skill writing `source: "human"` for a value the
 human never gave is the specific abuse to prevent.
 
-### 9.3.4 What the server validates — structure only
+### 9.3.4 The trait registry — the extension point
 
-**The server validates shape and provenance. It never validates biology.**
+The skill owns a declarative registry, shipped beside it as **data, not prose**,
+so traits and their routing rules can be added and audited without rewriting
+procedure text.
+
+`.claude/skills/phenotypic-assay-triage/traits.yaml`
+
+```yaml
+version: 3
+traits:
+  - key: organism.morphology
+    values: [filamentous, round, mixed, unknown]
+    determined_by: human           # ask; do not infer
+    ask: "Is the organism filamentous (hyphal), round (yeast/bacterial), or mixed?"
+    drives: [prefab_choice, measurement_family]
+    failure: "round asserted for a filamentous organism yields plausible-looking
+              counts from a peak detector — a silent under-count"
+    stakes: critical
+
+  - key: colony.contrast_vs_background
+    values: [high, moderate, low]
+    determined_by: probe
+    measure:
+      name: otsu_eta               # between-class variance ratio on detect_mat
+      bands: {high: [0.75, 1.0], moderate: [0.45, 0.75], low: [0.0, 0.45]}
+      calibration: provisional     # OQ-9.4
+    drives: [enhancement_weight, detector_family]
+    stakes: moderate
+
+  # added in registry v3 — no server change, no schema_version bump
+  - key: medium.opacity
+    values: [clear, opaque, pigmented]
+    determined_by: human
+    ask: "Is the agar clear, opaque, or pigmented?"
+    drives: [detect_mode, enhancement_weight]
+    stakes: moderate
+
+rules:                              # trait signals -> candidate prefabs (§9.4)
+  - when: {organism.morphology: filamentous}
+    prefer: [FilamentousFungiPipeline]
+  - when: {organism.morphology: round, colony.separation: touching}
+    prefer: [HeavyWatershedPipeline, HeavyRoundPeaksPipeline]
+  - when: {colony.contrast_vs_background: high, colony.separation: well_separated}
+    prefer: [HeavyOtsuPipeline]
+```
+
+Three properties this buys:
+
+1. **Adding a trait is a data change.** A registry row is reviewable in a diff
+   and testable in isolation. Contrast a markdown table, where "add a trait"
+   means editing prose the agent may or may not honour.
+2. **Rules are separable from procedure.** The `rules:` block is the §9.4
+   decision table in machine-readable form, so it can be extended, reordered, or
+   contradicted by a site-specific overlay without touching the skill's method.
+3. **Recalibration is a data change too.** Moving the η bands (OQ-9.4) edits one
+   `bands:` line, not code and not prose.
+
+The **server never reads this file.** It is skill data, exactly as the
+biological vocabulary is skill knowledge.
+
+### 9.3.5 What the server validates — envelope only
+
+**The server validates the shape of a trait. It never validates biology, and it
+never enumerates traits.**
 
 | Server checks | Server does **not** check |
 |---|---|
-| File exists, parses, has `schema_version` | What `filamentous` means |
-| Required keys present | Whether `low` contrast is plausible for these images |
-| `source` ∈ `{human, probe, metadata, inferred}` | Whether the morphology is correct |
-| `nrows`/`ncols` are positive integers | Whether 8×12 matches the plate |
-| Referenced probe evidence exists | Whether the probe supports the claim |
+| File exists, parses, has `schema_version` | Whether `medium.opacity` is a real trait |
+| Each `traits.*` entry has `value` and `source` | What `filamentous` means |
+| `source` ∈ `{human, probe, metadata, inferred}` | Whether `low` contrast is plausible here |
+| `evidence` present when `source: "probe"`, and its `probe_ref` resolves | Whether the probe supports the claim |
+| Unknown trait keys are **preserved verbatim** | Whether 8×12 matches the plate |
 
-This keeps §9.1 intact: the only enum the server enforces is `source`, which is
-**provenance, not biology**. The biological vocabularies live in the skill and
-can grow — add `dimorphic`, add `biofilm`, recalibrate the η bands — **without a
-server release**. A server that knew what "filamentous" meant would need one.
+This keeps §9.1 intact under extension: the only closed enum the server enforces
+is `source` — **provenance, not biology**. Every biological vocabulary lives in
+the registry and can grow, and the server's validation logic is *finite and
+final*: it is written once against the envelope and never grows as traits do.
 
-### 9.3.5 Scope
+### 9.3.6 Adding a trait later — worked
+
+Suppose plate-lid glare turns out to drive enhancement choice.
+
+| Step | Where | Server change? |
+|---|---|---|
+| Add `imaging.lid_glare: [none, mild, severe]` to `traits.yaml` | skill | **no** |
+| Add a `rules:` row preferring a glare-tolerant enhancer | skill | **no** |
+| Skill starts asking about it in triage | skill | **no** |
+| Existing assays without the trait keep validating | — | **no** — traits are individually optional |
+| A newer skill's assay read by an older server | — | **no** — unknown keys round-trip |
+
+The only thing that would force a server change is a new **provenance** kind —
+say `source: "instrument"` — and that is a genuinely structural addition worth a
+`schema_version` bump.
+
+### 9.3.7 Scope
 
 **One assay profile per dataset**, at `<workspace>/assays/<dataset>.assay.json`.
 A workspace routinely holds more than one organism; a single per-workspace
@@ -221,8 +353,10 @@ chains rather than examples. Their real intents:
 
 ### Assay profile → candidate prefabs
 
-This table is **skill content, not server logic** — it is exactly the kind of
-judgment an expert may override.
+This table is the human-readable rendering of the `rules:` block in
+`traits.yaml` (§9.3.4). It is **skill data, not server logic** — exactly the kind
+of judgment an expert may override, and extended by adding a rule rather than by
+editing prose.
 
 | Assay signal | First candidates |
 |---|---|

@@ -33,8 +33,14 @@ unresolvable nesting, and the multi-objective/strategy rejection.
 | `include_excluded` | `bool` | `false` | Also return params inference rejected, with reasons |
 | `unbounded_factor` | `float` | `4.0` | Passed to `infer_search_space` |
 
-Backed by `pipeline_targets(pipeline)` → `list[TunableParam]`, which wraps
-`infer_search_space`.
+Backed by **`infer_search_space(pipeline)` directly**, not by
+`pipeline_targets`. The distinction matters: `pipeline_targets` returns a bare
+`list[TunableParam]` and discards the `InferredSearchSpace` proposal object, so
+it exposes neither `.excluded` (needed for `include_excluded`) nor
+`.n_needs_review` / `.n_excluded` (which fold in inference-blind exclusions, not
+just per-knob flags). The server calls `infer_search_space`, builds the
+`TunableParam` rows the same way `pipeline_targets` does, and keeps the proposal
+object for the rest of the payload.
 
 ```json
 {"ok":true,"data":{
@@ -57,8 +63,8 @@ Backed by `pipeline_targets(pipeline)` → `list[TunableParam]`, which wraps
    "label":"OtsuDetector.__enabled__",
    "value_type":"bool","default":true,"suggested_domain":null,
    "source":"presence_optin","needs_review":false}],
- "excluded":[{"label":"CannyDetector.mask","reason":"ndarray"}],
- "n_needs_review":0,
+ "excluded":[{"key":"1.mask","reason":"ndarray","field_type":"np.ndarray"}],
+ "n_needs_review":0,"n_excluded":1,
  "scorers_available":[
    {"class":"QCScorer","available":true,
     "requires":"a metadata CSV of expected counts","found":"data/tune_layout.csv"},
@@ -77,6 +83,10 @@ Three deliberate affordances:
 - **`needs_review: true`** marks a domain inference guessed from an unbounded
   field (`[default/4, default*4]`, `source: "unbounded_heuristic"`). The agent
   should either narrow it or say it is guessing.
+- **`excluded` rows carry `Excluded`'s real fields** — `key`, `reason`,
+  `field_type` (`_search_space/_inferred.py:45-59`). There is no `label`;
+  `field_type` is the field that actually tells an agent *why* it was excluded,
+  which is the model's own documented purpose.
 - **`scorers_available`** is the affordance that stops the most common failure.
   Every scorer has an `availability()` method and `run_tuning` hard-asserts it
   (`_assert_scorer_available`, `_run.py:419`) — but only *after* the agent has
@@ -123,14 +133,18 @@ each otherwise fails late and confusingly:
 
 | Check | Why | Code |
 |---|---|---|
-| Scorer `availability()` | `run_tuning` asserts it only after writing run artifacts | `scorer_unavailable` |
-| `grid` + a continuous `FloatRange` (`step: null`) | `grid_values` raises `ValueError` at enumeration time | `grid_needs_stepped_domain` |
-| `grid` + `n_trials` | `resolve_strategy` rejects the combination | `grid_ignores_n_trials` |
+| Scorer `availability()` | `_assert_scorer_available` (`_run.py:419`) fires only at `run_tuning` time, after run artifacts are written | `scorer_unavailable` |
+| `grid` + a continuous `FloatRange` (`step: null`) | `grid_values` raises `ValueError` at enumeration time, deep in the run | `grid_needs_stepped_domain` |
 | Empty active knob set | A study with nothing to vary | `no_active_knobs` |
 
-Multi-objective + grid/random is already rejected by
-`reject_grid_random_multi_objective`; the server surfaces that error rather than
-duplicating it.
+Two rejections the server **does not** duplicate, because construction already
+covers them: multi-objective + grid/random
+(`reject_grid_random_multi_objective`), and `grid` + `n_trials` — the latter is
+caught by `_coerce_strategy` plus `GridConfig`'s `extra="forbid"`, since
+`GridConfig` has no `n_trials` field at all. The server surfaces those errors
+rather than reimplementing them. (An earlier draft listed `grid_ignores_n_trials`
+among "checks the server adds" and cited `resolve_strategy`, whose signature
+takes a strategy *name*, not the structured `strategy` object a spec carries.)
 
 ### The `QCScorer` round-trip trap
 
@@ -224,6 +238,20 @@ safe to do often, and it is the GUI Monitor's own tick behaviour.
 unreachable) and returns the leaderboard, best trial, parameter importances,
 Pareto front for multi-objective, and the generalization report.
 
+**`results` opens the store in a killable subprocess.** This is not symmetry with
+the probe worker for its own sake — it is forced by §7 B2/B3. Constructing a
+`JournalFileBackend` creates the file as a side effect of a "read-only" open
+(B2), and an `open()`/`os.path.exists()` against a stale NFS mount blocks in an
+uncancellable syscall (B3). The GUI survives this only because a human retries;
+this server does not have that luxury. **One stdio process serves every subagent
+in the session** (§1.3), so a single wedged poll against a stale mount would
+stall `tune_status(detail="results")` for *every* subagent for the rest of the
+session, with nothing to notice or recover it.
+
+The `progress` mode has no such exposure — it is genuinely marker-only and never
+opens a store, which is what makes *that* mode safe to poll often. The first
+draft extended "polling is safe" to both modes; it is only true of one.
+
 ```json
 {"ok":true,"data":{
   "status":"running","completed":126,"pruned":14,"failed":3,"budget":200,
@@ -252,11 +280,42 @@ Two honest degradations, both reported rather than hidden:
 | `name` | `str?` | `<study>-best` | Destination pipeline name |
 | `objective` | `str?` | `null` | For multi-objective: export a per-axis winner instead of the knee |
 
-Backed by `export_best_from_run(output_dir)` / `export_pareto_pipeline`. Winner
-selection follows `_headline_winner`: the Pareto **knee point** when a front
-exists, otherwise `best()`. The response states which rule applied
+Winner selection follows `_headline_winner`: the Pareto **knee point** when a
+front exists, otherwise `best()`. The response states which rule applied
 (`selection: "pareto_knee" | "single_best"`), because for a multi-objective study
 "the best pipeline" is a choice, not a fact.
+
+### Local and distributed studies need different paths
+
+`export_best_from_run` → `prepare_best_from_run` (`gui/tune/_export.py:69-88`)
+hard-requires `best_params_path(output_dir).is_file()`, raising
+`FileNotFoundError` otherwise. That file is written by exactly one call site,
+`_finalize_best_params` (`tune/_tune_cli/_run.py:637`) — which sits **after**
+`if slurm: return _submit_slurm_fleet(...)` (`:593-609`).
+
+**So a SLURM-launched study never writes `best_params.json`, and the plain
+export path raises on every distributed study.** An earlier draft of §4.6 called
+`tune_export_best` on a study it had shown two lines earlier as
+`routed_to: slurm`; as written that example would have thrown.
+
+| Study | Path |
+|---|---|
+| Local | `export_best_from_run(output_dir)` — the sidecar already exists |
+| **Distributed** | **Finalize first, then export** |
+
+The distributed finalize opens the live store, computes `_headline_winner` /
+`_selection_label`, and writes the artifacts the SLURM branch skipped —
+`best_params.json`, `trials.parquet`, `param_importance.json`, and the Pareto
+outputs when multi-objective — then proceeds through the ordinary
+`prepare_best_from_run` → `publish_prepared_export`.
+
+This also **resolves OQ-4.3 affirmatively**: `trials.parquet` *is* written for
+distributed studies, because the finalize already holds the store open and the
+marginal cost is one parquet write. The alternative left every distributed study
+directory permanently unreadable offline and un-openable by the GUI's
+parquet-only degradation path.
+
+The store open runs in a **killable subprocess**, for the reason in §4.4.
 
 The winner is materialized by `build_pipeline(spec.pipeline, trial.params)`,
 which deep-copies the base and **rebuilds each op through its constructor** so
@@ -287,6 +346,10 @@ tune_status {study_id:"studies/watershed-tpe"} -> 143/200, best 0.117
 tune_status {study_id:"studies/canny-tpe"}     -> 98/200,  best 0.204
 
 tune_export_best {study_id:"studies/edge-v3-tpe", name:"winner"}
+                -> distributed study: finalize first (opens the store in a
+                   killable subprocess, writes best_params.json + trials.parquet
+                   + param_importance.json, which the SLURM branch skipped),
+                   then export
                 -> pipelines/winner.json.pht-pipe, selection single_best
 ```
 
@@ -304,12 +367,11 @@ already has, now extended to the distributed case by P1.
   returns from `_submit_slurm_fleet` before reaching its `if screen:` block, and
   the worker builds no `ScreeningController` at all (§7 P4). Closing that hole is
   a prerequisite either way; whether to then expose the knob is the open part.
-- **OQ-4.3 — `trials.parquet` for distributed studies.** Given no `--recompile`
-  exists, should `tune_export_best` also write `trials.parquet` from the live
-  store (making the study directory self-contained and GUI-readable offline), or
-  is leaving it store-only acceptable?
-
 **Resolved since first draft:**
 
 - ~~OQ-4.2 who picks the scorer~~ → **explicit always**. `tune_space` reports
   availability, but the agent names the scorer even when only one is available.
+- ~~OQ-4.3 `trials.parquet` for distributed studies~~ → **yes, written**. The
+  distributed finalize (§4.5) already holds the store open, so the marginal cost
+  is one parquet write, and it is what makes a distributed study directory
+  readable offline and openable by the GUI's parquet-only degradation path.

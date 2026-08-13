@@ -325,10 +325,13 @@ What exists today versus what this design adds:
 | MCP tool layer and error envelope | **new** | §3, §6 |
 | `_services` promotion — 9 moves | **new** (mechanical) | §1.4 |
 | `gui/tune/_space.py` pure/view split | **new** (real refactor) | §1.4 — forced by `import dash` at `_space.py:33-34` |
+| `build_array_script_spec` extraction (pure sbatch render) | **new** (real refactor) | §5.3 — `generate_array_job_script` writes files under `output_dir`, so `deploy_plan` cannot reuse it |
+| Directory-level digest helper | **new** | §7 P3 — every existing fingerprint helper is single-file |
 
-Roughly: the server is a **thin adapter plus four genuinely new pieces**
-(descriptor projection, profile governance, routing + slot, and the `_space.py`
-split). The promotion itself is mechanical; the split is not.
+Roughly: the server is a **thin adapter plus five genuinely new pieces**
+(descriptor projection + column derivation, profile governance, routing + slot,
+the `_space.py` split, and the pure sbatch-spec extraction). The promotion itself
+is mechanical; the two extractions are not.
 
 ## 1.7 Non-goals
 

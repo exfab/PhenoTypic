@@ -226,6 +226,14 @@ Nine module moves plus one real split (§1.4). Watch items:
 Guarded by the import-purity test in §6.5, which must be shown to fail when an
 `import dash` is reintroduced.
 
+**Plus one extraction that is not a move.** `deploy_plan` (§5.3) must render an
+sbatch preview without touching the run's output directory, but
+`generate_array_job_script` (`_cli/_cli_slurm_array_scripts.py:116-368`) does
+`mkdir` + `write_text` + `chmod` under `output_dir`. `SlurmArrayScriptSpec.render()`
+is already pure; the ~150 lines that *build* the spec are entangled with the
+write. Extract `build_array_script_spec(...) -> SlurmArrayScriptSpec` (no I/O)
+and have both the real generator and `deploy_plan` call it.
+
 ## P3 — Catalog reconciliation and the JSON descriptor
 
 Two pieces:
@@ -238,6 +246,13 @@ Two pieces:
    `header_scheme()`-dispatching column derivation for `produces_columns` and
    `catalog_measurements`, which is *not* the ~40-line job first estimated
    (`TEXTURE.get_headers()` raises `TypeError` without a `scale`; see §3.1).
+3. **A directory-level digest helper.** `campaign_status.comparable` (§8.3) must
+   detect two arms tuned against different image sets, and nothing today can:
+   `bytes_fingerprint`, `file_fingerprint` (`sdk_/_io_constants.py:154,166`) and
+   `pipeline_content_digest` are all single-file, and `TuningSpec` records no
+   dataset at all. A stable digest over sorted `(relative path, size, mtime_ns)`
+   is sufficient and cheap. Until it lands, `comparable` reports dataset
+   comparability as **unknown** rather than assuming it.
 
 ## P4 — Close the `--screen` + `--slurm` silent no-op
 
