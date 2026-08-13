@@ -57,10 +57,10 @@ human prose and may change.
 | `output_not_empty` | error | Deploy target non-empty; names `run_name`/`resume`/`restart` |
 | `resume_incompatible` | error | Pre-validated `validate_resume_compatibility` mismatch; names the field |
 | `scheduler_jobs_active` | error | Resume/restart while ledgered jobs are live |
-| `local_slot_timeout` | error | `W1` waited past `probe_timeout_s` for the slot |
+| `local_slot_timeout` | error | `W1` waited past `probe_timeout_s` for the slot. Carries `held_by` (work class + id), `held_for_s`, and `queue_position`, so an agent can distinguish "retry in 30 s" from "a 2-hour deploy holds it" instead of retrying blind |
 | `probe_cap_exceeded` | error | `n_images` above `limits.probe_max_images` |
 | `environment_mismatch` | error | SLURM work requested in a `local` environment with no profiles |
-| `submission_failed` | error | A subprocess exited non-zero or `sbatch` rejected a script for a reason no pre-check models; carries exit code + stderr tail |
+| `submission_failed` | error | A subprocess exited non-zero or `sbatch` rejected a script for a reason no pre-check models; carries exit code, stderr tail, and **`retryable: bool`** classified from known transient-vs-config `sbatch` patterns, so an agent does not retry a bad account name verbatim |
 | `scheduler_unreachable` | error | Detection said `slurm`, submission found otherwise; reports probe staleness |
 | `not_owned` | error | Cancel targeted a run with no `RunRegistry` record here |
 | `version_drift` | **warning** | Spec `phenotypic_version` ≠ installed; matches the engine's warn-only posture |

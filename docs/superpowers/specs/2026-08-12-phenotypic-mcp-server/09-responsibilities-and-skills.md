@@ -495,7 +495,9 @@ tools do it*.
 2. Read imaging metadata for modality and bit depth.
 3. **Establish the development subset** (§10): ask the human to name one, or
    sample with a recorded method and seed. Everything downstream runs on it.
-4. Probe 2–4 subset images to measure contrast (η) and separation.
+4. Probe 2–4 subset images to measure contrast (`michelson_percell_median`,
+   §9.3.2 — **not** Otsu's η, which §9.3.2 refutes as scale-invariant) and
+   separation.
 5. `assay_put` with every trait carrying its `source`; `subset_put` with the
    measured `coverage` range.
 

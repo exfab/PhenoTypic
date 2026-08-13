@@ -115,7 +115,7 @@ Four deliberate affordances:
    {"ref":1, "enabled":false},
    {"ref":2, "domain":{"kind":"float_range","low":1.0,"high":4.0,"step":0.25}}],
  "scorer":{"class":"QCScorer",
-           "params":{"check":{"metadata":"data/tune_layout.csv"}}},
+           "params":{"check":{"expected_counts_csv":"data/tune_layout.csv"}}},
  "strategy":{"kind":"optuna","sampler":"tpe","n_trials":200,"seed":0},
  "held_out":{"held_out_fraction":0.2}}
 ```
@@ -186,7 +186,7 @@ dropping an agent's intent is worse than rejecting it.
 | Arg | Type | Default | Meaning |
 |---|---|---|---|
 | `spec_id` | `str` | — | Authored spec |
-| `images` | `str` | — | Image directory |
+| `subset_id` | `str` | — | Registered subset (§10.3.1). **A raw path is refused** — `tune_start` reaches fleet-scale compute |
 | `study_name` | `str?` | derived from `spec_id` | Output directory under `studies/` |
 | `compute` | `object?` | `{}` | `{profile, n_workers, time, mem}` — §5 rules |
 | `strategy_override` | `object?` | `null` | `{strategy?, n_trials?}` |
@@ -388,7 +388,7 @@ tune_space      {pipeline_id:"edge-v3"}          -> 7 targets, QCScorer availabl
 tune_put_spec   {name:"edge-v3-tpe", pipeline_id:"edge-v3",
                  select:[{ref:0},{ref:2}], scorer:{QCScorer(metadata=…)},
                  strategy:{kind:"optuna",sampler:"tpe",n_trials:200}}
-tune_start      {spec_id:"edge-v3-tpe", images:"data/plates",
+tune_start      {spec_id:"edge-v3-tpe", subset_id:"subsets/plates-dev-24.subset.json",
                  compute:{profile:"cpu-bulk", n_workers:8}}
                 -> routed_to slurm, study_id studies/edge-v3-tpe
 

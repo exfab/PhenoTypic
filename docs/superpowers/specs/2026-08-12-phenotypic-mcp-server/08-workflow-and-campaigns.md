@@ -41,8 +41,9 @@ Phase 1 — PLAN (human + agent, conversational, W0 + bounded W1)
         │
         ▼  ← the human checkpoint lives HERE, once, not at every submission
 Phase 2 — EXECUTE (agent, autonomous, W2/W3)
-  The orchestrator fans out one subagent per arm. Each builds its pipeline,
-  authors its tune spec, launches, and polls. You are not in this loop.
+  ONE `campaign_start` call launches every arm. Subagents, where used, built
+  the arms during Phase 1 — they do not launch or poll individually. The
+  orchestrator polls `campaign_status`. You are not in this loop.
         │
         ▼
 Phase 3 — REPORT (agent → you)
@@ -195,7 +196,9 @@ The response is the **review document** — this is what you read before saying 
            "estimate":{"node_seconds":6800,"basis":"probe: 3.4 s/image x 42 x 200/8"}}],
   "totals":{"arms":3,"trials":600,"est_node_hours":5.7,
             "concurrency":"3 arms x 8 workers = 24 tasks"},
-  "objective":"QCScorer — cost in [0,1], lower is better"},
+  "objective":"QCScorer — cost in [0,1], lower is better",
+  "pending_human_ack":true,
+  "ack_prompt":"3 arms, 600 trials, ~5.7 node-hours on cpu-bulk. Approve?"},
  "issues":[{"severity":"warning","code":"needs_review_domain",
             "message":"phase arm: FocusEdgePhase.k has an inferred unbounded domain [0.5, 8.0]; inference guessed it.",
             "path":"arms[1].knobs[2]"}]}
@@ -206,8 +209,25 @@ and its `basis` says whether it came from a real probe or a default.
 
 ### `campaign_approve` (`W0`)
 
-`{campaign_id, note?}` → flips `draft` → `approved`, stamps `approved_at`,
-**mints one `plan_token` per arm**, and appends a lineage row. Refuses if any
+`{campaign_id, human_response, note?}` → flips `draft` → `approved`, stamps
+`approved_at`, **mints one `plan_token` per arm**, and appends a lineage row.
+
+```json
+{"ok":true,"data":{"campaign_id":"campaigns/fungal-edge-sweep","status":"approved",
+  "approved_at":"2026-08-12T13:52:17Z",
+  "plan_tokens":{"prefab-fil":"pl_7f3a…","phase":"pl_9c1e…","watershed":"pl_4b0a…"}}}
+```
+
+`human_response` is **required** and carries what the human actually said, which
+is then recorded on the artifact and in lineage.
+
+This does not authenticate anything — §8.2 is explicit that status is provenance,
+not security, and an agent could fabricate the field. What it changes is the
+failure mode: with `pending_human_ack: true` on the `campaign_put` response and a
+required `human_response` here, approving without asking becomes an **explicit
+fabrication** rather than an omission an agent can drift into. An agent that
+never loaded the skill still gets a machine-readable signal that something is
+waiting on a person. Refuses if any
 blocking issue from `campaign_put` is unresolved, so approval cannot outrun
 validation.
 
@@ -259,6 +279,14 @@ change the arm set mid-launch. Writes to `campaign.json` are atomic and CAS on
  "leaderboard":[{"arm":"phase","score":0.081},{"arm":"otsu","score":0.117}],
  "comparable":true}}
 ```
+
+**Polling economy.** `campaign_status` takes `since` (an opaque cursor from the
+previous response). With it, arms whose state is unchanged collapse to
+`{"arm":"otsu","unchanged":true}` and only movement is returned. A multi-hour
+campaign polled on a human timescale otherwise accumulates dozens of
+near-identical multi-KB snapshots in the agent's context — the exact long-running
+unattended workflow this design is built around is also the one most able to
+exhaust context. The skill instructs retaining only the latest full snapshot.
 
 `comparable` is false — with an explanation — when arms cannot be honestly
 ranked. **A leaderboard that silently ranks incomparable things is worse than no
@@ -312,7 +340,7 @@ you:   "do that, but also try a phase-based edge arm as the hypothesis"
 
 agent: pipeline_put {name:"phase-edge", …, dry_run:true}     # nothing written
        tune_space   {pipeline_id:"phase-edge"}               # 9 targets, QCScorer available
-       pipeline_probe {pipeline_id:"phase-edge", images:"data/plates", n_images:2}
+       pipeline_probe {pipeline_id:"phase-edge", subset_id:"subsets/plates-dev-24.subset.json", n_images:2}
        → "94 vs 61 objects on the two low-contrast plates; phase looks promising.
           Blur sigma domain is an inference guess — I'd narrow it to [1,3]."
 
@@ -333,9 +361,19 @@ happens once, after you have seen the number.
 
 ## 8.5 Phase 2 fan-out
 
-The orchestrator spawns one subagent per arm. Each subagent owns exactly one
-arm and calls only that arm's ids, which is why §2.2 requires distinct explicit
-names rather than auto-suffixing.
+**Fan-out happens in Phase 1, not Phase 2.** The orchestrator spawns one
+subagent per arm to *author* it — explore, probe, settle a pipeline and a tune
+spec — and each owns exactly one arm's ids, which is why §2.2 requires distinct
+explicit names rather than auto-suffixing.
+
+**Launching is not fanned out.** A single `campaign_start` drives every arm
+through `RunRegistry.allocate → LocalRunner.start → CAS`, and the orchestrator
+polls one `campaign_status`. An earlier draft described Phase 2 as subagents
+each launching and polling their own arm, which contradicted §8.3 and the
+`phenotypic-tuning-campaign` skill's tool list (which omits `tune_start` and
+`tune_status` entirely). A subagent handed only its own arm could not tell which
+model applied, and would waste a premature `tune_start`. `tune_start` remains
+available for a standalone study outside a campaign.
 
 What keeps this safe is entirely in §1.5 and §2.4: the subagents' `W0` calls
 interleave freely, their probes serialize on the one `LocalComputeSlot`, and

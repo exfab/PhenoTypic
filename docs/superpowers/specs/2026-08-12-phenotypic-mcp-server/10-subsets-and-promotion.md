@@ -45,6 +45,7 @@ the other:
   "selection": {
     "method": "MetadataGroupSubsetSelector",
     "params": {"n": 24, "seed": 0, "metadata": "data/tune_layout.csv",
+               "grouping_metadata": "data/plate_batches.csv",
                "group_key": "Metadata_Batch", "allocation": "equal"},
     "rationale": "8 batches x 3 plates each; equal allocation so the two rare
                   low-contrast batches are not swamped by the six common ones"
@@ -154,14 +155,15 @@ right *baseline* even when it does.
 ```json
 {"class": "MetadataGroupSubsetSelector",
  "params": {"n": 24, "seed": 0,
-            "metadata": "data/tune_layout.csv",
+            "grouping_metadata": "data/plate_batches.csv",
             "group_key": "Metadata_Batch",
             "allocation": "proportional"}}
 ```
 
 | Param | Meaning |
 |---|---|
-| `group_key` | A metadata column naming each plate's group |
+| `grouping_metadata` | CSV supplying the grouping column. **Named distinctly on purpose** — three different CSVs in this spec were all called "metadata": `deploy_plan.metadata_csv` (joined onto the output mirror), this one (subset stratification), and `QCScorer.check.metadata` (the expected counts the whole objective is scored against). Passing the wrong one at the scorer produces a meaningless objective rather than an error. |
+| `group_key` | The column in `grouping_metadata` naming each plate's group |
 | `allocation` | `proportional` (mirror group sizes) or `equal` (same count per group, so a rare condition is not lost) |
 | `min_per_group` | Floor per group; groups smaller than it are taken whole |
 
@@ -209,9 +211,26 @@ job, not a planning step.
 | `dry_run` | `bool` | `false` | Return the selection without writing |
 
 Returns the chosen images, the per-group allocation when applicable, and the
-recorded rationale. `subset_put` (explicit list) and `subset_get` remain, so a
-human-picked subset is still first-class — `user_named` is a selection method,
-not a lesser one.
+recorded rationale.
+
+### `subset_put` (`W0`) — a human-named subset
+
+| Arg | Type | Default | Meaning |
+|---|---|---|---|
+| `name` | `str` | — | Workspace subset name |
+| `parent` | `str` | — | Parent image directory |
+| `images` | `array[str]` | — | Parent-relative paths (§10.2), or globs resolved against `parent` |
+| `note` | `str?` | `null` | Why these — recorded as the selection rationale |
+| `coverage` | `object?` | `null` | Measured trait ranges from triage (§9.3) |
+| `overwrite` / `dry_run` | `bool` | `false` | As §3 |
+
+Records `selection.method: "user_named"` with the note. A human-picked subset is
+first-class — `user_named` is a selection method, not a lesser one — and this is
+the call `phenotypic-assay-triage` step 3 makes when you name the images
+yourself.
+
+`subset_get {name}` returns the artifact plus whether staging used symlinks or
+copies (§10.3.1).
 
 Because selectors resolve by bare class name like every other extensible class,
 adding a fourth is a new subclass plus one `__init__.py` export. No tool
@@ -232,7 +251,7 @@ approaching the promotion gate.
 
 | Tool | Before | Now |
 |---|---|---|
-| `pipeline_probe` | `images: str` | `subset_id: str` (path form allowed only when no subset is registered) |
+| `pipeline_probe` | `images: str` | `subset_id: str` — raw path allowed **only** while the workspace has no subset at all (bounded `W1`: ≤4 images) |
 | `tune_start` | `images: str` | `subset_id: str` |
 | `campaign_put` | `dataset.images` path | `subset_id`, recorded on the campaign |
 | `deploy_start` | `images` + `scope` | `subset_id` + `scope`; `scope:"full"` resolves to `subset.parent` |
@@ -291,6 +310,14 @@ Four properties it must have:
 
 This staging layer is **new work that §1.6's reuse inventory missed** and §7's
 prerequisites did not list. It is tracked as P6.
+
+**The raw-path fallback is bounded to cheap tools.** `pipeline_probe` may take a
+path while no subset exists, because it is capped at 4 images and holds the
+compute slot — it cannot reach fleet scale. `tune_start`, `campaign_put`, and
+`deploy_start` have **no** fallback: they refuse with `subset_required`. An
+agent must therefore create a subset before anything unattended or
+fleet-scale, which is what makes §10.1's invariant structural rather than
+opt-in.
 
 The single exception is `scope: "full"`, which is the *point* of the promotion
 gate and is guarded by `promotion_token`.
@@ -372,8 +399,19 @@ Two properties this must have:
   and asserting it anyway would be the more dangerous error: a false assurance
   of representativeness is worse than an admitted unknown.
 
-`promotion_approve` records the decision, mints the token, and appends a lineage
-row. The token is bound to `(pipeline digest, parent digest, scope)` — if the
+`promotion_approve {promotion_id, human_response, note?}` records the decision,
+mints the token, and appends a lineage row:
+
+```json
+{"ok":true,"data":{"promotion_id":"prom_2c81","status":"approved",
+  "promotion_token":"pm_5d17…","expires":"2026-08-14T09:12:00Z"}}
+```
+
+`promotion_request`'s response carries `pending_human_ack: true` and an
+`ack_prompt` summarizing the ask (winner, subset score, gap, node-hours,
+coverage warnings), and `human_response` here is required — same reasoning as
+§8.3: it cannot authenticate, but it makes skipping the human an explicit
+fabrication rather than a silent default. The token is bound to `(pipeline digest, parent digest, scope)` — if the
 full dataset gained images since the request, the token is stale and the review
 happens again with `code: "promotion_stale"`.
 

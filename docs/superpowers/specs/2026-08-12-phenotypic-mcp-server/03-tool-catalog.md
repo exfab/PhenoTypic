@@ -30,9 +30,16 @@ malformed calls. Codes are enumerated in §6.
 
 **Paths** resolve through `SandboxRoot`; escapes are rejected before any work.
 
-**Ids are sandbox-relative paths** (§2.2). The bare stem (`"edge-v3"`) is
-accepted as sugar, resolved with `matches_any_suffix` against
-`PIPELINE_CONFIG_SUFFIXES` — never `Path.suffix`, which sees only `.pht-pipe`.
+**Ids are sandbox-relative paths** (§2.2). Bare-stem sugar is accepted **only
+for the typed-suffix artifacts**, where `matches_any_suffix` can resolve it —
+never `Path.suffix`, which sees only `.pht-tune`:
+
+| Id | Bare stem? | Resolution |
+|---|---|---|
+| `pipeline_id` | yes | `pipelines/<stem>` + `PIPELINE_CONFIG_SUFFIXES` |
+| `spec_id` | yes | `tune/<stem>` + `TUNING_CONFIG_SUFFIXES` |
+| `subset_id`, `assay` | yes | fixed `.subset.json` / `.assay.json` suffix |
+| `study_id`, `run_id`, `campaign_id` | **no** | directories, no suffix to match — the full sandbox-relative form is required |
 
 **Token discipline.** List tools return compact rows; full JSON schemas come
 only from the detail tool, one operation at a time. No tool returns an unbounded
@@ -46,7 +53,8 @@ measurement table — dataframes are summarized, with a parquet path for more.
 
 | Arg | Type | Default | Meaning |
 |---|---|---|---|
-| `category` | `str?` | `null` | `Enhancer, Detector, Refiner, Corrector, Measure, Grid, Post, Filter, Model, Edge Correction, quality_check, Prefab` |
+| `category` | `str?` | `null` | `Enhancer, Detector, Refiner, Corrector, Measure, Grid, Post, Filter, Model, Edge Correction, quality_check, Prefab, **Scorer**, **Strategy**` |
+| `limit` | `int` | `100` | Row cap; the response reports `truncated` and the total |
 | `query` | `str?` | `null` | Substring over name + docstring summary |
 
 ```json
@@ -71,11 +79,20 @@ Without `detect.nn` the entire staged-GPU path would be unreachable from the
 server, which would silently amputate a headline CLI capability. Reconciling is
 new work, listed in §7 P3.
 
+**Scorers and strategies are catalog citizens too.** `catalog_operations
+{category:"Scorer"}` lists `QCScorer`, `SupervisedScorer`,
+`ReferenceFreeScorer`, `CompositeScorer`; `catalog_operation_detail
+{name:"QCScorer"}` returns its `model_json_schema()` like any operation. Without
+this an agent authoring `tune_put_spec` has no way to learn the
+`{"check":{"metadata": <path>}}` shape except by guessing and reading
+did-you-mean errors — `tune_space`'s `scorers_available` gives a class name and
+an English requirement, not a schema.
+
 ### `catalog_operation_detail`
 
 | Arg | Type | Default | Meaning |
 |---|---|---|---|
-| `name` | `str` | — | Operation class name |
+| `name` | `str` | — | Operation, **scorer, or strategy** class name |
 | `verbose_descriptions` | `bool` | `false` | Full docstring text per param instead of first sentence |
 
 ```json
@@ -176,7 +193,8 @@ is **never** returned; it is human-authored and frequently empty.
 | Arg | Type | Default | Meaning |
 |---|---|---|---|
 | `name` | `str` | — | Workspace name |
-| `pipeline` | `object` | — | Spec below |
+| `pipeline` | `object?` | — | Spec below. Mutually exclusive with `from_prefab` |
+| `from_prefab` | `str?` | `null` | Materialize a shipped prefab (e.g. `"FilamentousFungiPipeline"`) as a new workspace pipeline |
 | `overwrite` | `bool` | `false` | Required to replace |
 | `dry_run` | `bool` | `false` | Validate and return issues without writing |
 
@@ -190,6 +208,23 @@ is **never** returned; it is human-authored and frequently empty.
    "meas":[{"class":"MeasureSize"},{"class":"MeasureShape"}],
    "post":[],"filters":[],"model":null}}
 ```
+
+A param whose value is itself an operation nests the same `{class, params}`
+envelope — the write shape and the error path (§6.2's
+`ops[3].params.inoculum_detector.params.threshold`) agree:
+
+```json
+{"class":"FilamentousFungiDetector",
+ "params":{"inoculum_detector":{"class":"OtsuDetector","params":{"ignore_zeros":true}}}}
+```
+
+**Prefab-first needs a materialization step.** §9.4's procedure opens with
+"probe the candidate prefabs", and §2.2 requires a `pipeline_id` to be a
+sandbox-relative path — so a bare class name from `catalog_operations` is not
+probeable. `pipeline_put {name, from_prefab}` instantiates the prefab and writes
+it to `pipelines/<name>.json.pht-pipe`, which is then an ordinary pipeline:
+patchable, probeable, tunable. Without it the flagship workflow has no valid
+first call.
 
 **Construction path — public constructor, no private imports.** For each entry
 the server resolves the class and validates params, then hands the resulting
@@ -322,7 +357,7 @@ them.
 | Arg | Type | Default | Meaning |
 |---|---|---|---|
 | `pipeline_id` | `str` | — | Target |
-| `images` | `str` | — | File or directory |
+| `subset_id` | `str` | — | Registered subset (§10.3.1). A raw path is accepted **only** when no subset exists yet, and the response says which was used |
 | `n_images` | `int` | `2` | Capped at `limits.probe_max_images` (default 4) |
 | `sample` | `"first" \| "random"` | `"first"` | `random` uses a fixed seed |
 | `stages` | `bool` | `false` | Per-operation evidence via `apply_with_intermediates` (§8.7) |
@@ -438,6 +473,9 @@ two produces a tool that looks informative and tells the agent nothing.
   "tune":{"distributed_backend":"postgres","journal_backend_enabled":false},
   "in_flight":{"local":0,"slurm":2},
   "rehydrate_ms":184,
+  "next_recommended":"pipeline_put",
+  "workflow":{"assay":"assays/plates.assay.json","subset":"subsets/plates-dev-24.subset.json",
+              "blocked":[],"note":"assay and subset exist; pipelines may be authored and probed"},
   "counts":{"pipelines":3,"tune_specs":3,"assays":1,"subsets":1,
              "campaigns":1,"studies":1,"runs":0},
   "active_subset":"subsets/plates-dev-24.subset.json"}}
@@ -447,6 +485,15 @@ two produces a tool that looks informative and tells the agent nothing.
 request fails with an actionable error naming Postgres rather than submitting
 into the SQLite corruption case. `in_flight` and `rehydrate_ms` make the
 workspace-immutability rule (§2.2) and rehydration cost visible.
+
+**`next_recommended` and `workflow` make the ordering discoverable from data.**
+The workflow (§8.1) is otherwise taught only by the skills, so an agent that
+never loads `phenotypic-assay-triage` has no contract-level signal that an assay
+and a subset come before tuning. `workspace_info` is the natural first call, so
+it answers *what should I do next* — `assay_put` when `counts.assays == 0`,
+`subset_generate` when there is no subset, and so on, with `blocked` naming any
+tool that would refuse right now and why. Skills teach judgment; this makes the
+bare ordering legible without them.
 
 ### `workspace_list`
 
@@ -491,6 +538,11 @@ Reads `.phenotypic-mcp/lineage.jsonl` (§2.5), optionally filtered to one id's
 ancestry — how an agent recovers "which pipeline produced this winner" after a
 context compaction.
 
+**Bounded by default**: `limit` (default 50) newest-first, plus optional `id` to
+scope to one ancestry. An unfiltered journal grows a row per `pipeline.put`, per
+exploration step (up to 12 each, §8.7), per `tune.start`, per campaign and
+deploy event — returning all of it would contradict §3.0's own token discipline.
+
 ---
 
 ## 3.4 Worked example: one subagent, one pipeline
@@ -500,11 +552,11 @@ catalog_operations       {category:"Detector"}
 catalog_operation_detail {name:"OtsuDetector"}
 pipeline_put             {name:"edge-v3", pipeline:{…}}
   -> produces_columns [Size_Area, Shape_Circularity, …], requires_gpu false
-pipeline_probe           {pipeline_id:"edge-v3", images:"data/plateA", n_images:2}
+pipeline_probe           {pipeline_id:"edge-v3", subset_id:"subsets/plates-dev-24.subset.json", n_images:2}
   -> 94 objects/image, Size_Area mean 412 — blur may be too strong
 pipeline_patch           {pipeline_id:"edge-v3",
                           edits:[{kind:"set_params", slot:"ops", index:0, params:{sigma:1.2}}]}
-pipeline_probe           {pipeline_id:"edge-v3", images:"data/plateA", n_images:2}
+pipeline_probe           {pipeline_id:"edge-v3", subset_id:"subsets/plates-dev-24.subset.json", n_images:2}
   -> 96 objects/image, tighter spread — keep
 ```
 

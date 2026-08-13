@@ -203,7 +203,8 @@ genuinely new piece of work (§1.6), previously invisible in that accounting.
 | Arg | Type | Default | Meaning |
 |---|---|---|---|
 | `pipeline_id` | `str` | — | Pipeline to run |
-| `images` | `str` | — | File or directory tree |
+| `subset_id` | `str` | — | Registered subset (§10.3.1) |
+| `scope` | `"subset" \| "full"` | `"subset"` | `full` plans against `subset.parent`; the only way to obtain a full-scope `plan_token` |
 | `run_name` | `str` | — | Output directory under `runs/` |
 | `compute` | `object?` | `{}` | `{profile, …overridable keys}` |
 | `mode` | `"full" \| "measure" \| "process"` | `"full"` | CLI mode |
@@ -222,7 +223,8 @@ genuinely new piece of work (§1.6), previously invisible in that accounting.
               "node_seconds":340,"wall_clock_hint":"~6 min at 100 concurrent"},
   "requires_gpu":false,"staged_gpu":false,
   "outputs":{"root":"runs/2026-08-12-plateA",
-             "deliverables":"runs/2026-08-12-plateA/deliverables"}},
+             "deliverables":"runs/2026-08-12-plateA/deliverables"},
+  "plan_token":"pl_7f3a…","plan_expires":"2026-08-13T14:02:11Z","scope":"subset"},
  "issues":[{"severity":"warning","code":"no_probe_evidence",
             "message":"No probe recorded for this pipeline; the estimate is a default, not a measurement."}]}
 ```
