@@ -52,7 +52,7 @@ human prose and may change.
 | `selector_unavailable` | error | `SubsetSelector.availability()` is `False` — e.g. `EmbeddingSubsetSelector`, which raises rather than falling back to random (§10.3) |
 | `group_key_not_in_metadata` | error | `MetadataGroupSubsetSelector.group_key` names no column in the metadata CSV |
 | `arm_scorer_mismatch` | error | A campaign arm's scorer differs from the campaign scorer (§8.2) |
-| `screening_unsupported_on_slurm` | error | `--screen` + SLURM, which silently drops screening today (§7 P4). **Conditional on OQ-4.1** — if screening is not exposed at all, this code does not ship. |
+| `screening_unsupported_on_slurm` | error | `--screen` + SLURM, which silently drops screening today. Ships: OQ-4.1 resolved to expose screening (default off), so the guard is needed (§7 P4). |
 | `output_not_empty` | error | Deploy target non-empty; names `run_name`/`resume`/`restart` |
 | `resume_incompatible` | error | Pre-validated `validate_resume_compatibility` mismatch; names the field |
 | `scheduler_jobs_active` | error | Resume/restart while ledgered jobs are live |
@@ -191,8 +191,14 @@ the pre-create step, must make it fail.
 
 ## 6.6 Open questions
 
-- **OQ-6.1 — advisory issue volume.** The GUI DAG validator emits several
-  advisory kinds (`fork`, `stub`, `required_aux`, `container_mode`,
-  `missing_input`, `duplicate_input`, `unsupported_linear`, …). Should all of
-  them surface on every `pipeline_put`, or only a curated subset? Returning all
-  is honest but noisy, and noise trains an agent to ignore issues.
+*(None outstanding.)*
+
+**Resolved since first draft:**
+
+- ~~OQ-6.1 advisory volume~~ → **return every advisory kind the GUI DAG
+  validator emits** (`fork`, `stub`, `required_aux`, `container_mode`,
+  `missing_input`, `duplicate_input`, `stage_order_hint`, `unsupported_linear`,
+  …). Curating them would mean the server deciding which of the engine's own
+  findings an agent may see — a judgment call §9.1 places in a skill, not in the
+  server. The skill teaches which advisories usually matter; the server reports
+  all of them.

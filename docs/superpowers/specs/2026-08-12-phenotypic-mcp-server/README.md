@@ -48,11 +48,20 @@ the server makes wrong things impossible; the skills make right things likely.
 
 `docs/superpowers/logic_validation_scripts/2026-08-12-phenotypic-mcp-server/optuna_journal_storage.py`
 
-Re-derives the claims behind §7 P1 from Optuna directly, never importing
-`phenotypic`. **Read its `DISCRIMINATION` verdict, not just the ok lines** — on a
+Two scripts, both re-deriving their claims from the dependency or the data
+directly rather than from `phenotypic`.
+
+**`optuna_journal_storage.py`** — the claims behind §7 P1. **Read its `DISCRIMINATION` verdict, not just the ok lines** — on a
 local filesystem the negative control also passes, meaning C2a there measures OS
 `O_APPEND` atomicity rather than the lock. `--require-discrimination` is the gate
 that must pass on the target cluster mount before P1 is implemented.
+
+**`contrast_trait_measure.py`** — the choice of contrast measure for §9.3.2.
+Establishes that Otsu's η and Cohen's d are scale-invariant (unchanged across a
+20× contrast reduction), that Michelson tracks contrast linearly, that η's
+per-cell span on real plates is 1.8% of its nominal range, and that whole-frame
+Otsu splits plate-from-surround rather than colony-from-agar. It killed a
+measure that would otherwise have shipped looking principled.
 
 ## Design commitments worth knowing before reading
 
@@ -78,14 +87,21 @@ that must pass on the target cluster mount before P1 is implemented.
 
 ## Open questions
 
-| OQ | Section | Question |
-|---|---|---|
-| 9.4 | §9.3.2 | The contrast bands (η ≥ 0.75 / 0.45–0.75 / < 0.45) are provisional cut points on a principled measure (Otsu between-class variance ratio). They need calibrating against real plates before they mean anything. |
-| 10.1 | §10.7 | Should promotion re-probe 2 images drawn from `parent \ subset`? The full-dataset estimate extrapolates subset timing, which is wrong if the full set has larger images or a different modality. |
+**None.** Every question raised during design or by the five independent review
+passes has been resolved and recorded in the relevant section's "Resolved since
+first draft" block.
 
-Everything else raised during design or by the four independent reviews has been
-resolved and recorded in the relevant section's "Resolved since first draft"
-block.
+The last two were closed by measurement rather than by decision:
+
+- **OQ-9.4 (contrast bands)** did not need calibrating — it needed *refuting*.
+  The proposed measure, Otsu's η, turns out to be **invariant to contrast**: a
+  20× reduction left it numerically unchanged. Replaced with per-cell Michelson,
+  which tracks contrast linearly; the categorical band stays human-sourced until
+  a dataset spanning low contrast exists. Evidence:
+  `logic_validation_scripts/.../contrast_trait_measure.py`.
+- **OQ-10.1 (promotion re-probe)** resolved to a header sweep always, re-probe
+  only on mismatch — what breaks the timing extrapolation is readable from image
+  headers without decoding.
 
 **Resolved:** topology (stdio on the login node) · parallelism (agent-side
 fan-out) · state (on-disk workspace, `RunRegistry` reused rather than a new

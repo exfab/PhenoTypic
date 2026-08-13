@@ -1,6 +1,6 @@
 # PhenoTypic MCP Server — §9 Separation of Responsibilities, and the Bundled Skills
 
-Status: **draft, pending review**
+Status: **draft, reviewed once, revised**
 Date: 2026-08-12
 
 ## 9.1 The dividing principle
@@ -82,8 +82,10 @@ new row in the skill-owned registry (§9.3.4).
     },
     "colony.contrast_vs_background": {
       "value": "low",
-      "source": "probe",
-      "evidence": {"measure": "otsu_eta", "measured": 0.31,
+      "source": "human",
+      "note": "hyphal edges wash out against the opaque medium",
+      "evidence": {"measure": "michelson_percell_median", "measured": 0.041,
+                   "n_cells": 96,
                    "probe_ref": ".phenotypic-mcp/probes/filamentous-prefab/"}
     },
     "colony.separation": {
@@ -115,7 +117,7 @@ server knows:
 |---|---|---|
 | `value` | yes | Scalar or bool. The server does not interpret it. |
 | `source` | yes | One of the four provenance values (§9.3.1). **The only closed enum.** |
-| `evidence` | when `source: "probe"` | `{measure, measured, …}` — the named measure and its number, so the claim is auditable and the bands recalibratable |
+| `evidence` | when `source: "probe"`; **optional corroboration otherwise** | `{measure, measured, …}` — the named measure and its number, so the claim is auditable and the bands recalibratable. A `human` value may carry evidence that *disagrees* with it; that disagreement is visible rather than silently resolved. |
 | `note` | no | Free text for a human reader |
 | `confidence` | no | Optional `[0,1]`; reserved for traits that later warrant it |
 
@@ -169,38 +171,63 @@ metrics; round assays want size and shape.
 
 **`colony.contrast_vs_background`** — `high | moderate | low`
 
-*Determined by:* **probe**, and this one needs an operational definition or it is
-vibes. Measure: Otsu's between-class variance ratio, η = σ²_B / σ²_T ∈ [0, 1] —
-precisely the separability Otsu maximizes.
+*Determined by:* **the human in v1**, with a probe-measured number as
+corroborating evidence. That split is not caution — it is what measurement
+forced. See below.
 
-**It must be computed threshold-wise, not mask-wise.** The one existing
-implementation, `ReferenceFreeScorer._contrast`
-(`tune/score/_reference_free_scorer.py:377-409`), reads `image.gray` **and
-`image.objmask`** — i.e. it needs a detector to have already run. That is
-circular for a trait whose entire purpose is to *choose* the detector, and it is
-not reusable here.
-
-The server computes η itself, pre-detection, from the layer histogram alone:
+*Measure:* **per-grid-cell Michelson contrast** at the Otsu split,
+(μ_fg − μ_bg) / (μ_fg + μ_bg), reported as the median across cells.
 
 ```python
-t  = skimage.filters.threshold_otsu(layer)   # the scalar threshold
-fg = layer >= t
-w  = fg.mean()
-eta = w * (1 - w) * (layer[fg].mean() - layer[~fg].mean())**2 / layer.var()
+t   = skimage.filters.threshold_otsu(cell)     # per grid cell, not whole frame
+fg  = cell >= t
+mich = (cell[fg].mean() - cell[~fg].mean()) / (cell[fg].mean() + cell[~fg].mean())
 ```
 
-Same formula as `_contrast`, with the Otsu **threshold** defining the two
-classes instead of an object mask. `skimage.filters.threshold_otsu` returns only
-the scalar and discards the variance it maximized, so this is ~8 lines of numpy
-in the probe worker — not a call into any phenotypic API. It runs on
-`detect_mat` when a pipeline exists, and on `gray` during bare triage before one
-does; the probe reports which layer it used.
+### Why not Otsu's η — a measured refutation
 
-| Band | η | Status |
-|---|---|---|
-| `high` | ≥ 0.75 | **Provisional cut points** (OQ-9.4). The *measure* is principled and now computable; the *bands* need calibrating against real plates before they mean anything. |
-| `moderate` | 0.45 – 0.75 | |
-| `low` | < 0.45 | |
+An earlier draft specified η = σ²_B/σ²_T, "precisely the separability Otsu
+maximizes, so it is principled rather than invented". The reasoning is correct
+about what η *is* and wrong about what this trait *needs*. Measured on the three
+bundled plate images (`contrast_trait_measure.py`, run against them):
+
+| Claim | Result |
+|---|---|
+| **η is scale-invariant** | Reducing image contrast **20×** left η at `0.965` and Cohen's d at `10.435` — *numerically unchanged*. Both normalize by the very spread that reducing contrast shrinks. |
+| **Michelson is not** | Same reduction: `0.2387 → 0.1443 → 0.0725 → 0.0364 → 0.0121`, linear in α. |
+| **η has no dynamic range here** | Whole-frame `0.965–0.966` across 3 plates; per-cell p10–p90 = `0.945–0.963`, a span of **1.8% of the nominal [0,1] scale**. Three bands cannot be cut from that. |
+| **Whole-frame Otsu measures the wrong thing** | It puts **46.1%** of pixels in "foreground" — far more than colonies occupy. The split is separating the *plate disc from the surround*, not colony from agar. |
+
+That last row also explains something the review flagged as mere circularity:
+`ReferenceFreeScorer._contrast` (`tune/score/_reference_free_scorer.py:377-409`)
+needs `image.objmask` **because whole-image Otsu does not find colonies**. The
+mask is not incidental to that implementation; it is what makes the number mean
+anything. Measuring per grid cell — one colony and its local agar per cell —
+removes the mask dependency without inheriting the plate-vs-surround artifact.
+
+η would have shipped as a plausible-sounding trait that is *invariant to the
+property it claims to measure*. Nothing downstream would have contradicted it:
+every plate would have read `high`, and a genuinely low-contrast assay would too.
+
+### Bands stay human-sourced (resolves OQ-9.4)
+
+Every plate available in this repo is high-contrast — per-cell Michelson median
+`0.233` (p10–p90 `0.225–0.239`). **One point does not calibrate a three-band
+scale**, and inventing cut-points around a single anchor would repeat the η
+mistake in a new coordinate system.
+
+So in v1:
+
+- `value` (`high | moderate | low`) is **`source: "human"`** — you know whether
+  your plates are low-contrast, and §9.3.3 already establishes that
+  human-sourced traits are the high-stakes uncheckable ones.
+- `evidence` carries `{"measure": "michelson_percell_median", "measured": 0.233,
+  "n_cells": 96}` as corroboration, so a human answer that contradicts the
+  number is *visible* rather than silently overridden.
+- `traits.yaml` records `calibration: uncalibrated` with the single known anchor,
+  and the bands become derivable — as dataset-relative terciles or absolute
+  cut-points — once a dataset spanning low contrast exists. That is a registry
+  edit, not a server change (§9.3.4).
 
 *Drives:* whether enhancement or detection is the bottleneck.
 
@@ -273,11 +300,16 @@ traits:
 
   - key: colony.contrast_vs_background
     values: [high, moderate, low]
-    determined_by: probe
+    determined_by: human           # ask; the probe corroborates, it does not decide
+    ask: "Are the colonies high, moderate, or low contrast against the agar?"
     measure:
-      name: otsu_eta               # between-class variance ratio on detect_mat
-      bands: {high: [0.75, 1.0], moderate: [0.45, 0.75], low: [0.0, 0.45]}
-      calibration: provisional     # OQ-9.4
+      name: michelson_percell_median   # (mu_fg - mu_bg)/(mu_fg + mu_bg) per grid cell
+      calibration: uncalibrated        # bands NOT derivable from one anchor
+      anchors:
+        - {dataset: "docs _dataset plates", value: 0.233, label: high, n_cells: 96}
+      rejected:
+        - {name: otsu_eta, why: "scale-invariant: unchanged across a 20x contrast
+                                 reduction; per-cell span 1.8% of [0,1]"}
     drives: [enhancement_weight, detector_family]
     stakes: moderate
 

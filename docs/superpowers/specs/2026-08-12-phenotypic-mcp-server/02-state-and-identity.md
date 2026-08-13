@@ -302,14 +302,16 @@ base — matching `build_pipeline`, which deep-copies rather than mutating
 
 ## 2.7 Open questions
 
-- **OQ-2.1 — GUI preset interop.** The GUI's Save/Load library lives at
-  `<sandbox>/.phenotypic-gui/presets/tune/` with content-addressed filenames.
-  Should the MCP server *also* write authored specs there so they appear in the
-  GUI's Load dropdown, or keep the visible `tune/` directory and rely on the
-  GUI's Browse… escape hatch? Writing both doubles the artifacts; writing only
-  to the preset dir gives the agent unreadable content-addressed names.
+*(None outstanding.)*
 
 **Resolved since first draft:**
+
+- ~~OQ-2.1 GUI preset interop~~ → **visible `tune/` only**. Agent-authored specs
+  keep readable names at `<workspace>/tune/<name>.setup.json.pht-tune`; the GUI
+  reaches them through its Browse… escape hatch. Writing additionally into
+  `.phenotypic-gui/presets/tune/` would double every artifact, and writing only
+  there would hand the agent content-addressed filenames (`<stem>-<sha256[:20]>`),
+  losing the readable-id property §2.2 is built on.
 
 - ~~OQ-2.2 workspace root~~ → `--workspace`, defaulting to CWD (unambiguous
   because subagents share one server), with the root always echoed by

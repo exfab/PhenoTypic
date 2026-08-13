@@ -1,6 +1,6 @@
 # PhenoTypic MCP Server — §10 Development Subsets and the Promotion Gate
 
-Status: **draft, pending review**
+Status: **draft, reviewed once, revised**
 Date: 2026-08-12
 
 ## 10.1 The subset is the unit of development
@@ -352,10 +352,62 @@ provenance so the artifact and the transcript agree, not authentication.
   arms still consumes an allocation. The campaign budget and profile caps (§5.2)
   are what bound it, and they bind on subset runs exactly as on any other.
 
+## 10.6.1 Does promotion re-probe? Only when the headers disagree
+
+The promotion estimate extrapolates subset per-image timing to the parent. That
+extrapolation is wrong when the parent holds images the subset does not
+represent *dimensionally* — larger frames, a different bit depth, a second
+modality mixed in.
+
+Always probing would add a `W1` step, and a `LocalComputeSlot` acquisition, to
+every promotion. Never probing would let a silently-wrong estimate through. Both
+are avoidable, because **the thing that breaks the extrapolation is readable
+without decoding a single pixel.**
+
+So promotion runs a two-tier check:
+
+| Tier | Cost | What it does |
+|---|---|---|
+| **Always** — header sweep | `W0`, no decode, no slot | Read dimensions, bit depth, and channel count from every parent image header. Compare the distribution against the subset's. |
+| **Only on mismatch** — re-probe | `W1`, 2 images | Probe 2 images drawn from `parent \ subset`, chosen from the *mismatching* stratum, and re-derive the estimate from that timing |
+
+Header reads are cheap enough to run over a 480-image parent (TIFF/PNG headers,
+not pixel data), and they catch the dominant failure directly: cost scales with
+pixel count, so a parent whose images match the subset's dimensions and depth
+extrapolates soundly, and one whose images do not is exactly the case worth
+spending two probes on.
+
+The promotion response reports which tier ran:
+
+```json
+"estimate":{"node_hours":18.4,"basis":"subset run: 3.4 s/image measured",
+            "extrapolation_check":"headers match (1024x1536, 16-bit, 3ch across
+                                   all 480); no re-probe needed"}
+```
+
+and on mismatch:
+
+```json
+"estimate":{"node_hours":41.7,
+            "basis":"re-probed 2 images from the 4096x4096 stratum at 9.1 s/image",
+            "extrapolation_check":"MISMATCH — 113 parent images are 4096x4096
+                                   while every subset image is 1024x1536"}
+```
+
+Note that the header sweep also gives a *bounded, honest* version of the
+coverage gap §10.5 warns about. It cannot tell you whether the parent spans a
+biological trait range the subset misses — that would need the full-dataset
+characterization §10.3 rules out of v1 — but it **can** state exactly how many
+parent images differ dimensionally, which is a real fact rather than an
+extrapolated one.
+
 ## 10.7 Open questions
 
-- **OQ-10.1 — should promotion re-probe?** The promotion estimate extrapolates
-  subset timing to the full dataset. If the full set contains larger images or a
-  different modality, that extrapolation is wrong. A cheap probe of 2 images
-  drawn from `parent \ subset` would catch it, at the cost of one more `W1` step
-  in the promotion flow.
+*(None outstanding.)*
+
+**Resolved since first draft:**
+
+- ~~OQ-10.1 promotion re-probe~~ → **header sweep always, re-probe only on
+  mismatch** (§10.6.1). What breaks the extrapolation is readable from headers
+  without decoding, so the common case costs nothing and the failing case gets a
+  measured estimate.

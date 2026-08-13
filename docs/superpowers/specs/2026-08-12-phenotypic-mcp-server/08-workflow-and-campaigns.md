@@ -230,7 +230,7 @@ error naming both, not a silent rename. Without this, `campaign_status`'s
 per-arm `study_id` would have no defined source.
 
 **`campaign_start` snapshots the campaign it launched** rather than re-reading it
-during fan-out, so a concurrent `campaign_approve` or amendment (OQ-8.2) cannot
+during fan-out, so a concurrent `campaign_approve` or an in-envelope amendment (§10.4) cannot
 change the arm set mid-launch. Writes to `campaign.json` are atomic and CAS on
 `status` (§2.6).
 
