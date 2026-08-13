@@ -97,6 +97,84 @@ Array width is additionally floored by the live cluster: `get_slurm_array_limit`
 `get_slurm_max_submit_jobs` (`sacctmgr`). The effective width is
 `min(profile cap, cluster limit)`, and the plan reports which bound applied.
 
+## 5.2.1 How an agent actually supplies compute
+
+**It never writes an sbatch key.** It names a profile and, optionally,
+overrides from that profile's `overridable` list:
+
+```json
+"compute": {"profile": "cpu-bulk", "time": "02:00:00", "n_workers": 8}
+```
+
+In the normal flow it does not even do that per call: `compute` is agreed
+**once at campaign level** (§8.2) and every arm inherits it, so the subagents
+executing arms choose no SLURM parameters at all. A per-call `compute` appears
+only on a standalone `tune_start` or `deploy_plan` outside a campaign.
+
+Three sites accept it — `campaign_put`, `tune_start`, `deploy_plan` — and
+`deploy_start` takes none, inheriting from its `plan_token`.
+
+### One `compute` object, two different CLI surfaces
+
+The server, not the agent, translates. And the two engines do not accept SLURM
+parameters the same way:
+
+| Path | Surface |
+|---|---|
+| `python -m phenotypic` | **repeated `--slurm key=value`** (`phenotypicCLI.py:795`), free-form keys |
+| `python -m phenotypic.tune` | **four discrete flags** — `--slurm-partition`, `--slurm-mem`, `--slurm-time`, `--slurm-constraint` (`tune/__main__.py:104-125`), plus `--n-workers` |
+
+### The tune path cannot express a full profile — so the server refuses
+
+`_submit_slurm_fleet` (`tune/_tune_cli/_run.py:797-805`) builds its `slurm_args`
+from **only those four flags**. There is no `--slurm-account`, no `--slurm-qos`,
+no `--slurm-cpus-per-task`, no `--slurm-gpus`.
+
+So a profile like the `cpu-bulk` example above is **not fully expressible on the
+tune path**:
+
+| Profile key | deploy | tune |
+|---|---|---|
+| `partition` | ✅ | ✅ |
+| `mem_gb` | ✅ | ✅ (`--slurm-mem`) |
+| `time` | ✅ | ✅ |
+| `constraint` | ✅ | ✅ |
+| **`account`** | ✅ | ❌ **dropped** |
+| **`qos`** | ✅ | ❌ **dropped** |
+| **`cpus_per_task`** | ✅ | ❌ **dropped** |
+| **`gpus_per_node`** | ✅ | ❌ **dropped** |
+
+On a cluster where `account` is mandatory, a tune fleet submitted under this
+profile is rejected by the scheduler — or, worse, silently billed to your
+default account. This is exactly the silent-drop failure the profile layer
+exists to prevent, so the server performs an **expressibility check**:
+
+> Before submitting, the server checks every profile key against the target
+> path's supported set. An inexpressible key is a hard error
+> (`profile_not_expressible`) naming the key, the path, and the profile —
+> **never a silent drop.**
+
+Two ways out, and the config picks:
+
+```toml
+[slurm.profiles.cpu-bulk]
+partition = "batch"; account = "exfab"; qos = "normal"; cpus_per_task = 8
+paths = ["deploy"]                 # this profile is deploy-only
+
+[slurm.profiles.tune-fleet]
+partition = "batch"; mem_gb = 8; time = "04:00:00"
+paths = ["tune"]                   # expressible on the narrow tune surface
+```
+
+`paths` defaults to both; the server validates it against each surface at
+startup, so a mis-specified profile fails when you load config rather than at
+2 a.m. when a fleet submits.
+
+**The better fix is upstream**, and it belongs in §7: give the tune CLI the same
+`--slurm key=value` surface the forward CLI already has, at which point one
+profile serves both paths and the expressibility check becomes vestigial. Until
+then the check is what keeps the drop from being silent.
+
 ## 5.3 `deploy_plan` (`W0`) — preview, never submit
 
 Deploying to a cluster is the one place an agent can consume a large amount of

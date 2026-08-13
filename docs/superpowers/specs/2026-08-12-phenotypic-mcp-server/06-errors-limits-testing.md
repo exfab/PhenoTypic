@@ -39,6 +39,7 @@ human prose and may change.
 | `param_not_overridable` | error | Override key absent from the profile's `overridable` |
 | `cap_exceeded` | error | Override violates a cap; names key, request, cap |
 | `reserved_sbatch_key` | error | Agent tried to set `array`/`output`/`error`/`job-name` |
+| `profile_not_expressible` | error | A profile key the target CLI surface cannot carry — e.g. `account`/`qos`/`cpus_per_task` on the tune path, which accepts only four discrete SLURM flags (§5.2.1) |
 | `plan_required` | error | `deploy_start` without a `plan_token` (§5.4) |
 | `plan_stale` | error | Plan token's pipeline/images/compute digest no longer matches |
 | `campaign_not_approved` | error | `campaign_start` on a `draft` campaign |

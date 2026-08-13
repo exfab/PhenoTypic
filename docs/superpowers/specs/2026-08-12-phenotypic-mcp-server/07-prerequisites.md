@@ -3,8 +3,8 @@
 Status: **draft, reviewed once, revised — P1 is significantly larger than first estimated**
 Date: 2026-08-12
 
-Four changes land before the MCP server is fully useful. P1 is a substantial
-engine change to `phenotypic.tune` needing its own spec; P2–P4 are smaller.
+Five changes land before the MCP server is fully useful. P1 is a substantial
+engine change to `phenotypic.tune` needing its own spec; P2–P5 are smaller.
 
 ---
 
@@ -273,6 +273,31 @@ all, since an agent requesting screening + SLURM compute would otherwise get
 silently different behaviour than it asked for. It also settles OQ-4.1: the
 question is not merely whether to expose `--screen`, but that the combination is
 broken today.
+
+---
+
+## P5 — Give the tune CLI a `--slurm key=value` surface
+
+`python -m phenotypic` accepts free-form repeated `--slurm key=value`
+(`phenotypicCLI.py:795`). `python -m phenotypic.tune` accepts only four discrete
+flags — `--slurm-partition`, `--slurm-mem`, `--slurm-time`,
+`--slurm-constraint` (`tune/__main__.py:104-125`) — and `_submit_slurm_fleet`
+(`_run.py:797-805`) builds its `slurm_args` from those alone.
+
+So **`account`, `qos`, `cpus_per_task`, and `gpus_per_node` cannot reach a tune
+fleet at all.** On a cluster where `account` is mandatory every tune submission
+is rejected; where it is optional, the work is silently billed to the default
+account. Both engines already funnel into the same
+`format_sbatch_directives` (`sdk_/slurm/_sbatch.py:102`), which handles arbitrary
+keys — the narrowing is purely in the tune CLI's argument surface.
+
+Adding `--slurm key=value` to the tune CLI (keeping the four existing flags as
+sugar) collapses one profile to both paths and makes §5.2.1's expressibility
+check vestigial. Small, self-contained, and independent of P1–P4.
+
+Until it lands, the MCP server refuses inexpressible profiles rather than
+dropping keys (`profile_not_expressible`), and `paths` in the profile config
+declares which surfaces a profile is valid for.
 
 ---
 
