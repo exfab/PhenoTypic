@@ -54,8 +54,9 @@ the other:
   "digest": "sha256:77b2…",
   "coverage": {
     "measured_on": 4,
-    "contrast_eta": {"min": 0.22, "max": 0.71},
-    "note": "spans low→moderate; no high-contrast plate included"
+    "contrast_michelson": {"min": 0.031, "max": 0.094},
+    "note": "spans low→moderate on the per-cell Michelson measure (§9.3.2);
+             no high-contrast batch included"
   }
 }
 ```
@@ -298,7 +299,7 @@ response:
   "estimate":{"node_hours":18.4,"basis":"subset run: 3.4 s/image measured"},
   "warnings":[
     {"code":"subset_coverage_unverified",
-     "message":"Subset spans contrast_eta 0.22–0.71 across 4 measured images. The
+     "message":"Subset spans contrast_michelson 0.031–0.094 across 4 measured images. The
                 parent's 480 images were NOT characterized, so whether the subset
                 represents them is unknown, not confirmed. Selection was
                 'user_named'."}]}}
