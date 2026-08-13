@@ -35,10 +35,12 @@ from phenotypic.gui.run_console._callbacks import (
     _SlurmLogTailCache,
     _action_control_states,
     _local_run_active,
+    _resolved_output_identity,
     _run_receipt,
     _state_from_action_controls,
     _track_pending_slurm,
 )
+from phenotypic.gui.run_console._state import RunConsoleState
 from phenotypic.gui.run_console._slurm import SlurmSubmitResult
 from phenotypic.gui.run_console._slurm import (
     SlurmSubmitPending,
@@ -112,6 +114,21 @@ def runner() -> LocalRunner:
 @pytest.fixture()
 def registry() -> RunRegistry:
     return RunRegistry()
+
+
+def test_resolved_output_identity_uses_posix_registry_path(
+    tmp_path: Path,
+) -> None:
+    sandbox = SandboxRoot.from_path(tmp_path)
+    output_dir = tmp_path / "nested" / "run"
+
+    resolved, rel_path = _resolved_output_identity(
+        RunConsoleState(output_dir=str(output_dir)),
+        sandbox=sandbox,
+    )
+
+    assert resolved == output_dir
+    assert rel_path == "nested/run"
 
 
 def _callback_by_name(app: Any, name: str) -> Any:

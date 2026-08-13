@@ -173,11 +173,9 @@ def test_other_machine_state_is_not_fresh(
 def test_owner_for_different_output_is_not_safe(tmp_path: Path) -> None:
     output_dir = tmp_path / "output"
     owner = _write_launch_owner(output_dir)
-    payload = owner.read_text(encoding="utf-8").replace(
-        str(output_dir),
-        str(tmp_path / "other"),
-    )
-    owner.write_text(payload, encoding="utf-8")
+    payload = json.loads(owner.read_text(encoding="utf-8"))
+    payload["output_dir"] = str(tmp_path / "other")
+    atomic_write_json(owner, payload)
 
     assert not is_safe_gui_launch_state_entry(output_dir / ".phenotypic")
 

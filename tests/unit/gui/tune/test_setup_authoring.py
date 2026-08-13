@@ -200,7 +200,7 @@ def test_setup_path_precedence_and_same_path_reselection(tmp_path: Path):
     second_payload = setup_path_payload(sandbox, picked, kind="pipeline")
     assert first_payload is not None
     assert second_payload is not None
-    assert first_payload["selected_at"] != second_payload["selected_at"]
+    assert first_payload["selection_id"] != second_payload["selection_id"]
 
     stale_shared = dict(setup_path_payload(sandbox, shared, kind="pipeline") or {})
     stale_shared["sandbox_fingerprint"] = "stale-sandbox"
@@ -258,8 +258,11 @@ def test_setup_path_keeps_selected_v1_and_v2_shared_descriptors_compatible(
         "relative_path": pipeline.name,
     }
     v2 = setup_path_payload(sandbox, pipeline, kind="pipeline")
+    assert v2 is not None
+    v2_without_selection_id = dict(v2)
+    v2_without_selection_id.pop("selection_id")
 
-    for descriptor in (v1, v2):
+    for descriptor in (v1, v2_without_selection_id):
         resolution = resolve_setup_path(
             sandbox=sandbox,
             kind="pipeline",

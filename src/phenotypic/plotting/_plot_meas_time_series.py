@@ -32,7 +32,7 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
         environment_by: Columns defining subplot columns within a page.
         replicate_by: Columns identifying biological or technical replicates.
         time: Numeric or ordered time column used on the x-axis.
-        on: Numeric measurement columns. An empty list selects
+        measurements: Numeric measurement columns. An empty list selects
             eligible columns automatically.
         connect: Whether to connect points within each replicate trace.
     """
@@ -45,7 +45,7 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
     environment_by: ColumnRefList
     replicate_by: ColumnRefList
     time: ColumnRef = "MetadataCulture_Time"
-    on: ColumnRefList = Field(default_factory=list)
+    measurements: ColumnRefList = Field(default_factory=list)
     connect: bool = True
 
     @model_validator(mode="after")
@@ -137,7 +137,7 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
             *self.environment_by,
             *self.replicate_by,
             self.time,
-            *self.on,
+            *self.measurements,
         ]
         missing = [column for column in requested if column not in frame.columns]
         if missing:
@@ -149,10 +149,10 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
         ):
             for column in columns:
                 _validate_group_values(frame[column], role=role, column=column)
-        if self.on:
+        if self.measurements:
             nonnumeric = [
                 column
-                for column in self.on
+                for column in self.measurements
                 if not pd.api.types.is_numeric_dtype(frame[column])
             ]
             if nonnumeric:
@@ -161,8 +161,8 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
                 )
 
     def _measurement_columns(self, frame: pd.DataFrame) -> list[str]:
-        if self.on:
-            return list(self.on)
+        if self.measurements:
+            return list(self.measurements)
         excluded = {
             *self.page_by,
             *self.environment_by,

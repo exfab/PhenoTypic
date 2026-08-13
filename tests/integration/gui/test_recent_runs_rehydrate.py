@@ -148,19 +148,25 @@ def test_scan_skips_unreadable_dir(tmp_path: Path) -> None:
     """An OS-level stat failure on a single dir doesn't kill the scan."""
     _make_run(tmp_path, "ok")
     sandbox = SandboxRoot.from_path(tmp_path)
-    # Sanity: scan doesn't raise even when the sandbox has an unreadable
-    # entry next to a valid output dir.
     bad = tmp_path / "bad"
     bad.mkdir()
-    if os.name != "nt":
-        os.chmod(bad, 0o000)
-    try:
+    from phenotypic.gui.shell import _runs_registry
+
+    real_classify = _runs_registry.classify
+
+    def classify_with_unreadable_entry(path: Path):
+        if path == bad:
+            raise PermissionError("simulated unreadable run directory")
+        return real_classify(path)
+
+    with mock.patch.object(
+        _runs_registry,
+        "classify",
+        side_effect=classify_with_unreadable_entry,
+    ):
         rows = scan_recent_runs(sandbox)
-        rel_paths = {r.rel_path for r in rows}
-        assert "ok" in rel_paths
-    finally:
-        if os.name != "nt":
-            os.chmod(bad, 0o755)
+
+    assert {row.rel_path for row in rows} == {"ok"}
 
 
 def test_scan_returns_empty_for_empty_sandbox(tmp_path: Path) -> None:

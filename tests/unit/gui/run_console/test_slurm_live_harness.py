@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -22,6 +23,14 @@ from phenotypic.sdk_ import (
     processing_state_path,
 )
 from tests._support import live_slurm as live
+
+pytestmark = pytest.mark.skipif(
+    os.name == "nt",
+    reason=(
+        "live SLURM cleanup safety requires POSIX directory handles, "
+        "inode identity, dir_fd, and O_NOFOLLOW"
+    ),
+)
 
 
 def _case(root: Path) -> tuple[Path, Path]:
