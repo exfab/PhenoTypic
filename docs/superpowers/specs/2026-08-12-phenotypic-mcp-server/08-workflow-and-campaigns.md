@@ -80,7 +80,7 @@ This shapes three design choices that would otherwise look arbitrary:
   "subset_id": "subsets/plates-dev-24.subset.json",
   "metadata_csv": "data/tune_layout.csv",
   "objective": {"scorer": {"class": "QCScorer",
-                           "params": {"check": {"metadata": "data/tune_layout.csv"}}},
+                           "params": {"check": {"expected_counts_csv": "data/tune_layout.csv"}}},
                 "sense": "cost in [0,1], lower is better"},
   "budget": {"trials_per_arm": 200, "max_concurrent_arms": 3},
   "compute": {"profile": "cpu-bulk", "n_workers": 8},
@@ -280,6 +280,28 @@ during fan-out, so a concurrent `campaign_approve` or an in-envelope amendment (
 change the arm set mid-launch. Writes to `campaign.json` are atomic and CAS on
 `status` (§2.6).
 
+### `campaign_get` (`W0`) — read the stored campaign back
+
+`{campaign_id}` → the `campaign.json` artifact verbatim: arms with their
+`pipeline`, `tune_spec`, `study_id`, `rationale`, and `prefab_baseline`, plus the
+objective, budget, compute, subset, and assay references.
+
+**This is the session-recovery entry point.** An agent resuming after a context
+compaction typically holds one thing: a campaign id. `campaign_status` reports
+*progress* per arm but not the artifact ids, so without `campaign_get` the only
+route back to a winning arm's pipeline was to know, unprompted, to call
+`workspace_lineage {id: study_id}` and trace `tune.start`'s `parent` — a path
+this spec named nowhere.
+
+**Recovery procedure**, stated once so it is not folklore:
+
+```
+campaign_get {campaign_id}        -> arms, their pipeline/tune_spec/study_id,
+                                     subset_id, assay, objective
+campaign_status {campaign_id}     -> where each arm actually got to
+workspace_lineage {id: <study>}   -> only if you need the provenance chain
+```
+
 ### `campaign_status` (`W0`) — one call, all arms
 
 ```json
@@ -343,15 +365,18 @@ you:   "new Aspergillus set, low-contrast plates. Otsu is under-segmenting."
 
 agent: [skill: phenotypic-assay-triage]
        → asks: morphology? expected colonies/plate? → you: "filamentous, 96"
-       pipeline_probe with FilamentousFungiPipeline to measure contrast/separation
+       pipeline_put {name:"fil-prefab", from_prefab:"FilamentousFungiPipeline"}
+       pipeline_probe {pipeline_id:"fil-prefab", …} to measure contrast/separation
        → writes assay.json: morphology filamentous (human), contrast low (probe),
          separation touching (probe), 8x12 arrayed
 
 agent: [skill: phenotypic-pipeline-construction — prefab-first]
        catalog_operations {category:"Prefab"}
        → assay says filamentous + touching → candidates:
-         FilamentousFungiPipeline, HeavyWatershedPipeline
-       pipeline_probe both on the same 2 images
+         FilamentousFungiPipeline (3 ops), HeavyWatershedPipeline (15)
+       pipeline_put {name:"fil-prefab",  from_prefab:"FilamentousFungiPipeline"}
+       pipeline_put {name:"watershed",   from_prefab:"HeavyWatershedPipeline"}
+       pipeline_probe both on the same 2 subset images
        → filamentous prefab: 61 objects; watershed: 44. Neither near 96.
        → "I'd tune the filamentous prefab first rather than author anything new."
 
@@ -370,7 +395,8 @@ agent: campaign_put {…}
 
 you:   "go"
 
-agent: campaign_approve {campaign_id:"campaigns/fungal-edge-sweep"}
+agent: campaign_approve {campaign_id:"campaigns/fungal-edge-sweep",
+                         human_response:"go"}
        campaign_start   {campaign_id:"campaigns/fungal-edge-sweep"}
 ```
 

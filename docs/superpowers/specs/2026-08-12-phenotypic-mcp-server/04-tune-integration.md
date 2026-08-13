@@ -64,6 +64,7 @@ object for the rest of the payload.
    "value_type":"bool","default":true,"suggested_domain":null,
    "source":"presence_optin","needs_review":false}],
  "excluded":[{"key":"1.mask","reason":"ndarray","field_type":"np.ndarray"}],
+ "pipeline_digest":"sha256:9c1e…",
  "n_needs_review":0,"n_excluded":1,
  "scorers_available":[
    {"class":"QCScorer","available":true,
@@ -123,8 +124,11 @@ Four deliberate affordances:
 `select` semantics: omitting `domain` accepts `suggested_domain`; `enabled:false`
 drops the knob entirely; supplying `domain` overrides. A `ref` that no longer
 resolves (because the pipeline changed since `tune_space`) is a hard error naming
-the drift, **not** a silent re-index — the server records the pipeline digest in
-the `tune_space` response and rejects a `select` built against a stale digest.
+the drift, **not** a silent re-index. `tune_space` returns `pipeline_digest`, and
+`tune_put_spec` takes it back as `pipeline_digest` and rejects a mismatch with
+`stale_target_ref`. Returning it is what makes the check **proactive**: an agent
+that ran `pipeline_patch` between the two calls can compare digests itself rather
+than discovering the staleness only by having its spec rejected.
 
 ### Pre-submit checks the server adds
 

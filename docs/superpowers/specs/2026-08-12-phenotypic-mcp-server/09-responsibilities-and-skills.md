@@ -463,12 +463,16 @@ when the cheaper family has been tried and failed, not first.
 
 1. Pick candidate prefabs from the assay profile — usually one or two, three at
    most.
-2. `pipeline_probe` each on the same 2 images. Compare object counts, size
+2. **Materialize each**: `pipeline_put {name:"fil-prefab",
+   from_prefab:"FilamentousFungiPipeline"}`. A bare class name from the catalog
+   is not a `pipeline_id` (§2.2 requires a sandbox path), so this step is not
+   optional — it is what makes a prefab probeable.
+3. `pipeline_probe` each on the same 2 images. Compare object counts, size
    distributions, and per-op timing.
-3. Tune the best prefab **before** authoring anything custom. A prefab whose
+4. Tune the best prefab **before** authoring anything custom. A prefab whose
    parameters are wrong for your assay is not a failed prefab; `tune_space` on a
    prefab is the cheapest large improvement available.
-4. Author a custom pipeline **only** when the best tuned prefab still fails a
+5. Author a custom pipeline **only** when the best tuned prefab still fails a
    stated bar — and record why.
 
 **Custom pipelines carry a justification.** When an arm's pipeline is not a

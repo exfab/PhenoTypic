@@ -44,7 +44,7 @@ the other:
   "parent": {"path": "data/plates", "digest": "sha256:1a4c…", "n_images": 480},
   "selection": {
     "method": "MetadataGroupSubsetSelector",
-    "params": {"n": 24, "seed": 0, "metadata": "data/tune_layout.csv",
+    "params": {"n": 24, "seed": 0,
                "grouping_metadata": "data/plate_batches.csv",
                "group_key": "Metadata_Batch", "allocation": "equal"},
     "rationale": "8 batches x 3 plates each; equal allocation so the two rare
@@ -498,7 +498,19 @@ provenance so the artifact and the transcript agree, not authentication.
   smoothly (1 plate at n=6–9, 2 at 10–12, 3 at 13–17).
 
   So `subset_put` **errors** below 6 and **warns** below roughly 15, where a
-  single held-out plate makes the gap a one-sample estimate. An earlier draft
+  single held-out plate makes the gap a one-sample estimate.
+
+  **Unless the parent itself is that small.** A 4-plate pilot workspace cannot
+  produce a 6-image subset, and since `subset_id` is a hard requirement for
+  `tune_start` / `campaign_put` / `deploy_start`, a hard floor would lock such a
+  workspace out of tuning and deployment entirely with no stated next action.
+  So when `n_images >= parent.n_images` — the subset *is* the parent — the error
+  downgrades to `subset_too_small_for_heldout` and the run proceeds with
+  `kind: "none"`: every plate calibrates, there is no held-out gap, and
+  `tune_status` reports `gap: null` with that reason rather than a number that
+  does not exist. Small pilots are a real workflow, not an edge case; what they
+  cannot have is a generalization estimate, and saying so is better than
+  refusing. An earlier draft
   cited "~12" as following from `min_heldout_plates = 6`; nothing in the split
   logic produces 12, and the real hazard is the hard zero at 6.
 - **Subset compute is bounded but not free.** An unattended campaign with deploy

@@ -55,7 +55,7 @@ human prose and may change.
 | `subset_too_small` | error | Subset below `min_heldout_plates` (6): `derive_split` returns an EMPTY held-out set, so there is no gap at all |
 | `subset_too_small_for_heldout` | **warning** | Subset under ~15: a single held-out plate makes the gap a one-sample estimate |
 | `selector_unavailable` | error | `SubsetSelector.availability()` is `False` — e.g. `EmbeddingSubsetSelector`, which raises rather than falling back to random (§10.3) |
-| `group_key_not_in_metadata` | error | `MetadataGroupSubsetSelector.group_key` names no column in the metadata CSV |
+| `group_key_not_in_metadata` | error | `MetadataGroupSubsetSelector.group_key` names no column in `grouping_metadata`. **Carries the CSV's actual column list and a did-you-mean** — the agent cannot open the file itself, so an error without the columns leaves it guessing |
 | `arm_scorer_mismatch` | error | A campaign arm's scorer differs from the campaign scorer (§8.2) |
 | `screening_unsupported_on_slurm` | error | `--screen` + SLURM, which silently drops screening today. Ships: OQ-4.1 resolved to expose screening (default off), so the guard is needed (§7 P4). |
 | `output_not_empty` | error | Deploy target non-empty; names `run_name`/`resume`/`restart` |
@@ -111,9 +111,12 @@ would inject validator-chain tags into `loc` and multiply the rows. The one exis
 match the bracketed paths every example here uses. The projection is new code,
 not reuse.
 
-**`hint`** is populated by `difflib.get_close_matches` against the model's own
-`model_fields` for `unknown_param`/`unknown_class`, and is otherwise absent —
-never a generic string.
+**`hint`** is populated by `difflib.get_close_matches` for `unknown_param` /
+`unknown_class` (against `model_fields`) **and for any closed-set check whose
+candidate set the agent cannot see** — notably `group_key_not_in_metadata`,
+where the candidates live in an external CSV no tool reads back. It is otherwise
+absent; never a generic string. The rule is: **if the valid values exist and the
+agent has no way to obtain them, the error carries them.**
 
 **Subprocess and scheduler failures.** Not every failure is pre-checkable; §5.4
 pre-validates resume compatibility precisely because the CLI's own failure mode

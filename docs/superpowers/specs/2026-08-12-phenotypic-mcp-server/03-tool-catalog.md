@@ -6,9 +6,9 @@ Date: 2026-08-12
 ## 3.0 Conventions binding every tool
 
 **Naming.** `<group>_<verb>`, flat, no dots — `pipeline_put`, never `pipeline.put`.
-31 tools in nine groups: catalog (3), pipeline (5), workspace (4),
-assay (2, §9.3), **subset (3, §10.3)**, tune (5, §4), deploy (3, §5),
-campaign (4, §8), promotion (2, §10.5).
+32 tools in nine groups: catalog (3), pipeline (5), workspace (4),
+assay (2, §9.3), subset (3, §10.3), tune (5, §4), deploy (3, §5),
+**campaign (5, §8)**, promotion (2, §10.5).
 
 **Every tool returns the same envelope.**
 
@@ -303,12 +303,35 @@ rather than loud errors:
   means "before the last element"; omitting it appends.
 - `remove_op.index` and `set_params.index` must be in `[0, len)` — out of range
   is an **error**, never a clamp.
-- `move_op.to` is the index in the list **after** the source is removed.
+- `move_op.from` and `move_op.to` must both be in `[0, len)` and `[0, len-1)`
+  respectively — **out of range is an error, matching `remove_op`, never a
+  clamp.** `to` is the index in the list **after** the source is removed. A move
+  is remove-then-insert, so both a clamping and an erroring reading were
+  defensible; erroring is chosen because an agent computing `to` against a
+  pre-edit list (easy once an earlier edit in the same array has shifted indices)
+  should get a hard stop, not a silently reordered pipeline.
 - Edits apply in array order, each seeing the previous one's result.
 
 All edits apply to an in-memory deep copy; **the file is written only if every
-edit validates**, so a failing third edit leaves the artifact untouched. Returns
-the `pipeline_put` payload plus a `diff`.
+edit validates**, so a failing third edit leaves the artifact untouched.
+
+```json
+{"ok":true,"data":{
+  "pipeline_id":"pipelines/edge-v3.json.pht-pipe","digest":"sha256:1d77…",
+  "n_ops":3,"execution_order":["BlurGauss","FocusEdgePhase","OtsuDetector"],
+  "produces_columns":["Size_Area","Shape_Circularity"],"requires_gpu":false,
+  "diff":[{"kind":"insert_op","slot":"ops","index":1,"class":"FocusEdgePhase"}],
+  "exploration":{"steps":3,"cap":12,"no_improvement_streak":0,
+                 "tracked_signal":"objmap.num_objects",
+                 "budget_note":"3 of 12 patches used"}}}
+```
+
+**`exploration` is what makes §8.7's loop runnable.** That section states step
+and no-improvement caps "reported in the response", and the lineage journal
+already records a `step` counter — but without this block an agent would have to
+poll `workspace_lineage` and count rows to know it was on patch 11 of 12, which
+nothing instructs it to do. `tracked_signal` names the metric the streak is
+measured against, so "no improvement" is a defined claim rather than a vibe.
 
 ### `pipeline_diff` (`W0`)
 
@@ -455,6 +478,14 @@ that makes incremental construction possible (§8.7):
 Which layers each op touches comes from `_layers_modified_by`
 (`_image_pipeline_core.py:100`), so the report shows only what actually changed.
 
+**`meas`/`post` stages report a measurement diff, not a layer diff.**
+`_layers_modified_by` returns `None` for a `MeasureFeatures` op — measurement
+ops populate the table, not a layer — so a patched `MeasureShape` would otherwise
+yield `layers_modified: []` and give the agent nothing to decide keep/revert on.
+For those slots the stage row instead carries `columns_added`, `n_rows`, and a
+`describe` of the new columns. §8.7's loop is uniform across slots only because
+of this; without it, the loop would silently apply to `ops` alone.
+
 **The evidence is numeric because the agent has no eyes.** It cannot look at a
 `detect_mat` and see that the blur washed out the colony edges — but it can read
 that `std` fell from 0.09 to 0.04 while `num_objects` dropped, and conclude the
@@ -546,8 +577,11 @@ Reads `.phenotypic-mcp/lineage.jsonl` (§2.5), optionally filtered to one id's
 ancestry — how an agent recovers "which pipeline produced this winner" after a
 context compaction.
 
-**Bounded by default**: `limit` (default 50) newest-first, plus optional `id` to
-scope to one ancestry. An unfiltered journal grows a row per `pipeline.put`, per
+**Bounded by default**: optional `id` selects the ancestry **first**, then
+`limit` (default 50, newest-first) bounds *that* result. The order matters: if
+`limit` cut the journal globally before the filter, tracing an artifact older
+than the newest 50 events would return nothing — indistinguishable from "no such
+ancestry", and it would break the recovery path in §8.3. An unfiltered journal grows a row per `pipeline.put`, per
 exploration step (up to 12 each, §8.7), per `tune.start`, per campaign and
 deploy event — returning all of it would contradict §3.0's own token discipline.
 
