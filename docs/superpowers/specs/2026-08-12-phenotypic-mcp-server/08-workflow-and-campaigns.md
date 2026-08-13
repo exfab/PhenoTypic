@@ -195,8 +195,7 @@ The response is the **review document** — this is what you read before saying 
            "estimate":{"node_seconds":6800,"basis":"probe: 3.4 s/image x 42 x 200/8"}}],
   "totals":{"arms":3,"trials":600,"est_node_hours":5.7,
             "concurrency":"3 arms x 8 workers = 24 tasks"},
-  "objective":"QCScorer — cost in [0,1], lower is better",
-  "plan_tokens":{"otsu":"…","phase":"…","watershed":"…"}},
+  "objective":"QCScorer — cost in [0,1], lower is better"},
  "issues":[{"severity":"warning","code":"needs_review_domain",
             "message":"phase arm: FocusEdgePhase.k has an inferred unbounded domain [0.5, 8.0]; inference guessed it.",
             "path":"arms[1].knobs[2]"}]}
@@ -208,8 +207,16 @@ and its `basis` says whether it came from a real probe or a default.
 ### `campaign_approve` (`W0`)
 
 `{campaign_id, note?}` → flips `draft` → `approved`, stamps `approved_at`,
-appends a lineage row. Refuses if any blocking issue from `campaign_put` is
-unresolved, so approval cannot outrun validation.
+**mints one `plan_token` per arm**, and appends a lineage row. Refuses if any
+blocking issue from `campaign_put` is unresolved, so approval cannot outrun
+validation.
+
+**Tokens are minted here, never by `campaign_put`.** An earlier draft showed
+populated `plan_tokens` in `campaign_put`'s `draft` response — which would have
+let an agent take a draft campaign's tokens straight to `deploy_start`, skipping
+approval and the human checkpoint entirely. §8.2 is explicit that `status` is
+provenance rather than security, so the gate has to be that the artifact an
+unapproved campaign hands back contains nothing spendable.
 
 ### `campaign_start` (`W2`)
 

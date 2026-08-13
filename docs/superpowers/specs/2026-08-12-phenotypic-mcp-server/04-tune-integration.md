@@ -153,6 +153,18 @@ from a metadata *path*, not an in-memory DataFrame** — a DataFrame-configured
 check cannot be reloaded from JSON, and a SLURM worker reloads the spec from
 disk. The server enforces this: `scorer.params.check.metadata` must be a
 sandbox-resolvable path, rejected at put time with `code: "scorer_not_portable"`.
+
+**And the server resolves it to an ABSOLUTE path before writing the resolved
+spec.** `ExpectedVsDetectedCount._normalize_metadata`
+(`analysis/qc/_expected_vs_detected.py:213-251`) keeps the string exactly as
+given, and `model_post_init` re-resolves it on **every** reconstruction —
+including inside a fresh SLURM worker reloading the spec from disk. No SLURM
+script in this codebase sets `--chdir` or calls `os.chdir` (verified across
+`_execution/_slurm.py` and `sdk_/slurm/*.py`), so a workspace-relative path works
+today only by the accident that jobs inherit the submission CWD. Writing an
+absolute path removes the CWD dependency entirely; leaving it relative means a
+future `--chdir` added for unrelated reasons silently breaks every distributed
+study, or worse resolves to an unrelated file that happens to exist there.
 Every distributed worker reloads the resolved spec, so this is a correctness
 requirement, not a nicety.
 
@@ -229,10 +241,42 @@ Response:
 | `study_id` | `str` | — | Target |
 | `detail` | `"progress" \| "results"` | `"progress"` | How much to read |
 
-`progress` is cheap and marker-only: `TuneRunRoot.discover(path)` reads
-`.pht-tune-cache/run.json`, falling back to `deliverables/tuning_spec.json`, then
-legacy `trials.parquet` — **it never opens Optuna**. That is what makes polling
-safe to do often, and it is the GUI Monitor's own tick behaviour.
+### What `progress` can actually report
+
+An earlier draft claimed `progress` returns trial counts, the running best, and
+the held-out gap while being "marker-only… it never opens Optuna", and cited the
+GUI Monitor's tick as precedent. **Both halves were wrong**, and they were wrong
+in opposite directions:
+
+- `TuneRunRoot` (`gui/tune/_run_root.py:60-156`) is a **location resolver**. It
+  returns `{path, trials_path, storage_url, study_name, directions, images_dir,
+  best_pipeline_path}` — where things are, not how the run is going.
+- The `run.json` marker (`_run.py:205-217`) holds
+  `{version, study_name, storage_url, images_dir, strategy, n_trials,
+  is_multi_objective, slurm, start_time}` — written **once at start**. No
+  `completed`, no `failed`, no `best`, no `gap`.
+- The GUI tick does **not** stop at discovery. `_poll_study`
+  (`gui/tune/_callbacks.py:1911-1939`) calls `TuneRunRoot.discover(...)` and then
+  immediately `read_study_for_monitor(root)` — which opens the live store. The
+  precedent cited as proof of cheapness is the thing that opens Optuna.
+
+So the two modes are redrawn along the line that actually exists — **does this
+touch the trial store or not**:
+
+| Mode | Reads | Returns | Cost |
+|---|---|---|---|
+| `progress` | `run.json`, the `.pht-tune-cache` markers, `RunRegistry`, and a **parquet row count** when `trials.parquet` exists | `status`, `strategy`, `n_trials` budget, `scheduler` job ids, `started_at`, and `trials_recorded` *only if the parquet is present* | genuinely cheap; no store |
+| `results` | the live store, or `trials.parquet` on degradation | leaderboard, best trial, per-term costs, importances, Pareto front, generalization gap | **killable subprocess**, §4.4 below |
+
+`completed` / `pruned` / `failed` / `best` / `gap` are trial-level facts and live
+**only** in `results`. A distributed run writes no `trials.parquet` until
+finalize (§4.5), so for those `progress` reports `trials_recorded: null` and says
+so rather than implying zero.
+
+**Consequence for `campaign_status` (§8.3):** its per-arm leaderboard is
+trial-level, so it is a `results`-class call, not a free one. It runs one
+store-open per arm through the same killable subprocess, and the orchestrator is
+expected to poll it on a human timescale (minutes), not a UI tick.
 
 `results` opens the study (or degrades to `trials.parquet` when the store is
 unreachable) and returns the leaderboard, best trial, parameter importances,
@@ -253,12 +297,20 @@ opens a store, which is what makes *that* mode safe to poll often. The first
 draft extended "polling is safe" to both modes; it is only true of one.
 
 ```json
+// detail: "progress"  — no store opened
+{"ok":true,"data":{
+  "status":"running","strategy":"tpe","budget":200,
+  "trials_recorded":null,
+  "trials_recorded_note":"distributed run; trials.parquet is not written until finalize (§4.5)",
+  "started_at":"2026-08-12T14:07:40Z",
+  "scheduler":{"job_ids":["4412331"],"reachable":true}}}
+
+// detail: "results" — store opened in a killable subprocess
 {"ok":true,"data":{
   "status":"running","completed":126,"pruned":14,"failed":3,"budget":200,
   "best":{"trial":47,"score":0.081,
           "params":{"BlurGauss.sigma":1.34,"OtsuDetector.__enabled__":true}},
-  "gap":{"value":0.06,"verdict":"ok"},
-  "scheduler":{"job_ids":["4412331"],"reachable":true}}}
+  "gap":{"value":0.06,"verdict":"ok"}}}
 ```
 
 Two honest degradations, both reported rather than hidden:

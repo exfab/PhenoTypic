@@ -327,11 +327,15 @@ What exists today versus what this design adds:
 | `gui/tune/_space.py` pure/view split | **new** (real refactor) | §1.4 — forced by `import dash` at `_space.py:33-34` |
 | `build_array_script_spec` extraction (pure sbatch render) | **new** (real refactor) | §5.3 — `generate_array_job_script` writes files under `output_dir`, so `deploy_plan` cannot reuse it |
 | Directory-level digest helper | **new** | §7 P3 — every existing fingerprint helper is single-file |
+| Subset staging (materialize a file list as a directory) | **new** | §7 P6 — neither engine accepts a file list |
+| Plan / promotion token records | **new** | §5.4 — opaque ids over persisted records, not forgeable digests |
 
-Roughly: the server is a **thin adapter plus five genuinely new pieces**
+Roughly: the server is a **thin adapter plus seven genuinely new pieces**
 (descriptor projection + column derivation, profile governance, routing + slot,
-the `_space.py` split, and the pure sbatch-spec extraction). The promotion itself
-is mechanical; the two extractions are not.
+the `_space.py` split, the pure sbatch-spec extraction, subset staging, and the
+token store). The promotion itself is mechanical; nothing else on that list is.
+The count went 3 → 4 → 5 → 7 as successive reviews traced what the design
+actually requires — the estimate was optimistic every time.
 
 ## 1.7 Non-goals
 

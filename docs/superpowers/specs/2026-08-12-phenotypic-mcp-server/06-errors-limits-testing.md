@@ -60,9 +60,41 @@ human prose and may change.
 | `local_slot_timeout` | error | `W1` waited past `probe_timeout_s` for the slot |
 | `probe_cap_exceeded` | error | `n_images` above `limits.probe_max_images` |
 | `environment_mismatch` | error | SLURM work requested in a `local` environment with no profiles |
+| `submission_failed` | error | A subprocess exited non-zero or `sbatch` rejected a script for a reason no pre-check models; carries exit code + stderr tail |
 | `scheduler_unreachable` | error | Detection said `slurm`, submission found otherwise; reports probe staleness |
 | `not_owned` | error | Cancel targeted a run with no `RunRegistry` record here |
 | `version_drift` | **warning** | Spec `phenotypic_version` ≠ installed; matches the engine's warn-only posture |
+
+### Mapping engine exceptions onto the envelope
+
+The codes above are the target; these are the sources.
+
+**`pydantic.ValidationError` → one `issues` row per `.errors()` entry.** A single
+`ValidationError` routinely carries several, and collapsing them would hide all
+but the first. Per entry: `type` selects the code (`extra_forbidden` →
+`unknown_param`, `missing` → `invalid_param`, everything else →
+`invalid_param`), and `loc` becomes `path`.
+
+**`loc` → `path` uses the agent's own addressing, not pydantic's.** A `loc` of
+`('ops', 3, 'params', 'inoculum_detector', 'params', 'threshold')` renders as
+`ops[3].params.inoculum_detector.params.threshold` — integers become
+`[i]`, names join with `.`. The one existing formatter in the repo,
+`_validation_messages` (`gui/tune/_setup_authoring.py:524-531`), instead does
+`".".join(...)`, yielding `0.sigma`; that is the GUI's convention and does not
+match the bracketed paths every example here uses. The projection is new code,
+not reuse.
+
+**`hint`** is populated by `difflib.get_close_matches` against the model's own
+`model_fields` for `unknown_param`/`unknown_class`, and is otherwise absent —
+never a generic string.
+
+**Subprocess and scheduler failures.** Not every failure is pre-checkable; §5.4
+pre-validates resume compatibility precisely because the CLI's own failure mode
+is `sys.exit(1)` inside a subprocess. Anything that escapes those checks maps to
+`submission_failed`, carrying the captured stderr tail and the exit code, rather
+than falling through the closed set. This covers an `sbatch` that passed the
+liveness probe but rejected a specific script (an account or QoS the profile caps
+did not model), and any CLI traceback the pre-checks did not anticipate.
 
 ## 6.3 Limits
 

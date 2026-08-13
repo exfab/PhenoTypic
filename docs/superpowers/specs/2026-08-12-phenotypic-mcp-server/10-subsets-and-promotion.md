@@ -49,7 +49,7 @@ the other:
     "rationale": "8 batches x 3 plates each; equal allocation so the two rare
                   low-contrast batches are not swamped by the six common ones"
   },
-  "images": ["plateA_01.tif", "plateA_07.tif", "…"],
+  "images": ["plateA/plateA_01.tif", "plateA/plateA_07.tif", "plateB/plateB_03.tif", "…"],
   "n_images": 24,
   "digest": "sha256:77b2…",
   "coverage": {
@@ -65,7 +65,10 @@ Three things it must record, because each one changes how much the results mean:
 
 - **`parent` with a digest** — so a promotion can verify the full dataset has not
   changed since development, and so `campaign_status.comparable` (§8.3) has its
-  dataset identity.
+  dataset identity. `images` entries are **parent-relative paths**, not bare
+  filenames: `scan_directory_structure` treats one level of subdirectories as
+  separate datasets, so a bare name cannot disambiguate two datasets that both
+  contain `plate_001.tif` (§10.3.1).
 - **`selection`** — the selector class, its params, and its seed. A
   `RandomSubsetSelector` and a `MetadataGroupSubsetSelector` support very
   different confidence in the result, and a recorded seed makes either
@@ -234,12 +237,60 @@ approaching the promotion gate.
 | `campaign_put` | `dataset.images` path | `subset_id`, recorded on the campaign |
 | `deploy_start` | `images` + `scope` | `subset_id` + `scope`; `scope:"full"` resolves to `subset.parent` |
 
-The server resolves `subset_id` → the subset's recorded `images` list and passes
-*those* to the engine. A raw parent path in a subset-scoped phase is refused
-with `code: "subset_required"`. This also gives `campaign_status.comparable`
-(§8.3) its dataset identity for free: every arm in a campaign shares one
-`subset_id`, so arms are comparable by construction rather than by after-the-fact
-digest comparison.
+A raw parent path in a subset-scoped phase is refused with
+`code: "subset_required"`. This also gives `campaign_status.comparable` (§8.3)
+its dataset identity for free: every arm in a campaign shares one `subset_id`,
+so arms are comparable by construction rather than by after-the-fact digest
+comparison.
+
+### Neither engine accepts a file list — the subset must be materialized
+
+An earlier draft said the server "resolves `subset_id` → the subset's recorded
+images list and **passes those to the engine**". **That is not implementable.**
+Both call surfaces take a single *path*, not a list:
+
+| Engine | Input | Consumed by |
+|---|---|---|
+| `python -m phenotypic.tune run` | `-i/--input`, help text literally "image directory" (`tune/__main__.py:49`) | `_load_images(input_dir)` → `Path(input_dir).iterdir()`, **non-recursive directory scan** (`_run.py:235-279`) |
+| `python -m phenotypic` | `-i/--input`, `click.Path(dir_okay=True, file_okay=True)`, **no `multiple=True`** (`phenotypicCLI.py:721-730`) | `scan_directory_structure(input_path)` — walks root images, or one level of subdirectories as separate datasets (`_cli_directory_scanner.py:28-117`) |
+
+There is no manifest flag, no repeated `-i`, no file-list parameter on either.
+`--sample N` only randomly *thins* datasets already discovered by the scan; it
+cannot select named images.
+
+So the server **materializes a staging directory** and passes *that*:
+
+```
+<workspace>/.phenotypic-mcp/subset-staging/<subset-digest>/
+    plateA/plateA_01.tif -> ../../../../data/plates/plateA/plateA_01.tif
+    plateA/plateA_07.tif -> …
+    plateB/plateB_03.tif -> …
+```
+
+Four properties it must have:
+
+1. **It mirrors the parent's dataset substructure.** `scan_directory_structure`
+   treats one level of subdirectories as separate datasets and rejects mixed
+   structures, so a flat staging dir would silently collapse a multi-dataset
+   parent into one dataset and change every `Metadata_Dataset` value. The
+   subset artifact's `images` entries are therefore **parent-relative paths**
+   (`plateA/plateA_01.tif`), not bare filenames — an earlier §10.2 example
+   showed bare names, which cannot disambiguate two datasets containing
+   `plate_001.tif`.
+2. **Symlinks by default, copies on fallback.** Symlinks are cheap and a
+   subset may be staged repeatedly across an unattended campaign. But Windows
+   symlink creation needs elevated privileges or Developer Mode, and this
+   project supports Windows — so the server probes once, falls back to copying,
+   and **reports which it used** in `subset_get`. A silent copy of a large
+   subset is a surprise worth surfacing.
+3. **Keyed by the subset digest**, so re-staging an unchanged subset is a no-op
+   and two concurrent arms share one staging directory rather than racing.
+4. **It lives under `.phenotypic-mcp/`**, not under `runs/` or the parent — it
+   is server scratch, and `--restart`/`--overwrite` semantics must never reach
+   the parent images through it.
+
+This staging layer is **new work that §1.6's reuse inventory missed** and §7's
+prerequisites did not list. It is tracked as P6.
 
 The single exception is `scope: "full"`, which is the *point* of the promotion
 gate and is guarded by `promotion_token`.

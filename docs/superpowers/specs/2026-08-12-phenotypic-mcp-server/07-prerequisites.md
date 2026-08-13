@@ -3,8 +3,8 @@
 Status: **draft, reviewed once, revised — P1 is significantly larger than first estimated**
 Date: 2026-08-12
 
-Five changes land before the MCP server is fully useful. P1 is a substantial
-engine change to `phenotypic.tune` needing its own spec; P2–P5 are smaller.
+Six changes land before the MCP server is fully useful. P1 is a substantial
+engine change to `phenotypic.tune` needing its own spec; P2–P6 are smaller.
 
 ---
 
@@ -339,6 +339,22 @@ check vestigial. Small, self-contained, and independent of P1–P4.
 Until it lands, the MCP server refuses inexpressible profiles rather than
 dropping keys (`profile_not_expressible`), and `paths` in the profile config
 declares which surfaces a profile is valid for.
+
+---
+
+## P6 — Subset staging
+
+Neither engine accepts a file list: `tune`'s `-i` is documented "image
+directory" and `_load_images` does a non-recursive `iterdir`
+(`_run.py:235-279`); the forward CLI's `-i` is a single `click.Path` with no
+`multiple=True` and feeds `scan_directory_structure`
+(`_cli_directory_scanner.py:28-117`). So §10's whole subset boundary depends on
+the server **materializing** a staging directory that mirrors the parent's
+dataset substructure — symlinks by default, copies where symlinks need
+privileges (Windows), keyed by subset digest so concurrent arms share one.
+
+Small but genuinely new, and it has a cross-platform edge the rest of the design
+does not. §1.6's reuse inventory missed it.
 
 ---
 

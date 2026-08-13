@@ -250,6 +250,42 @@ Same arguments as `deploy_plan`, plus:
 the request, returning `code: "plan_required"` or `"plan_stale"`. Every cluster
 submission is therefore preceded by an inspectable preview.
 
+### What a token *is*
+
+A token is **an opaque random id naming a persisted record** — not a digest of
+its own contents.
+
+```
+<workspace>/.phenotypic-mcp/plans/<token>.json
+{"token":"pl_7f3a…","kind":"plan","created":"…","expires":"…",
+ "scope":"subset","pipeline_digest":"sha256:9c1e…","subset_id":"subsets/…",
+ "subset_digest":"sha256:77b2…","compute":{"profile":"cpu-bulk","time":"02:00:00"},
+ "argv_digest":"sha256:4b0a…","consumed_by":null}
+```
+
+The alternative — a **self-describing hash** of `(pipeline_digest,
+images_digest, compute)` — is tempting because it needs no storage and the
+server could recompute it. It is also **forgeable**: §2.5 publishes the exact
+digest format, so any agent could compute a valid token without ever calling
+`deploy_plan`, and "plan-then-submit is mandatory" would be a fiction rather
+than a gate. A random id cannot be guessed from public inputs.
+
+Persisting rather than holding in memory follows from §1.3: the server may be
+killed at any time and holds no authoritative state, so an in-memory token map
+would make every restart silently invalidate approvals you had already given.
+
+| Property | Rule |
+|---|---|
+| Storage | `<workspace>/.phenotypic-mcp/plans/<token>.json`, atomic write (added to §2.3's tree and §2.6's concurrency table) |
+| Validation | Re-derive the digests from the *current* request and compare; any mismatch → `plan_stale` naming which field moved |
+| Expiry | `expires` (default 24 h); an expired token → `plan_stale`, not silent acceptance |
+| Single use | `consumed_by` is CAS'd to the `run_id` on a successful `deploy_start`; a second use → `plan_stale`. Re-running a deploy means re-planning, which is cheap and keeps the preview honest |
+
+`promotion_token` records are identical in shape with `kind: "promotion"`, and
+additionally bind `parent_digest` — so a parent that gained images between
+review and submit invalidates the token (`promotion_stale`, §10.5) rather than
+quietly deploying over a dataset you did not review.
+
 The token is satisfied two ways: a direct `deploy_plan` call, or membership in
 an **approved campaign** (§8), which stamps a token per arm at approval time.
 That keeps the human checkpoint in the planning phase where you actually are,
@@ -361,9 +397,28 @@ external process can force a refresh by invoking the same handler —
 `last_updated` may lag, so the field is always returned and the agent is
 expected to read it.
 
-`detail: "results"` adds the deliverables inventory and a **summary** of
-`measurements.parquet`: row count, column list, and per-column describe. Never
-raw rows — the parquet path is returned for anything more.
+`detail: "results"` adds the deliverables inventory and a **bounded summary** of
+`measurements.parquet`. Never raw rows — the parquet path is returned for
+anything more.
+
+The bound is not optional. §3.1 already establishes that one measurer
+(`MeasureTexture` at `scale=[5,10]`) emits **130 columns**, and a full deploy
+produces per-object rows across every image, so "per-column describe" is
+unbounded in both dimensions as first written:
+
+| Bound | Default |
+|---|---|
+| Columns described | numeric columns only, first 40 by schema order; `columns_truncated: true` and the full column list still returned |
+| Rows scanned | full file via the parquet reader's column projection — only the described columns are read, not the whole table |
+| `QC_MetadataOnly` rows | counted separately and excluded from the describe, so metadata-only phantoms never inflate a distribution |
+
+**And this call is offloaded.** `deploy_status` is classified `W0`, and §1.5
+runs `W0` inline on the event loop — but reading and describing a large parquet
+is real I/O plus compute, and doing it inline would stall every other subagent's
+`W0` call for its duration, which is the exact failure `run_in_executor` exists
+to prevent for `W1`. `detail: "results"` therefore runs in the executor even
+though it takes no `LocalComputeSlot`; it is `W0` in the sense of *not touching
+the compute slot*, not in the sense of *being instant*.
 
 Two facts the response surfaces because getting them wrong corrupts analysis:
 

@@ -292,10 +292,30 @@ time. Also the natural way to see what tuning actually changed:
 | Arg | Type | Default | Meaning |
 |---|---|---|---|
 | `pipeline_id` | `str` | — | Target |
-| `format` | `"summary" \| "envelope"` | `"summary"` | Compact rendering or raw JSON |
+| `format` | `"summary" \| "envelope" \| "raw"` | `"summary"` | Compact rendering, the agent-facing envelope, or the literal file |
 
 `summary` lists ops with **non-default params only**, plus `produces_columns`
 and `requires_gpu`.
+
+**`envelope` is projected, not the file verbatim** — this matters because the two
+shapes differ. On disk, `_serialize_pipeline_config`
+(`_serializable_pipeline.py:153-155`) writes operations under **`pipe_cfgs`** as a
+**name-keyed dict** (`{"BlurGauss": {...}, "BlurGauss_1": {...}}`), whereas every
+agent-facing example in this spec — and `pipeline_put`'s input contract — uses
+**`ops` as an ordered array**. `envelope` returns the `ops`-array form, so
+`pipeline_get` → edit → `pipeline_put` round-trips without the agent having to
+know about `pipe_cfgs` or about internal instance names.
+
+`raw` returns the file bytes for the rare case someone wants exactly what is on
+disk. It is not the default precisely because handing an agent `pipe_cfgs` when
+every documented example says `ops` invites malformed edits.
+
+**Internal op names are not stable identifiers.** `_make_unique`
+(`_image_pipeline_core.py:779-810`) recomputes suffixes from list position every
+time a collection is normalized, so removing an earlier `BlurGauss` renames a
+later `BlurGauss_1` to `BlurGauss`. Nothing agent-facing exposes these names —
+addressing is by `(slot, index)` — and nothing in the server may key state off
+them.
 
 ### `pipeline_probe` (`W1`)
 
@@ -325,8 +345,15 @@ So:
 
 - The server owns **one** probe worker subprocess, spawned lazily and kept warm
   (paying the `import phenotypic` cost once, not per probe).
-- A probe sends `{pipeline envelope, image paths, options}` over a pipe and
-  awaits a result.
+- A probe sends **`{pipeline_path, image_paths, options}` as JSON** over the
+  pipe. It does **not** send a pipeline envelope or a pickled object: the worker
+  calls `ImagePipeline.from_json(path)` itself, so reconstruction goes through
+  exactly the same code path — and inherits exactly the same round-trip
+  guarantees — as every other consumer. Sending a payload instead would make the
+  probe the one place a pipeline reaches an engine without passing through disk,
+  contradicting §2.1, and would raise a pickle-vs-JSON encoding question for
+  `NdArrayField` and nested `OperationField` values that nothing else in this
+  design has to answer.
 - Timeout is `SIGKILL` + respawn. The slot is released on process death, so a
   runaway probe cannot wedge the server.
 - A probe that OOMs kills the worker, not the server — which also bounds the
@@ -337,7 +364,8 @@ So:
 ```json
 {"ok":true,
  "data":{"n_images":2,
-   "per_image":[{"name":"plateA_01.tif","num_objects":94,"elapsed_s":3.4,"peak_rss_mb":812}],
+   "per_image":[{"name":"plateA_01.tif","num_objects":94,"elapsed_s":3.4,
+                 "rss_after_mb":812}],
    "measurements":{"n_rows":188,"columns":["Size_Area","Shape_Circularity"],
      "describe":{"Size_Area":{"count":188,"mean":412.3,"std":88.1,"min":95,"max":901}},
      "parquet":".phenotypic-mcp/probes/edge-v3/measurements.parquet"},
@@ -350,11 +378,23 @@ So:
   explicit `benchmark_results()` call; nothing persists it. The probe is the only
   place benchmarking is wired anywhere.
 - `num_objects` reads `image.num_objects`, not the `objmap` accessor.
+- **`rss_after_mb` is a snapshot, not a peak.** The only RSS instrumentation in
+  the codebase is `_get_process_rss_mb()` (`_image_pipeline_core.py:813-824`), a
+  point-in-time `psutil` read taken after each operation — there is no sampling
+  thread anywhere. An OS peak (`ru_maxrss`) would be worse here, not better: it
+  is a monotonic high-water mark for the **whole process since start**, and the
+  probe worker is deliberately kept warm across images, so images 2–4 of a probe
+  would all report image 1's peak. An earlier draft called this field
+  `peak_rss_mb`, which promised a measurement nothing computes.
 - Per-image timing is recorded to lineage so `deploy_plan` estimates have a real
   basis (§5.3).
 
 **`stages: true`** runs `apply_with_intermediates` (`_image_pipeline_core.py:969`)
-instead of `apply`, and returns per-operation numeric evidence — the affordance
+**with `output_dir=None`** — intermediates stay in memory as `Image` copies.
+Passing an `output_dir` writes each snapshot to HDF5 and sets the dict value to
+`None`, which would force a second pass re-reading from disk to compute any layer
+statistic. With `n_images` capped at 4 the in-memory form is both simpler and
+cheaper. It returns per-operation numeric evidence — the affordance
 that makes incremental construction possible (§8.7):
 
 ```json
