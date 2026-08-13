@@ -164,16 +164,6 @@ right *baseline* even when it does.
 |---|---|
 | `grouping_metadata` | CSV supplying the grouping column. **Named distinctly on purpose** — three different CSVs appear in this spec: `deploy_plan.metadata_csv` (joined onto the output mirror), this one (subset stratification), and `QCScorer.check.metadata` (the expected counts the whole objective is scored against). Passing the wrong one at the scorer produces a meaningless objective rather than an error. |
 | `group_key` | The column in `grouping_metadata` naming each plate's group |
-
-**Only the new class was renamed.** `grouping_metadata` is this spec's choice
-because `MetadataGroupSubsetSelector` does not exist yet. `ExpectedVsDetectedCount.metadata`
-**ships today with no alias** (`analysis/qc/_expected_vs_detected.py:208`), so it
-keeps its name and is disambiguated in prose. A draft of this spec renamed it to
-`expected_counts_csv` in two worked examples — a field that does not exist, which
-would raise `missing` on `metadata` and `extra_forbidden` on the invention: the
-exact failure §4.2's pre-submit checks exist to prevent, written into the
-example. **A spec may name a class it is introducing; it may not rename one that
-already ships.**
 | `allocation` | `proportional` (mirror group sizes) or `equal` (same count per group, so a rare condition is not lost) |
 | `min_per_group` | Floor per group; groups smaller than it are taken whole |
 
@@ -221,7 +211,7 @@ nothing more.
 
 **If the held-out split should also benefit from the grouping**, something must
 populate `image.metadata[group_key]` from the CSV at tune load time. That is an
-engine change to `phenotypic.tune`, it is **not** in §7's P1–P6, and it is not
+engine change to `phenotypic.tune`, it is **not** in §7's P1–P7, and it is not
 assumed anywhere in this design. Until it exists, stratifying a subset does not
 change how the split is derived.
 

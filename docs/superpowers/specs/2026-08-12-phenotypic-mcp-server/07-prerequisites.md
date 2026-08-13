@@ -384,14 +384,27 @@ subprocess, and exactly why there is nothing to copy.
 ## Rollout order
 
 ```
-P2 (_services promotion)  ──┐
-P3 (catalog + descriptor) ──┼──> MCP v1: catalog + pipeline + probe + campaigns
-P4 (--screen guard)       ──┤        + local tune + deploy (W0/W1/W3)
-                            │
-L1 (negative-control run   ─┘
-    on the real cluster)
+P2 (_services promotion)   ──┐
+P3 (catalog + descriptor)  ──┤
+P4 (--screen guard)        ──┼──> MCP v1: catalog + pipeline + probe + campaigns
+P6 (subset staging)        ──┤        + local tune + deploy (W0/W1/W3)
+P7 (distributed finalize)  ──┘
+                              (P5, tune --slurm k=v, is independent — it only
+                               retires §5.2.1's expressibility check)
+
+L1 (negative-control run on the real cluster mount)
       └──> P1 (JournalStorage: 5 sites + B1–B4)  ──> distributed tune (W2 on SLURM)
 ```
+
+**P6 is v1-critical, not optional infrastructure.** An earlier version of this
+diagram omitted it, which would have led an implementer to build P2–P4, believe
+v1 was reachable, and find that *every* subset-scoped tool refuses: §10.3.1 makes
+`subset_id` mandatory for `tune_start`, `campaign_put`, and `deploy_start`, and a
+subset cannot reach either engine without the staging directories P6 builds.
+
+P7 is listed under v1 because `tune_export_best` on a **local** distributed-free
+study still needs the finalize path to be a real entry point; only the journal
+backend waits on L1.
 
 MCP v1 ships without P1. Building pipelines, probing them, planning campaigns,
 tuning **locally**, and deploying to SLURM all work with today's engines. Only

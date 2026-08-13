@@ -327,15 +327,23 @@ What exists today versus what this design adds:
 | `gui/tune/_space.py` pure/view split | **new** (real refactor) | §1.4 — forced by `import dash` at `_space.py:33-34` |
 | `build_array_script_spec` extraction (pure sbatch render) | **new** (real refactor) | §5.3 — `generate_array_job_script` writes files under `output_dir`, so `deploy_plan` cannot reuse it |
 | Directory-level digest helper | **new** | §7 P3 — every existing fingerprint helper is single-file |
+| Persistent probe worker subprocess | **new** | §3.2 — nothing bounds an in-process `apply()` by wall clock; `LocalRunner` is fire-and-forget `Popen`, not a request/response worker |
+| Killable store-open subprocess | **new** | §4.4, §7 P7 — the nearest analogue (the GUI Monitor's live-open pool) is documented as deliberately *non*-killable |
 | Subset staging (materialize a file list as a directory) | **new** | §7 P6 — neither engine accepts a file list |
 | Plan / promotion token records | **new** | §5.4 — opaque ids over persisted records, not forgeable digests |
 
-Roughly: the server is a **thin adapter plus seven genuinely new pieces**
-(descriptor projection + column derivation, profile governance, routing + slot,
-the `_space.py` split, the pure sbatch-spec extraction, subset staging, and the
-token store). The promotion itself is mechanical; nothing else on that list is.
-The count went 3 → 4 → 5 → 7 as successive reviews traced what the design
-actually requires — the estimate was optimistic every time.
+Roughly: the server is a **thin adapter plus nine genuinely new pieces** —
+descriptor projection + column derivation, profile governance, routing + slot,
+the `_space.py` split, the pure sbatch-spec extraction, subset staging, the token
+store, the persistent probe worker, and the killable store-open subprocess. The
+`_services` promotion itself is mechanical; nothing else on that list is.
+
+The count went **3 → 4 → 5 → 7 → 9** as successive reviews traced what the design
+actually requires. The estimate was optimistic every time, and twice this table
+went stale because a later section grew a prerequisite that was never carried
+back here — which is the same drift the reviews kept finding in the worked
+examples, one level up. **This table and `README.md`'s summary are part of the
+edit whenever §7 gains a prerequisite.**
 
 ## 1.7 Non-goals
 

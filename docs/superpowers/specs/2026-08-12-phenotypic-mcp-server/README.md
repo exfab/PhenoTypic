@@ -77,10 +77,12 @@ measure that would otherwise have shipped looking principled.
   connection; they do not get their own process. Hence one `LocalComputeSlot`.
 - **Disk is the authority.** The server holds no state whose loss matters.
 - **Roughly 80% of the substrate exists**, mostly as a Dash-free tier under
-  `gui/`. The server is a thin adapter plus five genuinely new pieces —
-  descriptor projection + column derivation, profile governance, routing + the
-  compute slot, the `_space.py` pure/view split, and a pure sbatch-spec
-  extraction. The last two only surfaced under review.
+  `gui/`. The server is a thin adapter plus **nine** genuinely new pieces
+  (§1.6) — descriptor projection + column derivation, profile governance,
+  routing + the compute slot, the `_space.py` pure/view split, a pure sbatch-spec
+  extraction, subset staging, the token store, the probe worker, and the killable
+  store-open subprocess. All but the first three surfaced only under review; the
+  count went 3 → 4 → 5 → 7 → 9.
 - **Two hard refusals:** no `--overwrite` (it is `shutil.rmtree`), and no raw
   sbatch passthrough (`parse_slurm_args` constrains neither keys nor values).
 - **Development happens on a subset.** The full dataset is touched once, behind
