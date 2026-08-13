@@ -118,6 +118,9 @@ Four deliberate affordances:
    {"ref":1, "enabled":false},
    {"ref":2, "domain":{"kind":"float_range","low":1.0,"high":4.0,"step":0.25}}],
  "scorer":{"class":"QCScorer",
+           // `metadata` is CORRECT here and deliberate: ExpectedVsDetectedCount
+           // ships this field name with no alias. §10.3's `grouping_metadata`
+           // rename applies only to the selector this spec introduces.
            "params":{"check":{"metadata":"data/tune_layout.csv"}}},
  "strategy":{"kind":"optuna","sampler":"tpe","n_trials":200,"seed":0},
  "held_out":{"held_out_fraction":0.2}}

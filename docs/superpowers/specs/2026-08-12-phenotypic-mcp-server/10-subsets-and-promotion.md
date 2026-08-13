@@ -162,10 +162,16 @@ right *baseline* even when it does.
 
 | Param | Meaning |
 |---|---|
-| `grouping_metadata` | CSV supplying the grouping column. **Named distinctly on purpose** — three different CSVs appear in this spec: `deploy_plan.metadata_csv` (joined onto the output mirror), this one (subset stratification), and `QCScorer.check.metadata` (the expected counts the whole objective is scored against). Passing the wrong one at the scorer produces a meaningless objective rather than an error. |
+| `grouping_metadata` | CSV supplying the grouping column. **Named distinctly on purpose** — three different CSVs appear in this spec: `deploy_plan.metadata_csv` (joined onto the output mirror), this one (subset stratification), and `QCScorer.check.metadata` (the expected counts the whole objective is scored against). Passing the wrong one at the scorer produces a meaningless objective rather than an error. **This naming choice does NOT extend to the other two** — see below. |
 | `group_key` | The column in `grouping_metadata` naming each plate's group |
 | `allocation` | `proportional` (mirror group sizes) or `equal` (same count per group, so a rare condition is not lost) |
 | `min_per_group` | Floor per group; groups smaller than it are taken whole |
+
+> **Do not "fix" `QCScorer.check.metadata` to match.** Verified by
+> construction: `ExpectedVsDetectedCount(metadata=…)` succeeds and
+> `ExpectedVsDetectedCount(expected_counts_csv=…)` raises `ValidationError`.
+> A reviewer reading the disambiguation rationale above, without checking the
+> code, proposed exactly this change — twice.
 
 **Only a class this spec introduces may be renamed.** `grouping_metadata` is
 this spec's choice because `MetadataGroupSubsetSelector` does not exist yet.

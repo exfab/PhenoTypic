@@ -80,6 +80,7 @@ This shapes three design choices that would otherwise look arbitrary:
   "subset_id": "subsets/plates-dev-24.subset.json",
   "metadata_csv": "data/tune_layout.csv",
   "objective": {"scorer": {"class": "QCScorer",
+                           // `metadata` is CORRECT — the shipped field name (§10.3)
                            "params": {"check": {"metadata": "data/tune_layout.csv"}}},
                 "sense": "cost in [0,1], lower is better"},
   "budget": {"trials_per_arm": 200, "max_concurrent_arms": 3},
