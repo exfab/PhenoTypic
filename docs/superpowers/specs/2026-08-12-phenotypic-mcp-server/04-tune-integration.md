@@ -201,7 +201,7 @@ would silently attach to **one** Optuna study and pool their trials (hazard H2,
 |---|---|
 | local study | `sqlite:///<study>/.pht-tune-cache/study.db` |
 | SLURM, P1 landed | `journal:///<study>/.pht-tune-cache/journal.log` |
-| SLURM, P1 not landed, Postgres configured | the configured password-less URL, with a per-study database |
+| SLURM, P1 not landed (or L1 unproven), Postgres configured | the configured password-less URL, with a per-study database — supported, not recommended once the journal lands (§7) |
 | SLURM, P1 not landed, no Postgres | **refused**, `code: "distributed_storage_unavailable"` |
 
 That last row matters: `_validate_slurm_request` does **not** check the storage

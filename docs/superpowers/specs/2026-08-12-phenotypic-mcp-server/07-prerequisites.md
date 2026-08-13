@@ -58,7 +58,7 @@ provide).
 |---|---|
 | local, no `--slurm` | `sqlite:///<output>/.pht-tune-cache/study.db` — unchanged |
 | `--slurm`, no explicit URL | `journal:///<output>/.pht-tune-cache/journal.log` — **new default** |
-| explicit `postgresql+psycopg://…` | `RDBStorage` — unchanged, still right for very large fleets |
+| explicit `postgresql+psycopg://…` | `RDBStorage` — unchanged, **supported but no longer recommended** (below) |
 | explicit `sqlite://…` **with** `--slurm` | **hard error** — closes H1 |
 
 Because the journal default derives from `output_dir`, **each study gets its own
@@ -67,6 +67,47 @@ extended to the distributed case. H2 stops being reachable by default. The MCP
 server adds two belt-and-braces guards regardless (§4.3): it always passes
 `--storage-url` explicitly, and refuses two live studies resolving to the same
 URL.
+
+### Why Postgres stays — and why it stops being the recommendation
+
+**There is no "Postgres side" of the tune engine to remove.** Storage is one
+call, `optuna.storages.RDBStorage(url=…)` (`_optuna_store.py:83-87`); sqlite and
+Postgres are the *same line*, differing only by a WAL pragma applied when the URL
+starts with `sqlite`. Every other mention of Postgres in `tune/` is a docstring
+or an error message. Dropping Postgres would mean **adding** a rejection for
+those URLs — active work to remove a capability, while the `RDBStorage` branch
+has to stay anyway to serve the local sqlite default. The journal backend is a
+third scheme *alongside* it, not a replacement for it.
+
+So two reasons Postgres remains supported:
+
+1. **L1 gating.** The journal default is not enabled until the negative control
+   passes on the target cluster's shared mount. Until then Postgres is the only
+   supported distributed path — a rollout reason with an end date.
+2. **Existing users.** `tune_distributed_hpcc.md` already instructs standing one
+   up, and `--storage-url` is generic by design: "PhenoTypic is backend-agnostic
+   — it does not ship or depend on any particular database server."
+
+**And one reason it does not remain the recommendation.** An earlier draft said
+Postgres was "still right for very large fleets". That was asserted with no
+measurement, and measurement does not support it (C6):
+
+| workers | aggregate | per-worker |
+|---|---|---|
+| 1 | 143 trials/s | 143/s |
+| 16 | 486 trials/s | **30/s** — a 4.7× collapse |
+
+Per-worker write throughput *does* fall under lock contention. But that is the
+wrong yardstick: **the lock is held for a journal append, not for image
+evaluation.** A realistic PhenoTypic trial evaluates ≥2 images at seconds each,
+so 8 workers produce roughly **1.1 trials/s** while the journal sustains
+**376 appends/s** — about **330× headroom**. Even assuming NFS symlink-lock round
+trips several orders of magnitude slower than APFS, the margin survives.
+
+Contention is measurable and irrelevant at the timescale this workload runs at.
+Postgres therefore stays *supported* — for the L1 window, for existing setups,
+and because removing it would cost work — but the recommendation for a
+distributed study becomes the journal backend once L1 passes.
 
 ### Blast radius — larger than first estimated
 

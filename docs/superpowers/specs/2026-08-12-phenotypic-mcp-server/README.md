@@ -56,6 +56,9 @@ local filesystem the negative control also passes, meaning C2a there measures OS
 `O_APPEND` atomicity rather than the lock. `--require-discrimination` is the gate
 that must pass on the target cluster mount before P1 is implemented.
 
+It also measures throughput headroom (C6), which is what retired the claim that
+Postgres remains right for large fleets.
+
 **`contrast_trait_measure.py`** — the choice of contrast measure for §9.3.2.
 Establishes that Otsu's η and Cohen's d are scale-invariant (unchanged across a
 20× contrast reduction), that Michelson tracks contrast linearly, that η's

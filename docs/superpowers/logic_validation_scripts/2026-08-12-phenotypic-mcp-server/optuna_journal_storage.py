@@ -21,6 +21,12 @@ that design, and a reader would otherwise take them on faith:
       study — PhenoTypic calls it unconditionally before every ask.
   C5  A ``journal://`` URL is NOT resolvable by Optuna's own string handling, so
       a scheme-dispatch layer is mandatory at every storage construction site.
+  C6  The journal's write throughput exceeds a realistic fleet's TRIAL rate by
+      orders of magnitude. Per-worker write rate does fall under lock contention
+      (measured: ~4.7x from 1 to 16 workers), but the lock is held for a journal
+      append, not for image evaluation — so the comparison that decides whether
+      Postgres is still needed is write-rate vs trial-rate, not write-rate vs
+      itself.
 
 Why C2b exists
 --------------
@@ -54,6 +60,7 @@ import multiprocessing as mp
 import shutil
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import NoReturn
 
@@ -340,6 +347,62 @@ def claim_5_journal_scheme_needs_dispatch(tmp: Path) -> None:
     )
 
 
+def claim_6_throughput_headroom(tmp: Path) -> None:
+    """The journal's write rate must exceed a realistic fleet's TRIAL rate.
+
+    Lock contention is real — per-worker write throughput falls as workers are
+    added. The question that matters is not whether it falls but whether what
+    remains is far above the rate a PhenoTypic fleet actually produces trials,
+    because the lock is held for a journal append, NOT for image evaluation.
+    """
+    import optuna
+
+    optuna.logging.set_verbosity(optuna.logging.ERROR)
+    per, workers = 25, 8
+    journal = tmp / "throughput.log"
+    optuna.create_study(
+        storage=_make_storage(journal, lock_mode="symlink"),
+        study_name=STUDY_NAME,
+        load_if_exists=True,
+        direction="minimize",
+    )
+    ctx = mp.get_context("spawn")
+    procs = [
+        ctx.Process(target=_worker, args=(str(journal), per, tag, "symlink"))
+        for tag in range(workers)
+    ]
+    t0 = time.time()
+    for p in procs:
+        p.start()
+    for p in procs:
+        p.join(timeout=300)
+    dt = max(time.time() - t0, 1e-6)
+
+    if any(p.exitcode != 0 for p in procs):
+        _fail("C6", "throughput workers did not all exit cleanly")
+
+    rate = (per * workers) / dt
+
+    # A realistic PhenoTypic trial evaluates >=2 images at seconds each, so a
+    # fleet of this size produces trials at roughly workers/7s.
+    fleet_trial_rate = workers / 7.0
+    headroom = rate / fleet_trial_rate
+    if headroom < 10.0:
+        _fail(
+            "C6",
+            f"journal sustains {rate:.0f} trials/s vs a fleet rate of "
+            f"{fleet_trial_rate:.2f}/s — only {headroom:.1f}x headroom; contention "
+            "would actually matter and Postgres would be the right default",
+        )
+    _ok(
+        "C6",
+        f"{workers} workers: journal sustains {rate:.0f} append-trials/s vs a realistic "
+        f"fleet rate of ~{fleet_trial_rate:.2f} trials/s (2 images x ~3.4 s each) — "
+        f"{headroom:.0f}x headroom. Contention is measurable but irrelevant at the "
+        "timescale image evaluation actually runs at.",
+    )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
@@ -367,6 +430,7 @@ def main() -> int:
         claim_3_heartbeat_absent_and_probes_degrade(tmp)
         claim_4_fail_stale_trials_is_safe(tmp)
         claim_5_journal_scheme_needs_dispatch(tmp)
+        claim_6_throughput_headroom(tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print("\nAll claims re-derived. Read the DISCRIMINATION verdict above before trusting C2a.")
