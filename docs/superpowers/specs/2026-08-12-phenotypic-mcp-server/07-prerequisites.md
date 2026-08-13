@@ -3,8 +3,8 @@
 Status: **draft, reviewed once, revised — P1 is significantly larger than first estimated**
 Date: 2026-08-12
 
-Six changes land before the MCP server is fully useful. P1 is a substantial
-engine change to `phenotypic.tune` needing its own spec; P2–P6 are smaller.
+Seven changes land before the MCP server is fully useful. P1 is a substantial
+engine change to `phenotypic.tune` needing its own spec; P2–P7 are smaller.
 
 ---
 
@@ -355,6 +355,29 @@ privileges (Windows), keyed by subset digest so concurrent arms share one.
 
 Small but genuinely new, and it has a cross-platform edge the rest of the design
 does not. §1.6's reuse inventory missed it.
+
+---
+
+## P7 — The distributed finalize
+
+§4.5's distributed finalize has **no code to build from**. There is no
+`finalize`/recompute entry point anywhere in `tune/` or `gui/tune/`;
+`_finalize_outputs`, `_finalize_best_params`, and `_finalize_pareto_outputs`
+have no call sites outside `run_tuning` itself, and the `--recompile` referenced
+by a stale docstring (`_run.py:744`) does not exist on the tune CLI.
+
+So it is a new entry point that opens a store, gates on the study being terminal,
+writes the four artifact groups in the existing order behind a
+`finalize_in_progress` marker, and is safe to re-run. Modest, but it is
+engine-adjacent work rather than server glue, and it was previously described as
+if it were assembling existing pieces.
+
+Related new-build risk worth naming: the **killable subprocess** §4.4 requires
+for store opens has no precedent either. The nearest analogue, the GUI Monitor's
+live-open pool, is explicitly documented as *non*-killable — a timed-out thread
+is abandoned and its single-worker pool stays poisoned for the process lifetime
+(`gui/tune/_callbacks.py:915-930`). That is exactly why the spec calls for a
+subprocess, and exactly why there is nothing to copy.
 
 ---
 

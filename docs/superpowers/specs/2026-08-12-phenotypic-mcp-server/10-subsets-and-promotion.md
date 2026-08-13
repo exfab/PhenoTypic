@@ -167,15 +167,43 @@ right *baseline* even when it does.
 | `allocation` | `proportional` (mirror group sizes) or `equal` (same count per group, so a rare condition is not lost) |
 | `min_per_group` | Floor per group; groups smaller than it are taken whole |
 
-**`group_key` is deliberately the same vocabulary the tune split already uses.**
-`_resolve_groups(images, group_key)` (`tune/_evaluation/_split.py:114-133`)
-resolves it via `image.metadata.get(group_key)`, and `infer_group_key`
-(`_evaluation/_held_out.py:53`) derives it from `scorer.check.groupby[0]`.
-Reusing it buys a real property: **a subset stratified by the same key the
-held-out split groups by will actually have ≥2 groups to hold out**, so
-`derive_split` reaches Tier 2 (whole-group hold-out) instead of falling back to
-the within-group tier with its `within_group_caveat`. Choosing a different key
-here silently degrades the generalization estimate.
+**The selector performs its own CSV→filename join. It does *not* reuse
+`_resolve_groups`.**
+
+An earlier draft claimed it did — "the same vocabulary the tune split already
+uses" — and that reusing it would guarantee the held-out split reached Tier 2
+(whole-group hold-out) rather than the weaker within-group tier. **Both halves
+are false, verified by reproduction.** `_resolve_groups`
+(`tune/_evaluation/_split.py:114-133`) is a pure in-memory
+`image.metadata.get(group_key)` lookup with no CSV and no join, and a freshly
+read image carries only:
+
+```
+MetadataImage_BitDepth, MetadataImage_FileSuffix, MetadataImage_ImageName,
+MetadataImage_ImageType, MetadataImage_UUID
+```
+
+`img.metadata.get("Metadata_Batch")` returns `None`. External CSV columns reach
+data only through `join_metadata` (`_cli/_cli_output_manager.py:83-175`), which
+operates on the **measurement DataFrame** inside `finalize_post_master_outputs`
+— i.e. after a full pipeline run has measured every image, the exact opposite of
+Phase-0 triage.
+
+So the claimed payoff does not follow: `_resolve_groups` returns `{}` for any
+externally-sourced key, and `derive_split` falls through to the within-group or
+data-poor tier **silently** — no error, just a weaker generalization estimate
+than the reader was promised.
+
+What the selector actually does: read `grouping_metadata`, join rows to images
+**by filename / parent-relative path**, and stratify on that. `group_key` names a
+column in that CSV. It is a name shared with the tune split's vocabulary and
+nothing more.
+
+**If the held-out split should also benefit from the grouping**, something must
+populate `image.metadata[group_key]` from the CSV at tune load time. That is an
+engine change to `phenotypic.tune`, it is **not** in §7's P1–P6, and it is not
+assumed anywhere in this design. Until it exists, stratifying a subset does not
+change how the split is derived.
 
 **`EmbeddingSubsetSelector`** — placeholder, and it **fails loudly**.
 
@@ -277,14 +305,49 @@ There is no manifest flag, no repeated `-i`, no file-list parameter on either.
 `--sample N` only randomly *thins* datasets already discovered by the scan; it
 cannot select named images.
 
-So the server **materializes a staging directory** and passes *that*:
+So the server **materializes staging directories** and passes those. **Two
+layouts, because the two engines want opposite things:**
 
 ```
 <workspace>/.phenotypic-mcp/subset-staging/<subset-digest>/
-    plateA/plateA_01.tif -> ../../../../data/plates/plateA/plateA_01.tif
-    plateA/plateA_07.tif -> …
-    plateB/plateB_03.tif -> …
+├── flat/                     # for tune — _load_images is a NON-RECURSIVE iterdir
+│   ├── plateA_01.tif -> …/data/plates/plateA/plateA_01.tif
+│   ├── plateA_07.tif -> …
+│   └── plateB_03.tif -> …
+└── nested/                   # for deploy — Metadata_Dataset comes from subdir names
+    ├── plateA/plateA_01.tif -> …
+    ├── plateA/plateA_07.tif -> …
+    └── plateB/plateB_03.tif -> …
 ```
+
+**A single layout cannot serve both, and picking either one alone breaks the
+other.** `_load_images` (`tune/_tune_cli/_run.py:259-262`) is
+`Path(input_dir).iterdir()` filtered to files — at the root of a *nested*
+staging directory it sees only subdirectories, matches zero images, and the run
+dies on `SystemExit("no images found under …")` (`tune/__main__.py:202-204`).
+Conversely `scan_directory_structure` derives `Metadata_Dataset` from subdirectory
+names, so handing *deploy* a flat directory silently relabels every row's dataset
+to the staging folder name — the exact corruption nesting exists to prevent.
+
+The split is cheap and safe because the two engines genuinely differ in what they
+need: **tune has no dataset concept at all** (`_load_images` returns a flat
+filename-sorted list of `GridImage`s; grouping for scoring comes from the
+scorer's own CSV, not from directories), while deploy's whole output schema keys
+off dataset identity. Both layouts are symlink trees under one digest, so the
+marginal cost is inodes, not bytes.
+
+An earlier draft specified only the nested layout and listed `tune_start` among
+the tools materializing through it — which would have failed outright on the
+spec's own headline example, a `data/plates` parent with `plateA/`/`plateB/`
+subdirectories.
+
+**Fidelity is a check, not just a property.** The staging builder verifies that
+the layout it produced round-trips: `nested/` must reproduce exactly the dataset
+names `scan_directory_structure` would derive from the parent for those images.
+Nothing in the engines can catch a mismatch — `scan_directory_structure` only
+rejects *internally* inconsistent directories (root images **and** subdirectories
+together, `_cli_directory_scanner.py:97-103`); it has no way to know what the
+parent looked like. So the check lives in the builder or nowhere.
 
 Four properties it must have:
 

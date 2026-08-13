@@ -156,6 +156,25 @@ So the mechanism is ordered, and the order is load-bearing:
    scorer is path-configured and serializes faithfully.
 3. **Never use `==` on scorer objects.** Not anywhere, not as a shortcut.
 
+**Validation is bound to bytes, not to a moment.** `campaign_put` checks each
+arm's `.pht-tune` file, but `tune_start` re-parses that file from disk at launch
+(`tune/__main__.py:200`) and `tune_put_spec {overwrite: true}` can rewrite it in
+between. Without a binding, a rewritten scorer would launch unchallenged and the
+drift would surface only in `campaign_status` — after the compute was spent,
+which is precisely what the invariant exists to prevent.
+
+So `campaign_put` records **`spec_digest`** and **`pipeline_digest`** per arm on
+the campaign artifact, and `campaign_start` re-hashes and refuses on mismatch
+(`arm_artifact_drift`). This is the same stale-digest pattern already used for
+`tune_space` → `tune_put_spec` refs and for plan tokens.
+
+The pipeline digest matters independently: `TuningSpec.pipeline` is **embedded**
+(`tune/_spec.py:165`), not referenced, so `campaign_put`'s two checks — "the
+arm's `pipeline` path loads" and "the arm's tune spec constructs" — validate two
+different objects that nothing compares. Editing `pipelines/<name>.json.pht-pipe`
+after `tune_put_spec` snapshotted it means the campaign validates a pipeline the
+arm will never run.
+
 `campaign_put`'s validation order partly self-defends today — arms' tune specs
 are reloaded from `.pht-tune` JSON, and MCP arguments arrive as JSON, so a live
 DataFrame cannot reach the request path. But that is incidental, not designed:
@@ -180,7 +199,7 @@ Takes the campaign body above; defaults `status: "draft"`. Validates
 |---|---|
 | Every arm's pipeline loads and is non-empty | `ImagePipeline.from_json` + the CLI's own emptiness check |
 | Every arm's tune spec constructs | Real `TuningSpec` construction — all validators fire (§4.0) |
-| All arms share the campaign scorer | Structural comparison; `arm_scorer_mismatch` |
+| All arms share the campaign scorer | Structural comparison (§8.2); `arm_scorer_mismatch`. **The arm's `.pht-tune` digest is recorded on the campaign**, and re-verified at `campaign_start` |
 | Scorer is available and portable | `availability()` + the `QCScorer` path rule (§4.2) |
 | Compute profile exists; overrides within caps | §5.2 |
 | Arms resolve to distinct storage URLs | The H2 guard (§7) |

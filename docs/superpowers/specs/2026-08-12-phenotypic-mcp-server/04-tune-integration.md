@@ -356,10 +356,41 @@ export path raises on every distributed study.** An earlier draft of §4.6 calle
 | **Distributed** | **Finalize first, then export** |
 
 The distributed finalize opens the live store, computes `_headline_winner` /
-`_selection_label`, and writes the artifacts the SLURM branch skipped —
-`best_params.json`, `trials.parquet`, `param_importance.json`, and the Pareto
-outputs when multi-objective — then proceeds through the ordinary
-`prepare_best_from_run` → `publish_prepared_export`.
+`_selection_label`, and writes the artifacts the SLURM branch skipped — **in the
+local run's existing order, which is load-bearing**
+(`_run.py:628-641`):
+
+1. `_finalize_outputs` → `trials.parquet`, `param_importance.json`,
+   `best_pipeline.json`
+2. `_finalize_pareto_outputs` → Pareto front, per-axis winners, and it
+   **overwrites** `best_pipeline.json` with the knee
+3. `_finalize_best_params` → `best_params.json` — **last, deliberately**
+4. `_finalize_generalization` → `generalization.json`
+
+then the ordinary `prepare_best_from_run` → `publish_prepared_export`.
+
+**`best_params.json` is written last because it is the de-facto completion
+marker.** `prepare_best_from_run` gates on its existence
+(`gui/tune/_export.py:75-77`, raising `FileNotFoundError` otherwise), so writing
+it first — as an earlier draft of this section specified — would leave an
+interrupted finalize looking exportable when it is not.
+
+**Two interruption hazards the order does not fully close**, both reported rather
+than hidden:
+
+- A kill *inside* step 2 leaves `best_pipeline.json` holding the **scalar** best
+  from step 1, never overwritten by the knee. Since `selection` is recomputed on
+  each export call, a stale file can be labelled `pareto_knee` when it is not.
+  The finalize therefore writes a `finalize_in_progress` marker at step 1 and
+  clears it after step 4; an export finding that marker refuses with
+  `finalize_incomplete` rather than trusting the directory.
+- Finalize is **not** safe against a still-running study. Two concurrent
+  `tune_export_best` calls would each compute a different `_headline_winner` as
+  trials land, and overwrite each other. So finalize is gated on the study being
+  terminal — budget drained or no live scheduler jobs — and refuses with
+  `study_not_finished` otherwise. `_finalize_best_params` silently no-ops when
+  the winner is `None` (`_run.py:712-713`), which would otherwise surface later
+  as a misleading `FileNotFoundError`.
 
 This also **resolves OQ-4.3 affirmatively**: `trials.parquet` *is* written for
 distributed studies, because the finalize already holds the store open and the

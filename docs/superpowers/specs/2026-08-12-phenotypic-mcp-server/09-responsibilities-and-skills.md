@@ -360,6 +360,21 @@ never enumerates traits.**
 | `evidence` present when `source: "probe"`, and its `probe_ref` resolves | Whether the probe supports the claim |
 | Unknown trait keys are **preserved verbatim** | Whether 8×12 matches the plate |
 
+**And the server never *acts* on a trait.** No trait value gates any tool's
+behaviour anywhere in the catalog — not scorer choice, not subset requirements,
+not GPU routing, not operation filtering. `assay_put` and `assay_get` are the
+only tools that touch the artifact; `campaign_put` stores the `assay` reference
+as a string without even checking the file resolves. **The assay is provenance
+for humans and input for skills; it is not an interlock.**
+
+That is deliberate (§9.1), but it should be read alongside §9.3.3's failure
+table, which rates a wrong `plate.nrows` as the worst failure in the system with
+"**Nothing**" catching it. The entire safety story for a `critical`-stakes trait
+like `organism.morphology` rests on the skill being loaded and followed. There is
+no server-side backstop if it is not — which is a materially different risk
+posture than "the server validates the shape of a trait" might suggest on its
+own.
+
 This keeps §9.1 intact under extension: the only closed enum the server enforces
 is `source` — **provenance, not biology**. Every biological vocabulary lives in
 the registry and can grow, and the server's validation logic is *finite and

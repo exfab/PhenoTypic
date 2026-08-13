@@ -380,8 +380,16 @@ So:
 
 - The server owns **one** probe worker subprocess, spawned lazily and kept warm
   (paying the `import phenotypic` cost once, not per probe).
-- A probe sends **`{pipeline_path, image_paths, options}` as JSON** over the
-  pipe. It does **not** send a pipeline envelope or a pickled object: the worker
+- A probe sends **`{pipeline_path, image_paths, options}` as length-prefixed
+  JSON over a dedicated pipe pair — never the worker's stdout.** The engine opens
+  `tqdm` bars when `verbose`/`benchmark` is set, and at least one operation module
+  does a bare `print()` (`detect/nn/_helper/_checkpoint_manager.py`); §6.4 already
+  treats third-party operation output as untrusted content flowing through the
+  server. Any of that on a stdout protocol channel corrupts the stream for every
+  subsequent probe until the worker respawns. The worker's stdout/stderr are
+  captured to a log instead.
+  Note there is no precedent to inherit: `LocalRunner` is fire-and-forget `Popen`
+  plus a log tee, not a persistent request/response worker. It does **not** send a pipeline envelope or a pickled object: the worker
   calls `ImagePipeline.from_json(path)` itself, so reconstruction goes through
   exactly the same code path — and inherits exactly the same round-trip
   guarantees — as every other consumer. Sending a payload instead would make the

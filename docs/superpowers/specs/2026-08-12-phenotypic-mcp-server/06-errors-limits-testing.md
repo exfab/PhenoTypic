@@ -26,6 +26,10 @@ human prose and may change.
 | `unknown_class` | error | Operation/scorer/strategy class not resolvable; carries did-you-mean |
 | `unknown_param` | error | `extra="forbid"` rejected a field; carries did-you-mean |
 | `invalid_param` | error | Pydantic validation failed (type, bound, validator) |
+| `missing_param` | error | A required field was absent (`missing`) — distinct from `invalid_param` |
+| `arm_artifact_drift` | error | An arm's `.pht-tune` or pipeline digest changed between `campaign_put` and `campaign_start` (§8.2) |
+| `finalize_incomplete` | error | A `finalize_in_progress` marker is present; the study directory cannot be trusted (§4.5) |
+| `study_not_finished` | error | `tune_export_best` on a distributed study whose budget is not drained and whose jobs are still live (§4.5) |
 | `stage_order_hint` | **advisory** | GUI DAG validator hint; never blocks |
 | `pipeline_empty` | error | Neither ops nor measurements — the CLI's own check |
 | `stale_target_ref` | error | A `select` ref built against a superseded pipeline digest |
@@ -71,14 +75,37 @@ The codes above are the target; these are the sources.
 
 **`pydantic.ValidationError` → one `issues` row per `.errors()` entry.** A single
 `ValidationError` routinely carries several, and collapsing them would hide all
-but the first. Per entry: `type` selects the code (`extra_forbidden` →
-`unknown_param`, `missing` → `invalid_param`, everything else →
-`invalid_param`), and `loc` becomes `path`.
+but the first. Per entry: `type` selects the code (`extra_forbidden` → `unknown_param`, `missing` →
+**`missing_param`**, everything else → `invalid_param`), and `loc` becomes
+`path`. `missing` gets its own code because `invalid_param` is defined as
+"type, bound, validator" — none of which describe an absent required field.
 
-**`loc` → `path` uses the agent's own addressing, not pydantic's.** A `loc` of
-`('ops', 3, 'params', 'inoculum_detector', 'params', 'threshold')` renders as
-`ops[3].params.inoculum_detector.params.threshold` — integers become
-`[i]`, names join with `.`. The one existing formatter in the repo,
+**`loc` → `path` uses the agent's own addressing, not pydantic's.** Integers
+become `[i]`, names join with `.`. The **nested-operation case does not carry a
+second `params` segment**, which an earlier draft got wrong. Reproduced against
+the real field:
+
+```python
+FilamentousFungiDetector.model_validate(
+    {'inoculum_detector': {'class': 'OtsuDetector', 'params': {'sigmaa': 1.0}}})
+# loc == ('inoculum_detector', 'sigmaa')      <- no 'params' between them
+```
+
+`OperationField`'s `BeforeValidator` (`sdk_/typing_.py:302-343`) calls
+`cls.model_validate(value.get("params", {}))` with the params dict already
+unwrapped, so the inner error's `loc` is bare and pydantic prepends only the
+outer field name. The correct rendering is
+`ops[3].params.inoculum_detector.sigmaa`.
+
+This matters beyond cosmetics: §6.5 mandates one test per code asserting `path`
+is populated. Written against the fictitious shape, those tests would encode the
+wrong contract permanently.
+
+Note also that §3.2's per-entry resolution keeps errors out of the final
+`ImagePipeline(ops=[...])` assembly. That is what makes `ops[0]` addressing valid
+at all — `ImagePipeline.ops` is a `Dict[str, ...]`, so an integer-indexed `loc`
+could not arise from the assembly step, and a union-discrimination failure there
+would inject validator-chain tags into `loc` and multiply the rows. The one existing formatter in the repo,
 `_validation_messages` (`gui/tune/_setup_authoring.py:524-531`), instead does
 `".".join(...)`, yielding `0.sigma`; that is the GUI's convention and does not
 match the bracketed paths every example here uses. The projection is new code,

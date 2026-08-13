@@ -296,7 +296,7 @@ three of the four hops reconstructible.
 | Run record mutation | generation-fenced CAS | `RunRegistry.compare_and_set` |
 | Local image compute | one process-wide `LocalComputeSlot` | new, §1.5 |
 | Artifact writes | `atomic_write_text` + explicit-overwrite policy | `sdk_` helpers, §2.2 |
-| Plan / promotion tokens | `atomic_write_text`; single-use enforced by CAS on `consumed_by`; digests re-derived and compared on every use | new, §5.4 |
+| Plan / promotion tokens | `atomic_write_text`; single-use CAS on `consumed_by` **under `exclusive_path_lock`** — `allocate`'s interprocess idiom, **not** `compare_and_set`'s in-process `threading.Lock`, since §2.3 treats overlapping server instances over one workspace as anticipated | new, §5.4 |
 | Subset staging dirs | Keyed by subset digest, so concurrent arms share one directory instead of racing; created idempotently | new, §10.3.1 |
 | `campaign.json` mutation | `atomic_write_text` + a status transition guard: `approve` and any amendment CAS on `status`, and **`campaign_start` snapshots the campaign it launched** rather than re-reading mid-fan-out | new, §8.3 |
 | Lineage journal | `atomic_append` under file lock, **via `asyncio.to_thread`** | existing pattern, §2.5 |

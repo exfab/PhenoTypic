@@ -366,7 +366,19 @@ name a **GPU profile** for Stage 2 via `compute.gpu_profile`, which maps to
 | `detail` | `"progress" \| "results"` | `"progress"` | How much to read |
 | `refresh` | `bool` | `false` | Force a manifest rebuild before reading |
 
-**`manifest.json` is the designed polling surface**, not the CLI exit code.
+**`deploy_status` overlays the `RunRegistry` record on the manifest read.** The
+manifest alone can never report a cancellation: `is_complete` is computed purely
+from completed/failed image counts (`_dashboard/_manifest_builder.py:632,646`)
+and has no cancellation concept, and `staged_finalization_complete.json` is
+written only on success. So a cancelled SLURM or staged run polled through the
+manifest alone sits at `is_complete: false` **forever**. `RunRegistry`'s status
+enum does carry a distinct `cancelled` (`gui/shell/_runs_registry.py:76-86`), so
+the record is the authority for lifecycle state and the manifest is the
+authority for progress counts. `deploy_status` reports both and lets the record
+win on status.
+
+**`manifest.json` is the designed polling surface for progress**, not the CLI
+exit code.
 Without `--wait` the CLI exits 0 the moment jobs are submitted, so exit status
 says nothing about the run. Terminal truth is `manifest.json → is_complete`
 plus `run_completion.json` (ordinary) or `staged_finalization_complete.json`
@@ -442,6 +454,22 @@ SIGKILL) for local. It is **scoped to runs this server holds a `RunRegistry`
 record for**, so an agent cannot cancel another session's or another user's
 jobs. Cancellation is generation-fenced, so a cancel aimed at a superseded
 generation is refused rather than killing the replacement.
+
+**Local cancellation races the exit observer.** `LocalRunner.stop()` does not
+touch `RunRegistry`; the caller CASes afterwards. But `observe_local_exit`
+(`gui/shell/_runs_registry.py:536-588`) runs concurrently and checks for
+`{cancelling, cancelled}` *before* falling back to `returncode != 0 → failed`.
+If it wins the race, the run is recorded `failed` with
+`"exited with status -15"`, and the cancel path's own CAS is then rejected —
+its `expected_statuses` excludes `failed`. So the server sets `cancelling`
+**before** calling `stop()`, closing the window. Otherwise a cancellation you
+asked for is reported back to you as a crash.
+
+**`cancel_staged_jobs` is the least-exercised of the three paths.** It exists and
+is exported (`_cli_staged_orchestration.py:633-655`) but has no non-test caller —
+the GUI routes staged cancels through `cancel_generation` like any other SLURM
+run. It is specified here as the staged path and flagged as unverified in
+production rather than presented as equally proven.
 
 ## 5.7 Open questions
 
