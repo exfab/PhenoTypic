@@ -1,7 +1,7 @@
 # PhenoTypic MCP Server — Design Spec
 
-**Status:** draft. §1–§3 and §7 reviewed once by an independent reviewer and
-revised; §4–§6 and §8 pending review.
+**Status:** draft. §1–§8 reviewed by independent reviewers and revised
+(three blockers found and fixed); §9–§10 pending review.
 **Date:** 2026-08-12
 
 ## What this is
@@ -65,21 +65,25 @@ that must pass on the target cluster mount before P1 is implemented.
   connection; they do not get their own process. Hence one `LocalComputeSlot`.
 - **Disk is the authority.** The server holds no state whose loss matters.
 - **Roughly 80% of the substrate exists**, mostly as a Dash-free tier under
-  `gui/`. The server is a thin adapter plus four genuinely new pieces.
+  `gui/`. The server is a thin adapter plus five genuinely new pieces —
+  descriptor projection + column derivation, profile governance, routing + the
+  compute slot, the `_space.py` pure/view split, and a pure sbatch-spec
+  extraction. The last two only surfaced under review.
 - **Two hard refusals:** no `--overwrite` (it is `shutil.rmtree`), and no raw
   sbatch passthrough (`parse_slurm_args` constrains neither keys nor values).
+- **Development happens on a subset.** The full dataset is touched once, behind
+  a promotion gate separate from campaign approval (§10).
 
 ## Open questions
 
 | OQ | Section | Question |
 |---|---|---|
-| 2.1 | §2.7 | Should authored tune specs also be written to the GUI's preset dir so they appear in its Load dropdown? |
-| 3.2 | §3.5 | Should `pipeline_probe` render overlay PNGs the agent cannot see? |
-| 4.1 | §4.7 | Expose screening at all, given §7 P4 shows `--screen` + `--slurm` is a silent no-op today? |
-| 6.1 | §6.6 | Surface all GUI DAG advisory kinds on every `pipeline_put`, or a curated subset? |
-| 8.1 | §8.6 | Should a campaign be able to carry a deploy arm, launching a full run past the human checkpoint? |
-| 8.2 | §8.6 | Can the agent amend a campaign mid-flight, or does an amendment need re-approval? |
-| 9.4 | §9.3.2 | The contrast bands (η ≥ 0.75 / 0.45–0.75 / < 0.45) are provisional cut points on a principled measure. They need calibrating against real plates before they mean anything. |
+| 9.4 | §9.3.2 | The contrast bands (η ≥ 0.75 / 0.45–0.75 / < 0.45) are provisional cut points on a principled measure (Otsu between-class variance ratio). They need calibrating against real plates before they mean anything. |
+| 10.1 | §10.7 | Should promotion re-probe 2 images drawn from `parent \ subset`? The full-dataset estimate extrapolates subset timing, which is wrong if the full set has larger images or a different modality. |
+
+Everything else raised during design or by the four independent reviews has been
+resolved and recorded in the relevant section's "Resolved since first draft"
+block.
 
 **Resolved:** topology (stdio on the login node) · parallelism (agent-side
 fan-out) · state (on-disk workspace, `RunRegistry` reused rather than a new
