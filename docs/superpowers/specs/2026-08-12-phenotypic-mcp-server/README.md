@@ -72,9 +72,7 @@ that must pass on the target cluster mount before P1 is implemented.
 | 6.1 | §6.6 | Surface all GUI DAG advisory kinds on every `pipeline_put`, or a curated subset? |
 | 8.1 | §8.6 | Should a campaign be able to carry a deploy arm, launching a full run past the human checkpoint? |
 | 8.2 | §8.6 | Can the agent amend a campaign mid-flight, or does an amendment need re-approval? |
-| 9.1 | §9.7 | Do the bundled skills ship in `.claude/skills/` (versioned with the tool contract) or inside the installed package? |
-| 9.2 | §9.7 | Is `assay.json` per-workspace or per-dataset? |
-| 9.3 | §9.7 | Should the server validate `assay.json` against a schema, or keep domain vocabulary out of the server entirely? |
+| 9.4 | §9.3.2 | The contrast bands (η ≥ 0.75 / 0.45–0.75 / < 0.45) are provisional cut points on a principled measure. They need calibrating against real plates before they mean anything. |
 
 **Resolved:** topology (stdio on the login node) · parallelism (agent-side
 fan-out) · state (on-disk workspace, `RunRegistry` reused rather than a new
@@ -82,4 +80,6 @@ index) · SLURM authority (named profiles + capped overrides) · coupling
 (`_services` promotion) · catalog breadth (reconcile both enumeration lists) ·
 workspace root (`--workspace`, defaulting to CWD) · defaulting (explicit always)
 · deploy gate (plan-then-submit mandatory) · distributed storage (JournalStorage
-backend, gated on L1).
+backend, gated on L1) · skill packaging (in-repo + `phenotypic-mcp setup`) ·
+assay scope (per-dataset) · assay validation (structure and provenance only —
+never biology).

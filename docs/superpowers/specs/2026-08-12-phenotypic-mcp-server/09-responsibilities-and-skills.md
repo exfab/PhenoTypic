@@ -76,24 +76,130 @@ So Phase 1 (§8.1) opens with an **assay triage**, producing a durable artifact:
 }
 ```
 
-Every field carries `source`, because the three ways of knowing are not equally
+### 9.3.1 Provenance vocabulary — the only enum the server enforces
+
+Every field carries `source`, because the four ways of knowing are not equally
 trustworthy and the agent must not blur them:
 
 | `source` | Meaning |
 |---|---|
 | `human` | You told the agent. Authoritative; never overwritten by inference. |
-| `probe` | Measured from images via `pipeline_probe` evidence (contrast, object count, size distribution). |
+| `probe` | Measured from images via `pipeline_probe` evidence. |
 | `metadata` | Read from image metadata (bit depth, dimensions, EXIF). |
-| `inferred` | The agent guessed. Must be stated as a guess when it drives a decision. |
+| `inferred` | The agent guessed. Must be stated as a guess wherever it drives a decision. |
 
-**The agent asks for what it cannot measure and measures what it can.** Morphology
-is almost always `human`; contrast and separation are genuinely measurable from
-a probe; bit depth and dimensions come from metadata. A skill that guesses
-morphology from an image and does not say so is the specific failure this
-artifact exists to prevent.
+**The agent asks for what it cannot measure and measures what it can.**
 
-The assay profile is referenced by the campaign (§8.2), so a leaderboard is
-always interpretable months later: *these arms were chosen because the organism
+### 9.3.2 Domain vocabulary — what each term means and what it drives
+
+This is the vocabulary the **skill** owns. The server never learns what any of
+these words mean (§9.3.4).
+
+**`organism.morphology`** — `filamentous | round | mixed | unknown`
+
+| Value | Meaning |
+|---|---|
+| `filamentous` | Hyphal growth; irregular, non-convex, diffuse boundaries; colonies may merge into a mycelial mat |
+| `round` | Yeast or bacterial colonies; approximately circular, convex, discrete |
+| `mixed` | Both on the same plate — co-culture, dimorphic switching, or contamination |
+| `unknown` | Not stated and not inferable |
+
+*Determined by:* **the human, essentially always.** It could in principle be
+inferred from a `Shape_Circularity` distribution, but only *after* a detection
+exists — and the detector you would choose depends on the answer. That
+circularity is why it must be asked, not guessed.
+
+*Drives:* prefab choice (`FilamentousFungiPipeline` vs `RoundPeaks*`), and which
+measurements are meaningful at all — filamentous assays want spatial/hyphal
+metrics; round assays want size and shape.
+
+**`colony.contrast_vs_background`** — `high | moderate | low`
+
+*Determined by:* **probe**, and this one needs an operational definition or it is
+vibes. Proposed measure: Otsu's between-class variance ratio on `detect_mat`,
+η = σ²_B / σ²_T ∈ [0, 1] — precisely the separability Otsu maximizes, so it is
+principled rather than invented.
+
+| Band | η | Status |
+|---|---|---|
+| `high` | ≥ 0.75 | **Provisional cut points.** The *measure* is principled; the *bands* need calibrating against real plates before they mean anything. |
+| `moderate` | 0.45 – 0.75 | |
+| `low` | < 0.45 | |
+
+*Drives:* whether enhancement or detection is the bottleneck; whether
+`HeavyOtsuPipeline` can work at all.
+
+**`colony.separation`** — `well_separated | touching | confluent`
+
+*Determined by:* **probe** — the fraction of detected objects sharing a boundary,
+or expected count versus detected count on an arrayed plate.
+
+*Drives:* watershed versus peak detection; how much refinement matters.
+
+**`colony.pigmentation_informative`** — `bool`
+
+*Determined by:* human, sometimes probe (channel separability).
+*Drives:* `--detect-mode` (gray vs a colour channel or Lab), whether
+`MeasureColor` earns its columns.
+
+**`plate.format`** — `arrayed | unarrayed`, with `nrows` × `ncols`
+
+*Determined by:* human or metadata.
+*Drives:* `GridImage` vs `Image`, `--nrows/--ncols`, `GridSectionPipeline`, and —
+critically — the expected counts that `QCScorer` scores against.
+
+**`imaging.modality`** — `flatbed_scanner | camera | spimager | other`
+
+*Determined by:* metadata or human.
+*Drives:* `SpImagerPipeline`; and a camera implies vignetting, so
+`FlattenIllumination` likely matters.
+
+### 9.3.3 Failure modes, ranked by consequence
+
+The reason this artifact exists. Note that the two worst failures are in the
+fields the server **cannot** check and the human **must** supply — which is the
+argument for asking rather than inferring.
+
+| Wrong field | What happens | Caught by? |
+|---|---|---|
+| **`plate.nrows`/`ncols`** | `QCScorer` scores against wrong expected counts, so **the objective itself is wrong**. Tuning optimizes toward a false target and every arm's cost is meaningless — while looking perfectly healthy. | **Nothing.** The worst failure in the system. |
+| **`morphology: round`** when filamentous | A peak detector finds one "colony" per dense region. Counts come out *plausible*, so QC may not flag it; the assay is silently under-counted. | Weakly — a size distribution with implausibly large objects |
+| `morphology: filamentous` when round | Over-segmentation and hyphal metrics that measure noise | Probe object count far above expectation |
+| `separation: well_separated` when touching | Merged colonies counted as one; size distribution skews high with a long tail | Probe: count below expected, size tail |
+| `contrast: high` when low | Agent picks an Otsu prefab and tunes detector params, when the real fix was enhancement. Budget burned in the wrong subspace. | Probe: low object count, poor best-cost plateau |
+| `pigmentation_informative` wrong | False negative loses signal; false positive adds noise columns | Low stakes either way |
+| `imaging.modality` wrong | A worse prefab starting point | Low stakes; probe reveals it |
+
+The pattern: **fields sourced `human` are high-stakes and uncheckable; fields
+sourced `probe` are lower-stakes and self-correcting**, because the probe that
+set them also surfaces the evidence that contradicts them. That asymmetry is why
+`source` is mandatory and why a skill writing `source: "human"` for a value the
+human never gave is the specific abuse to prevent.
+
+### 9.3.4 What the server validates — structure only
+
+**The server validates shape and provenance. It never validates biology.**
+
+| Server checks | Server does **not** check |
+|---|---|
+| File exists, parses, has `schema_version` | What `filamentous` means |
+| Required keys present | Whether `low` contrast is plausible for these images |
+| `source` ∈ `{human, probe, metadata, inferred}` | Whether the morphology is correct |
+| `nrows`/`ncols` are positive integers | Whether 8×12 matches the plate |
+| Referenced probe evidence exists | Whether the probe supports the claim |
+
+This keeps §9.1 intact: the only enum the server enforces is `source`, which is
+**provenance, not biology**. The biological vocabularies live in the skill and
+can grow — add `dimorphic`, add `biofilm`, recalibrate the η bands — **without a
+server release**. A server that knew what "filamentous" meant would need one.
+
+### 9.3.5 Scope
+
+**One assay profile per dataset**, at `<workspace>/assays/<dataset>.assay.json`.
+A workspace routinely holds more than one organism; a single per-workspace
+profile is correct until the day you add a second, and then it is silently wrong
+with no signal. Campaign arms reference the profile by path, so a leaderboard
+stays interpretable months later: *these arms were chosen because the organism
 was filamentous and contrast was low.*
 
 ## 9.4 Prefab-first construction
@@ -225,17 +331,61 @@ If the output directory is occupied, ask — do not find a way around it.
 | Ask the human for organism morphology | **Skill** | Procedural discipline |
 | A `journal://` study must not share a URL with another live study | **Server** | Silent trial pooling is data corruption |
 
-## 9.7 Open questions
+## 9.7 Packaging and installation
 
-- **OQ-9.1 — where do the skills live?** Shipping them in the repo under
-  `.claude/skills/` versions them with the tool contract, which matters because a
-  skill naming `pipeline_diff` is wrong until that tool exists. Shipping them
-  inside the installed `phenotypic` package instead means `pip install` brings
-  them, but they then need a discovery mechanism. Which do you want?
-- **OQ-9.2 — should `assay.json` be per-workspace or per-dataset?** One workspace
-  may hold several organisms. Per-dataset is more correct and more bookkeeping;
-  per-workspace is simpler and silently wrong when you add a second organism.
-- **OQ-9.3 — should the server validate `assay.json` at all?** Currently it is a
-  skill-authored artifact the server only stores and echoes. Giving it a schema
-  makes it checkable and referenceable from a campaign; leaving it free-form
-  keeps domain vocabulary out of the server, per §9.1.
+**Skills are authored in-repo** at `.claude/skills/phenotypic-*/SKILL.md`, so
+they version in lockstep with the tool contract. This matters concretely: a skill
+that instructs the agent to call `pipeline_diff` is *wrong* until that tool
+exists, and only co-versioning makes that a reviewable diff rather than a
+runtime surprise.
+
+In-repo authoring alone does not reach anyone who installs PhenoTypic elsewhere,
+so the server ships an installer:
+
+```bash
+uv run phenotypic-mcp setup            # detect harnesses, install skills + register server
+uv run phenotypic-mcp setup --check    # report what is installed and whether it is current
+uv run phenotypic-mcp setup --harness claude-code   # target one explicitly
+uv run phenotypic-mcp setup --uninstall
+```
+
+This follows the pattern of other agent tools that pair a skill with an MCP
+server (graphify is the reference here — one `SKILL.md` in the harness's skills
+directory, alongside a stdio MCP server the skill drives).
+
+**Behaviour:**
+
+1. **Detect** installed harnesses rather than assuming one.
+2. **Install skills** into each harness's own convention.
+3. **Register the MCP server** in that harness's config, pointing at the
+   `phenotypic-mcp` entry point from the current environment (an absolute
+   interpreter path, matching how `get_python_command(for_slurm=True)` resolves
+   `sys.executable` rather than a bare `python`).
+4. **Idempotent and versioned** — re-running upgrades in place; each installed
+   skill carries the `phenotypic` version it shipped with, and `--check` reports
+   drift instead of silently serving a stale skill against a newer tool surface.
+5. **Never clobber user edits** — a modified skill file is reported and skipped
+   unless `--force`.
+
+Claude Code's conventions are `~/.claude/skills/<name>/SKILL.md` plus an
+`mcpServers` entry, and are the ones this spec states with confidence. **The
+exact paths and config shapes for other harnesses must be verified against each
+harness's current documentation at implementation time** rather than assumed
+here — getting one wrong installs a skill nothing loads, which fails silently.
+The implementation plan should treat per-harness support as one task each, with
+`--check` as the acceptance test.
+
+## 9.8 Open questions
+
+*(None outstanding.)*
+
+**Resolved since first draft:**
+
+- ~~OQ-9.1 skill packaging~~ → in-repo authoring plus a
+  `phenotypic-mcp setup` installer (§9.7).
+- ~~OQ-9.2 assay scope~~ → **per-dataset**, at
+  `<workspace>/assays/<dataset>.assay.json` (§9.3.5).
+- ~~OQ-9.3 assay validation~~ → **structure and provenance only**. The server
+  checks shape, required keys, and `source ∈ {human, probe, metadata,
+  inferred}`; it never validates biological values, so the domain vocabulary can
+  grow without a server release (§9.3.4).
