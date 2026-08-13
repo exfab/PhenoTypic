@@ -100,6 +100,7 @@ Four deliberate affordances:
 |---|---|---|---|
 | `name` | `str` | — | Workspace name |
 | `pipeline_id` | `str` | — | Base pipeline |
+| `pipeline_digest` | `str` | — | The digest `tune_space` returned; a mismatch is `stale_target_ref` |
 | `select` | `array` | — | Chosen knobs (below) |
 | `scorer` | `object` | — | `{class, params}` |
 | `strategy` | `object` | — | `{kind, n_trials?, sampler?, seed?}` |
@@ -111,12 +112,13 @@ Four deliberate affordances:
 ```json
 {"name":"edge-v3-tpe",
  "pipeline_id":"edge-v3",
+ "pipeline_digest":"sha256:9c1e…",
  "select":[
    {"ref":0},
    {"ref":1, "enabled":false},
    {"ref":2, "domain":{"kind":"float_range","low":1.0,"high":4.0,"step":0.25}}],
  "scorer":{"class":"QCScorer",
-           "params":{"check":{"expected_counts_csv":"data/tune_layout.csv"}}},
+           "params":{"check":{"metadata":"data/tune_layout.csv"}}},
  "strategy":{"kind":"optuna","sampler":"tpe","n_trials":200,"seed":0},
  "held_out":{"held_out_fraction":0.2}}
 ```

@@ -80,13 +80,14 @@ This shapes three design choices that would otherwise look arbitrary:
   "subset_id": "subsets/plates-dev-24.subset.json",
   "metadata_csv": "data/tune_layout.csv",
   "objective": {"scorer": {"class": "QCScorer",
-                           "params": {"check": {"expected_counts_csv": "data/tune_layout.csv"}}},
+                           "params": {"check": {"metadata": "data/tune_layout.csv"}}},
                 "sense": "cost in [0,1], lower is better"},
   "budget": {"trials_per_arm": 200, "max_concurrent_arms": 3},
   "compute": {"profile": "cpu-bulk", "n_workers": 8},
   "arms": [
     {"id": "prefab-fil", "pipeline": "pipelines/filamentous-prefab.json.pht-pipe",
      "tune_spec": "tune/filamentous-prefab.setup.json.pht-tune",
+     "pipeline_digest": "sha256:3e91…", "spec_digest": "sha256:c07b…",
      "rationale": "baseline — FilamentousFungiPipeline, the assay-matched prefab"},
     {"id": "phase", "pipeline": "pipelines/phase-edge.json.pht-pipe",
      "tune_spec": "tune/phase-edge.setup.json.pht-tune",
@@ -188,7 +189,7 @@ Phase 2 has a checkable precondition — not because it authenticates you.
 
 ## 8.3 Campaign tools
 
-Four tools, bringing the total to 22.
+Five tools, bringing the total to 32.
 
 ### `campaign_put` (`W0`) — draft the plan
 
@@ -211,6 +212,7 @@ The response is the **review document** — this is what you read before saying 
 {"ok":true,"data":{
   "campaign_id":"campaigns/fungal-edge-sweep","status":"draft",
   "arms":[{"id":"otsu","n_knobs":4,"strategy":"tpe","trials":200,
+           "pipeline_digest":"sha256:3e91…","spec_digest":"sha256:c07b…",
            "routed_to":"slurm","profile":"cpu-bulk",
            "estimate":{"node_seconds":6800,"basis":"probe: 3.4 s/image x 42 x 200/8"}}],
   "totals":{"arms":3,"trials":600,"est_node_hours":5.7,
@@ -283,8 +285,9 @@ change the arm set mid-launch. Writes to `campaign.json` are atomic and CAS on
 ### `campaign_get` (`W0`) — read the stored campaign back
 
 `{campaign_id}` → the `campaign.json` artifact verbatim: arms with their
-`pipeline`, `tune_spec`, `study_id`, `rationale`, and `prefab_baseline`, plus the
-objective, budget, compute, subset, and assay references.
+`pipeline`, `tune_spec`, `study_id`, `rationale`, `prefab_baseline`, and the
+`pipeline_digest` / `spec_digest` binding (§8.2), plus the objective, budget,
+compute, subset, and assay references.
 
 **This is the session-recovery entry point.** An agent resuming after a context
 compaction typically holds one thing: a campaign id. `campaign_status` reports
@@ -323,7 +326,21 @@ workspace_lineage {id: <study>}   -> only if you need the provenance chain
 
 **Polling economy.** `campaign_status` takes `since` (an opaque cursor from the
 previous response). With it, arms whose state is unchanged collapse to
-`{"arm":"otsu","unchanged":true}` and only movement is returned. A multi-hour
+`{"arm":"otsu","unchanged":true}` and only movement is returned.
+
+**The cursor is over the store artifact's stat, and it skips the store open.**
+This is the load-bearing detail: §4.4 establishes that a per-arm leaderboard is a
+`results`-class call requiring a killable subprocess per arm, and that this cost
+is why polling must be infrequent. So the cursor embeds each arm's
+`(path, mtime_ns, size)` for `trials.parquet` / `study.db` / `journal.log`, and an
+arm whose stat is unchanged is reported `unchanged` **without opening its store at
+all**.
+
+Trimming only the response payload would have saved context tokens while leaving
+the N-subprocess-opens-per-poll cost — and the wedged-mount exposure of §7 B3 —
+exactly as before. Skipping the open is what makes `campaign_status {since}`
+genuinely cheaper than a bare `campaign_status`, and therefore safe to call more
+often. A multi-hour
 campaign polled on a human timescale otherwise accumulates dozens of
 near-identical multi-KB snapshots in the agent's context — the exact long-running
 unattended workflow this design is built around is also the one most able to
@@ -367,6 +384,8 @@ agent: [skill: phenotypic-assay-triage]
        → asks: morphology? expected colonies/plate? → you: "filamentous, 96"
        pipeline_put {name:"fil-prefab", from_prefab:"FilamentousFungiPipeline"}
        pipeline_probe {pipeline_id:"fil-prefab", …} to measure contrast/separation
+       → fil-prefab now exists and is reused below; re-materializing it would
+         return already_exists (§2.2 collision policy)
        → writes assay.json: morphology filamentous (human), contrast low (probe),
          separation touching (probe), 8x12 arrayed
 
@@ -374,8 +393,8 @@ agent: [skill: phenotypic-pipeline-construction — prefab-first]
        catalog_operations {category:"Prefab"}
        → assay says filamentous + touching → candidates:
          FilamentousFungiPipeline (3 ops), HeavyWatershedPipeline (15)
-       pipeline_put {name:"fil-prefab",  from_prefab:"FilamentousFungiPipeline"}
-       pipeline_put {name:"watershed",   from_prefab:"HeavyWatershedPipeline"}
+       pipeline_put {name:"watershed", from_prefab:"HeavyWatershedPipeline"}
+       (fil-prefab already materialized during triage — reuse, do not re-put)
        pipeline_probe both on the same 2 subset images
        → filamentous prefab: 61 objects; watershed: 44. Neither near 96.
        → "I'd tune the filamentous prefab first rather than author anything new."

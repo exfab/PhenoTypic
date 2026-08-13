@@ -162,10 +162,30 @@ right *baseline* even when it does.
 
 | Param | Meaning |
 |---|---|
-| `grouping_metadata` | CSV supplying the grouping column. **Named distinctly on purpose** — three different CSVs in this spec were all called "metadata": `deploy_plan.metadata_csv` (joined onto the output mirror), this one (subset stratification), and `QCScorer.check.metadata` (the expected counts the whole objective is scored against). Passing the wrong one at the scorer produces a meaningless objective rather than an error. |
+| `grouping_metadata` | CSV supplying the grouping column. **Named distinctly on purpose** — three different CSVs appear in this spec: `deploy_plan.metadata_csv` (joined onto the output mirror), this one (subset stratification), and `QCScorer.check.metadata` (the expected counts the whole objective is scored against). Passing the wrong one at the scorer produces a meaningless objective rather than an error. |
 | `group_key` | The column in `grouping_metadata` naming each plate's group |
+
+**Only the new class was renamed.** `grouping_metadata` is this spec's choice
+because `MetadataGroupSubsetSelector` does not exist yet. `ExpectedVsDetectedCount.metadata`
+**ships today with no alias** (`analysis/qc/_expected_vs_detected.py:208`), so it
+keeps its name and is disambiguated in prose. A draft of this spec renamed it to
+`expected_counts_csv` in two worked examples — a field that does not exist, which
+would raise `missing` on `metadata` and `extra_forbidden` on the invention: the
+exact failure §4.2's pre-submit checks exist to prevent, written into the
+example. **A spec may name a class it is introducing; it may not rename one that
+already ships.**
 | `allocation` | `proportional` (mirror group sizes) or `equal` (same count per group, so a rare condition is not lost) |
 | `min_per_group` | Floor per group; groups smaller than it are taken whole |
+
+**Only a class this spec introduces may be renamed.** `grouping_metadata` is
+this spec's choice because `MetadataGroupSubsetSelector` does not exist yet.
+`ExpectedVsDetectedCount.metadata` **ships today with no alias**
+(`analysis/qc/_expected_vs_detected.py:208`), so it keeps its name and is
+disambiguated in prose only. A draft of this spec renamed it to
+`expected_counts_csv` in two worked examples — a field that does not exist, which
+would raise `missing` on `metadata` and `extra_forbidden` on the invention: the
+exact failure §4.2's pre-submit checks exist to prevent, written into the
+example.
 
 **The selector performs its own CSV→filename join. It does *not* reuse
 `_resolve_groups`.**
@@ -461,6 +481,16 @@ Two properties this must have:
   Claiming the latter would require exactly the dataset-wide probing v1 defers,
   and asserting it anyway would be the more dangerous error: a false assurance
   of representativeness is worse than an admitted unknown.
+
+**Full scope bypasses staging deliberately**, running against `subset.parent`
+directly — the `flat/`+`nested/` split (§10.3.1) exists only for subset-scoped
+work. The parent's *structure* is not re-scanned at promotion, and does not need
+to be: a structural regression (say a stray image dropped beside the `plateA/`
+subdirectories, which would trip `scan_directory_structure`'s mixed-structure
+rejection at submit time) also changes the parent's file-set digest, so
+`digest_matches_parent: false` catches it first and forces a fresh
+`promotion_request`. Stated because §10.3.1 makes fidelity an explicit check for
+staging, and a reader is entitled to ask why the full path has no equivalent.
 
 `promotion_approve {promotion_id, human_response, note?}` records the decision,
 mints the token, and appends a lineage row:

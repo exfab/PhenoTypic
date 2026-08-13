@@ -542,7 +542,12 @@ workspace actually has (`tune_space` reports availability); include a baseline
 arm and a control arm, not only the hypothesis; size the budget from the probe
 timing; narrow `needs_review` domains rather than accepting inferred bounds.
 **Tools:** `tune_space`, `tune_put_spec`, `campaign_put`, `campaign_approve`,
-`campaign_start`, `campaign_status`.
+`campaign_start`, `campaign_status`, `campaign_get`.
+
+**Recovery:** resuming with only a campaign id, call `campaign_get` first — it
+returns the arms' `pipeline`/`tune_spec`/`study_id`, which `campaign_status` does
+not carry. Then `campaign_status` for progress, and `workspace_lineage {id}` only
+if you need the provenance chain (§8.3).
 **Hard rule it teaches:** cost is in `[0, 1]` and **lower is better**. Report the
 held-out `gap`, never the calibration score alone — an arm that won by
 overfitting the split is not a winner.

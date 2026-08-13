@@ -210,8 +210,10 @@ is **never** returned; it is human-authored and frequently empty.
 ```
 
 A param whose value is itself an operation nests the same `{class, params}`
-envelope — the write shape and the error path (§6.2's
-`ops[3].params.inoculum_detector.params.threshold`) agree:
+envelope. Note the **write** shape carries `params` at both levels, while the
+**error** path does not — `OperationField`'s `BeforeValidator` unwraps the inner
+`params` before validating, so a bad nested field reports as
+`ops[3].params.inoculum_detector.sigmaa` (§6.2, reproduced there):
 
 ```json
 {"class":"FilamentousFungiDetector",
@@ -533,6 +535,25 @@ it answers *what should I do next* — `assay_put` when `counts.assays == 0`,
 `subset_generate` when there is no subset, and so on, with `blocked` naming any
 tool that would refuse right now and why. Skills teach judgment; this makes the
 bare ordering legible without them.
+
+**`blocked` covers only preconditions already computed for this response** —
+artifact existence and configuration, never per-call validation:
+
+| Blocked when | Tools |
+|---|---|
+| no subset registered | `tune_start`, `campaign_put`, `deploy_plan`, `deploy_start` |
+| `tune.journal_backend_enabled: false` and no Postgres configured | SLURM-routed `tune_start` |
+| `environment: "local"` with no profiles | anything requiring a `compute.profile` |
+| a live run holds the workspace root (§2.2) | nothing — reported in `in_flight`, not blocked |
+
+It does **not** pre-evaluate scorer `availability()`, profile caps, or token
+staleness. Those need the call's own arguments, and running them speculatively
+would turn a cheap `W0` orientation call into real work — contradicting §3.0's
+token discipline for the one tool an agent calls first.
+
+`next_recommended` is a single string and therefore a simplification: once an
+assay and subset exist, several tools are equally reasonable. It is advisory
+ordering, not a scheduler.
 
 ### `workspace_list`
 
