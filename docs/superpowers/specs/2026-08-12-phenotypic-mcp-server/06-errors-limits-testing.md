@@ -1,6 +1,6 @@
 # PhenoTypic MCP Server — §6 Errors, Limits, Safety, Testing
 
-Status: **draft, pending review**
+Status: **draft, reviewed once, revised**
 Date: 2026-08-12
 
 ## 6.1 Error philosophy
@@ -31,7 +31,6 @@ human prose and may change.
 | `stale_target_ref` | error | A `select` ref built against a superseded pipeline digest |
 | `no_active_knobs` | error | Tune spec varies nothing |
 | `grid_needs_stepped_domain` | error | `grid` strategy with a continuous `FloatRange` |
-| `grid_ignores_n_trials` | error | `grid` + `n_trials` |
 | `scorer_unavailable` | error | `scorer.availability()` is `False` |
 | `scorer_not_portable` | error | `QCScorer` check not configured from a path |
 | `distributed_storage_unavailable` | error | SLURM tune with no safe shared storage (§7 P1 not landed) |

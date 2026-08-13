@@ -1,6 +1,6 @@
 # PhenoTypic MCP Server — §1 Architecture and Process Model
 
-Status: **draft, pending review**
+Status: **draft, reviewed once, revised**
 Date: 2026-08-12
 
 ## 1.1 Purpose

@@ -304,6 +304,8 @@ and `requires_gpu`.
 | `images` | `str` | — | File or directory |
 | `n_images` | `int` | `2` | Capped at `limits.probe_max_images` (default 4) |
 | `sample` | `"first" \| "random"` | `"first"` | `random` uses a fixed seed |
+| `stages` | `bool` | `false` | Per-operation evidence via `apply_with_intermediates` (§8.7) |
+| `save_overlay` | `bool` | `false` | Render label overlays for a **human** reading the transcript |
 
 **Executed in a persistent, killable probe worker subprocess** — not in the
 server process.
@@ -349,6 +351,32 @@ So:
 - `num_objects` reads `image.num_objects`, not the `objmap` accessor.
 - Per-image timing is recorded to lineage so `deploy_plan` estimates have a real
   basis (§5.3).
+
+**`stages: true`** runs `apply_with_intermediates` (`_image_pipeline_core.py:969`)
+instead of `apply`, and returns per-operation numeric evidence — the affordance
+that makes incremental construction possible (§8.7):
+
+```json
+{"stages":[
+  {"index":0,"op":"BlurGauss","layers_modified":["detect_mat"],
+   "detect_mat":{"before":{"mean":0.41,"std":0.09,"p05":0.28,"p95":0.62},
+                 "after" :{"mean":0.41,"std":0.04,"p05":0.35,"p95":0.48},
+                 "pixels_changed_pct":99.8},
+   "seconds":0.31},
+  {"index":1,"op":"OtsuDetector","layers_modified":["objmap"],
+   "objmap":{"num_objects":61,"area":{"mean":388,"std":141,"min":42,"max":2107}},
+   "seconds":1.04}]}
+```
+
+Which layers each op touches comes from `_layers_modified_by`
+(`_image_pipeline_core.py:100`), so the report shows only what actually changed.
+
+**The evidence is numeric because the agent has no eyes.** It cannot look at a
+`detect_mat` and see that the blur washed out the colony edges — but it can read
+that `std` fell from 0.09 to 0.04 while `num_objects` dropped, and conclude the
+enhancement destroyed the contrast the detector needed. Overlays serve a human
+reading the transcript; **stage statistics serve the agent**, and confusing the
+two produces a tool that looks informative and tells the agent nothing.
 
 ---
 
@@ -425,11 +453,12 @@ probes serialize behind one worker, so peak memory is one probe, not three.
 
 ## 3.5 Open questions
 
-- **OQ-3.2 — probe overlays.** Should `pipeline_probe` render label-overlay
-  PNGs? The agent cannot see them, so they serve only a human reading the
-  transcript. Dropping `save_overlay` makes the probe cheaper.
+*(None outstanding.)*
 
 **Resolved since first draft:**
 
 - ~~OQ-3.1 catalog breadth~~ → reconcile the two enumeration lists; expose
   `prefab` and `detect.nn` (§3.1).
+- ~~OQ-3.2 probe overlays~~ → **opt-in via `save_overlay`**, off by default.
+  They cost probe time and the agent cannot read them; they exist for a human
+  reading the transcript. The agent's evidence is `stages` (§8.7).

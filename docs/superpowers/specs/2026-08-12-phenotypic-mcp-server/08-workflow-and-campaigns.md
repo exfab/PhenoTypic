@@ -1,6 +1,6 @@
 # PhenoTypic MCP Server — §8 Workflow, UX, and Campaigns
 
-Status: **draft, pending review**
+Status: **draft, reviewed once, revised**
 Date: 2026-08-12
 
 ## 8.1 The intended UX
@@ -16,11 +16,21 @@ Phase 0 — TRIAGE (human + agent)
   some is measurable from a probe. Produces assay.json (§9.3).
         │
         ▼
-Phase 1 — PLAN (human + agent, conversational, all W0)
+Phase 1 — PLAN (human + agent, conversational, W0 + bounded W1)
   Driven by the assay profile: prefab pipelines FIRST (§9.4), probed and
-  compared, tuned before anything custom is authored. You and the agent
-  settle topologies, knobs, scorer, compute. Nothing is submitted; every
-  tool here is read-only or writes only draft artifacts.
+  compared, tuned before anything custom is authored. Nothing is submitted;
+  every tool here is read-only or writes only draft artifacts.
+
+  Phase 1 has TWO modes, and the agent should say which it is in:
+
+    1a EXPLORE (§8.7) — the next step depends on what the last one showed.
+       patch → probe{stages} → read evidence → keep/revert. Bounded and
+       trailed. Use when you cannot yet name the arms.
+
+    1b CONVERGE — the candidates are known. Write them down as a campaign.
+
+  Exploration ends exactly when the arms can be named; that transition is
+  the agent's to declare and yours to accept.
         │
         ▼
   A CAMPAIGN: the agreed set of arms, written down, reviewed by you.
@@ -324,7 +334,89 @@ about fan-out needs new machinery here.
 The orchestrator polls `campaign_status`, not three `tune_status` calls, and
 reports to you on completion or on the first arm that fails hard.
 
-## 8.6 Open questions
+## 8.7 Incremental construction — the inner loop of Phase 1
+
+Phase 1 as described so far assumes the plan is *knowable upfront*. Often it is
+not: you add an enhancer, look at what it did to `detect_mat`, and **that result
+determines what the next operation should be**. The plan is discovered, not
+designed.
+
+This is not a different workflow — it is the inner loop of Phase 1, and it must
+be cheap, bounded, and auditable.
+
+```
+        ┌─────────────────────────────────────────────┐
+        │  pipeline_patch   (add / tune one op)       │
+        │        ↓                                    │
+        │  pipeline_probe {stages: true}              │
+        │        ↓                                    │
+        │  read per-stage numeric evidence            │
+        │        ↓                                    │
+        │  decide: keep · revert · try different op   │
+        └──────────────┬──────────────────────────────┘
+                       │  exit when the arms can be named
+                       ▼
+              campaign_put  →  Phase 2
+```
+
+Every tool in the loop is `W0` except the probe, which is `W1`. So the loop costs
+no allocation, and sibling subagents can each run their own loop — their patches
+interleave freely and their probes serialize behind the one `LocalComputeSlot`.
+
+### Why this needs stage evidence specifically
+
+An agent cannot see an image. Given only a final object count, a failed step is
+uninterpretable: 61 objects instead of 96 could mean the enhancer destroyed the
+contrast, the detector's threshold is wrong, or the refiner merged neighbours.
+`pipeline_probe {stages: true}` (§3.2) makes each hypothesis checkable
+separately — `detect_mat.std` collapsing after a blur, `num_objects` before and
+after a refiner — which is the difference between iterating and guessing.
+
+### Bounds
+
+Incremental construction is where an agent can most easily wander, so it is
+bounded on three axes:
+
+| Bound | Default | Why |
+|---|---|---|
+| Steps per exploration | 12 patches | Beyond this, the agent is guessing rather than converging; the tool result says so |
+| Images per probe | `limits.probe_max_images` (4) | Two images is usually enough to see a step's direction |
+| No-improvement streak | 3 | Three consecutive steps with no movement in the tracked signal ends exploration and reports what was tried |
+
+These are **advisory limits reported in the response**, not refusals — the agent
+is told it has exhausted its exploration budget and should either commit to a
+campaign or ask you. Hard-refusing would strand a legitimately long exploration
+mid-way with nothing written down.
+
+### The construction trail
+
+Every accepted step appends a lineage row, so the resulting pipeline explains
+itself:
+
+```json
+{"event":"pipeline.step","id":"pipelines/edge-v3.json.pht-pipe","step":3,
+ "edit":{"kind":"insert_op","slot":"ops","index":1,"class":"FocusEdgePhase"},
+ "evidence":{"num_objects":{"before":61,"after":88},
+             "detect_mat.std":{"before":0.04,"after":0.11}},
+ "decision":"keep"}
+```
+
+This is what makes an incrementally-built pipeline defensible months later:
+not "the agent produced this", but *which* step produced which improvement, on
+what evidence. It is also what a `prefab_baseline` justification (§9.4) cites
+when a custom pipeline finally does beat the prefab.
+
+### Where it sits relative to prefab-first
+
+The two compose rather than compete: **start from the assay-matched prefab, then
+iterate from there.** The prefab is the starting point of the loop, not an
+alternative to it — most explorations are "the prefab gets 61 of 96; what one
+change closes the gap?", which is a far better-posed question than building from
+an empty pipeline.
+
+An exploration that begins from an empty pipeline should say why in its trail.
+
+## 8.8 Open questions
 
 - **OQ-8.1 — should a campaign be able to include deploy arms?** As written a
   campaign is a *tuning* comparison and deployment is a separate step after a

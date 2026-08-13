@@ -1,6 +1,6 @@
 # PhenoTypic MCP Server — §4 Tune Integration Contract
 
-Status: **draft, pending review**
+Status: **draft, reviewed once, revised**
 Date: 2026-08-12
 
 ## 4.0 The governing constraint
@@ -75,7 +75,7 @@ object for the rest of the payload.
     "requires":"meta_validate() to pass against a labelled subset"}]}}
 ```
 
-Three deliberate affordances:
+Four deliberate affordances:
 
 - **`ref` is the selection handle.** `tune_put_spec` takes `ref`s. The full
   `target` object is included so a power caller can construct one directly, and
@@ -128,7 +128,7 @@ the `tune_space` response and rejects a `select` built against a stale digest.
 
 ### Pre-submit checks the server adds
 
-`TuningSpec` construction catches target errors. These four it does not, and
+`TuningSpec` construction catches target errors. These three it does not, and
 each otherwise fails late and confusingly:
 
 | Check | Why | Code |
@@ -359,15 +359,14 @@ already has, now extended to the distributed case by P1.
 
 ## 4.7 Open questions
 
-- **OQ-4.1 — screening.** `ScreeningController` (`_screening_freeze.py:244`) can
-  freeze low-importance params mid-study, exposed as `--screen`/`--no-screen`.
-  Should `tune_put_spec` expose it at all? Two reasons for caution: it changes
-  the search space mid-run, which an agent reading `tune_space` output would not
-  expect; and **`--screen` + `--slurm` is a silent no-op today** — `run_tuning`
-  returns from `_submit_slurm_fleet` before reaching its `if screen:` block, and
-  the worker builds no `ScreeningController` at all (§7 P4). Closing that hole is
-  a prerequisite either way; whether to then expose the knob is the open part.
+*(None outstanding.)*
+
 **Resolved since first draft:**
+
+- ~~OQ-4.1 screening~~ → **fix the no-op (§7 P4), then expose it, default off**.
+  `tune_put_spec` takes `screen: false` by default; the agent opts in
+  deliberately. An agent that enables it must expect knobs it read from
+  `tune_space` to stop varying mid-study.
 
 - ~~OQ-4.2 who picks the scorer~~ → **explicit always**. `tune_space` reports
   availability, but the agent names the scorer even when only one is available.

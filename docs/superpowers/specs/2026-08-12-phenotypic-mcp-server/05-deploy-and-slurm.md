@@ -1,6 +1,6 @@
 # PhenoTypic MCP Server — §5 Deploy and SLURM Contract
 
-Status: **draft, pending review**
+Status: **draft, reviewed once, revised**
 Date: 2026-08-12
 
 ## 5.1 Why a governance layer exists at all
@@ -26,7 +26,7 @@ seven days on a shared queue, or bill an account that is not yours. Exposing
 
 ```toml
 [workspace]
-root = "/scratch/alex/phenotypic-agent"     # OQ-2.2
+root = "/scratch/alex/phenotypic-agent"     # optional; --workspace wins, else CWD
 
 [execution]
 environment = "auto"          # auto | local | slurm
