@@ -19,14 +19,14 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import click
 import polars as pl
 
 from ._cli_file_locking import file_lock
 from ._cli_utils import scan_parquets
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA, OBJECT
 from phenotypic.sdk_ import (
     DIR_CHUNKS,
     CHUNK_STATE_JSON,
@@ -162,10 +162,6 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
         lambda p: chunk_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
     )
 
-    state[ChunkStateKey.CHUNKED_FILES] = sorted(chunked_files)
-    state[ChunkStateKey.NEXT_CHUNK_ID] = next_chunk_id + 1
-    _write_json(state, state_path)
-
     manifest_path = progress_dir / CHUNK_MANIFEST_JSON
     manifest = _read_json(
         manifest_path,
@@ -208,6 +204,23 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
 
     for ds_name, ds_df in chunk_df.group_by(str(EXPERIMENT_METADATA.DATASET)):
         _update_dataset_parquet(output_dir, str(ds_name[0]), ds_df)
+
+    # Commit the chunk state LAST, once every artifact it describes is durable.
+    # SLURM kills checkpoint tasks routinely -- walltime, preemption, node
+    # failure -- and this state is what tells later checkpoints (and the
+    # finalize-time flush) that a per-image parquet has been consumed. Written
+    # before `_update_dataset_parquet`, a kill in between would mark images
+    # consumed whose rows never reached the aggregate; since final aggregation
+    # prefers the aggregate they would never reach the master, and no flush
+    # could recover them because the state says there is nothing to flush.
+    #
+    # Committing last inverts the failure into a safe one: a kill now leaves
+    # images *unmarked* whose rows may already be in the aggregate, so the next
+    # pass re-chunks them -- harmless, because `_update_dataset_parquet`
+    # deduplicates on the colony key.
+    state[ChunkStateKey.CHUNKED_FILES] = sorted(chunked_files)
+    state[ChunkStateKey.NEXT_CHUNK_ID] = next_chunk_id + 1
+    _write_json(state, state_path)
 
     logger.info(
         "Chunk %s written: %d new files, %d rows (total: %d rows across %d chunks)",
@@ -371,6 +384,15 @@ def _rebuild_combined(chunks_dir: Path) -> pl.DataFrame | None:
 
 
 # ---------------------------------------------------------------------------
+#: Colony primary key -- one row per detected object per image per dataset,
+#: the grain of every per-image measurement parquet.
+_AGGREGATE_KEY: Final[tuple[str, ...]] = (
+    str(EXPERIMENT_METADATA.DATASET),
+    str(METADATA.IMAGE_NAME),
+    str(OBJECT.LABEL),
+)
+
+
 def _update_dataset_parquet(
     output_dir: Path, dataset_name: str, new_df: pl.DataFrame
 ) -> None:
@@ -394,6 +416,17 @@ def _update_dataset_parquet(
             new_df = pl.concat([prev, new_df], how="diagonal_relaxed")
         except Exception:
             logger.warning("Corrupt %s, rebuilding from new data", agg_path)
+
+    # Deduplicate on the colony key, keeping the later row. This makes the
+    # append idempotent, which is what lets `_aggregate_chunks_locked` commit
+    # its chunk state *after* the data: a task killed mid-write can safely
+    # re-chunk images whose rows already landed. It also collapses the
+    # duplicates a `--restart` produces, since `results/` survives a restart
+    # while its images are re-measured and appended over the old rows.
+    key = [c for c in _AGGREGATE_KEY if c in new_df.columns]
+    if key:
+        new_df = new_df.unique(subset=key, keep="last", maintain_order=True)
+
     atomic_write_with_writer(
         agg_path,
         lambda p: new_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),

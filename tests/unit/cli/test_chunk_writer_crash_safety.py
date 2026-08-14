@@ -1,0 +1,126 @@
+"""The chunk writer must not lose images when a checkpoint task is killed.
+
+``_aggregate_chunks_locked`` consumes per-image parquets and records them in
+``chunk_state.json`` so later checkpoints skip them. If that state is committed
+*before* the data it describes reaches ``_dataset_aggregated.parquet``, a task
+killed in between leaves those images permanently marked as consumed while
+their rows are absent from the aggregate — and since final aggregation prefers
+the aggregate, they never reach the master. No later flush can recover them,
+because the state says there is nothing to flush.
+
+SLURM kills checkpoint tasks routinely: walltime, preemption, node failure.
+"""
+
+from pathlib import Path
+
+import polars as pl
+import pytest
+
+from phenotypic._cli import _cli_chunk_writer as chunk_writer
+from phenotypic._cli._cli_chunk_writer import (
+    _update_dataset_parquet,
+    flush_unchunked_measurements,
+)
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA, OBJECT
+from phenotypic.sdk_ import (
+    DATASET_AGGREGATED_PARQUET,
+    dataset_measurements_dir,
+)
+
+DATASET = "plate_a"
+
+
+def _write_per_image(output_dir: Path, stems: list[str]) -> None:
+    meas_dir = dataset_measurements_dir(output_dir, DATASET)
+    meas_dir.mkdir(parents=True, exist_ok=True)
+    for i, stem in enumerate(stems):
+        pl.DataFrame(
+            {
+                str(EXPERIMENT_METADATA.DATASET): [DATASET],
+                str(METADATA.IMAGE_NAME): [stem],
+                str(OBJECT.LABEL): [1],
+                "Shape_Area": [float(i + 1)],
+            }
+        ).write_parquet(meas_dir / f"{stem}.parquet")
+
+
+def _aggregate_image_names(output_dir: Path) -> list[str]:
+    agg = (
+        dataset_measurements_dir(output_dir, DATASET)
+        / DATASET_AGGREGATED_PARQUET
+    )
+    if not agg.is_file():
+        return []
+    return pl.read_parquet(agg)[str(METADATA.IMAGE_NAME)].to_list()
+
+
+def test_kill_before_aggregate_write_does_not_lose_images(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A task killed before the aggregate lands must leave work recoverable.
+
+    Simulates the kill by making the aggregate write raise, then retries the
+    flush cleanly — as the next checkpoint sentinel or the finalize-time flush
+    would. The images must reach the aggregate on that retry.
+    """
+    _write_per_image(tmp_path, ["img_001", "img_002"])
+
+    def _boom(*args: object, **kwargs: object) -> None:
+        raise OSError("simulated task kill before the aggregate write")
+
+    monkeypatch.setattr(chunk_writer, "_update_dataset_parquet", _boom)
+    with pytest.raises(OSError):
+        flush_unchunked_measurements(tmp_path)
+
+    monkeypatch.undo()
+    flush_unchunked_measurements(tmp_path)
+
+    assert sorted(_aggregate_image_names(tmp_path)) == ["img_001", "img_002"], (
+        "images consumed by the killed task never reached the aggregate"
+    )
+
+
+def test_reprocessing_the_same_images_does_not_duplicate(
+    tmp_path: Path,
+) -> None:
+    """Appending the same colony twice must not double it.
+
+    Committing chunk state after the data means a killed task can re-chunk
+    images whose rows already landed. That is only safe if the append is
+    idempotent on the colony key.
+    """
+    _write_per_image(tmp_path, ["img_001"])
+    frame = pl.read_parquet(
+        dataset_measurements_dir(tmp_path, DATASET) / "img_001.parquet"
+    )
+
+    _update_dataset_parquet(tmp_path, DATASET, frame)
+    _update_dataset_parquet(tmp_path, DATASET, frame)
+
+    assert _aggregate_image_names(tmp_path) == ["img_001"], (
+        "re-appending the same colony duplicated it in the aggregate"
+    )
+
+
+def test_reappend_keeps_the_newer_measurement(tmp_path: Path) -> None:
+    """When a colony is re-measured, the later value wins.
+
+    This is the `--restart` shape: the aggregate survives, the images are
+    re-measured, and the new rows are appended over the old.
+    """
+    _write_per_image(tmp_path, ["img_001"])
+    meas = dataset_measurements_dir(tmp_path, DATASET) / "img_001.parquet"
+    first = pl.read_parquet(meas)
+    _update_dataset_parquet(tmp_path, DATASET, first)
+
+    second = first.with_columns(pl.lit(99.0).alias("Shape_Area"))
+    _update_dataset_parquet(tmp_path, DATASET, second)
+
+    agg = pl.read_parquet(
+        dataset_measurements_dir(tmp_path, DATASET)
+        / DATASET_AGGREGATED_PARQUET
+    )
+    assert agg.height == 1, f"expected one row, got {agg.height}"
+    assert agg["Shape_Area"].to_list() == [99.0], (
+        "the older measurement won; the later one should"
+    )
