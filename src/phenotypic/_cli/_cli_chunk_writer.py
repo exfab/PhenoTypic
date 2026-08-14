@@ -36,6 +36,7 @@ from phenotypic.sdk_ import (
     DIR_MEASUREMENTS,
     ChunkStateKey,
     ChunkManifestKey,
+    chunk_state_path,
     PARQUET_WRITE_OPTIONS,
     atomic_write_json,
     atomic_write_with_writer,
@@ -50,19 +51,23 @@ from phenotypic.sdk_ import (
 logger = logging.getLogger(__name__)
 
 
-@click.command()
-@click.option(
-    "--output-dir",
-    type=click.Path(exists=True, path_type=Path),
-    required=True,
-)
-def aggregate_chunks(output_dir: Path) -> None:
-    """Aggregate unchunked per-image measurement files into a dashboard chunk.
+def flush_unchunked_measurements(output_dir: Path) -> None:
+    """Chunk any per-image measurement files not yet consumed.
 
-    The entire read-scan-write cycle is serialised via an exclusive
-    file lock on ``progress/.chunk_lock`` so that concurrent checkpoint
-    tasks (SLURM may schedule multiple sentinels near-simultaneously)
-    do not race on the shared state files or duplicate data.
+    The plain-function form of :func:`aggregate_chunks`, so in-process callers
+    can flush without going through click. The SLURM finalize path
+    (``_cli_checkpoint_handler._run_finalize``) uses it: checkpoint sentinels
+    fire only every ``checkpoint_interval`` images and no terminal sentinel is
+    emitted, so a run whose image count is not a multiple of the interval
+    leaves its last partial group unchunked.
+
+    Idempotent — :func:`_scan_unchunked_parquets` skips files already recorded
+    in the chunk state, so a run that divides evenly flushes nothing.
+
+    The entire read-scan-write cycle is serialised via an exclusive file lock
+    on ``progress/.chunk_lock`` so that concurrent checkpoint tasks (SLURM may
+    schedule multiple sentinels near-simultaneously) do not race on the shared
+    state files or duplicate data.
     """
     progress_dir = progress_dir_helper(output_dir)
     progress_dir.mkdir(parents=True, exist_ok=True)
@@ -73,6 +78,48 @@ def aggregate_chunks(output_dir: Path) -> None:
     with open(lock_path, "r") as lock_fh:
         with file_lock(lock_fh, shared=False, timeout=120.0):
             _aggregate_chunks_locked(output_dir, progress_dir)
+
+
+def flush_trailing_measurements_if_chunked(output_dir: Path) -> None:
+    """Flush trailing per-image parquets, but only for runs that were chunked.
+
+    Guards :func:`flush_unchunked_measurements` on the presence of chunk state,
+    which is what distinguishes the two aggregation regimes:
+
+    * A **chunked** run (SLURM) publishes its master from
+      ``_dataset_aggregated.parquet``, because
+      ``discover_measurement_sources`` prefers the aggregate and skips the
+      individual per-image parquets. Any image not yet chunked is therefore
+      invisible to aggregation — and checkpoint sentinels fire only every
+      ``checkpoint_interval`` images with no terminal sentinel, so the last
+      partial group is always in that state. Flushing first is what makes the
+      master complete.
+    * An **unchunked** run (local, staged-local) has no aggregate, so
+      aggregation already reads every per-image parquet directly. Flushing
+      would only manufacture chunk artifacts the run never had, so it is
+      skipped.
+
+    Without the guard this would change local runs' output layout to fix a bug
+    they do not have.
+    """
+    if not chunk_state_path(output_dir).is_file():
+        return
+    flush_unchunked_measurements(output_dir)
+
+
+@click.command()
+@click.option(
+    "--output-dir",
+    type=click.Path(exists=True, path_type=Path),
+    required=True,
+)
+def aggregate_chunks(output_dir: Path) -> None:
+    """Aggregate unchunked per-image measurement files into a dashboard chunk.
+
+    The checkpoint-sentinel entry point. See
+    :func:`flush_unchunked_measurements` for the behaviour and its locking.
+    """
+    flush_unchunked_measurements(output_dir)
 
 
 def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
