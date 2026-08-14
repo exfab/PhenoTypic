@@ -306,16 +306,61 @@ the same one that ended the run-state predicate (3.1.1) and the aggregate merge
 (3.3): several plausible rules failing differently means the question is wrong,
 not the answers. A picker cannot be stale, because the user is looking at it.
 
-**What this deletes.** The run-start CSV copy (a CLI change), the negative marker
-distinguishing "no CSV" from "unknown", the ordering rule in all four of its
-forms, the per-poll source re-resolution, and any dependence on timestamp
-reliability across FUSE, rsync or lifecycle rewrites. `job_metadata.json` and the
-`.phenotypic/` tree are not read for metadata at all.
+**What this deletes.** The negative marker distinguishing "no CSV" from
+"unknown", the ordering rule in all four of its forms, the per-poll source
+re-resolution, and any dependence on timestamp reliability across FUSE, rsync or
+lifecycle rewrites. `job_metadata.json` is not read for metadata at all.
 
-**What it costs.** One confirmation per run, on a pre-filled field, in the common
-case where the suggestion is right. That is the whole price.
+**What the pre-fill reads, and why one CLI change survives.**
+`deliverables/metadata.csv` has exactly one writer, inside
+`finalize_post_master_outputs` (`_cli_output_manager.py:961-963`). So on a live
+run against a fresh output directory **it does not exist** — the picker would
+open empty for the whole run, which is exactly when this app is used. And an
+empty picker is not a degraded view: per-image parquets carry four metadata
+columns and **no time-like column of any kind** (3.3.0.1), so with no CSV there
+are zero x-axis candidates and no plot can be built at all.
 
-**Three things the picker still owes the user:**
+So the run-start copy is retained, in one strictly narrowed role: **it populates
+the pre-fill, and nothing else.** It is never adopted, never ranked, never
+compared against another candidate. That is what makes it safe where four
+ordering rules were not — every failure mechanism in the table above arose from
+*silently choosing among candidates*, and a single suggestion a human confirms
+has no candidates to choose between. The copy is written unconditionally at run
+start; if a run started without `--metadata`, there is simply nothing to
+pre-fill, and the picker opens empty and says so.
+
+The monitor reads it as a **path suggestion only**. If it is absent, stale, or
+belongs to an earlier `--restart`, the worst outcome is a wrong path shown in a
+field the user is looking at before confirming — which is the failure mode a
+picker exists to make visible.
+
+**A CSV outside the mount is unpickable.** The picker resolves through the scope
+root (Section 9), so a `--metadata` file living outside the mounted runs tree —
+as it does on the validated experiment, where no CSV exists under `Results/` —
+raises `ScopeViolation` and cannot be selected at all. The run-start copy fixes
+this incidentally by placing a copy *inside* the run directory; deployments that
+skip the CLI change must also mount the metadata location (Section 11).
+
+**What it costs.** One confirmation per run, on a field pre-filled from this
+run's own inputs.
+
+**"Scoped to the run" means scoped to the run *directory*, which is not the same
+thing.** `--restart`, `--resume` and `--mode measure` all reuse the same output
+directory (3.1.1) — that reuse is why the mirror-existence predicate failed in
+the first place. A monitor left open across an in-place re-run with a different
+`--metadata` never observes a run *switch*, so it keeps the previous selection,
+and the freshness token does not move either because the old CSV is unchanged.
+Combined with `Grid_ColMajorIdx` being a measured value a restart can shift
+(3.3.0), labels can be wrong with no signal. The picker therefore keys its
+selection on `(run path, run-start copy identity)` rather than run path alone, so
+an in-place re-run that rewrites the copy invalidates the selection like a switch.
+
+Keying this way also permits a per-run selection *map*, so tabbing between two
+runs does not lose either choice. What must never happen is one selection
+outliving the run it was made for — a map keyed per run satisfies that; a single
+slot carried in session state does not.
+
+**Six things the picker still owes the user:**
 
 - **A changed file is still noticed.** The chosen CSV's
   `(path, mtime_ns, size)` is part of the freshness token (Section 10), so
@@ -323,11 +368,34 @@ case where the suggestion is right. That is the whole price.
 - **A vanished file is reported, not silently dropped.** If the chosen path stops
   resolving, the app says so and the controls fall back to frame-intrinsic
   metadata — it never quietly reverts to a different CSV.
-- **No choice is a legitimate state.** With nothing selected the app opens with
-  grouping restricted to whatever metadata the per-image frames carry, and says
-  so plainly. The validated run has four such columns (3.3.0.1), none of them
-  groupable, so this state is honest rather than useful — which is the argument
-  for the pre-fill, not for inference.
+- **No choice is a legitimate state, and it is empty rather than degraded.** With
+  nothing selected there is no time column, therefore no x axis, therefore no
+  plot — not "restricted grouping". The app opens, lists the four
+  frame-intrinsic columns it does have, and says plainly that a metadata CSV is
+  required to plot. Overstating this as a partial view would send a user hunting
+  for a bug in the controls.
+- **A vanished CSV is debounced like a parquet.** The chosen file sits on the
+  same GCS-FUSE mount whose emulated `os.replace` motivates 11.1's full-interval
+  debounce. A file being rsynced or edited in place would otherwise collapse
+  every control at once — a far larger event than a few points vanishing, and the
+  same "don't train the viewer to distrust the signal" argument applies with more
+  force. Same debounce, same reasoning.
+- **A file that resolves but will not parse is its own condition.** 12 covers a
+  path that stops resolving; a wrong delimiter, bad encoding or truncated write
+  is different and gets its own message. This matters more under a picker than it
+  did under inference: inference could only ever yield a CLI-written CSV, while a
+  picker admits any file the user selects. Note the validated run has an
+  AppleDouble `._metadata.csv` — 4096 bytes of binary — sitting directly beside
+  the pre-fill target, so the picker's listing applies the same `_`/`.` filter as
+  3.3's measurements glob.
+- **A CSV from another experiment is detected, not just reported.** Nothing
+  confines the selection to this run, and a CSV whose column *names* match but
+  whose values belong elsewhere passes the no-common-columns check and instead
+  drops ~100% of measured colonies under `how="inner"`. The banner would then read
+  "512 measured colonies across 30 images had no metadata row" — the same sentence
+  shape as the legitimate 42/512 over-detection message, while every page renders
+  empty. A near-total unmatched rate *despite* a shared join key gets its own
+  message: the CSV probably belongs to a different run.
 **Join semantics differ mid-run, and this is not cosmetic.** `join_metadata`
 puts metadata on the **left** and joins measurements in
 (`_cli_output_manager.py:175`), so `how="left"` keeps every metadata row that
@@ -499,7 +567,7 @@ One path, always:
 ```
 per-dataset: read the individual per-image parquets under
              results/<ds>/measurements/, skipping any name starting with "_",
-             then join_metadata(how="inner") if a CSV is available
+             then join_metadata(how="inner") against the chosen CSV, if one is selected
 ```
 
 **`_dataset_aggregated.parquet` is never read.** This is the same conclusion as
@@ -747,10 +815,10 @@ from this spec entirely.
 
 ## 4. Upstream prerequisites
 
-Three additive changes in `phenotypic`, plus a documentation note in 4.5. None
-alters existing behaviour, and none is required for the monitor to open a run —
-3.2's picker removed the only change that touched CLI write behaviour. Section
-4.4 records two private imports and is not a code change.
+Four changes in `phenotypic`, plus a documentation note in 4.5. Three are purely
+additive; the fourth (3.2's run-start CSV copy) adds a write, and exists solely
+to give the picker something to suggest. Section 4.4 records two private imports
+and is not a code change.
 
 ### 4.1 Extract the crop math to a framework-free module
 
@@ -973,7 +1041,7 @@ apps/monitor/
     Dockerfile
     monitor/
         scope.py            containment-checked path resolution
-        runs.py             run discovery, status, path composition
+        runs.py             run discovery, path composition, pre-fill lookup
         data.py             frame selection, incremental accumulation, column roles
         filters.py          metadata value filters
         figures.py          line / scatter / box builders
@@ -984,8 +1052,8 @@ apps/monitor/
 | Unit | Responsibility | Depends on |
 |---|---|---|
 | `scope.py` | `ScopeRoot(base)`; `resolve`; `list_dirs`. No knowledge of runs or Streamlit. | stdlib |
-| `runs.py` | Identify run directories, compose paths via `sdk_` helpers, and suggest a metadata CSV (existence check only — no inference, 3.2). Deliberately does **not** classify run state (3.1.1). | `scope`, `sdk_` |
-| `data.py` | Frame selection (3.3), incremental accumulation (11.1), column role classification, **and the polars→pandas conversion**. | `runs`, `sdk_`, polars, pandas |
+| `runs.py` | Identify run directories, compose paths via `sdk_` helpers, and locate the metadata pre-fill (existence check only — no inference, 3.2). Deliberately does **not** classify run state (3.1.1). | `scope`, `sdk_` |
+| `data.py` | Frame selection (3.3), incremental accumulation (11.1), column role classification, the metadata join, **and the polars→pandas conversion**. | `runs`, `sdk_`, polars, pandas, and the two `_cli` privates of 4.4 |
 | `filters.py` | Filter spec → boolean mask. Pure. | polars |
 | `figures.py` | The three views and the overlay composition. Frame + selection in, figures out. | `phenotypic.plotting` |
 | `images.py` | Key → pixels, three framings, local HDF cache. | crop module, `sdk_` |
@@ -1214,7 +1282,7 @@ grid-section membership alike — a user filtered to one replicate sees only tha
 replicate's colonies in the section, which is the consistent reading.
 
 Filter columns are offered from the metadata present in the *loaded* frame, so
-they shrink gracefully when a live run has no CSV metadata yet.
+they shrink gracefully when no metadata CSV has been chosen.
 
 ---
 
@@ -1525,7 +1593,6 @@ substitution touches nothing else.
 | Path outside scope root | `ScopeViolation`; message names the root, not the attempted path |
 | Path is not a run folder | Listed as a plain directory, not openable |
 | Run has no measurements yet | Open successfully, report "no measurements written yet", keep polling |
-| No metadata CSV available | Open; restrict grouping to available columns; explain what is missing |
 | Chosen column absent from frame | Fail loudly at figure build via `_validate_input_columns` |
 | Non-grid pipeline | Grid mode hidden, not shown-and-broken |
 | HDF missing or lacking a layer | Overlay fallback, then placeholder (7.4) |
@@ -1535,8 +1602,10 @@ substitution touches nothing else.
 | Measured colonies dropped by the metadata join | Counted by anti-join and reported in the banner, never silent (3.2) |
 | Run finalizes while someone is watching | No source switch occurs — the monitor reads per-image measurements in every run state — so no value changes *silently*. On staged-SLURM finalize points may still disappear; see the quarantine row below and 3.1.1 |
 | HDF local-cache revalidation fails twice | Serve nothing rather than possibly-torn pixels: placeholder plus a "still being written" note. Never serve the unvalidated copy |
-| No metadata CSV chosen | App opens; controls restricted to frame-intrinsic metadata; stated plainly (3.2) |
-| Chosen CSV stops resolving | Reported, with controls falling back to frame-intrinsic metadata. Never a silent switch to a different CSV (3.2) |
+| No metadata CSV chosen | App opens and lists the four frame-intrinsic columns, but **cannot plot** — there is no time column, so no x axis. Stated as a requirement, not a restriction (3.2) |
+| Chosen CSV stops resolving | Debounced a full poll interval like a parquet (11.1), then reported. Never a silent switch to a different CSV (3.2) |
+| Chosen CSV resolves but will not parse | Its own message — wrong delimiter, bad encoding, truncated write, or a binary AppleDouble sibling. Distinct from a missing file (3.2) |
+| Chosen CSV matches keys but almost nothing joins | Reported as probably belonging to a different run, not as a routine drop count (3.2) |
 | Metadata CSV shares no columns with the measurements | Distinct message: the CSV has no join key, so nothing was joined and nothing dropped. Never reported as "every colony dropped" (3.2) |
 | Metadata CSV has duplicate join keys | Banner reports `duplicate_metadata_key_count`; colonies are multiplied by the join and the user is told why (3.2) |
 | CSV rows matching no measured colony | Banner reports `unmatched_metadata_count`, worded "no measured colony **yet**" so it is true mid-run as well as at finalize (3.2) |
@@ -1707,23 +1776,49 @@ that almost nothing needs a browser.
     `job_metadata.json` — is read for metadata. Switching runs **clears** the
     selection, so run B is never labelled from run A's CSV. And a chosen CSV
     whose path stops resolving is reported, with controls falling back to
-    frame-intrinsic metadata rather than to some other file. Mutations: adopt the
-    pre-fill silently; read `job_metadata.json`; hold the selection in
-    session state across a run switch.
+    frame-intrinsic metadata rather than to some other file. **Four assertions,
+    four mutations** — adopt the pre-fill silently; read `job_metadata.json`;
+    hold the selection in session state across a run switch; and, for the
+    fourth, **fall back to another discovered candidate** (a
+    `deliverables/metadata.csv` that appears mid-session) instead of to
+    frame-intrinsic metadata. That last mutation is the one that reintroduces
+    inference by the back door, so the assertion guarding it needs a negative
+    control like any other.
 32. **A changed CSV re-joins** — editing the chosen CSV mid-session changes the
     freshness token and produces a re-joined frame, including when the
     replacement shares the original's mtime. Mutation: put only the mtime in the
     token, not `(path, mtime_ns, size)`.
-33. **Mid-run count wording** — with a run truncated to a third of its images,
+33. **The pre-fill exists during a live run** — a run started with `--metadata`,
+    with no finalize yet, offers a non-empty pre-fill. Mutation: read the
+    pre-fill from `deliverables/metadata.csv`, which does not exist mid-run and
+    leaves the picker empty for the whole run — the state that makes the app
+    unusable, since with no CSV there is no time axis and nothing plots.
+34. **In-place re-runs invalidate the selection** — a `--restart` or
+    `--mode measure` in the same output directory, with a different
+    `--metadata`, clears the selection even though the run path did not change.
+    Mutation: key the selection on run path alone, which silently keeps the
+    previous CSV's labels.
+35. **The picker refuses non-CSV siblings** — a directory containing an
+    AppleDouble `._metadata.csv` beside the real file offers only the real one,
+    and selecting an unparsable file yields the parse-failure message rather
+    than the missing-file one. Both fixtures are present in the validated run's
+    `deliverables/`.
+36. **A foreign CSV is called out** — a CSV sharing the join key's column names
+    but none of its values drops ~100% of colonies, and is reported as probably
+    belonging to a different run rather than as a routine drop count. Mutation:
+    use the ordinary drop-count wording, which is indistinguishable from the
+    legitimate over-detection message.
+37. **Mid-run count wording** — with a run truncated to a third of its images,
     `unmatched_metadata_count` is large (322 of 480 on the validated run) and the
     banner does **not** claim those wells never grew. Guards the third instance
     of the finalize-versus-mid-run trap (3.2).
 
 Per the repository's test-integrity rule, each must be shown to fail when the
 behaviour it guards is reverted; a skip on a missing fixture is a failure, not a
-pass. Tests 5–12, 16–28 and 32 have fixtures derivable from the validated run in
-3.3.0 (29–31 need synthetic multi-run or machine-state states a single run
-cannot supply) — prefer deriving them from its real column set over inventing a
+pass. Tests 5–12, 16–28, 33 and 35–37 have fixtures derivable from the validated run
+in 3.3.0 — 35 and 36 especially, since its `deliverables/` already contains both
+an AppleDouble `._metadata.csv` and a real one. Tests 29–32 and 34 need
+synthetic multi-run or in-place-re-run states a single run cannot supply — prefer deriving them from its real column set over inventing a
 plausible-looking one, since the invented ones in earlier revisions of this
 document were what hid the schema-default problem.
 
@@ -1802,11 +1897,19 @@ either.
    `_typed_group_key` / `_canonical_group_key` exported (4.3). The last two are
    not redundant with the public `canonical_group_key` — they preserve
    nanosecond time precision that it truncates.
-4. `src/phenotypic/schema/CLAUDE.md` records this dashboard as a consumer of the
+4. Metadata CSV copied at run start, unconditionally, to a path inside the run
+   directory (3.2). **Its only role is populating the picker's pre-fill** — it is
+   never adopted, ranked, or compared. Without it the picker opens empty on every
+   live run, which is when this app is used, and an empty picker means no time
+   axis and therefore no plot at all.
+5. `src/phenotypic/schema/CLAUDE.md` records this dashboard as a consumer of the
    `METADATA` `MeasurementInfo` classes (4.5). Documentation only.
 
-An earlier revision carried a fifth: copying the metadata CSV at run start. It
-existed solely to feed the auto-discovery 3.2 deleted, and went with it.
+Change 4 was deleted in an earlier revision along with the auto-discovery it fed,
+then reinstated in this narrowed role once review showed the pre-fill target
+does not exist during a live run. The narrowing is the point: as an *inference*
+it produced five failure mechanisms; as a *suggestion a human confirms* it has
+no candidates to choose between.
 
 Plus two sanctioned private imports that require no code change but are a
 recorded coupling: `join_metadata` and `prepare_metadata_join_keys` (4.4).
