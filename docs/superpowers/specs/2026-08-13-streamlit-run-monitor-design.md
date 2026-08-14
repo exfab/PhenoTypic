@@ -9,13 +9,18 @@ meaningless. It returned **no blocking finding on either track**: the data flow
 was judged sound, and the design findings were two textual contradictions, one
 overclaim, and three small mechanism clarifications, all corrected here.
 
-**Two derived artifacts, the same mistake twice.** The design spent four
-revisions trying to decide when to read `deliverables/measurements.parquet`, and
-three more trying to decide how to merge `_dataset_aggregated.parquet`. Both are
-derived from data the monitor already has; in each case the answer was to stop
-reading the derived thing entirely, and in each case that only became visible
-after several plausible-looking rules had failed. Section 3.1.1 and Section 3.3
-are the same lesson written twice — worth knowing before adding a third source.
+**Three inferences, the same mistake three times.** The design spent four
+revisions deciding when to read `deliverables/measurements.parquet`, three more
+deciding how to merge `_dataset_aggregated.parquet`, and four more deciding which
+metadata CSV belongs to a run. Every one ended the same way: stop inferring.
+Sections 3.1.1, 3.3 and 3.2 are one lesson written three times — and in each case
+it only became visible after several plausible rules had failed *differently*,
+which is the actual signal. One failed rule invites a fix; three failed rules
+mean the question is wrong.
+
+The third instance is the sharpest, because deleting it also deleted an upstream
+CLI change that existed only to feed it. Inference is not merely risky here; it
+was pulling scope along behind it.
 
 Two further habits this document had to unlearn, both recorded in place rather
 than quietly corrected. Reassurance without verification ("the divergence
@@ -116,8 +121,7 @@ confirmed by observing mtimes on a real run.
 | SLURM chunk files | `.phenotypic/progress/chunks/chunk_*.parquet` | **During** SLURM runs, at every checkpoint |
 | Master archive | `deliverables/master_measurements.parquet` | **Local:** at finalize. **SLURM:** also mid-run, at every checkpoint |
 | Post-applied mirror | `deliverables/measurements.parquet` | At finalize only, by `_seed_measurements` |
-| Metadata CSV copy (deliverables) | `metadata_csv_deliverable_path(output)` | At finalize only; preserved by `--restart`, so it may belong to a previous run (3.2) |
-| Metadata CSV copy (machine state) | under `.phenotypic/` — **new, 3.2** | At run **start**, local runs only; cleared by `--restart`, so it always belongs to this run |
+| Metadata CSV copy | `metadata_csv_deliverable_path(output)` | At finalize, and on every recompile. Preserved by `--restart`, so it may belong to a previous run — which is why 3.2 offers it as a suggestion rather than adopting it |
 
 Measurements, HDF and overlay are written together per image at
 `_cli_process_single.py:109-112`, three seconds ahead of finalize on an observed
@@ -278,107 +282,52 @@ and a user CSV column spelled that way is not recognised by `is_metadata_header`
 so `join_metadata` double-prefixes it to `Metadata_MetadataCondition_Media`.
 Deriving from the enum sidesteps the bug and stays correct after it is fixed.
 
-**Resolution, four parts:**
+**Resolution: the user chooses the CSV. The monitor does not infer it.**
 
-**The ordering rule: an explicit sidebar choice wins; otherwise the most recently
-written record wins.** Not a tier list. Three successive tier lists were each
-correct for the doors they closed and wrong for the next one, because a tier
-encodes *where* a record lives, and what actually matters is *when it was
-written* relative to the others.
+The sidebar carries a metadata-CSV picker, resolved through the scope root
+(Section 9). When `deliverables/metadata.csv` exists it is offered **pre-filled**
+as a suggestion the user confirms — visibly chosen, never silently adopted. The
+choice is **scoped to the run**: switching runs clears it, so run B can never
+inherit run A's labels.
 
-The candidate records are:
+**Why inference was removed, since it looks like an obvious convenience.** Four
+successive rules for "which CSV belongs to this run" were each reproduced as
+broken, in five distinct ways:
 
-- **`.phenotypic/` CSV copy** — written at run start by the change below (local
-  runs), cleared by `--restart`. May be a **negative marker** meaning "this run
-  was started with no `--metadata`".
-- **`job_metadata.json`'s `METADATA_CSV`** — written at run start on SLURM
-  (ordinary `_cli_execution_strategies.py:790,816-820`; staged
-  `_cli_staged_slurm.py:445-447,477-478`), also a path-or-`None`. Its stored
-  absolute path may not resolve off-cluster; if it does not, skip it.
-- **`deliverables/metadata.csv`** (`sdk_/_io_constants.py:1098-1100`) — written
-  at finalize *and rewritten by every recompile*. Its mtime is its write time,
-  because finalize deliberately uses `shutil.copy` rather than `copy2`
-  ("mtime is not preserved by design", `_cli_output_manager.py:955-956`).
+| Rule | Broken by |
+|---|---|
+| Prefer `deliverables/metadata.csv` | `--restart` preserves `deliverables/`, so it is the *previous* run's copy, served for the whole live run |
+| Any `.phenotypic/` record outranks it | `--mode recompile` writes **only** the deliverables copy — it dispatches early and `sys.exit(0)`s at `phenotypicCLI.py:1148`, before every run-start path — so the one correct source ranked last. The validated run is exactly this case, and would have resolved to *no metadata at all* |
+| Newest record wins | `--mode recompile --slurm` *does* write `job_metadata.json` with `METADATA_CSV: None` (`phenotypicCLI.py:2252-2262`), so a recompile without `--metadata` posts a newer negative marker than the valid CSV it is recompiling against |
+| Newest record wins (timestamps) | `job_metadata.json`'s mtime is not its record's write time — `mirror_job_to_metadata` rewrites the whole blob on every role mirror (`_cli_slurm_lifecycle.py:315`) with `METADATA_CSV` untouched. And on a bucket-backed deployment an uploaded or rsynced tree carries transfer times, not write times, so relative order is destroyed outright |
 
-**Why recency rather than tier — the case that killed the previous rule.**
-`--mode recompile` is the mode whose entire purpose is supplying a metadata CSV,
-and it can write *only* the deliverables copy: it dispatches early and
-`sys.exit(0)`s at `phenotypicCLI.py:1148`, before the machine-state clear at
-`:1367` and before every run-start path, and `_handle_recompile` only *reads*
-`job_metadata.json` (`:2438`). So after `--mode recompile --metadata new.csv`,
-the only correct source is the one a "machine state outranks deliverables" rule
-puts last.
+Each fix was correct for the door it closed and wrong for the next. The pattern is
+the same one that ended the run-state predicate (3.1.1) and the aggregate merge
+(3.3): several plausible rules failing differently means the question is wrong,
+not the answers. A picker cannot be stale, because the user is looking at it.
 
-**The validated run is exactly this case, and it is decisive.** Its
-`--metadata` arrived via recompile: `.phenotypic/processing_state.json` is
-timestamped 04:35:32 and `deliverables/metadata.csv` 20:45:22, sixteen hours
-later — so the forward run started with no CSV. Under the tier rule, run start
-would have written a negative marker, the marker would have been authoritative,
-the fallback would have been stopped, and **the monitor would have resolved no
-metadata at all on the one run this design was validated against**, with a
-correct 97 KB CSV one rank below it. That rule was a regression: the ordering it
-replaced got this case right.
+**What this deletes.** The run-start CSV copy (a CLI change), the negative marker
+distinguishing "no CSV" from "unknown", the ordering rule in all four of its
+forms, the per-poll source re-resolution, and any dependence on timestamp
+reliability across FUSE, rsync or lifecycle rewrites. `job_metadata.json` and the
+`.phenotypic/` tree are not read for metadata at all.
 
-Recency resolves every known case with one rule — forward run with a CSV (the
-run-start record is newest), recompile (the deliverables copy is newest),
-`--restart` without a CSV (the negative marker is newest, and correctly resolves
-to none), and the validated run (the deliverables copy is newest). A negative
-marker is a record like any other: authoritative when it is the newest, and
-superseded when a later recompile demonstrably joined a CSV into this run's
-outputs.
+**What it costs.** One confirmation per run, on a pre-filled field, in the common
+case where the suggestion is right. That is the whole price.
 
-**Comparing across a FUSE mount.** All three records are written into the output
-directory by the same job, so ordinary skew does not apply; the risk is mtime
-granularity rather than clock disagreement. Ties break toward the deliverables
-copy, since a recompile that landed in the same coarse tick as a run-start record
-is the later event by construction — recompile cannot run before the run it
-recompiles.
+**Three things the picker still owes the user:**
 
-**The upstream change (local runs only).** Local runs record the CSV nowhere
-until finalize — confirmed on the validated run, which has no
-`job_metadata.json`. So: copy the CSV at run start to a **machine-state path
-under `.phenotypic/`**, which `--restart` clears, written **unconditionally**
-rather than skip-if-exists.
-
-**Name the insertion point, because the modes diverge sharply on whether they
-reach it.** The copy fires in the forward-run path, after argument validation and
-before the first image is processed — the same point `_copy_pipeline_to_output`
-occupies. That placement determines behaviour per mode, and each differs:
-`--mode measure` continues past the recompile branch into the main flow (its
-guard skip is `phenotypicCLI.py:1392-1394`) and *does* refresh the record;
-`--mode recompile` exits at `:1148` and cannot, which is why recency rather than
-tier is what makes it work; `--mode process` passes through run start but warns
-that `--metadata` is ignored (`:1057-1067`), so it writes **nothing** rather than
-a negative marker on behalf of a mode that has no opinion. "Cleared by
-`--restart`" is not a blanket justification here — `--mode measure` rejects
-`--restart` outright (`:1167-1170`), so it is the refresh-on-that-path behaviour
-doing the work.
-
-Not `metadata_csv_deliverable_path`: that is what finalize overwrites, and an
-early skip-if-exists copy there would find the previous run's CSV after a
-`--restart`, skip, and serve old labels for the whole live run. Finalize's copy
-and its overwrite-on-recompile semantics are untouched.
-
-**Record the absence too.** The step writes a negative marker when the run has no
-`--metadata`, exactly as SLURM already does by storing `METADATA_CSV: None`
-(`_cli_execution_strategies.py:816-820`, `_cli_staged_slurm.py:445-447`).
-Without it: run 1 finalizes with a CSV, run 2 `--restart`s *without* one,
-`.phenotypic/` is cleared, finalize writes nothing (its copy is guarded
-`if metadata_csv is not None`, `_cli_output_manager.py:960`) — and the monitor
-reads run 1's CSV for the whole of run 2 and afterwards. A recorded "this run has
-no CSV" is authoritative and stops the fallback.
-
-**Re-resolve the source every poll.** Source selection has no freshness token of
-its own, and a live monitor is normally opened *at launch* — during the window
-before the early copy lands, the only candidate is the previous run's deliverables
-copy. Resolving once would pin that choice for the session and then plot the new
-run's parquets against the old run's labels. The source is re-resolved on the same
-cadence as the parquet listing, so the correct record supersedes the fallback as
-soon as it appears.
-
-If nothing resolves, the app still opens with grouping restricted to whatever
-metadata the per-image frames carry, and says so plainly.
-
+- **A changed file is still noticed.** The chosen CSV's
+  `(path, mtime_ns, size)` is part of the freshness token (Section 10), so
+  editing it mid-session re-joins rather than serving a cached frame.
+- **A vanished file is reported, not silently dropped.** If the chosen path stops
+  resolving, the app says so and the controls fall back to frame-intrinsic
+  metadata — it never quietly reverts to a different CSV.
+- **No choice is a legitimate state.** With nothing selected the app opens with
+  grouping restricted to whatever metadata the per-image frames carry, and says
+  so plainly. The validated run has four such columns (3.3.0.1), none of them
+  groupable, so this state is honest rather than useful — which is the argument
+  for the pre-fill, not for inference.
 **Join semantics differ mid-run, and this is not cosmetic.** `join_metadata`
 puts metadata on the **left** and joins measurements in
 (`_cli_output_manager.py:175`), so `how="left"` keeps every metadata row that
@@ -798,9 +747,10 @@ from this spec entirely.
 
 ## 4. Upstream prerequisites
 
-Three additive changes in `phenotypic`, plus the local-run metadata copy from
-3.2 and a documentation note in 4.5. None alters existing behaviour. Section 4.4
-records two private imports the monitor takes and is not a code change.
+Three additive changes in `phenotypic`, plus a documentation note in 4.5. None
+alters existing behaviour, and none is required for the monitor to open a run —
+3.2's picker removed the only change that touched CLI write behaviour. Section
+4.4 records two private imports and is not a code change.
 
 ### 4.1 Extract the crop math to a framework-free module
 
@@ -1034,7 +984,7 @@ apps/monitor/
 | Unit | Responsibility | Depends on |
 |---|---|---|
 | `scope.py` | `ScopeRoot(base)`; `resolve`; `list_dirs`. No knowledge of runs or Streamlit. | stdlib |
-| `runs.py` | Identify run directories and compose paths via `sdk_` helpers. Deliberately does **not** classify run state (3.1.1). | `scope`, `sdk_` |
+| `runs.py` | Identify run directories, compose paths via `sdk_` helpers, and suggest a metadata CSV (existence check only — no inference, 3.2). Deliberately does **not** classify run state (3.1.1). | `scope`, `sdk_` |
 | `data.py` | Frame selection (3.3), incremental accumulation (11.1), column role classification, **and the polars→pandas conversion**. | `runs`, `sdk_`, polars, pandas |
 | `filters.py` | Filter spec → boolean mask. Pure. | polars |
 | `figures.py` | The three views and the overlay composition. Frame + selection in, figures out. | `phenotypic.plotting` |
@@ -1293,6 +1243,14 @@ cannot name anything outside it. That difference is one constructor argument —
 no other module knows about it. Deciding *who* gets which root is the
 authentication work deferred from this spec.
 
+**The metadata-CSV picker lives here too**, since it resolves through the same
+scope root and is subject to the same containment check — a CSV outside the root
+is as inadmissible as a run outside it. It is **per-run state**: selecting a
+different run clears it, which is what stops a session-state selection outliving
+the run it was chosen for and labelling the next one with it. When
+`deliverables/metadata.csv` exists in the newly-opened run it is pre-filled
+again, so the common case is one confirmation rather than a path hunt.
+
 The UI gives a breadcrumb, a directory listing, a free-text path box (resolved
 through `ScopeRoot`), and a session-state list of recently opened runs. A
 directory that is not a run is listed but not openable.
@@ -1306,17 +1264,15 @@ what makes this usable.
 
 - **The freshness token is computed outside the cached function, and is a hash
   of the full `(path, mtime_ns, size)` set** — the same triple the accumulator's
-  read-set uses (11.1) — plus the **resolved metadata source's own
+  read-set uses (11.1) — plus the **chosen metadata CSV's
   `(path, mtime_ns, size)`**, not merely its mtime.
 
-  The path identity is load-bearing now that 3.2 re-resolves the source every
-  poll. A bare mtime cannot express a *switch* between sources: when a run-start
-  record lands and supersedes the deliverables copy the app had been using, two
-  different files with coincident mtimes — plausible under the coarse FUSE
-  granularity this section already warns about — leave the token unmoved, the
-  cache serving a hit, and the monitor plotting against the source it was told to
-  stop using. This is the same argument the paragraph below makes about the
-  parquet set, applied to the component that was left as a scalar. Neither the mirror nor
+  Path identity matters because the user can change the selection mid-session. A
+  bare mtime cannot express a *switch* between two files whose timestamps
+  coincide — plausible under the coarse FUSE granularity this section already
+  warns about — which would leave the token unmoved and the cache serving a frame
+  built from the previous CSV. Same argument as the paragraph below makes about
+  the parquet set, applied to the component that was left as a scalar. Neither the mirror nor
   the aggregate has an entry, because neither is ever read (3.1.1, 3.3), so
   their appearance is not a change in what is shown.
 
@@ -1579,6 +1535,8 @@ substitution touches nothing else.
 | Measured colonies dropped by the metadata join | Counted by anti-join and reported in the banner, never silent (3.2) |
 | Run finalizes while someone is watching | No source switch occurs — the monitor reads per-image measurements in every run state — so no value changes *silently*. On staged-SLURM finalize points may still disappear; see the quarantine row below and 3.1.1 |
 | HDF local-cache revalidation fails twice | Serve nothing rather than possibly-torn pixels: placeholder plus a "still being written" note. Never serve the unvalidated copy |
+| No metadata CSV chosen | App opens; controls restricted to frame-intrinsic metadata; stated plainly (3.2) |
+| Chosen CSV stops resolving | Reported, with controls falling back to frame-intrinsic metadata. Never a silent switch to a different CSV (3.2) |
 | Metadata CSV shares no columns with the measurements | Distinct message: the CSV has no join key, so nothing was joined and nothing dropped. Never reported as "every colony dropped" (3.2) |
 | Metadata CSV has duplicate join keys | Banner reports `duplicate_metadata_key_count`; colonies are multiplied by the join and the user is told why (3.2) |
 | CSV rows matching no measured colony | Banner reports `unmatched_metadata_count`, worded "no measured colony **yet**" so it is true mid-run as well as at finalize (3.2) |
@@ -1742,20 +1700,21 @@ that almost nothing needs a browser.
     a click on one resolves to a real HDF path. Mutation: fill every metadata
     column with the sentinel, which sends every unassigned click to a
     nonexistent file.
-31. **Metadata source ranking and re-resolution** — a run directory holding both
-    a previous run's `deliverables/metadata.csv` and a current `.phenotypic/`
-    record resolves to the latter; a run whose `.phenotypic/` record says "no
-    CSV" resolves to none rather than falling back; and a source that appears
-    *after* the app opened is picked up on the next poll. Mutations: rank the
-    deliverables copy first, ignore the negative marker, resolve once at startup.
-    The **decisive fixture is the validated run's own shape**: a `.phenotypic/`
-    negative marker written at run start, and a `deliverables/metadata.csv`
-    written sixteen hours later by a recompile. It must resolve to the CSV. A
-    tier rule ranking machine state first resolves to nothing, which is the
-    regression this test exists to prevent.
-    Also assert a source *switch* invalidates the cache when the two files share
-    an mtime — the token carries the resolved path, not just its timestamp.
-32. **Mid-run count wording** — with a run truncated to a third of its images,
+31. **The metadata CSV is chosen, never inferred** — four assertions, each
+    guarding a rule that was tried and failed (3.2). A run whose
+    `deliverables/metadata.csv` exists **pre-fills** the picker but is not
+    adopted until confirmed. Nothing under `.phenotypic/` — including
+    `job_metadata.json` — is read for metadata. Switching runs **clears** the
+    selection, so run B is never labelled from run A's CSV. And a chosen CSV
+    whose path stops resolving is reported, with controls falling back to
+    frame-intrinsic metadata rather than to some other file. Mutations: adopt the
+    pre-fill silently; read `job_metadata.json`; hold the selection in
+    session state across a run switch.
+32. **A changed CSV re-joins** — editing the chosen CSV mid-session changes the
+    freshness token and produces a re-joined frame, including when the
+    replacement shares the original's mtime. Mutation: put only the mtime in the
+    token, not `(path, mtime_ns, size)`.
+33. **Mid-run count wording** — with a run truncated to a third of its images,
     `unmatched_metadata_count` is large (322 of 480 on the validated run) and the
     banner does **not** claim those wells never grew. Guards the third instance
     of the finalize-versus-mid-run trap (3.2).
@@ -1774,8 +1733,10 @@ document were what hid the schema-default problem.
 
 ### Resolved
 
-- **Metadata CSV availability** — SLURM records it in `job_metadata.json`; local
-  runs get a new early unconditional copy; sidebar fallback for older runs (3.2).
+- **Metadata CSV availability** — the user chooses it in the sidebar, pre-filled
+  from `deliverables/metadata.csv` when present. Auto-discovery was removed after
+  four successive rules failed in five distinct ways (3.2), taking an upstream
+  CLI change with it.
 - **Overlay availability** — overlays exist during the run; `crop_colony`'s
   tiering is unchanged; no objmap-derived rendering (7.2).
 - **Storage backend** — GCS-FUSE (11.1).
@@ -1841,9 +1802,11 @@ either.
    `_typed_group_key` / `_canonical_group_key` exported (4.3). The last two are
    not redundant with the public `canonical_group_key` — they preserve
    nanosecond time precision that it truncates.
-4. Metadata CSV copied at run start for **local** runs (3.2).
-5. `src/phenotypic/schema/CLAUDE.md` records this dashboard as a consumer of the
+4. `src/phenotypic/schema/CLAUDE.md` records this dashboard as a consumer of the
    `METADATA` `MeasurementInfo` classes (4.5). Documentation only.
+
+An earlier revision carried a fifth: copying the metadata CSV at run start. It
+existed solely to feed the auto-discovery 3.2 deleted, and went with it.
 
 Plus two sanctioned private imports that require no code change but are a
 recorded coupling: `join_metadata` and `prepare_metadata_join_keys` (4.4).
