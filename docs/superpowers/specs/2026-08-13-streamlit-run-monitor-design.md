@@ -116,7 +116,8 @@ confirmed by observing mtimes on a real run.
 | SLURM chunk files | `.phenotypic/progress/chunks/chunk_*.parquet` | **During** SLURM runs, at every checkpoint |
 | Master archive | `deliverables/master_measurements.parquet` | **Local:** at finalize. **SLURM:** also mid-run, at every checkpoint |
 | Post-applied mirror | `deliverables/measurements.parquet` | At finalize only, by `_seed_measurements` |
-| Metadata CSV copy | `metadata_csv_deliverable_path(output)` | At finalize only |
+| Metadata CSV copy (deliverables) | `metadata_csv_deliverable_path(output)` | At finalize only; preserved by `--restart`, so it may belong to a previous run (3.2) |
+| Metadata CSV copy (machine state) | under `.phenotypic/` — **new, 3.2** | At run **start**, local runs only; cleared by `--restart`, so it always belongs to this run |
 
 Measurements, HDF and overlay are written together per image at
 `_cli_process_single.py:109-112`, three seconds ahead of finalize on an observed
@@ -279,46 +280,67 @@ Deriving from the enum sidesteps the bug and stays correct after it is fixed.
 
 **Resolution, three parts:**
 
-0. **A finalized run already has the CSV on disk, at a canonical path.**
-   `metadata_csv_deliverable_path(output)` — `<output>/deliverables/metadata.csv`
-   (`sdk_/_io_constants.py:1098-1100`) — is written by finalize (3.1) and is the
-   first place to look. The validated run has it, and has *no*
-   `job_metadata.json` at all, so a discovery order that skipped it would make
-   the user type a path to a file the spec itself documents the location of. This
-   is where every number in 3.3.0 came from.
-1. **SLURM runs already record it.** The `--metadata` path is written to
-   `.phenotypic/progress/job_metadata.json` at run start
-   (`_cli_execution_strategies.py:790-818`). The monitor reads it from there.
-   Caveat the CLI itself documents (`_cli_output_manager.py:950-958`): it is an
-   absolute path, useless once results move off the cluster — so it is a
-   best-effort source, not the primary one.
-2. **Local runs record it nowhere until finalize.** Confirmed on a real local
-   run: no `job_metadata.json` is written at all. So the upstream change is
-   needed, and only for local runs: **add** an early idempotent copy of the CSV
-   at run start.
+**The ordering principle: any `.phenotypic/` record outranks
+`deliverables/metadata.csv`.** Machine state is cleared by `--restart` and
+written at run start, so it always describes *this* run. The deliverables copy
+survives `--restart` and is written only at finalize, so it may describe the
+previous one. Rank by which run a record belongs to, never by convenience.
 
-   **Its destination must not be `metadata_csv_deliverable_path`, and the reason
-   matters.** That path is what finalize overwrites. An early copy there,
-   skip-if-exists in the manner of `_copy_pipeline_to_output`, would find the
-   *previous* run's CSV already present after a `--restart` (which preserves
-   `deliverables/`), skip, and leave the monitor plotting the new run's colonies
-   against the old run's strain, condition and time labels for the entire live
-   run. That is predicate row 1 of 3.1.1 — a stale artifact served for a whole
-   run — reappearing inside the fix that answered it.
+An earlier revision ranked the deliverables copy first, on the grounds that the
+validated run has it and no `job_metadata.json`. That is true of a *local* run,
+and inverted for the target deployment: on SLURM, `job_metadata.json` records the
+current `--metadata` at run start (ordinary `_cli_execution_strategies.py:790,816-820`;
+staged `_cli_staged_slurm.py:445-447,477-478`), while `deliverables/metadata.csv`
+after a `--restart` is the previous run's. Ranking it first would serve the old
+run's strain, condition and time labels for the entire live run — **the third
+time 3.1.1's first failed predicate has re-entered through a different door**,
+after skip-if-exists and before that mirror-existence. The "absolute path,
+useless off the cluster" caveat argues the deliverables copy is the right
+*fallback*, not that it should outrank a live record.
 
-   The early copy therefore goes to a **machine-state path under
-   `.phenotypic/`**, which `--restart` clears, and is written unconditionally
-   rather than skip-if-exists. Finalize's `deliverables/metadata.csv` is
-   untouched, and the monitor prefers the machine-state copy when both exist,
-   since only that one is guaranteed to belong to the running job.
-   There is direct precedent — `_copy_pipeline_to_output`
-   (`phenotypicCLI.py:2489-2507`) already does exactly this for the pipeline
-   JSON, skipping when the destination exists. Finalize's
-   overwrite-on-recompile semantics stay untouched.
-3. **Sidebar fallback.** For runs predating the change, the sidebar accepts a
-   metadata CSV path resolved through the scope root.
+0. **`.phenotypic/` CSV copy** (local runs, from the change below). Belongs to
+   this run by construction.
+0b. **`job_metadata.json`'s `METADATA_CSV`** (`progress/`, cleared by
+   `--restart`). Also this run. Its stored absolute path may not resolve
+   off-cluster, in which case fall through.
+1. **`deliverables/metadata.csv`** (`metadata_csv_deliverable_path`,
+   `sdk_/_io_constants.py:1098-1100`). Written at finalize, preserved by
+   `--restart`, so it belongs to *a* run but not necessarily this one. The
+   fallback, and the only source a moved-off-cluster bundle has. The validated
+   run has it and no `job_metadata.json`, which is why it must be in the list at
+   all.
+2. **Sidebar path**, resolved through the scope root, for runs predating the
+   change or where none of the above resolves.
 
-If none is available the app still opens, with grouping restricted to whatever
+**The upstream change (local runs only).** Local runs record the CSV nowhere
+until finalize — confirmed on the validated run, which has no
+`job_metadata.json`. So: copy the CSV at run start to a **machine-state path
+under `.phenotypic/`**, which `--restart` clears, written **unconditionally**
+rather than skip-if-exists.
+
+Not `metadata_csv_deliverable_path`: that is what finalize overwrites, and an
+early skip-if-exists copy there would find the previous run's CSV after a
+`--restart`, skip, and serve old labels for the whole live run. Finalize's copy
+and its overwrite-on-recompile semantics are untouched.
+
+**Record the absence too.** The step writes a negative marker when the run has no
+`--metadata`, exactly as SLURM already does by storing `METADATA_CSV: None`
+(`_cli_execution_strategies.py:816-820`, `_cli_staged_slurm.py:445-447`).
+Without it: run 1 finalizes with a CSV, run 2 `--restart`s *without* one,
+`.phenotypic/` is cleared, finalize writes nothing (its copy is guarded
+`if metadata_csv is not None`, `_cli_output_manager.py:960`) — and the monitor
+reads run 1's CSV for the whole of run 2 and afterwards. A recorded "this run has
+no CSV" is authoritative and stops the fallback.
+
+**Re-resolve the source every poll.** Source selection has no freshness token of
+its own, and a live monitor is normally opened *at launch* — during the window
+before the early copy lands, the only candidate is the previous run's deliverables
+copy. Resolving once would pin that choice for the session and then plot the new
+run's parquets against the old run's labels. The source is re-resolved on the same
+cadence as the parquet listing, so the correct record supersedes the fallback as
+soon as it appears.
+
+If nothing resolves, the app still opens with grouping restricted to whatever
 metadata the per-image frames carry, and says so plainly.
 
 **Join semantics differ mid-run, and this is not cosmetic.** `join_metadata`
@@ -402,7 +424,7 @@ The cause is structural: per-image parquets carry only
 and `MetadataImage_BitDepth`, and **no time-like column of any kind**. Every
 candidate x lives in the CSV these rows by definition failed to match. All three
 views take x from `time`, so the toggle would render a blank page in each —
-and test 27 as first written could not catch it, because the trace *does* exist,
+and test 28's predecessor could not catch it, because the trace *does* exist,
 carrying 42 invisible points.
 
 **Recovering x, and when to refuse.** In the validated run the time columns are
@@ -413,17 +435,39 @@ lookup of the chosen time column on `MetadataImage_ImageName`, leaving strain,
 condition and replicate genuinely null.
 
 That is a property of this CSV, not a guarantee. The monitor therefore checks the
-precondition — the chosen time column is constant within each image — and:
+precondition — the chosen time column has **exactly one distinct non-null value
+per image** — and:
+
+The non-null qualifier is load-bearing. Polars `n_unique` counts null as a
+distinct value, so a *mixed* image correctly fails a plain distinct-count check —
+but an image whose time cell is blank on every row reports `n_unique == 1`,
+passes, contributes a single null-valued lookup row, and lands its unassigned
+points back at `x = null`: toggle enabled, trace present, nothing drawn. Blank
+cells for a subset of images is an ordinary CSV-authoring gap, not an exotic
+input.
 
 - when it holds, joins x image-wise for the unassigned group;
 - when it fails, **disables the toggle with an explanation** rather than
   rendering an empty page. A control that silently draws nothing is worse than a
   control that says why it cannot.
 
-**Label the group explicitly.** `_display_pairs` renders a null group as
-`<null>` (`_plot_meas_time_series.py:350`). The group columns are filled with a
-sentinel `"unassigned"` string rather than left null, which both produces the
-intended label and stops the group colliding with a genuine null strain value.
+**Label the group explicitly — but fill only the columns that are actually
+null.** `_display_pairs` renders a null group as `<null>`
+(`_plot_meas_time_series.py:350`), so a sentinel `"unassigned"` string is written
+into the group columns to produce the intended label and to avoid colliding with
+a genuine null strain value.
+
+The fill is scoped to **CSV-derived columns only**. Unmatched rows are not null
+everywhere: they retain the four columns per-image parquets always carry —
+`MetadataExperiment_Dataset`, `MetadataImage_ImageName`, `MetadataImage_ImageType`,
+`MetadataImage_BitDepth` (verified on all 42 rows of the validated run:
+dataset `inputs_frame00`, type `GridImage`, depth 16). Filling one of those would
+overwrite a real value with a false one, and for `MetadataExperiment_Dataset` it
+is worse than cosmetic — that column is the first element of the `point_id`
+triple, which Section 7 resolves to `dataset_hdf_dir(root, dataset)`. A sentinel
+there sends **every unassigned click to a nonexistent HDF**, so the one group
+whose pixels a user most wants to inspect would be the one group that cannot be
+inspected. Nothing feeding `point_id` is ever filled.
 
 **Report the third count as well — with the mid-run caveat the other two got.**
 `prepare_metadata_join_keys` also returns `unmatched_metadata_count`: CSV rows
@@ -1041,14 +1085,34 @@ state, reset whenever run, strain set or filter spec changes.
 This preserves the long-page reading experience and bounds render cost, at the
 price of a click rather than a scroll.
 
-**The unassigned page is pinned first and exempt from the chunk budget.** Pages
-sort by `_typed_group_key`, which JSON-encodes values — so a quoted strain name
-begins `"` (0x22) and sorts below every letter, putting a null or sentinel group
-*last*. Left alone, the unassigned page (3.2) would land behind every real strain
-and require paging through the whole run to reach. Since its entire purpose is
-surfacing over-detection to someone watching a live run, burying it behind K
-"Show more" clicks defeats the toggle. It renders first, outside the budget, and
-the budget applies to the real strain pages after it.
+**The unassigned page is pinned first and exempt from the chunk budget.** Its
+natural sort position is *unpredictable*, which is the actual reason an explicit
+pin is required. `_typed_group_key` encodes each value as a
+`[column, kind, canonical]` triple (`abc_/plotting/_output.py:59-102`), so keys
+differ on the **kind** tag rather than on the raw value. Verified by execution:
+
+```
+None         -> [["MetadataGenetic_Strain","null",null]]
+"unassigned" -> [["MetadataGenetic_Strain","str","unassigned"]]
+sorted:  None, 'MUT1', 'WT', 'unassigned', 'zzz_strain'
+```
+
+A null group sorts **first** (`"null" < "str"`), and the sentinel string used by
+3.2 carries `kind="str"` exactly like a real strain, so it lands wherever
+`"unassigned"` falls alphabetically among the run's strain names — before
+`zzz_strain`, after `MUT1`, and anywhere at all for a different naming scheme.
+
+Since the page's whole purpose is surfacing over-detection to someone watching a
+live run, leaving its position to chance among K rendered pages defeats the
+toggle. It renders first, outside the budget, with the budget applying to the
+real strain pages after it.
+
+*(An earlier revision claimed a quoted strain name "begins `\"` and sorts below
+every letter, putting a null or sentinel group last." That was wrong in both
+directions and was written from a reviewer's assertion without executing the
+code path — the exact habit the preamble names, occurring inside the fix for the
+previous instance of it. The design decision was right for a reason the
+justification got backwards.)*
 
 ### 6.3 Click resolution
 
@@ -1617,10 +1681,24 @@ that almost nothing needs a browser.
     Assert every unassigned point has a finite x recovered image-wise, that the
     page renders first, and that it is exempt from the chunk budget. Mutation:
     take x from the joined frame, which is null for exactly these rows.
-29. **The toggle refuses rather than lying** — with a time column that varies
-    within an image, the toggle is disabled and explains why. Mutation: enable it
-    anyway, which yields a page of invisible points.
-30. **Mid-run count wording** — with a run truncated to a third of its images,
+29. **The toggle refuses rather than lying** — two fixtures, both of which must
+    disable it: a time column that *varies* within an image, and a time column
+    that is **blank for every row of one image**. The second passes a naive
+    distinct-count check (null counts as a distinct value, so `n_unique == 1`)
+    and lands its points back at `x = null`. Mutation for each: enable anyway,
+    which yields a page of invisible points.
+30. **The sentinel never touches an identity column** — with the toggle on,
+    `MetadataExperiment_Dataset` retains its real value for unassigned rows, and
+    a click on one resolves to a real HDF path. Mutation: fill every metadata
+    column with the sentinel, which sends every unassigned click to a
+    nonexistent file.
+31. **Metadata source ranking and re-resolution** — a run directory holding both
+    a previous run's `deliverables/metadata.csv` and a current `.phenotypic/`
+    record resolves to the latter; a run whose `.phenotypic/` record says "no
+    CSV" resolves to none rather than falling back; and a source that appears
+    *after* the app opened is picked up on the next poll. Mutations: rank the
+    deliverables copy first, ignore the negative marker, resolve once at startup.
+32. **Mid-run count wording** — with a run truncated to a third of its images,
     `unmatched_metadata_count` is large (322 of 480 on the validated run) and the
     banner does **not** claim those wells never grew. Guards the third instance
     of the finalize-versus-mid-run trap (3.2).
@@ -1639,7 +1717,7 @@ document were what hid the schema-default problem.
 ### Resolved
 
 - **Metadata CSV availability** — SLURM records it in `job_metadata.json`; local
-  runs get a new early idempotent copy; sidebar fallback for older runs (3.2).
+  runs get a new early unconditional copy; sidebar fallback for older runs (3.2).
 - **Overlay availability** — overlays exist during the run; `crop_colony`'s
   tiering is unchanged; no objmap-derived rendering (7.2).
 - **Storage backend** — GCS-FUSE (11.1).
