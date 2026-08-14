@@ -354,11 +354,34 @@ start or left behind by a previous run — the exact case that broke rule 1 in t
 table. Confirmation is a deliberate act carrying no evidence, which is the shape
 of reassurance this document has had to retract twice already.
 
-So the picker **shows the evidence, not just the path**: the file's modification
-time, and an explicit warning when it predates this run's earliest per-image
-parquet — a computable, meaningful "this file is older than anything this run has
-produced". That is what makes the confirmation informative. Without it, "the
-failure mode a picker exists to make visible" is not in fact visible.
+So the picker **shows the evidence, not just the path** — and the evidence is
+**content, not timestamps**: the CSV's row count, and how many of the images
+currently on disk have a matching join key. A CSV left over from a different run
+matches few or none of them; this run's CSV matches nearly all. Both numbers come
+from `prepare_metadata_join_keys`, which the monitor already imports for the
+drop counts (3.2), so this costs one extra call and no new mechanism.
+
+**An earlier revision proposed an mtime comparison — "warn when the copy predates
+this run's earliest per-image parquet" — and it was wrong in both directions at
+once.** 4.4 writes the copy *before the first image is processed*, so on a
+correct fresh run the copy predates every parquet by construction: the warning
+would fire, continuously, on exactly the case it was meant to bless, going quiet
+only at finalize. And on the case it was invented for — a `--restart` leaving the
+previous run's copy — the validated run measures the leftover copy at 20:45:22
+against parquets at 04:03–05:15, nine hours *newer*, so nothing would warn at
+all.
+
+Two further reasons it could never have worked, both of which this document had
+already established elsewhere: "this run's earliest parquet" is not computable
+(3.1.1 deleted run-state detection precisely because a preserved directory mixes
+runs), and on the target deployment there are **no parquets at all** for roughly
+the first two thirds of a run (3.1), which is when the pre-fill decision is made.
+It also revived the cross-node, cross-filesystem timestamp comparison that rule 4
+of the table above was struck for.
+
+Content evidence has none of those properties. It does not depend on a clock, a
+node, a filesystem, or on knowing which run wrote what — it asks the only
+question that actually matters: *does this CSV describe these images?*
 
 If a run started without `--metadata` there is nothing to pre-fill; the picker
 opens empty and says so.
@@ -377,8 +400,11 @@ run's own inputs.
 thing.** `--restart`, `--resume` and `--mode measure` all reuse the same output
 directory (3.1.1) — that reuse is why the mirror-existence predicate failed in
 the first place. A monitor left open across an in-place re-run with a different
-`--metadata` never observes a run *switch*, so it keeps the previous selection,
-and the freshness token does not move either because the old CSV is unchanged.
+`--metadata` never observes a run *switch*, so it keeps the previous selection —
+and since 4.4 rewrites the very file that selection points at, the token *does*
+move and every label is silently replaced. (An earlier revision said the token
+"does not move because the old CSV is unchanged"; 4.4, added in the same
+revision, overwrites exactly that file at run start.)
 Combined with `Grid_ColMajorIdx` being a measured value a restart can shift
 (3.3.0), labels can be wrong with no signal.
 
@@ -394,11 +420,24 @@ collapsing while someone is watching**, for a file the user picked whose content
 may be byte-identical. That contradicts Section 12's "no source switch occurs"
 outright.
 
-Instead: when the suggestion changes and differs from the active selection, the
-app **says so** — "this run's recorded metadata CSV has changed; you are viewing
-X" — and leaves the selection alone until the user acts. Visible, never
-automatic. The user keeps what they chose, and learns that the run no longer
-agrees with it.
+Instead: when the suggestion changes, the app **says so** and leaves the
+selection alone until the user acts. Visible, never automatic.
+
+**Change is detected by content hash, not by path or mtime**, and that
+distinction is what makes the notice fire when it should and stay quiet when it
+should not. Because 4.4 writes to the same path the user most likely confirmed,
+comparing *paths* would never detect anything — the common case is that the
+selection and the suggestion are the same string, so a `--restart --metadata B`
+rewriting that path would move the freshness token, re-join every label against
+run B, and fire no notice at all: **every control silently relabelling under the
+viewer**, which is the failure 3.1.1 sells the whole design on avoiding.
+Comparing *mtimes* has the opposite fault: finalize rewrites the file with
+byte-identical content and a fresh mtime, so a notice would fire on every
+completed run for nothing.
+
+A hash of the file's bytes distinguishes the two exactly. Same content, no
+notice; different content, notice — regardless of which writer touched it, on
+what node, or when. It costs one read of a file the app is already reading.
 
 Keying per run also permits a selection *map*, so tabbing between two runs does
 not lose either choice. What must never happen is one selection outliving the run
@@ -425,10 +464,13 @@ it was made for.
   train the viewer to distrust the signal" argument applies with more force.
 
   Asserting the policy is not enough, and this design has already been caught
-  once by exactly that. The CSV's entry must join the **effective** set Section
-  10 hashes (unconfirmed absence keeps it in), its pending state must live in the
-  `cache_resource` accumulator rather than inside the token-keyed loader, and its
-  confirmed removal must be what changes the token. Otherwise poll 2 sees an
+  once by exactly that. The CSV is a **separate token component**, debounced by
+  the same machinery but never a member of the parquet path set — `accumulate`
+  reads and concatenates every path it is handed, so a CSV inside
+  `effective_paths` would be parsed as a parquet. Its component keeps its
+  last-known value while an absence is unconfirmed, its pending state lives in
+  the `cache_resource` accumulator rather than inside the token-keyed loader, and
+  its confirmed removal is what changes that component. Otherwise poll 2 sees an
   unchanged token, `st.cache_data` serves a hit, the loader is never re-entered,
   and the absence is never confirmed or reported — and once the run stops writing
   parquets the token freezes permanently. That is 11.1's own trap, and Section 10
@@ -496,7 +538,7 @@ concluded from that the monitor should hand-roll its own anti-join, which was
 wrong twice over: it reimplements a function that already exists, and a
 hand-rolled anti-join without the String cast breaks the moment a CSV column and
 its parquet counterpart differ in dtype — an inferred `Int64` against a `Utf8`.
-That is exactly the drift 4.4 exists to prevent, reintroduced in the section next
+That is exactly the drift 4.5 exists to prevent, reintroduced in the section next
 door. Importing it is strictly less code and less risk.
 
 **One special case must be handled at the call site.** When the CSV shares *no*
@@ -870,7 +912,7 @@ from this spec entirely.
 
 Four changes in `phenotypic`, plus a documentation note in 4.6. Three are purely
 additive; the fourth (3.2's run-start CSV copy) adds a write, and exists solely
-to give the picker something to suggest. Section 4.4 records two private imports
+to give the picker something to suggest. Section 4.5 records two private imports
 and is not a code change.
 
 ### 4.1 Extract the crop math to a framework-free module
@@ -1044,8 +1086,8 @@ records why.
 
 **Insertion point:** the forward-run path, after argument validation and before
 the first image is processed. It must sit **outside** the `elif not measure_only:`
-branch that guards `_copy_pipeline_to_output` (`phenotypicCLI.py:1746-1763`) —
-alongside `output_manager.create_structure` (`:1740`), which measure mode does
+branch at `phenotypicCLI.py:1761` that guards `_copy_pipeline_to_output` —
+after `output_manager.create_structure` (`:1742`), which measure mode does
 reach. Placing it inside that branch would exclude `--mode measure`, one of the
 three in-place re-run modes the selection rules turn on.
 
@@ -1063,9 +1105,50 @@ run-start path would be empty on exactly the workflow this design was validated
 against, and recovering it would require a second candidate and a rule to choose
 between them — which is what 3.2 deleted.
 
+**The cost of sharing it, recorded rather than glossed.**
+`deliverables/metadata.csv` is a *published archival artifact* whose documented
+contract is a finalize-time snapshot preserving the run's portable original
+mapping. Writing it at run start means an aborted or still-executing in-place
+re-run leaves run N+1's CSV sitting in `deliverables/` beside
+`measurements.parquet` and `master_measurements.parquet` that are run N's outputs
+joined against run N's CSV — a mismatched pair in the published tree, with no
+marker, created by a change whose only purpose is a picker pre-fill. A dedicated
+machine-state path could not open that window.
+
+This is a real cost, accepted because the alternative reintroduces multiple
+candidates and a precedence rule, which failed five times. But it is a cost to
+the *deliverables bundle*, not to the monitor, and whoever maintains that bundle
+should know the file now has two writers with different meanings.
+
+**Write atomically, unlike finalize's copy.** Finalize uses `shutil.copy`
+(`_cli_output_manager.py:962-964`), which truncates the destination and writes in
+place. That was harmless when nothing read the file live; the monitor now polls
+it. A parquet caught mid-write fails to decode and is handled — **a CSV caught
+mid-write parses**, because it is line-oriented, so a partial file is a valid
+table with fewer rows. The monitor would join against it, report a large spurious
+drop count or the "probably belongs to a different run" banner, and self-heal a
+poll later: precisely the "don't train the viewer to distrust the signal"
+argument 11.1 makes for parquets, applied to the file every control depends on.
+Use `atomic_write_with_writer` (`sdk_/_atomic_io.py:89`) — temp sibling, fsync,
+`os.replace` — as the rest of the CLI does.
+
+**Create the parent.** `deliverables_dir` is a pure path expression whose
+docstring says callers must `mkdir` (`sdk_/_io_constants.py:880-887`), and
+`create_structure` creates `deliverables/` only incidentally, as the parent of
+`deliverables/overlays/<ds>/`, and only when `save_overlays` is set
+(`_cli_output_manager.py:1462-1465`). That is true today by default and would
+break silently the moment overlays became optional. The write goes **after**
+`create_structure` and does its own `mkdir(parents=True, exist_ok=True)`.
+
 **Failure policy:** best-effort, matching finalize's existing copy
 (`_cli_output_manager.py:960-968`, logged and never raised). A failed suggestion
-costs the user a path lookup; it must never fail a run.
+costs the user a path lookup; it must never fail a run. Note the user-visible
+consequence is larger than it sounds — no pre-fill means no CSV means no time
+axis means nothing plots — so the failure is logged at WARNING, not DEBUG.
+
+**Update the constant's docstring in the same change.**
+`sdk_/_io_constants.py:332-337` currently documents this file as a finalize-time
+snapshot and is the only place naming its writer. After this change it has two.
 
 ### 4.5 Two sanctioned private imports (no code change)
 
@@ -1510,6 +1593,14 @@ partial rows.
 - `docker run -p 8501:8501 -v /data/runs:/runs:ro phenotypic-monitor`
 - The read-only mount is the outer guarantee matching the app's read-only
   design; `ScopeRoot` is the inner one that stops traversal *within* it.
+- **Mount the metadata CSVs too, if the 4.4 copy is not deployed.** The picker
+  resolves through `ScopeRoot`, so a CSV outside the mounted tree cannot be
+  selected at all — it raises `ScopeViolation`. On the validated experiment no
+  CSV exists anywhere under `Results/`, so with only `/data/runs` mounted the
+  picker would have nothing selectable and, per 3.2, nothing would plot. Either
+  ship 4.4 (which places a copy inside each run directory) or add the metadata
+  location as a second read-only mount. This bullet is the target of 3.2's
+  reference; an earlier revision made the reference without adding it.
 
 ### 11.1 GCS-FUSE read strategy
 
@@ -1883,21 +1974,31 @@ that almost nothing needs a browser.
     state that makes the app unusable, since with no CSV there is no time axis
     and nothing plots. A second mutation: place the run-start write inside the
     `elif not measure_only:` branch, which silently excludes `--mode measure`.
-34. **The picker shows evidence, not just a path** — with a pre-fill older than
-    the run's earliest per-image parquet, the picker displays its mtime and warns
-    it predates this run's output. Mutation: show the path alone, which is
-    character-identical whether the file is this run's or a leftover — the state
-    in which "confirmation makes staleness visible" is false.
-35. **A changed suggestion is surfaced, not acted on** — when the run-start copy
-    is rewritten under an open session, the active selection is **kept** and a
-    notice appears. Two mutations, both of which this design previously
-    specified: clear the selection (which collapses every control at finalize,
-    for a file the user chose), and adopt the new suggestion silently.
-36. **In-place re-runs invalidate the selection** — a `--restart` or
-    `--mode measure` in the same output directory, with a different
-    `--metadata`, clears the selection even though the run path did not change.
-    Mutation: key the selection on run path alone, which silently keeps the
-    previous CSV's labels.
+34. **The picker shows content evidence, not just a path** — the picker reports
+    the CSV's row count and the share of on-disk images whose join key it
+    matches. Assert both directions on real data: this run's CSV matches nearly
+    every image; a CSV from another run matches almost none. Two mutations, both
+    previously specified here: show the path alone (character-identical whether
+    fresh or leftover), and warn by comparing mtimes against the earliest
+    per-image parquet — which fires on every correct fresh run, because 4.4
+    writes the copy before the first image, and stays silent on the leftover
+    case, which is *newer* than the parquets it is compared against.
+35. **A changed suggestion is surfaced, not acted on — and change means
+    content** — when the run-start copy is rewritten under an open session with
+    *different* content, the selection is kept and a notice appears; when
+    finalize rewrites it with *identical* content, nothing fires. Three
+    mutations, each previously specified or implied here: clear the selection
+    (collapses every control at finalize for a byte-identical file); adopt the
+    new suggestion silently; and detect change by path or mtime rather than
+    content — path never differs, since the selection and the suggestion are
+    normally the same string, so every label would be replaced with no notice.
+36. **An in-place re-run notifies, it does not clear** — a `--restart` or
+    `--mode measure` in the same directory with a *different* `--metadata`
+    rewrites the suggestion; the active selection is kept and a notice appears,
+    the same contract as test 35 for what is the same physical event. An earlier
+    revision specified the opposite here — clear the selection — which
+    contradicted test 35 outright and, at finalize, would have collapsed every
+    control for a byte-identical file. Mutation: clear on suggestion change.
 37. **The picker refuses non-CSV siblings** — a directory containing an
     AppleDouble `._metadata.csv` beside the real file offers only the real one,
     and selecting an unparsable file yields the parse-failure message rather
@@ -2016,7 +2117,7 @@ it produced five failure mechanisms; as a *suggestion a human confirms* it has
 no candidates to choose between.
 
 Plus two sanctioned private imports that require no code change but are a
-recorded coupling: `join_metadata` and `prepare_metadata_join_keys` (4.4).
+recorded coupling: `join_metadata` and `prepare_metadata_join_keys` (4.5).
 
 **New, in `apps/monitor/`:** seven modules, a `pyproject.toml` and a `Dockerfile`
 (Section 5).
