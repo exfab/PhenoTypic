@@ -2462,40 +2462,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_add_zone_ring_traces</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_add_mean_axis_traces</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_add_metric_hover_trace</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
-        <span class="n">fig</span><span class="o">.</span><span class="n">add_annotation</span><span class="p">(</span>
-                <span class="n">text</span><span class="o">=</span><span class="p">(</span>
-                    <span class="s2">&quot;&lt;b&gt;Field:&lt;/b&gt; short blue bars are local fiber axes &quot;</span>
-                    <span class="s2">&quot;(tensor normal + 90°); length and opacity encode local &quot;</span>
-                    <span class="s2">&quot;coherence C.&lt;br&gt;&quot;</span>
-                    <span class="s2">&quot;&lt;b&gt;Signed outward turning:&lt;/b&gt; the Spectral overlay shows &quot;</span>
-                    <span class="s2">&quot;the full observed directional range in deg/px, centred at &quot;</span>
-                    <span class="s2">&quot;zero.&lt;br&gt;Negative is counterclockwise and positive is &quot;</span>
-                    <span class="s2">&quot;clockwise as growth moves outward. The inferred inoculum core is &quot;</span>
-                    <span class="s2">&quot;excluded from this directional view.&lt;br&gt;&quot;</span>
-                    <span class="s2">&quot;&lt;b&gt;Long range:&lt;/b&gt; thin concentric circles sample the &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">radial_ring_width</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> px Sholl-style orientation bands; &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;matching sectors </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">long_range_lag</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> px apart are compared &quot;</span>
-                    <span class="s2">&quot;in degrees.&lt;br&gt;Hover the circles or colony centres for &quot;</span>
-                    <span class="s2">&quot;ring and zone-to-zone summaries.&lt;br&gt;&quot;</span>
-                    <span class="s2">&quot;&lt;b&gt;Selectors:&lt;/b&gt; circles bound the radial zones; toggle mean &quot;</span>
-                    <span class="s2">&quot;axes and the green detected-mask boundary.&lt;br&gt;&quot;</span>
-                    <span class="s2">&quot;&lt;b&gt;Metrics:&lt;/b&gt; hover colony centres for R, turning, and C. &quot;</span>
-                    <span class="s2">&quot;R is common parallel alignment, not radial alignment.&lt;br&gt;Turning &quot;</span>
-                    <span class="s2">&quot;is the coherence-weighted spatial change in the local axis. &quot;</span>
-                    <span class="s2">&quot;Radial tilt compares each detected local axis with its outward &quot;</span>
-                    <span class="s2">&quot;spoke; outward turning measures how that tilt changes radially.&quot;</span>
-                <span class="p">),</span>
-                <span class="n">xref</span><span class="o">=</span><span class="s2">&quot;paper&quot;</span><span class="p">,</span>
-                <span class="n">yref</span><span class="o">=</span><span class="s2">&quot;paper&quot;</span><span class="p">,</span>
-                <span class="n">x</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
-                <span class="n">y</span><span class="o">=-</span><span class="mf">0.19</span><span class="p">,</span>
-                <span class="n">xanchor</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
-                <span class="n">yanchor</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">,</span>
-                <span class="n">align</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
-                <span class="n">showarrow</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">_OI_NAVY</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">11</span><span class="p">),</span>
-        <span class="p">)</span>
-        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span><span class="n">margin</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">b</span><span class="o">=</span><span class="mi">350</span><span class="p">))</span>
         <span class="n">fig</span><span class="o">.</span><span class="n">update_xaxes</span><span class="p">(</span><span class="nb">range</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">w</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">],</span> <span class="n">constrain</span><span class="o">=</span><span class="s2">&quot;domain&quot;</span><span class="p">)</span>
         <span class="n">fig</span><span class="o">.</span><span class="n">update_yaxes</span><span class="p">(</span>
                 <span class="nb">range</span><span class="o">=</span><span class="p">[</span><span class="n">h</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">],</span>
