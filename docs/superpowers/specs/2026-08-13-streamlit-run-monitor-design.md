@@ -1,47 +1,20 @@
 # Streamlit Run Monitor — Design
 
 **Date:** 2026-08-13
-**Status:** Revision 11. Seven rounds of independent design review and data-flow
-review, the data-flow rounds validated against real end-to-end CLI runs. Round 7
-ran against a frozen, checksummed copy — earlier rounds had reviewed a document
-being edited underneath them, which makes a readiness verdict close to
-meaningless. It returned **no blocking finding on either track**: the data flow
-was judged sound, and the design findings were two textual contradictions, one
-overclaim, and three small mechanism clarifications, all corrected here.
+**Status:** Revision 12. Nineteen rounds of independent design review and
+data-flow review; the data-flow rounds were validated against a real completed
+run, and rounds 7 onward ran against a frozen, checksummed copy.
 
-**Three inferences, the same mistake three times.** The design spent four
-revisions deciding when to read `deliverables/measurements.parquet`, three more
-deciding how to merge `_dataset_aggregated.parquet`, and four more deciding which
-metadata CSV belongs to a run. Every one ended the same way: stop inferring.
-Sections 3.1.1, 3.3 and 3.2 are one lesson written three times — and in each case
-it only became visible after several plausible rules had failed *differently*,
-which is the actual signal. One failed rule invites a fix; three failed rules
-mean the question is wrong.
+**Read this first, because it explains why several decisions look unusually
+plain.** Three times this design tried to *infer* something from files on disk —
+which measurement frame is current, how to merge the SLURM aggregate, which
+metadata CSV belongs to a run. Each attempt produced several plausible rules that
+failed in *different* ways, and each ended by deleting the inference rather than
+fixing it. One failed rule invites a fix; three mean the question is wrong.
+Sections 3.1.1, 3.3 and 3.2 record all three, with the rules that failed and why.
 
-The third instance is the sharpest, because deleting it also deleted an upstream
-CLI change that existed only to feed it. Inference is not merely risky here; it
-was pulling scope along behind it.
+The remaining lessons are recorded where they apply, not here.
 
-Two further habits this document had to unlearn, both recorded in place rather
-than quietly corrected. Reassurance without verification ("the divergence
-direction is safe" — it was backwards, and nobody re-checks a sentence that
-sounds settled). And fixes written in the same pass creating each other's edge
-cases: the accumulator's removal path exists only because of a quarantine
-documented in the same revision, and the two-poll confirmation added to guard it
-could never fire, because it was placed inside a cache the same section had just
-made immune to re-entry.
-
-**The single most important thing this document learned:** it tried four times
-to auto-detect whether a run was still executing — mirror-existence, then a
-completion marker, then a composite of both, each fix introducing the mirror
-image of the bug it closed. **The first three were reproduced as broken against
-real runs; the fourth was rejected on complexity grounds without being tested**
-(the distinction matters, and 3.1.1's table keeps it). The design now **does not
-detect run state at all**. It reads the
-per-image measurements, always, and never reads the finalized mirror. That
-deletes the predicate, its four failure modes, an upstream change, and roughly a
-section and a half of contingency handling. Where a decision here looks
-surprisingly plain, this is usually why.
 **Topic:** A standalone, read-only Streamlit dashboard for watching an
 in-progress `python -m phenotypic` run: grouped colony time-series plots with
 click-through to full-resolution image crops pulled from the per-image HDFs.
@@ -358,22 +331,44 @@ So the picker **shows the evidence, not just the path** — and the evidence is
 **content, not timestamps**: the CSV's row count, and how many of this run's
 images carry a join key the CSV knows.
 
-**The image set comes from the HDF listing, not the measurement frame.** Per-image
-HDFs are written in Stage 1 (3.1), so the set is complete long before a staged run
-produces its first parquet — whereas the parquet-derived frame is *empty* for
-roughly the first two thirds of a target-deployment run, which is exactly when the
-pre-fill decision is made. Sourcing the denominator from the frame would have
-reproduced the mtime cue's blind window verbatim, in the replacement written to
-fix it. The stem↔key identity holds by construction, not luck:
-`_image_io_handler.py:530-531` sets `image.name = filepath.stem` and
-`_cli_process_single.py:104-110` names both artifacts from `image_path.stem`;
-verified 30/30 against the validated run's CSV.
+**The image set comes from the run's declared inputs, not from any artifact
+listing.** `.phenotypic/processing_state.json` records
+`datasets.<ds>.initial_images`, written at `phenotypicCLI.py:1718-1720` **before**
+`create_structure`, per-dataset, cleared and rewritten by `--restart` and
+preserved across `--resume` (`_cli_state_management.py:256`) and `--mode measure`
+(`:1680`). On the validated run: 30 entries, 30 distinct stems, **no AppleDouble
+entries** — so it needs no filtering, unlike every glob-derived alternative.
+Entries carry extensions; take `Path(name).stem`.
 
-Two properties of that listing are load-bearing. It applies **3.3's `_`/`.`
-filter** — unfiltered, the validated exFAT volume returns 60 entries for 30
-images and the correct CSV would score 30/60, arguing against the right file. And
-the denominator is **per-dataset**, matching the frames, so a multi-dataset run
-with a single-dataset CSV is not reported as half-wrong.
+Two artifact-derived denominators were considered and are worse. The measurement
+frame is *empty* for roughly the first two thirds of a target-deployment run —
+sourcing from it would have reproduced the mtime cue's blind window verbatim, in
+the replacement written to fix it. The HDF listing is complete much earlier but
+still **0 from `create_structure` until the first HDF lands**, which on staged
+SLURM is the entire queue wait, and it lists *every image ever written into this
+directory* rather than this run's, since `--restart` preserves `results/` — so a
+restart against a narrowed input set would score a correct CSV below 100%. The
+HDF listing survives only as a **fallback** when `.phenotypic/` is absent,
+including process-only runs, where `create_structure` is skipped
+(`phenotypicCLI.py:1740-1741`) and `results/<ds>/hdf/` may not exist at all.
+
+Whatever the source, three properties are load-bearing. Any glob-derived fallback
+applies **3.3's `_`/`.` filter** — unfiltered, the validated exFAT volume returns
+60 entries for 30 images and the correct CSV scores 30/60, arguing against the
+right file. **Dataset enumeration takes the same filter**, since
+`results/._inputs_frame00` exists on that volume and a name-based scan would
+invent a phantom dataset. And the denominator is **per-dataset**, matching the
+frames, so a multi-dataset run with a single-dataset CSV is not half-wrong; the
+picker reports per dataset when a run has more than one.
+
+The stem↔key identity holds by construction: `_image_io_handler.py:530-531` sets
+`image.name = filepath.stem` and `_cli_process_single.py:104-110` names both
+artifacts from `image_path.stem`; verified 30/30 against the validated run's CSV.
+
+**Zero is a distinct state, not a zero score.** With no images yet declared or
+listed, the picker reports *"no images to check against yet"* — never `0%`, which
+renders as an argument against a correct CSV and is the same failure the 30/60
+paragraph above exists to prevent.
 
 **The grain is images, not colonies.** `prepare_metadata_join_keys` returns row
 counts, which on the full frame is colony grain — 470/512 on the correct CSV,
@@ -421,19 +416,50 @@ scores identically to the right one. That is the same fault the mtime cue had �
 silent on exactly the case that motivated the picker — surviving into its
 replacement.
 
-**And no third cue would fix it.** The distinguishing information is the *values*
-of the non-key columns, and nothing on disk says which values are correct: both
-CSVs are well-formed, both name these images, and only the person who ran the
-experiment knows which one they meant. Two mechanisms have now failed at this,
-each in its own way, and the reason is that the question has no answer in the
-data.
+**A second cue does catch staleness — but by asking a different question.** An
+earlier revision asserted that no cue could, on the grounds that "nothing on disk
+says which values are correct." That is true and it is not the relevant question.
+Detecting staleness does not require arbitrating labels; it requires answering
+*was this file supplied to the current epoch* — and the CLI's own state layout
+answers it.
 
-So the division of labour is explicit: **the evidence handles the foreign case;
-the human handles the stale one.** That is what the picker is for, and why the
-run-start copy (4.4) matters more than any cue — it makes the suggestion this
-run's own input in the common case, rather than something to be second-guessed.
-The picker states what it checked, so a user is never left believing a green
-number means more than it does.
+`--restart` deletes `.phenotypic/` **wholesale**
+(`sdk_/_io_constants.py:1055-1062`, reached only under `if restart:` at
+`phenotypicCLI.py:1367-1381`), while `deliverables/` survives — only
+`--overwrite` removes it (`:1403-1406`). So a record inside `.phenotypic/`
+**cannot outlive the restart that orphans the deliverables copy**:
+
+```
+copy present  +  epoch record naming a CSV   -> this epoch supplied it
+copy present  +  epoch record absent/null    -> STALE
+```
+
+No clock, no ordering, no cross-node comparison, no candidate ranking. The four
+rules in the table above all failed at *ranking candidates by recency*; this is a
+boolean about the current epoch's own argument, so rules 3 and 4 — recompile's
+negative marker and mtime ordering — are ordering objections that do not apply.
+
+On the target deployment the record already exists and costs nothing:
+`job_metadata.json` carries `METADATA_CSV`
+(`_cli_execution_strategies.py:816-819`; staged `_cli_staged_slurm.py:446-448`).
+For local runs `processing_state.json` has no metadata field, so 4.4 writes one
+beside its copy.
+
+**Two cases must be handled or the cue false-alarms on real workflows.**
+`--mode recompile` exits at `phenotypicCLI.py:1148` before every run-start path
+yet refreshes the deliverables copy at finalize — *the validated run's own
+workflow* — so the marker is written there too, or the cue fires on exactly the
+run this design was validated against. And `--mode measure` writes no state
+(`:1680`) and does not clear `.phenotypic/`, so the prior marker survives, which
+is correct: same experiment, same CSV.
+
+**This narrows, but does not remove, the division of labour.** The epoch cue
+catches a CSV orphaned by a restart. It still cannot tell a *wrong but
+contemporary* CSV from a right one — a user who passes the wrong `--metadata` to
+this very run gets no warning, because the epoch record dutifully names it. That
+residue is genuinely the human's, and the picker says which of the three things
+it checked: the CSV names these images, this epoch supplied it, and nothing
+verifies the labels are the ones you meant.
 
 If a run started without `--metadata` there is nothing to pre-fill; the picker
 opens empty and says so.
@@ -553,6 +579,7 @@ it was made for.
   shape as the legitimate 42/512 over-detection message, while every page renders
   empty. A near-total unmatched rate *despite* a shared join key gets its own
   message: the CSV probably belongs to a different run.
+
 **Join semantics differ mid-run, and this is not cosmetic.** `join_metadata`
 puts metadata on the **left** and joins measurements in
 (`_cli_output_manager.py:175`), so `how="left"` keeps every metadata row that
@@ -977,6 +1004,9 @@ additive; the fourth (3.2's run-start CSV copy) adds a write, and exists solely
 to give the picker something to suggest. Section 4.5 records two private imports
 and is not a code change.
 
+**No upstream change publishes a completion marker.** An earlier revision added
+one; 3.1.1 removed the need for it along with the entire run-state predicate.
+
 ### 4.1 Extract the crop math to a framework-free module
 
 `crop_hdf_rgb`, `_crop_hdf_layer_window`, `_dim_outside_bbox` and
@@ -1208,6 +1238,13 @@ costs the user a path lookup; it must never fail a run. Note the user-visible
 consequence is larger than it sounds — no pre-fill means no CSV means no time
 axis means nothing plots — so the failure is logged at WARNING, not DEBUG.
 
+**Write the epoch marker beside the copy.** 3.2's staleness cue needs a record,
+inside `.phenotypic/`, naming the CSV this epoch was given — `job_metadata.json`
+already carries it on SLURM, so this is a `processing_state.json` field for local
+runs. It must also be written on the **finalize** path taken by `--mode
+recompile`, which never reaches run start yet does refresh the copy; without that
+the cue false-alarms on the validated run's own workflow.
+
 **Update the constant's docstring in the same change.**
 `sdk_/_io_constants.py:332-337` currently documents this file as a finalize-time
 snapshot and is the only place naming its writer. After this change it has two.
@@ -1226,6 +1263,14 @@ The monitor imports two `_cli` internals rather than reimplementing them:
 A third, `_aggregate_needs_image_name_recovery`, was required by earlier
 revisions and is not needed now: it guards a hazard that only exists when the
 aggregate is read (3.3).
+
+Both are private by the project's convention that only `__init__.py` exports are
+public, and neither is re-exported from `sdk_`. This is a deliberate, recorded
+coupling rather than an oversight: `apps/monitor` becomes a consumer of two
+private `_cli` names, and a refactor of either must account for it.
+Promoting them into `sdk_` is the tidier long-term answer and is deliberately
+**not** done here — it would widen the upstream surface of a design already
+carrying four changes, for no behavioural gain.
 
 ### 4.6 Record the dashboard as a consumer of the metadata schema
 
@@ -1253,17 +1298,6 @@ real defence.
 The note belongs in `schema/CLAUDE.md` rather than here because that is where
 someone editing a category will actually be reading.
 
-Both are private by the project's convention that only `__init__.py` exports are
-public, and neither is re-exported from `sdk_`. This is a deliberate, recorded
-coupling rather than an oversight: `apps/monitor` becomes a consumer of two
-private `_cli` names, and a refactor of either must account for it.
-Promoting them into `sdk_` is the tidier long-term answer and is deliberately
-**not** done here — it would widen the upstream surface of a design already
-carrying four changes, for no behavioural gain.
-
-**No upstream change publishes a completion marker.** An earlier revision added
-one; 3.1.1 removed the need for it along with the entire run-state predicate.
-
 ---
 
 ## 5. Application architecture
@@ -1285,7 +1319,7 @@ apps/monitor/
 | Unit | Responsibility | Depends on |
 |---|---|---|
 | `scope.py` | `ScopeRoot(base)`; `resolve`; `list_dirs`. No knowledge of runs or Streamlit. | stdlib |
-| `runs.py` | Identify run directories, compose paths via `sdk_` helpers, and locate the metadata pre-fill (existence check only — no inference, 3.2). Deliberately does **not** classify run state (3.1.1). | `scope`, `sdk_` |
+| `runs.py` | Identify run directories, compose paths via `sdk_` helpers, locate the metadata pre-fill, and compute its evidence — image-key match share from the run's declared inputs, plus the epoch check (3.2). No selection is inferred. Deliberately does **not** classify run state (3.1.1). | `scope`, `sdk_` |
 | `data.py` | Frame selection (3.3), incremental accumulation (11.1), column role classification, the metadata join, **and the polars→pandas conversion**. | `runs`, `sdk_`, polars, pandas, and the two `_cli` privates of 4.5 |
 | `filters.py` | Filter spec → boolean mask. Pure. | polars |
 | `figures.py` | The three views and the overlay composition. Frame + selection in, figures out. | `phenotypic.plotting` |
@@ -2013,12 +2047,13 @@ that almost nothing needs a browser.
 31. **The metadata CSV is chosen, never inferred** — four assertions, each
     guarding a rule that was tried and failed (3.2). A run whose
     `deliverables/metadata.csv` exists **pre-fills** the picker but is not
-    adopted until confirmed. Nothing under `.phenotypic/` — including
-    `job_metadata.json` — is read for metadata. Switching runs **clears** the
+    adopted until confirmed. No CSV *selection* is inferred from `.phenotypic/` — reading the epoch marker
+    (3.2) is permitted and is not inference, since there is still one suggestion
+    and the human still confirms. Switching runs **clears** the
     selection, so run B is never labelled from run A's CSV. And a chosen CSV
     whose path stops resolving is reported, with controls falling back to
     frame-intrinsic metadata rather than to some other file. **Four assertions,
-    four mutations** — adopt the pre-fill silently; read `job_metadata.json`;
+    four mutations** — adopt the pre-fill silently; infer a selection from `job_metadata.json`;
     hold the selection in session state across a run switch; and, for the
     fourth, **fall back to another discovered candidate** (a
     `deliverables/metadata.csv` that appears mid-session) instead of to
@@ -2036,20 +2071,28 @@ that almost nothing needs a browser.
     state that makes the app unusable, since with no CSV there is no time axis
     and nothing plots. A second mutation: place the run-start write inside the
     `elif not measure_only:` branch, which silently excludes `--mode measure`.
-34. **The picker shows content evidence, and only claims what it checks** — the
-    picker reports the CSV's row count and the share of this run's images whose
-    key the CSV knows, sourced from the **HDF listing** at image grain. Four
-    assertions: a foreign CSV (different image names) reports ~0%; this run's CSV
-    reports ~100%; **a leftover CSV naming the same images also reports ~100%**,
-    and the picker does *not* present that as proof of freshness; and the number
-    is available on a staged run **before Stage 3**, when no parquet exists.
-    Four mutations, each a design this document tried: show the path alone;
-    compare mtimes against the earliest per-image parquet (fires on every correct
-    fresh run, silent on the leftover); source the denominator from the
-    measurement frame (0/0 for two thirds of a target-deployment run); and glob
-    the HDF listing without the `_`/`.` filter (30/60 on the validated volume,
-    arguing against the correct file).
-35. **A changed suggestion is surfaced, not acted on — and change means
+34. **The picker shows content evidence, and only claims what it checks** — row
+    count plus the share of the run's **declared inputs** whose key the CSV knows,
+    at image grain. Five assertions: a foreign CSV reports ~0%; this run's CSV
+    ~100%; **a leftover CSV naming the same images also reports ~100%**, and the
+    picker does not present that as freshness; the number is available before any
+    image is processed; and an empty input set renders as "no images to check
+    against yet", never `0%`. Five mutations, each a design this document tried:
+    show the path alone; compare mtimes against the earliest per-image parquet
+    (fires on every correct fresh run, silent on the leftover); source the
+    denominator from the measurement frame (0/0 for two thirds of a
+    target-deployment run); source it from the HDF listing (0 through the whole
+    SLURM queue wait, and lists every image ever written here rather than this
+    run's); and glob any fallback without the `_`/`.` filter (30/60 on the
+    validated volume, arguing against the correct file).
+35. **The epoch cue catches an orphaned CSV** — a `deliverables/metadata.csv`
+    present with no `.phenotypic/` record naming it reports **stale**; the same
+    file with a record naming it does not. Assert it does *not* fire on the
+    validated run's workflow, where `--mode recompile` refreshed the copy at
+    finalize — the marker must be written there too. Mutations: rank candidates
+    by recency (the four rules that failed); treat a missing record as
+    inconclusive rather than stale; omit the finalize-path write.
+36. **A changed suggestion is surfaced, not acted on — and change means
     content** — when the run-start copy is rewritten under an open session with
     *different* content, the selection is kept and a notice appears; when
     finalize rewrites it with *identical* content, nothing fires. Three
@@ -2058,24 +2101,24 @@ that almost nothing needs a browser.
     new suggestion silently; and detect change by path or mtime rather than
     content — path never differs, since the selection and the suggestion are
     normally the same string, so every label would be replaced with no notice.
-36. **An in-place re-run notifies, it does not clear** — a `--restart` or
+37. **An in-place re-run notifies, it does not clear** — a `--restart` or
     `--mode measure` in the same directory with a *different* `--metadata`
     rewrites the suggestion; the active selection is kept and a notice appears,
     the same contract as test 35 for what is the same physical event. An earlier
     revision specified the opposite here — clear the selection — which
     contradicted test 35 outright and, at finalize, would have collapsed every
     control for a byte-identical file. Mutation: clear on suggestion change.
-37. **The picker refuses non-CSV siblings** — a directory containing an
+38. **The picker refuses non-CSV siblings** — a directory containing an
     AppleDouble `._metadata.csv` beside the real file offers only the real one,
     and selecting an unparsable file yields the parse-failure message rather
     than the missing-file one. Both fixtures are present in the validated run's
     `deliverables/`.
-38. **A foreign CSV is called out** — a CSV sharing the join key's column names
+39. **A foreign CSV is called out** — a CSV sharing the join key's column names
     but none of its values drops ~100% of colonies, and is reported as probably
     belonging to a different run rather than as a routine drop count. Mutation:
     use the ordinary drop-count wording, which is indistinguishable from the
     legitimate over-detection message.
-39. **Mid-run count wording** — with a run truncated to a third of its images,
+40. **Mid-run count wording** — with a run truncated to a third of its images,
     `unmatched_metadata_count` is large (322 of 480 on the validated run) and the
     banner does **not** claim those wells never grew. Guards the third instance
     of the finalize-versus-mid-run trap (3.2).
@@ -2098,8 +2141,8 @@ document were what hid the schema-default problem.
 ### Resolved
 
 - **Metadata CSV availability** — the user chooses it in an explicit sidebar
-  submit, pre-filled from `deliverables/metadata.csv` with its mtime and a
-  staleness warning shown. Auto-discovery was removed after four successive rules
+  submit, pre-filled from `deliverables/metadata.csv`, with content evidence and an
+  epoch check shown (3.2) Auto-discovery was removed after four successive rules
   failed in five distinct ways; the run-start copy that fed it was deleted with
   it and then reinstated in the narrower pre-fill-only role (3.2, 4.4).
 - **Overlay availability** — overlays exist during the run; `crop_colony`'s
