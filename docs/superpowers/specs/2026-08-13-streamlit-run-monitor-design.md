@@ -121,7 +121,7 @@ confirmed by observing mtimes on a real run.
 | SLURM chunk files | `.phenotypic/progress/chunks/chunk_*.parquet` | **During** SLURM runs, at every checkpoint |
 | Master archive | `deliverables/master_measurements.parquet` | **Local:** at finalize. **SLURM:** also mid-run, at every checkpoint |
 | Post-applied mirror | `deliverables/measurements.parquet` | At finalize only, by `_seed_measurements` |
-| Metadata CSV copy | `metadata_csv_deliverable_path(output)` | **At run start when `--metadata` is given (new, 3.2)**, at finalize, and on every recompile. A `--restart` *without* `--metadata` leaves the previous run's copy in place, which is why 3.2 offers it as a suggestion with its mtime shown, rather than adopting it |
+| Metadata CSV copy | `metadata_csv_deliverable_path(output)` | **At run start when `--metadata` is given (new, 3.2)**, at finalize, and on every recompile. A `--restart` *without* `--metadata` leaves the previous run's copy in place, which is why 3.2 offers it as a suggestion with content evidence shown — row count and image-key match share — rather than adopting it |
 
 Measurements, HDF and overlay are written together per image at
 `_cli_process_single.py:109-112`, three seconds ahead of finalize on an observed
@@ -355,11 +355,33 @@ table. Confirmation is a deliberate act carrying no evidence, which is the shape
 of reassurance this document has had to retract twice already.
 
 So the picker **shows the evidence, not just the path** — and the evidence is
-**content, not timestamps**: the CSV's row count, and how many of the images
-currently on disk have a matching join key. A CSV left over from a different run
-matches few or none of them; this run's CSV matches nearly all. Both numbers come
-from `prepare_metadata_join_keys`, which the monitor already imports for the
-drop counts (3.2), so this costs one extra call and no new mechanism.
+**content, not timestamps**: the CSV's row count, and how many of this run's
+images carry a join key the CSV knows.
+
+**The image set comes from the HDF listing, not the measurement frame.** Per-image
+HDFs are written in Stage 1 (3.1), so the set is complete long before a staged run
+produces its first parquet — whereas the parquet-derived frame is *empty* for
+roughly the first two thirds of a target-deployment run, which is exactly when the
+pre-fill decision is made. Sourcing the denominator from the frame would have
+reproduced the mtime cue's blind window verbatim, in the replacement written to
+fix it. The stem↔key identity holds by construction, not luck:
+`_image_io_handler.py:530-531` sets `image.name = filepath.stem` and
+`_cli_process_single.py:104-110` names both artifacts from `image_path.stem`;
+verified 30/30 against the validated run's CSV.
+
+Two properties of that listing are load-bearing. It applies **3.3's `_`/`.`
+filter** — unfiltered, the validated exFAT volume returns 60 entries for 30
+images and the correct CSV would score 30/60, arguing against the right file. And
+the denominator is **per-dataset**, matching the frames, so a multi-dataset run
+with a single-dataset CSV is not reported as half-wrong.
+
+**The grain is images, not colonies.** `prepare_metadata_join_keys` returns row
+counts, which on the full frame is colony grain — 470/512 on the correct CSV,
+where the missing 8.2% is the over-detection 3.2 separately reports as a
+*detector-quality* signal. Conflating the two would make "wrong CSV"
+indistinguishable from "over-detecting detector". Image grain needs a distinct-key
+projection over the HDF stems, so this is a small new construction rather than
+the free extra call an earlier draft claimed.
 
 **An earlier revision proposed an mtime comparison — "warn when the copy predates
 this run's earliest per-image parquet" — and it was wrong in both directions at
@@ -379,9 +401,39 @@ the first two thirds of a run (3.1), which is when the pre-fill decision is made
 It also revived the cross-node, cross-filesystem timestamp comparison that rule 4
 of the table above was struck for.
 
-Content evidence has none of those properties. It does not depend on a clock, a
-node, a filesystem, or on knowing which run wrote what — it asks the only
-question that actually matters: *does this CSV describe these images?*
+**What content evidence can and cannot do — stated as a limit, not a claim.**
+It does not depend on a clock, a node, a filesystem, or on knowing which run
+wrote what. But it compares **join keys**, and every control's *meaning* lives in
+the non-key columns — strain, media, time — which it never inspects. So it asks
+*does this CSV name these images?*, not *does this CSV describe them correctly?*
+
+Measured on the validated run, the difference is total:
+
+| CSV | images matched | colonies matched |
+|---|---|---|
+| Correct | 30/30 | 470/512 |
+| Leftover: same images, wrong labels | **30/30** | **470/512** |
+| Foreign: different images | 0/30 | 0/512 |
+
+**It catches a foreign CSV. It cannot catch a stale one**, because a `--restart`
+reprocesses the same images by construction, so a leftover from the previous run
+scores identically to the right one. That is the same fault the mtime cue had —
+silent on exactly the case that motivated the picker — surviving into its
+replacement.
+
+**And no third cue would fix it.** The distinguishing information is the *values*
+of the non-key columns, and nothing on disk says which values are correct: both
+CSVs are well-formed, both name these images, and only the person who ran the
+experiment knows which one they meant. Two mechanisms have now failed at this,
+each in its own way, and the reason is that the question has no answer in the
+data.
+
+So the division of labour is explicit: **the evidence handles the foreign case;
+the human handles the stale one.** That is what the picker is for, and why the
+run-start copy (4.4) matters more than any cue — it makes the suggestion this
+run's own input in the common case, rather than something to be second-guessed.
+The picker states what it checked, so a user is never left believing a green
+number means more than it does.
 
 If a run started without `--metadata` there is nothing to pre-fill; the picker
 opens empty and says so.
@@ -437,7 +489,17 @@ completed run for nothing.
 
 A hash of the file's bytes distinguishes the two exactly. Same content, no
 notice; different content, notice — regardless of which writer touched it, on
-what node, or when. It costs one read of a file the app is already reading.
+what node, or when.
+
+**Stat-gate the hash.** It is free only when the selection *is* the suggestion.
+When the user picked a different CSV — the case the picker exists to allow — the
+suggestion is a file the app never otherwise reads, and hashing it every poll is
+a billed object GET per poll on a bucket-backed mount, against 11.1's whole
+O(new) discipline. So: re-hash only when the suggestion's `(mtime_ns, size)`
+moves. That is safe precisely because finalize's byte-identical rewrite *does*
+move the mtime — it re-hashes, finds the hash equal, and stays quiet. Note this
+uses mtime as a cheap **trigger**, never as the signal; the rejection above is of
+mtime as evidence, not of stat as an optimisation.
 
 Keying per run also permits a selection *map*, so tabbing between two runs does
 not lose either choice. What must never happen is one selection outliving the run
@@ -927,7 +989,7 @@ every existing Dash import path keeps working — the pattern
 The new module lives at `phenotypic/sdk_/_crops.py`, and its symbols
 (`crop_hdf_rgb`, the rectangle-window function, the strided reader, `LayerName`)
 are **exported publicly from `sdk_/__init__.py`** — unlike the plotting helpers
-of 4.3 and the `_cli` internals of 4.4. `sdk_` is already the package's public
+of 4.3 and the `_cli` internals of 4.5. `sdk_` is already the package's public
 utility surface (it publicly exports the path helpers this design relies on), and
 these are general-purpose image-window primitives with two in-tree consumers, not
 one module's internals.
@@ -1974,15 +2036,19 @@ that almost nothing needs a browser.
     state that makes the app unusable, since with no CSV there is no time axis
     and nothing plots. A second mutation: place the run-start write inside the
     `elif not measure_only:` branch, which silently excludes `--mode measure`.
-34. **The picker shows content evidence, not just a path** — the picker reports
-    the CSV's row count and the share of on-disk images whose join key it
-    matches. Assert both directions on real data: this run's CSV matches nearly
-    every image; a CSV from another run matches almost none. Two mutations, both
-    previously specified here: show the path alone (character-identical whether
-    fresh or leftover), and warn by comparing mtimes against the earliest
-    per-image parquet — which fires on every correct fresh run, because 4.4
-    writes the copy before the first image, and stays silent on the leftover
-    case, which is *newer* than the parquets it is compared against.
+34. **The picker shows content evidence, and only claims what it checks** — the
+    picker reports the CSV's row count and the share of this run's images whose
+    key the CSV knows, sourced from the **HDF listing** at image grain. Four
+    assertions: a foreign CSV (different image names) reports ~0%; this run's CSV
+    reports ~100%; **a leftover CSV naming the same images also reports ~100%**,
+    and the picker does *not* present that as proof of freshness; and the number
+    is available on a staged run **before Stage 3**, when no parquet exists.
+    Four mutations, each a design this document tried: show the path alone;
+    compare mtimes against the earliest per-image parquet (fires on every correct
+    fresh run, silent on the leftover); source the denominator from the
+    measurement frame (0/0 for two thirds of a target-deployment run); and glob
+    the HDF listing without the `_`/`.` filter (30/60 on the validated volume,
+    arguing against the correct file).
 35. **A changed suggestion is surfaced, not acted on — and change means
     content** — when the run-start copy is rewritten under an open session with
     *different* content, the selection is kept and a notice appears; when
