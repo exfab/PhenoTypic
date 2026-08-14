@@ -37,12 +37,15 @@ def _historical_pipeline(tmp_path: Path) -> Path:
         str(METADATA.IMAGE_NAME): ["plate-a.png", "plate-a.png"],
         "Object_Label": [1, 2],
     }).to_csv(metadata, index=False)
-    raw = (
-        _FIXTURES / "grid_occupancy_metadata_source_v1.json"
-    ).read_text(encoding="utf-8")
+    payload = json.loads(
+        (_FIXTURES / "grid_occupancy_metadata_source_v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    payload["qc"][0]["params"]["metadata_source"] = str(metadata)
     pipeline = tmp_path / "pipeline.json.pht-pipe"
     pipeline.write_text(
-        raw.replace("__METADATA_PATH__", str(metadata)),
+        json.dumps(payload),
         encoding="utf-8",
     )
     return pipeline

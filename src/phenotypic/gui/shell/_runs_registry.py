@@ -706,7 +706,7 @@ class RunRegistry:
         registered = 0
         for output_dir in self._discover_output_dirs(sandbox, max_depth):
             try:
-                rel = str(output_dir.relative_to(sandbox.root))
+                rel = output_dir.relative_to(sandbox.root).as_posix()
             except ValueError:
                 continue
             owner_record = self._read_owner_record(output_dir, rel)
@@ -784,7 +784,7 @@ class RunRegistry:
 
         def _has_valid_owner(path: Path) -> bool:
             try:
-                rel_path = str(path.relative_to(root))
+                rel_path = path.relative_to(root).as_posix()
             except ValueError:
                 return False
             return bool(
@@ -807,47 +807,52 @@ class RunRegistry:
             except (PermissionError, FileNotFoundError, OSError):
                 continue
             for child in children:
-                if not child.is_dir():
-                    continue
-                owner_is_valid = _has_valid_owner(child)
-                if (
-                    _is_recognized_backup_artifact_name(child.name)
-                    and not owner_is_valid
-                ):
-                    # Backups are private artifacts at every sandbox depth,
-                    # including root-level siblings of current outputs. A
-                    # valid durable generation owner takes precedence so a
-                    # legitimate run is not hidden merely because its chosen
-                    # name ends in a backup-shaped suffix.
-                    continue
-                caps = classify(child)
-                output_dir: Path | None = None
-                if owner_is_valid:
-                    output_dir = child
-                elif caps.is_cli_output:
-                    output_dir = self._canonical_cli_output_dir(child)
-                elif caps.is_process_only_output:
-                    output_dir = child
-
-                if output_dir is not None:
+                try:
+                    if not child.is_dir():
+                        continue
+                    owner_is_valid = _has_valid_owner(child)
                     if (
-                        _is_recognized_backup_artifact_name(output_dir.name)
-                        and not _has_valid_owner(output_dir)
+                        _is_recognized_backup_artifact_name(child.name)
+                        and not owner_is_valid
                     ):
-                        # A promoted ``deliverables/`` child can canonicalize
-                        # to the sandbox root. Reapply the same owner-aware
-                        # exclusion after canonicalization so a depth-zero
-                        # ``*-backup`` root cannot leak back in as ``"."``.
-                        output_dir = None
-                if output_dir is not None:
-                    key = output_dir.resolve()
-                    if key not in seen_output_dirs:
-                        seen_output_dirs.add(key)
-                        yield output_dir
-                # Recurse regardless. Nested outputs are uncommon but remain
-                # a supported compatibility layout, and an invalid owner file
-                # must not hide valid descendants.
-                stack.append((child, depth + 1))
+                        # Backups are private artifacts at every sandbox depth,
+                        # including root-level siblings of current outputs. A
+                        # valid durable generation owner takes precedence so a
+                        # legitimate run is not hidden merely because its chosen
+                        # name ends in a backup-shaped suffix.
+                        continue
+                    caps = classify(child)
+                    output_dir: Path | None = None
+                    if owner_is_valid:
+                        output_dir = child
+                    elif caps.is_cli_output:
+                        output_dir = self._canonical_cli_output_dir(child)
+                    elif caps.is_process_only_output:
+                        output_dir = child
+
+                    if output_dir is not None:
+                        if (
+                            _is_recognized_backup_artifact_name(output_dir.name)
+                            and not _has_valid_owner(output_dir)
+                        ):
+                            # A promoted ``deliverables/`` child can canonicalize
+                            # to the sandbox root. Reapply the same owner-aware
+                            # exclusion after canonicalization so a depth-zero
+                            # ``*-backup`` root cannot leak back in as ``"."``.
+                            output_dir = None
+                    if output_dir is not None:
+                        key = output_dir.resolve()
+                        if key not in seen_output_dirs:
+                            seen_output_dirs.add(key)
+                            yield output_dir
+                    # Recurse regardless. Nested outputs are uncommon but remain
+                    # a supported compatibility layout, and an invalid owner file
+                    # must not hide valid descendants.
+                    stack.append((child, depth + 1))
+                except (PermissionError, FileNotFoundError, OSError):
+                    # A single unreadable or concurrently removed entry must not
+                    # prevent valid sibling runs from being discovered.
+                    continue
 
     @staticmethod
     def _canonical_cli_output_dir(path: Path) -> Path:
