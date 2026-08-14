@@ -87,7 +87,7 @@ modified by this work beyond the extractions in Section 4.
 | Run handle | `phenotypic.sdk_` path helpers directly. **Not** `OutputRoot` — see 3.5. |
 | Data source | Per-image measurements, always. The finalized mirror is never read, and run state is never detected — see 3.1.1. |
 | Controls | Strain (page) · groupby columns (subplot columns) · time column from metadata (x) · measurement (y) · metadata value filters. |
-| Views | Line, scatter, box. Radio toggle, plus an overlay option composing box behind the line/marker traces. |
+| Views | Line, scatter, box. Radio toggle, plus an overlay option composing box behind the line/marker traces, and an off-by-default toggle admitting unmatched colonies as a pinned `unassigned` page (3.2, 6.2). |
 | Scatter | Every colony as a point over time, no connecting lines. |
 | Box | One box per timepoint, within each facet. |
 | Grid view | Crop window = **union of the member bounding boxes** of the colony's grid section. See 7.1 for what this does and does not give. |
@@ -257,12 +257,14 @@ it.
 **Metadata column identity is *discovered from the frame*, never assumed — not
 from a literal, and not from a schema enum either.** An earlier revision required
 deriving every column name from the schema enums. The validated run refutes that:
-**15 of its 18 metadata columns are not members of any `phenotypic.schema` enum**
+**15 of its 20 metadata columns are not members of any `phenotypic.schema` enum**
 (3.3.0.1). They are user-CSV columns — `MetadataCulture_AgeHours`,
 `MetadataPlate_Well`, `MetadataGenetic_Source`, `MetadataSample_ExperimentalId`
-and the rest — and an enum-derived control finds nothing on that run. Only
-`MetadataGenetic_Strain`, `MetadataImage_ImageName` and
-`MetadataExperiment_Dataset` are schema members.
+and the rest — and an enum-derived control finds nothing on that run. The five that
+are schema members are `MetadataGenetic_Strain`, `MetadataImage_ImageName`,
+`MetadataExperiment_Dataset`, `MetadataImage_ImageType` and
+`MetadataImage_BitDepth` — and the last three of those are identity or
+image-intrinsic, not anything a user would group by.
 
 Where a schema enum *does* name a column the monitor needs structurally (the
 `point_id` triple, 4.2), derive it from the enum rather than a literal — that
@@ -277,16 +279,38 @@ Deriving from the enum sidesteps the bug and stays correct after it is fixed.
 
 **Resolution, three parts:**
 
+0. **A finalized run already has the CSV on disk, at a canonical path.**
+   `metadata_csv_deliverable_path(output)` — `<output>/deliverables/metadata.csv`
+   (`sdk_/_io_constants.py:1098-1100`) — is written by finalize (3.1) and is the
+   first place to look. The validated run has it, and has *no*
+   `job_metadata.json` at all, so a discovery order that skipped it would make
+   the user type a path to a file the spec itself documents the location of. This
+   is where every number in 3.3.0 came from.
 1. **SLURM runs already record it.** The `--metadata` path is written to
    `.phenotypic/progress/job_metadata.json` at run start
    (`_cli_execution_strategies.py:790-818`). The monitor reads it from there.
    Caveat the CLI itself documents (`_cli_output_manager.py:950-958`): it is an
    absolute path, useless once results move off the cluster — so it is a
    best-effort source, not the primary one.
-2. **Local runs record it nowhere.** Confirmed on a real local run: no
-   `job_metadata.json` is written at all. So the upstream change is needed, and
-   is needed *only* for local runs: **add** an early idempotent copy of the CSV
-   into the output directory at run start, keeping finalize's copy unchanged.
+2. **Local runs record it nowhere until finalize.** Confirmed on a real local
+   run: no `job_metadata.json` is written at all. So the upstream change is
+   needed, and only for local runs: **add** an early idempotent copy of the CSV
+   at run start.
+
+   **Its destination must not be `metadata_csv_deliverable_path`, and the reason
+   matters.** That path is what finalize overwrites. An early copy there,
+   skip-if-exists in the manner of `_copy_pipeline_to_output`, would find the
+   *previous* run's CSV already present after a `--restart` (which preserves
+   `deliverables/`), skip, and leave the monitor plotting the new run's colonies
+   against the old run's strain, condition and time labels for the entire live
+   run. That is predicate row 1 of 3.1.1 — a stale artifact served for a whole
+   run — reappearing inside the fix that answered it.
+
+   The early copy therefore goes to a **machine-state path under
+   `.phenotypic/`**, which `--restart` clears, and is written unconditionally
+   rather than skip-if-exists. Finalize's `deliverables/metadata.csv` is
+   untouched, and the monitor prefers the machine-state copy when both exist,
+   since only that one is guaranteed to belong to the running job.
    There is direct precedent — `_copy_pipeline_to_output`
    (`phenotypicCLI.py:2489-2507`) already does exactly this for the pipeline
    JSON, skipping when the destination exists. Finalize's
@@ -364,22 +388,59 @@ broken image, which reads as 29 broken images on this run and is misleading.
 **A toggle admits them when wanted, defaulting to off.** Unmatched measured
 colonies are dropped by default, so every plotted point carries full metadata and
 the facets stay meaningful. A sidebar control includes them as an explicit
-**unassigned** group — they have no strain, condition or replicate, so they
-cannot be faceted normally and are drawn as one series rather than distributed
-across pages. This exists because over-detection is a detector-quality signal:
-the count tells you a problem exists, the toggle tells you where. Both matter for
-a live run, but only one belongs in the default view.
+**unassigned** group. This exists because over-detection is a detector-quality
+signal: the count tells you a problem exists, the toggle tells you where.
 
-The same drop count also feeds the anti-join for the toggle — the unmatched set
-*is* the group, so nothing is computed twice.
+The same drop count feeds the anti-join for the toggle — the unmatched set *is*
+the group, so nothing is computed twice.
 
-**Report the third count as well.** `prepare_metadata_join_keys` also returns
-`unmatched_metadata_count` — CSV rows that matched no measured colony. On the
-validated run that is 10: designed wells where nothing was detected, which is the
-"this strain never grew" signal this section calls real above. The inner join
-discards them by design, so without the count that half of the signal is lost
-entirely. It costs one line, from an object the monitor already holds for the
-other two counts.
+**These rows have no x, and saying "draw them as one series" is not enough.**
+An earlier revision said exactly that; executed against the validated run it
+produces 42 points with `x = NaN` and intact `y`, which Plotly draws as nothing.
+The cause is structural: per-image parquets carry only
+`MetadataExperiment_Dataset`, `MetadataImage_ImageName`, `MetadataImage_ImageType`
+and `MetadataImage_BitDepth`, and **no time-like column of any kind**. Every
+candidate x lives in the CSV these rows by definition failed to match. All three
+views take x from `time`, so the toggle would render a blank page in each —
+and test 27 as first written could not catch it, because the trace *does* exist,
+carrying 42 invisible points.
+
+**Recovering x, and when to refuse.** In the validated run the time columns are
+**image-level**: `MetadataCulture_AgeHours` and `MetadataAcquisition_Datetime`
+each have exactly one distinct value per image, while `MetadataGenetic_Strain`
+has four. So x is recoverable for an unmatched colony by a second, **image-only**
+lookup of the chosen time column on `MetadataImage_ImageName`, leaving strain,
+condition and replicate genuinely null.
+
+That is a property of this CSV, not a guarantee. The monitor therefore checks the
+precondition — the chosen time column is constant within each image — and:
+
+- when it holds, joins x image-wise for the unassigned group;
+- when it fails, **disables the toggle with an explanation** rather than
+  rendering an empty page. A control that silently draws nothing is worse than a
+  control that says why it cannot.
+
+**Label the group explicitly.** `_display_pairs` renders a null group as
+`<null>` (`_plot_meas_time_series.py:350`). The group columns are filled with a
+sentinel `"unassigned"` string rather than left null, which both produces the
+intended label and stops the group colliding with a genuine null strain value.
+
+**Report the third count as well — with the mid-run caveat the other two got.**
+`prepare_metadata_join_keys` also returns `unmatched_metadata_count`: CSV rows
+that matched no measured colony. On the *finished* validated run that is 10 —
+designed wells where nothing was detected, the "this strain never grew" signal
+this section calls real above.
+
+Mid-run it means something else entirely, and the divergence is severe. Measured
+against the same run truncated to partial states: 464 of 480 after one image, 322
+after ten, 10 after all thirty. A banner reading "322 wells never grew" a third
+of the way through a run overstates the truth by 32×.
+
+This is the **third** instance of the finalize-versus-mid-run trap in this one
+section — after the left-join phantoms and the whole-CSV duplicate count — and it
+was very nearly the one that shipped without a caveat, having been added in a
+later revision than the pattern it belongs to. The banner reads *"N metadata rows
+have no measured colony yet"*, which is true in both regimes.
 
 **Over-matching needs reporting as much as under-matching.** Because metadata is
 the left frame, a CSV with more than one row per join key **multiplies** every
@@ -616,6 +677,7 @@ reintroduce the run-state detection that 3.1.1 exists to eliminate.
 | Crop centre | `Bbox_CenterRR`, `Bbox_CenterCC` | Always present — from the appended `objects.info()` block, not an optional measure op |
 | Bbox extent | `Bbox_MinRR`, `Bbox_MaxRR`, `Bbox_MinCC`, `Bbox_MaxCC` | Same; confirmed in both grid and non-grid runs |
 | Grid section id | `Grid_RowNum`, `Grid_ColNum`, `Grid_RowMajorIdx` | **GridImage pipelines only** (`_image_pipeline_core.py:1229-1232`) |
+| Grid column-major index | `Grid_ColMajorIdx` | Same call path (`grid.info()`, `_grid_finder.py:366,380`). Listed separately because 3.2/3.3.0 make it load-bearing: it is half the metadata join key, and it is `UInt16` in the parquet against `Int64` in the CSV |
 
 **`Grid_RowIntervalStart/End` and `Grid_ColIntervalStart/End` are never produced
 by any live pipeline path.** They are declared in `schema/_grid.py` and have no
@@ -849,8 +911,9 @@ columns and reached production data; and three schema defaults
 defaulting to them presents controls that cannot work. Both originate in the
 schema and surface only in a consumer.
 
-**Scope the claim honestly, though.** Only 3 of the validated run's 18 metadata
-columns are schema members; the other 15 come from the user's CSV and no
+**Scope the claim honestly, though.** Only 5 of the validated run's 20 metadata
+columns are schema members, and three of those five are identity or
+image-intrinsic; the other 15 come from the user's CSV and no
 `schema/CLAUDE.md` note governs them. The note is worth adding — it would have
 caught the typo and the dead defaults — but it does not protect the dashboard
 from the general case, which is why 3.2's discovery rule, not the schema, is the
@@ -977,6 +1040,15 @@ state, reset whenever run, strain set or filter spec changes.
 
 This preserves the long-page reading experience and bounds render cost, at the
 price of a click rather than a scroll.
+
+**The unassigned page is pinned first and exempt from the chunk budget.** Pages
+sort by `_typed_group_key`, which JSON-encodes values — so a quoted strain name
+begins `"` (0x22) and sorts below every letter, putting a null or sentinel group
+*last*. Left alone, the unassigned page (3.2) would land behind every real strain
+and require paging through the whole run to reach. Since its entire purpose is
+surfacing over-detection to someone watching a live run, burying it behind K
+"Show more" clicks defeats the toggle. It renders first, outside the budget, and
+the budget applies to the real strain pages after it.
 
 ### 6.3 Click resolution
 
@@ -1395,6 +1467,9 @@ substitution touches nothing else.
 | HDF local-cache revalidation fails twice | Serve nothing rather than possibly-torn pixels: placeholder plus a "still being written" note. Never serve the unvalidated copy |
 | Metadata CSV shares no columns with the measurements | Distinct message: the CSV has no join key, so nothing was joined and nothing dropped. Never reported as "every colony dropped" (3.2) |
 | Metadata CSV has duplicate join keys | Banner reports `duplicate_metadata_key_count`; colonies are multiplied by the join and the user is told why (3.2) |
+| CSV rows matching no measured colony | Banner reports `unmatched_metadata_count`, worded "no measured colony **yet**" so it is true mid-run as well as at finalize (3.2) |
+| Unassigned-group toggle enabled | Over-detections render as a pinned first page with x recovered image-wise (3.2, 6.2) |
+| Time column not constant within an image | The toggle is disabled with an explanation rather than rendering an empty page (3.2) |
 | Per-image parquets quarantined at staged-SLURM finalize | Points disappear once the absence has persisted a full poll interval; the banner reports the count rather than letting them vanish silently (3.1.1, 11.1) |
 | Staged run before Stage 3 completes | "No measurements yet, still polling" — the normal state for most of a staged run, not an error (3.1) |
 
@@ -1524,7 +1599,8 @@ that almost nothing needs a browser.
 25. **Non-schema metadata columns are offered** — `MetadataCulture_AgeHours`,
     `MetadataPlate_Well` and the other 15 columns that belong to no schema enum
     appear as selectable controls. Mutation: filter the offered columns to schema
-    members, which leaves this run with three.
+    members, which leaves this run with five — of which only
+    `MetadataGenetic_Strain` is groupable, so every other control empties.
 26. **AppleDouble sidecars are excluded** — a measurements directory containing
     `._<stem>.parquet` beside each real file yields only the real files, with no
     unreadable-file report. Mutation: filter on `_` alone, which admits all of
@@ -1535,10 +1611,23 @@ that almost nothing needs a browser.
     `unassigned` group when the toggle is on. The fixture must use the real
     mechanism — an extra grid index within a matched image — not an unmatched
     image, which is the mode that does *not* dominate (3.2).
+28. **The unassigned group is actually visible** — assert on **plotted x
+    values**, not on the group's existence. An earlier draft would have passed
+    with 42 points at `x = NaN`, drawing nothing, because the trace exists.
+    Assert every unassigned point has a finite x recovered image-wise, that the
+    page renders first, and that it is exempt from the chunk budget. Mutation:
+    take x from the joined frame, which is null for exactly these rows.
+29. **The toggle refuses rather than lying** — with a time column that varies
+    within an image, the toggle is disabled and explains why. Mutation: enable it
+    anyway, which yields a page of invisible points.
+30. **Mid-run count wording** — with a run truncated to a third of its images,
+    `unmatched_metadata_count` is large (322 of 480 on the validated run) and the
+    banner does **not** claim those wells never grew. Guards the third instance
+    of the finalize-versus-mid-run trap (3.2).
 
 Per the repository's test-integrity rule, each must be shown to fail when the
 behaviour it guards is reverted; a skip on a missing fixture is a failure, not a
-pass. Tests 5–12 and 16–24 all have fixtures derivable from the validated run in
+pass. Tests 5–12 and 16–30 all have fixtures derivable from the validated run in
 3.3.0 — prefer deriving them from its real column set over inventing a
 plausible-looking one, since the invented ones in earlier revisions of this
 document were what hid the schema-default problem.
