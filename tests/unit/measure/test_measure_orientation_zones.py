@@ -929,9 +929,8 @@ def test_inspect_builds_figure():
     fig = op.inspect(image)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) > 0
-    annotation_text = {str(ann.text) for ann in fig.layout.annotations}
-    object_labels = {str(prop.label) for prop in image.objects.props}
-    assert annotation_text.isdisjoint(object_labels)
+    assert not fig.layout.annotations
+    assert fig.layout.margin.b is None
     assert not any(
         getattr(trace, "mode", None) == "text" for trace in fig.data
     )
