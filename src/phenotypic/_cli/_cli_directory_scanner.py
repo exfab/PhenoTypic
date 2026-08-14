@@ -210,7 +210,13 @@ def scan_hdf_outputs(output_dir: Path) -> List[Dataset]:
             if not hdf_dir.is_dir():
                 continue
 
-            hdf_files = sorted(hdf_dir.glob("*.h5"))
+            # Skip dotfiles: on an exFAT/FAT volume macOS leaves an
+            # AppleDouble `._<name>.h5` beside every HDF, and it is binary
+            # junk, not an HDF — `--mode measure` on such a tree would try to
+            # load it.
+            hdf_files = sorted(
+                p for p in hdf_dir.glob("*.h5") if not p.name.startswith(".")
+            )
             if not hdf_files:
                 continue
 

@@ -55,6 +55,20 @@ def build_recompile_tasks(
     """
     output_dir = Path(output_dir)
     shard_size = max(1, int(shard_size))
+
+    # Flush trailing per-image parquets before resolving shards. This path
+    # never reaches `aggregate_measurements` — the recompile worker
+    # concatenates the shards itself — so without the flush,
+    # `discover_measurement_sources` returns `_dataset_aggregated.parquet`
+    # alone and any image left unchunked by the last checkpoint sentinel is
+    # dropped from the rebuilt master. That would silently defeat the very
+    # command a user runs to recover from a short master, and would make
+    # `--mode recompile` disagree with `--mode recompile --slurm` on the same
+    # directory. No-op for unchunked runs and evenly-divided ones.
+    from ._cli_chunk_writer import flush_trailing_measurements_if_chunked
+
+    flush_trailing_measurements_if_chunked(output_dir)
+
     tasks: list[dict[str, Any]] = []
     shard_id = 0
 

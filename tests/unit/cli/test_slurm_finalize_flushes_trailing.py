@@ -16,6 +16,8 @@ import polars as pl
 
 from phenotypic._cli._cli_chunk_writer import flush_unchunked_measurements
 from phenotypic._cli._cli_output_manager import aggregate_measurements
+from phenotypic._cli._cli_recompile_slurm_scripts import build_recompile_tasks
+from phenotypic._cli._measurement_sources import discover_measurement_sources
 from phenotypic.schema import EXPERIMENT_METADATA, METADATA, OBJECT
 from phenotypic.sdk_ import (
     DATASET_AGGREGATED_PARQUET,
@@ -65,6 +67,15 @@ def test_trailing_images_reach_the_master(tmp_path: Path) -> None:
     # _build_entry_list appends one only every `checkpoint_interval` images.
     _write_per_image(tmp_path, ["img_004"])
 
+    # Pin the mechanism: source discovery returns the aggregate alone, so the
+    # trailing image is invisible to aggregation. Without this the test would
+    # also pass if a future change made discovery fall back to the individual
+    # parquets — which would hide a regression in the flush.
+    sources = discover_measurement_sources(tmp_path, [DATASET])
+    assert [p.path.name for p in sources] == [DATASET_AGGREGATED_PARQUET], (
+        f"expected discovery to prefer the aggregate, got {sources}"
+    )
+
     # The dependent finalizer runs.
     aggregate_measurements(output_dir=tmp_path, dataset_names=[DATASET])
 
@@ -83,6 +94,52 @@ def test_no_trailing_images_is_unaffected(tmp_path: Path) -> None:
     aggregate_measurements(output_dir=tmp_path, dataset_names=[DATASET])
 
     assert _master_image_names(tmp_path) == set(stems)
+
+
+def test_slurm_recompile_shards_include_trailing_images(tmp_path: Path) -> None:
+    """The SLURM recompile path must see the trailing images too.
+
+    ``build_recompile_tasks`` resolves shards at submit time and never reaches
+    ``aggregate_measurements`` — the worker concatenates the shards itself. So
+    the flush has to happen here as well, or the command a user runs *to
+    recover from a short master* rebuilds the same short master, and
+    ``--mode recompile`` and ``--mode recompile --slurm`` disagree on one
+    directory.
+    """
+    _write_per_image(tmp_path, ["img_001", "img_002", "img_003"])
+    flush_unchunked_measurements(tmp_path)
+    _write_per_image(tmp_path, ["img_004"])
+
+    tasks = build_recompile_tasks(
+        output_dir=tmp_path,
+        dataset_names=[DATASET],
+        include_dataset_column=True,
+        overlay_alpha=0.5,
+        shard_size=100,
+    )
+
+    sharded = [
+        Path(f).name
+        for t in tasks
+        for f in t.get("files", [])
+    ]
+    assert sharded, f"no measurement shards emitted: {tasks}"
+
+    # Every image must be reachable from the shards — either because the
+    # aggregate now contains it (post-flush) or because it is listed directly.
+    rows = pl.concat(
+        [
+            pl.read_parquet(dataset_measurements_dir(tmp_path, DATASET) / name)
+            for name in sharded
+        ],
+        how="diagonal_relaxed",
+    )
+    assert set(rows[str(METADATA.IMAGE_NAME)].to_list()) == {
+        "img_001",
+        "img_002",
+        "img_003",
+        "img_004",
+    }, f"recompile shards omit trailing images: {sharded}"
 
 
 def test_unchunked_run_is_not_chunked_by_aggregation(tmp_path: Path) -> None:

@@ -94,7 +94,11 @@ def discover_measurement_sources(
         individual_paths = [
             path
             for path in sorted(meas_dir.glob("*.parquet"))
-            if not path.name.startswith("_")
+            # `_` skips `_dataset_aggregated.parquet`; `.` skips macOS
+            # AppleDouble sidecars, which are binary and would force
+            # `aggregate_parquet_files` off its fast multi-path read onto the
+            # per-file fallback for the whole dataset.
+            if not path.name.startswith(("_", "."))
         ]
         aggregated = meas_dir / DATASET_AGGREGATED_PARQUET
         aggregate_needs_recovery = (
