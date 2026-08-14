@@ -1304,7 +1304,7 @@ Phased so each phase is independently merge-able and CI-gated.
   implemented** — the move-target gesture is a two-step
   select-Delete-redraw (§4.3, §5.6).
 * Validation re-runs on every dispatch.
-* E2E: wire OtsuDetector → CompositeDetector.detectors[0]; second wire fan-in
+* E2E: wire OtsuDetector → CompositeDetector.ops[0]; second wire fan-in
   appends to slot[1].
 
 **Phase 5 — Containers**
@@ -1475,7 +1475,7 @@ should be unmapped.
 #### 8.3.3 List-aux ports (§4.4 list semantics, §4.5)
 
 * `test_list_aux_fan_in_appends_to_next_slot` — wire 3 detectors into
-  `CompositeDetector.detectors`; each subsequent drop lands at slot
+  `CompositeDetector.ops`; each subsequent drop lands at slot
   `len(current)`; canvas badges read 1/2/3.
 * `test_list_aux_concurrent_drags_resolve_server_side` — fire two
   `edge_create` dispatches in the same Dash tick; assert deterministic
@@ -1490,7 +1490,7 @@ should be unmapped.
   inspector; total slot count increments; canvas shows an empty slot
   badge (numbered, empty).
 * `test_list_aux_required_with_empty_slot_fires_rule_3` — `CompositeDetector`
-  with required `detectors` and one empty slot, zero wired: Rule 3
+  with required `ops` and one empty slot, zero wired: Rule 3
   fires (red border + ! badge); preview disabled.
 
 #### 8.3.4 Pipeline containers (§4.4)

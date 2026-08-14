@@ -273,7 +273,7 @@ base = ImagePipeline(operations=[
 |----------|-----------|
 | `1.ignore_zeros` | field `ignore_zeros` on the op at **position 1** |
 | `0.sigma` | field `sigma` on the op at position 0 |
-| `1.detectors[0].block_size` | a **one-level nested** op (list member); class-validated on apply |
+| `1.ops[0].block_size` | a **one-level nested** op (list member); class-validated on apply |
 | `0.BlurGauss.__enabled__` | the **presence toggle** for an optional top-level op |
 
 The leading segment is the pipeline **position index** (stable against same-class

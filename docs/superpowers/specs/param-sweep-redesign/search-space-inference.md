@@ -249,7 +249,7 @@ define-by-run
 
 Some fields hold *other* operations via `OperationField`: a **single** nested op
 (`FilamentousFungiDetector.inoculum_detector`) or a **list**
-(`CompositeDetector.detectors`). Inference recurses **exactly one level** into them by
+(`CompositeDetector.ops`). Inference recurses **exactly one level** into them by
 default (`recurse_nested=True`), applying the same Tier-1 → Tier-2 rules and nested
 `_tune_optional` wrapping to the nested instance(s).
 
@@ -257,7 +257,7 @@ For:
 
 ```python
 [ BlurGauss(sigma=2.0),                                    # position 0
-  CompositeDetector(detectors=[                               # position 1
+  CompositeDetector(ops=[                                     # position 1
       OtsuDetector(ignore_zeros=False),
       WatershedDetector(min_size=50),
   ]) ]
@@ -268,8 +268,8 @@ inference emits:
 | Knob key                       | Domain                | Provenance (source · class) |
 |--------------------------------|-----------------------|------------------------------|
 | `0.sigma`                      | `FloatRange(0.5, 8.0)`| unbounded_heuristic · BlurGauss |
-| `1.detectors[0].ignore_zeros`  | `Categorical([T,F])`  | bool · OtsuDetector          |
-| `1.detectors[1].min_size`      | `IntRange(12, 200)`   | unbounded_heuristic · WatershedDetector |
+| `1.ops[0].ignore_zeros`        | `Categorical([T,F])`  | bool · OtsuDetector          |
+| `1.ops[1].min_size`            | `IntRange(12, 200)`   | unbounded_heuristic · WatershedDetector |
 
 A nested knob's `description` comes from the **nested class's** `model_json_schema()`;
 its provenance records the nested class name for display *and* apply-time safety.
@@ -282,7 +282,7 @@ illustrative `TuneSpec(0.5, 5.0, log=True)` from §3, `0.sigma` would instead re
 ### Canonical knob keys are root-relative paths
 
 Recursion forces a naming upgrade: the canonical key is a **root-relative path with a
-parent identifier** — `1.detectors[0].ignore_zeros` — which also fixes a latent
+parent identifier** — `1.ops[0].ignore_zeros` — which also fixes a latent
 top-level bug where two `BlurGauss`s in one pipeline would collide on a bare
 `BlurGauss.sigma`. The exact form of the *parent-identifier* segment (raw position
 index vs. a class-occurrence tag like `BlurGauss#0`) is owned by the `SearchSpace`
@@ -293,15 +293,15 @@ tradeoff the `SearchSpace` doc finalizes.
 
 ### Contained risks
 
-1. **List-position identity is fragile.** `detectors[0]` is keyed by *position*;
+1. **List-position identity is fragile.** `ops[0]` is keyed by *position*;
    reordering the list would silently retarget the knob and misalign a saved
    `best_pipeline.json` / `trials.parquet`. **Mitigation:** provenance records the
    nested class, and the params→pipeline builder **validates the class on apply** —
-   asserting `detectors[0]` is still an `OtsuDetector`, erroring loudly if not. (List
+   asserting `ops[0]` is still an `OtsuDetector`, erroring loudly if not. (List
    members are themselves optional — the real annotation is `list[OperationField | None]`
    — so recursion **skips `None` slots** and apply-time validation expects a slot may be
    `None`.)
-2. **Heterogeneous members.** A `detectors` list can mix classes, so `[0].*` and `[1].*`
+2. **Heterogeneous members.** An `ops` list can mix classes, so `[0].*` and `[1].*`
    carry disjoint knob sets keyed off the *current* contents — consistent with the
    instance-value philosophy.
 3. **Depth cap = 1, presence is top-level only.** A nested op's *own* `OperationField`
@@ -316,7 +316,7 @@ tradeoff the `SearchSpace` doc finalizes.
    nested-op params, so recursion is strictly **additive**: a space with no nested knobs
    enumerates byte-identically to legacy (§9 holds). Nested knobs are outside the lock's
    surface.
-5. **Apply-back builder.** Setting `detectors[0].sigma` means constructing the leaf op,
+5. **Apply-back builder.** Setting `ops[0].sigma` means constructing the leaf op,
    injecting it into the parent's kwargs, and reconstructing the parent (ops are
    keyword-only / immutable). The Evaluator's params→pipeline builder walks nested paths
    — mechanical, but more than flat-field assignment.
@@ -337,7 +337,7 @@ tradeoff the `SearchSpace` doc finalizes.
 ```python
 @dataclass(frozen=True)
 class Knob:
-    key: str                      # canonical root-relative path, e.g. "1.detectors[0].ignore_zeros"
+    key: str                      # canonical root-relative path, e.g. "1.ops[0].ignore_zeros"
     domain: Domain                # Categorical | IntRange | FloatRange
     source: KnobSource            # tune_spec | bool | enum | literal | bounded
                                   #   | unbounded_heuristic | presence_optin
