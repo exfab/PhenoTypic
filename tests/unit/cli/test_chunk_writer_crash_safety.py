@@ -11,6 +11,7 @@ because the state says there is nothing to flush.
 SLURM kills checkpoint tasks routinely: walltime, preemption, node failure.
 """
 
+import json
 from pathlib import Path
 
 import polars as pl
@@ -23,8 +24,12 @@ from phenotypic._cli._cli_chunk_writer import (
 )
 from phenotypic.schema import EXPERIMENT_METADATA, METADATA, OBJECT
 from phenotypic.sdk_ import (
+    CHUNK_MANIFEST_JSON,
     DATASET_AGGREGATED_PARQUET,
+    ChunkManifestKey,
     dataset_measurements_dir,
+    master_measurements_parquet_path,
+    progress_dir,
 )
 
 DATASET = "plate_a"
@@ -77,6 +82,80 @@ def test_kill_before_aggregate_write_does_not_lose_images(
 
     assert sorted(_aggregate_image_names(tmp_path)) == ["img_001", "img_002"], (
         "images consumed by the killed task never reached the aggregate"
+    )
+
+
+def test_retry_after_kill_does_not_duplicate_any_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A retried checkpoint must not double-count in *any* retry-exposed file.
+
+    Committing chunk state last means a killed task re-chunks images whose rows
+    may already have landed. Three artifacts are written before that commit —
+    the rolling master, ``analysis_full.parquet``, and the chunk manifest — and
+    each must absorb the repeat. An earlier revision deduplicated only the
+    dataset aggregate, so a kill in the aggregate loop left every colony
+    doubled in the master the module exists to publish mid-run.
+
+    The kill is simulated at the *latest* possible point, after the master and
+    manifest writes, which is the window that duplicates.
+    """
+    _write_per_image(tmp_path, ["img_001", "img_002"])
+
+    def _boom(*args: object, **kwargs: object) -> None:
+        raise OSError("simulated kill after the master and manifest writes")
+
+    monkeypatch.setattr(chunk_writer, "_update_dataset_parquet", _boom)
+    with pytest.raises(OSError):
+        flush_unchunked_measurements(tmp_path)
+    monkeypatch.undo()
+
+    flush_unchunked_measurements(tmp_path)
+
+    expected = {"img_001", "img_002"}
+    assert set(_aggregate_image_names(tmp_path)) == expected
+    assert len(_aggregate_image_names(tmp_path)) == 2, "aggregate duplicated"
+
+    master = pl.read_parquet(master_measurements_parquet_path(tmp_path))
+    assert master.height == 2, (
+        f"rolling master duplicated after retry: {master.height} rows"
+    )
+
+    manifest = json.loads(
+        (progress_dir(tmp_path) / CHUNK_MANIFEST_JSON).read_text()
+    )
+    names = [c[ChunkManifestKey.NAME] for c in manifest[ChunkManifestKey.CHUNKS]]
+    assert len(names) == len(set(names)), f"manifest repeated a chunk: {names}"
+    assert manifest[ChunkManifestKey.TOTAL_ROWS] == 2, (
+        f"manifest total_rows double-counted: {manifest}"
+    )
+
+
+def test_dedup_is_skipped_when_the_colony_key_is_incomplete(
+    tmp_path: Path,
+) -> None:
+    """A frame without ``Object_Label`` must keep every row.
+
+    Nothing guarantees that column. Filtering the key down to whichever columns
+    are present would leave ``(dataset, image)``, and ``unique`` on that keeps
+    one row per image — silently deleting every other colony. Duplicates are
+    recoverable; deleted colonies are not.
+    """
+    meas_dir = dataset_measurements_dir(tmp_path, DATASET)
+    meas_dir.mkdir(parents=True, exist_ok=True)
+    frame = pl.DataFrame(
+        {
+            str(EXPERIMENT_METADATA.DATASET): [DATASET, DATASET, DATASET],
+            str(METADATA.IMAGE_NAME): ["img_001", "img_001", "img_001"],
+            "Shape_Area": [1.0, 2.0, 3.0],
+        }
+    )
+
+    _update_dataset_parquet(tmp_path, DATASET, frame)
+
+    agg = pl.read_parquet(meas_dir / DATASET_AGGREGATED_PARQUET)
+    assert agg.height == 3, (
+        f"rows dropped by dedup on a partial key: {agg.height} of 3 survived"
     )
 
 

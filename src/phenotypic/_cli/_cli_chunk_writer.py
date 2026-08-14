@@ -170,15 +170,22 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
     datasets_in_chunk = (
         chunk_df[str(EXPERIMENT_METADATA.DATASET)].unique().to_list()
     )
-    manifest[ChunkManifestKey.CHUNKS].append(
-        {
-            ChunkManifestKey.NAME: chunk_name,
-            ChunkManifestKey.ROWS: chunk_df.height,
-            ChunkManifestKey.DATASETS: sorted(
-                str(d) for d in datasets_in_chunk
-            ),
-        }
-    )
+    entry = {
+        ChunkManifestKey.NAME: chunk_name,
+        ChunkManifestKey.ROWS: chunk_df.height,
+        ChunkManifestKey.DATASETS: sorted(str(d) for d in datasets_in_chunk),
+    }
+    # Replace any entry for this chunk name rather than appending. Chunk state
+    # (including `next_chunk_id`) is committed last, so a killed task's retry
+    # regenerates the *same* chunk name — and an append would record it twice
+    # and double `total_rows`, which the dashboard reports as run progress.
+    existing = manifest[ChunkManifestKey.CHUNKS]
+    for index, chunk_entry in enumerate(existing):
+        if chunk_entry.get(ChunkManifestKey.NAME) == chunk_name:
+            existing[index] = entry
+            break
+    else:
+        existing.append(entry)
     manifest[ChunkManifestKey.TOTAL_ROWS] = sum(
         c[ChunkManifestKey.ROWS] for c in manifest[ChunkManifestKey.CHUNKS]
     )
@@ -188,6 +195,12 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
         chunk_df, analysis_full_parquet_path(progress_dir)
     )
     if combined is not None:
+        # Same idempotency requirement as the aggregate below: chunk state is
+        # committed last, so a killed task re-chunks images whose rows already
+        # reached these files. `_incremental_combined` is a bare concat, so
+        # without this the retry doubles every colony in the rolling master —
+        # the very artifact this module exists to publish mid-run.
+        combined = _dedupe_on_colony_key(combined, context="rolling master")
         atomic_write_with_writer(
             analysis_full_parquet_path(progress_dir),
             lambda p: combined.write_parquet(p, **PARQUET_WRITE_OPTIONS),
@@ -393,6 +406,43 @@ _AGGREGATE_KEY: Final[tuple[str, ...]] = (
 )
 
 
+def _dedupe_on_colony_key(
+    df: pl.DataFrame, *, context: str
+) -> pl.DataFrame:
+    """Collapse repeated colonies, keeping the later row.
+
+    This is what makes every retry-exposed write in this module idempotent, so
+    :func:`_aggregate_chunks_locked` can commit its chunk state *after* the
+    data: a task killed mid-write re-chunks images whose rows already landed,
+    and the second copy collapses into the first. It also absorbs the
+    duplicates a ``--restart`` produces, since ``results/`` survives a restart
+    while its images are re-measured and appended over the old rows.
+
+    **The full key is required.** An earlier revision filtered
+    :data:`_AGGREGATE_KEY` down to whichever columns happened to be present,
+    which looks defensive and is the opposite: without ``Object_Label`` the key
+    degrades to ``(dataset, image)`` and ``unique`` keeps exactly **one row per
+    image**, silently deleting every other colony in it. Nothing guarantees
+    that column — ``_read_and_concat`` only guarantees the dataset and image
+    columns — so a partial key is refused rather than applied. Skipping leaves
+    duplicate rows, which is recoverable and visible; dropping colonies is
+    neither.
+    """
+    missing = [c for c in _AGGREGATE_KEY if c not in df.columns]
+    if missing:
+        logger.warning(
+            "Skipping dedup of %s: frame lacks colony-key column(s) %s. "
+            "Repeated rows may survive; this is preferred to collapsing on a "
+            "partial key, which would drop real colonies.",
+            context,
+            missing,
+        )
+        return df
+    return df.unique(
+        subset=list(_AGGREGATE_KEY), keep="last", maintain_order=True
+    )
+
+
 def _update_dataset_parquet(
     output_dir: Path, dataset_name: str, new_df: pl.DataFrame
 ) -> None:
@@ -417,15 +467,7 @@ def _update_dataset_parquet(
         except Exception:
             logger.warning("Corrupt %s, rebuilding from new data", agg_path)
 
-    # Deduplicate on the colony key, keeping the later row. This makes the
-    # append idempotent, which is what lets `_aggregate_chunks_locked` commit
-    # its chunk state *after* the data: a task killed mid-write can safely
-    # re-chunk images whose rows already landed. It also collapses the
-    # duplicates a `--restart` produces, since `results/` survives a restart
-    # while its images are re-measured and appended over the old rows.
-    key = [c for c in _AGGREGATE_KEY if c in new_df.columns]
-    if key:
-        new_df = new_df.unique(subset=key, keep="last", maintain_order=True)
+    new_df = _dedupe_on_colony_key(new_df, context=f"aggregate for {dataset_name}")
 
     atomic_write_with_writer(
         agg_path,
