@@ -15,6 +15,24 @@ from phenotypic.sdk_ import default_output_dir_name, DIR_RESULTS, DIR_HDF
 from ._cli_types import Dataset
 
 
+def _is_image_file(path: Path, valid_exts: set[str]) -> bool:
+    """True if ``path`` is a real input image.
+
+    Dotfiles are excluded, which an extension-only test does not do. macOS
+    writes an AppleDouble ``._<name>`` sidecar beside every file on exFAT/FAT
+    volumes — the usual format for an external drive — and
+    ``Path("._x.tif").suffix`` is ``".tif"``, so each image would be counted
+    twice. Observed on a real run: ``manifest.json`` reported
+    ``total_images: 60`` for 30 images and ``is_complete: false`` on a run that
+    had finished, which anything gating on completion reads as still running.
+    """
+    return (
+        path.is_file()
+        and not path.name.startswith(".")
+        and path.suffix.lower() in valid_exts
+    )
+
+
 def generate_timestamped_output_dir() -> Path:
     """
     Generate timestamped output directory name.
@@ -75,7 +93,7 @@ def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
     # Collect images directly in root directory
     root_images = [
         p for p in input_path.iterdir()
-        if p.is_file() and p.suffix.lower() in valid_exts
+        if _is_image_file(p, valid_exts)
     ]
 
     # Scan one level of subdirectories
@@ -87,7 +105,7 @@ def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
         # Collect images in this subdirectory
         sub_images = [
             p for p in subdir.iterdir()
-            if p.is_file() and p.suffix.lower() in valid_exts
+            if _is_image_file(p, valid_exts)
         ]
 
         if sub_images:
@@ -280,7 +298,7 @@ def get_input_structure_summary(input_path: Path) -> Dict[str, Any]:
     # Count root images
     root_count = sum(
             1 for p in input_path.iterdir()
-            if p.is_file() and p.suffix.lower() in valid_exts
+            if _is_image_file(p, valid_exts)
     )
 
     # Count subdirectory images
@@ -291,7 +309,7 @@ def get_input_structure_summary(input_path: Path) -> Dict[str, Any]:
 
         sub_count = sum(
                 1 for p in subdir.iterdir()
-                if p.is_file() and p.suffix.lower() in valid_exts
+                if _is_image_file(p, valid_exts)
         )
 
         if sub_count > 0:

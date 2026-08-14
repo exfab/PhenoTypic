@@ -248,7 +248,11 @@ def _scan_unchunked_parquets(
         if not meas_dir.is_dir():
             continue
         for meas_file in sorted(meas_dir.glob("*.parquet")):
-            if meas_file.name.startswith("_"):
+            # `_` skips this writer's own `_dataset_aggregated.parquet`.
+            # `.` skips macOS AppleDouble sidecars, which exist beside every
+            # file on an exFAT/FAT volume and are binary, not parquet — the
+            # reader would raise on them.
+            if meas_file.name.startswith(("_", ".")):
                 continue
             rel_key = f"{dataset_dir.name}/{meas_file.name}"
             if rel_key not in chunked_files:
