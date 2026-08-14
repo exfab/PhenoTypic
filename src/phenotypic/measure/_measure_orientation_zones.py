@@ -1857,40 +1857,6 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         self._add_zone_ring_traces(fig)
         self._add_mean_axis_traces(fig)
         self._add_metric_hover_trace(fig)
-        fig.add_annotation(
-                text=(
-                    "<b>Field:</b> short blue bars are local fiber axes "
-                    "(tensor normal + 90°); length and opacity encode local "
-                    "coherence C.<br>"
-                    "<b>Signed outward turning:</b> the Spectral overlay shows "
-                    "the full observed directional range in deg/px, centred at "
-                    "zero.<br>Negative is counterclockwise and positive is "
-                    "clockwise as growth moves outward. The inferred inoculum core is "
-                    "excluded from this directional view.<br>"
-                    "<b>Long range:</b> thin concentric circles sample the "
-                    f"{self.radial_ring_width:g} px Sholl-style orientation bands; "
-                    f"matching sectors {self.long_range_lag:g} px apart are compared "
-                    "in degrees.<br>Hover the circles or colony centres for "
-                    "ring and zone-to-zone summaries.<br>"
-                    "<b>Selectors:</b> circles bound the radial zones; toggle mean "
-                    "axes and the green detected-mask boundary.<br>"
-                    "<b>Metrics:</b> hover colony centres for R, turning, and C. "
-                    "R is common parallel alignment, not radial alignment.<br>Turning "
-                    "is the coherence-weighted spatial change in the local axis. "
-                    "Radial tilt compares each detected local axis with its outward "
-                    "spoke; outward turning measures how that tilt changes radially."
-                ),
-                xref="paper",
-                yref="paper",
-                x=0.0,
-                y=-0.19,
-                xanchor="left",
-                yanchor="top",
-                align="left",
-                showarrow=False,
-                font=dict(color=_OI_NAVY, size=11),
-        )
-        fig.update_layout(margin=dict(b=350))
         fig.update_xaxes(range=[-0.5, w - 0.5], constrain="domain")
         fig.update_yaxes(
                 range=[h - 0.5, -0.5],
