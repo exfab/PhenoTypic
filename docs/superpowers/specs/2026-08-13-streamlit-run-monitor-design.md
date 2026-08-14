@@ -278,45 +278,81 @@ and a user CSV column spelled that way is not recognised by `is_metadata_header`
 so `join_metadata` double-prefixes it to `Metadata_MetadataCondition_Media`.
 Deriving from the enum sidesteps the bug and stays correct after it is fixed.
 
-**Resolution, three parts:**
+**Resolution, four parts:**
 
-**The ordering principle: any `.phenotypic/` record outranks
-`deliverables/metadata.csv`.** Machine state is cleared by `--restart` and
-written at run start, so it always describes *this* run. The deliverables copy
-survives `--restart` and is written only at finalize, so it may describe the
-previous one. Rank by which run a record belongs to, never by convenience.
+**The ordering rule: an explicit sidebar choice wins; otherwise the most recently
+written record wins.** Not a tier list. Three successive tier lists were each
+correct for the doors they closed and wrong for the next one, because a tier
+encodes *where* a record lives, and what actually matters is *when it was
+written* relative to the others.
 
-An earlier revision ranked the deliverables copy first, on the grounds that the
-validated run has it and no `job_metadata.json`. That is true of a *local* run,
-and inverted for the target deployment: on SLURM, `job_metadata.json` records the
-current `--metadata` at run start (ordinary `_cli_execution_strategies.py:790,816-820`;
-staged `_cli_staged_slurm.py:445-447,477-478`), while `deliverables/metadata.csv`
-after a `--restart` is the previous run's. Ranking it first would serve the old
-run's strain, condition and time labels for the entire live run — **the third
-time 3.1.1's first failed predicate has re-entered through a different door**,
-after skip-if-exists and before that mirror-existence. The "absolute path,
-useless off the cluster" caveat argues the deliverables copy is the right
-*fallback*, not that it should outrank a live record.
+The candidate records are:
 
-0. **`.phenotypic/` CSV copy** (local runs, from the change below). Belongs to
-   this run by construction.
-0b. **`job_metadata.json`'s `METADATA_CSV`** (`progress/`, cleared by
-   `--restart`). Also this run. Its stored absolute path may not resolve
-   off-cluster, in which case fall through.
-1. **`deliverables/metadata.csv`** (`metadata_csv_deliverable_path`,
-   `sdk_/_io_constants.py:1098-1100`). Written at finalize, preserved by
-   `--restart`, so it belongs to *a* run but not necessarily this one. The
-   fallback, and the only source a moved-off-cluster bundle has. The validated
-   run has it and no `job_metadata.json`, which is why it must be in the list at
-   all.
-2. **Sidebar path**, resolved through the scope root, for runs predating the
-   change or where none of the above resolves.
+- **`.phenotypic/` CSV copy** — written at run start by the change below (local
+  runs), cleared by `--restart`. May be a **negative marker** meaning "this run
+  was started with no `--metadata`".
+- **`job_metadata.json`'s `METADATA_CSV`** — written at run start on SLURM
+  (ordinary `_cli_execution_strategies.py:790,816-820`; staged
+  `_cli_staged_slurm.py:445-447,477-478`), also a path-or-`None`. Its stored
+  absolute path may not resolve off-cluster; if it does not, skip it.
+- **`deliverables/metadata.csv`** (`sdk_/_io_constants.py:1098-1100`) — written
+  at finalize *and rewritten by every recompile*. Its mtime is its write time,
+  because finalize deliberately uses `shutil.copy` rather than `copy2`
+  ("mtime is not preserved by design", `_cli_output_manager.py:955-956`).
+
+**Why recency rather than tier — the case that killed the previous rule.**
+`--mode recompile` is the mode whose entire purpose is supplying a metadata CSV,
+and it can write *only* the deliverables copy: it dispatches early and
+`sys.exit(0)`s at `phenotypicCLI.py:1148`, before the machine-state clear at
+`:1367` and before every run-start path, and `_handle_recompile` only *reads*
+`job_metadata.json` (`:2438`). So after `--mode recompile --metadata new.csv`,
+the only correct source is the one a "machine state outranks deliverables" rule
+puts last.
+
+**The validated run is exactly this case, and it is decisive.** Its
+`--metadata` arrived via recompile: `.phenotypic/processing_state.json` is
+timestamped 04:35:32 and `deliverables/metadata.csv` 20:45:22, sixteen hours
+later — so the forward run started with no CSV. Under the tier rule, run start
+would have written a negative marker, the marker would have been authoritative,
+the fallback would have been stopped, and **the monitor would have resolved no
+metadata at all on the one run this design was validated against**, with a
+correct 97 KB CSV one rank below it. That rule was a regression: the ordering it
+replaced got this case right.
+
+Recency resolves every known case with one rule — forward run with a CSV (the
+run-start record is newest), recompile (the deliverables copy is newest),
+`--restart` without a CSV (the negative marker is newest, and correctly resolves
+to none), and the validated run (the deliverables copy is newest). A negative
+marker is a record like any other: authoritative when it is the newest, and
+superseded when a later recompile demonstrably joined a CSV into this run's
+outputs.
+
+**Comparing across a FUSE mount.** All three records are written into the output
+directory by the same job, so ordinary skew does not apply; the risk is mtime
+granularity rather than clock disagreement. Ties break toward the deliverables
+copy, since a recompile that landed in the same coarse tick as a run-start record
+is the later event by construction — recompile cannot run before the run it
+recompiles.
 
 **The upstream change (local runs only).** Local runs record the CSV nowhere
 until finalize — confirmed on the validated run, which has no
 `job_metadata.json`. So: copy the CSV at run start to a **machine-state path
 under `.phenotypic/`**, which `--restart` clears, written **unconditionally**
 rather than skip-if-exists.
+
+**Name the insertion point, because the modes diverge sharply on whether they
+reach it.** The copy fires in the forward-run path, after argument validation and
+before the first image is processed — the same point `_copy_pipeline_to_output`
+occupies. That placement determines behaviour per mode, and each differs:
+`--mode measure` continues past the recompile branch into the main flow (its
+guard skip is `phenotypicCLI.py:1392-1394`) and *does* refresh the record;
+`--mode recompile` exits at `:1148` and cannot, which is why recency rather than
+tier is what makes it work; `--mode process` passes through run start but warns
+that `--metadata` is ignored (`:1057-1067`), so it writes **nothing** rather than
+a negative marker on behalf of a mode that has no opinion. "Cleared by
+`--restart`" is not a blanket justification here — `--mode measure` rejects
+`--restart` outright (`:1167-1170`), so it is the refresh-on-that-path behaviour
+doing the work.
 
 Not `metadata_csv_deliverable_path`: that is what finalize overwrites, and an
 early skip-if-exists copy there would find the previous run's CSV after a
@@ -1087,9 +1123,13 @@ price of a click rather than a scroll.
 
 **The unassigned page is pinned first and exempt from the chunk budget.** Its
 natural sort position is *unpredictable*, which is the actual reason an explicit
-pin is required. `_typed_group_key` encodes each value as a
-`[column, kind, canonical]` triple (`abc_/plotting/_output.py:59-102`), so keys
-differ on the **kind** tag rather than on the raw value. Verified by execution:
+pin is required. `_typed_group_key` (`_plot_meas_time_series.py:293-294`) delegates to
+`_canonical_group_key` (`:297-307`), which for plain strings and nulls hands off
+to the public `canonical_group_key` (`abc_/plotting/_output.py:59-102`). That
+encodes each value as a `[column, kind, canonical]` triple, so keys differ on the
+**kind** tag rather than on the raw value. (The delegation is only partial — 4.3
+records where the two diverge on `pd.Timedelta`/`pd.Timestamp` — but the string
+and null cases below go through the public encoder.) Verified by execution:
 
 ```
 None         -> [["MetadataGenetic_Strain","null",null]]
@@ -1266,7 +1306,17 @@ what makes this usable.
 
 - **The freshness token is computed outside the cached function, and is a hash
   of the full `(path, mtime_ns, size)` set** — the same triple the accumulator's
-  read-set uses (11.1) — plus the metadata CSV's mtime. Neither the mirror nor
+  read-set uses (11.1) — plus the **resolved metadata source's own
+  `(path, mtime_ns, size)`**, not merely its mtime.
+
+  The path identity is load-bearing now that 3.2 re-resolves the source every
+  poll. A bare mtime cannot express a *switch* between sources: when a run-start
+  record lands and supersedes the deliverables copy the app had been using, two
+  different files with coincident mtimes — plausible under the coarse FUSE
+  granularity this section already warns about — leave the token unmoved, the
+  cache serving a hit, and the monitor plotting against the source it was told to
+  stop using. This is the same argument the paragraph below makes about the
+  parquet set, applied to the component that was left as a scalar. Neither the mirror nor
   the aggregate has an entry, because neither is ever read (3.1.1, 3.3), so
   their appearance is not a change in what is shown.
 
@@ -1698,6 +1748,13 @@ that almost nothing needs a browser.
     CSV" resolves to none rather than falling back; and a source that appears
     *after* the app opened is picked up on the next poll. Mutations: rank the
     deliverables copy first, ignore the negative marker, resolve once at startup.
+    The **decisive fixture is the validated run's own shape**: a `.phenotypic/`
+    negative marker written at run start, and a `deliverables/metadata.csv`
+    written sixteen hours later by a recompile. It must resolve to the CSV. A
+    tier rule ranking machine state first resolves to nothing, which is the
+    regression this test exists to prevent.
+    Also assert a source *switch* invalidates the cache when the two files share
+    an mtime — the token carries the resolved path, not just its timestamp.
 32. **Mid-run count wording** — with a run truncated to a third of its images,
     `unmatched_metadata_count` is large (322 of 480 on the validated run) and the
     banner does **not** claim those wells never grew. Guards the third instance
@@ -1705,8 +1762,9 @@ that almost nothing needs a browser.
 
 Per the repository's test-integrity rule, each must be shown to fail when the
 behaviour it guards is reverted; a skip on a missing fixture is a failure, not a
-pass. Tests 5–12 and 16–30 all have fixtures derivable from the validated run in
-3.3.0 — prefer deriving them from its real column set over inventing a
+pass. Tests 5–12, 16–28 and 32 have fixtures derivable from the validated run in
+3.3.0 (29–31 need synthetic multi-run or machine-state states a single run
+cannot supply) — prefer deriving them from its real column set over inventing a
 plausible-looking one, since the invented ones in earlier revisions of this
 document were what hid the schema-default problem.
 
