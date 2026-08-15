@@ -211,7 +211,7 @@ worthless (project test-integrity rule).
 
 The script now runs the negative control explicitly and says so.
 
-**L1 — the gating step.** Before P1 is implemented, run:
+**L1 — the gating step, as originally written.** Before P1 is implemented, run:
 
 ```bash
 uv run python docs/superpowers/logic_validation_scripts/2026-08-12-phenotypic-mcp-server/optuna_journal_storage.py \
@@ -219,10 +219,56 @@ uv run python docs/superpowers/logic_validation_scripts/2026-08-12-phenotypic-mc
 ```
 
 `--require-discrimination` exits non-zero unless the no-op-lock control
-**actually loses trials there**. Only a passing-vs-failing pair on the *same*
-filesystem is evidence that `JournalFileSymlinkLock` does any work on that
-mount. Until that passes, Postgres remains the supported distributed path and
-the journal default stays disabled — this is a gate, not a footnote.
+**actually loses trials there**.
+
+### L1 as written is unsatisfiable on a POSIX-coherent filesystem — RESOLVED by measurement
+
+Run on UCR HPCC, that gate **cannot pass**, and the reason is not a defect in the
+journal backend. Both `/bigdata` and `/rhome` are **GPFS**, not the NFS or Lustre
+this section assumed. GPFS enforces POSIX byte-range semantics cluster-wide
+through a distributed token manager, so `append_logs`' `open(ab) → write →
+fsync()` is already indivisible and a no-op lock loses nothing. The gate demands
+the control fail; on a filesystem that provides the guarantee itself, it never
+will. **A gate that cannot be satisfied is not a gate — it is a blocker with a
+misleading name.**
+
+The original run (job 27466782) also could not have answered the real question:
+`multiprocessing` places every worker on one host, so it measured the local
+kernel's `O_APPEND` atomicity, never the distributed token manager a SLURM fleet
+depends on.
+
+**C7 (cross-node) settles it.** `run_l1_cross_node.sbatch` splits the suite into
+`init` → N × `worker` → `verify`, lets `srun` place one worker per node, and
+stamps each trial with its hostname so `--require-distinct-nodes` proves the run
+was genuinely distributed. Result, job **27468703**, four nodes `c[07,09,12,14]`
+on `/bigdata`:
+
+```
+ok [C7-symlink] 60 trials persisted intact across 4 nodes ['c07','c09','c12','c14']
+ok [C7-noop]    60 trials persisted intact across 4 nodes ['c07','c09','c12','c14']
+VERDICT: NO DISCRIMINATION, cross-node.
+```
+
+So: **journal storage is safe on this mount, and it is safe because of the
+filesystem rather than because of the lock.** The symlink lock is redundant here,
+not broken — and it ships enabled regardless, since it costs nothing and is what
+makes the same code correct on an NFS deployment elsewhere.
+
+**The corrected gate.** What P1 requires before shipping the journal default on a
+given cluster is:
+
+> The **symlink-locked** run survives a **cross-node** fan-out on that cluster's
+> shared mount, with `--require-distinct-nodes` proving the workers really were
+> on different hosts. The negative control's outcome is **informative, not
+> required**: it losing trials shows the lock is load-bearing there; it surviving
+> shows the filesystem is. Either way the locked run is what must pass.
+
+Two honest limits on this evidence: it is 4 workers × 15 trials, not a 32-worker
+fleet at scale (C6's ~65× throughput headroom is the argument that contention
+stays irrelevant, and it is an argument, not this measurement); and absence of
+loss over a finite sample is consistent with GPFS's architectural guarantee
+rather than independent proof of it. **This result is filesystem-specific and
+must be re-run on any cluster whose shared mount is not GPFS.**
 
 ### L2 — no heartbeat means no stale-trial reclamation
 

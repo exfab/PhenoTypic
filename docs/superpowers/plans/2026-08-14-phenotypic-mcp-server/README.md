@@ -162,49 +162,51 @@ Phase 3 (P1, the `JournalStorage` backend) is blocked on L1: the negative
 control in `optuna_journal_storage.py` must **actually lose trials** on the
 target mount, or a green C2a proves nothing (§7).
 
-**RUN — job `27466782`, node `r42`, `COMPLETED` in 11 s.** Log:
-`/bigdata/exfab/anguy344/mcp-l1-gate/logs/27466782.log`. Gate run twice, against
-`/bigdata` and `/rhome`.
+**RESOLVED by measurement.** Two runs, and the second is the one that counts.
 
-**Verdict: `DISCRIMINATION: NONE` on both mounts. Both exit 1. As literally
-specified, L1 does not pass on this cluster.**
+**Single-node (job 27466782, `short`, 11 s).** `DISCRIMINATION: NONE` on both
+`/bigdata` and `/rhome`; both exit 1. As literally specified, L1 does not pass
+here — but not because the backend is unsafe. Both mounts are **GPFS**, not the
+NFS/Lustre §7 assumed, and GPFS enforces POSIX byte-range semantics cluster-wide,
+so a no-op lock loses nothing. Worse, `multiprocessing` puts every worker on one
+host, so the run measured the local kernel's `O_APPEND` atomicity and never
+engaged the distributed token manager a fleet depends on.
+
+**Cross-node (C7, job 27468703, four nodes `c[07,09,12,14]`).** The script gained
+`init` → N × `worker` → `verify` roles so `srun` can place one worker per node,
+with per-trial hostname stamping and a `--require-distinct-nodes` guard proving
+the run really was distributed:
 
 ```
-ok   [C1]  optuna 4.9.0: JournalStorage + JournalFileSymlinkLock present
-ok   [C2a] 4 processes x 15 trials — 60 trials persisted intact
-FAIL [C2b] negative control ALSO passed — 60 trials intact with a no-op lock
-bigdata(gpfs) exit=1   rhome(gpfs) exit=1
+ok [C7-symlink] 60 trials persisted intact across 4 nodes ['c07','c09','c12','c14']
+ok [C7-noop]    60 trials persisted intact across 4 nodes ['c07','c09','c12','c14']
+VERDICT: NO DISCRIMINATION, cross-node.
 ```
 
-**What this does and does not mean.** It does **not** show the symlink lock is
-broken. It shows the test cannot discriminate here, and the reason is that the
-spec's L1 reasoning assumes NFS or Lustre while **both mounts are GPFS**
-(`df -PT` reports `gpfs` for `/bigdata/exfab/anguy344` and `/rhome/anguy344`).
-GPFS provides POSIX-coherent semantics including atomic `O_APPEND`, so
-`JournalFileBackend.append_logs`' `open(ab) → write() → fsync()` is already
-indivisible without any application-level lock — the same reason the control
-passes on APFS/ext4. On this filesystem a green C2a measures the OS, not the
-lock, and no amount of re-running changes that.
+**Conclusion: journal storage is safe on this cluster's shared mount — because of
+the filesystem, not because of the lock.** The symlink lock is redundant on GPFS
+rather than broken, and ships enabled anyway: it costs nothing and is what keeps
+the same code correct on an NFS deployment elsewhere. **P1 is unblocked.**
 
-**The larger limitation:** the script drives concurrency with `multiprocessing`,
-so it exercises **one node**. The failure mode P1 actually risks is *cross-node*
-contention from a SLURM array fleet, and this run never reaches it. GPFS is
-designed to hold coherence across nodes — that is the property it has and NFS
-lacks — but this run is not evidence of it.
+Two limits stated plainly: this is 4 workers × 15 trials, not a 32-worker fleet
+(C6's ~65× throughput headroom is the argument that contention stays irrelevant
+at scale, and it is an argument, not this measurement); and absence of loss over
+a finite sample is consistent with GPFS's architectural guarantee rather than
+independent proof of it. **The result is filesystem-specific — re-run C7 on any
+cluster whose shared mount is not GPFS.**
 
-So the honest position is: **no evidence of harm, and no evidence of safety
-either, for the case that matters.** How to proceed is an open decision recorded
-in [Open decisions](#open-decisions) below. Phases 1 and 2 do not depend on it;
-until it is settled, a SLURM-routed `tune_start` returns
-`distributed_storage_unavailable` naming Postgres as the supported path (§4.3),
-which is v1's specified behaviour anyway.
+Artifacts: `run_l1_cross_node.sbatch` beside the script; logs under
+`/bigdata/exfab/anguy344/mcp-l1-gate/logs/`. Note the first cross-node attempt
+(27468686) died on `srun`'s default CPU binding against this partition's
+non-contiguous masks — fixed with `--cpu-bind=none`, and the script reported
+`INCONCLUSIVE` rather than inventing a verdict, which is the behaviour to keep.
 
 ## Open decisions
 
 | # | Question | Status |
 |---|---|---|
-| OD1 | Given `DISCRIMINATION: NONE` on GPFS, does P1 ship on the journal backend, stay on Postgres, or wait for a cross-node test? | **Open — blocks Phase 3 only.** Options and their costs are in the L1 section above. A cross-node variant of `optuna_journal_storage.py` (4 tasks × 4 nodes via `srun`, replacing `multiprocessing`) is the only route to real evidence for the fleet case; it is a modest change to a script that already exists. |
-| OD2 | Does the spec's L1 gate text get rewritten to account for GPFS? | **Open, follows OD1.** §7's "run it on the target cluster's shared mount" presumes a filesystem where the lock is observable. On GPFS that instruction can never be satisfied, so the gate as written is unfalsifiable here and should say what it actually requires. |
+| OD1 | Given `DISCRIMINATION: NONE` on GPFS, does P1 ship on the journal backend, stay on Postgres, or wait for a cross-node test? | **CLOSED.** Cross-node test written and run (C7, job 27468703): the symlink-locked run survives a genuine 4-node fan-out on GPFS, and so does the control. P1 ships on the journal backend, documented as filesystem-dependent. |
+| OD2 | Does the spec's L1 gate text get rewritten to account for GPFS? | **CLOSED.** §7 now carries the measured result and a corrected gate: the **symlink-locked** run must survive a **cross-node** fan-out with `--require-distinct-nodes`; the negative control's outcome is informative, not required. |
 
 ## Documents
 

@@ -49,7 +49,14 @@ run_lock () {
 
     # One task per node. --kill-on-bad-exit so a crashed worker does not leave
     # the verify step interpreting a partial run as data loss.
-    srun --nodes=$N_WORKERS --ntasks=$N_WORKERS --ntasks-per-node=1 --kill-on-bad-exit=1 \
+    #
+    # --cpu-bind=none is required, not cosmetic: this partition hands out
+    # non-contiguous CPU masks (observed 0x0040400000000000 on c07), and srun's
+    # default binding then fails the whole step with "Unable to satisfy cpu bind
+    # request" before a single worker starts. Binding buys nothing here — the
+    # workload is one short-lived append per trial, not compute.
+    srun --nodes=$N_WORKERS --ntasks=$N_WORKERS --ntasks-per-node=1 \
+         --cpu-bind=none --kill-on-bad-exit=1 \
         uv run --no-sync python "$SCRIPT" \
             --role worker --journal "$journal" --lock "$lock" --trials-per-proc $TRIALS
     local worker_rc=$?
