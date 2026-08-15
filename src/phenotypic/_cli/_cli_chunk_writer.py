@@ -18,8 +18,9 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, NamedTuple
 
 import click
 import polars as pl
@@ -145,7 +146,18 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
         logger.info("No new measurement files to chunk")
         return
 
-    chunk_df = _read_and_concat(new_files)
+    read = _read_and_concat(new_files)
+    if read.unreadable:
+        # ERROR and by name: these are user measurements. They are deliberately
+        # left out of `chunked_files` below, so the next checkpoint -- or the
+        # finalize-time flush -- retries them.
+        logger.error(
+            "Could not read %d per-image parquet(s); leaving them unchunked "
+            "for a later retry: %s",
+            len(read.unreadable),
+            ", ".join(read.unreadable),
+        )
+    chunk_df = read.frame
     if chunk_df is None:
         return
 
@@ -231,6 +243,10 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
     # images *unmarked* whose rows may already be in the aggregate, so the next
     # pass re-chunks them -- harmless, because `_update_dataset_parquet`
     # deduplicates on the colony key.
+    #
+    # Only files that actually produced rows are recorded. `_scan_unchunked_
+    # parquets` deliberately does not mark on discovery.
+    chunked_files.update(_chunk_state_key(path) for path in read.consumed)
     state[ChunkStateKey.CHUNKED_FILES] = sorted(chunked_files)
     state[ChunkStateKey.NEXT_CHUNK_ID] = next_chunk_id + 1
     _write_json(state, state_path)
@@ -257,8 +273,12 @@ def _scan_unchunked_parquets(
 
     Args:
         results_dir: The ``results/`` directory containing dataset subdirs.
-        chunked_files: Set of relative keys already chunked (mutated in place
-            to include newly discovered files).
+        chunked_files: Relative keys already chunked. **Read only** — a file is
+            recorded as consumed by the caller once it has actually been read,
+            not on discovery. Marking here instead would consume a file the
+            reader then failed on, and since final aggregation prefers the
+            aggregate, a transient NFS/GPFS read error would silently drop
+            that image from the master for good.
 
     Returns:
         Sorted list of new measurement file paths.
@@ -280,12 +300,15 @@ def _scan_unchunked_parquets(
             # reader would raise on them.
             if meas_file.name.startswith(("_", ".")):
                 continue
-            rel_key = f"{dataset_dir.name}/{meas_file.name}"
-            if rel_key not in chunked_files:
+            if _chunk_state_key(meas_file) not in chunked_files:
                 new_files.append(meas_file)
-                chunked_files.add(rel_key)
 
     return new_files
+
+
+def _chunk_state_key(parquet_path: Path) -> str:
+    """The ``<dataset>/<file>.parquet`` key chunk state records."""
+    return f"{parquet_path.parent.parent.name}/{parquet_path.name}"
 
 
 def _attach_image_identity(
@@ -315,19 +338,53 @@ def _attach_image_identity(
     return df.with_columns(exprs)
 
 
-def _read_and_concat(parquet_files: list[Path]) -> pl.DataFrame | None:
-    """Read per-image Parquet files, ensure ``Metadata_Dataset``, and concat.
+class _ConcatResult(NamedTuple):
+    """What :func:`_read_and_concat` actually managed to read.
+
+    Attributes:
+        frame: The concatenated measurements, or ``None`` if nothing read.
+        consumed: The paths that contributed rows. **Only these may be
+            recorded in chunk state** — marking a file consumed that was never
+            read is what makes a read error permanent.
+        unreadable: ``"<name> (<reason>)"`` per file that could not be read.
+            Reported rather than skipped in silence, which is how a short
+            master goes unnoticed.
+    """
+
+    frame: pl.DataFrame | None
+    consumed: list[Path]
+    unreadable: list[str]
+
+
+def _read_and_concat(parquet_files: list[Path]) -> _ConcatResult:
+    """Read per-image Parquet files, normalize identity, and concat.
+
+    Each frame is normalized *before* concatenation: ``Metadata_ImageName`` is
+    set from the file stem, ``Metadata_FileSuffix`` is added when absent, and
+    ``Metadata_Dataset`` is injected from the directory when absent (a
+    ``--no-dataset-column`` run omits it).
+
+    Two of those three are colony-key columns, which is why every reader of
+    these files must go through here. Concatenating them raw and then
+    deduplicating on the colony key collapses unrelated colonies: without
+    ``Metadata_ImageName`` normalization every image shares one key value, so
+    ``unique`` keeps one row per ``Object_Label`` across the whole dataset.
 
     Args:
         parquet_files: Paths to per-image Parquet files.
 
     Returns:
-        Concatenated DataFrame, or ``None`` if no files could be read.
+        A :class:`_ConcatResult`; ``frame`` is ``None`` when no file read.
     """
     lazy_frames = scan_parquets(parquet_files)
-    if not lazy_frames:
-        return None
+    # `scan_parquets` omits what it could not scan rather than raising.
+    unreadable = [
+        f"{path.name} (could not be scanned)"
+        for path in parquet_files
+        if path not in lazy_frames
+    ]
     frames: list[pl.DataFrame] = []
+    consumed: list[Path] = []
     for pq_path, lf in lazy_frames.items():
         try:
             df = lf.collect()
@@ -341,11 +398,14 @@ def _read_and_concat(parquet_files: list[Path]) -> pl.DataFrame | None:
                     ),
                 )
             frames.append(df)
+            consumed.append(pq_path)
         except Exception as exc:
-            logger.warning("Failed to read %s: %s", pq_path, exc)
+            unreadable.append(f"{pq_path.name} ({exc})")
     if not frames:
-        return None
-    return pl.concat(frames, how="diagonal_relaxed")
+        return _ConcatResult(None, consumed, unreadable)
+    return _ConcatResult(
+        pl.concat(frames, how="diagonal_relaxed"), consumed, unreadable
+    )
 
 
 def _incremental_combined(
@@ -461,8 +521,22 @@ def _quarantine_corrupt_aggregate(agg_path: Path) -> Path | None:
             try:
                 agg_path.replace(candidate)
             except OSError as exc:
-                logger.error("Could not preserve %s: %s", agg_path, exc)
-                return None
+                # A rename within one directory cannot cross devices, but some
+                # network/FUSE mounts refuse rename-over regardless. Copy
+                # instead; the caller overwrites `agg_path` either way, so a
+                # copy preserves the same evidence.
+                try:
+                    shutil.copy2(agg_path, candidate)
+                except OSError as copy_exc:
+                    logger.error(
+                        "Could not preserve %s (rename: %s; copy: %s). The "
+                        "rebuilt aggregate will overwrite it and the "
+                        "unreadable bytes will be lost.",
+                        agg_path,
+                        exc,
+                        copy_exc,
+                    )
+                    return None
             return candidate
     logger.error(
         "Too many quarantined copies beside %s; leaving it in place", agg_path
@@ -476,21 +550,34 @@ def _rebuild_dataset_aggregate(
     """Re-derive an unreadable aggregate from the per-image parquets.
 
     The aggregate is a *cache* of ``results/<ds>/measurements/*.parquet``, so
-    the source of truth for rebuilding it sits in the same directory. Nothing
-    deletes those files. Two staged-GPU paths relocate some of them —
-    ``reconcile_stage3_publications`` (Stage 3 never completed) and
-    ``quarantine_unchanged_restart_parquets`` (stale epoch) — but both move
-    exactly the images slated for reprocessing, whose rows the aggregate
-    should not be carrying either. So the rebuild reflects what the directory
-    currently holds, which is the aggregate's contract.
+    the source of truth for rebuilding it sits in the same directory, and the
+    rebuild goes through :func:`_read_and_concat` — the same reader that built
+    the aggregate originally. Reading those files raw would *not* reproduce
+    it: the identity normalization lives in that reader, and two of the three
+    columns it fixes up are colony-key columns, so a raw re-read followed by
+    :func:`_dedupe_on_colony_key` collapses unrelated colonies rather than
+    restoring them.
+
+    Nothing deletes the per-image parquets. Two staged-GPU paths relocate some
+    of them — ``reconcile_stage3_publications`` (Stage 3 never completed) and
+    ``quarantine_unchanged_restart_parquets`` (stale epoch) — but neither can
+    co-occur with chunking: both are staged-GPU-only, and the staged
+    strategies never write the ``chunk_state.json`` that gates every entry
+    into this module. The two path sets being disjoint is what makes the
+    rebuild sound. Note that it is *not* sound in general — a healthy
+    aggregate is append-only and never drops a row when a per-image parquet
+    goes away, so do not read this as "the aggregate tracks the directory".
 
     An earlier revision logged "rebuilding from new data" here and then wrote
     only the incoming chunk, destroying every previously aggregated colony
     while chunk state still listed their sources as consumed. Nothing could
     recover them, and final aggregation publishes the master from this file.
 
-    Returns the rebuilt frame, or ``None`` when there is nothing to rebuild
-    from, in which case the caller writes the incoming chunk alone.
+    Returns the rebuilt frame, or ``None`` when nothing could be rebuilt, in
+    which case the caller writes the incoming chunk alone. That branch is
+    unreachable from the chunk path — the sources include the very files that
+    produced the incoming chunk, which were read moments earlier — so it is a
+    guard, not a designed behaviour.
     """
     logger.error(
         "Cannot read %s (%s); rebuilding it from the per-image parquets",
@@ -514,31 +601,24 @@ def _rebuild_dataset_aggregate(
         )
         return None
 
-    frames: list[pl.DataFrame] = []
-    unreadable: list[str] = []
-    for path in sources:
-        try:
-            frames.append(pl.read_parquet(path))
-        except Exception as exc:  # noqa: BLE001 - report and continue
-            unreadable.append(f"{path.name} ({exc})")
-    if unreadable:
+    rebuilt = _read_and_concat(sources)
+    if rebuilt.unreadable:
         logger.error(
-            "Rebuild of %s skipped %d unreadable per-image parquet(s): %s",
+            "Rebuild of %s could not read %d per-image parquet(s): %s",
             agg_path,
-            len(unreadable),
-            ", ".join(unreadable),
+            len(rebuilt.unreadable),
+            ", ".join(rebuilt.unreadable),
         )
-    if not frames:
+    if rebuilt.frame is None:
         return None
 
-    rebuilt = pl.concat(frames, how="diagonal_relaxed")
     logger.info(
-        "Rebuilt %s from %d per-image parquet(s): %d rows",
+        "Rebuilt %s from %d per-image parquet(s): %d rows before dedup",
         agg_path,
-        len(frames),
-        rebuilt.height,
+        len(rebuilt.consumed),
+        rebuilt.frame.height,
     )
-    return rebuilt
+    return rebuilt.frame
 
 
 def _update_dataset_parquet(

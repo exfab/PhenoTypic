@@ -27,6 +27,7 @@ from phenotypic.sdk_ import (
     CHUNK_MANIFEST_JSON,
     DATASET_AGGREGATED_PARQUET,
     ChunkManifestKey,
+    chunk_state_path,
     dataset_measurements_dir,
     master_measurements_parquet_path,
     progress_dir,
@@ -35,28 +36,56 @@ from phenotypic.sdk_ import (
 DATASET = "plate_a"
 
 
-def _write_per_image(output_dir: Path, stems: list[str]) -> None:
-    meas_dir = dataset_measurements_dir(output_dir, DATASET)
+def _write_per_image(
+    output_dir: Path,
+    stems: list[str],
+    *,
+    dataset: str = DATASET,
+    colonies: int = 1,
+    dataset_column: bool = True,
+    name_column: str | None = "stem",
+) -> None:
+    """Write per-image parquets in a chosen on-disk shape.
+
+    The shape matters. Per-image parquets do not all carry the colony-key
+    columns: ``--no-dataset-column`` omits ``Metadata_Dataset``, and
+    ``Metadata_ImageName`` can be absent or hold a UUID (``Image.name`` falls
+    back to ``str(self.uuid)``). The chunk writer's reader normalizes all
+    three, so a test helper that only ever writes the already-normalized
+    shape cannot see a reader that skips normalization.
+
+    Args:
+        dataset_column: Emit ``Metadata_Dataset``.
+        name_column: ``"stem"`` writes the file stem, ``"uuid"`` writes a
+            per-image UUID-shaped value, ``None`` omits the column.
+    """
+    meas_dir = dataset_measurements_dir(output_dir, dataset)
     meas_dir.mkdir(parents=True, exist_ok=True)
     for i, stem in enumerate(stems):
-        pl.DataFrame(
-            {
-                str(EXPERIMENT_METADATA.DATASET): [DATASET],
-                str(METADATA.IMAGE_NAME): [stem],
-                str(OBJECT.LABEL): [1],
-                "Shape_Area": [float(i + 1)],
-            }
-        ).write_parquet(meas_dir / f"{stem}.parquet")
+        columns: dict[str, list[object]] = {}
+        if dataset_column:
+            columns[str(EXPERIMENT_METADATA.DATASET)] = [dataset] * colonies
+        if name_column == "stem":
+            columns[str(METADATA.IMAGE_NAME)] = [stem] * colonies
+        elif name_column == "uuid":
+            columns[str(METADATA.IMAGE_NAME)] = [
+                f"3f2b7c1a-0000-4000-8000-{i:012d}"
+            ] * colonies
+        columns[str(OBJECT.LABEL)] = list(range(1, colonies + 1))
+        columns["Shape_Area"] = [float(i + 1)] * colonies
+        pl.DataFrame(columns).write_parquet(meas_dir / f"{stem}.parquet")
 
 
-def _aggregate_image_names(output_dir: Path) -> list[str]:
-    agg = (
-        dataset_measurements_dir(output_dir, DATASET)
-        / DATASET_AGGREGATED_PARQUET
-    )
-    if not agg.is_file():
+def _aggregate(output_dir: Path, dataset: str = DATASET) -> pl.DataFrame | None:
+    agg = dataset_measurements_dir(output_dir, dataset) / DATASET_AGGREGATED_PARQUET
+    return pl.read_parquet(agg) if agg.is_file() else None
+
+
+def _aggregate_image_names(output_dir: Path, dataset: str = DATASET) -> list[str]:
+    agg = _aggregate(output_dir, dataset)
+    if agg is None:
         return []
-    return pl.read_parquet(agg)[str(METADATA.IMAGE_NAME)].to_list()
+    return agg[str(METADATA.IMAGE_NAME)].to_list()
 
 
 def test_kill_before_aggregate_write_does_not_lose_images(
@@ -159,7 +188,18 @@ def test_dedup_is_skipped_when_the_colony_key_is_incomplete(
     )
 
 
-def test_corrupt_aggregate_is_rebuilt_not_discarded(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "dataset_column, name_column",
+    [
+        pytest.param(True, "stem", id="normalized"),
+        pytest.param(False, "stem", id="no-dataset-column"),
+        pytest.param(True, None, id="no-image-name"),
+        pytest.param(True, "uuid", id="uuid-image-name"),
+    ],
+)
+def test_corrupt_aggregate_is_rebuilt_not_discarded(
+    tmp_path: Path, dataset_column: bool, name_column: str | None
+) -> None:
     """An unreadable aggregate must be rebuilt from its source, not replaced.
 
     The aggregate is a cache of ``results/<ds>/measurements/*.parquet``. When it
@@ -167,10 +207,26 @@ def test_corrupt_aggregate_is_rebuilt_not_discarded(tmp_path: Path) -> None:
     aggregated colony — and chunk state still lists those sources as consumed,
     so no later flush recovers them. Since final aggregation publishes the
     master from this file, those colonies never reach the user.
+
+    Parametrized over the on-disk shapes because the rebuild must go through
+    the same identity normalization that built the aggregate. Reading the
+    per-image parquets raw looks equivalent and is not: two of the three
+    columns the reader fixes up are colony-key columns, so a raw re-read
+    followed by dedup collapses unrelated colonies instead of restoring them
+    — silently, since the rebuild's own row count is taken before the dedup.
     """
-    _write_per_image(tmp_path, ["img_001", "img_002"])
+    _write_per_image(
+        tmp_path,
+        ["img_001", "img_002"],
+        colonies=2,
+        dataset_column=dataset_column,
+        name_column=name_column,
+    )
     flush_unchunked_measurements(tmp_path)
-    assert sorted(_aggregate_image_names(tmp_path)) == ["img_001", "img_002"]
+    assert sorted(set(_aggregate_image_names(tmp_path))) == [
+        "img_001",
+        "img_002",
+    ]
 
     agg_path = (
         dataset_measurements_dir(tmp_path, DATASET) / DATASET_AGGREGATED_PARQUET
@@ -178,14 +234,29 @@ def test_corrupt_aggregate_is_rebuilt_not_discarded(tmp_path: Path) -> None:
     agg_path.write_bytes(b"not a parquet file at all")
 
     # A later checkpoint brings one new image.
-    _write_per_image(tmp_path, ["img_003"])
+    _write_per_image(
+        tmp_path,
+        ["img_003"],
+        colonies=2,
+        dataset_column=dataset_column,
+        name_column=name_column,
+    )
     flush_unchunked_measurements(tmp_path)
 
-    assert sorted(_aggregate_image_names(tmp_path)) == [
+    rebuilt = _aggregate(tmp_path)
+    assert rebuilt is not None
+    assert sorted(set(_aggregate_image_names(tmp_path))) == [
         "img_001",
         "img_002",
         "img_003",
     ], "prior colonies were discarded instead of rebuilt from the per-image parquets"
+    assert rebuilt.height == 6, (
+        f"expected 3 images x 2 colonies, got {rebuilt.height} rows — the "
+        f"rebuild dropped or duplicated colonies"
+    )
+    assert (
+        rebuilt[str(EXPERIMENT_METADATA.DATASET)].null_count() == 0
+    ), "rebuild left Metadata_Dataset null, breaking dedup across the boundary"
 
 
 def test_corrupt_aggregate_is_preserved_for_diagnosis(tmp_path: Path) -> None:
@@ -199,13 +270,117 @@ def test_corrupt_aggregate_is_preserved_for_diagnosis(tmp_path: Path) -> None:
     _write_per_image(tmp_path, ["img_002"])
     flush_unchunked_measurements(tmp_path)
 
-    preserved = list(meas_dir.glob("*corrupt*"))
-    assert preserved, f"corrupt aggregate was overwritten: {list(meas_dir.iterdir())}"
-    assert preserved[0].read_bytes() == b"corrupt bytes"
-    # Must not be re-ingested as a measurement source on a later pass.
-    assert preserved[0].name.startswith("_"), (
-        f"{preserved[0].name} would be globbed as a per-image parquet"
+    # Assert the exact name, not a glob match: it pins the numbering the
+    # docstring promises, and the `_` prefix is what keeps the file out of
+    # `_scan_unchunked_parquets` and `discover_measurement_sources`.
+    preserved = meas_dir / "_dataset_aggregated.corrupt1.parquet"
+    assert preserved.is_file(), (
+        f"corrupt aggregate was overwritten: {sorted(p.name for p in meas_dir.iterdir())}"
     )
+    assert preserved.read_bytes() == b"corrupt bytes"
+
+
+def test_quarantine_falls_back_to_copy_when_rename_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A mount that refuses rename-over must not cost us the evidence.
+
+    The caller overwrites the aggregate either way, so if the rename fails and
+    nothing else happens, the unreadable bytes are gone — on exactly the
+    network filesystems (GPFS, NFS, FUSE) whose torn writes produce them.
+    """
+    _write_per_image(tmp_path, ["img_001"])
+    flush_unchunked_measurements(tmp_path)
+
+    meas_dir = dataset_measurements_dir(tmp_path, DATASET)
+    (meas_dir / DATASET_AGGREGATED_PARQUET).write_bytes(b"corrupt bytes")
+
+    real_replace = Path.replace
+
+    def refuse_quarantine_rename(self: Path, target: object) -> Path:
+        if "corrupt" in Path(str(target)).name:
+            raise OSError("simulated rename-over refusal")
+        return real_replace(self, target)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(Path, "replace", refuse_quarantine_rename)
+
+    _write_per_image(tmp_path, ["img_002"])
+    flush_unchunked_measurements(tmp_path)
+    monkeypatch.undo()
+
+    preserved = meas_dir / "_dataset_aggregated.corrupt1.parquet"
+    assert preserved.is_file(), "rename failed and the bytes were not copied aside"
+    assert preserved.read_bytes() == b"corrupt bytes"
+    # The rebuild must still have happened.
+    assert sorted(_aggregate_image_names(tmp_path)) == ["img_001", "img_002"]
+
+
+def test_corrupt_aggregate_recovery_is_scoped_to_one_dataset(
+    tmp_path: Path,
+) -> None:
+    """Corruption in one plate must not disturb another's aggregate."""
+    other = "plate_b"
+    _write_per_image(tmp_path, ["img_001"])
+    _write_per_image(tmp_path, ["img_001"], dataset=other)
+    flush_unchunked_measurements(tmp_path)
+
+    before = _aggregate(tmp_path, other)
+    assert before is not None
+
+    (
+        dataset_measurements_dir(tmp_path, DATASET) / DATASET_AGGREGATED_PARQUET
+    ).write_bytes(b"corrupt bytes")
+    _write_per_image(tmp_path, ["img_002"])
+    _write_per_image(tmp_path, ["img_002"], dataset=other)
+    flush_unchunked_measurements(tmp_path)
+
+    assert sorted(_aggregate_image_names(tmp_path)) == ["img_001", "img_002"]
+    assert sorted(_aggregate_image_names(tmp_path, other)) == [
+        "img_001",
+        "img_002",
+    ]
+    # The quarantine landed in the corrupt dataset's directory only.
+    assert (
+        dataset_measurements_dir(tmp_path, DATASET)
+        / "_dataset_aggregated.corrupt1.parquet"
+    ).is_file()
+    assert not list(
+        dataset_measurements_dir(tmp_path, other).glob("*corrupt*")
+    )
+
+
+def test_unreadable_per_image_parquet_is_retried_not_consumed(
+    tmp_path: Path,
+) -> None:
+    """A file that could not be read must not be recorded as chunked.
+
+    The scanner used to mark every file it *discovered* as consumed, before
+    anything read it, and the reader skipped unreadable files with a bare
+    warning. A torn or momentarily unavailable per-image parquet was therefore
+    marked consumed forever: no later flush retries it, and since final
+    aggregation prefers the aggregate, that image never reaches the master.
+    """
+    _write_per_image(tmp_path, ["img_001", "img_002"])
+    torn = dataset_measurements_dir(tmp_path, DATASET) / "img_003.parquet"
+    torn.write_bytes(b"a torn write, mid-copy")
+
+    flush_unchunked_measurements(tmp_path)
+    assert sorted(_aggregate_image_names(tmp_path)) == ["img_001", "img_002"]
+
+    state = json.loads(chunk_state_path(tmp_path).read_text())
+    assert f"{DATASET}/img_003.parquet" not in state["chunked_files"], (
+        "an unread file was recorded as chunked, so no flush will retry it"
+    )
+
+    # The write completes (or the transient read error clears).
+    _write_per_image(tmp_path, ["img_003"])
+    flush_unchunked_measurements(tmp_path)
+
+    assert sorted(_aggregate_image_names(tmp_path)) == [
+        "img_001",
+        "img_002",
+        "img_003",
+    ], "the recovered image never reached the aggregate"
 
 
 def test_reprocessing_the_same_images_does_not_duplicate(
