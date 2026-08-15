@@ -424,7 +424,8 @@ start the next task with an unaddressed correctness finding.**
 
 **Files:**
 - Modify: `src/phenotypic/sdk_/_io_constants.py`
-- Test: `tests/unit/sdk/test_directory_digest.py`
+- Test: `tests/unit/sdk_/test_directory_digest.py` (note the trailing underscore —
+  the directory is `tests/unit/sdk_`, mirroring `src/phenotypic/sdk_`)
 
 **Nothing today can do this.** `bytes_fingerprint` and `file_fingerprint`
 (`:154,166`) and `pipeline_content_digest` are all **single-file**, and
@@ -445,7 +446,7 @@ same hash over the same bytes but **do not string-compare equal**. Match the
 - [ ] **Step 1: Write the failing test**
 
 ```python
-# tests/unit/sdk/test_directory_digest.py
+# tests/unit/sdk_/test_directory_digest.py
 def test_digest_is_stable_and_prefixed(tmp_path):
     from phenotypic.sdk_._io_constants import directory_digest
 
@@ -482,7 +483,7 @@ def test_digest_ignores_listing_order(tmp_path, monkeypatch):
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `uv run pytest tests/unit/sdk/test_directory_digest.py -v`
+Run: `uv run pytest tests/unit/sdk_/test_directory_digest.py -v`
 Expected: FAIL — `cannot import name 'directory_digest'`.
 
 - [ ] **Step 3: Implement it**
@@ -522,6 +523,7 @@ start the next task with an unaddressed correctness finding.**
 
 **Files:**
 - Create: `src/phenotypic/subset/{__init__,_selector,_selectors}.py`
+- Create: `tests/unit/subset/__init__.py` (empty — test subdirs are packages here)
 - Modify: `_serializable_pipeline.py` — add `"phenotypic.subset"` to `PHENOTYPIC_CLASS_MODULES`
 - Test: `tests/unit/subset/test_selectors.py`
 
@@ -1191,7 +1193,8 @@ start the next task with an unaddressed correctness finding.**
 
 - [ ] `uv run pytest tests/unit -q` — green.
 - [ ] `uv run pytest tests/integration -q` — green.
-- [ ] `uv run pytest tests/gui -q` — green (run by hand; not in `testpaths`).
+- [ ] `uv run pytest tests/gui -q` — green. **`tests/gui` IS in `testpaths`**
+      (`pyproject.toml:200`), so CI runs it.
 - [ ] CI ledger gates green: `FEATURES.md`, `WORKFLOWS.md`, smoke-capture.
 - [ ] `uv run mypy src/phenotypic` — no new errors.
 - [ ] The import-purity gate still collects one case per `_services` module and

@@ -60,6 +60,8 @@ permanent rather than aspirational.
 
 **Files:**
 - Create: `src/phenotypic/_services/__init__.py`
+- Create: `tests/unit/services/__init__.py` (empty — every `tests/unit/*` subdir
+  is a package here; `tests/unit/cli`, `core`, `enhance`, `gui` all carry one)
 - Create: `tests/unit/services/test_import_purity.py`
 
 **Interfaces:**
@@ -999,8 +1001,9 @@ All must hold before Phase 1b starts:
       collects one case per promoted module (five modules, not zero).
 - [ ] `uv run pytest tests/unit/gui tests/integration/gui -q` — green,
       **unchanged**. The GUI must not notice this phase happened.
-- [ ] `uv run pytest tests/gui -q` — green (note: `tests/gui` is **not** in
-      `testpaths`, so CI does not run it automatically; run it by hand).
+- [ ] `uv run pytest tests/gui -q` — green. **`tests/gui` IS in `testpaths`**
+      (`pyproject.toml:200`, added by `aa40014ab`), so CI runs it; a regression
+      here fails the build rather than hiding.
 - [ ] The CI ledger gates stay green: `FEATURES.md`, `WORKFLOWS.md`, smoke-capture.
 - [ ] `uv run mypy src/phenotypic` — no new errors.
 - [ ] `uv run ruff check src/phenotypic/_services src/phenotypic/gui src/phenotypic/_cli tests/unit/services`
