@@ -8,6 +8,7 @@ from PIL import Image as PILImage
 
 from phenotypic.gui.browse import _source_render as sr
 from phenotypic.gui.browse import _tile_routes
+from phenotypic.gui.browse._source_probe import probe_source
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
 
@@ -41,6 +42,55 @@ def test_manifest_then_tile(app_and_root):
     tile = client.get(f"/tiles/{token}_files/0/0_0.png")
     assert tile.status_code == 200
     assert tile.mimetype == "image/png"
+
+
+def test_revisioned_preview_manifest_and_tile_are_immutable(app_and_root):
+    client, rel, sandbox_root = app_and_root
+    token = sr.encode_token(rel)
+    revision = probe_source(
+        sandbox_root / rel,
+        sandbox_root=sandbox_root,
+        relative_path=rel,
+    )
+
+    assert (
+        client.get(
+            f"/assets/{token}/{revision.cache_key}/preview-if-ready.png"
+        ).status_code
+        == 404
+    )
+    preview = client.get(f"/assets/{token}/{revision.cache_key}/preview.png")
+    assert preview.status_code == 200
+    assert (
+        preview.headers["Cache-Control"]
+        == "private, max-age=31536000, immutable"
+    )
+
+    manifest = client.get(f"/assets/{token}/{revision.cache_key}/image.dzi")
+    assert manifest.status_code == 200
+    assert "cache;dur=" in manifest.headers["Server-Timing"]
+    assert "queue;dur=" in manifest.headers["Server-Timing"]
+    assert (
+        manifest.headers["Cache-Control"]
+        == "private, max-age=31536000, immutable"
+    )
+
+    tile = client.get(
+        f"/assets/{token}/{revision.cache_key}/image_files/0/0_0.png"
+    )
+    assert tile.status_code == 200
+    assert (
+        tile.headers["Cache-Control"] == "private, max-age=31536000, immutable"
+    )
+
+
+def test_revisioned_asset_rejects_stale_revision(app_and_root):
+    client, rel, _ = app_and_root
+    token = sr.encode_token(rel)
+    stale = "0" * 64
+    response = client.get(f"/assets/{token}/{stale}/image.dzi")
+    assert response.status_code == 409
+    assert response.get_json() == {"error": "source image changed"}
 
 
 def test_malformed_token_404(app_and_root):
@@ -145,7 +195,9 @@ def test_tile_filename_traversal_404(app_and_root):
     # Encoded-dot traversal that stays a single segment -> reaches the guard.
     resp_dots = client.get(f"/tiles/{token}_files/0/%2e%2e")
     assert resp_dots.status_code == 404
-    assert resp_dots.mimetype == "application/json"  # our guard, not Dash's shell
+    assert (
+        resp_dots.mimetype == "application/json"
+    )  # our guard, not Dash's shell
     # Wrong extension (not ``\d+_\d+\.png``).
     resp_ext = client.get(f"/tiles/{token}_files/0/0_0.jpg")
     assert resp_ext.status_code == 404

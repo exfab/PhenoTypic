@@ -1,4 +1,5 @@
 """Single-pane Browse layout: dataset + image pickers, OSD canvas, metadata."""
+
 from __future__ import annotations
 
 from typing import Any, cast
@@ -81,7 +82,7 @@ def build_browse_layout() -> Any:
                 "‹",
                 id=ids.BROWSE_PREV_BTN,
                 n_clicks=0,
-                title="Previous image",
+                title="Previous image (J)",
                 className="btn btn-outline-secondary btn-sm browse-step-button",
                 type="button",
                 **cast(Any, {"aria-label": "Previous image"}),
@@ -90,7 +91,7 @@ def build_browse_layout() -> Any:
                 "›",
                 id=ids.BROWSE_NEXT_BTN,
                 n_clicks=0,
-                title="Next image",
+                title="Next image (K)",
                 className="btn btn-outline-secondary btn-sm browse-step-button",
                 type="button",
                 **cast(Any, {"aria-label": "Next image"}),
@@ -104,13 +105,28 @@ def build_browse_layout() -> Any:
         [
             stepper_pair,
             html.Div(image_picker, style={"flex": "1 1 auto"}),
+            html.Span(
+                "0 of 0",
+                id=ids.BROWSE_POSITION,
+                className="browse-position",
+                **cast(Any, {"aria-live": "polite"}),
+            ),
         ],
         className="d-flex align-items-center",
         style={"gap": "0.5rem", "flex": "1 1 auto"},
     )
 
+    keep_position = dbc.Checkbox(
+        id=ids.BROWSE_KEEP_POSITION,
+        label="Keep position",
+        value=False,
+        persistence=True,
+        persistence_type="local",
+        className="browse-keep-position",
+        inputClassName="browse-keep-position-input",
+    )
     header = html.Div(
-        [dataset_row, picker_group],
+        [dataset_row, picker_group, keep_position],
         className="d-flex align-items-center",
         style={"gap": "0.5rem", "flexWrap": "wrap", "marginBottom": "0.75rem"},
     )
@@ -127,6 +143,13 @@ def build_browse_layout() -> Any:
         id=ids.BROWSE_OSD_DIV,
         className="browse-osd-canvas",
         style=_OSD_STYLE,
+    )
+    preview = html.Img(
+        id=ids.BROWSE_PREVIEW_IMG,
+        src="",
+        alt="",
+        className="browse-progressive-preview",
+        **cast(Any, {"aria-hidden": "true"}),
     )
 
     # Spinner + caption overlay, hidden until browse.js shows it while the
@@ -148,12 +171,90 @@ def build_browse_layout() -> Any:
         **cast(Any, {"role": "status", "aria-live": "polite"}),
     )
     osd_stage = html.Div(
-        [osd_div, loading_overlay],
+        [preview, osd_div, loading_overlay],
         className="browse-osd-stage",
+    )
+
+    filmstrip = html.Div(
+        id=ids.BROWSE_FILMSTRIP,
+        className="browse-filmstrip",
+        **cast(
+            Any,
+            {
+                "role": "list",
+                "aria-label": "Nearby images in this plate series",
+            },
+        ),
+    )
+
+    preparation_actions = html.Div(
+        [
+            html.Button(
+                "Prepare dataset",
+                id=ids.BROWSE_PREPARE_BTN,
+                n_clicks=0,
+                type="button",
+                className="btn btn-outline-primary btn-sm",
+            ),
+            html.Button(
+                "Stop",
+                id=ids.BROWSE_STOP_PREPARE_BTN,
+                n_clicks=0,
+                type="button",
+                disabled=True,
+                className="btn btn-outline-secondary btn-sm",
+            ),
+            html.Button(
+                "Clear prepared images",
+                id=ids.BROWSE_CLEAR_CACHE_BTN,
+                n_clicks=0,
+                type="button",
+                className="btn btn-outline-secondary btn-sm",
+            ),
+        ],
+        className="browse-preparation-actions",
+    )
+    preparation_status = html.Div(
+        [
+            html.Div(
+                "Images prepare as you browse.",
+                id=ids.BROWSE_PREPARATION_STATUS,
+                className="browse-preparation-status-text",
+            ),
+            html.Progress(
+                id=ids.BROWSE_PREPARATION_PROGRESS,
+                value="0",
+                max="1",
+                className="browse-preparation-progress",
+                **cast(Any, {"aria-label": "Dataset preparation progress"}),
+            ),
+        ],
+        className="browse-preparation-status",
+        **cast(Any, {"role": "status", "aria-live": "polite"}),
+    )
+    preparation_details = html.Details(
+        [
+            html.Summary("Preparation details"),
+            html.Div(
+                [
+                    html.Span("Cache ", className="browse-detail-label"),
+                    html.Span("—", id=ids.BROWSE_CACHE_USAGE),
+                    html.Span("Backend ", className="browse-detail-label"),
+                    html.Span("—", id=ids.BROWSE_BACKEND_DETAILS),
+                ],
+                className="browse-preparation-detail-grid",
+            ),
+        ],
+        className="browse-preparation-details",
+    )
+    preparation_bar = html.Div(
+        [preparation_actions, preparation_status, preparation_details],
+        className="browse-preparation-bar",
     )
 
     metadata_panel = html.Div(
         [
+            _meta_chip("Image", ids.BROWSE_META_IMAGE_NAME),
             _meta_chip("Dimensions", ids.BROWSE_META_DIMS),
             _meta_chip("Size", ids.BROWSE_META_SIZE),
             _meta_chip("Captured", ids.BROWSE_META_CAPTURED),
@@ -179,10 +280,19 @@ def build_browse_layout() -> Any:
         inline=True,
         className="browse-view-mode",
     )
-    header.children.append(view_toggle)  # header.children is [dataset_row, picker_group]
+    header.children.append(
+        view_toggle
+    )  # header.children is [dataset_row, picker_group]
 
     single_body = html.Div(
-        [empty_hint, osd_stage, metadata_panel, csv_metadata_panel],
+        [
+            empty_hint,
+            preparation_bar,
+            osd_stage,
+            filmstrip,
+            metadata_panel,
+            csv_metadata_panel,
+        ],
         id=ids.BROWSE_SINGLE_BODY,
     )
 
@@ -194,6 +304,13 @@ def build_browse_layout() -> Any:
             dcc.Store(id=ids.BROWSE_DATASETS_STORE, data={}),
             dcc.Store(id=ids.BROWSE_CURRENT_IMAGE_STORE, data=None),
             dcc.Store(id=ids.BROWSE_OSD_SYNC, data=None),
+            dcc.Store(id=ids.BROWSE_NAV_EVENT_STORE, data=None),
+            dcc.Store(id=ids.BROWSE_PREPARATION_STATUS_STORE, data=None),
+            dcc.Interval(
+                id=ids.BROWSE_PREPARATION_POLL,
+                interval=1_000,
+                n_intervals=0,
+            ),
         ],
         className="browse-page",
         style={"padding": "1rem"},
@@ -226,10 +343,18 @@ def build_timeline_body() -> Any:
         style={"minWidth": "10rem"},
     )
     csv_cols = [
-        dcc.Dropdown(id=ids.BROWSE_TL_ROW_CSV_COL, options=[], placeholder="Row column…"),
-        dcc.Dropdown(id=ids.BROWSE_TL_TIME_CSV_COL, options=[], placeholder="Time column…"),
         dcc.Dropdown(
-            id=ids.BROWSE_TL_CSV_IMAGE_COL, options=[], placeholder="Image-name column…"
+            id=ids.BROWSE_TL_ROW_CSV_COL, options=[], placeholder="Row column…"
+        ),
+        dcc.Dropdown(
+            id=ids.BROWSE_TL_TIME_CSV_COL,
+            options=[],
+            placeholder="Time column…",
+        ),
+        dcc.Dropdown(
+            id=ids.BROWSE_TL_CSV_IMAGE_COL,
+            options=[],
+            placeholder="Image-name column…",
         ),
     ]
     pattern_controls = html.Div(
@@ -247,7 +372,8 @@ def build_timeline_body() -> Any:
                 value=[],
             ),
             html.Div(
-                id=ids.BROWSE_TL_PATTERN_PREVIEW, className="browse-tl-pattern-preview"
+                id=ids.BROWSE_TL_PATTERN_PREVIEW,
+                className="browse-tl-pattern-preview",
             ),
         ],
         className="d-flex align-items-center",
@@ -263,7 +389,8 @@ def build_timeline_body() -> Any:
                 type="button",
             ),
             html.Span(
-                f"{TIMELINE_TILE_SIZE_DEFAULT} px", id=ids.BROWSE_TL_TILE_SIZE_READOUT
+                f"{TIMELINE_TILE_SIZE_DEFAULT} px",
+                id=ids.BROWSE_TL_TILE_SIZE_READOUT,
             ),
             html.Button(
                 "+",
@@ -396,7 +523,8 @@ def build_timeline_body() -> Any:
     )
     # timeline.js sets this readout's text (e.g. "row 1/74 · time 1/24").
     position = html.Div(
-        id=ids.BROWSE_TL_POSITION, className="timeline-position browse-tl-position"
+        id=ids.BROWSE_TL_POSITION,
+        className="timeline-position browse-tl-position",
     )
     grid_viewport = html.Div(
         [grid, nav_up, nav_down, nav_left, nav_right, position],
@@ -418,7 +546,9 @@ def build_timeline_body() -> Any:
     popout = dbc.Modal(
         [
             dbc.ModalHeader(dbc.ModalTitle("", id=ids.BROWSE_TL_POPOUT_TITLE)),
-            dbc.ModalBody(html.Div(id=ids.BROWSE_TL_POPOUT_OSD, style={"height": "70vh"})),
+            dbc.ModalBody(
+                html.Div(id=ids.BROWSE_TL_POPOUT_OSD, style={"height": "70vh"})
+            ),
         ],
         id=ids.BROWSE_TL_POPOUT_MODAL,
         is_open=False,
@@ -444,7 +574,10 @@ def build_timeline_body() -> Any:
             ),
             dcc.Store(id=ids.BROWSE_TL_REVISION_CANDIDATE, data=None),
             dcc.Store(id=ids.BROWSE_TL_REVISION_AUTHORIZED, data=None),
-            dcc.Store(id=ids.BROWSE_TL_STORE_TILE_SIZE, data=TIMELINE_TILE_SIZE_DEFAULT),
+            dcc.Store(
+                id=ids.BROWSE_TL_STORE_TILE_SIZE,
+                data=TIMELINE_TILE_SIZE_DEFAULT,
+            ),
             dcc.Store(id=ids.BROWSE_TL_STORE_WARNINGS, data=[]),
             dcc.Store(id=ids.BROWSE_TL_POPOUT_STORE, data=None),
         ],

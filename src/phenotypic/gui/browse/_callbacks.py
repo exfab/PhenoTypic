@@ -5,6 +5,7 @@ The helpers (``dataset_options``/``image_options``/``dataset_row_hidden``/
 callbacks are thin adapters so the live wiring is the only thing that needs
 a browser smoke check.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -29,15 +30,23 @@ from phenotypic.gui._config import (
     stepped_timeline_tile_size_from_trigger,
 )
 from phenotypic.gui._shared._picker_navigation import (
+    enabled_picker_values,
+    offset_picker_value,
     picker_button_disabled_states,
+    picker_position,
     step_picker_value,
 )
 from phenotypic.gui._shared.timeline import build_matrix, build_timeline_grid
 from phenotypic.gui.browse import _ids as ids
 from phenotypic.gui.browse import _metadata, _source_lister, _source_render
+from phenotypic.gui.browse._preparation_routes import BrowsePreparationApi
+from phenotypic.gui.browse._source_probe import SourceRevision, probe_source
 from phenotypic.gui.browse._capture_time import read_capture_time
 from phenotypic.gui.browse._layout import DATASET_ROW_STYLE
-from phenotypic.gui.browse._plate_pattern import PatternError, parse_plate_identity
+from phenotypic.gui.browse._plate_pattern import (
+    PatternError,
+    parse_plate_identity,
+)
 from phenotypic.gui.browse._timeline_records import (
     BrowseAxisConfig,
     build_browse_records,
@@ -319,7 +328,10 @@ def image_options(
     datasets: dict[str, list[str]], dataset: str | None
 ) -> list[dict[str, str]]:
     """Dropdown options for the image picker within ``dataset``."""
-    return [{"label": name, "value": name} for name in datasets.get(dataset or "", [])]
+    return [
+        {"label": name, "value": name}
+        for name in datasets.get(dataset or "", [])
+    ]
 
 
 def dataset_row_hidden(datasets: dict[str, list[str]]) -> bool:
@@ -348,7 +360,46 @@ def neighbor_filenames(
         idx = values.index(current)
     except ValueError:
         return []
-    return values[max(0, idx - radius):idx] + values[idx + 1: idx + 1 + radius]
+    return (
+        values[max(0, idx - radius) : idx] + values[idx + 1 : idx + 1 + radius]
+    )
+
+
+def directional_neighbor_filenames(
+    option_values: Sequence[str],
+    current: str,
+    direction: Literal["forward", "backward", "unknown"] = "unknown",
+) -> list[str]:
+    """Return the fixed directional preparation order around ``current``."""
+    values = list(option_values)
+    try:
+        index = values.index(current)
+    except ValueError:
+        return []
+    offsets = {
+        "forward": (1, 2, 3, -1, -2),
+        "backward": (-1, -2, -3, 1, 2),
+        "unknown": (1, -1, 2, -2, 3),
+    }[direction]
+    return [
+        values[target]
+        for offset in offsets
+        if 0 <= (target := index + offset) < len(values)
+    ]
+
+
+def filmstrip_filenames(
+    option_values: Sequence[str], current: str, radius: int = 4
+) -> list[str]:
+    """Return a centered, clamped filmstrip window of at most ``2r + 1``."""
+    values = list(option_values)
+    try:
+        index = values.index(current)
+    except ValueError:
+        return []
+    width = radius * 2 + 1
+    start = max(0, min(len(values) - width, index - radius))
+    return values[start : start + width]
 
 
 def current_image_payload(
@@ -370,7 +421,9 @@ def current_image_payload(
     }
     if neighbor_files:
         payload["prefetch"] = [
-            _source_render.encode_token(sandbox_rel(src_root_rel, dataset_rel, name))
+            _source_render.encode_token(
+                sandbox_rel(src_root_rel, dataset_rel, name)
+            )
             for name in neighbor_files
         ]
     return payload
@@ -381,7 +434,9 @@ def render_csv_metadata_panel(model: CsvMetadataPanelModel) -> Any:
     if model.state == "unset":
         return html.Div("No metadata CSV selected", className="text-muted")
     if model.state == "unavailable":
-        return html.Div("Metadata CSV is unavailable", className="text-warning")
+        return html.Div(
+            "Metadata CSV is unavailable", className="text-warning"
+        )
     if model.state == "missing_image_name":
         return html.Div(
             "Metadata CSV has no image-name column",
@@ -412,7 +467,9 @@ def render_csv_metadata_panel(model: CsvMetadataPanelModel) -> Any:
             html.Div(
                 html.Table(
                     [
-                        html.Thead(html.Tr([html.Th(column) for column in columns])),
+                        html.Thead(
+                            html.Tr([html.Th(column) for column in columns])
+                        ),
                         html.Tbody(rows),
                     ],
                     className="table table-sm mb-0 browse-csv-metadata-table",
@@ -506,12 +563,18 @@ def pattern_preview_rows(
     before applying it. Invalid patterns surface their :class:`PatternError`.
     """
     if not pattern:
-        return html.Div("Enter a pattern to preview matches.", className="text-muted")
+        return html.Div(
+            "Enter a pattern to preview matches.", className="text-muted"
+        )
 
-    flat_stems = [Path(name).stem for files in datasets.values() for name in files]
+    flat_stems = [
+        Path(name).stem for files in datasets.values() for name in files
+    ]
     preview_stems = flat_stems[:8]
     try:
-        matches = parse_plate_identity(preview_stems, pattern, advanced=advanced)
+        matches = parse_plate_identity(
+            preview_stems, pattern, advanced=advanced
+        )
     except PatternError as exc:
         return html.Div(f"Invalid pattern: {exc}", className="text-danger")
 
@@ -531,7 +594,13 @@ def pattern_preview_rows(
     return html.Table(
         [
             html.Thead(
-                html.Tr([html.Th("Filename"), html.Th("{plate}"), html.Th("{time}")])
+                html.Tr(
+                    [
+                        html.Th("Filename"),
+                        html.Th("{plate}"),
+                        html.Th("{time}"),
+                    ]
+                )
             ),
             html.Tbody(body),
         ],
@@ -764,7 +833,11 @@ def resolve_popout_event(
 # --------------------------------------------------------------------------
 # Callback registration
 # --------------------------------------------------------------------------
-def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
+def register_callbacks(
+    app: dash.Dash,
+    sandbox: SandboxRoot,
+    preparation_api: BrowsePreparationApi | None = None,
+) -> None:
     """Register every Browse callback on ``app``."""
     revision_authority = TimelineRevisionAuthority()
     source_revision_authority = SourceRevisionAuthority()
@@ -786,7 +859,11 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         datasets = _source_lister.list_datasets(resolved)
         options = dataset_options(datasets)
         value = options[0]["value"] if options else None
-        row_style = hidden_row if dataset_row_hidden(datasets) else dict(DATASET_ROW_STYLE)
+        row_style = (
+            hidden_row
+            if dataset_row_hidden(datasets)
+            else dict(DATASET_ROW_STYLE)
+        )
         hint_style = {"display": "none"} if datasets else {"display": "block"}
         return datasets, options, value, row_style, hint_style
 
@@ -899,6 +976,48 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         return step_picker_value(value, options, direction) or no_update
 
     @app.callback(
+        Output(ids.BROWSE_IMAGE_PICKER, "value", allow_duplicate=True),
+        Input(ids.BROWSE_NAV_EVENT_STORE, "data"),
+        State(ids.BROWSE_IMAGE_PICKER, "value"),
+        State(ids.BROWSE_IMAGE_PICKER, "options"),
+        prevent_initial_call=True,
+    )
+    def _navigate_from_client(event, value, options):
+        if not isinstance(event, Mapping):
+            raise dash.exceptions.PreventUpdate
+        kind = event.get("kind")
+        if kind == "offset":
+            delta = event.get("delta")
+            if not isinstance(delta, int) or delta not in {-10, -1, 1, 10}:
+                raise dash.exceptions.PreventUpdate
+            return offset_picker_value(value, options, delta) or no_update
+        if kind == "select":
+            selected = event.get("value")
+            values = enabled_picker_values(options)
+            return (
+                selected
+                if isinstance(selected, str) and selected in values
+                else no_update
+            )
+        raise dash.exceptions.PreventUpdate
+
+    @app.callback(
+        Output(ids.BROWSE_PREPARATION_STATUS, "data-client-state-sync"),
+        Input(ids.BROWSE_NAV_EVENT_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _sync_preparation_client_state(event):
+        if preparation_api is None or not isinstance(event, Mapping):
+            raise dash.exceptions.PreventUpdate
+        client_id = event.get("session_id")
+        enabled = event.get("speculation_enabled")
+        if not isinstance(client_id, str) or not client_id:
+            raise dash.exceptions.PreventUpdate
+        if isinstance(enabled, bool):
+            preparation_api.manager.set_speculation_enabled(client_id, enabled)
+        return client_id
+
+    @app.callback(
         Output(ids.BROWSE_PREV_BTN, "disabled"),
         Output(ids.BROWSE_NEXT_BTN, "disabled"),
         Input(ids.BROWSE_IMAGE_PICKER, "value"),
@@ -913,20 +1032,145 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         State(ids.BROWSE_IMAGE_PICKER, "options"),
         State(ids.BROWSE_DATASET_PICKER, "value"),
         State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        State(ids.BROWSE_CURRENT_IMAGE_STORE, "data"),
+        State(ids.BROWSE_NAV_EVENT_STORE, "data"),
     )
-    def _current_image(filename, options, dataset, payload):
+    def _current_image(filename, options, dataset, payload, prior, nav_event):
         if not filename:
             return None
         src_root_rel = _src_root_rel(sandbox, payload)
-        if src_root_rel is None:
+        source_root = resolve_source_image_root(sandbox, payload)
+        if src_root_rel is None or source_root is None:
             return None
-        option_values = [opt["value"] for opt in (options or [])]
-        neighbors = neighbor_filenames(option_values, filename)
-        return current_image_payload(
-            src_root_rel, dataset or ".", filename, neighbors
+        option_values = enabled_picker_values(options)
+        relative = sandbox_rel(src_root_rel, dataset or ".", filename)
+        token = _source_render.encode_token(relative)
+        try:
+            selected_revision = probe_source(
+                sandbox.resolve(relative),
+                sandbox_root=sandbox.root,
+                relative_path=relative,
+            )
+        except Exception:  # noqa: BLE001 - selection can disappear during refresh
+            return {"token": token, "label": relative, "filename": filename}
+
+        previous = (
+            prior.get("filename") if isinstance(prior, Mapping) else None
         )
+        try:
+            previous_index = option_values.index(str(previous))
+            current_index = option_values.index(filename)
+        except ValueError:
+            direction: Literal["forward", "backward", "unknown"] = "unknown"
+        else:
+            direction = (
+                "forward"
+                if current_index > previous_index
+                else "backward"
+                if current_index < previous_index
+                else "unknown"
+            )
+        neighbor_names = directional_neighbor_filenames(
+            option_values,
+            filename,
+            direction,
+        )
+        filmstrip_names = filmstrip_filenames(option_values, filename)
+        client_id = "browse-server"
+        generation = 0
+        if isinstance(nav_event, Mapping):
+            candidate = nav_event.get("session_id")
+            sequence = nav_event.get("sequence")
+            if isinstance(candidate, str) and candidate:
+                client_id = candidate
+            if isinstance(sequence, int) and sequence >= 0:
+                generation = sequence
+
+        revisions: dict[str, SourceRevision] = {filename: selected_revision}
+        for name in dict.fromkeys([*neighbor_names, *filmstrip_names]):
+            rel = sandbox_rel(src_root_rel, dataset or ".", name)
+            try:
+                revisions[name] = probe_source(
+                    sandbox.resolve(rel),
+                    sandbox_root=sandbox.root,
+                    relative_path=rel,
+                )
+            except Exception:  # noqa: BLE001 - inventory can change in place
+                continue
+        if preparation_api is not None:
+            preparation_api.replace_nearby(
+                client_id,
+                generation,
+                [
+                    revisions[name]
+                    for name in neighbor_names
+                    if name in revisions
+                ],
+            )
+
+        prefix = str(app.server.config.get(CFG_URL_PREFIX, MOUNT_HOME))
+        if not prefix.endswith("/"):
+            prefix += "/"
+        position, total = picker_position(filename, options)
+        filmstrip = []
+        for name in filmstrip_names:
+            revision = revisions.get(name)
+            if revision is None:
+                continue
+            item_token = _source_render.encode_token(
+                sandbox_rel(src_root_rel, dataset or ".", name)
+            )
+            status = "queued"
+            if preparation_api is not None:
+                entry = preparation_api.cache.entry(revision)
+                if entry.dzi_ready:
+                    status = "ready"
+                else:
+                    try:
+                        phase = preparation_api.manager.snapshot(
+                            revision
+                        ).phase
+                    except KeyError:
+                        phase = "queued"
+                    status = (
+                        "failed"
+                        if phase in {"failed", "cancelled"}
+                        else "preparing"
+                        if phase not in {"queued", "ready"}
+                        else phase
+                    )
+            filmstrip.append(
+                {
+                    "value": name,
+                    "label": name,
+                    "preview_url": (
+                        f"{prefix}assets/{item_token}/{revision.cache_key}/"
+                        "preview-if-ready.png"
+                    ),
+                    "status": status,
+                    "current": name == filename,
+                }
+            )
+        return {
+            "token": token,
+            "label": relative,
+            "filename": filename,
+            "value": filename,
+            "revision": selected_revision.cache_key,
+            "width": selected_revision.width,
+            "height": selected_revision.height,
+            "position": {"index": position, "total": total},
+            "filmstrip": filmstrip,
+            "preview_url": (
+                f"{prefix}assets/{token}/{selected_revision.cache_key}/preview.png"
+            ),
+            "dzi_url": (
+                f"{prefix}assets/{token}/{selected_revision.cache_key}/image.dzi"
+            ),
+        }
 
     @app.callback(
+        Output(ids.BROWSE_META_IMAGE_NAME, "children"),
         Output(ids.BROWSE_META_DIMS, "children"),
         Output(ids.BROWSE_META_SIZE, "children"),
         Output(ids.BROWSE_META_CAPTURED, "children"),
@@ -935,12 +1179,16 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
     )
     def _metadata_panel(payload: dict | None):
         if not payload or not payload.get("token"):
-            return "—", "—", "—", "—"
+            return "—", "—", "—", "—", "—"
+        image_name = payload.get("filename")
+        if not isinstance(image_name, str) or not image_name:
+            image_name = "—"
         try:
             rel = _source_render.decode_token(payload["token"])
             original = sandbox.resolve(rel)
         except Exception:  # noqa: BLE001 - metadata is best-effort
-            return "—", "—", "—", "—"
+            return image_name, "—", "—", "—", "—"
+        image_name = Path(rel).name or "—"
         info = _metadata.read(original)
         dims = (
             f"{info['width']} × {info['height']} px"
@@ -950,8 +1198,11 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         size = _humanize_bytes(info["bytes"]) if info["bytes"] else "—"
         exif = info.get("exif", {})
         captured = exif.get("captured", "—")
-        camera = " ".join(p for p in (exif.get("make"), exif.get("model")) if p) or "—"
-        return dims, size, captured, camera
+        camera = (
+            " ".join(p for p in (exif.get("make"), exif.get("model")) if p)
+            or "—"
+        )
+        return image_name, dims, size, captured, camera
 
     @app.callback(
         Output(ids.BROWSE_CSV_METADATA_PANEL, "children"),
@@ -994,6 +1245,102 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         Input(ids.BROWSE_CURRENT_IMAGE_STORE, "data"),
     )
 
+    @app.callback(
+        Output(ids.BROWSE_PREPARATION_STATUS_STORE, "data"),
+        Input(ids.BROWSE_PREPARE_BTN, "n_clicks"),
+        Input(ids.BROWSE_STOP_PREPARE_BTN, "n_clicks"),
+        Input(ids.BROWSE_CLEAR_CACHE_BTN, "n_clicks"),
+        Input(ids.BROWSE_PREPARATION_POLL, "n_intervals"),
+        State(ids.BROWSE_IMAGE_PICKER, "options"),
+        State(ids.BROWSE_DATASET_PICKER, "value"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        State(ids.BROWSE_CURRENT_IMAGE_STORE, "data"),
+        State(ids.BROWSE_NAV_EVENT_STORE, "data"),
+    )
+    def _preparation_controls(
+        prepare_clicks,
+        _stop_clicks,
+        _clear_clicks,
+        _poll,
+        options,
+        dataset,
+        source_payload,
+        current_image,
+        nav_event,
+    ):
+        if preparation_api is None:
+            return {
+                "state": "idle",
+                "ready": 0,
+                "total": 0,
+                "failed": 0,
+                "message": "Images prepare as you browse.",
+            }
+        client_id = "browse-server"
+        generation = int(prepare_clicks or 0)
+        if isinstance(nav_event, Mapping):
+            candidate = nav_event.get("session_id")
+            if isinstance(candidate, str) and candidate:
+                client_id = candidate
+        triggered = ctx.triggered_id
+        if triggered == ids.BROWSE_PREPARE_BTN:
+            src_root_rel = _src_root_rel(sandbox, source_payload)
+            if src_root_rel is None:
+                raise dash.exceptions.PreventUpdate
+            revisions = []
+            for filename in enabled_picker_values(options):
+                relative = sandbox_rel(src_root_rel, dataset or ".", filename)
+                try:
+                    revisions.append(
+                        probe_source(
+                            sandbox.resolve(relative),
+                            sandbox_root=sandbox.root,
+                            relative_path=relative,
+                        )
+                    )
+                except Exception:  # noqa: BLE001 - source changed during scan
+                    continue
+            payload = preparation_api.start_dataset(
+                client_id,
+                generation,
+                revisions,
+            )
+        elif triggered == ids.BROWSE_STOP_PREPARE_BTN:
+            payload = preparation_api.stop_dataset(client_id)
+        elif triggered == ids.BROWSE_CLEAR_CACHE_BTN:
+            revision = (
+                current_image.get("revision")
+                if isinstance(current_image, Mapping)
+                else None
+            )
+            cleared = preparation_api.clear(current_revision=revision)
+            payload = preparation_api.status(client_id)
+            payload["message"] = (
+                f"Cleared {cleared['removed_entries']} prepared entries."
+            )
+        else:
+            payload = preparation_api.status(client_id)
+        usage = payload.get("cache_usage")
+        if isinstance(usage, Mapping):
+            payload["cache_usage"] = (
+                f"{_humanize_bytes(int(usage.get('bytes', 0)))} in "
+                f"{int(usage.get('entries', 0))} entries ({usage.get('tier', 'unknown')})"
+            )
+        return payload
+
+    app.clientside_callback(
+        """
+        function(payload) {
+            if (window.__phenotypicBrowse) {
+                return window.__phenotypicBrowse.applyPreparationStatus(payload);
+            }
+            return "";
+        }
+        """,
+        Output(ids.BROWSE_PREPARATION_STATUS, "data-render-sync"),
+        Input(ids.BROWSE_PREPARATION_STATUS_STORE, "data"),
+    )
+
     # ----------------------------------------------------------------------
     # Timeline view (Phase 2)
     # ----------------------------------------------------------------------
@@ -1004,8 +1351,12 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
     )
     def _toggle_view_mode(mode: str | None):
         is_timeline = mode == "timeline"
-        single_style = {"display": "none"} if is_timeline else {"display": "block"}
-        timeline_style = {"display": "block"} if is_timeline else {"display": "none"}
+        single_style = (
+            {"display": "none"} if is_timeline else {"display": "block"}
+        )
+        timeline_style = (
+            {"display": "block"} if is_timeline else {"display": "none"}
+        )
         return single_style, timeline_style
 
     # Clientside companion: cancel any in-flight warm when leaving Timeline,
@@ -1083,7 +1434,9 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         Input(ids.BROWSE_TL_PATTERN_ADVANCED, "value"),
         State(ids.BROWSE_DATASETS_STORE, "data"),
     )
-    def _pattern_preview(pattern: str | None, advanced_value, datasets: dict | None):
+    def _pattern_preview(
+        pattern: str | None, advanced_value, datasets: dict | None
+    ):
         advanced = bool(advanced_value) and "advanced" in advanced_value
         return pattern_preview_rows(datasets or {}, pattern or "", advanced)
 
@@ -1166,7 +1519,8 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
             row_source=row_source or "folder",
             time_source=time_source or "exif",
             pattern=pattern or "",
-            advanced_pattern=bool(advanced_value) and "advanced" in advanced_value,
+            advanced_pattern=bool(advanced_value)
+            and "advanced" in advanced_value,
             csv_image_col=csv_image_col,
             row_csv_col=row_csv_col,
             time_csv_col=time_csv_col,
@@ -1390,6 +1744,8 @@ def _humanize_bytes(n: int) -> str:
     size = float(n)
     for unit in ("B", "KB", "MB", "GB"):
         if size < 1024 or unit == "GB":
-            return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+            return (
+                f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+            )
         size /= 1024
     return f"{size:.1f} GB"

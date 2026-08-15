@@ -25,22 +25,32 @@ import math
 import shutil
 import threading
 import time
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from PIL import Image as PILImage
 
 try:
     import pyvips  # type: ignore[import-untyped,import-not-found]
-
-    _BACKEND = "pyvips"
-except (ImportError, OSError):  # pragma: no cover - environment-dependent
+except (
+    ImportError,
+    OSError,
+) as exc:  # pragma: no cover - environment-dependent
     # ImportError: pyvips Python package not installed.
     # OSError: pyvips installed but the libvips C library is missing
     # (cffi raises OSError from dlopen). Either way fall back to Pillow.
     pyvips = None  # type: ignore[assignment]
-    _BACKEND = "pillow"
+    _PYVIPS_IMPORT_ERROR: BaseException | None = exc
+else:
+    _PYVIPS_IMPORT_ERROR = None
 
-__all__ = ["tile"]
+__all__ = [
+    "DZI_BACKEND_INFO",
+    "DziBackendInfo",
+    "resolve_dzi_backend",
+    "tile",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +61,93 @@ logger = logging.getLogger(__name__)
 # still block correctly via its existing references on the stack, and
 # eviction only happens after ``maxsize`` distinct paths have been seen.
 _LOCK_CACHE_SIZE = 512
+_STORAGE_ERROR_MARKERS = (
+    "disk full",
+    "file name too long",
+    "input/output error",
+    "no space left on device",
+    "not a directory",
+    "permission denied",
+    "quota exceeded",
+    "read-only file system",
+    "too many open files",
+)
+
+BackendMode = Literal["auto", "pillow", "pyvips"]
+BackendName = Literal["pillow", "pyvips"]
+
+
+@dataclass(frozen=True, slots=True)
+class DziBackendInfo:
+    """Resolved DZI generation backend.
+
+    Attributes:
+        name: Effective backend name.
+        version: Native libvips version for the ``pyvips`` backend, otherwise
+            ``None``.
+        fallback_reason: Sanitized reason that automatic selection used Pillow,
+            or ``None`` when no fallback occurred.
+    """
+
+    name: BackendName
+    version: str | None
+    fallback_reason: str | None
+
+
+def _libvips_version() -> str | None:
+    """Return the loaded native libvips version, when available."""
+    if pyvips is None:
+        return None
+    try:
+        return ".".join(str(pyvips.version(part)) for part in range(3))
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
+def _unavailable_reason() -> str:
+    """Return a path-free reason for automatic Pillow fallback."""
+    if _PYVIPS_IMPORT_ERROR is None:
+        return "pyvips is unavailable"
+    return f"{type(_PYVIPS_IMPORT_ERROR).__name__}: libvips unavailable"
+
+
+def resolve_dzi_backend(mode: BackendMode = "auto") -> DziBackendInfo:
+    """Resolve a requested DZI backend without mutating global state.
+
+    Args:
+        mode: ``"auto"`` prefers pyvips and falls back to Pillow,
+            ``"pillow"`` forces the portable backend, and ``"pyvips"``
+            requires a working pyvips import.
+
+    Returns:
+        Immutable information about the effective backend.
+
+    Raises:
+        ValueError: If ``mode`` is not supported.
+        RuntimeError: If pyvips is required but unavailable.
+    """
+    if mode not in {"auto", "pillow", "pyvips"}:
+        raise ValueError(f"Unsupported DZI backend mode: {mode!r}")
+    if mode == "pillow":
+        return DziBackendInfo(
+            name="pillow", version=None, fallback_reason=None
+        )
+    if pyvips is not None:
+        return DziBackendInfo(
+            name="pyvips", version=_libvips_version(), fallback_reason=None
+        )
+    if mode == "pyvips":
+        raise RuntimeError(
+            f"pyvips backend requested but {_unavailable_reason()}"
+        ) from _PYVIPS_IMPORT_ERROR
+    return DziBackendInfo(
+        name="pillow", version=None, fallback_reason=_unavailable_reason()
+    )
+
+
+# Stable, startup-inspectable backend information. Callers that need a forced
+# test/diagnostic backend use ``resolve_dzi_backend`` or ``tile(..., backend=)``.
+DZI_BACKEND_INFO = resolve_dzi_backend()
 
 
 @functools.lru_cache(maxsize=_LOCK_CACHE_SIZE)
@@ -71,6 +168,8 @@ def tile(
     output_dir: Path,
     tile_size: int = 254,
     overlap: int = 1,
+    *,
+    backend: BackendMode = "auto",
 ) -> Path:
     """Return path to the DZI manifest, generating tiles if absent or stale.
 
@@ -89,6 +188,9 @@ def tile(
         overlap: Per-side overlap in pixels with neighbouring tiles
             (default 1). OpenSeadragon needs at least 1 px of overlap to
             avoid seams during interpolation.
+        backend: Backend selection mode. ``"auto"`` prefers pyvips,
+            ``"pillow"`` provides a deterministic fallback/test seam, and
+            ``"pyvips"`` requires pyvips.
 
     Returns:
         Absolute path to the ``<stem>.dzi`` XML manifest.
@@ -109,8 +211,7 @@ def tile(
         # Cache hit: manifest is at least as fresh as the source PNG.
         if (
             manifest_path.exists()
-            and manifest_path.stat().st_mtime
-            >= png_path.stat().st_mtime
+            and manifest_path.stat().st_mtime >= png_path.stat().st_mtime
         ):
             return manifest_path
 
@@ -125,33 +226,81 @@ def tile(
 
         with PILImage.open(png_path) as probe:
             width, height = probe.size
+        backend_info = resolve_dzi_backend(backend)
         logger.info(
             "DZI tile generation start: backend=%s image=%s size=%dx%d",
-            _BACKEND,
+            backend_info.name,
             png_path.name,
             width,
             height,
         )
         started = time.perf_counter()
 
-        if _BACKEND == "pyvips":
-            _tile_with_pyvips(
-                png_path, output_dir, tile_size, overlap
-            )
+        effective_backend = backend_info.name
+        if backend_info.name == "pyvips":
+            try:
+                _tile_with_pyvips(png_path, output_dir, tile_size, overlap)
+            except _PyvipsDzsaveError:
+                # A libvips operation error from dzsave is safe to retry with
+                # Pillow after removing every partial artifact. Filesystem
+                # errors and failures outside dzsave propagate unchanged.
+                _remove_partial_output(manifest_path, files_dir)
+                logger.warning(
+                    "DZI pyvips dzsave failed; retrying once with Pillow: "
+                    "image=%s",
+                    png_path.name,
+                )
+                _tile_with_pillow(png_path, output_dir, tile_size, overlap)
+                effective_backend = "pillow"
         else:
-            _tile_with_pillow(
-                png_path, output_dir, tile_size, overlap
-            )
+            _tile_with_pillow(png_path, output_dir, tile_size, overlap)
 
         elapsed = time.perf_counter() - started
         logger.info(
             "DZI tile generation done: backend=%s image=%s elapsed=%.3fs",
-            _BACKEND,
+            effective_backend,
             png_path.name,
             elapsed,
         )
 
     return manifest_path
+
+
+class _PyvipsDzsaveError(RuntimeError):
+    """Internal marker for a pyvips operation error raised by dzsave only."""
+
+
+def _is_pyvips_runtime_error(exc: BaseException) -> bool:
+    """Return whether ``exc`` is the loaded pyvips runtime error type."""
+    error_type = getattr(pyvips, "Error", None)
+    return isinstance(error_type, type) and isinstance(exc, error_type)
+
+
+def _is_storage_error(exc: BaseException) -> bool:
+    """Return whether an error represents a non-retryable storage failure.
+
+    pyvips reports native filesystem failures through its generic ``Error``
+    class rather than preserving ``OSError`` subclasses. Inspecting the error
+    chain and libvips' stable errno text keeps those failures from being
+    mistaken for a codec/operation failure that Pillow could recover from.
+    """
+    current: BaseException | None = exc
+    while current is not None:
+        if isinstance(current, OSError):
+            return True
+        message = str(current).casefold()
+        if any(marker in message for marker in _STORAGE_ERROR_MARKERS):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
+def _remove_partial_output(manifest_path: Path, files_dir: Path) -> None:
+    """Delete an incomplete DZI manifest and tile tree before a retry."""
+    if files_dir.exists():
+        shutil.rmtree(files_dir)
+    if manifest_path.exists():
+        manifest_path.unlink()
 
 
 def _tile_with_pyvips(
@@ -174,17 +323,20 @@ def _tile_with_pyvips(
         overlap: Per-side neighbour overlap in pixels.
     """
     assert pyvips is not None  # for type narrowing
-    img = pyvips.Image.new_from_file(
-        str(png_path), access="sequential"
-    )
+    img = pyvips.Image.new_from_file(str(png_path), access="sequential")
     base = output_dir / png_path.stem
-    img.dzsave(
-        str(base),
-        tile_size=tile_size,
-        overlap=overlap,
-        suffix=".png",
-        layout="dz",
-    )
+    try:
+        img.dzsave(
+            str(base),
+            tile_size=tile_size,
+            overlap=overlap,
+            suffix=".png",
+            layout="dz",
+        )
+    except Exception as exc:
+        if not _is_pyvips_runtime_error(exc) or _is_storage_error(exc):
+            raise
+        raise _PyvipsDzsaveError from exc
 
 
 def _tile_with_pillow(
@@ -233,9 +385,7 @@ def _tile_with_pillow(
     for level in range(max_level - 1, -1, -1):
         new_w = max(1, math.ceil(current.size[0] / 2))
         new_h = max(1, math.ceil(current.size[1] / 2))
-        current = current.resize(
-            (new_w, new_h), PILImage.Resampling.LANCZOS
-        )
+        current = current.resize((new_w, new_h), PILImage.Resampling.LANCZOS)
         level_images[level] = current
 
     # Slice each level into tiles. Tiles include `overlap` extra pixels
@@ -260,9 +410,7 @@ def _tile_with_pillow(
                 y_start = max(0, y_offset - overlap)
                 x_end = min(lw, x_offset + tile_size + overlap)
                 y_end = min(lh, y_offset + tile_size + overlap)
-                tile_img = level_img.crop(
-                    (x_start, y_start, x_end, y_end)
-                )
+                tile_img = level_img.crop((x_start, y_start, x_end, y_end))
                 tile_path = level_dir / f"{col}_{row}.png"
                 tile_img.save(tile_path, format="PNG")
 

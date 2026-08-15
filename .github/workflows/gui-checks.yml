@@ -178,8 +178,8 @@ jobs:
           # Qt6 runtime libs (libEGL/libGL/libxkbcommon/libdbus) are needed by
           # PyQt6's QtGui, imported by pytest-qt at configure time; without
           # libEGL.so.1 the integration pytest session aborts (INTERNALERROR).
-          sudo apt-get install -y \
-            exiftool libegl1 libgl1 libxkbcommon0 libdbus-1-3
+          sudo apt-get install -y --no-install-recommends \
+            exiftool libegl1 libgl1 libxkbcommon0 libdbus-1-3 libvips-dev
 
       - name: Install uv
         uses: astral-sh/setup-uv@v8.1.0
@@ -233,6 +233,8 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
+          # This lane intentionally omits libvips so screenshot regeneration
+          # continues to exercise the supported Pillow fallback.
           sudo apt-get install -y exiftool
 
       - name: Install uv

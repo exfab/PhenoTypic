@@ -38,12 +38,27 @@ def test_layout_contains_core_ids():
         ids.BROWSE_IMAGE_PICKER,
         ids.BROWSE_PREV_BTN,
         ids.BROWSE_NEXT_BTN,
+        ids.BROWSE_POSITION,
+        ids.BROWSE_NAV_EVENT_STORE,
+        ids.BROWSE_KEEP_POSITION,
         ids.BROWSE_OSD_DIV,
+        ids.BROWSE_PREVIEW_IMG,
         ids.BROWSE_OSD_LOADING,
         ids.BROWSE_LOADING_TEXT,
+        ids.BROWSE_FILMSTRIP,
+        ids.BROWSE_PREPARE_BTN,
+        ids.BROWSE_STOP_PREPARE_BTN,
+        ids.BROWSE_CLEAR_CACHE_BTN,
+        ids.BROWSE_PREPARATION_STATUS,
+        ids.BROWSE_PREPARATION_PROGRESS,
+        ids.BROWSE_CACHE_USAGE,
+        ids.BROWSE_BACKEND_DETAILS,
+        ids.BROWSE_PREPARATION_STATUS_STORE,
+        ids.BROWSE_PREPARATION_POLL,
         ids.BROWSE_CURRENT_IMAGE_STORE,
         ids.BROWSE_DATASETS_STORE,
         ids.BROWSE_OSD_SYNC,
+        ids.BROWSE_META_IMAGE_NAME,
         ids.BROWSE_META_DIMS,
         ids.BROWSE_CSV_METADATA_PANEL,
         ids.BROWSE_EMPTY_HINT,
@@ -64,6 +79,23 @@ def test_prev_next_buttons_use_wider_stable_hit_target():
     ).read_text(encoding="utf-8")
     assert ".browse-step-button" in css
     assert "min-width: 3rem;" in css
+
+
+def test_single_view_has_accessible_navigation_and_preparation_chrome():
+    layout = build_browse_layout()
+    filmstrip = _component_with_id(layout, ids.BROWSE_FILMSTRIP)
+    preview = _component_with_id(layout, ids.BROWSE_PREVIEW_IMG)
+    keep_position = _component_with_id(layout, ids.BROWSE_KEEP_POSITION)
+    stop = _component_with_id(layout, ids.BROWSE_STOP_PREPARE_BTN)
+    progress = _component_with_id(layout, ids.BROWSE_PREPARATION_PROGRESS)
+
+    assert getattr(filmstrip, "role") == "list"
+    assert getattr(filmstrip, "aria-label") == "Nearby images in this plate series"
+    assert getattr(preview, "aria-hidden") == "true"
+    assert keep_position.persistence is True
+    assert keep_position.persistence_type == "local"
+    assert stop.disabled is True
+    assert getattr(progress, "aria-label") == "Dataset preparation progress"
 
 
 def _walk_ids(component) -> set[str]:
