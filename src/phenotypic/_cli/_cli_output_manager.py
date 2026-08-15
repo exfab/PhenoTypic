@@ -1259,6 +1259,16 @@ def aggregate_measurements(
         pipeline has any :class:`PostMeasurement` op configured. Split
         and analysis failures never change the return value.
     """
+    # Chunked (SLURM) runs publish from `_dataset_aggregated.parquet`, which
+    # `discover_measurement_sources` prefers over the individual per-image
+    # parquets. Checkpoint sentinels fire only every `checkpoint_interval`
+    # images and no terminal sentinel is emitted, so the last partial group is
+    # never chunked and would be silently absent from the master. Flush it
+    # first. No-op for unchunked runs and for evenly-divided ones.
+    from ._cli_chunk_writer import flush_trailing_measurements_if_chunked
+
+    flush_trailing_measurements_if_chunked(output_dir)
+
     path_to_dataset = measurement_sources_by_path(
         discover_measurement_sources(output_dir, dataset_names)
     )

@@ -50,8 +50,6 @@ modified by this work beyond the extractions in Section 4.
 - Deep-zoom / DZI tiling.
 - Comparison across multiple runs in one view.
 - Editing or launching runs.
-- Fixing the `MetadatasCondition` schema typo (Section 3.2) — tracked
-  separately, because it renames a public column in written output.
 
 ---
 
@@ -224,7 +222,7 @@ identity columns. There is no back door: EXIF lands in
 This matters because every control in this dashboard is a CSV metadata column:
 
 - `MetadataGenetic_Strain` — the page selector
-- `MetadatasCondition_Media` — the default grouping
+- `MetadataCondition_Media` — the default grouping
 - `MetadataCulture_Time` — the x axis
 - `MetadataSample_BioReplicate` — the trace identity
 
@@ -246,14 +244,14 @@ image-intrinsic, not anything a user would group by.
 
 Where a schema enum *does* name a column the monitor needs structurally (the
 `point_id` triple, 4.2), derive it from the enum rather than a literal — that
-much of the old rule survives. The media column, for instance, is not
-`MetadataCondition_Media`: `CONDITION_METADATA.category()` returns
-`"MetadatasCondition"` with a stray `s` (`schema/_experimental_tags/_condition.py:20`),
-contradicting its own docstring and every sibling category. It is a pre-existing
-bug, tracked separately. A hand-typed `MetadataCondition_Media` matches nothing,
-and a user CSV column spelled that way is not recognised by `is_metadata_header`,
-so `join_metadata` double-prefixes it to `Metadata_MetadataCondition_Media`.
-Deriving from the enum sidesteps the bug and stays correct after it is fixed.
+much of the old rule survives. The discovery rule earned itself on exactly this: for most of this document's
+life `CONDITION_METADATA.category()` returned `"MetadatasCondition"` — a stray
+`s` no sibling category had — so a hand-typed `MetadataCondition_Media` matched
+nothing and a user CSV column spelled that way was double-prefixed by
+`join_metadata`. **That typo was fixed upstream at `86d341b2f`**; the category
+now returns `MetadataCondition` and `is_metadata_header` recognises it. The
+design needed no change when it was fixed, and would have needed none had it
+never been, which is the property discovery buys.
 
 **Resolution: the user chooses the CSV. The monitor does not infer it.**
 
@@ -573,7 +571,7 @@ why it joins `how="inner"`. Neither was hypothetical.
 ### 3.3.0.1 The schema defaults do not exist in real data
 
 `PlotColonyMetricOverTime` defaults `time` to `MetadataCulture_Time` and
-`groupby` to `[MetadatasCondition_Media]`. **Neither column exists in the
+`groupby` to `[MetadataCondition_Media]`. **Neither column exists in the
 validated run.** Its time axis is `MetadataCulture_AgeHours` (also
 `MetadataAcquisition_Datetime`, `MetadataCulture_StackedDatetime`), and its
 condition is decomposed across carbon source, nitrogen source and pH rather than
@@ -591,21 +589,23 @@ one is passed explicitly to
 to a missing column would fail at `_validate_input_columns`, which is the correct
 loud failure, but only after presenting the user a control that could never work.
 
-**The `MetadatasCondition` typo is present in production data, not just in
-theory.** The run's CSV uses the documented-correct spelling
-(`MetadataCondition_CarbonSource`, …). Because `category()` returns
-`"MetadatasCondition"`, `is_metadata_header` does not recognise those columns, so
-`ensure_metadata_prefix` double-prefixed every one of them:
+**Data written before the upstream fix carries mangled column names.** The
+`MetadatasCondition` typo was fixed at `86d341b2f`, but the validated run
+predates it: its CSV uses the documented-correct spelling
+(`MetadataCondition_CarbonSource`, …), and because `category()` then returned
+`"MetadatasCondition"`, `is_metadata_header` did not recognise those columns and
+`ensure_metadata_prefix` double-prefixed every one:
 
 ```
 CSV:    MetadataCondition_CarbonSource
 mirror: Metadata_MetadataCondition_CarbonSource
 ```
 
-A design reviewer predicted this exact failure from the code alone; the run
-confirms it reaches user data. It is still out of scope to fix here (renaming a
-public column), but the monitor must therefore treat metadata column names as
-**discovered, never assumed** — which the rule above already requires.
+A design reviewer predicted this failure from the code alone before any run
+confirmed it. **The cause is fixed; the data is not** — these columns persist in
+every mirror written before `86d341b2f`, so the monitor must still read column
+names from the frame rather than construct them. That is the same rule as above,
+now earning its keep against history rather than against a live bug.
 
 ### 3.3.1 What the monitor shows, and what it therefore is not
 
@@ -964,9 +964,9 @@ changing a `category()` — must consider this dashboard**, because every one of
 its controls is a metadata column.
 
 This is not defensive boilerplate. 3.3.0.1 records live instances: the
-`MetadatasCondition` category typo, which silently double-prefixes user CSV
-columns and reached production data; and three schema defaults
-(`MetadataCulture_Time`, `MetadatasCondition_Media`,
+`MetadatasCondition` category typo, which silently double-prefixed user CSV
+columns and reached production data before being fixed at `86d341b2f`; and three schema defaults
+(`MetadataCulture_Time`, `MetadataCondition_Media`,
 `MetadataSample_BioReplicate`) that do not exist in a real run, so a plot class
 defaulting to them presents controls that cannot work. Both originate in the
 schema and surface only in a consumer.
@@ -2012,7 +2012,7 @@ that almost nothing needs a browser.
 
 23. **No control relies on a schema default** — with a frame whose columns are
     those of the validated run (no `MetadataCulture_Time`, no
-    `MetadatasCondition_Media`), every control populates from the frame and the
+    `MetadataCondition_Media`), every control populates from the frame and the
     figure builds. Mutation: let `PlotColonyMetricOverTime`'s `time` or `groupby`
     default apply, which must fail at `_validate_input_columns`.
 24. **Double-prefixed metadata columns are usable** — a frame carrying
@@ -2230,13 +2230,13 @@ recorded coupling: `join_metadata` and `prepare_metadata_join_keys` (4.5).
 **New, in `apps/monitor/`:** seven modules, a `pyproject.toml` and a `Dockerfile`
 (Section 5).
 
-**Explicitly not changed:** the `MetadatasCondition` schema typo (3.2);
+**Explicitly not changed:**
 `OutputRoot`, which this design stopped depending on rather than modifying
 (3.5); and CLI completion-marker semantics, which an earlier revision proposed
 changing before 3.1.1 removed the need to detect completion at all.
 
-**Two out-of-scope defects surfaced during review** and are tracked separately:
-the `MetadatasCondition` typo, and a suspected loss of trailing images from
+**Two out-of-scope defects surfaced during review.** The `MetadatasCondition`
+typo has since been fixed upstream (`86d341b2f`). The other — a loss of trailing images from
 `master_measurements.*` on SLURM runs whose image count is not a multiple of the
 checkpoint interval. Neither is caused by this work; both were found by reading
 the data flow closely enough to design against it.
