@@ -443,6 +443,104 @@ def _dedupe_on_colony_key(
     )
 
 
+def _quarantine_corrupt_aggregate(agg_path: Path) -> Path | None:
+    """Move an unreadable aggregate aside, returning where it went.
+
+    Preserves the bytes for diagnosis instead of overwriting them: a file that
+    cannot be read is evidence, and this is the only place that would notice.
+    The quarantined name keeps the ``_`` prefix so neither
+    :func:`_scan_unchunked_parquets` nor ``discover_measurement_sources`` can
+    re-ingest it as a per-image measurement source. Numbered rather than fixed
+    so a second corruption cannot clobber the first.
+    """
+    for index in range(1, 1000):
+        candidate = agg_path.with_name(
+            f"{agg_path.stem}.corrupt{index}{agg_path.suffix}"
+        )
+        if not candidate.exists():
+            try:
+                agg_path.replace(candidate)
+            except OSError as exc:
+                logger.error("Could not preserve %s: %s", agg_path, exc)
+                return None
+            return candidate
+    logger.error(
+        "Too many quarantined copies beside %s; leaving it in place", agg_path
+    )
+    return None
+
+
+def _rebuild_dataset_aggregate(
+    agg_path: Path, read_error: Exception
+) -> pl.DataFrame | None:
+    """Re-derive an unreadable aggregate from the per-image parquets.
+
+    The aggregate is a *cache* of ``results/<ds>/measurements/*.parquet``, so
+    the source of truth for rebuilding it sits in the same directory. Nothing
+    deletes those files. Two staged-GPU paths relocate some of them —
+    ``reconcile_stage3_publications`` (Stage 3 never completed) and
+    ``quarantine_unchanged_restart_parquets`` (stale epoch) — but both move
+    exactly the images slated for reprocessing, whose rows the aggregate
+    should not be carrying either. So the rebuild reflects what the directory
+    currently holds, which is the aggregate's contract.
+
+    An earlier revision logged "rebuilding from new data" here and then wrote
+    only the incoming chunk, destroying every previously aggregated colony
+    while chunk state still listed their sources as consumed. Nothing could
+    recover them, and final aggregation publishes the master from this file.
+
+    Returns the rebuilt frame, or ``None`` when there is nothing to rebuild
+    from, in which case the caller writes the incoming chunk alone.
+    """
+    logger.error(
+        "Cannot read %s (%s); rebuilding it from the per-image parquets",
+        agg_path,
+        read_error,
+    )
+    quarantined = _quarantine_corrupt_aggregate(agg_path)
+    if quarantined is not None:
+        logger.error("Preserved the unreadable file at %s", quarantined)
+
+    sources = [
+        path
+        for path in sorted(agg_path.parent.glob("*.parquet"))
+        if not path.name.startswith(("_", "."))
+    ]
+    if not sources:
+        logger.error(
+            "No per-image parquets under %s to rebuild from; the aggregate "
+            "will contain only the incoming chunk",
+            agg_path.parent,
+        )
+        return None
+
+    frames: list[pl.DataFrame] = []
+    unreadable: list[str] = []
+    for path in sources:
+        try:
+            frames.append(pl.read_parquet(path))
+        except Exception as exc:  # noqa: BLE001 - report and continue
+            unreadable.append(f"{path.name} ({exc})")
+    if unreadable:
+        logger.error(
+            "Rebuild of %s skipped %d unreadable per-image parquet(s): %s",
+            agg_path,
+            len(unreadable),
+            ", ".join(unreadable),
+        )
+    if not frames:
+        return None
+
+    rebuilt = pl.concat(frames, how="diagonal_relaxed")
+    logger.info(
+        "Rebuilt %s from %d per-image parquet(s): %d rows",
+        agg_path,
+        len(frames),
+        rebuilt.height,
+    )
+    return rebuilt
+
+
 def _update_dataset_parquet(
     output_dir: Path, dataset_name: str, new_df: pl.DataFrame
 ) -> None:
@@ -464,8 +562,10 @@ def _update_dataset_parquet(
         try:
             prev = pl.read_parquet(agg_path)
             new_df = pl.concat([prev, new_df], how="diagonal_relaxed")
-        except Exception:
-            logger.warning("Corrupt %s, rebuilding from new data", agg_path)
+        except Exception as exc:
+            rebuilt = _rebuild_dataset_aggregate(agg_path, exc)
+            if rebuilt is not None:
+                new_df = pl.concat([rebuilt, new_df], how="diagonal_relaxed")
 
     new_df = _dedupe_on_colony_key(new_df, context=f"aggregate for {dataset_name}")
 

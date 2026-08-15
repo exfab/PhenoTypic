@@ -159,6 +159,55 @@ def test_dedup_is_skipped_when_the_colony_key_is_incomplete(
     )
 
 
+def test_corrupt_aggregate_is_rebuilt_not_discarded(tmp_path: Path) -> None:
+    """An unreadable aggregate must be rebuilt from its source, not replaced.
+
+    The aggregate is a cache of ``results/<ds>/measurements/*.parquet``. When it
+    cannot be read, writing only the incoming chunk destroys every previously
+    aggregated colony — and chunk state still lists those sources as consumed,
+    so no later flush recovers them. Since final aggregation publishes the
+    master from this file, those colonies never reach the user.
+    """
+    _write_per_image(tmp_path, ["img_001", "img_002"])
+    flush_unchunked_measurements(tmp_path)
+    assert sorted(_aggregate_image_names(tmp_path)) == ["img_001", "img_002"]
+
+    agg_path = (
+        dataset_measurements_dir(tmp_path, DATASET) / DATASET_AGGREGATED_PARQUET
+    )
+    agg_path.write_bytes(b"not a parquet file at all")
+
+    # A later checkpoint brings one new image.
+    _write_per_image(tmp_path, ["img_003"])
+    flush_unchunked_measurements(tmp_path)
+
+    assert sorted(_aggregate_image_names(tmp_path)) == [
+        "img_001",
+        "img_002",
+        "img_003",
+    ], "prior colonies were discarded instead of rebuilt from the per-image parquets"
+
+
+def test_corrupt_aggregate_is_preserved_for_diagnosis(tmp_path: Path) -> None:
+    """The unreadable bytes must survive, not be overwritten in place."""
+    _write_per_image(tmp_path, ["img_001"])
+    flush_unchunked_measurements(tmp_path)
+
+    meas_dir = dataset_measurements_dir(tmp_path, DATASET)
+    (meas_dir / DATASET_AGGREGATED_PARQUET).write_bytes(b"corrupt bytes")
+
+    _write_per_image(tmp_path, ["img_002"])
+    flush_unchunked_measurements(tmp_path)
+
+    preserved = list(meas_dir.glob("*corrupt*"))
+    assert preserved, f"corrupt aggregate was overwritten: {list(meas_dir.iterdir())}"
+    assert preserved[0].read_bytes() == b"corrupt bytes"
+    # Must not be re-ingested as a measurement source on a later pass.
+    assert preserved[0].name.startswith("_"), (
+        f"{preserved[0].name} would be globbed as a per-image parquet"
+    )
+
+
 def test_reprocessing_the_same_images_does_not_duplicate(
     tmp_path: Path,
 ) -> None:
