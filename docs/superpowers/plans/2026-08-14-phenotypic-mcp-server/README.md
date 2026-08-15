@@ -214,6 +214,7 @@ non-contiguous masks — fixed with `--cpu-bind=none`, and the script reported
 |---|---|
 | [phase-1a-services-promotion.md](phase-1a-services-promotion.md) | P2 — Tasks 1–9 |
 | [phase-1b-engine-prerequisites.md](phase-1b-engine-prerequisites.md) | P3–P7 — Tasks 10–18 |
+| [execution.md](execution.md) | The dependency DAG, the six Opus clusters, and where the review and simplify gates sit |
 | Phase 2A/2B/2C | Written at the Phase 1 gate, against the code Phase 1 produces |
 
 Phase 2's task documents are deliberately not written yet. They specify 32 tools
