@@ -2,6 +2,10 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
 > or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
+>
+> **Every task below ends with a reviewer step.** See the plan README's
+> *Review protocol* — a task with an unaddressed correctness finding does not
+> hand off to the next one.
 
 **Implements:** §7 P3, P4, P5, P6, P7. **Spec:**
 [`../../specs/2026-08-12-phenotypic-mcp-server/07-prerequisites.md`](../../specs/2026-08-12-phenotypic-mcp-server/07-prerequisites.md)
@@ -62,7 +66,6 @@ prefab-first procedure (§9.4) has nothing to list.
 # tests/unit/services/test_catalog_reconciliation.py
 """One list, two consumers. Two lists is how detect.nn went missing."""
 
-
 def test_one_shared_module_list():
     from phenotypic._core._pipeline_parts._serializable_pipeline import (
         PHENOTYPIC_CLASS_MODULES,
@@ -78,14 +81,12 @@ def test_one_shared_module_list():
     ):
         assert expected in PHENOTYPIC_CLASS_MODULES
 
-
 def test_registry_reaches_prefabs_and_nn_detectors():
     from phenotypic._services.registry import get_registry
 
     names = {op.name for op in get_registry().all_operations()}
     assert "FilamentousFungiPipeline" in names, "prefabs unreachable from the catalog"
     assert "MicroSamDetector" in names, "detect.nn unreachable — staged GPU is invisible"
-
 
 def test_scorers_and_strategies_are_catalog_citizens():
     """§3.1: without these, an agent authoring a spec can only guess."""
@@ -148,6 +149,23 @@ Delete `"phenotypic.detect.nn"` from the tuple; confirm
 git add -A && git commit -m "fix(catalog): reconcile discovery with the loader's module list"
 ```
 
+- [ ] **Step 7: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
+
 ---
 
 ### Task 11: The JSON operation descriptor
@@ -194,7 +212,6 @@ def test_constraints_are_json_schema_keywords():
     assert sigma["constraints"] == {"exclusiveMinimum": 0.0}
     assert "gt" not in sigma["constraints"]
 
-
 def test_description_defaults_to_first_sentence():
     from phenotypic._services.catalog import describe_operation
 
@@ -205,14 +222,12 @@ def test_description_defaults_to_first_sentence():
     assert t.count(".") == 1
     assert len(v) > len(t)
 
-
 def test_no_tunable_field_on_a_class():
     from phenotypic._services.catalog import describe_operation
 
     for param in describe_operation("BlurGauss")["params"]:
         assert "tunable" not in param
         assert "suggested_domain" not in param
-
 
 def test_operation_valued_params_are_flagged():
     """OperationField erases to Any; the schema alone cannot say this."""
@@ -221,7 +236,6 @@ def test_operation_valued_params_are_flagged():
     desc = describe_operation("FilamentousFungiDetector")
     nested = [p for p in desc["params"] if p["is_operation"]]
     assert nested, "nested operation params must be discoverable"
-
 
 def test_json_schema_is_verbatim():
     from phenotypic._services.catalog import describe_operation
@@ -270,6 +284,23 @@ Expected: PASS.
 git add -A && git commit -m "feat(catalog): add the JSON operation descriptor projection"
 ```
 
+- [ ] **Step 6: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
+
 ---
 
 ### Task 12: Column derivation that dispatches on `header_scheme()`
@@ -315,7 +346,6 @@ Reusing it inherits the bug. (Worth fixing there separately; out of scope.)
 # tests/unit/services/test_column_derivation.py
 import pytest
 
-
 def test_texture_headers_expand_per_scale():
     from phenotypic import ImagePipeline
     from phenotypic._services.catalog import derive_columns
@@ -328,7 +358,6 @@ def test_texture_headers_expand_per_scale():
     assert "Texture_AngularSecondMoment-deg000-scale05" in cols
     assert any("scale10" in c for c in cols)
 
-
 def test_static_scheme_still_works():
     from phenotypic import ImagePipeline
     from phenotypic._services.catalog import derive_columns
@@ -336,14 +365,12 @@ def test_static_scheme_still_works():
 
     assert "Size_Area" in derive_columns(ImagePipeline(meas=[MeasureSize()]))
 
-
 def test_blanket_get_headers_would_have_raised():
     """Pin the reason this dispatch exists, so nobody 'simplifies' it back."""
     from phenotypic.schema import TEXTURE
 
     with pytest.raises(TypeError, match="scale"):
         TEXTURE.get_headers()
-
 
 def test_color_columns_follow_the_instance_not_the_class():
     from phenotypic import ImagePipeline
@@ -373,6 +400,23 @@ catches a regression to a blanket `get_headers()`.
 ```bash
 git add -A && git commit -m "feat(catalog): derive measurement columns via header_scheme dispatch"
 ```
+
+- [ ] **Step 6: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -412,7 +456,6 @@ def test_digest_is_stable_and_prefixed(tmp_path):
     assert first.startswith("sha256:")
     assert first == directory_digest(tmp_path)
 
-
 def test_digest_changes_when_a_file_is_added(tmp_path):
     from phenotypic.sdk_._io_constants import directory_digest
 
@@ -420,7 +463,6 @@ def test_digest_changes_when_a_file_is_added(tmp_path):
     before = directory_digest(tmp_path)
     (tmp_path / "c.tif").write_bytes(b"ccc")
     assert directory_digest(tmp_path) != before
-
 
 def test_digest_ignores_listing_order(tmp_path, monkeypatch):
     """Sorted by relative path, so filesystem order cannot leak in."""
@@ -456,6 +498,23 @@ sufficient and cheap — it does not read file contents, which matters on a
 ```bash
 git add -A && git commit -m "feat(sdk): add a directory-level content digest"
 ```
+
+- [ ] **Step 6: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -520,7 +579,6 @@ separate reviewers proposed "fixing" this. Do not.**
 # tests/unit/subset/test_selectors.py
 import pytest
 
-
 def test_random_is_seeded_and_reproducible(image_refs):
     from phenotypic.subset import RandomSubsetSelector
 
@@ -528,7 +586,6 @@ def test_random_is_seeded_and_reproducible(image_refs):
     b = RandomSubsetSelector(n=6, seed=0).select(image_refs)
     assert a.images == b.images
     assert len(a.images) == 6
-
 
 def test_metadata_group_equal_allocation(tmp_path, image_refs):
     from phenotypic.subset import MetadataGroupSubsetSelector
@@ -545,7 +602,6 @@ def test_metadata_group_equal_allocation(tmp_path, image_refs):
     assert len(result.images) == 4
     assert result.method == "MetadataGroupSubsetSelector"
 
-
 def test_embedding_selector_raises_and_never_degrades(image_refs):
     """A placeholder that silently returns random would stamp
     method: EmbeddingSubsetSelector onto an artifact with none of the
@@ -559,12 +615,10 @@ def test_embedding_selector_raises_and_never_degrades(image_refs):
     with pytest.raises(NotImplementedError):
         sel.select(image_refs)
 
-
 def test_embedding_cost_class_is_w2_even_unimplemented():
     from phenotypic.subset import EmbeddingSubsetSelector
 
     assert EmbeddingSubsetSelector(n=4).cost_class() == "W2"
-
 
 def test_selectors_resolve_by_bare_class_name():
     from phenotypic._core._pipeline_parts._serializable_pipeline import (
@@ -572,7 +626,6 @@ def test_selectors_resolve_by_bare_class_name():
     )
 
     assert SerializablePipeline._find_class_in_phenotypic("RandomSubsetSelector")
-
 
 def test_expected_vs_detected_keeps_its_shipped_field_name():
     """Guards the rename two reviewers proposed. It does not exist."""
@@ -607,6 +660,23 @@ Make `EmbeddingSubsetSelector._select` return a random sample; confirm
 git add -A && git commit -m "feat(subset): add the SubsetSelector hierarchy"
 ```
 
+- [ ] **Step 7: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
+
 ---
 
 ## P4 — Close the `--screen` + `--slurm` silent no-op
@@ -638,7 +708,6 @@ given silently different behaviour than it requested.
 # tests/unit/tune/test_screen_slurm_guard.py
 import pytest
 
-
 def test_screen_plus_slurm_is_refused(minimal_tuning_spec, tmp_path):
     from phenotypic.tune._tune_cli._run import run_tuning
 
@@ -646,12 +715,10 @@ def test_screen_plus_slurm_is_refused(minimal_tuning_spec, tmp_path):
         run_tuning(spec=minimal_tuning_spec, output_dir=tmp_path,
                    screen=True, slurm=True)
 
-
 def test_screen_alone_still_works(minimal_tuning_spec, tmp_path):
     from phenotypic.tune._tune_cli._run import run_tuning
 
     run_tuning(spec=minimal_tuning_spec, output_dir=tmp_path, screen=True, slurm=False)
-
 
 def test_slurm_alone_still_submits(minimal_tuning_spec, tmp_path, fake_sbatch):
     from phenotypic.tune._tune_cli._run import run_tuning
@@ -687,6 +754,23 @@ if slurm and screen:
 ```bash
 git add -A && git commit -m "fix(tune): refuse --screen with --slurm instead of dropping it silently"
 ```
+
+- [ ] **Step 6: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -728,7 +812,6 @@ one fewer guard.
 import pytest
 from click.testing import CliRunner
 
-
 def test_account_reaches_the_fleet(monkeypatch, minimal_spec_file, tmp_path):
     """The whole point: exfab and preempt are unreachable without --account."""
     from phenotypic.tune.__main__ import cli
@@ -748,7 +831,6 @@ def test_account_reaches_the_fleet(monkeypatch, minimal_spec_file, tmp_path):
     assert captured["slurm_args"]["slurm_account"] == "exfab"
     assert captured["slurm_args"]["slurm_cpus_per_task"] == 8
 
-
 def test_legacy_flags_still_work(monkeypatch, minimal_spec_file, tmp_path):
     from phenotypic.tune.__main__ import cli
 
@@ -763,7 +845,6 @@ def test_legacy_flags_still_work(monkeypatch, minimal_spec_file, tmp_path):
     ])
     assert result.exit_code == 0, result.output
     assert captured["slurm_args"]["slurm_partition"] == "batch"
-
 
 def test_explicit_kv_wins_over_the_sugar_flag(monkeypatch, minimal_spec_file, tmp_path):
     """Both spellings present: the specific one wins, and it is documented."""
@@ -808,6 +889,23 @@ form and an `exfab` example carrying `slurm_account=exfab`.
 ```bash
 git add -A && git commit -m "feat(tune): accept --slurm key=value so account and qos reach the fleet"
 ```
+
+- [ ] **Step 7: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -865,13 +963,11 @@ def test_flat_layout_is_a_non_recursive_iterdir_match(staged):
     files = [p for p in staged.flat.iterdir() if p.is_file()]
     assert len(files) == 3
 
-
 def test_nested_layout_preserves_dataset_names(staged):
     from phenotypic._cli._cli_directory_scanner import scan_directory_structure
 
     datasets = scan_directory_structure(staged.nested)
     assert set(datasets) == {"plateA", "plateB"}
-
 
 def test_restaging_the_same_digest_is_a_noop(subset, tmp_path):
     from phenotypic._services.staging import stage_subset
@@ -880,10 +976,8 @@ def test_restaging_the_same_digest_is_a_noop(subset, tmp_path):
     second = stage_subset(subset, cache_root=tmp_path)
     assert first.flat == second.flat
 
-
 def test_link_mode_is_reported(staged):
     assert staged.link_mode in {"symlink", "copy"}
-
 
 def test_fidelity_check_rejects_a_mismatched_layout(subset, tmp_path, monkeypatch):
     """The builder must verify its own output round-trips."""
@@ -920,6 +1014,23 @@ semantics can never reach the parent images through it.
 ```bash
 git add -A && git commit -m "feat(services): stage a subset as flat and nested symlink trees"
 ```
+
+- [ ] **Step 6: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -974,7 +1085,6 @@ being terminal (budget drained or no live scheduler jobs) and refuse with
 # tests/unit/tune/test_distributed_finalize.py
 import pytest
 
-
 def test_finalize_writes_what_the_slurm_branch_skipped(finished_distributed_study):
     from phenotypic.sdk_._io_constants import best_params_path
     from phenotypic.tune._tune_cli._finalize import finalize_distributed_study
@@ -986,7 +1096,6 @@ def test_finalize_writes_what_the_slurm_branch_skipped(finished_distributed_stud
 
     assert best_params_path(out).is_file()
     assert (out / "trials.parquet").is_file()
-
 
 def test_best_params_is_written_last(finished_distributed_study, monkeypatch):
     """It is the completion marker; writing it early breaks export gating."""
@@ -1003,13 +1112,11 @@ def test_best_params_is_written_last(finished_distributed_study, monkeypatch):
     _finalize.finalize_distributed_study(finished_distributed_study)
     assert order.index("_finalize_best_params") == 2
 
-
 def test_refuses_a_running_study(running_distributed_study):
     from phenotypic.tune._tune_cli._finalize import finalize_distributed_study
 
     with pytest.raises(RuntimeError, match="not finished|still running"):
         finalize_distributed_study(running_distributed_study)
-
 
 def test_interrupted_finalize_leaves_a_marker(finished_distributed_study, monkeypatch):
     from phenotypic.tune._tune_cli import _finalize
@@ -1023,7 +1130,6 @@ def test_interrupted_finalize_leaves_a_marker(finished_distributed_study, monkey
 
     with pytest.raises(RuntimeError, match="finalize_incomplete|incomplete"):
         _finalize.finalize_distributed_study(finished_distributed_study)
-
 
 def test_finalize_is_rerunnable(finished_distributed_study):
     from phenotypic.tune._tune_cli._finalize import finalize_distributed_study
@@ -1061,6 +1167,23 @@ Move `_finalize_best_params` to first in the sequence; confirm
 ```bash
 git add -A && git commit -m "feat(tune): add a re-runnable finalize for distributed studies"
 ```
+
+- [ ] **Step 7: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
 
 ---
 

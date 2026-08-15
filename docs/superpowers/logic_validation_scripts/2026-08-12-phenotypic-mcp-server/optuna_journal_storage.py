@@ -28,6 +28,13 @@ that design, and a reader would otherwise take them on faith:
       Postgres is still needed is write-rate vs trial-rate, not write-rate vs
       itself.
 
+  C7  **CROSS-NODE.** C2a/C2b again, but with the workers placed on *different
+      hosts* by ``srun`` instead of forked by ``multiprocessing``. This is the
+      only configuration that engages the mechanism P1 depends on: a SLURM
+      array fleet appending to one journal from many nodes, arbitrated by the
+      shared filesystem rather than by one kernel. Run via
+      ``run_l1_cross_node.sbatch``; see "Why C7 exists" below.
+
 Why C2b exists
 --------------
 An earlier version of this script asserted C2a alone and was reported as
@@ -51,6 +58,38 @@ Usage
 ``--require-discrimination`` is the gate for L1 (§7): on the target cluster
 filesystem, the run must show that a broken lock actually loses trials there.
 Without that, a green C2a is not evidence.
+
+Why C7 exists
+-------------
+Run on UCR HPCC (job 27466782, 2026-08-14), C2b reported ``DISCRIMINATION: NONE``
+on both ``/bigdata`` and ``/rhome``. Neither is NFS or Lustre — **both are
+GPFS**, a parallel filesystem whose distributed token manager enforces POSIX
+byte-range semantics cluster-wide, which is precisely the property NFS lacks. So
+the likely reading is that ``JournalFileSymlinkLock`` is *redundant* there rather
+than broken.
+
+But that reading was untestable by the suite as written: ``multiprocessing``
+places every worker on one host, where all four processes share one GPFS client
+and one kernel, and append atomicity comes from the local kernel no matter what
+the filesystem does. The distributed token manager — the thing that must work
+for a fleet — was never engaged.
+
+C7 fixes that by splitting the run into ``init`` → N × ``worker`` → ``verify``
+phases and letting ``srun`` place the workers on distinct nodes, with each trial
+stamping its hostname so ``--require-distinct-nodes`` can prove the run really
+was distributed. All three outcomes are decision-grade: the control losing
+trials proves the lock does real work; neither losing proves GPFS serializes;
+both losing means the journal is unsafe here and Postgres stays.
+
+Cross-node usage (driven by the batch script, not run by hand)
+--------------------------------------------------------------
+  python .../optuna_journal_storage.py --role init   --journal J --lock symlink
+  srun -N4 -n4 python .../optuna_journal_storage.py --role worker --journal J --lock symlink
+  python .../optuna_journal_storage.py --role verify --journal J --lock symlink \\
+      --require-distinct-nodes
+
+``verify`` exits 0 when every write survived, **2** when writes were lost (the
+interesting outcome for the negative control), and 1 when the phase itself broke.
 """
 
 from __future__ import annotations
@@ -58,6 +97,7 @@ from __future__ import annotations
 import argparse
 import multiprocessing as mp
 import shutil
+import socket
 import sys
 import tempfile
 import time
@@ -130,6 +170,9 @@ def _worker(journal_path_str: str, n_trials: int, tag: int, lock_mode: str) -> N
         # stamps its ``pheno_*`` user_attrs on the live trial.
         trial.set_user_attr("proc_tag", tag)
         trial.set_user_attr("seq", i)
+        # Node identity, so a cross-node run can PROVE it was cross-node rather
+        # than four tasks that happened to land on one host (C7).
+        trial.set_user_attr("node", socket.gethostname())
         study.tell(trial, (x - 0.3) ** 2)
 
 
@@ -160,6 +203,39 @@ def _run_concurrent(tmp: Path, *, lock_mode: str, name: str) -> tuple[bool, str]
     if bad:
         return False, f"worker exit codes {bad}"
 
+    return _verify_journal(journal, lock_mode=lock_mode)
+
+
+def _verify_journal(
+    journal: Path,
+    *,
+    lock_mode: str,
+    n_procs: int = N_PROCS,
+    trials_per_proc: int = TRIALS_PER_PROC,
+    require_distinct_nodes: bool = False,
+) -> tuple[bool, str]:
+    """Check that every worker's every write survived.
+
+    Shared verbatim by the single-node (``multiprocessing``) and cross-node
+    (``srun``) paths, so the two cannot drift into checking different things —
+    the only difference between them must be *how* concurrency was produced.
+
+    Args:
+        journal: The journal file the workers appended to.
+        lock_mode: ``"symlink"`` or ``"noop"``; used to reopen the store.
+        n_procs: Number of workers expected to have contributed.
+        trials_per_proc: Trials each worker was told to drain.
+        require_distinct_nodes: Also assert the surviving trials carry
+            ``n_procs`` distinct hostnames. Without this a "cross-node" run that
+            silently packed every task onto one host would report success while
+            testing nothing — the exact failure that made the single-node result
+            uninformative in the first place.
+
+    Returns:
+        ``(all_writes_survived, human-readable detail)``.
+    """
+    import optuna
+
     try:
         study = optuna.load_study(
             storage=_make_storage(journal, lock_mode=lock_mode), study_name=STUDY_NAME
@@ -168,7 +244,7 @@ def _run_concurrent(tmp: Path, *, lock_mode: str, name: str) -> tuple[bool, str]
     except Exception as exc:  # noqa: BLE001 - a corrupt journal is a legitimate outcome here
         return False, f"journal unreadable after the run: {exc!r}"
 
-    expected = N_PROCS * TRIALS_PER_PROC
+    expected = n_procs * trials_per_proc
     if len(trials) != expected:
         return False, f"{len(trials)} trials persisted, expected {expected}"
 
@@ -183,17 +259,27 @@ def _run_concurrent(tmp: Path, *, lock_mode: str, name: str) -> tuple[bool, str]
         if tag is None or seq is None:
             return False, f"trial {t.number} lost its user_attrs"
         per_tag.setdefault(int(tag), set()).add(seq)
-    if len(per_tag) != N_PROCS:
-        return False, f"only {len(per_tag)} of {N_PROCS} processes have surviving trials"
+    if len(per_tag) != n_procs:
+        return False, f"only {len(per_tag)} of {n_procs} workers have surviving trials"
     for tag, seqs in sorted(per_tag.items()):
-        if seqs != set(range(TRIALS_PER_PROC)):
-            return False, f"process {tag} lost writes: got {sorted(seqs)}"
+        if seqs != set(range(trials_per_proc)):
+            return False, f"worker {tag} lost writes: got {sorted(seqs)}"
 
     completed = [t for t in trials if t.state == optuna.trial.TrialState.COMPLETE]
     if len(completed) != expected:
         return False, f"{len(completed)} COMPLETE, expected {expected}"
 
-    return True, f"{expected} trials persisted intact"
+    nodes = {t.user_attrs.get("node") for t in trials}
+    nodes.discard(None)
+    if require_distinct_nodes and len(nodes) < n_procs:
+        return False, (
+            f"NOT a cross-node run: {len(nodes)} distinct host(s) {sorted(nodes)} "
+            f"for {n_procs} workers — srun packed tasks onto one node, so this "
+            "measures the local kernel, not GPFS's distributed token manager"
+        )
+
+    where = f" across {len(nodes)} nodes {sorted(nodes)}" if nodes else ""
+    return True, f"{expected} trials persisted intact{where}"
 
 
 def claim_1_api_surface() -> None:
@@ -403,6 +489,70 @@ def claim_6_throughput_headroom(tmp: Path) -> None:
     )
 
 
+def _cross_node_role(args) -> int:
+    """One phase of a cross-node run (C7).
+
+    ``multiprocessing`` cannot place workers on different hosts, so the
+    single-node suite can only ever exercise the local kernel's ``O_APPEND``
+    atomicity. The failure mode P1 actually risks is a SLURM array fleet
+    appending from many nodes at once, arbitrated by GPFS's distributed token
+    manager — a mechanism no single-node run engages. This role splits the run
+    into three phases a batch script drives with ``srun``.
+
+    Args:
+        args: Parsed CLI namespace carrying ``role``, ``journal``, ``lock``,
+            ``n_procs``, ``trials_per_proc``, ``rank``, and
+            ``require_distinct_nodes``.
+
+    Returns:
+        Process exit code; non-zero means the phase failed.
+    """
+    import os
+
+    if not args.journal:
+        _fail(args.role, "--journal is required for cross-node roles")
+    journal = Path(args.journal)
+
+    if args.role == "init":
+        import optuna
+
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+        journal.parent.mkdir(parents=True, exist_ok=True)
+        # Pre-create exactly as PhenoTypic's submitter does, before any worker
+        # starts — the same ordering _run_concurrent uses.
+        optuna.create_study(
+            storage=_make_storage(journal, lock_mode=args.lock),
+            study_name=STUDY_NAME,
+            load_if_exists=True,
+            direction="minimize",
+        )
+        print(f"ok   [init] study pre-created on {journal} (lock={args.lock})")
+        return 0
+
+    if args.role == "worker":
+        rank = args.rank if args.rank is not None else int(os.environ.get("SLURM_PROCID", 0))
+        _worker(str(journal), args.trials_per_proc, rank, args.lock)
+        print(f"ok   [worker {rank}] {args.trials_per_proc} trials on {socket.gethostname()}")
+        return 0
+
+    survived, detail = _verify_journal(
+        journal,
+        lock_mode=args.lock,
+        n_procs=args.n_procs,
+        trials_per_proc=args.trials_per_proc,
+        require_distinct_nodes=args.require_distinct_nodes,
+    )
+    label = f"C7-{args.lock}"
+    if survived:
+        _ok(label, detail)
+        return 0
+    print(f"LOST [{label}] {detail}")
+    # A losing run is the INTERESTING outcome for the noop control, so this is
+    # reported with a distinct exit code the batch script interprets rather than
+    # treated as an error. 2 = writes were lost; 1 stays "the phase broke".
+    return 2
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
@@ -415,7 +565,46 @@ def main() -> int:
         action="store_true",
         help="Exit non-zero unless the negative control actually fails here (the L1 gate).",
     )
+    ap.add_argument(
+        "--role",
+        choices=("suite", "init", "worker", "verify"),
+        default="suite",
+        help=(
+            "suite: the full single-node claim set (default). "
+            "init/worker/verify: the three steps of a CROSS-NODE run, driven by "
+            "srun from a batch script — see run_l1_cross_node.sbatch. "
+            "multiprocessing cannot span nodes, so C7 splits the phases across "
+            "processes srun places on different hosts."
+        ),
+    )
+    ap.add_argument("--journal", default=None, help="Journal path (cross-node roles).")
+    ap.add_argument(
+        "--lock",
+        choices=("symlink", "noop"),
+        default="symlink",
+        help="Lock under test. 'noop' is the negative control.",
+    )
+    ap.add_argument("--n-procs", type=int, default=N_PROCS)
+    ap.add_argument("--trials-per-proc", type=int, default=TRIALS_PER_PROC)
+    ap.add_argument(
+        "--rank",
+        type=int,
+        default=None,
+        help="Worker index; defaults to $SLURM_PROCID when srun-launched.",
+    )
+    ap.add_argument(
+        "--require-distinct-nodes",
+        action="store_true",
+        help=(
+            "verify role: fail unless the surviving trials carry one distinct "
+            "hostname per worker. Without it, a run that packed every task onto "
+            "one node reports success while testing nothing."
+        ),
+    )
     args = ap.parse_args()
+
+    if args.role != "suite":
+        return _cross_node_role(args)
 
     base = Path(args.dir) if args.dir else None
     if base is not None:

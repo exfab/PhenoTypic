@@ -62,6 +62,31 @@ Every task's requirements implicitly include this section.
 
 ---
 
+## Review protocol
+
+**Every task in Phase 1 ends with a reviewer, not with a commit.** Each of the 18
+tasks carries an explicit final step dispatching
+`execute-plan-orchestration:implementation-test-reviewer` against that task's diff.
+
+This is not ceremony, and it is not the same as the phase-level review the
+project's standing instructions already require. Phase 1 is a refactor of code two
+user-facing surfaces depend on, executed task-by-task by agents that each see only
+their own task. Three failure modes follow from that shape, and only a per-task
+reviewer catches them while they are still cheap:
+
+| Failure | Why a per-phase review is too late |
+|---|---|
+| **A false green** | The plan's "prove it can fail" steps are *claims by the implementer*. An unverified mutation check is exactly the tautological test §6.5 warns about, and it will be trusted by every later task. |
+| **Interface drift** | Later tasks are written against earlier tasks' **Interfaces** blocks. A function renamed in Task 3 breaks Task 11, whose implementer is not looking and will not find out until the phase gate. |
+| **Scope leak** | Nine of these tasks are moves. A move that quietly takes a behaviour change with it is invisible in a green suite and expensive to bisect later. |
+
+The reviewer reads the diff, not the plan's promises. Findings are fixed in a
+follow-up commit or recorded with a reason; **a task with an unaddressed
+correctness finding does not hand off to the next one.** The phase exit gates
+remain in force on top of this.
+
+---
+
 ## Decisions taken before writing this plan
 
 These were open when the plan started and are now settled. They are recorded

@@ -2,6 +2,10 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
 > or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
+>
+> **Every task below ends with a reviewer step.** See the plan README's
+> *Review protocol* — a task with an unaddressed correctness finding does not
+> hand off to the next one.
 
 **Implements:** §7 P2, §1.4. **Spec:**
 [`../../specs/2026-08-12-phenotypic-mcp-server/01-architecture.md`](../../specs/2026-08-12-phenotypic-mcp-server/01-architecture.md)
@@ -86,7 +90,6 @@ leaked = sorted(m for m in {forbidden!r} if m in sys.modules)
 print(",".join(leaked))
 """
 
-
 def _service_modules() -> list[str]:
     import phenotypic._services as services
 
@@ -95,12 +98,10 @@ def _service_modules() -> list[str]:
         for m in pkgutil.iter_modules(services.__path__)
     ]
 
-
 def test_services_package_exists_and_is_lazy():
     import phenotypic._services as services
 
     assert services.__path__, "phenotypic._services must be a package"
-
 
 @pytest.mark.parametrize("module", _service_modules())
 def test_service_module_imports_no_dash(module: str) -> None:
@@ -164,6 +165,23 @@ git add src/phenotypic/_services/__init__.py tests/unit/services/test_import_pur
 git commit -m "test(services): add the import-purity gate before the tier exists"
 ```
 
+- [ ] **Step 7: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
+
 ---
 
 ### Task 2: Relocate `IMAGE_EXTS` below the GUI
@@ -199,7 +217,6 @@ def test_image_exts_lives_in_sdk():
     assert isinstance(IMAGE_EXTS, frozenset)
     assert ".tif" in IMAGE_EXTS
 
-
 def test_every_alias_is_the_same_object():
     """Three import paths, one object — a copy would drift silently."""
     from phenotypic.gui._config import IMAGE_EXTS as via_config
@@ -208,7 +225,6 @@ def test_every_alias_is_the_same_object():
 
     assert via_config is canonical
     assert via_browser is canonical
-
 
 def test_classifier_does_not_reach_through_the_dash_module():
     """The whole point: classify() must not pull in _directory_browser."""
@@ -259,6 +275,23 @@ git add src/phenotypic/sdk_/_io_constants.py src/phenotypic/gui/_config.py \
 git commit -m "refactor(sdk): move IMAGE_EXTS below the GUI so classify() is Dash-free"
 ```
 
+- [ ] **Step 6: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
+
 ---
 
 ### Task 3: Promote the operation registry
@@ -288,20 +321,17 @@ server has no analogue of the latter.
 # tests/unit/services/test_shim_equivalence.py
 """Each gui.* shim must re-export the same object, not a parallel one."""
 
-
 def test_get_registry_is_one_function():
     from phenotypic._services.registry import get_registry as canonical
     from phenotypic.gui._operation_registry import get_registry as shim
 
     assert shim is canonical
 
-
 def test_get_registry_is_one_singleton():
     from phenotypic._services.registry import get_registry as canonical
     from phenotypic.gui._operation_registry import get_registry as shim
 
     assert shim() is canonical()
-
 
 def test_discovery_stays_lazy():
     """Importing the module must not walk eight packages."""
@@ -364,6 +394,23 @@ git add -A src/phenotypic/_services/registry.py src/phenotypic/gui/_operation_re
 git commit -m "refactor(services): promote the operation registry, shim the GUI path"
 ```
 
+- [ ] **Step 7: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
+
 ---
 
 ### Task 4: Promote `SandboxRoot`
@@ -423,6 +470,23 @@ Expected: PASS.
 git add -A && git commit -m "refactor(services): promote SandboxRoot"
 ```
 
+- [ ] **Step 6: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
+
 ---
 
 ### Task 5: Promote `RunRegistry` and `LocalRunner`
@@ -455,7 +519,6 @@ def test_run_registry_is_one_class():
 
     assert shim is canonical
 
-
 def test_local_runner_is_one_class():
     from phenotypic._services.runs import LocalRunner as canonical
     from phenotypic.gui.run_console._runner import LocalRunner as shim
@@ -487,6 +550,23 @@ Expected: PASS — in particular
 ```bash
 git add -A && git commit -m "refactor(services): promote RunRegistry and LocalRunner"
 ```
+
+- [ ] **Step 6: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -528,7 +608,6 @@ import inspect
 import subprocess
 import sys
 
-
 def test_pure_half_is_importable_without_dash():
     proc = subprocess.run(
         [sys.executable, "-c",
@@ -539,13 +618,11 @@ def test_pure_half_is_importable_without_dash():
     assert proc.returncode == 0, proc.stderr
     assert proc.stdout.strip() == "False"
 
-
 def test_pure_symbols_moved():
     from phenotypic._services.tune_spec import apply_space_edits, space_to_spec
 
     assert callable(space_to_spec)
     assert callable(apply_space_edits)
-
 
 def test_view_half_imports_the_pure_half_not_the_reverse():
     from phenotypic._services import tune_spec
@@ -553,7 +630,6 @@ def test_view_half_imports_the_pure_half_not_the_reverse():
 
     assert "phenotypic.gui" not in inspect.getsource(tune_spec)
     assert "_services.tune_spec" in inspect.getsource(_space_view)
-
 
 def test_legacy_import_path_still_works():
     """_setup_authoring.py:28 and three call sites import from _space."""
@@ -623,6 +699,23 @@ then remove it.
 git add -A && git commit -m "refactor(tune): split _space.py into a pure half and a Dash view"
 ```
 
+- [ ] **Step 7: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
+
 ---
 
 ### Task 7: Promote spec authoring, validation, and export
@@ -673,6 +766,23 @@ Expected: PASS.
 git add -A && git commit -m "refactor(services): promote tune spec authoring, validation, export"
 ```
 
+- [ ] **Step 7: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
+
 ---
 
 ### Task 8: Promote argv construction
@@ -701,13 +811,11 @@ def test_state_and_builder_move_together():
 
     assert to_argv.__annotations__["state"] in (RunConsoleState, "RunConsoleState")
 
-
 def test_shims_are_the_same_objects():
     from phenotypic._services.argv import RunConsoleState as canonical
     from phenotypic.gui.run_console._state import RunConsoleState as shim
 
     assert shim is canonical
-
 
 def test_argv_module_does_not_import_gui():
     import inspect
@@ -734,6 +842,23 @@ Expected: PASS.
 ```bash
 git add -A && git commit -m "refactor(services): promote to_argv with RunConsoleState"
 ```
+
+- [ ] **Step 6: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -770,7 +895,6 @@ spec alongside the write.
 import hashlib
 from pathlib import Path
 
-
 def _tree_digest(root: Path) -> str:
     h = hashlib.sha256()
     for p in sorted(root.rglob("*")):
@@ -778,7 +902,6 @@ def _tree_digest(root: Path) -> str:
         if p.is_file():
             h.update(p.read_bytes())
     return h.hexdigest()
-
 
 def test_build_array_script_spec_writes_nothing(tmp_path, array_script_kwargs):
     from phenotypic._cli._cli_slurm_array_scripts import build_array_script_spec
@@ -791,7 +914,6 @@ def test_build_array_script_spec_writes_nothing(tmp_path, array_script_kwargs):
 
     assert _tree_digest(output_dir) == before, "the builder touched the output dir"
     assert spec.render(), "the spec must still render a script"
-
 
 def test_generator_and_builder_agree(tmp_path, array_script_kwargs):
     """The real generator must consume the extracted builder, not duplicate it."""
@@ -849,6 +971,23 @@ confirm `test_build_array_script_spec_writes_nothing` FAILS, then remove it.
 ```bash
 git add -A && git commit -m "refactor(cli): extract a pure build_array_script_spec for deploy previews"
 ```
+
+- [ ] **Step 7: Spawn a reviewer**
+
+Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
+task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
+implements, and the specific claim its tests are meant to pin. Require it to check
+at minimum:
+
+- **No false greens.** Each new test must fail when the behaviour it guards is
+  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
+- **No scope leak.** Nothing outside this task's stated **Files** changed.
+- **Interfaces hold.** The names and types in the **Interfaces** block match what
+  was actually produced — later tasks are written against them, and a rename here
+  silently breaks a task nobody is looking at yet.
+
+Read the findings. Fix them in a follow-up commit, or record why not. **Do not
+start the next task with an unaddressed correctness finding.**
 
 ---
 
