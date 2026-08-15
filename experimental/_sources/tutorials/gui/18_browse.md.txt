@@ -1,14 +1,14 @@
 # Browse source images
 
 The `Browse` tab is a deep-zoom viewer for the raw input images under your
-selected source root — before you build a pipeline or run anything. It lists
+selected source root, before you build a pipeline or run anything. It lists
 every image under the source folder with two cascading dropdowns (dataset
-folder → image) and a ‹/› stepper, and renders any one in an OpenSeadragon
-viewport with a metadata panel.
+folder → image), keyboard navigation, and a nearby-image filmstrip, and renders
+any one in an OpenSeadragon viewport with a metadata panel.
 
 It is designed to work offline over an SSH tunnel: OpenSeadragon is vendored
-(no CDN), each source file is lazily normalized to an 8-bit RGB PNG, and the
-tiles live in an ephemeral temp cache that is wiped each session.
+(no CDN), each source revision is prepared once, and its preview and deep-zoom
+tiles are kept in a bounded persistent cache for later sessions.
 
 ## Step 1 - Open the Browse tab
 
@@ -39,13 +39,25 @@ The Browse tab reacts immediately:
 - **‹ / › stepper** — moves to the previous / next image within the current
   dataset. The buttons disable at the first and last image so stepping never
   wraps around.
+- **Keyboard shortcuts** — press `J` / `K` for the previous / next image or
+  `Shift+J` / `Shift+K` to jump ten images. Shortcuts are disabled while you
+  type in a control or use a modal, and arrow keys remain available for
+  OpenSeadragon panning.
+- **Position and filmstrip** — the `N of M` readout shows your location. The
+  centered filmstrip shows at most four images on either side and indicates
+  whether each revision is Ready, Preparing, Queued, or Failed.
 
 ## Step 3 - Browse and zoom
 
-The viewport is OpenSeadragon, so zoom (scroll / pinch) and pan (drag) are
-GPU-smooth even on large plate scans. Each source file is tiled into a
-deep-zoom (DZI) image pyramid on first view, so only the tiles you are looking
-at are loaded — large RAW or TIFF scans open responsively.
+The viewport is OpenSeadragon, so zoom (scroll / pinch) and pan (drag) stay
+smooth even on large plate scans. Browse first shows a lightweight preview,
+then replaces it with the deep-zoom (DZI) pyramid when preparation completes.
+The OpenSeadragon instance is reused while you navigate, avoiding unnecessary
+viewer teardown and setup.
+
+Turn on **Keep position** to preserve the current center and zoom while moving
+between images with identical decoded dimensions. It is opt-in and stored in
+the browser. Images with different dimensions open at their normal home view.
 
 Images are rendered *faithfully*: any supported format (standard formats and
 camera RAW alike) is decoded through `phenotypic.Image` and downcast to 8-bit
@@ -63,19 +75,39 @@ Below the viewport, the metadata panel reports, for the current image:
 | **Captured** | EXIF capture timestamp, when present. |
 | **Camera** | EXIF camera make + model, when present. |
 
-EXIF is pulled from the image's imported metadata (populated by `exifread` for
-JPEG and TIFF-based RAW such as NEF / CR2). Any field that is absent or
-unreadable is omitted — the panel degrades gracefully rather than erroring, so
+Dimensions and revision data are read from image headers without decoding the
+full pixel array. EXIF is read with the existing metadata parser for JPEG and
+TIFF-based RAW such as NEF / CR2. Any absent or unreadable field is omitted, so
 a plain PNG simply shows `—` for the EXIF fields.
 
+## Prepare a dataset and manage the cache
+
+Normal navigation prepares the selected image first, then a small set of
+directional neighbours through one bounded background worker. **Prepare** adds
+the remaining images at lower priority. The progress display reports ready,
+failed, and total counts. **Stop** removes queued dataset work and lets the
+current native conversion finish. **Clear** prunes cached revisions while
+protecting the displayed image and active work.
+
+Prepared previews and DZI pyramids survive application restarts. Cache entries
+are revision-addressed, so modifying a source image creates a new entry instead
+of serving stale tiles. Browse begins pruning least-recently-used entries when
+the cache exceeds 10 GiB and continues to the 8 GiB low-water mark. It first
+tries `<sandbox>/.phenotypic-gui/browse_cache`, then a sandbox-namespaced user
+cache, and finally a temporary session cache when neither persistent location
+is writable.
+
+The status details identify the active DZI backend. macOS and Windows GUI
+installs include the official bundled libvips distribution. Linux and HPC
+installations can use a system libvips module or package. Pillow is the fully
+supported portable fallback when libvips cannot load or a libvips DZI
+operation fails.
+
 ```{note}
-**The tile cache is ephemeral.** Normalized PNGs and their DZI tiles are
-written under `tempfile.gettempdir()/phenotypic/browse`, keyed by the image's
-path. The cache is **wiped on launch** and again at process exit, so nothing
-persists between sessions and the cache never accumulates stale tiles. RAW that
-cannot be decoded on the current platform (e.g. camera RAW on Windows, where
-`rawpy` is unavailable) surfaces an inline viewer notice instead of a broken
-tile.
+The initial preview may use a fast thumbnail decoder. The final DZI always uses
+the faithful normalized image path. A cold revision performs at most one full
+normalization, and a warm revision performs none. RAW that cannot be decoded on
+the current platform surfaces an inline viewer notice instead of a broken tile.
 ```
 
 ## Where to next

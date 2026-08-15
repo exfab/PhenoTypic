@@ -660,13 +660,13 @@
   <section class="tex2jax_ignore mathjax_ignore" id="browse-source-images">
 <h1>Browse source images<a class="headerlink" href="#browse-source-images" title="Link to this heading">#</a></h1>
 <p>The <code class="docutils literal notranslate"><span class="pre">Browse</span></code> tab is a deep-zoom viewer for the raw input images under your
-selected source root — before you build a pipeline or run anything. It lists
+selected source root, before you build a pipeline or run anything. It lists
 every image under the source folder with two cascading dropdowns (dataset
-folder → image) and a ‹/› stepper, and renders any one in an OpenSeadragon
-viewport with a metadata panel.</p>
+folder → image), keyboard navigation, and a nearby-image filmstrip, and renders
+any one in an OpenSeadragon viewport with a metadata panel.</p>
 <p>It is designed to work offline over an SSH tunnel: OpenSeadragon is vendored
-(no CDN), each source file is lazily normalized to an 8-bit RGB PNG, and the
-tiles live in an ephemeral temp cache that is wiped each session.</p>
+(no CDN), each source revision is prepared once, and its preview and deep-zoom
+tiles are kept in a bounded persistent cache for later sessions.</p>
 <section id="step-1-open-the-browse-tab">
 <h2>Step 1 - Open the Browse tab<a class="headerlink" href="#step-1-open-the-browse-tab" title="Link to this heading">#</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">Browse</span></code> is a leaf tab immediately after <code class="docutils literal notranslate"><span class="pre">Home</span></code> in the top bar. Open it, or
@@ -693,14 +693,25 @@ auto-selects so the viewport is never blank.</p></li>
 <li><p><strong>‹ / › stepper</strong> — moves to the previous / next image within the current
 dataset. The buttons disable at the first and last image so stepping never
 wraps around.</p></li>
+<li><p><strong>Keyboard shortcuts</strong> — press <code class="docutils literal notranslate"><span class="pre">J</span></code> / <code class="docutils literal notranslate"><span class="pre">K</span></code> for the previous / next image or
+<code class="docutils literal notranslate"><span class="pre">Shift+J</span></code> / <code class="docutils literal notranslate"><span class="pre">Shift+K</span></code> to jump ten images. Shortcuts are disabled while you
+type in a control or use a modal, and arrow keys remain available for
+OpenSeadragon panning.</p></li>
+<li><p><strong>Position and filmstrip</strong> — the <code class="docutils literal notranslate"><span class="pre">N</span> <span class="pre">of</span> <span class="pre">M</span></code> readout shows your location. The
+centered filmstrip shows at most four images on either side and indicates
+whether each revision is Ready, Preparing, Queued, or Failed.</p></li>
 </ul>
 </section>
 <section id="step-3-browse-and-zoom">
 <h2>Step 3 - Browse and zoom<a class="headerlink" href="#step-3-browse-and-zoom" title="Link to this heading">#</a></h2>
-<p>The viewport is OpenSeadragon, so zoom (scroll / pinch) and pan (drag) are
-GPU-smooth even on large plate scans. Each source file is tiled into a
-deep-zoom (DZI) image pyramid on first view, so only the tiles you are looking
-at are loaded — large RAW or TIFF scans open responsively.</p>
+<p>The viewport is OpenSeadragon, so zoom (scroll / pinch) and pan (drag) stay
+smooth even on large plate scans. Browse first shows a lightweight preview,
+then replaces it with the deep-zoom (DZI) pyramid when preparation completes.
+The OpenSeadragon instance is reused while you navigate, avoiding unnecessary
+viewer teardown and setup.</p>
+<p>Turn on <strong>Keep position</strong> to preserve the current center and zoom while moving
+between images with identical decoded dimensions. It is opt-in and stored in
+the browser. Images with different dimensions open at their normal home view.</p>
 <p>Images are rendered <em>faithfully</em>: any supported format (standard formats and
 camera RAW alike) is decoded through <code class="docutils literal notranslate"><span class="pre">phenotypic.Image</span></code> and downcast to 8-bit
 with a full-range conversion — no auto-contrast or histogram stretching — so
@@ -731,19 +742,37 @@ what you see matches the pixel data the pipeline will operate on.</p>
 </tbody>
 </table>
 </div>
-<p>EXIF is pulled from the image’s imported metadata (populated by <code class="docutils literal notranslate"><span class="pre">exifread</span></code> for
-JPEG and TIFF-based RAW such as NEF / CR2). Any field that is absent or
-unreadable is omitted — the panel degrades gracefully rather than erroring, so
+<p>Dimensions and revision data are read from image headers without decoding the
+full pixel array. EXIF is read with the existing metadata parser for JPEG and
+TIFF-based RAW such as NEF / CR2. Any absent or unreadable field is omitted, so
 a plain PNG simply shows <code class="docutils literal notranslate"><span class="pre">—</span></code> for the EXIF fields.</p>
+</section>
+<section id="prepare-a-dataset-and-manage-the-cache">
+<h2>Prepare a dataset and manage the cache<a class="headerlink" href="#prepare-a-dataset-and-manage-the-cache" title="Link to this heading">#</a></h2>
+<p>Normal navigation prepares the selected image first, then a small set of
+directional neighbours through one bounded background worker. <strong>Prepare</strong> adds
+the remaining images at lower priority. The progress display reports ready,
+failed, and total counts. <strong>Stop</strong> removes queued dataset work and lets the
+current native conversion finish. <strong>Clear</strong> prunes cached revisions while
+protecting the displayed image and active work.</p>
+<p>Prepared previews and DZI pyramids survive application restarts. Cache entries
+are revision-addressed, so modifying a source image creates a new entry instead
+of serving stale tiles. Browse begins pruning least-recently-used entries when
+the cache exceeds 10 GiB and continues to the 8 GiB low-water mark. It first
+tries <code class="docutils literal notranslate"><span class="pre">&lt;sandbox&gt;/.phenotypic-gui/browse_cache</span></code>, then a sandbox-namespaced user
+cache, and finally a temporary session cache when neither persistent location
+is writable.</p>
+<p>The status details identify the active DZI backend. macOS and Windows GUI
+installs include the official bundled libvips distribution. Linux and HPC
+installations can use a system libvips module or package. Pillow is the fully
+supported portable fallback when libvips cannot load or a libvips DZI
+operation fails.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><strong>The tile cache is ephemeral.</strong> Normalized PNGs and their DZI tiles are
-written under <code class="docutils literal notranslate"><span class="pre">tempfile.gettempdir()/phenotypic/browse</span></code>, keyed by the image’s
-path. The cache is <strong>wiped on launch</strong> and again at process exit, so nothing
-persists between sessions and the cache never accumulates stale tiles. RAW that
-cannot be decoded on the current platform (e.g. camera RAW on Windows, where
-<code class="docutils literal notranslate"><span class="pre">rawpy</span></code> is unavailable) surfaces an inline viewer notice instead of a broken
-tile.</p>
+<p>The initial preview may use a fast thumbnail decoder. The final DZI always uses
+the faithful normalized image path. A cold revision performs at most one full
+normalization, and a warm revision performs none. RAW that cannot be decoded on
+the current platform surfaces an inline viewer notice instead of a broken tile.</p>
 </div>
 </section>
 <section id="where-to-next">
@@ -784,6 +813,7 @@ each plate with detection overlays and the measurements table.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-2-select-a-source">Step 2 - Select a source</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-3-browse-and-zoom">Step 3 - Browse and zoom</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-4-read-the-metadata">Step 4 - Read the metadata</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#prepare-a-dataset-and-manage-the-cache">Prepare a dataset and manage the cache</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#where-to-next">Where to next</a></li>
 </ul>
   </nav></div>

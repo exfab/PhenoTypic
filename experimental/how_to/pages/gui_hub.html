@@ -646,12 +646,12 @@
                   
   <section class="tex2jax_ignore mathjax_ignore" id="gui-hub">
 <h1>GUI hub<a class="headerlink" href="#gui-hub" title="Link to this heading">#</a></h1>
-<p>Run the unified PhenoTypic web interface — pipeline builder, results viewer,
-and run console — under a single URL from any machine, including HPC clusters
+<p>Run the unified PhenoTypic web interface, including Browse, the pipeline builder,
+results viewer, and run console, under a single URL from any machine, including HPC clusters
 reached over SSH.</p>
 <section id="what-the-hub-is">
 <h2>What the hub is<a class="headerlink" href="#what-the-hub-is" title="Link to this heading">#</a></h2>
-<p>The hub is one Dash application that mounts three tools under sub-paths of a
+<p>The hub is one Dash application that mounts its tools under sub-paths of a
 single server:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
@@ -661,21 +661,24 @@ single server:</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/</span></code></p></td>
-<td><p>Home — sandbox tree, capability badges, tab navigation</p></td>
+<td><p>Home: sandbox tree, capability badges, tab navigation</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/builder/</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/browse/</span></code></p></td>
+<td><p>Browse source images as deep-zoom single, timeline, or compare views</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/builder/</span></code></p></td>
 <td><p>Pipeline builder (node-graph editor)</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/results/</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/results/</span></code></p></td>
 <td><p>Results viewer (OpenSeadragon overlays, measurement tables)</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/run/</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/run/</span></code></p></td>
 <td><p>Run console (submit local or SLURM jobs, tail logs, view dashboard)</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>All four pages share a top-bar tab strip and a sidebar showing the sandbox
+<p>All pages share a top-bar tab strip and a sidebar showing the sandbox
 directory tree. The server is single-user and frozen-at-launch: the file
 browser can only see the directory you pass via <code class="docutils literal notranslate"><span class="pre">--root</span></code>.</p>
 </section>
@@ -720,6 +723,58 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 </div>
 <p>The startup banner printed to stdout repeats the URL and the SSH-tunnel
 command for the bound port.</p>
+<section id="optional-libvips-acceleration">
+<h3>Optional libvips acceleration<a class="headerlink" href="#optional-libvips-acceleration" title="Link to this heading">#</a></h3>
+<p>Browse converts source images into Deep Zoom Image (DZI) pyramids as they are
+opened. On macOS and Windows, the GUI extra includes the official
+<a class="reference external" href="https://pypi.org/project/pyvips/"><code class="docutils literal notranslate"><span class="pre">pyvips[binary]</span></code></a> distribution with a
+self-contained native libvips. The normal installation needs no separate
+Homebrew package or loader-path configuration.</p>
+<p>Linux and HPC installations keep the smaller <code class="docutils literal notranslate"><span class="pre">pyvips</span></code> binding. Install or load
+native <a class="reference external" href="https://www.libvips.org/install.html">libvips</a> when the faster DZI path
+is wanted:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Debian or Ubuntu</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>libvips-dev<span class="w"> </span>--no-install-recommends
+</pre></div>
+</div>
+<p>On an HPC system, load the site’s libvips module before launching the GUI if one
+is provided.</p>
+<p>Confirm that the native library is visible to the project environment:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import pyvips; print(&#39;pyvips&#39;, pyvips.__version__, &#39;libvips&#39;, &#39;.&#39;.join(str(pyvips.version(i)) for i in range(3)))&quot;</span>
+</pre></div>
+</div>
+<p>The bundled build includes common image loaders but omits optional PDF and
+OpenSlide support. Users who intentionally choose a fuller Homebrew libvips can
+install it with <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">vips</span></code>. If <code class="docutils literal notranslate"><span class="pre">vips</span> <span class="pre">--version</span></code> then succeeds but the
+command above reports that <code class="docutils literal notranslate"><span class="pre">libvips.42.dylib</span></code> cannot be found, run the GUI from
+a shell with Homebrew’s library directory exposed:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">DYLD_FALLBACK_LIBRARY_PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>brew<span class="w"> </span>--prefix<span class="w"> </span>vips<span class="k">)</span><span class="s2">/lib</span><span class="si">${</span><span class="nv">DYLD_FALLBACK_LIBRARY_PATH</span><span class="p">:+:</span><span class="nv">$DYLD_FALLBACK_LIBRARY_PATH</span><span class="si">}</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+<p>PhenoTypic automatically uses its Pillow tiler when libvips cannot be loaded.
+This preserves Browse and Results functionality, but preparation of large DZI
+pyramids can be slower and use more memory.</p>
+</section>
+<section id="browse-preparation-and-cache">
+<h3>Browse preparation and cache<a class="headerlink" href="#browse-preparation-and-cache" title="Link to this heading">#</a></h3>
+<p>Browse identifies assets by the source file’s path, size, timestamps, render
+schema, and DZI parameters. It shows a progressive preview while the selected
+revision is prepared, then opens the completed DZI in the existing viewer.
+Navigation work is prioritized ahead of one bounded speculative worker, so a
+dataset preparation job cannot monopolize conversion while the user is moving
+between images.</p>
+<p>Prepared revisions persist across restarts. Storage is selected in this order:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;sandbox&gt;/.phenotypic-gui/browse_cache</span></code>;</p></li>
+<li><p>the platform user cache, namespaced by a hash of the sandbox root;</p></li>
+<li><p>a temporary session cache when neither persistent location is writable.</p></li>
+</ol>
+<p>The cache begins least-recently-used pruning above 10 GiB and stops at 8 GiB.
+The Browse preparation details panel reports the selected backend and cache
+usage. Its <strong>Prepare dataset</strong>, <strong>Stop</strong>, and <strong>Clear prepared images</strong> actions
+remain lower priority than foreground navigation and protect the displayed or
+in-flight revision from deletion.</p>
+</section>
 <section id="open-ondemand-path-prefix">
 <h3>Open OnDemand path prefix<a class="headerlink" href="#open-ondemand-path-prefix" title="Link to this heading">#</a></h3>
 <p>Open OnDemand proxies apps through a browser path such as
@@ -750,8 +805,8 @@ argument.</p>
 </div>
 </section>
 </section>
-<section id="the-four-pages">
-<h2>The four pages<a class="headerlink" href="#the-four-pages" title="Link to this heading">#</a></h2>
+<section id="the-hub-pages">
+<h2>The hub pages<a class="headerlink" href="#the-hub-pages" title="Link to this heading">#</a></h2>
 <section id="home">
 <h3>Home (<code class="docutils literal notranslate"><span class="pre">/</span></code>)<a class="headerlink" href="#home" title="Link to this heading">#</a></h3>
 <p>The landing page. The sidebar shows the sandbox directory tree; each entry
@@ -783,6 +838,12 @@ the sandbox root are hidden by default. Two toggles in the sidebar header
 surface them. The Refresh button flushes the classifier’s LRU cache and
 re-classifies all visible nodes — use it after dropping new files into a
 directory.</p>
+</section>
+<section id="browse-browse">
+<h3>Browse (<code class="docutils literal notranslate"><span class="pre">/browse/</span></code>)<a class="headerlink" href="#browse-browse" title="Link to this heading">#</a></h3>
+<p>Browse source-image directories in a deep-zoom single view, acquisition-time
+timeline, or synchronized compare view. Image access remains constrained to the
+hub sandbox root.</p>
 </section>
 <section id="builder-builder">
 <h3>Builder (<code class="docutils literal notranslate"><span class="pre">/builder/</span></code>)<a class="headerlink" href="#builder-builder" title="Link to this heading">#</a></h3>
@@ -953,11 +1014,14 @@ the hub launcher.</p>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-the-hub-is">What the hub is</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#launching-the-hub">Launching the hub</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#optional-libvips-acceleration">Optional libvips acceleration</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#browse-preparation-and-cache">Browse preparation and cache</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#open-ondemand-path-prefix">Open OnDemand path prefix</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-four-pages">The four pages</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-hub-pages">The hub pages</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#home">Home (<code class="docutils literal notranslate"><span class="pre">/</span></code>)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#browse-browse">Browse (<code class="docutils literal notranslate"><span class="pre">/browse/</span></code>)</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#builder-builder">Builder (<code class="docutils literal notranslate"><span class="pre">/builder/</span></code>)</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#results-viewer-results">Results viewer (<code class="docutils literal notranslate"><span class="pre">/results/</span></code>)</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#run-console-run">Run console (<code class="docutils literal notranslate"><span class="pre">/run/</span></code>)</a></li>

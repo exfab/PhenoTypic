@@ -716,6 +716,38 @@ uv<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;phen
 conda-forge and is <strong>not</strong> included in any PhenoTypic extra. See
 <a class="reference internal" href="#deep-learning-detectors">Deep Learning Detectors</a> below for a self-service recipe that combines
 PhenoTypic and <code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> in a single <code class="docutils literal notranslate"><span class="pre">pixi</span></code> environment.</p>
+<section id="optional-libvips-acceleration">
+<h3>Optional libvips acceleration<a class="headerlink" href="#optional-libvips-acceleration" title="Link to this heading">#</a></h3>
+<p>On macOS and Windows, the <code class="docutils literal notranslate"><span class="pre">[gui]</span></code> extra installs the official
+<a class="reference external" href="https://pypi.org/project/pyvips/">pyvips binary distribution</a>, including a
+self-contained native libvips. No separate system installation or loader-path
+configuration is needed for the normal GUI installation.</p>
+<p>Linux and HPC installations use the smaller <code class="docutils literal notranslate"><span class="pre">pyvips</span></code> binding. Provide native
+<a class="reference external" href="https://www.libvips.org/install.html">libvips</a> through the operating system
+or a site environment module when the faster DZI path is wanted:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Debian or Ubuntu</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>libvips-dev<span class="w"> </span>--no-install-recommends
+</pre></div>
+</div>
+<p>On a cluster, load the site’s libvips module before launching the GUI when one
+is available.</p>
+<p>Verify that the native library is visible from the same shell that will launch
+PhenoTypic:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import pyvips; print(&#39;pyvips&#39;, pyvips.__version__, &#39;libvips&#39;, &#39;.&#39;.join(str(pyvips.version(i)) for i in range(3)))&quot;</span>
+</pre></div>
+</div>
+<p>The bundled build includes common image loaders but omits optional PDF and
+OpenSlide support. Users who intentionally prefer a fuller Homebrew libvips can
+install it with <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">vips</span></code>. If that system install is present but the
+dynamic loader cannot find <code class="docutils literal notranslate"><span class="pre">libvips.42.dylib</span></code>, set the fallback library path
+before running either the verification command or the GUI:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">DYLD_FALLBACK_LIBRARY_PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>brew<span class="w"> </span>--prefix<span class="w"> </span>vips<span class="k">)</span><span class="s2">/lib</span><span class="si">${</span><span class="nv">DYLD_FALLBACK_LIBRARY_PATH</span><span class="p">:+:</span><span class="nv">$DYLD_FALLBACK_LIBRARY_PATH</span><span class="si">}</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+<p>If <code class="docutils literal notranslate"><span class="pre">pyvips</span></code> cannot load its native library, PhenoTypic automatically uses its
+Pillow implementation. All viewer features remain available, although large
+DZI pyramids can take longer to prepare and require more memory.</p>
+</section>
 </section>
 <section id="deep-learning-detectors">
 <h2>Deep Learning Detectors<a class="headerlink" href="#deep-learning-detectors" title="Link to this heading">#</a></h2>
@@ -956,7 +988,10 @@ path options, not subcommands.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#from-source">From Source</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#optional-extras">Optional Extras</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#optional-extras">Optional Extras</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#optional-libvips-acceleration">Optional libvips acceleration</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#deep-learning-detectors">Deep Learning Detectors</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#installing-the-detector-packages">Installing the detector packages</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#model-weights-and-licenses">Model weights and licenses</a></li>

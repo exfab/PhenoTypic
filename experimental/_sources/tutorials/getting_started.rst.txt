@@ -69,6 +69,47 @@ conda-forge and is **not** included in any PhenoTypic extra. See
 `Deep Learning Detectors`_ below for a self-service recipe that combines
 PhenoTypic and ``micro_sam`` in a single ``pixi`` environment.
 
+Optional libvips acceleration
++++++++++++++++++++++++++++++
+
+On macOS and Windows, the ``[gui]`` extra installs the official
+`pyvips binary distribution <https://pypi.org/project/pyvips/>`_, including a
+self-contained native libvips. No separate system installation or loader-path
+configuration is needed for the normal GUI installation.
+
+Linux and HPC installations use the smaller ``pyvips`` binding. Provide native
+`libvips <https://www.libvips.org/install.html>`_ through the operating system
+or a site environment module when the faster DZI path is wanted:
+
+.. code-block:: bash
+
+   # Debian or Ubuntu
+   sudo apt install libvips-dev --no-install-recommends
+
+On a cluster, load the site's libvips module before launching the GUI when one
+is available.
+
+Verify that the native library is visible from the same shell that will launch
+PhenoTypic:
+
+.. code-block:: bash
+
+   uv run python -c "import pyvips; print('pyvips', pyvips.__version__, 'libvips', '.'.join(str(pyvips.version(i)) for i in range(3)))"
+
+The bundled build includes common image loaders but omits optional PDF and
+OpenSlide support. Users who intentionally prefer a fuller Homebrew libvips can
+install it with ``brew install vips``. If that system install is present but the
+dynamic loader cannot find ``libvips.42.dylib``, set the fallback library path
+before running either the verification command or the GUI:
+
+.. code-block:: bash
+
+   export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix vips)/lib${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
+
+If ``pyvips`` cannot load its native library, PhenoTypic automatically uses its
+Pillow implementation. All viewer features remain available, although large
+DZI pyramids can take longer to prepare and require more memory.
+
 
 Deep Learning Detectors
 -----------------------
