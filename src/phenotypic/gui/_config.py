@@ -112,6 +112,8 @@ __all__ = [
     "CFG_RESULTS_BINDING_COORDINATOR",
     "CFG_RESULTS_BINDING_JOBS",
     "CFG_BINDING_GENERATION",
+    "CFG_BROWSE_CACHE",
+    "CFG_BROWSE_PREPARATION_MANAGER",
     # Sandbox subdirectories
     "SANDBOX_GUI_DIRNAME",
     "SANDBOX_PRESETS_SUBDIR",
@@ -120,6 +122,14 @@ __all__ = [
     "RUN_LOG_DIRNAME",
     "VIEWER_CACHE_DIRNAME",
     "BROWSE_CACHE_TMP_SUBPATH",
+    "BROWSE_CACHE_SUBDIR",
+    "BROWSE_CACHE_HIGH_WATER_BYTES",
+    "BROWSE_CACHE_LOW_WATER_BYTES",
+    "BROWSE_CACHE_ACCESS_TOUCH_SECONDS",
+    "BROWSE_CACHE_STAGING_GRACE_SECONDS",
+    "BROWSE_NEARBY_PREPARE_COUNT",
+    "BROWSE_SPECULATIVE_WORKERS",
+    "BROWSE_RENDER_SCHEMA_VERSION",
     # Image file extensions
     "IMAGE_EXTS",
     "RAW_IMAGE_EXTS",
@@ -344,6 +354,12 @@ CFG_RESULTS_BINDING_JOBS: str = "pheno_results_binding_jobs"
 #: Immutable per-bind UUID embedded in a bound Results or Analysis page.
 CFG_BINDING_GENERATION: str = "pheno_binding_generation"
 
+#: :class:`BrowseCache` owning revision-addressed Browse artifacts.
+CFG_BROWSE_CACHE: str = "pheno_browse_cache"
+
+#: Process-local :class:`BrowsePreparationManager` for bounded preparation.
+CFG_BROWSE_PREPARATION_MANAGER: str = "pheno_browse_preparation_manager"
+
 # ---------------------------------------------------------------------------
 # Sandbox subdirectories
 # ---------------------------------------------------------------------------
@@ -377,6 +393,28 @@ def tune_presets_dir(sandbox_root: Path) -> Path:
 #: Hidden directory inside the results viewer's *output* directory
 #: holding cached DZI tiles.
 VIEWER_CACHE_DIRNAME: str = ".viewer_cache"
+
+#: Persistent Browse artifacts live below this directory, normally under the
+#: sandbox-owned :data:`SANDBOX_GUI_DIRNAME`.
+BROWSE_CACHE_SUBDIR: str = "browse_cache"
+
+#: First-release fixed cache quota. Pruning begins above the high-water mark
+#: and continues until the low-water mark is reached.
+BROWSE_CACHE_HIGH_WATER_BYTES: int = 10 * 1024**3
+BROWSE_CACHE_LOW_WATER_BYTES: int = 8 * 1024**3
+
+#: Avoid a filesystem metadata write for every warm tile-manifest request.
+BROWSE_CACHE_ACCESS_TOUCH_SECONDS: int = 60 * 60
+
+#: Abandoned staging directories younger than this may belong to another process.
+BROWSE_CACHE_STAGING_GRACE_SECONDS: int = 60 * 60
+
+#: Directional nearby queue size and speculative worker count for the first release.
+BROWSE_NEARBY_PREPARE_COUNT: int = 5
+BROWSE_SPECULATIVE_WORKERS: int = 1
+
+#: Increment whenever normalized pixels or DZI parameters change semantics.
+BROWSE_RENDER_SCHEMA_VERSION: int = 1
 
 #: Ephemeral Browse tile-cache subpath under ``tempfile.gettempdir()``. The
 #: Browse tab normalizes each source image to an 8-bit PNG + DZI tiles here,

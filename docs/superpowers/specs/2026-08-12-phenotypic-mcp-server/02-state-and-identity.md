@@ -1,0 +1,325 @@
+# PhenoTypic MCP Server — §2 State, Identity, and Workspace Layout
+
+Status: **draft, reviewed once, revised**
+Date: 2026-08-12
+
+## 2.1 The rule
+
+**Disk is the authority. The server holds no state that matters if lost.**
+
+Every tool call resolves what it needs from the filesystem, acts, and writes
+back. Killing the server loses no artifact; restarting it recovers its view by
+reading the workspace. This is what makes agent-side fan-out safe — subagents
+interleaving calls into one process cannot corrupt shared in-memory state,
+because nothing in memory is authoritative.
+
+Four things live in memory, each derived or immutable:
+
+| Held | Lifetime | Why it is safe |
+|---|---|---|
+| `OperationRegistry` singleton (`get_registry()`) | process | Immutable after `discover()`; a pure function of installed code |
+| `LocalComputeSlot` + queue depth (§1.5) | process | Process-local scheduling; reconciled against disk at startup |
+| Parsed server config | process | Read-only, reloaded on restart |
+| **One `RunRegistry` instance** | process, rehydrated at startup | **Not** authoritative — the authority is `gui_launch_owner.json` on disk plus an interprocess lock. The instance is a cache and a mutation gateway. |
+
+The `RunRegistry` deserves the explicit callout because an earlier draft of this
+section listed only three items and claimed "there is none to corrupt". That
+overstated it. The registry *is* in-memory state; what rescues the claim is that
+every correctness-critical operation (`allocate`, `compare_and_set`) takes an
+interprocess file lock and re-reads the on-disk owner record inside it, so two
+processes — or one process after a restart — converge on the same truth.
+
+**Rehydration policy.** The server constructs exactly one `RunRegistry` bound to
+the workspace and runs `rehydrate_from_sandbox(max_depth=3)` **once at startup**,
+before accepting requests, then keeps it warm. It is not rebuilt per call: that
+walk is a synchronous filesystem scan whose own docstring
+(`gui/shell/_runs_registry.py:770-776`) warns it can be slow "on a sandbox with
+thousands of plate folders". Since §1.3 says the server may be restarted often,
+this cost recurs per restart — `workspace_info` reports the scan duration so a
+pathological workspace is visible rather than mysterious.
+
+## 2.2 Identity is a sandbox-relative path
+
+**Not** a synthetic id, not a UUID, not a database row.
+
+```
+pipeline_id  =  "pipelines/edge-v3.json.pht-pipe"
+study_id     =  "studies/edge-v3-tpe"
+run_id       =  "runs/2026-08-12-plateA"
+```
+
+This follows the convention the GUI established: `RunRegistry` uses the
+sandbox-relative output path as `run_id` (`gui/tune/_deploy.py:43-44`), and the
+builder treats a config file on disk as the unit of persistence, with no project
+record at all.
+
+Why this and not synthetic ids:
+
+- The agent can `ls` the workspace and see its own work. So can you.
+- A restarted server re-derives every id by walking the tree.
+- Ids paste cleanly between sessions, into the GUI, and into a shell.
+- No id-allocation table means no id-allocation race between subagents.
+
+### What path-identity costs — stated plainly
+
+Path identity is **not** free of consequence, and two cases matter:
+
+**Renaming a run directory invalidates its owner record.**
+`_read_owner_record` (`gui/shell/_runs_registry.py:932-957`) rejects a record
+when the persisted `rel_path` disagrees with the freshly computed one (line
+952), and `rel_path` is recomputed from the current directory name on every scan
+(`_discover_output_dirs`, line 709). So renaming `runs/plateA` →
+`runs/plateA-v2` discards the record and the run degrades to the manifest-only
+fallback: status limited to `{complete, failed, unknown}`, no PID, no
+generation, no CAS. **Renaming a run or study directory is therefore
+unsupported while it is live**, and `workspace_list` flags any directory whose
+owner record failed identity checks rather than silently showing it as
+`unknown`.
+
+**Already-submitted SLURM work pins absolute paths.** A generated sbatch script
+embeds `Path(pipeline_path).absolute()` (`_cli/_cli_staged_slurm.py:129`), and
+`job_metadata.json` stores the absolute pipeline path
+(`_cli_staged_slurm.py:462-464`). A job that sits in the queue for hours or days
+will fail at execution if the workspace was moved or renamed meanwhile —
+independent of anything the MCP id scheme does. **The workspace root must be
+immutable while any submitted job is in flight.** `workspace_info` reports
+whether in-flight work exists, and the server refuses to start when its
+configured root differs from the root recorded in a live run's `job_metadata`.
+
+So the accurate claim is narrower than "ids survive anything": ids are stable
+across server restarts and across sessions, and they are *not* stable across
+directory renames or workspace relocation.
+
+**Collision policy.** `pipeline_put` and `tune_put_spec` take an explicit `name`
+and **fail loudly** if the target exists, unless `overwrite: true`.
+Auto-suffixing is deliberately rejected: a subagent that silently writes
+`candidate_1` when it believes it wrote `candidate` will then tune the wrong
+artifact. When the orchestrator fans out, it hands each subagent a distinct name
+— the same discipline as handing each a distinct branch.
+
+## 2.3 Workspace layout
+
+The workspace root is a `SandboxRoot` (`gui/shell/_sandbox.py:62-90`). Every
+path argument in every tool resolves through it; anything landing outside is
+rejected before the tool does work.
+
+**Root selection:** `phenotypic-mcp --workspace <path>`, defaulting to the
+server process's CWD. Because subagents share one server (§1.3), there is
+exactly one CWD and the default is unambiguous. `workspace_info` always echoes
+the resolved root, and the server logs a startup warning when the root contains
+`.git` — a source checkout is a plausible launch directory and a poor place to
+accumulate run outputs.
+
+```
+<workspace>/
+├── pipelines/
+│   └── <name>.json.pht-pipe          # ImagePipeline.to_json()
+├── tune/
+│   └── <name>.setup.json.pht-tune    # authored TuningSpec
+├── assays/
+│   └── <dataset>.assay.json          # §9.3 assay profile
+├── subsets/
+│   └── <name>.subset.json            # §10.2 development subset
+├── campaigns/
+│   └── <name>/campaign.json          # §8.2 the agreed plan
+├── .phenotypic-mcp/
+│   ├── lineage.jsonl                 # §2.5
+│   ├── plans/<token>.json            # §5.4 plan + promotion token records
+│   ├── probes/<pipeline>/            # §3.2 probe outputs
+│   └── subset-staging/<digest>/      # §10.3.1 materialized subset dirs
+├── studies/
+│   └── <name>/                       # a tune output_dir
+│       ├── trials.parquet            # NOTE: output root, not deliverables/
+│       ├── deliverables/
+│       │   ├── tuning_spec.json.pht-tune     # RESOLVED spec (CLI-owned)
+│       │   ├── best_pipeline.json.pht-pipe
+│       │   ├── best_params.json
+│       │   ├── param_importance.json
+│       │   ├── generalization.json
+│       │   └── pareto/…                      # multi-objective only
+│       ├── .pht-tune-cache/{run.json,study.db,splits/split.json}
+│       └── .phenotypic/progress/gui_launch_owner.json
+└── runs/
+    └── <name>/                       # a `python -m phenotypic` output_dir
+        ├── deliverables/…            # measurements, dashboard, qc, README
+        ├── results/<dataset>/{hdf,measurements}/
+        └── .phenotypic/
+            ├── processing_state.json
+            ├── processing_events.log
+            └── progress/{manifest.json,failures.jsonl,job_metadata.json,
+                          slurm_jobs.jsonl,run_completion.json,
+                          gui_launch_owner.json}
+```
+
+Only `pipelines/`, `tune/`, `assays/`, `subsets/`, `campaigns/`, `studies/`,
+`runs/` are this server's invention.
+**Everything inside `studies/<name>/` and `runs/<name>/` is written by the
+existing engines**, at paths owned by `sdk_/_io_constants.py`. The server never
+hand-joins a filename; it calls the helper (`tuning_spec_path`,
+`best_pipeline_path`, `manifest_json_path`, and the `resolve_*` variants for
+legacy tolerance).
+
+Typed suffixes are mandatory and never spelled literally — `.json.pht-pipe`
+(`CONFIG_SUFFIX_PIPELINE`) and `.json.pht-tune` (`CONFIG_SUFFIX_TUNING`),
+applied via `ensure_typed_json_suffix` and matched via `matches_any_suffix`
+(never `Path.suffix`, which sees only the trailing `.pht-tune`).
+
+**Nested workspaces are safe but unadvertised.** Two `SandboxRoot`s that overlap
+(an MCP workspace inside a broader GUI sandbox) will both enumerate the same run
+directories, since `SandboxRoot.root` is frozen per-instance with no
+cross-instance awareness. Launch correctness is preserved regardless, because
+`exclusive_path_lock` and the owner-record path key off the **absolute**
+`output_dir`, not the sandbox root. Overlap therefore duplicates *listings*, not
+*claims*. The server does not forbid it; `workspace_info` reports the root so
+overlap is diagnosable.
+
+## 2.4 Run records: reuse `RunRegistry`
+
+Both `studies/` and `runs/` entries are runs in the existing sense, and both
+register through `RunRegistry`:
+
+```python
+record = registry.allocate(
+    run_id=rel_path, mode="slurm"|"local", output_dir=…, rel_path=…,
+    command_digest=sha256(argv), status="submitting"|"queued",
+)
+handle = runner.start(run_id, argv, output_dir=…, generation=record.generation)
+registry.compare_and_set(run_id, record.generation,
+                         expected_statuses=…, status=…, pid=…, log_paths=…)
+```
+
+This buys four properties the server would otherwise build:
+
+1. **Interprocess locking** on allocation (`exclusive_path_lock`), so two
+   subagents cannot both claim one output directory.
+2. **Nonterminal-generation rejection** — a second launch against a live output
+   directory is refused rather than racing it.
+3. **Generation fencing** (`compare_and_set`) — a stale caller cannot mutate a
+   record that has since been re-launched.
+4. **Boot recovery** — `rehydrate_from_sandbox` rebuilds the view by scanning
+   for owner records and manifests.
+
+### The limit of boot recovery, stated honestly
+
+`gui_launch_owner.json` is written **only** by code paths that call
+`RunRegistry.allocate` — today `gui/run_console/_callbacks.py:1915,2027,2121`
+and `gui/tune/_deploy.py:46`, and tomorrow this server. Neither
+`phenotypic._cli` nor `run_tuning` writes one.
+
+So a run you start by typing `python -m phenotypic` yourself on the login node —
+an expected coexistence, since §1.3 puts you and the agent on the same node — is
+**not** fully recoverable. It surfaces only through the manifest fallback
+(`_read_status_from_manifest`), capped to `{complete, failed, unknown}` with no
+PID, generation, or CAS. Full-fidelity recovery covers runs this server (or the
+GUI) launched; everything else is read-only observation. `workspace_list` labels
+each row with its evidence source so the difference is visible.
+
+**Consequence, and it is a good one:** an agent-launched run appears in the
+GUI's Recent Runs, and a GUI-launched run is visible to the agent. That interop
+is free and worth preserving.
+
+## 2.5 Lineage
+
+"Build several pipelines in parallel, tune them, deploy the winner" is only
+useful if the agent can answer *which pipeline produced which study produced
+which winner* — including after a context compaction or a server restart.
+
+Most of that chain is already reconstructible from existing artifacts, and the
+journal should not pretend otherwise:
+
+| Hop | Recoverable today? | From |
+|---|---|---|
+| pipeline → study | **yes** | `TuningSpec.pipeline` is *embedded*, not referenced (`tune/_spec.py:165`); the resolved spec at `deliverables/tuning_spec.json.pht-tune` can be content-hashed and matched against `pipelines/*` |
+| study → its winner | **yes** | `deliverables/best_pipeline.json.pht-pipe` |
+| run → pipeline | **yes** | `job_metadata.json` `PIPELINE_PATH` |
+| **dataset → study** | **no** | `TuningSpec` has **no dataset field** (`tune/_spec.py:162-171`); `--images` is a launch-time CLI argument recorded nowhere in the resolved spec |
+| exported winner → the `pipelines/` copy the agent then deployed | **no** | nothing records the copy |
+
+Two hops are genuinely unrecoverable, and both are ones an agent traverses
+constantly. The journal exists for those, plus cheap chronology — not because
+the whole chain is otherwise lost.
+
+**The dataset hop is load-bearing for `campaign_status.comparable` (§8.3)**: two
+arms tuned against different image sets cannot be honestly ranked, and nothing
+in the existing artifacts records which images a study used. So the `tune.start`
+lineage event carries the **subset** it ran on — which §10.3.1 also makes the
+tool argument, so the two cannot disagree:
+
+```json
+{"ts":"…","event":"tune.start","id":"studies/edge-v3-tpe",
+ "parent":"pipelines/edge-v3.json.pht-pipe",
+ "subset":{"id":"subsets/plates-dev-24.subset.json","digest":"sha256:77b2…","n_images":24}}
+```
+
+`digest` needs a **directory-level fingerprint helper, which does not exist** —
+`bytes_fingerprint` / `file_fingerprint` (`sdk_/_io_constants.py:154,166`) and
+`pipeline_content_digest` are all single-file. A stable digest over
+`(relative path, size, mtime_ns)` for each image, sorted, is sufficient and
+cheap; it is listed as new work in §7 P3 rather than assumed.
+
+`<workspace>/.phenotypic-mcp/lineage.jsonl`, append-only:
+
+```json
+{"ts":"2026-08-12T14:02:11Z","event":"pipeline.put","id":"pipelines/edge-v3.json.pht-pipe","digest":"sha256:9c1e…","parent":null,"agent":"subagent-B"}
+{"ts":"2026-08-12T14:07:40Z","event":"tune.start","id":"studies/edge-v3-tpe","parent":"pipelines/edge-v3.json.pht-pipe"}
+{"ts":"2026-08-12T15:31:02Z","event":"tune.export_best","id":"pipelines/edge-v3-tuned.json.pht-pipe","parent":"studies/edge-v3-tpe","trial":47,"score":0.081}
+{"ts":"2026-08-12T15:44:19Z","event":"deploy.start","id":"runs/2026-08-12-plateA","parent":"pipelines/edge-v3-tuned.json.pht-pipe"}
+```
+
+**Digest format.** `digest` is `f"sha256:{...}"`, matching `bytes_fingerprint` /
+`file_fingerprint` (`sdk_/_io_constants.py:154-179`). Note that
+`pipeline_content_digest` (`_cli/_cli_staged_resume.py:64-66`) returns a **bare**
+hexdigest with no prefix — the two are the same hash over the same bytes, but a
+consumer comparing a lineage `digest` against a resume digest must strip the
+`sha256:` prefix first. They do not string-compare equal as written.
+
+**Writes are offloaded.** The append reuses the repo's `atomic_append`
+(`_cli/_cli_file_locking.py:167-193`), whose `file_lock` spins in a synchronous
+`while True: flock / time.sleep(0.01)` retry with a 30 s timeout — deliberately,
+for slow NFS/Lustre. Calling that from a request-handling coroutine would stall
+**every** concurrent tool call, including the supposedly-unbounded `W0` ones, for
+up to the timeout. Lineage writes therefore go through `asyncio.to_thread`, never
+inline.
+
+`agent` is an **optional, self-declared** label. It is provenance for humans
+reading the journal, never an authorization or routing input — a subagent that
+lies about its name changes nothing about what it may do.
+
+Worst case the journal is truncated and the artifacts still stand alone, with
+three of the four hops reconstructible.
+
+## 2.6 Concurrency summary
+
+| Shared resource | Guard | Provided by |
+|---|---|---|
+| Output directory claim | interprocess file lock + nonterminal-generation check | `RunRegistry.allocate` |
+| Run record mutation | generation-fenced CAS | `RunRegistry.compare_and_set` |
+| Local image compute | one process-wide `LocalComputeSlot` | new, §1.5 |
+| Artifact writes | `atomic_write_text` + explicit-overwrite policy | `sdk_` helpers, §2.2 |
+| Plan / promotion tokens | `atomic_write_text`; single-use CAS on `consumed_by` **under `exclusive_path_lock`** — `allocate`'s interprocess idiom, **not** `compare_and_set`'s in-process `threading.Lock`, since §2.3 treats overlapping server instances over one workspace as anticipated | new, §5.4 |
+| Subset staging dirs | Keyed by subset digest, so concurrent arms share one directory instead of racing; created idempotently | new, §10.3.1 |
+| `campaign.json` mutation | `atomic_write_text` + a status transition guard: `approve` and any amendment CAS on `status`, and **`campaign_start` snapshots the campaign it launched** rather than re-reading mid-fan-out | new, §8.3 |
+| Lineage journal | `atomic_append` under file lock, **via `asyncio.to_thread`** | existing pattern, §2.5 |
+| Operation registry | immutable after discovery | `get_registry()` |
+
+No tool mutates another tool's in-flight artifact. The one cross-tool write is
+`tune_export_best`, which writes a *new* pipeline file rather than editing the
+base — matching `build_pipeline`, which deep-copies rather than mutating
+(`tune/_evaluation/_builder.py:384`).
+
+## 2.7 Open questions
+
+*(None outstanding.)*
+
+**Resolved since first draft:**
+
+- ~~OQ-2.1 GUI preset interop~~ → **visible `tune/` only**. Agent-authored specs
+  keep readable names at `<workspace>/tune/<name>.setup.json.pht-tune`; the GUI
+  reaches them through its Browse… escape hatch. Writing additionally into
+  `.phenotypic-gui/presets/tune/` would double every artifact, and writing only
+  there would hand the agent content-addressed filenames (`<stem>-<sha256[:20]>`),
+  losing the readable-id property §2.2 is built on.
+
+- ~~OQ-2.2 workspace root~~ → `--workspace`, defaulting to CWD (unambiguous
+  because subagents share one server), with the root always echoed by
+  `workspace_info` and a warning when it is a git checkout (§2.3).

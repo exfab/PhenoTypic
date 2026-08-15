@@ -17,7 +17,7 @@ the images aligned with the implementation.
 | Page | Goal |
 |------|------|
 | [Setup](01_setup.md) | Generate the synthetic dataset and launch the hub. |
-| [Browse source images](18_browse.md) | Deep-zoom the raw input images under a source root with cascading dropdowns and a metadata panel. |
+| [Browse source images](18_browse.md) | Navigate with J/K, previews, and a filmstrip; deep-zoom raw inputs and prepare a persistent revision-correct cache. |
 | [Browse — find the ideal starting time](19_browse_timeline.md) | Flip Browse to Timeline mode and navigate a folder/EXIF matrix with arrow keys to find a starting time and deep-zoom any frame. |
 | [File Explorer](02_file_explorer.md) | Navigate the sandbox sidebar and read capability badges. |
 | [Build a Pipeline](03_build_pipeline.md) | Compose a `pipeline.json.pht-pipe` with the fixed linear port map, side loader, and zoom controls. |

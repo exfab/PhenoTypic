@@ -8,6 +8,7 @@ DZI tiler. The cache lives under ``tempfile.gettempdir()/phenotypic/browse``,
 keyed by a slash-free base64url token of the image's sandbox-relative path,
 and is wiped on launch + at process exit.
 """
+
 from __future__ import annotations
 
 import atexit
@@ -15,6 +16,7 @@ import base64
 import logging
 import shutil
 import tempfile
+import uuid
 from pathlib import Path
 
 from PIL import Image as PILImage
@@ -56,7 +58,9 @@ def encode_token(sandbox_rel: str) -> str:
 def decode_token(token: str) -> str:
     """Inverse of :func:`encode_token`. Raises on malformed input."""
     pad = "=" * (-len(token) % 4)
-    return base64.urlsafe_b64decode((token + pad).encode("ascii")).decode("utf-8")
+    return base64.urlsafe_b64decode((token + pad).encode("ascii")).decode(
+        "utf-8"
+    )
 
 
 def browse_cache_base() -> Path:
@@ -92,7 +96,10 @@ def normalize_to_png(original: Path, cache_png: Path) -> Path:
     a decode failure on a standard format re-raises the original error.
     """
     original = Path(original)
-    if cache_png.exists() and cache_png.stat().st_mtime >= original.stat().st_mtime:
+    if (
+        cache_png.exists()
+        and cache_png.stat().st_mtime >= original.stat().st_mtime
+    ):
         return cache_png
     try:
         rgb = Image.imread(original).rgb[:]
@@ -104,5 +111,12 @@ def normalize_to_png(original: Path, cache_png: Path) -> Path:
         raise
     rgb8 = img_as_ubyte(rgb)
     cache_png.parent.mkdir(parents=True, exist_ok=True)
-    PILImage.fromarray(rgb8).save(cache_png, format="PNG")
+    temporary = cache_png.with_name(
+        f".{cache_png.name}.{uuid.uuid4().hex}.tmp"
+    )
+    try:
+        PILImage.fromarray(rgb8).save(temporary, format="PNG")
+        temporary.replace(cache_png)
+    finally:
+        temporary.unlink(missing_ok=True)
     return cache_png

@@ -1,22 +1,23 @@
 # GUI hub
 
-Run the unified PhenoTypic web interface — pipeline builder, results viewer,
-and run console — under a single URL from any machine, including HPC clusters
+Run the unified PhenoTypic web interface, including Browse, the pipeline builder,
+results viewer, and run console, under a single URL from any machine, including HPC clusters
 reached over SSH.
 
 ## What the hub is
 
-The hub is one Dash application that mounts three tools under sub-paths of a
+The hub is one Dash application that mounts its tools under sub-paths of a
 single server:
 
 | Path | Tool |
 |------|------|
-| `/` | Home — sandbox tree, capability badges, tab navigation |
+| `/` | Home: sandbox tree, capability badges, tab navigation |
+| `/browse/` | Browse source images as deep-zoom single, timeline, or compare views |
 | `/builder/` | Pipeline builder (node-graph editor) |
 | `/results/` | Results viewer (OpenSeadragon overlays, measurement tables) |
 | `/run/` | Run console (submit local or SLURM jobs, tail logs, view dashboard) |
 
-All four pages share a top-bar tab strip and a sidebar showing the sandbox
+All pages share a top-bar tab strip and a sidebar showing the sandbox
 directory tree. The server is single-user and frozen-at-launch: the file
 browser can only see the directory you pass via `--root`.
 
@@ -41,6 +42,67 @@ uv run python -m phenotypic.gui --root ./images --port 8050
 
 The startup banner printed to stdout repeats the URL and the SSH-tunnel
 command for the bound port.
+
+### Optional libvips acceleration
+
+Browse converts source images into Deep Zoom Image (DZI) pyramids as they are
+opened. On macOS and Windows, the GUI extra includes the official
+[`pyvips[binary]`](https://pypi.org/project/pyvips/) distribution with a
+self-contained native libvips. The normal installation needs no separate
+Homebrew package or loader-path configuration.
+
+Linux and HPC installations keep the smaller `pyvips` binding. Install or load
+native [libvips](https://www.libvips.org/install.html) when the faster DZI path
+is wanted:
+
+```bash
+# Debian or Ubuntu
+sudo apt install libvips-dev --no-install-recommends
+```
+
+On an HPC system, load the site's libvips module before launching the GUI if one
+is provided.
+
+Confirm that the native library is visible to the project environment:
+
+```bash
+uv run python -c "import pyvips; print('pyvips', pyvips.__version__, 'libvips', '.'.join(str(pyvips.version(i)) for i in range(3)))"
+```
+
+The bundled build includes common image loaders but omits optional PDF and
+OpenSlide support. Users who intentionally choose a fuller Homebrew libvips can
+install it with `brew install vips`. If `vips --version` then succeeds but the
+command above reports that `libvips.42.dylib` cannot be found, run the GUI from
+a shell with Homebrew's library directory exposed:
+
+```bash
+export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix vips)/lib${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
+```
+
+PhenoTypic automatically uses its Pillow tiler when libvips cannot be loaded.
+This preserves Browse and Results functionality, but preparation of large DZI
+pyramids can be slower and use more memory.
+
+### Browse preparation and cache
+
+Browse identifies assets by the source file's path, size, timestamps, render
+schema, and DZI parameters. It shows a progressive preview while the selected
+revision is prepared, then opens the completed DZI in the existing viewer.
+Navigation work is prioritized ahead of one bounded speculative worker, so a
+dataset preparation job cannot monopolize conversion while the user is moving
+between images.
+
+Prepared revisions persist across restarts. Storage is selected in this order:
+
+1. `<sandbox>/.phenotypic-gui/browse_cache`;
+2. the platform user cache, namespaced by a hash of the sandbox root;
+3. a temporary session cache when neither persistent location is writable.
+
+The cache begins least-recently-used pruning above 10 GiB and stops at 8 GiB.
+The Browse preparation details panel reports the selected backend and cache
+usage. Its **Prepare dataset**, **Stop**, and **Clear prepared images** actions
+remain lower priority than foreground navigation and protect the displayed or
+in-flight revision from deletion.
 
 ### Open OnDemand path prefix
 
@@ -76,7 +138,7 @@ explicit path options, not subcommands. Always use the hyphenated form
 argument.
 :::
 
-## The four pages
+## The hub pages
 
 ### Home (`/`)
 
@@ -95,6 +157,12 @@ the sandbox root are hidden by default. Two toggles in the sidebar header
 surface them. The Refresh button flushes the classifier's LRU cache and
 re-classifies all visible nodes — use it after dropping new files into a
 directory.
+
+### Browse (`/browse/`)
+
+Browse source-image directories in a deep-zoom single view, acquisition-time
+timeline, or synchronized compare view. Image access remains constrained to the
+hub sandbox root.
 
 ### Builder (`/builder/`)
 

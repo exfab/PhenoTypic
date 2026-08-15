@@ -255,7 +255,7 @@ NdArrayField = Annotated[
 #     that tagged dict via the ``phenotypic`` class registry, while passing
 #     an already-live operation instance straight through.
 #
-# Used by ``CompositeDetector.detectors`` and
+# Used by ``CompositeDetector.ops`` and
 # ``FilamentousFungiDetector.inoculum_detector``. The serialized shape is
 # byte-compatible with what ``SerializablePipeline._serialize_*`` emits, so
 # the two code paths agree and nested operations round-trip losslessly.

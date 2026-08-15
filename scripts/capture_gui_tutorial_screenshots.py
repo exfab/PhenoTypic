@@ -1041,7 +1041,7 @@ def _browse_source_payload() -> dict | None:
 
 
 def _capture_browse(context, base_url: str) -> None:
-    """Drive the Browse tab and capture the deep-zoom viewport + metadata.
+    """Drive Browse and capture its optimized single-image workflow.
 
     Mirrors ``docs/source/tutorials/gui/18_browse.md``:
 
@@ -1050,8 +1050,9 @@ def _capture_browse(context, base_url: str) -> None:
     2. ``02_viewer.png`` — after setting the source root (pushed into the
        shared ``SHELL_SOURCE_IMAGE_ROOT_STORE`` via ``set_props``, exactly as
        the top-bar source picker would), the dataset + image dropdowns
-       populate, the first image auto-selects, and the OpenSeadragon viewport
-       deep-zooms the plate with the metadata panel below it.
+       populate, the first image auto-selects, and the progressive preview,
+       preparation controls, position readout, filmstrip, OpenSeadragon
+       viewport, and metadata panel are visible together.
 
     The source root is set by writing the real versioned store payload rather
     than driving the modal picker — the same deterministic store-injection the
@@ -1078,15 +1079,29 @@ def _capture_browse(context, base_url: str) -> None:
         )
         # The dataset callback repopulates the pickers; the image callback then
         # auto-selects the first image, whose token feeds the clientside OSD
-        # mount. Wait for the OSD canvas to actually draw a tile <canvas> before
-        # the screenshot so the viewport is not blank.
+        # mount. Wait for the filmstrip and OSD canvas so the screenshot records
+        # the optimized Single-view chrome instead of a transient loading state.
         page.wait_for_timeout(1500)
+        try:
+            page.wait_for_selector(
+                "#browse-filmstrip .browse-filmstrip-item", timeout=10_000
+            )
+        except Exception:  # pragma: no cover - best-effort
+            pass
+        try:
+            page.wait_for_selector(
+                '#browse-filmstrip .browse-filmstrip-thumb[data-loaded="true"]',
+                timeout=10_000,
+            )
+        except Exception:  # pragma: no cover - best-effort
+            pass
         try:
             page.wait_for_selector("#browse-osd-div canvas", timeout=10_000)
         except Exception:  # pragma: no cover - best-effort
             pass
         page.wait_for_timeout(1500)
-    _save(page, "browse", "02_viewer.png")
+        page.locator("#browse-meta-image-name").scroll_into_view_if_needed()
+    _save(page, "browse", "02_viewer.png", full_page=True)
     page.close()
 
 

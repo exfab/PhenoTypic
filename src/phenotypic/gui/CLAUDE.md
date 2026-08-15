@@ -134,11 +134,21 @@ from phenotypic.gui._config import (
     SANDBOX_BUILDER_TILES_SUBDIR,  # "builder_tiles"
     RUN_LOG_DIRNAME,               # ".gui_log" (inside a run's output dir)
     VIEWER_CACHE_DIRNAME,          # ".viewer_cache" (inside an output root)
+    BROWSE_CACHE_SUBDIR,           # "browse_cache" (persistent prepared assets)
+    BROWSE_CACHE_HIGH_WATER_BYTES, # 10 GiB: begin LRU pruning
+    BROWSE_CACHE_LOW_WATER_BYTES,  # 8 GiB: stop LRU pruning
+    BROWSE_RENDER_SCHEMA_VERSION,  # revision identity for render semantics
 )
 
 presets = sandbox.root / SANDBOX_GUI_DIRNAME / SANDBOX_PRESETS_SUBDIR
 log_dir = output_dir / RUN_LOG_DIRNAME
 ```
+
+Browse resolves its cache in sandbox, platform-user-cache, then temporary
+order. Entries are immutable and keyed by sandbox identity, source revision,
+render schema, and DZI parameters. Never wipe this cache at app startup. Use
+`BrowsePreparationManager` for selected, nearby, filmstrip, and dataset work;
+do not initiate conversion by mounting multiple asset elements directly.
 
 ### Branding strings
 

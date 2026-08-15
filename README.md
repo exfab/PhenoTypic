@@ -115,14 +115,51 @@ PhenoTypic ships optional deep-learning detectors backed by Meta's
 See [GPU Detection Setup](https://exfab.github.io/PhenoTypic/experimental/how_to/pages/gpu_detection_setup.html)
 for model downloads and SLURM deployment instructions.
 
-## Optional Installation
+## Optional third-party tools
+
+### libvips (faster GUI deep-zoom preparation)
+
+On macOS and Windows, the `[gui]` extra installs the official
+[`pyvips[binary]`](https://pypi.org/project/pyvips/) distribution, including a
+self-contained native libvips. No Homebrew install or loader-path configuration is
+needed for the normal GUI installation.
+
+Linux and HPC installations keep the smaller `pyvips` binding and may provide native
+[libvips](https://www.libvips.org/install.html) through the operating system or an
+environment module:
+
+```bash
+# Debian or Ubuntu
+sudo apt install libvips-dev --no-install-recommends
+```
+
+Verify that Python can load the native library from the same shell that will launch
+the GUI:
+
+```bash
+uv run python -c "import pyvips; print('pyvips', pyvips.__version__, 'libvips', '.'.join(str(pyvips.version(i)) for i in range(3)))"
+```
+
+The bundled build contains the common image loaders needed by the GUI but omits optional
+facilities such as PDF and OpenSlide. Users who intentionally prefer a fuller Homebrew
+libvips can install it with `brew install vips`. If `vips --version` then works but
+Python cannot find `libvips.42.dylib`, expose Homebrew's library directory before
+launching PhenoTypic:
+
+```bash
+export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix vips)/lib${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
+```
+
+If native libvips or its loader is unavailable on any platform, PhenoTypic automatically
+retains the Pillow fallback. Browse still works, but preparing large pyramids can be
+slower and use more memory.
+
+### ExifTool (RAW metadata)
 
 To extract metadata from raw images, PhenoTypic uses the `PyExifTool` module. This
-requires an external software called
-ExifTool. You can install ExifTool here: https://exiftool.org/install.html. If you don't
-use it, some metadata from raw
-files may not be able to be imported. Read more
-here: https://pypi.org/project/PyExifTool/#pyexiftool-dependencies
+requires the external [ExifTool](https://exiftool.org/install.html) application. If
+it is unavailable, some RAW metadata may not be imported. See the
+[PyExifTool dependency documentation](https://pypi.org/project/PyExifTool/#pyexiftool-dependencies).
 
 # Run the CLI
 

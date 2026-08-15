@@ -56,6 +56,54 @@ def step_picker_value(
     return values[min(len(values) - 1, index + 1)]
 
 
+def offset_picker_value(
+    current: str | None,
+    options: list[dict[str, Any]] | None,
+    delta: int,
+) -> str | None:
+    """Move a dropdown value by a signed number of enabled options.
+
+    Args:
+        current: Current dropdown value, or ``None``.
+        options: Dash dropdown options in display order.
+        delta: Signed number of positions to move. The result is clamped to
+            the first or last enabled option.
+
+    Returns:
+        The offset dropdown value. If ``current`` is absent, a non-negative
+        delta starts at the first option and a negative delta starts at the
+        last option. Returns ``None`` when there are no enabled options.
+    """
+    values = enabled_picker_values(options)
+    if not values:
+        return None
+    if current not in values:
+        return values[-1] if delta < 0 else values[0]
+    index = values.index(current)
+    target = min(len(values) - 1, max(0, index + delta))
+    return values[target]
+
+
+def picker_position(
+    current: str | None,
+    options: list[dict[str, Any]] | None,
+) -> tuple[int, int]:
+    """Return the one-based current position and enabled-option total.
+
+    Args:
+        current: Current dropdown value, or ``None``.
+        options: Dash dropdown options in display order.
+
+    Returns:
+        ``(position, total)``. Position is zero when the current value is not
+        among the enabled options.
+    """
+    values = enabled_picker_values(options)
+    if current not in values:
+        return 0, len(values)
+    return values.index(current) + 1, len(values)
+
+
 def picker_button_disabled_states(
     current: str | None,
     options: list[dict[str, Any]] | None,
