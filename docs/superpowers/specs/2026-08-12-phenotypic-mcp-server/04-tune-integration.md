@@ -107,6 +107,7 @@ Four deliberate affordances:
 | `budget` | `object?` | `{}` | `{n_trials?, max_failures?}` |
 | `evaluator` | `object?` | `{}` | Overrides on `Evaluator` defaults |
 | `held_out` | `object?` | `{}` | `{held_out_fraction?, group_key?, …}` |
+| `screen` | `bool` | `false` | Two-round screening freeze (OQ-4.1). Opt-in only; an agent enabling it must expect knobs it read from `tune_space` to stop varying mid-study. Rejected with `screening_unsupported_on_slurm` when the study routes to SLURM, which drops screening silently today (§7 P4) |
 | `overwrite` / `dry_run` | `bool` | `false` | As §3 |
 
 ```json

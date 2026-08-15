@@ -8,7 +8,8 @@ Date: 2026-08-12
 **Everything from triage through campaign execution runs on a subset. The full
 dataset is touched exactly once, after an explicit human promotion.**
 
-This single structural choice resolves the autonomy question §8.6 raised. The
+This single structural choice resolves the autonomy question recorded as OQ-8.1
+and OQ-8.2 (§8.8). The
 reason "let campaigns carry deploy arms" felt dangerous was that a full-dataset
 SLURM run could launch on a pipeline nobody had looked at. Scope the development
 loop to a subset and that risk disappears: an unattended campaign spends subset

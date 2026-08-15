@@ -87,8 +87,8 @@ implements the affected task**, so the two do not diverge further.
 | DR1 | `IMAGE_EXTS` lives in `gui/builder/_directory_browser.py:20-21`; relocate it to `sdk_/_io_constants.py` (§1.4, §7 P2) | **Already moved.** Defined at `gui/_config.py:429`, which is **Dash-free** (imports only argparse/logging/pathlib/typing/urllib + `phenotypic.sdk_`). `_directory_browser.py:23` re-exports it for back-compat, and `_classifier.py:34` still imports through that Dash-laden shim. | Task 2 — the job shrinks to one relocation plus one repointed import, not a three-file untangle |
 | DR2 | `_find_class_in_phenotypic` in `_serializable_pipeline.py` (§3.2) | Actual path is `_core/_pipeline_parts/_serializable_pipeline.py:619`; submodule list begins `:645` | Tasks 10, 14 |
 | DR3 | `_submit_slurm_fleet` builds `slurm_args` at `_run.py:797-805` (§5.2.1, §7 P5) | Function at `:724`; the four `slurm_*` params at `:733-736`; the `if slurm_partition is not None:` chain at `:798-804`. Substance holds, offsets shifted | Task 16 |
-| DR4 | §10.1 cites "the autonomy question **§8.6** raised" | **§8.6 does not exist.** `08-workflow-and-campaigns.md` jumps 8.5 → 8.7. Dropped or renumbered during revision | Spec fix; no code impact |
-| DR5 | §4.7 resolves OQ-4.1 with "`tune_put_spec` takes `screen: false` by default" | §4.2's argument table has **no `screen` row** | Task 15 and Phase 2B's `tune_put_spec` |
+| DR4 | §10.1 cites "the autonomy question **§8.6** raised" | **§8.6 does not exist.** `08-workflow-and-campaigns.md` jumps 8.5 → 8.7. Dropped or renumbered during revision | **FIXED** — §10.1 now cites OQ-8.1/OQ-8.2 (§8.8), where the question is actually recorded |
+| DR5 | §4.7 resolves OQ-4.1 with "`tune_put_spec` takes `screen: false` by default" | §4.2's argument table has **no `screen` row** | **FIXED** — row added to §4.2 naming the SLURM refusal (§7 P4). Still binds Task 15 and Phase 2B |
 
 **Confirmed unchanged** (spot-checked, all still exact): `_space.py:33-34` Dash
 imports and the `:134/:161/:209` pure vs `:396/:468/:503` view split;
