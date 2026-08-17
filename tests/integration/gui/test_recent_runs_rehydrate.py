@@ -150,7 +150,10 @@ def test_scan_skips_unreadable_dir(tmp_path: Path) -> None:
     sandbox = SandboxRoot.from_path(tmp_path)
     bad = tmp_path / "bad"
     bad.mkdir()
-    from phenotypic.gui.shell import _runs_registry
+    # The scan implementation moved to phenotypic._services.runs, so ``classify``
+    # resolves in that module's globals. Patching gui.shell._runs_registry (now a
+    # re-export shim) would no-op and the unreadable dir would never be simulated.
+    from phenotypic._services import runs as _runs_registry
 
     real_classify = _runs_registry.classify
 

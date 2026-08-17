@@ -22,7 +22,11 @@ from uuid import uuid4
 
 import pytest
 
-import phenotypic.gui.shell._runs_registry as runs_registry_module
+# The implementation moved to phenotypic._services.runs; gui.shell._runs_registry
+# is now a re-export shim. A patch of an implementation-internal name must target
+# the module in whose globals the code resolves it — patching the shim would
+# silently no-op and this test would pass without simulating a write failure.
+import phenotypic._services.runs as runs_registry_module
 from phenotypic._cli._cli_update_state import append_event
 from phenotypic.gui._config import DELIVERABLES_DIRNAME
 from phenotypic.gui.shell._runs_registry import (

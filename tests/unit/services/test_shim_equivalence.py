@@ -56,6 +56,39 @@ def test_sandbox_shim_reexports_the_privates_two_modules_import():
         assert getattr(shim, name) is getattr(_services.sandbox, name), name
 
 
+def test_run_registry_is_one_class():
+    from phenotypic._services.runs import RunRegistry as canonical
+    from phenotypic.gui.shell._runs_registry import RunRegistry as shim
+
+    assert shim is canonical
+
+
+def test_local_runner_is_one_class():
+    from phenotypic._services.runs import LocalRunner as canonical
+    from phenotypic.gui.run_console._runner import LocalRunner as shim
+
+    assert shim is canonical
+
+
+def test_runs_shims_reexport_every_public_name():
+    """Both originals' full ``__all__`` must survive the merge into one module."""
+    from phenotypic import _services
+    from phenotypic.gui.run_console import _runner as runner_shim
+    from phenotypic.gui.shell import _runs_registry as registry_shim
+
+    for name in (
+        "RunMode",
+        "RunStatus",
+        "RunRecord",
+        "RunRegistry",
+        "run_status_is_nonterminal",
+    ):
+        assert getattr(registry_shim, name) is getattr(_services.runs, name), name
+
+    for name in ("LocalRunHandle", "LocalRunner"):
+        assert getattr(runner_shim, name) is getattr(_services.runs, name), name
+
+
 def test_discovery_stays_lazy():
     """Importing the module must not walk eight packages.
 
