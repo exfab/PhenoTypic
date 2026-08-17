@@ -50,14 +50,36 @@ The clustering below is built from the corrected DAG. **Fix the header claim in
 
 | # | Tasks | Shape | Why this grouping | Parallel with |
 |---|---|---|---|---|
-| **C1** | T1, T2, T3, T4, T5, T8 | Keystone + Leaves | Six tasks, **one idiom**: move a module into `_services`, leave a re-export shim, assert the shim is the *same object*. One agent writing all five shims produces one consistent seam; five agents produce five dialects — the exact failure the skill names. T1 opens it (the gate everything is verified by) and T2 is a 3-file prerequisite of T5. Per-task commits keep it bisectable. | — |
+| **C1** | T1, T2, **T2.5**, T3, T4, T5, T8 | Keystone + Leaves | Six tasks, **one idiom**: move a module into `_services`, leave a re-export shim, assert the shim is the *same object*. One agent writing all five shims produces one consistent seam; five agents produce five dialects — the exact failure the skill names. T1 opens it (the gate everything is verified by) and T2 is a 3-file prerequisite of T5. Per-task commits keep it bisectable. | — |
 | **C2** | T6, T7 | Keystone | The one genuine refactor in Phase 1a: `_space.py` must split because `_setup_authoring.py:28` imports its pure symbols while the module imports Dash at `:33-34`. T7 then folds four more modules into the same destination file. Same file, same judgment call — inseparable. | — |
 | **C3** | T9 | **Seam** | Isolated despite being small: it is the only `_cli` change in the phase, its whole contract is *absence of I/O*, and Phase 2C's `deploy_plan` depends on it. Risk ≠ size. | C1, C2 |
 | **C4** | T10, T11, T12 | Keystone | One subject — the catalog the agent browses. T11/T12 share `catalog.py`; T10 is the enumeration both read. | C6 |
 | **C5** | T13, T14, T17 | Keystone | One subject — the subset boundary: digest → selectors → staging. T17 consumes both predecessors. **Must follow C4** (T14 edits T10's constant). | — |
 | **C6** | T15, T16, T18 | Keystone/Seam | Forced: all three edit `_run.py`. Grouping them is not a preference, it is the only correct answer. | C4 |
 
-**Sequence:** `C1 → C2 → C3 → [1a gates] → C4 ∥ C6 → C5 → [1b gates]`
+**Sequence:** `C1 → C2 → C3 → [1a gates] → C4 → C6 → C5 → [1b gates]`
+
+### Post-review amendments
+
+The plan review ([review-findings.md](review-findings.md)) landed nine blockers.
+Three bear on sequencing, and **two of them were already satisfied by this
+clustering** — recorded so nobody "fixes" them twice:
+
+| Finding | Status against this clustering |
+|---|---|
+| **B1** — Task 5 fails the purity gate because `gui/shell/__init__.py` is eager | **NOT covered. Fixed by adding Task 2.5 to C1**, ordered before Task 5. This was a real defect in the plan, not in the clustering. |
+| **B2** — Task 7 depends on Task 8, but is numbered first | **Already satisfied.** Task 8 sits in C1 and Task 7 in C2, and C1 precedes C2 — so Task 8 already runs first. The numeric order in `phase-1a` is misleading; the execution order is correct. |
+| **B6** — `10 → 11 → 12` is a chain, not parallel work | **Already satisfied.** All three are inside C4, which is one agent working sequentially. The reviewer's warning was against staffing them as parallel agents, which this clustering never did. |
+
+**B5 grows C4:** Task 10 splits into 10a (lift the constant), 10b (categories and
+base classes for prefabs/scorers/strategies), 10c (`__all__` walk for lazy
+modules). C4 becomes 10a, 10b, 10c, 11, 12 — still one cluster, still one agent,
+but a materially bigger one. Re-evaluate whether it should split at the C4 gate
+rather than now.
+
+**C4 ∥ C6 parallelism withdrawn** pending B3/B4 (Task 16's CLI framework and merge
+point) and B7 (Task 18's finalize signature). Those are open decisions, and
+dispatching C6 against an undecided contract wastes the agent.
 
 C3 has zero file overlap with C1/C2 and C4/C6 have none with each other, so those
 are worktree-parallel candidates (`isolation: "worktree"`). Everything else is
