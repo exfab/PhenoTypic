@@ -247,3 +247,16 @@ Stated briefly, because it is evidence the plan's analysis was mostly right:
 2. **Swap Tasks 7 and 8** (B2).
 3. **Do not staff the P3 cluster as parallel work** — B6 makes `10 → 11 → 12` a chain.
 4. B3/B4 must be settled before C6; B5 before C4; B7 before C6's Task 18.
+
+---
+
+## Execution-time deviations and incidents
+
+Recorded as they happen, so the git history explains itself later.
+
+| # | What | Disposition |
+|---|---|---|
+| **X1** | **Index race.** The orchestrator ran `git add -A` in a tree C1 was working in, sweeping C1's staged `git mv` of `gui/_operation_registry.py → _services/registry.py` into the docs commit `1119fd8b9`. The tree is correct; only the attribution is wrong, so `git log --follow` on that file lands on a plan-docs message. **Not rebased** — rewriting history under a mid-cluster agent risks real work to fix a cosmetic defect. **Practice changed: the orchestrator stages explicit paths under `docs/superpowers/plans/` only, and never `git add -A`, while any implementation agent is running.** |
+| **X2** | **Task 3 shim surface was incomplete in the plan.** The sketch re-exported four names; the repo imports **five** from `phenotypic.gui._operation_registry` — `ColumnRefSpec` is pulled 14 times by `tests/unit/gui/test_param_forms.py`. C1 caught it and added the name. |
+| **X3** | **Task 4 shim surface likewise incomplete.** `gui/tune/_setup_authoring.py:24-25` imports the privates `_is_safe_relative_path` and `_v1_selection_matches_sandbox`, and `gui/shell/_source_context.py:26` imports the first — via multi-line parenthesised imports that a single-line grep misses. Both included in the shim. **Standing instruction for T5/T8: derive the shim surface by reading the code, not from the plan's list.** |
+| **X4** | **`test_discovery_stays_lazy` replaced with a subprocess probe (finding I2).** C1 measured the hazard rather than assuming it: `importlib.reload` breaks `shim.X is services.X` **immediately and permanently for the session**, and the suite stays green only because the singleton instance survives (both functions close over one module `__dict__`) and the file's test order hides it. The replacement was verified to fail when `registry.py` calls `discover()` at import time. |
