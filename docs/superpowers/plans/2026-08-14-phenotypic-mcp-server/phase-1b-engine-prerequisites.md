@@ -3,9 +3,9 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
 > or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
 >
-> **Every task below ends with a reviewer step.** See the plan README's
-> *Review protocol* — a task with an unaddressed correctness finding does not
-> hand off to the next one.
+> **Reviewers run at CLUSTER boundaries, not per task.** See the plan README's
+> *Review protocol* and `execution.md`. A cluster with an unaddressed correctness
+> finding does not hand off to the next one.
 
 **Implements:** §7 P3, P4, P5, P6, P7. **Spec:**
 [`../../specs/2026-08-12-phenotypic-mcp-server/07-prerequisites.md`](../../specs/2026-08-12-phenotypic-mcp-server/07-prerequisites.md)
@@ -149,23 +149,6 @@ Delete `"phenotypic.detect.nn"` from the tuple; confirm
 git add -A && git commit -m "fix(catalog): reconcile discovery with the loader's module list"
 ```
 
-- [ ] **Step 7: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
-
 ---
 
 ### Task 11: The JSON operation descriptor
@@ -284,23 +267,6 @@ Expected: PASS.
 git add -A && git commit -m "feat(catalog): add the JSON operation descriptor projection"
 ```
 
-- [ ] **Step 6: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
-
 ---
 
 ### Task 12: Column derivation that dispatches on `header_scheme()`
@@ -401,23 +367,6 @@ catches a regression to a blanket `get_headers()`.
 git add -A && git commit -m "feat(catalog): derive measurement columns via header_scheme dispatch"
 ```
 
-- [ ] **Step 6: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
-
 ---
 
 ### Task 13: A directory-level digest helper
@@ -499,23 +448,6 @@ sufficient and cheap — it does not read file contents, which matters on a
 ```bash
 git add -A && git commit -m "feat(sdk): add a directory-level content digest"
 ```
-
-- [ ] **Step 6: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -662,23 +594,6 @@ Make `EmbeddingSubsetSelector._select` return a random sample; confirm
 git add -A && git commit -m "feat(subset): add the SubsetSelector hierarchy"
 ```
 
-- [ ] **Step 7: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
-
 ---
 
 ## P4 — Close the `--screen` + `--slurm` silent no-op
@@ -756,23 +671,6 @@ if slurm and screen:
 ```bash
 git add -A && git commit -m "fix(tune): refuse --screen with --slurm instead of dropping it silently"
 ```
-
-- [ ] **Step 6: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -892,23 +790,6 @@ form and an `exfab` example carrying `slurm_account=exfab`.
 git add -A && git commit -m "feat(tune): accept --slurm key=value so account and qos reach the fleet"
 ```
 
-- [ ] **Step 7: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
-
 ---
 
 ## P6 — Subset staging
@@ -1016,23 +897,6 @@ semantics can never reach the parent images through it.
 ```bash
 git add -A && git commit -m "feat(services): stage a subset as flat and nested symlink trees"
 ```
-
-- [ ] **Step 6: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -1169,23 +1033,6 @@ Move `_finalize_best_params` to first in the sequence; confirm
 ```bash
 git add -A && git commit -m "feat(tune): add a re-runnable finalize for distributed studies"
 ```
-
-- [ ] **Step 7: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
 
 ---
 

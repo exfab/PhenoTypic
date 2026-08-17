@@ -3,9 +3,9 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
 > or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
 >
-> **Every task below ends with a reviewer step.** See the plan README's
-> *Review protocol* — a task with an unaddressed correctness finding does not
-> hand off to the next one.
+> **Reviewers run at CLUSTER boundaries, not per task.** See the plan README's
+> *Review protocol* and `execution.md`. A cluster with an unaddressed correctness
+> finding does not hand off to the next one.
 
 **Implements:** §7 P2, §1.4. **Spec:**
 [`../../specs/2026-08-12-phenotypic-mcp-server/01-architecture.md`](../../specs/2026-08-12-phenotypic-mcp-server/01-architecture.md)
@@ -201,23 +201,6 @@ git add src/phenotypic/_services/__init__.py tests/unit/services/test_import_pur
 git commit -m "test(services): add the import-purity gate before the tier exists"
 ```
 
-- [ ] **Step 7: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
-
 ---
 
 ### Task 2: Relocate `IMAGE_EXTS` below the GUI
@@ -311,23 +294,6 @@ git add src/phenotypic/sdk_/_io_constants.py src/phenotypic/gui/_config.py \
 git commit -m "refactor(sdk): move IMAGE_EXTS below the GUI so classify() is Dash-free"
 ```
 
-- [ ] **Step 6: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
-
 ---
 
 ### Task 2.5: Make the eager GUI package `__init__`s lazy
@@ -377,7 +343,6 @@ importlib.import_module({module!r})
 print(",".join(sorted(m for m in {forbidden!r} if m in sys.modules)))
 """
 
-
 @pytest.mark.parametrize(
     "module",
     [
@@ -397,7 +362,6 @@ def test_submodule_import_does_not_execute_the_dash_app_factory(module: str) -> 
     leaked = [n for n in proc.stdout.strip().split(",") if n]
     assert not leaked, f"{module} dragged {leaked} in via its package __init__"
 
-
 @pytest.mark.parametrize(
     ("package", "symbol"),
     [
@@ -415,7 +379,6 @@ def test_public_api_is_unchanged(package: str, symbol: str) -> None:
     import importlib
 
     assert getattr(importlib.import_module(package), symbol) is not None
-
 
 def test_unknown_attribute_still_raises_attribute_error() -> None:
     import phenotypic.gui.shell as shell
@@ -456,7 +419,6 @@ _LAZY = {
     "SandboxRoot": ("phenotypic.gui.shell._sandbox", "SandboxRoot"),
     "ToolSession": ("phenotypic.gui.shell._session", "ToolSession"),
 }
-
 
 def __getattr__(name: str) -> Any:
     try:
@@ -525,15 +487,6 @@ Importing any submodule of gui.shell or gui.tune executed the package __init__
 and pulled in dash/flask/werkzeug, so a content-clean module could not be
 promoted without dragging the GUI stack behind it."
 ```
-
-- [ ] **Step 8: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). This one matters more than most: it changes import
-timing for two packages with many call sites, and "the GUI still works" is a claim
-the whole phase now rests on. Require it to check that no public name was dropped
-from either `__all__`, that the `TYPE_CHECKING` imports do not execute at runtime,
-and that Step 6's mutation was actually performed.
 
 ---
 
@@ -637,23 +590,6 @@ git add -A src/phenotypic/_services/registry.py src/phenotypic/gui/_operation_re
 git commit -m "refactor(services): promote the operation registry, shim the GUI path"
 ```
 
-- [ ] **Step 7: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
-
 ---
 
 ### Task 4: Promote `SandboxRoot`
@@ -712,23 +648,6 @@ Expected: PASS.
 ```bash
 git add -A && git commit -m "refactor(services): promote SandboxRoot"
 ```
-
-- [ ] **Step 6: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -793,23 +712,6 @@ Expected: PASS — in particular
 ```bash
 git add -A && git commit -m "refactor(services): promote RunRegistry and LocalRunner"
 ```
-
-- [ ] **Step 6: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -942,23 +844,6 @@ then remove it.
 git add -A && git commit -m "refactor(tune): split _space.py into a pure half and a Dash view"
 ```
 
-- [ ] **Step 7: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
-
 ---
 
 ### Task 7: Promote spec authoring, validation, and export
@@ -1008,23 +893,6 @@ Expected: PASS.
 ```bash
 git add -A && git commit -m "refactor(services): promote tune spec authoring, validation, export"
 ```
-
-- [ ] **Step 7: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -1085,23 +953,6 @@ Expected: PASS.
 ```bash
 git add -A && git commit -m "refactor(services): promote to_argv with RunConsoleState"
 ```
-
-- [ ] **Step 6: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
 
 ---
 
@@ -1214,23 +1065,6 @@ confirm `test_build_array_script_spec_writes_nothing` FAILS, then remove it.
 ```bash
 git add -A && git commit -m "refactor(cli): extract a pure build_array_script_spec for deploy previews"
 ```
-
-- [ ] **Step 7: Spawn a reviewer**
-
-Dispatch `execute-plan-orchestration:implementation-test-reviewer`, scoped to this
-task's diff (`git show HEAD`). Brief it with the task's goal, the spec section it
-implements, and the specific claim its tests are meant to pin. Require it to check
-at minimum:
-
-- **No false greens.** Each new test must fail when the behaviour it guards is
-  mutated. This task's "prove it can fail" step is a claim; the reviewer verifies it.
-- **No scope leak.** Nothing outside this task's stated **Files** changed.
-- **Interfaces hold.** The names and types in the **Interfaces** block match what
-  was actually produced — later tasks are written against them, and a rename here
-  silently breaks a task nobody is looking at yet.
-
-Read the findings. Fix them in a follow-up commit, or record why not. **Do not
-start the next task with an unaddressed correctness finding.**
 
 ---
 

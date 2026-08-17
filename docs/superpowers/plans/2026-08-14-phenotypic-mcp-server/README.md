@@ -64,26 +64,37 @@ Every task's requirements implicitly include this section.
 
 ## Review protocol
 
-**Every task in Phase 1 ends with a reviewer, not with a commit.** Each of the 18
-tasks carries an explicit final step dispatching
-`execute-plan-orchestration:implementation-test-reviewer` against that task's diff.
+**Reviewers run at cluster boundaries — six of them, one per cluster.** An
+earlier version of this plan put a reviewer after each of the 18 tasks; the plan
+review argued that was more machinery than the problem needs, and the user agreed.
 
-This is not ceremony, and it is not the same as the phase-level review the
-project's standing instructions already require. Phase 1 is a refactor of code two
-user-facing surfaces depend on, executed task-by-task by agents that each see only
-their own task. Three failure modes follow from that shape, and only a per-task
-reviewer catches them while they are still cheap:
+The argument that won: nine of these tasks are `git mv` plus a re-export shim,
+collectively guarded by one import-purity gate and an unchanged GUI suite. For
+those, **the shim-identity test IS the review** — a reviewer reading that diff
+would be checking by eye what a passing `assert shim is canonical` already proves
+mechanically.
 
-| Failure | Why a per-phase review is too late |
+What a cluster reviewer must still check, unchanged from before:
+
+| Check | Why it cannot be skipped |
 |---|---|
-| **A false green** | The plan's "prove it can fail" steps are *claims by the implementer*. An unverified mutation check is exactly the tautological test §6.5 warns about, and it will be trusted by every later task. |
-| **Interface drift** | Later tasks are written against earlier tasks' **Interfaces** blocks. A function renamed in Task 3 breaks Task 11, whose implementer is not looking and will not find out until the phase gate. |
-| **Scope leak** | Nine of these tasks are moves. A move that quietly takes a behaviour change with it is invisible in a green suite and expensive to bisect later. |
+| **No false greens** | Every "prove it can fail" step is a *claim by the implementer* until someone verifies it. The plan review found two tests that pass without proving anything (I1a, I1b) — both written by the plan's author. |
+| **No scope leak** | A move that quietly takes a behaviour change with it is invisible in a green suite and expensive to bisect later. |
+| **Interfaces hold** | Later clusters are written against earlier `Interfaces` blocks. A rename breaks work nobody is watching yet. |
 
-The reviewer reads the diff, not the plan's promises. Findings are fixed in a
-follow-up commit or recorded with a reason; **a task with an unaddressed
-correctness finding does not hand off to the next one.** The phase exit gates
-remain in force on top of this.
+`execute-plan-orchestration:implementation-test-reviewer`, Opus, high effort,
+scoped to the cluster's combined diff. The cluster's own tests plus
+`uv run ruff check <changed paths>` and `uv run mypy src/phenotypic` run *before*
+the reviewer is dispatched, not after.
+
+**A cluster does not hand off with an unaddressed correctness finding.** Findings
+are fixed in a follow-up commit or recorded with a reason. Any finding that
+conflicts with a *design* decision stops the line and returns to the user.
+
+**End of each phase — simplify.** After 1a (C1–C3) and again after 1b (C4–C6),
+`code-simplifier:code-simplifier` over the phase's combined diff: dedupe, reduce,
+clarify — quality only, no behaviour change. Apply, then re-run the affected suites
+plus `tests/unit/gui` and `tests/integration/gui` to prove nothing observable moved.
 
 ---
 

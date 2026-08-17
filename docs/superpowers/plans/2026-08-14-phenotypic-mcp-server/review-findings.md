@@ -55,7 +55,7 @@ package `__init__.py:19` eagerly imports `._app` → dash, and the purity gate f
 **FIX:** swap — Task 8 runs before Task 7. Recorded in `execution.md`; C2's brief
 must state it.
 
-### ☐ B3 — Task 16's tests target Click; the tune CLI is argparse, and `--slurm` is taken
+### ☑ B3 — Task 16's tests target Click; the tune CLI is argparse, and `--slurm` is taken
 
 `tune/__main__.py:38` is `_build_parser() -> argparse.ArgumentParser`, exposing
 `main(argv)` and `_run_command(args)`. There is no `cli` object, so every
@@ -69,11 +69,19 @@ and would never enable SLURM mode at all.
 Also `parse_slurm_args` raises `click.BadParameter`, which under argparse surfaces
 as an unhandled traceback rather than a usage error.
 
-**◐ DECISION NEEDED:** either keep `--slurm` boolean and add
-`--slurm-arg KEY=VALUE` (`action="append"`), or make `--slurm` `action="append"`
-with "present implies submit" and drop the boolean. Then rewrite the tests against
-`main([...])` / `_build_parser().parse_args(...)`, and wrap `BadParameter` into
-`parser.error(...)`.
+**DECIDED (user, 2026-08-17): make `--slurm` repeatable, `action="append"`, with
+presence implying fleet submission; drop the boolean.** This matches
+`python -m phenotypic`'s spelling exactly, which is what §5.2.1 wanted and what
+retires the expressibility check most cleanly — one profile then serves both
+engines.
+
+Migration consequence the implementer must handle: a bare `--slurm` (no value)
+must keep working and keep meaning "submit", since that is the shipped behaviour
+and scripts rely on it. Use `nargs="?"` with `const=None`, or accept an empty
+append entry, and treat *any* occurrence as `slurm=True`. Rewrite the tests
+against `main([...])` / `_build_parser().parse_args(...)` — there is no Click
+`cli` object. Wrap `parse_slurm_args`' `click.BadParameter` into
+`parser.error(...)` so it surfaces as usage, not a traceback.
 
 ### ☐ B4 — Task 16's two tests demand opposite implementations
 
@@ -131,7 +139,7 @@ missed:
 the `_run.py` contention. **Two chains of three, not eight parallel tasks.** The P3
 cluster must not be staffed as parallel work. Recorded in `execution.md`.
 
-### ◐ B7 — Task 18 cannot execute step 4 as specified
+### ☑ B7 — Task 18 cannot execute step 4 as specified
 
 `_finalize_generalization` (`_run.py:907-914`) takes
 `(winner, spec, output_dir, split: Split, images: list, images_by_name: dict)` —
@@ -142,9 +150,17 @@ marker at `:585-591`) — minutes of I/O and a materially different task — or 
 step 4, in which case spec §7 P7's "writes the four artifact groups in the existing
 order" is wrong and so is the plan.
 
-**DECISION NEEDED:** re-load images, or drop step 4 and correct the spec.
-Either way add `assert len(order) == 4` — `order.index(...) == 2` passes even if
-step 4 is silently dropped.
+**DECIDED (user, 2026-08-17): re-load the calibration images.** The run marker
+(`_run.py:585-591`) records what is needed to re-scan, and the step already opens
+the study, so the marginal cost is I/O rather than a new mechanism. This keeps
+spec §7 P7's "four artifact groups" promise true — and `generalization.json` is
+what tells you an arm won by overfitting the calibration split, which §8.3's
+`gap` verdict depends on. Dropping it would make `gap` permanently null for every
+distributed study.
+
+Required regardless: add `assert len(order) == 4`. `order.index(...) == 2` passes
+even if step 4 is silently dropped, so without it the test cannot detect the very
+outcome this decision rejects.
 
 ### ☐ B8 — Task 9's `test_generator_and_builder_agree` cannot pass
 
@@ -195,7 +211,7 @@ combinations **before any run artifact is written**" — called at `:563`. Add a
 | **I5** | Task 18's test hand-joins paths the Global Constraints forbid: `out / "trials.parquet"` (`trials_parquet_path` exists at `_io_constants.py:1186`) and `/ "finalize_in_progress"` (needs a new helper). |
 | **I6** | Task 1's gate is narrower than its claim: `FORBIDDEN` misses `dash_cytoscape`, `dash_ag_grid`, `plotly`; and `pkgutil.iter_modules` is non-recursive, so a future `_services/<subpkg>/` is unguarded. Two one-line fixes on the phase's single load-bearing invariant. |
 | **I7** | Task 11's first-sentence rule is untested where it is hard: a naive `desc.split(".")[0]` passes every given assertion and mangles descriptions containing decimals. Add a leading-decimal case or specify a splitter requiring whitespace/EOS. |
-| **◐ I8** | **18 per-task reviewers is more machinery than the problem needs.** Nine tasks are `git mv` + shim, collectively guarded by one purity gate and an unchanged GUI suite — for those the shim-identity test *is* the review. Reviewer proposes five reviewers at cluster boundaries (after 3–5, 6–9, 10–12, 14, 18) with no identifiable loss of coverage. **This contradicts the user's explicit instruction ("independent reviewer after each feature addition") and is therefore the user's call, not the reviewer's.** |
+| **☑ I8** | **DECIDED (user, 2026-08-17): cut to reviewers at cluster boundaries.** Original finding: **18 per-task reviewers is more machinery than the problem needs.** Nine tasks are `git mv` + shim, collectively guarded by one purity gate and an unchanged GUI suite — for those the shim-identity test *is* the review. Reviewer proposes five reviewers at cluster boundaries (after 3–5, 6–9, 10–12, 14, 18) with no identifiable loss of coverage. **This contradicts the user's explicit instruction ("independent reviewer after each feature addition") and is therefore the user's call, not the reviewer's.** |
 
 ---
 
