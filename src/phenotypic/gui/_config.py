@@ -73,6 +73,9 @@ from phenotypic.sdk_ import (
     RUN_LOG_DIRNAME,
     STDOUT_LOG,
 )
+from phenotypic.sdk_._io_constants import (  # re-exported for back-compat
+    IMAGE_EXTS,
+)
 
 __all__ = [
     # Launcher defaults
@@ -423,23 +426,11 @@ BROWSE_CACHE_TMP_SUBPATH: tuple[str, str] = ("phenotypic", "browse")
 
 # ---------------------------------------------------------------------------
 # Image file extensions (shared by the directory browser, classifier, and the
-# Browse tab). Lifted here so neither browse nor the classifier imports the
-# builder package. ``builder/_directory_browser`` re-exports IMAGE_EXTS.
+# Browse tab). ``IMAGE_EXTS`` itself is canonical in
+# :mod:`phenotypic.sdk_._io_constants` and imported at the top of this module,
+# so the Dash-free ``_services`` tier can reach it without importing a GUI
+# package. ``builder/_directory_browser`` re-exports it from here.
 # ---------------------------------------------------------------------------
-IMAGE_EXTS: frozenset[str] = frozenset(
-    {
-        ".png",
-        ".tif",
-        ".tiff",
-        ".jpg",
-        ".jpeg",
-        ".cr2",
-        ".cr3",
-        ".nef",
-        ".arw",
-        ".dng",
-    }
-)
 
 #: Camera-RAW subset of :data:`IMAGE_EXTS`. These require rawpy (absent on
 #: Windows) and decode through ``phenotypic.Image.imread`` — mirroring the

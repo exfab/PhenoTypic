@@ -31,12 +31,12 @@ from phenotypic.gui._config import (
     DELIVERABLES_DIRNAME,
     RESULTS_DIRNAME,
 )
-from phenotypic.gui.builder._directory_browser import IMAGE_EXTS
 from phenotypic.sdk_ import (
     BundleLayout,
     PIPELINE_CONFIG_SUFFIXES,
     matches_any_suffix,
 )
+from phenotypic.sdk_._io_constants import IMAGE_EXTS
 
 __all__ = ["Capabilities", "classify", "invalidate_cache"]
 

@@ -118,6 +118,32 @@ TUNING_CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
 )
 
 
+# ---------------------------------------------------------------------------
+# Image file extensions
+# ---------------------------------------------------------------------------
+
+#: Image file extensions shared by the directory browser, the shell
+#: classifier, and the Browse tab. Defined here rather than under
+#: :mod:`phenotypic.gui` so that Dash-free consumers — the ``_services`` tier
+#: and the classifier it reaches through — never import a GUI package to get
+#: it. ``gui/_config`` and ``gui/builder/_directory_browser`` re-export this
+#: same object for back-compat.
+IMAGE_EXTS: Final[frozenset[str]] = frozenset(
+    {
+        ".png",
+        ".tif",
+        ".tiff",
+        ".jpg",
+        ".jpeg",
+        ".cr2",
+        ".cr3",
+        ".nef",
+        ".arw",
+        ".dng",
+    }
+)
+
+
 def has_config_suffix(path: str | Path, suffixes: Iterable[str]) -> bool:
     """Return whether ``path`` ends with any configured suffix.
 
