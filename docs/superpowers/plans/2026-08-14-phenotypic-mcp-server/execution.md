@@ -97,8 +97,8 @@ can fail" step was actually run with the failure observed.
 
 | Cluster | Agent | Status | Reviewer verdict |
 |---|---|---|---|
-| plan review | `plan-reviewer` | dispatched | — |
-| C1 | — | blocked on plan review | — |
+| plan review | `plan-reviewer` | **ABANDONED — unresponsive.** Dispatched 2026-08-14; two status pings accepted into its inbox, no reply, no completion notification across ~2 days. Its seven-area brief was **folded into C1's post-cluster reviewer** rather than dropped. | — |
+| C1 | `C1-promotion` (Opus) | dispatched 2026-08-16 | — |
 | C2 | — | pending | — |
 | C3 | — | pending | — |
 | C4 | — | pending | — |
