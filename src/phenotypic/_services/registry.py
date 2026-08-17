@@ -1,9 +1,11 @@
-"""Operation discovery and metadata registry for PhenoTypic GUI.
+"""Operation discovery and metadata registry.
 
 This module provides OperationRegistry for discovering available operations
 and extracting parameter metadata including type hints for nested operations/pipelines.
 
-No Panel/GUI dependencies - uses only stdlib and existing phenotypic dependencies.
+No GUI dependencies — uses only stdlib and existing phenotypic dependencies, so
+the Dash GUI and the MCP server can share one registry. The GUI reaches it
+through the :mod:`phenotypic.gui._operation_registry` back-compat shim.
 """
 
 from __future__ import annotations
