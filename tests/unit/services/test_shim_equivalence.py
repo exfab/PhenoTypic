@@ -36,6 +36,26 @@ def test_registry_shim_reexports_every_public_name():
         assert getattr(shim, name) is getattr(_services.registry, name), name
 
 
+def test_sandbox_root_is_one_class():
+    from phenotypic._services.sandbox import SandboxRoot as canonical
+    from phenotypic.gui.shell._sandbox import SandboxRoot as shim
+
+    assert shim is canonical
+
+
+def test_sandbox_shim_reexports_the_privates_two_modules_import():
+    """``_setup_authoring.py:22`` and ``_source_context.py:24`` import these."""
+    from phenotypic import _services
+    from phenotypic.gui.shell import _sandbox as shim
+
+    for name in (
+        "SandboxRoot",
+        "_is_safe_relative_path",
+        "_v1_selection_matches_sandbox",
+    ):
+        assert getattr(shim, name) is getattr(_services.sandbox, name), name
+
+
 def test_discovery_stays_lazy():
     """Importing the module must not walk eight packages.
 
