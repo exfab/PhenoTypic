@@ -1010,19 +1010,26 @@ def test_build_array_script_spec_writes_nothing(tmp_path, array_script_kwargs):
     assert spec.render(), "the spec must still render a script"
 
 def test_generator_and_builder_agree(tmp_path, array_script_kwargs):
-    """The real generator must consume the extracted builder, not duplicate it."""
+    """The real generator must consume the extracted builder, not duplicate it.
+
+    Both calls use the SAME output_dir. The spec embeds output_dir-derived
+    absolute paths — log_dir = logs_dir(output_dir)/"slurm"/dataset.name and
+    log_path = log_dir/f"{dataset.name}_%A_%a.log" (_cli_slurm_array_scripts.py:199-201)
+    — so rendering from two different directories produces two different
+    "#SBATCH --output" lines and the comparison can never pass. Take the
+    builder's render FIRST, while the directory is still untouched, then let
+    the generator write into it.
+    """
     from phenotypic._cli._cli_slurm_array_scripts import (
         build_array_script_spec,
         generate_array_job_script,
     )
 
-    out_a = tmp_path / "a"
-    out_a.mkdir()
-    written = Path(generate_array_job_script(output_dir=out_a, **array_script_kwargs))
+    output_dir = tmp_path / "run"
+    output_dir.mkdir()
 
-    out_b = tmp_path / "b"
-    out_b.mkdir()
-    previewed = build_array_script_spec(output_dir=out_b, **array_script_kwargs).render()
+    previewed = build_array_script_spec(output_dir=output_dir, **array_script_kwargs).render()
+    written = Path(generate_array_job_script(output_dir=output_dir, **array_script_kwargs))
 
     assert written.read_text() == previewed
 ```
@@ -1044,11 +1051,26 @@ Split `generate_array_job_script` in two: everything that computes the
 and now reads:
 
 ```python
-def generate_array_job_script(*, output_dir, **kwargs):
-    spec = build_array_script_spec(output_dir=output_dir, **kwargs)
+# KEEP the existing positional signature. Do NOT convert it to keyword-only:
+# it is called positionally from _cli_slurm_array_scripts.py:484 and from ten
+# places across tests/unit/cli/{test_cli_slurm_array,test_slurm_process_only_scripts,
+# test_cli_v2}.py. Only the NEW builder needs to be keyword-friendly.
+def generate_array_job_script(
+    dataset, array_indices, config, output_dir,
+    chunk_id=0, checkpoint_interval=None, is_last_chunk=False,
+):
+    spec = build_array_script_spec(
+        dataset, array_indices, config, output_dir,
+        chunk_id=chunk_id, checkpoint_interval=checkpoint_interval,
+        is_last_chunk=is_last_chunk,
+    )
     script_dir = ...  # unchanged mkdir / log_dir / write_slurm_array_script
     return write_slurm_array_script(script_dir / name, spec.render())
 ```
+
+**Read the real signature before writing this** — it is at
+`_cli_slurm_array_scripts.py:116-124` and this sketch reproduces it from a review
+finding, not from the file.
 
 - [ ] **Step 4: Run the tests**
 

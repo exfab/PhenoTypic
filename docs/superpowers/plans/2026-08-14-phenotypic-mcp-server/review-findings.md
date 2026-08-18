@@ -162,7 +162,7 @@ Required regardless: add `assert len(order) == 4`. `order.index(...) == 2` passe
 even if step 4 is silently dropped, so without it the test cannot detect the very
 outcome this decision rejects.
 
-### ☐ B8 — Task 9's `test_generator_and_builder_agree` cannot pass
+### ☑ B8 — Task 9's `test_generator_and_builder_agree` cannot pass
 
 The spec embeds `output_dir`-derived absolute paths:
 `log_dir = logs_dir(output_dir)/"slurm"/dataset.name` and
@@ -171,7 +171,7 @@ The test renders from `out_a` and `out_b`, so the `#SBATCH --output` lines diffe
 and the equality always fails. **Fix:** use one `output_dir` for both and take the
 tree digest before the builder call — which the sibling test already does correctly.
 
-Second defect: Step 3's sketch is `def generate_array_job_script(*, output_dir, **kwargs)`.
+**FIXED 2026-08-18:** the test now renders the preview first, from the same `output_dir` the generator then writes into, so the embedded log paths match. Second defect: Step 3's sketch is `def generate_array_job_script(*, output_dir, **kwargs)`.
 The real signature is
 `generate_array_job_script(dataset, array_indices, config, output_dir, chunk_id=0, checkpoint_interval=None, is_last_chunk=False)`
 (`:116-124`), called **positionally** from `_cli_slurm_array_scripts.py:484`,
