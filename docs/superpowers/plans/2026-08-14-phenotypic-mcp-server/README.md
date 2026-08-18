@@ -52,6 +52,27 @@ Every task's requirements implicitly include this section.
   reintroducing the bug it guards or by a one-line mutation of the code under
   test. A check that cannot run must **fail**, not skip. This is a project-wide
   rule (§6.5) and it binds on every task here, not only where restated.
+- **Assert the structural fact, not a proxy for it.** Earned three times over in
+  Phase 1, each time by a test that passed while proving nothing:
+  - **No substring search over source text.** `assert "phenotypic.gui" not in
+    inspect.getsource(m)` fails on a module that merely *mentions* the GUI in a
+    docstring and passes on one importing it under an alias. Parse the imports
+    (`ast`) or probe at runtime in a subprocess.
+  - **No `is` check where the value may be interned.** CPython interns short
+    string literals, so `assert a.X is b.X` passes even when `b` contains a
+    genuine parallel `X = "presets"` — verified: `'presets' is 'presets'` → True.
+    The same hole applies to `int` in `[-5, 256]`, `bool`, and `None`. Existing
+    shim-identity tests are sound only because their symbols are functions and
+    classes; the idiom is one `str` constant away from worthless. For a value
+    that may be interned, assert the *structure*: the name arrives by an
+    `ImportFrom` of the canonical module and is bound by no module-level
+    `Assign`/`AnnAssign`/`def`/`class`.
+- **Check mypy by diffing, not by counting.** The absolute error count is not
+  stable on this tree — a byte-identical `src/` has produced both
+  `421 errors in 125 files` and `420 errors in 124 files` across runs (mypy's
+  incremental cache). Compare stashed-vs-current output, ignoring line order and
+  internal typevar ids. A count comparison will both miss real regressions and
+  raise false ones.
 - **Vendored reference sources under `docs/superpowers/specs/*/refs/` are
   read-only.** Never lint, format, or fix them.
 - **Cost convention:** every tuning score is a cost in `[0, 1]`, lower is better,
