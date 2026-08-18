@@ -114,26 +114,26 @@ pipelines on two different images.
 
 ### Surviving interruptions
 
-`--resume` skips completed work. Staged GPU pipelines infer the earliest required
-stage from their HDF, sidecar, and Stage-3 marker, including images with recorded
-intermediate-stage failures. If everything is already done, the CLI says so and exits:
+Re-running the same compatible command skips completed work automatically.
+Staged GPU pipelines infer the earliest required stage from their HDF, sidecar,
+and Stage-3 marker. If everything is already done, the CLI says so and exits:
 
 ```bash
 python -m phenotypic --pipeline pipe.json --input ./plates --output ./out \
-    --image-type Image --resume
+    --image-type Image
 # ✓ All images already processed!
 ```
 
-Four flags control what happens to prior state, and the CLI enforces the
-combinations:
+Three flags control exceptional handling of prior state:
 
-- `--resume` — skip completed images. Staged GPU failures resume automatically.
-- `--retry-failures` — also re-process recorded CPU/legacy failures. **Requires `--resume`.**
-- `--restart` — clear the state file and start over. **Mutually exclusive with `--resume`.**
-- `--overwrite` — delete the output directory contents first. **Mutually exclusive with `--resume`.**
+- `--retry-failures` — also re-process exact terminal failures recorded for the
+  current computation.
+- `--restart` — clear current machine state and start a new lifecycle.
+- `--overwrite` — delete the output directory contents first.
 
-For CPU pipelines, use `--resume --retry-failures` after fixing whatever broke — a corrupt input
-file, an out-of-memory detector — to reprocess only the images that failed.
+Use `--retry-failures` after fixing a terminal scientific-processing failure to
+reprocess only the matching failed computations. Infrastructure failures, such
+as OOM or timeout, remain pending and are selected by an ordinary repeat call.
 
 ## `measure` — new numbers, same segmentation
 
@@ -149,17 +149,9 @@ There is no `--input`: the images are discovered from the output root. Passing
 one is an error.
 
 Because `measure` re-reads a finished segmentation rather than producing one, it
-refuses any flag that implies a fresh detection pass or that mutates run state.
-Each of these is rejected with a pointed message:
-
-```console
-$ python -m phenotypic --mode measure --pipeline pipe.json --output ./out --resume
-Error: --mode measure cannot be combined with --resume; --mode measure is a
-one-shot re-measurement run that does not touch processing state.
-```
-
-The same applies to `--restart`, `--retry-failures`, `--overwrite`, `--sample`,
-and `--dry-run`. `measure` is all-or-nothing over every HDF it finds.
+refuses flags that imply a fresh detection pass or mutate run state. This applies
+to `--restart`, `--retry-failures`, `--overwrite`, `--sample`, and `--dry-run`.
+`measure` is all-or-nothing over every HDF it finds.
 
 ```{note}
 Swap the *measurers* freely, but keep the detector consistent with the one that
@@ -177,6 +169,16 @@ rebuilds the progress manifest, and regenerates the progress dashboard.
 ```bash
 uv run python -m phenotypic --mode recompile --output ./out
 ```
+
+Before aggregation, recompile preflights and automatically migrates
+bundle-owned authoritative metadata to the flat `Metadata_<Label>` namespace.
+The same ordering applies locally and on SLURM. A blocked or failed migration
+aborts before aggregate outputs are published; a canonical bundle is an
+idempotent no-op. The migration receipt printed by the CLI can be used for
+rollback. HDF inputs are migrated copy-on-write, and an external file passed via
+`--metadata` is copied byte-for-byte to `deliverables/metadata.csv` before work,
+then normalized in memory. Neither the external file nor that provenance
+snapshot is rewritten by migration.
 
 Reach for it when the *numbers* are right but the *presentation* is not:
 
@@ -335,7 +337,7 @@ before cancelling every active job in its ledger.
 
 - `--overlay-alpha` (default `0.3`) — opacity of the label overlay in the
   saved overlay PNGs.
-- `--no-dataset-column` — drop the `MetadataExperiment_Dataset` column, which is
+- `--no-dataset-column` — drop the `Metadata_Dataset` column, which is
   included by default and is what makes multi-dataset analysis possible.
 - `--no-qc` — skip the QC compute step. QC otherwise runs whenever the pipeline
   has a non-empty `qc` section, and re-running it resets GUI review progress.
@@ -355,8 +357,8 @@ python -m phenotypic -p pipe.json -i ./plates -o ./trial --sample 5 --random-see
 python -m phenotypic -p pipe.json -i ./plates -o ./out \
     --slurm slurm_partition=compute --slurm mem_gb=16 --slurm time=240
 
-# 4. Something died overnight — resume, retrying the failures.
-python -m phenotypic -p pipe.json -i ./plates -o ./out --resume --retry-failures
+# 4. Retry exact terminal scientific failures after fixing their cause.
+python -m phenotypic -p pipe.json -i ./plates -o ./out --retry-failures
 
 # 5. Add a texture measurer. No re-detection.
 python -m phenotypic -m measure -p pipe_with_texture.json -o ./out

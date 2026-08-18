@@ -31,7 +31,7 @@ from tests.e2e.gui.conftest import (
     bind_results_output,
     publish_coherent_terminal_evidence,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 _ANALYSIS_RENDERER_OUTPUT = (
@@ -71,8 +71,8 @@ def _seed_analysis_output(sandbox: Path) -> Path:
             for rep in range(3):
                 n = 100 + 800 / (1 + (1000 - 100) / 100 * math.exp(-0.15 * t))
                 rows.append({
-                    "MetadataExperiment_Dataset": "ds1",
-                    str(METADATA.IMAGE_NAME): f"{strain}_t{t}",
+                    "Metadata_Dataset": "ds1",
+                    str(IMAGE.IMAGE_NAME): f"{strain}_t{t}",
                     "Metadata_Strain": strain,
                     "Metadata_Time": float(t),
                     "Object_Label": rep,

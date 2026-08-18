@@ -9,12 +9,12 @@ import pandas as pd
 from joblib import Parallel, delayed
 from pydantic import PrivateAttr, field_validator
 
-from phenotypic.schema import CULTURE_METADATA
+from phenotypic.schema import CULTURE
 from phenotypic.sdk_ import ColumnRef
 
-from ._set_analyzer import SetAnalyzer
+from ._set_analyzer import SetAnalyzer, normalize_measurement_metadata_columns
 
-_TIME = str(CULTURE_METADATA.TIME)
+_TIME = str(CULTURE.TIME)
 
 
 class EdgeCorrection(SetAnalyzer, ABC):
@@ -235,6 +235,8 @@ class EdgeCorrection(SetAnalyzer, ABC):
         the kwargs from :meth:`_group_config`.
         """
         from phenotypic.schema import GRID
+
+        data = normalize_measurement_metadata_columns(data)
 
         if data is None or len(data) == 0:
             raise ValueError("Input data cannot be empty")

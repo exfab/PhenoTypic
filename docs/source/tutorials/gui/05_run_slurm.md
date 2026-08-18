@@ -78,7 +78,7 @@ and use Refresh rather than launching the same output again. Keep
 `.phenotypic/progress/` and staged-controller ledgers intact when redeploying
 the hub.
 
-For deeper SLURM operational detail (chunk sizing, recompile-on-resume,
+For deeper SLURM operational detail (chunk sizing, incremental recompile,
 per-chunk cgroups), see [SLURM Pipelines](../../how_to/pages/slurm_pipelines.md).
 
 Next: [View Results](06_view_results.md).

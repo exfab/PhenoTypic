@@ -156,6 +156,68 @@ def test_overlapping_roles_rejected() -> None:
         )
 
 
+def test_plot_accepts_bare_and_flat_metadata_without_mutating_subject() -> None:
+    frame = pd.DataFrame(
+        {
+            "Strain": ["A", "A", "B", "B"],
+            "Metadata_Media": ["SC", "SC", "SC", "SC"],
+            "BioReplicate": ["r1", "r1", "r2", "r2"],
+            "Metadata_Time": [0, 1, 0, 1],
+            "Size_Area": [10.0, 11.0, 20.0, 21.0],
+            "custom_measurement": [1.0, 2.0, 3.0, 4.0],
+        }
+    )
+    original = frame.copy(deep=True)
+    plot = PlotMeasTimeSeries(
+        page_by="Strain",
+        environment_by="Metadata_Media",
+        replicate_by="BioReplicate",
+        time="Metadata_Time",
+        measurements="Size_Area",
+    )
+
+    output = plot.inspect(frame)
+
+    assert plot.page_by == ["Metadata_Strain"]
+    assert plot.environment_by == ["Metadata_Media"]
+    assert plot.replicate_by == ["Metadata_BioReplicate"]
+    assert plot.time == "Metadata_Time"
+    assert [page.label for page in output.pages] == ["A", "B"]
+    pd.testing.assert_frame_equal(frame, original)
+
+
+def test_plot_rejects_conflicting_current_and_bare_metadata_subject_columns() -> None:
+    frame = pd.DataFrame(
+        {
+            "Strain": ["A", "A"],
+            "Metadata_Strain": ["B", "B"],
+            "environment": ["SC", "SC"],
+            "replicate": ["r1", "r1"],
+            "time": [0, 1],
+            "Size_Area": [10.0, 11.0],
+        }
+    )
+    original = frame.copy(deep=True)
+
+    with pytest.raises(ValueError, match="conflicting non-null values"):
+        _plot(measurements=["Size_Area"]).inspect(frame)
+
+    pd.testing.assert_frame_equal(frame, original)
+
+
+@pytest.mark.parametrize("field", ["page_by", "environment_by", "replicate_by"])
+def test_plot_column_list_prevalidators_reject_invalid_input(field: str) -> None:
+    kwargs: dict[str, object] = {
+        "page_by": ["strain"],
+        "environment_by": ["environment"],
+        "replicate_by": ["replicate"],
+        "time": "time",
+    }
+    kwargs[field] = 123
+    with pytest.raises(ValidationError, match="column references"):
+        PlotMeasTimeSeries(**kwargs)
+
+
 def _radius_frame() -> pd.DataFrame:
     rows: list[dict[str, object]] = []
     for strain_index, strain in enumerate(("BY4741", "RM11-1a")):
@@ -165,11 +227,11 @@ def _radius_frame() -> pd.DataFrame:
                     for time in (0, 12, 24):
                         rows.append(
                             {
-                                "MetadataGenetic_Strain": strain,
-                                "MetadataCondition_Media": medium,
-                                "MetadataCondition_Treatment": treatment,
-                                "MetadataSample_BioReplicate": replicate,
-                                "MetadataCulture_Time": time,
+                                "Metadata_Strain": strain,
+                                "Metadata_Media": medium,
+                                "Metadata_Treatment": treatment,
+                                "Metadata_BioReplicate": replicate,
+                                "Metadata_Time": time,
                                 "Shape_MeanRadius": float(
                                     10 * strain_index
                                     + 3 * medium_index
@@ -189,17 +251,17 @@ def test_colony_radius_pages_group_conditions_and_preserve_replicates(
     plot = PlotColonyMetricOverTime(
         on="Shape_MeanRadius",
         groupby=[
-            "MetadataCondition_Media",
-            "MetadataCondition_Treatment",
+            "Metadata_Media",
+            "Metadata_Treatment",
         ]
     )
     frame = _radius_frame()
     duplicate = frame[
-        (frame["MetadataGenetic_Strain"] == "BY4741")
-        & (frame["MetadataCondition_Media"] == "SC")
-        & (frame["MetadataCondition_Treatment"] == "control")
-        & (frame["MetadataSample_BioReplicate"] == "bio-1")
-        & (frame["MetadataCulture_Time"] == 12)
+        (frame["Metadata_Strain"] == "BY4741")
+        & (frame["Metadata_Media"] == "SC")
+        & (frame["Metadata_Treatment"] == "control")
+        & (frame["Metadata_BioReplicate"] == "bio-1")
+        & (frame["Metadata_Time"] == 12)
     ].copy()
     duplicate["Shape_MeanRadius"] = 99.0
     frame = pd.concat([frame, duplicate], ignore_index=True)
@@ -211,8 +273,8 @@ def test_colony_radius_pages_group_conditions_and_preserve_replicates(
         figure = page.figure
         assert len(figure.data) == 8  # four conditions, two replicates each
         assert {trace.name for trace in figure.data} == {
-            "MetadataSample_BioReplicate=bio-1",
-            "MetadataSample_BioReplicate=bio-2",
+            "Metadata_BioReplicate=bio-1",
+            "Metadata_BioReplicate=bio-2",
         }
         assert len(figure.layout.annotations) == 4
 
@@ -269,10 +331,10 @@ def test_colony_metric_defaults_use_public_schema_columns() -> None:
     schema = type(plot).model_json_schema()
 
     assert plot.on == "Intensity_MeanIntensity"
-    assert plot.strain_label == "MetadataGenetic_Strain"
-    assert plot.groupby == ["MetadataCondition_Media"]
-    assert plot.replicate_label == "MetadataSample_BioReplicate"
-    assert plot.time == "MetadataCulture_Time"
+    assert plot.strain_label == "Metadata_Strain"
+    assert plot.groupby == ["Metadata_Media"]
+    assert plot.replicate_label == "Metadata_BioReplicate"
+    assert plot.time == "Metadata_Time"
     assert "on" in schema["required"]
     assert "measurements" not in schema["properties"]
     assert set(schema["properties"]) == {

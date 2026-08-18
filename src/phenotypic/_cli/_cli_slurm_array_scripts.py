@@ -11,9 +11,14 @@ from __future__ import annotations
 import shlex
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+from uuid import uuid4
 
+from ._cli_failure_tracker import file_sha256, work_id_for_image
 from ._cli_types import Dataset, ExecutionConfig
-from ._cli_update_state import PROCESSING_GENERATION_ENV_VAR
+from ._cli_update_state import (
+    PROCESSING_GENERATION_ENV_VAR,
+    SLURM_GENERATION_ENV_VAR,
+)
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 from phenotypic.sdk_ import event_log_path, logs_dir, slurm_scripts_dir
 from phenotypic.sdk_.slurm import (
@@ -223,6 +228,16 @@ def generate_array_job_script(
         config.image_type,
         "--mode",
         "full",
+        "--input-root",
+        shlex.quote(str(config.input_path.absolute())),
+        "--expected-work-id",
+        '"${CURRENT_WORK_ID}"',
+        "--expected-input-sha256",
+        '"${CURRENT_INPUT_SHA256}"',
+        "--expected-pipeline-sha256",
+        '"${EXPECTED_PIPELINE_SHA256}"',
+        "--attempt-id",
+        '"${CURRENT_ATTEMPT_ID}"',
     ]
 
     # Omit when unset so the worker falls back to the pipeline's preset.
@@ -261,8 +276,6 @@ def generate_array_job_script(
             [
                 "--layer",
                 config.process_only_layer,
-                "--input-root",
-                shlex.quote(str(config.input_path.absolute())),
             ]
         )
     elif config.measure_only:
@@ -325,13 +338,47 @@ else
     {cmd}
 fi"""
 
+    identity_assignment = (
+        'CURRENT_WORK_ID="${EXPECTED_WORK_IDS[$SLURM_ARRAY_TASK_ID]}"\n'
+        'CURRENT_INPUT_SHA256="${EXPECTED_INPUT_SHA256S[$SLURM_ARRAY_TASK_ID]}"\n'
+        'CURRENT_ATTEMPT_ID="${ATTEMPT_IDS[$SLURM_ARRAY_TASK_ID]}"'
+    )
+    dispatch_block = f"{identity_assignment}\n\n{dispatch_block}"
+
     script_path = script_dir / script_name
     prelude = SLURM_THREAD_PIN_BASH
+    identity_rows: list[tuple[str, str, str]] = []
+    for entry in entries:
+        if entry in {_CHECKPOINT_SENTINEL, _MANIFEST_SENTINEL}:
+            identity_rows.append(("", "", ""))
+            continue
+        image_path = Path(entry)
+        work_id, _ = work_id_for_image(config, dataset.name, image_path)
+        identity_rows.append((work_id, file_sha256(image_path), uuid4().hex))
+    prelude += "\nEXPECTED_WORK_IDS=(\n" + "\n".join(
+        f"    {shlex.quote(row[0])}" for row in identity_rows
+    ) + "\n)"
+    prelude += "\nEXPECTED_INPUT_SHA256S=(\n" + "\n".join(
+        f"    {shlex.quote(row[1])}" for row in identity_rows
+    ) + "\n)"
+    prelude += "\nATTEMPT_IDS=(\n" + "\n".join(
+        f"    {shlex.quote(row[2])}" for row in identity_rows
+    ) + "\n)"
+    prelude += (
+        "\nEXPECTED_PIPELINE_SHA256="
+        f"{shlex.quote(file_sha256(config.pipeline_json))}"
+    )
     if config.processing_generation:
         prelude += (
             "\nexport "
             f"{PROCESSING_GENERATION_ENV_VAR}="
             f"{shlex.quote(config.processing_generation)}"
+        )
+    if config.slurm_generation:
+        prelude += (
+            "\nexport "
+            f"{SLURM_GENERATION_ENV_VAR}="
+            f"{shlex.quote(config.slurm_generation)}"
         )
     write_slurm_array_script(
         script_path,
@@ -401,6 +448,12 @@ def generate_terminal_finalizer_script(
             "\nexport "
             f"{PROCESSING_GENERATION_ENV_VAR}="
             f"{shlex.quote(config.processing_generation)}"
+        )
+    if config.slurm_generation:
+        prelude += (
+            "\nexport "
+            f"{SLURM_GENERATION_ENV_VAR}="
+            f"{shlex.quote(config.slurm_generation)}"
         )
     return write_slurm_array_script(
         script_path,

@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import sys
 import time
+import os
 from pathlib import Path
 from typing import Callable, TypeVar
 from contextlib import contextmanager
@@ -167,7 +168,10 @@ def atomic_read(
 def atomic_append(
         file_path: Path,
         content: str,
-        timeout: float = 30.0
+        timeout: float = 30.0,
+        *,
+        durable: bool = False,
+        repair_incomplete_line: bool = False,
 ) -> None:
     """
     Append to file with exclusive lock.
@@ -178,7 +182,12 @@ def atomic_append(
     Args:
         file_path: Path to file
         content: Content to append (should include newline if needed)
-        timeout: Maximum seconds to wait for lock (default: 30.0)
+        timeout: Maximum seconds to wait for lock (default: 30.0).
+        durable: Flush and ``fsync`` the append before returning.
+        repair_incomplete_line: If the current file does not end in a newline,
+            insert one before ``content``. This preserves a partial record from
+            a killed writer as an ignorable line instead of joining it to the
+            next record. Requires ``durable=True``.
 
     Raises:
         FileLockTimeout: If lock cannot be acquired within timeout
@@ -188,6 +197,39 @@ def atomic_append(
     """
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(file_path, 'a', encoding='utf-8') as f:
+    if repair_incomplete_line and not durable:
+        raise ValueError("repair_incomplete_line requires durable=True")
+
+    if not durable:
+        with open(file_path, 'a', encoding='utf-8') as f:
+            with file_lock(f, timeout=timeout, shared=False):
+                f.write(content)
+        return
+
+    encoded = content.encode("utf-8")
+    with open(file_path, "a+b") as f:
         with file_lock(f, timeout=timeout, shared=False):
-            f.write(content)
+            f.seek(0, os.SEEK_END)
+            end = f.tell()
+            try:
+                if repair_incomplete_line and end:
+                    f.seek(-1, os.SEEK_END)
+                    if f.read(1) != b"\n":
+                        f.seek(0, os.SEEK_END)
+                        if f.write(b"\n") != 1:
+                            raise OSError(
+                                "short write while terminating partial line"
+                            )
+                f.seek(0, os.SEEK_END)
+                if f.write(encoded) != len(encoded):
+                    raise OSError("short write while appending durable record")
+                f.flush()
+                os.fsync(f.fileno())
+            except BaseException:
+                # A caught write/flush/fsync failure must not become visible as
+                # a terminal outcome in this still-running process. Restore
+                # only this uncommitted append while the exclusive lock is held.
+                f.seek(0)
+                f.truncate(end)
+                f.flush()
+                raise

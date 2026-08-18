@@ -5,9 +5,10 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+from pydantic import ValidationError
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.schema import METADATA
+from phenotypic.schema import GENETIC, IMAGE
 
 
 class DummyQC(QualityCheck):
@@ -34,7 +35,7 @@ class DummyQC(QualityCheck):
 def _frame_with_metrics(metrics: list[float]) -> pd.DataFrame:
     n = len(metrics)
     return pd.DataFrame({
-        str(METADATA.IMAGE_NAME): [f"img_{i // 2}.png" for i in range(n)],
+        str(IMAGE.IMAGE_NAME): [f"img_{i // 2}.png" for i in range(n)],
         "Metadata_Strain": ["WT" if i % 2 == 0 else "KO" for i in range(n)],
         "Object_Label": list(range(1, n + 1)),
         "Size_Area": np.linspace(100.0, 200.0, n),
@@ -77,7 +78,7 @@ class TestMetricToStatus:
         self, metric: float, expected_status: str, expected_flag: bool
     ):
         data = _frame_with_metrics([metric])
-        check = DummyQC(on="Size_Area", groupby=[str(METADATA.IMAGE_NAME)])
+        check = DummyQC(on="Size_Area", groupby=[str(IMAGE.IMAGE_NAME)])
         out = check.analyze(data)
 
         assert out[check.status_col()].iloc[0] == expected_status
@@ -116,7 +117,7 @@ class TestLowerIsBadDirection:
                 return out
 
         data = _frame_with_metrics([metric])
-        check = ScoreQC(on="Size_Area", groupby=[str(METADATA.IMAGE_NAME)])
+        check = ScoreQC(on="Size_Area", groupby=[str(IMAGE.IMAGE_NAME)])
         out = check.analyze(data)
 
         assert out[check.status_col()].iloc[0] == expected_status
@@ -144,7 +145,7 @@ class TestAnalyzeValidation:
 
     def test_analyze_raises_on_missing_on_column(self):
         data = _frame_with_metrics([0.0, 0.2])
-        check = DummyQC(on="Missing_On", groupby=[str(METADATA.IMAGE_NAME)])
+        check = DummyQC(on="Missing_On", groupby=[str(IMAGE.IMAGE_NAME)])
 
         with pytest.raises(KeyError):
             check.analyze(data)
@@ -156,11 +157,65 @@ class TestAnalyzeShape:
     def test_analyze_never_drops_rows(self):
         metrics = [0.0, 0.05, 0.07, 0.15, 0.30, np.nan]
         data = _frame_with_metrics(metrics)
-        check = DummyQC(on="Size_Area", groupby=[str(METADATA.IMAGE_NAME)])
+        check = DummyQC(on="Size_Area", groupby=[str(IMAGE.IMAGE_NAME)])
 
         out = check.analyze(data)
 
         assert len(out) == len(data)
+
+    def test_flat_metadata_input_is_normalized_without_mutating_caller(self):
+        """Canonical flat headers pass through without mutating the caller."""
+        flat_strain = "Metadata_Strain"
+        data = pd.DataFrame({
+            flat_strain: ["WT", "WT"],
+            "Size_Area": [10.0, 11.0],
+            "input_metric": [0.01, 0.02],
+        })
+
+        result = DummyQC(on="Size_Area", groupby=[flat_strain]).analyze(data)
+
+        assert list(data.columns) == [flat_strain, "Size_Area", "input_metric"]
+        assert str(GENETIC.STRAIN) in result.columns
+        assert result["Size_Area"].tolist() == [10.0, 11.0]
+
+
+class TestMetadataReferenceCompatibility:
+    """Metadata references normalize at configuration and filtering boundaries."""
+
+    def test_criteria_accepts_flat_metadata_key(self):
+        data = pd.DataFrame({str(GENETIC.STRAIN): ["WT", "KO"]})
+
+        filtered = DummyQC._filter_by(data, {"Metadata_Strain": "WT"})
+
+        assert filtered[str(GENETIC.STRAIN)].tolist() == ["WT"]
+
+    def test_criteria_rejects_colliding_legacy_and_flat_keys(self):
+        data = pd.DataFrame({str(GENETIC.STRAIN): ["WT"]})
+
+        with pytest.raises(ValueError, match="normalize to the same"):
+            DummyQC._filter_by(
+                data,
+                {"MetadataGenetic_Strain": "WT", str(GENETIC.STRAIN): "WT"},
+            )
+
+    @pytest.mark.parametrize("groupby", [None, 7, ["Plate", 1]])
+    def test_bad_groupby_raises_pydantic_validation_error(self, groupby):
+        with pytest.raises(ValidationError):
+            DummyQC(on="Size_Area", groupby=groupby)
+
+    def test_groupby_accepts_one_dimensional_numpy_array(self):
+        check = DummyQC(
+            on="Size_Area", groupby=np.array(["Metadata_Strain"])
+        )
+
+        assert check.groupby == [str(GENETIC.STRAIN)]
+
+    @pytest.mark.parametrize(
+        "groupby", [np.array("Metadata_Strain"), np.array([["Metadata_Strain"]])],
+    )
+    def test_nonvector_numpy_groupby_raises_pydantic_validation_error(self, groupby):
+        with pytest.raises(ValidationError, match="one-dimensional"):
+            DummyQC(on="Size_Area", groupby=groupby)
 
 
 class TestSummary:
@@ -168,7 +223,7 @@ class TestSummary:
 
     def test_summary_shape_and_columns(self):
         data = pd.DataFrame({
-            str(METADATA.IMAGE_NAME): [
+            str(IMAGE.IMAGE_NAME): [
                 "img_0.png", "img_0.png", "img_0.png", "img_0.png",
                 "img_1.png", "img_1.png", "img_1.png", "img_1.png",
             ],
@@ -182,15 +237,15 @@ class TestSummary:
         })
         check = DummyQC(
             on="Size_Area",
-            groupby=[str(METADATA.IMAGE_NAME), "Metadata_Strain"],
+            groupby=[str(IMAGE.IMAGE_NAME), "Metadata_Strain"],
         )
         check.analyze(data)
 
         summary = check.summary()
 
         assert list(summary.columns) == [
-            str(METADATA.IMAGE_NAME),
-            "Metadata_Strain",
+            str(IMAGE.IMAGE_NAME),
+            str(GENETIC.STRAIN),
             "qc_n_members",
             "qc_n_flagged",
             "qc_worst_metric",
@@ -200,21 +255,21 @@ class TestSummary:
 
     def test_summary_worst_metric_is_max_when_higher_is_bad(self):
         data = pd.DataFrame({
-            str(METADATA.IMAGE_NAME): ["g.png", "g.png", "g.png"],
+            str(IMAGE.IMAGE_NAME): ["g.png", "g.png", "g.png"],
             "Object_Label": [1, 2, 3],
             "Size_Area": [100.0] * 3,
             "input_metric": [0.02, 0.30, 0.15],
         })
-        check = DummyQC(on="Size_Area", groupby=[str(METADATA.IMAGE_NAME)])
+        check = DummyQC(on="Size_Area", groupby=[str(IMAGE.IMAGE_NAME)])
         check.analyze(data)
 
-        summary = check.summary().set_index(str(METADATA.IMAGE_NAME))
+        summary = check.summary().set_index(str(IMAGE.IMAGE_NAME))
 
         assert summary.loc["g.png", "qc_worst_metric"] == pytest.approx(0.30)
 
     def test_summary_status_is_worst_in_group(self):
         data = pd.DataFrame({
-            str(METADATA.IMAGE_NAME): [
+            str(IMAGE.IMAGE_NAME): [
                 "fail_mix.png", "fail_mix.png",
                 "warn_mix.png", "warn_mix.png",
                 "all_pass.png", "all_pass.png",
@@ -223,10 +278,10 @@ class TestSummary:
             "Size_Area": [100.0] * 6,
             "input_metric": [0.00, 0.30, 0.02, 0.07, 0.00, 0.01],
         })
-        check = DummyQC(on="Size_Area", groupby=[str(METADATA.IMAGE_NAME)])
+        check = DummyQC(on="Size_Area", groupby=[str(IMAGE.IMAGE_NAME)])
         check.analyze(data)
 
-        summary = check.summary().set_index(str(METADATA.IMAGE_NAME))
+        summary = check.summary().set_index(str(IMAGE.IMAGE_NAME))
 
         assert summary.loc["fail_mix.png", "qc_status"] == "fail"
         assert summary.loc["warn_mix.png", "qc_status"] == "warn"
@@ -238,14 +293,14 @@ class TestFlaggedKeys:
 
     def test_flagged_keys_returns_image_file_object_label_pairs(self):
         data = _frame_with_metrics([0.00, 0.20, 0.06, 0.50])
-        check = DummyQC(on="Size_Area", groupby=[str(METADATA.IMAGE_NAME)])
+        check = DummyQC(on="Size_Area", groupby=[str(IMAGE.IMAGE_NAME)])
         check.analyze(data)
 
         keys = check.flagged_keys()
 
         flagged_rows = data[data["input_metric"] >= 0.10]
         expected = list(zip(
-            flagged_rows[str(METADATA.IMAGE_NAME)].astype(str),
+            flagged_rows[str(IMAGE.IMAGE_NAME)].astype(str),
             flagged_rows["Object_Label"].astype(int),
         ))
         assert sorted(keys) == sorted(expected)
@@ -263,7 +318,7 @@ class TestFlaggedKeys:
 
     def test_flagged_keys_returns_empty_when_no_rows_flagged(self):
         data = _frame_with_metrics([0.0, 0.02, 0.04, 0.04])
-        check = DummyQC(on="Size_Area", groupby=[str(METADATA.IMAGE_NAME)])
+        check = DummyQC(on="Size_Area", groupby=[str(IMAGE.IMAGE_NAME)])
         check.analyze(data)
 
         assert check.flagged_keys() == []
@@ -274,7 +329,7 @@ class TestGroupMembers:
 
     def test_group_members_maps_keys_to_image_label_value(self):
         data = _frame_with_metrics([0.00, 0.20, 0.06, 0.50])
-        check = DummyQC(on="Size_Area", groupby=[str(METADATA.IMAGE_NAME)])
+        check = DummyQC(on="Size_Area", groupby=[str(IMAGE.IMAGE_NAME)])
         check.analyze(data)
 
         members = check.group_members()
@@ -306,7 +361,7 @@ class TestResults:
 
     def test_results_returns_latest_measurements(self):
         data = _frame_with_metrics([0.01, 0.20])
-        check = DummyQC(on="Size_Area", groupby=[str(METADATA.IMAGE_NAME)])
+        check = DummyQC(on="Size_Area", groupby=[str(IMAGE.IMAGE_NAME)])
         out = check.analyze(data)
 
         results = check.results()
@@ -322,7 +377,7 @@ class TestSetAnalyzerOverrides:
             QualityCheck._apply2group_func(pd.DataFrame())
 
     def test_show_raises_not_implemented(self):
-        check = DummyQC(on="Size_Area", groupby=[str(METADATA.IMAGE_NAME)])
+        check = DummyQC(on="Size_Area", groupby=[str(IMAGE.IMAGE_NAME)])
         with pytest.raises(NotImplementedError, match=r"inspect\(\)"):
             check.show()
 
@@ -350,7 +405,7 @@ class TestThresholdOverrides:
                 out[self.metric_col()] = group["input_metric"].astype(float)
                 return out
 
-        check = TunedQC(on="Size_Area", groupby=[str(METADATA.IMAGE_NAME)])
+        check = TunedQC(on="Size_Area", groupby=[str(IMAGE.IMAGE_NAME)])
         assert check.warn_threshold == 0.5
         assert check.fail_threshold == 0.9
 
@@ -365,7 +420,7 @@ class TestThresholdOverrides:
     def test_per_instance_override(self):
         check = DummyQC(
             on="Size_Area",
-            groupby=[str(METADATA.IMAGE_NAME)],
+            groupby=[str(IMAGE.IMAGE_NAME)],
             warn_threshold=0.5,
             fail_threshold=0.9,
         )

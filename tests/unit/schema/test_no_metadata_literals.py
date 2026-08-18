@@ -1,12 +1,12 @@
 """Grep gate: no stray ``"Metadata_<X>"`` column literals in source (Task B8).
 
-After the metadata-namespace flip, schema-backed columns are per-topic
-(``MetadataGenetic_Strain``), recognized via
-:func:`phenotypic.sdk_.is_metadata_header`. The only legal bare ``"Metadata_"``
-column literals left in ``src/phenotypic`` are a handful of deliberate shims and
-two arbitrary doctest examples. This gate fails the moment a new bare
-``"Metadata_<X>"`` literal is introduced anywhere else -- a missed conversion or
-a re-stringly-typed column.
+After the metadata-namespace flip, schema-backed columns share the canonical
+``Metadata_<Label>`` namespace and should be referenced through their owning
+enum. The only legal specific ``"Metadata_"`` column literals left in
+``src/phenotypic`` are a handful of deliberate shims and two arbitrary doctest
+examples. This gate fails the moment a new ``"Metadata_<X>"`` literal is
+introduced anywhere else, indicating a missed conversion or a re-stringly-typed
+column.
 
 The allowlist is **per-literal**, not whole-file: each allowed site may carry
 *only* its one declared literal, so adding a *different* stray ``"Metadata_<X>"``
@@ -16,6 +16,7 @@ import pathlib
 import re
 
 SRC = pathlib.Path(__file__).resolve().parents[3] / "src" / "phenotypic"
+REPO = SRC.parents[1]
 
 # A quote immediately followed by ``Metadata_<letter>`` -- i.e. a specific
 # metadata column literal (not the generic ``"Metadata_"`` prefix constant,
@@ -32,11 +33,9 @@ _LITERAL_PAT = re.compile(r"""["'](Metadata_[A-Za-z][A-Za-z0-9_]*)["']""")
 # conversion.
 _ALLOWED = {
     # generic-fallback + legacy shims (kept literals, load old data)
-    "gui/results_viewer/_output_root.py": {"Metadata_ImageName"},   # _IMAGENAME_COL legacy master shim
     "gui/results_viewer/_curation_labels.py": {"Metadata_ImageFile"},  # _LEGACY_IMAGE_FILE curation shim
     "gui/results_viewer/_compatibility.py": {"Metadata_ImageName"},  # explicit output migration alias
     "gui/shell/_metadata_context.py": {  # metadata CSV identity aliases
-        "Metadata_ImageName",
         "Metadata_ImageFileName",
     },
     "_cli/_cli_recompile_worker.py": {"Metadata_Well"},             # no WELL schema member
@@ -90,4 +89,219 @@ def test_allowlist_entries_are_not_stale():
             stale.append(f"{rel}: declared but absent {sorted(missing)}")
     assert not stale, (
         "prune stale metadata-literal allowlist entries:\n" + "\n".join(stale)
+    )
+
+
+_LEGACY_NAME_PAT = re.compile(
+    r"\b(?:METADATA|GENETIC_METADATA|SAMPLE_METADATA|PLATE_METADATA|"
+    r"CONDITION_METADATA|CULTURE_METADATA|EXPERIMENT_METADATA|"
+    r"STUDY_METADATA|ACQUISITION_METADATA)\b"
+)
+_LEGACY_HEADER_PAT = re.compile(
+    r"\bMetadata(?:Image|Genetic|Sample|Plate|Condition|Culture|Experiment|"
+    r"Study|Acquisition)_[A-Za-z][A-Za-z0-9_]*\b"
+)
+
+# Shipping compatibility seams, explicit migration documentation, and tests
+# whose subject is compatibility may name the previous public surface. Each
+# exception pins the exact permitted tokens so an unrelated stale alias in the
+# same file still fails the gate. Frozen superpowers specs/plans remain outside
+# this live-code/live-doc/test gate.
+_LEGACY_ALLOWED = {
+    # Permanent read compatibility and one-release import shims.
+    "src/phenotypic/_core/_image_parts/_image_io_handler.py": {
+        "METADATA",
+        "GENETIC_METADATA",
+        "SAMPLE_METADATA",
+        "PLATE_METADATA",
+        "CONDITION_METADATA",
+        "CULTURE_METADATA",
+        "EXPERIMENT_METADATA",
+        "STUDY_METADATA",
+        "ACQUISITION_METADATA",
+    },
+    "src/phenotypic/schema/__init__.py": {
+        "METADATA",
+        "GENETIC_METADATA",
+        "SAMPLE_METADATA",
+        "PLATE_METADATA",
+        "CONDITION_METADATA",
+        "CULTURE_METADATA",
+        "EXPERIMENT_METADATA",
+        "STUDY_METADATA",
+        "ACQUISITION_METADATA",
+    },
+    "src/phenotypic/schema/_experimental_tags/__init__.py": {
+        "GENETIC_METADATA",
+        "SAMPLE_METADATA",
+        "PLATE_METADATA",
+        "CONDITION_METADATA",
+        "CULTURE_METADATA",
+        "EXPERIMENT_METADATA",
+        "STUDY_METADATA",
+        "ACQUISITION_METADATA",
+    },
+    "src/phenotypic/schema/_tiers.py": {"MetadataGenetic_Strain"},
+    # Live migration guidance labels historical strings as compatibility data.
+    "src/phenotypic/schema/CLAUDE.md": {"MetadataGenetic_Strain"},
+    "docs/source/explanation/metadata_namespace.md": {
+        "MetadataImage_ImageName",
+        "MetadataGenetic_Strain",
+        "MetadataCulture_Time",
+    },
+    "docs/source/how_to/pages/rembi_metadata.md": {"MetadataImage_ImageName"},
+    # The capture harness repairs a reusable historical fixture before capture;
+    # this changes fixture data only and does not change GUI chrome/screenshots.
+    "scripts/capture_gui_tutorial_screenshots.py": {"MetadataImage_ImageName"},
+    "tests/unit/gui/test_capture_tutorial_script.py": {
+        "MetadataImage_ImageName",
+    },
+    # Durable migration and external-input immutability coverage.
+    "tests/migration/test_metadata_schema_migration.py": {
+        "MetadataImage_ImageName",
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/cli/test_cli_output_manager.py": {
+        "MetadataImage_ImageName",
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/cli/test_cli_recompile.py": {
+        "MetadataImage_ImageName",
+        "MetadataSample_Strain",
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/cli/test_cli_recompile_metadata_migration_slurm.py": {
+        "MetadataSample_Strain",
+        "MetadataGenetic_Strain",
+    },
+    # Exact legacy/canonical collision and ingress behavior.
+    "tests/unit/analysis/abc_/test_quality_check.py": {
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/core/test_metadata_by_module.py": {
+        "MetadataImage_ImageName",
+        "MetadataImage_UUID",
+    },
+    "tests/unit/gui/results_viewer/test_metadata_namespace_compat.py": {
+        "MetadataImage_ImageName",
+        "MetadataCulture_Time",
+    },
+    "tests/unit/gui/results_viewer/test_curation_labels.py": {
+        "MetadataImage_ImageName",
+    },
+    "tests/unit/gui/results_viewer/test_metadata_prefix_predicates.py": {
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/gui/results_viewer/test_qc_db_api.py": {
+        "MetadataImage_ImageName",
+    },
+    "tests/unit/gui/shell/test_metadata_context.py": {
+        "MetadataImage_ImageName",
+        "MetadataGenetic_Strain",
+    },
+    "tests/unit/post/test_flat_metadata_ingress.py": {
+        "MetadataGenetic_Strain",
+        "MetadataSample_SampleID",
+    },
+    "tests/unit/sdk_/test_metadata_helpers.py": {
+        "MetadataGenetic_Strain",
+        "MetadataGenetic_NotARealTag",
+    },
+    # Temporary import-warning and historical pickle/HDF compatibility fixtures.
+    "tests/unit/schema/test_metadata_label_uniqueness.py": {
+        "METADATA",
+        "GENETIC_METADATA",
+        "SAMPLE_METADATA",
+        "PLATE_METADATA",
+        "CONDITION_METADATA",
+        "CULTURE_METADATA",
+        "EXPERIMENT_METADATA",
+        "STUDY_METADATA",
+        "ACQUISITION_METADATA",
+    },
+    "tests/unit/sdk_/test_metadata_io.py": {
+        "METADATA",
+        "GENETIC_METADATA",
+        "SAMPLE_METADATA",
+        "PLATE_METADATA",
+        "CONDITION_METADATA",
+        "CULTURE_METADATA",
+        "EXPERIMENT_METADATA",
+        "STUDY_METADATA",
+        "ACQUISITION_METADATA",
+        "MetadataImage_ImageName",
+        "MetadataGenetic_Strain",
+    },
+}
+
+
+def _legacy_tokens(text: str) -> set[str]:
+    """Return exact deprecated enum identifiers and serialized headers."""
+    return set(_LEGACY_NAME_PAT.findall(text)) | set(_LEGACY_HEADER_PAT.findall(text))
+
+
+def _live_metadata_files():
+    """Yield shipping source, live docs, and normal tests checked by the gate."""
+    extensions = {".py", ".md", ".rst", ".csv", ".json", ".yaml", ".yml"}
+    for root in (
+        REPO / "src" / "phenotypic",
+        REPO / "docs" / "source",
+        REPO / "scripts",
+        REPO / "tests",
+    ):
+        for path in sorted(root.rglob("*")):
+            if not path.is_file() or path.suffix not in extensions:
+                continue
+            if (
+                "api_reference/api" in path.relative_to(REPO).as_posix()
+                or "measurements_ref" in path.parts
+            ):
+                continue
+            # GUI ledgers are chrome snapshots. This namespace change adds no
+            # chrome, so the project workflow explicitly leaves them frozen.
+            if path.name in {"FEATURES.md", "WORKFLOWS.md"}:
+                continue
+            # The gate's own regex vocabulary necessarily spells every legacy
+            # name. It is executable policy, not an input/example fixture.
+            if path.resolve() == pathlib.Path(__file__).resolve():
+                continue
+            yield path
+
+
+def test_legacy_metadata_names_are_confined_to_compatibility_and_migration_docs():
+    """Keep previous enum identifiers and topic prefixes out of live examples."""
+    offenders = []
+    for path in _live_metadata_files():
+        rel = path.relative_to(REPO).as_posix()
+        allowed = _LEGACY_ALLOWED.get(rel, set())
+        for lineno, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            unexpected = _legacy_tokens(line) - allowed
+            if unexpected:
+                offenders.append(
+                    f"{rel}:{lineno}: {line.strip()} "
+                    f"(unexpected {sorted(unexpected)}; allowed {sorted(allowed)})"
+                )
+    assert not offenders, (
+        "legacy metadata names remain in live source/docs; use canonical owner "
+        "names and Metadata_<Label>, or add an explicitly justified compatibility "
+        "seam:\n" + "\n".join(offenders)
+    )
+
+
+def test_legacy_metadata_allowlist_entries_are_not_stale():
+    """Prevent removed compatibility exceptions from lingering indefinitely."""
+    stale = []
+    for rel, expected in sorted(_LEGACY_ALLOWED.items()):
+        path = REPO / rel
+        if not path.is_file():
+            stale.append(f"{rel}: file no longer exists")
+            continue
+        found = _legacy_tokens(path.read_text(encoding="utf-8"))
+        missing = expected - found
+        if missing:
+            stale.append(f"{rel}: declared but absent {sorted(missing)}")
+    assert not stale, (
+        "prune stale legacy metadata allowlist entries:\n" + "\n".join(stale)
     )

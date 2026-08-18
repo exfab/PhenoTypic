@@ -122,8 +122,11 @@ class TestTukeyOutlierRemoverNaN:
         )
         result = TukeyOutlierRemover(on="Area", groupby=["ImageName"]).analyze(data)
 
-        assert len(result[result["ImageName"] == "img1"]) == 5
-        assert len(result[result["ImageName"] == "img2"]) == 4
+        from phenotypic.schema import IMAGE
+
+        image_name = str(IMAGE.IMAGE_NAME)
+        assert len(result[result[image_name] == "img1"]) == 5
+        assert len(result[result[image_name] == "img2"]) == 4
 
     def test_nan_free_group_is_identical_to_legacy_implementation(self):
         rng = np.random.default_rng(42)

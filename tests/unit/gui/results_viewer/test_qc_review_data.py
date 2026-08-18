@@ -40,7 +40,7 @@ from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
 
 from tests._output_layout import write_master, write_measurements_mirror
-from phenotypic.schema import METADATA
+from phenotypic.schema import GENETIC, IMAGE
 
 
 def _layout(tmp_path: Path) -> BundleLayout:
@@ -64,8 +64,8 @@ def _write_output_root(tmp_path: Path) -> OutputRoot:
     """
     master = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["d1"] * 4,
-            str(METADATA.IMAGE_NAME): ["img-1", "img-1", "img-2", "img-2"],
+            "Metadata_Dataset": ["d1"] * 4,
+            str(IMAGE.IMAGE_NAME): ["img-1", "img-1", "img-2", "img-2"],
             "Object_Label": [1, 2, 1, 2],
             "Bbox_CenterRR": [50, 60, 50, 60],
             "Bbox_CenterCC": [50, 60, 50, 60],
@@ -108,7 +108,7 @@ def test_module_picker_options_from_catalog(tmp_path: Path) -> None:
         [
             QcRecipeEntry(
                 cls=MaxModifiedZScore,
-                params={"on": "Size_Area", "groupby": [str(METADATA.IMAGE_NAME)]},
+                params={"on": "Size_Area", "groupby": [str(IMAGE.IMAGE_NAME)]},
                 instance_id="qc-ZMax-00000001",
                 enabled=True,
             )
@@ -116,7 +116,7 @@ def test_module_picker_options_from_catalog(tmp_path: Path) -> None:
     )
     frame = pd.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): ["img-1", "img-1", "img-2", "img-2"],
+            str(IMAGE.IMAGE_NAME): ["img-1", "img-1", "img-2", "img-2"],
             "Object_Label": [1, 2, 1, 2],
             "Size_Area": [100.0, 102.0, 300.0, 80.0],
         }
@@ -176,7 +176,7 @@ def test_build_recompute_frame_anti_joins_removals(tmp_path: Path) -> None:
 
     frame = _data.build_recompute_frame(root, {("img-2", 1)})
     assert len(frame) == 3
-    remaining = set(zip(frame[str(METADATA.IMAGE_NAME)], frame["Object_Label"]))
+    remaining = set(zip(frame[str(IMAGE.IMAGE_NAME)], frame["Object_Label"]))
     assert ("img-2", 1) not in remaining
     assert ("img-2", 2) in remaining
 
@@ -191,11 +191,11 @@ def test_build_recompute_frame_reads_mirror_not_master(tmp_path: Path) -> None:
     root = _write_output_root(tmp_path)
     # Rewrite the mirror with an extra metadata-only column.
     mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
-    mirror = mirror.with_columns(pl.lit("strainX").alias("MetadataGenetic_Strain"))
+    mirror = mirror.with_columns(pl.lit("strainX").alias("Metadata_Strain"))
     mirror.write_parquet(measurements_parquet_path(tmp_path))
 
     frame = _data.build_recompute_frame(root, set())
-    assert "MetadataGenetic_Strain" in frame.columns
+    assert str(GENETIC.STRAIN) in frame.columns
 
 
 # ---------------------------------------------------------------------------

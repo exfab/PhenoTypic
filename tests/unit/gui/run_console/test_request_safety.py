@@ -16,7 +16,7 @@ from phenotypic.gui.run_console._request_safety import (
 )
 from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
 from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA, header_to_module
+from phenotypic.schema import EXPERIMENT, IMAGE, header_to_module
 
 
 def _one_image_source(root: Path, *, stem: str = "plate_a") -> Path:
@@ -30,7 +30,7 @@ def _metadata_csv(root: Path, *identities: str) -> Path:
     metadata = root / "metadata.csv"
     rows = "\n".join(identities)
     metadata.write_text(
-        f"{METADATA.IMAGE_NAME},Treatment\n"
+        f"{IMAGE.IMAGE_NAME},Treatment\n"
         + "\n".join(f"{identity},control" for identity in identities)
         + ("\n" if rows else ""),
         encoding="utf-8",
@@ -195,8 +195,8 @@ def test_preflight_uses_every_source_level_production_join_key(
     """A matching image name cannot hide a mismatched dataset join key."""
     source = _one_image_source(tmp_path)
     metadata = tmp_path / "metadata.csv"
-    image_key = str(METADATA.IMAGE_NAME)
-    dataset_key = str(EXPERIMENT_METADATA.DATASET)
+    image_key = str(IMAGE.IMAGE_NAME)
+    dataset_key = str(EXPERIMENT.DATASET)
     metadata.write_text(
         f"{image_key},{dataset_key},Treatment\n"
         "plate_a,wrong-dataset,control\n",
@@ -231,8 +231,8 @@ def test_preflight_duplicate_risk_uses_full_production_key_grain(
     """Repeated image names are not duplicates when the full keys differ."""
     source = _one_image_source(tmp_path)
     metadata = tmp_path / "metadata.csv"
-    image_key = str(METADATA.IMAGE_NAME)
-    dataset_key = str(EXPERIMENT_METADATA.DATASET)
+    image_key = str(IMAGE.IMAGE_NAME)
+    dataset_key = str(EXPERIMENT.DATASET)
     metadata.write_text(
         f"{image_key},{dataset_key},Treatment\n"
         f"plate_a,{source.name},control\n"
@@ -269,7 +269,7 @@ def test_preflight_never_calls_measurement_level_join_keys_compatible(
     """Grid keys require post-measurement verification and stay a warning."""
     source = _one_image_source(tmp_path)
     metadata = tmp_path / "metadata.csv"
-    image_key = str(METADATA.IMAGE_NAME)
+    image_key = str(IMAGE.IMAGE_NAME)
     metadata.write_text(
         f"{image_key},Grid_RowNum,Treatment\nplate_a,999,control\n",
         encoding="utf-8",
@@ -302,7 +302,7 @@ def test_preflight_warns_for_unregistered_custom_measurement_key(
     """An external qualified key can join even when absent from the schema."""
     source = _one_image_source(tmp_path)
     metadata = tmp_path / "metadata.csv"
-    image_key = str(METADATA.IMAGE_NAME)
+    image_key = str(IMAGE.IMAGE_NAME)
     assert custom_key not in header_to_module()
     metadata.write_text(
         f"{image_key},{custom_key},Treatment\n"
@@ -348,7 +348,7 @@ def test_action_recheck_rejects_changed_source_or_metadata_fingerprint(
         image.write_bytes(b"changed-source")
     else:
         metadata.write_text(
-            f"{METADATA.IMAGE_NAME},Treatment\nplate_a,changed\n",
+            f"{IMAGE.IMAGE_NAME},Treatment\nplate_a,changed\n",
             encoding="utf-8",
         )
 

@@ -37,7 +37,7 @@ from phenotypic.gui._design import (
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui.results_viewer._heatmap_tab import _ids as ids
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 logger = logging.getLogger(__name__)
 
@@ -253,10 +253,10 @@ def build_heatmap_tab_body(
     color_options = [{"label": c, "value": c} for c in column_names]
 
     image_files: list[str] = []
-    if str(METADATA.IMAGE_NAME) in output_root.master_df.columns:
+    if str(IMAGE.IMAGE_NAME) in output_root.master_df.columns:
         image_files = sorted(
             v
-            for v in output_root.master_df[str(METADATA.IMAGE_NAME)].unique().to_list()
+            for v in output_root.master_df[str(IMAGE.IMAGE_NAME)].unique().to_list()
             if v is not None
         )
     image_options = [{"label": f, "value": f} for f in image_files]

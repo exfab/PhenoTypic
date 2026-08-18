@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import logging
 import os
+import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
+from uuid import uuid4
 
 from joblib import Parallel, delayed
 
@@ -20,13 +22,21 @@ from phenotypic import ImagePipeline
 from phenotypic.sdk_ import dataset_hdf_dir, event_log_path, progress_dir
 from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 
-from ._cli_execution_strategies import ExecutionStrategy
+from ._cli_execution_strategies import (
+    ExecutionStrategy,
+    _publish_local_image_success,
+    _record_local_terminal_failure,
+)
 from ._cli_pipeline_split import split_pipeline_at_gpu
-from ._cli_sidecar import sidecar_exists
+from ._cli_completion import valid_image_success
+from ._cli_failure_tracker import PerImageScientificError, work_id_for_image
+from ._cli_sidecar import delete_sidecar, sidecar_exists
 from ._cli_staged_resume import (
     clear_downstream_artifacts_for_stage1,
     stage3_completion_exists,
+    staged_hdf_matches_work_id,
     valid_staged_hdf,
+    write_stage3_completion_marker,
 )
 from ._cli_staged_workers import (
     _image_class,
@@ -68,6 +78,39 @@ class StagedGpuStrategy(ExecutionStrategy):
 
         def _terminal_output_exists(ds_name: str, img: Path) -> bool:
             """Return whether the image has its durable terminal artifact."""
+            work_id, _ = work_id_for_image(cfg, ds_name, img)
+            if valid_image_success(
+                output_dir,
+                dataset=ds_name,
+                image_stem=img.stem,
+                work_id=work_id,
+            ):
+                return True
+            hdf = dataset_hdf_dir(output_dir, ds_name) / f"{img.stem}.h5"
+            if (
+                cfg.resume
+                and stage3_completion_exists(output_dir, ds_name, img.stem)
+                and staged_hdf_matches_work_id(hdf, work_id)
+                and _parquet_path(ds_name, img.stem).is_file()
+            ):
+                ensure_staged_overlay(
+                    output_dir,
+                    ds_name,
+                    img.stem,
+                    self.output_manager,
+                    cfg.image_type,
+                )
+                _publish_local_image_success(
+                    cfg,
+                    self.output_manager,
+                    output_dir,
+                    ds_name,
+                    img,
+                    uuid4().hex,
+                )
+                return True
+            if cfg.staged_stage3_markers:
+                return False
             if cfg.process_only_layer == "objmap":
                 from ._cli_process_only import process_only_output_path
 
@@ -95,20 +138,31 @@ class StagedGpuStrategy(ExecutionStrategy):
         # ---- Stage 1: CPU preprocess -> staged HDF (parallel, resumable) ----
         def _stage1(ds: Dataset, img: Path) -> None:
             hdf = dataset_hdf_dir(output_dir, ds.name) / f"{img.stem}.h5"
-            if cfg.resume and valid_staged_hdf(hdf):
+            work_id, _ = work_id_for_image(cfg, ds.name, img)
+            if cfg.resume and staged_hdf_matches_work_id(hdf, work_id):
                 return
             if cfg.resume:
                 clear_downstream_artifacts_for_stage1(
                     output_dir, ds.name, img.stem
                 )
+            attempt_id = uuid4().hex
             try:  # isolate one bad image from the batch (failed event logged)
                 with stage_event(event_log, ds.name, img.name, STAGE_PREPROCESS):
                     stage1_preprocess_core(
                         plan, img, ds.name, img.stem, output_dir,
                         self.output_manager, cfg.image_type, read_kwargs,
+                        work_id=work_id,
                     )
-            except Exception:
-                pass
+            except Exception as exc:
+                _record_local_terminal_failure(
+                    cfg,
+                    output_dir,
+                    ds.name,
+                    img,
+                    exc,
+                    traceback.format_exc(),
+                    attempt_id,
+                )
 
         Parallel(n_jobs=cfg.n_jobs)(
             delayed(_stage1)(ds, img) for ds, img in tasks
@@ -135,14 +189,23 @@ class StagedGpuStrategy(ExecutionStrategy):
                     event_log, ds.name, img.name, STAGE_GPU_DETECT, "staged HDF"
                 )
                 continue
+            attempt_id = uuid4().hex
             try:
                 with stage_event(event_log, ds.name, img.name, STAGE_GPU_DETECT):
                     stage2_detect_core(
                         plan.gpu_detector, output_dir, ds.name, img.stem,
                         cfg.image_type,
                     )
-            except Exception:
-                pass
+            except Exception as exc:
+                _record_local_terminal_failure(
+                    cfg,
+                    output_dir,
+                    ds.name,
+                    img,
+                    exc,
+                    traceback.format_exc(),
+                    attempt_id,
+                )
 
         # ---- Stage 3: CPU merge + measure (parallel, resumable) ------------
         results: Dict[str, Dict[str, int]] = {
@@ -159,15 +222,39 @@ class StagedGpuStrategy(ExecutionStrategy):
                     event_log, ds.name, img.name, STAGE_MEASURE, "objmap sidecar"
                 )
                 return ds.name, False
+            attempt_id = uuid4().hex
+            work_id, _ = work_id_for_image(cfg, ds.name, img)
             try:
                 with stage_event(event_log, ds.name, img.name, STAGE_MEASURE):
                     stage3_merge_measure_core(
                         plan, output_dir, ds.name, img.stem, self.output_manager,
                         cfg.image_type,
                         image_name=img.name,
+                        work_id=work_id,
                     )
+                    _publish_local_image_success(
+                        cfg,
+                        self.output_manager,
+                        output_dir,
+                        ds.name,
+                        img,
+                        attempt_id,
+                    )
+                    write_stage3_completion_marker(
+                        output_dir, ds.name, img.name, img.stem
+                    )
+                    delete_sidecar(output_dir, ds.name, img.stem)
                 return ds.name, True
-            except Exception:
+            except Exception as exc:
+                _record_local_terminal_failure(
+                    cfg,
+                    output_dir,
+                    ds.name,
+                    img,
+                    exc,
+                    traceback.format_exc(),
+                    attempt_id,
+                )
                 return ds.name, False
 
         if cfg.process_only_layer == "objmap":
@@ -254,7 +341,13 @@ class StagedGpuStrategy(ExecutionStrategy):
             out_path = process_only_output_path(
                 output_dir, img, cfg.input_path, "objmap"
             )
-            if cfg.resume and out_path.is_file():
+            work_id, _ = work_id_for_image(cfg, ds.name, img)
+            if cfg.resume and valid_image_success(
+                output_dir,
+                dataset=ds.name,
+                image_stem=img.stem,
+                work_id=work_id,
+            ):
                 results[ds.name]["completed"] += 1
                 continue
             if not sidecar_exists(output_dir, ds.name, img.stem):
@@ -263,15 +356,39 @@ class StagedGpuStrategy(ExecutionStrategy):
                 )
                 results[ds.name]["failed"] += 1
                 continue
+            attempt_id = uuid4().hex
             try:
                 with stage_event(event_log, ds.name, img.name, STAGE_MEASURE):
                     hdf = dataset_hdf_dir(output_dir, ds.name) / f"{img.stem}.h5"
                     image = image_cls.load_hdf5(hdf)
-                    plan.gpu_detector._write_object_output(
-                        image, load_sidecar(output_dir, ds.name, img.stem)
-                    )
+                    sidecar = load_sidecar(output_dir, ds.name, img.stem)
+                    try:
+                        plan.gpu_detector._write_object_output(image, sidecar)
+                    except MemoryError:
+                        raise
+                    except Exception as exc:
+                        raise PerImageScientificError(
+                            STAGE_MEASURE, exc
+                        ) from exc
                     write_process_only_layer(image, "objmap", out_path)
+                    _publish_local_image_success(
+                        cfg,
+                        self.output_manager,
+                        output_dir,
+                        ds.name,
+                        img,
+                        attempt_id,
+                    )
                     delete_sidecar(output_dir, ds.name, img.stem)
                 results[ds.name]["completed"] += 1
-            except Exception:
+            except Exception as exc:
+                _record_local_terminal_failure(
+                    cfg,
+                    output_dir,
+                    ds.name,
+                    img,
+                    exc,
+                    traceback.format_exc(),
+                    attempt_id,
+                )
                 results[ds.name]["failed"] += 1

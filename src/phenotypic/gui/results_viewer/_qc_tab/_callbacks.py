@@ -64,6 +64,10 @@ from phenotypic.gui.results_viewer._mutation_guard import (
     output_mutations_disabled,
     require_output_mutation,
 )
+from phenotypic.gui.results_viewer._metadata import (
+    normalize_metadata_references,
+    normalize_viewer_frame,
+)
 from phenotypic.gui.results_viewer._compatibility import (
     migrate_output_recipe,
     preflight_output_compatibility,
@@ -217,9 +221,8 @@ def _left_join_qc_columns(
         right: One check's :meth:`QualityCheck.analyze` output
             (pandas). Carries QC columns plus whatever rows the check
             iterated over.
-        on: Join key columns. Defaults to
-            :data:`KEY_COLUMNS` (``("MetadataImage_ImageName", "Object_Label")``)
-            — the curation key used by ``STORE_REMOVED_KEYS``.
+        on: Join key columns. Defaults to :data:`KEY_COLUMNS`, the image-name
+            metadata and object-label pair used by ``STORE_REMOVED_KEYS``.
 
     Returns:
         A new polars DataFrame with the same row count as ``left`` and
@@ -228,6 +231,10 @@ def _left_join_qc_columns(
         unchanged so the augmented frame still has the rows the heatmap
         expects.
     """
+    left = normalize_viewer_frame(left)
+    right = normalize_viewer_frame(right)
+    normalized_on = normalize_metadata_references(on)
+    on = tuple(normalized_on)  # type: ignore[assignment]
     if right.empty:
         return left
     missing_left = [c for c in on if c not in left.columns]

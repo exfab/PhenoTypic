@@ -13,7 +13,7 @@ from skimage.color import rgb2gray, rgba2rgb
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_.constants_ import IMAGE_MODE, IMAGE_TYPES
 
 
@@ -100,8 +100,8 @@ class ImageMetadata:
     )
 
     def clear(self) -> None:
-        self.protected[METADATA.IMAGE_NAME] = np.nan
-        self.protected[METADATA.IMAGE_TYPE] = IMAGE_TYPES.BASE.value
+        self.protected[IMAGE.IMAGE_NAME] = np.nan
+        self.protected[IMAGE.IMAGE_TYPE] = IMAGE_TYPES.BASE.value
         self.public.clear()
 
 
@@ -150,11 +150,11 @@ class ImageDataManager:
 
         # Initialize metadata structure
         self._metadata = ImageMetadata(
-                private={METADATA.UUID: uuid.uuid4()},
+                private={IMAGE.UUID: uuid.uuid4()},
                 protected={
-                    METADATA.IMAGE_NAME: name,
-                    METADATA.IMAGE_TYPE: IMAGE_TYPES.BASE.value,
-                    METADATA.BIT_DEPTH : bit_depth,
+                    IMAGE.IMAGE_NAME: name,
+                    IMAGE.IMAGE_TYPE: IMAGE_TYPES.BASE.value,
+                    IMAGE.BIT_DEPTH : bit_depth,
                 },
                 public={},
                 imported={},
@@ -171,7 +171,7 @@ class ImageDataManager:
             int | None: The bit depth value (8 or 16) stored in protected metadata,
                 or None if not yet set.
         """
-        return self._metadata.protected.get(METADATA.BIT_DEPTH)
+        return self._metadata.protected.get(IMAGE.BIT_DEPTH)
 
     def clear(self) -> None:
         """Reset all image data to empty state.
@@ -274,7 +274,7 @@ class ImageDataManager:
         """Handle array input and set bit depth if needed."""
         if self.bit_depth is None:
             bit_depth = self._infer_bit_depth(arr)
-            self._metadata.protected[METADATA.BIT_DEPTH] = bit_depth
+            self._metadata.protected[IMAGE.BIT_DEPTH] = bit_depth
 
         if np.issubdtype(arr.dtype, np.floating) and arr.ndim == 3:
             arr = self._convert_float_array_to_int(arr, bit_depth=self.bit_depth)

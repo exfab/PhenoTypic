@@ -6,8 +6,8 @@ Two end-to-end safety nets exercised via :class:`click.testing.CliRunner`:
   the hidden ``<output>/.phenotypic/`` cache — not at the output root — while
   the user-facing ``deliverables/`` and ``results/`` dirs are unchanged.
 * A run whose state was relocated to the legacy output root (pre-migration
-  layout) still resumes: ``--resume`` migrates the legacy state into
-  ``.phenotypic/`` and completes.
+  layout) still continues automatically, migrating the legacy state into
+  ``.phenotypic/`` and completing.
 
 Both pass ``--force-local`` so SLURM is never dispatched.
 """
@@ -48,7 +48,7 @@ def test_forward_run_writes_state_under_phenotypic(
     assert (out / "results").exists()
 
 
-def test_resume_of_legacy_layout_migrates_and_completes(
+def test_continuation_of_legacy_layout_migrates_and_completes(
     tmp_path: Path, synth_plate_dir: Path, simple_pipeline_json: Path
 ) -> None:
     out = tmp_path / "out"
@@ -78,7 +78,7 @@ def test_resume_of_legacy_layout_migrates_and_completes(
         leftover = cache / generated_dir
         if leftover.exists():
             shutil.rmtree(leftover)
-    cache.rmdir()
+    shutil.rmtree(cache)
     res = CliRunner().invoke(
         phenotypic_cli,
         [
@@ -92,7 +92,6 @@ def test_resume_of_legacy_layout_migrates_and_completes(
             "--skip-validation",
             "--njobs",
             "1",
-            "--resume",
         ],
     )
     assert res.exit_code == 0, res.output

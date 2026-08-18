@@ -25,9 +25,10 @@ from phenotypic.gui.results_viewer.colony_view._grid import (
     expand_range,
     selectable_axis_columns,
 )
+from phenotypic.schema import GENETIC
 
 from tests._output_layout import write_master
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 # -------------------------------------------------------------------------
@@ -39,7 +40,7 @@ def test_selectable_axis_columns_excludes_measurement_prefixes() -> None:
     """Columns with measurement prefixes are not offered as axis options."""
     df = pl.DataFrame(
         {
-            "MetadataGenetic_Strain": ["A", "B", "A"],
+            "Metadata_Strain": ["A", "B", "A"],
             "Bbox_MinRR": [1, 2, 3],
             "Shape_Area": [10, 20, 30],
             "Intensity_Mean": [0.1, 0.2, 0.3],
@@ -59,7 +60,7 @@ def test_selectable_axis_columns_excludes_measurement_prefixes() -> None:
     assert "Intensity_Mean" not in out
     assert "TextureGray_AvgContrast" not in out
     # Metadata_* and Grid_* survive.
-    assert "MetadataGenetic_Strain" in out
+    assert str(GENETIC.STRAIN) in out
     assert "Grid_RowNum" in out
 
 
@@ -209,8 +210,8 @@ def _make_output_root(tmp_path: Path) -> OutputRoot:
     """
     master = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["plate1"] * 4,
-            str(METADATA.IMAGE_NAME): ["img-001", "img-001", "img-002", "img-002"],
+            "Metadata_Dataset": ["plate1"] * 4,
+            str(IMAGE.IMAGE_NAME): ["img-001", "img-001", "img-002", "img-002"],
             "Object_Label": [1, 2, 1, 2],
             "Bbox_MinRR": [0, 5, 10, 15],
             "Bbox_MaxRR": [40, 45, 50, 55],
@@ -238,8 +239,8 @@ def _make_output_root(tmp_path: Path) -> OutputRoot:
 def _make_output_root_with_hdf_only(tmp_path: Path) -> OutputRoot:
     master = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["plate1"] * 2,
-            str(METADATA.IMAGE_NAME): ["img-001", "img-002"],
+            "Metadata_Dataset": ["plate1"] * 2,
+            str(IMAGE.IMAGE_NAME): ["img-001", "img-002"],
             "Object_Label": [1, 1],
             "Bbox_MinRR": [0, 10],
             "Bbox_MaxRR": [40, 50],
@@ -346,8 +347,8 @@ def _make_output_root_with_overlays(tmp_path: Path) -> OutputRoot:
 
     master = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["plate1"] * 4,
-            str(METADATA.IMAGE_NAME): ["img-001", "img-001", "img-002", "img-002"],
+            "Metadata_Dataset": ["plate1"] * 4,
+            str(IMAGE.IMAGE_NAME): ["img-001", "img-001", "img-002", "img-002"],
             "Object_Label": [1, 2, 1, 2],
             "Bbox_MinRR": [0, 5, 10, 15],
             "Bbox_MaxRR": [40, 45, 50, 55],

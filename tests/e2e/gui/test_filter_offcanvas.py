@@ -22,7 +22,7 @@ from playwright.sync_api import Page
 
 from playwright.sync_api import expect
 
-from phenotypic.schema import CULTURE_METADATA, EXPERIMENT_METADATA, METADATA
+from phenotypic.schema import CULTURE, EXPERIMENT, IMAGE
 from tests.e2e.gui.conftest import (
     _build_sandbox,
     _start_live_server,
@@ -42,8 +42,8 @@ _OUTPUT_NAME = "FilterOffcanvasOutput"
 _DS1_IMAGES = ("plate_001.tif", "plate_002.tif")
 _DS2_IMAGES = ("plate_003.tif",)
 _NROWS, _NCOLS = 2, 3
-_DATASET_COLUMN = str(EXPERIMENT_METADATA.DATASET)
-_TIME_COLUMN = str(CULTURE_METADATA.TIME)
+_DATASET_COLUMN = str(EXPERIMENT.DATASET)
+_TIME_COLUMN = str(CULTURE.TIME)
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +67,7 @@ def _build_master() -> pl.DataFrame:
                     rows.append(
                         {
                             _DATASET_COLUMN: dataset,
-                            str(METADATA.IMAGE_NAME): image,
+                            str(IMAGE.IMAGE_NAME): image,
                             _TIME_COLUMN: 0.0,
                             "Object_Label": label,
                             "Grid_RowNum": r,

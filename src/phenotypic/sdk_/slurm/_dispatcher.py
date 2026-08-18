@@ -13,12 +13,21 @@ import logging
 import shlex
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, cast
 
 from .._io_constants import slurm_scripts_dir
 from ._environment import SLURM_PYTHONPATH_BOOTSTRAP_BASH
 
 logger = logging.getLogger(__name__)
+
+SlurmDependencyKind = Literal["afterany", "afterok"]
+
+
+def _validate_dependency_kind(value: str) -> SlurmDependencyKind:
+    """Validate one continuation dependency before any side effects."""
+    if value not in {"afterany", "afterok"}:
+        raise ValueError("dependency_kind must be 'afterany' or 'afterok'")
+    return cast(SlurmDependencyKind, value)
 
 
 def _extract_partition(slurm_args: Dict[str, Any]) -> str:
@@ -47,6 +56,7 @@ def generate_dispatcher_script(
     generation: str | None = None,
     chunk_index: int = 1,
     finalizer_script: Path | None = None,
+    dependency_kind: SlurmDependencyKind = "afterany",
 ) -> Path:
     """Generate a dispatcher script that submits the next chunk and dispatcher.
 
@@ -66,10 +76,13 @@ def generate_dispatcher_script(
         chunk_index: Zero-based index of the chunk this dispatcher submits.
         finalizer_script: Terminal finalizer submitted after the last chunk
             becomes terminal.
+        dependency_kind: Dependency condition for the continuation submitted
+            after ``next_chunk_script``.
 
     Returns:
         Path to the generated dispatcher script.
     """
+    validated_dependency_kind = _validate_dependency_kind(dependency_kind)
     partition = _extract_partition(slurm_args)
 
     lifecycle_output = output_dir or _infer_output_dir(output_path)
@@ -86,6 +99,8 @@ def generate_dispatcher_script(
         str(chunk_index),
         "--chunk-script",
         str(next_chunk_script),
+        "--dependency-kind",
+        validated_dependency_kind,
     ]
     if next_dispatcher_script is not None:
         command.extend(["--dispatcher-script", str(next_dispatcher_script)])
@@ -136,12 +151,14 @@ def generate_dispatcher_chain(
     slurm_args: Dict[str, Any],
     log_dir: Path,
     finalizer_script: Path | None = None,
+    continuation_dependency_kinds: Sequence[SlurmDependencyKind] | None = None,
+    generation: str | None = None,
 ) -> List[Path]:
     """Generate dispatcher scripts for a chain of chunk scripts.
 
     For *N* chunk scripts, generates *N-1* dispatcher scripts.  Each
     dispatcher submits the next chunk and (if not last) the next
-    dispatcher with ``--dependency=afterany`` on that chunk.
+    dispatcher with the corresponding dependency kind on that chunk.
 
     Args:
         chunk_scripts: Ordered list of array job chunk script paths.
@@ -150,18 +167,31 @@ def generate_dispatcher_chain(
         log_dir: Directory for dispatcher log files.
         finalizer_script: Terminal finalizer passed only to the last
             dispatcher in the chain.
+        continuation_dependency_kinds: Dependency kind for every
+            chunk-to-continuation edge. The sequence has ``N - 1`` entries
+            without a finalizer and ``N`` entries with one. Defaults to
+            ``afterany`` for every edge.
+        generation: Optional explicit lifecycle generation. When supplied,
+            dispatcher scripts are isolated under that generation.
 
     Returns:
         List of dispatcher script paths (one fewer than ``chunk_scripts``,
         since the last chunk does not need a dispatcher).  Empty if only
         one chunk exists.
     """
+    dependency_kinds = _resolve_continuation_dependency_kinds(
+        chunk_count=len(chunk_scripts),
+        has_finalizer=finalizer_script is not None,
+        dependency_kinds=continuation_dependency_kinds,
+    )
     if len(chunk_scripts) <= 1:
         return []
 
-    generation = _ensure_generation(output_dir)
+    lifecycle_generation = generation or _ensure_generation(output_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
     script_dir = slurm_scripts_dir(output_dir)
+    if generation is not None:
+        script_dir = script_dir / "dispatch" / generation
     script_dir.mkdir(parents=True, exist_ok=True)
 
     num_dispatchers = len(chunk_scripts) - 1
@@ -188,10 +218,15 @@ def generate_dispatcher_chain(
             slurm_args=slurm_args,
             log_dir=log_dir,
             output_dir=output_dir,
-            generation=generation,
+            generation=lifecycle_generation,
             chunk_index=i + 1,
             finalizer_script=(
                 finalizer_script if next_dispatcher is None else None
+            ),
+            dependency_kind=(
+                dependency_kinds[i + 1]
+                if i + 1 < len(dependency_kinds)
+                else "afterany"
             ),
         )
         dispatcher_paths.append(dispatcher_path)
@@ -204,6 +239,9 @@ def submit_drip_feed_start(
     dispatcher_scripts: List[Path],
     *,
     finalizer_script: Path | None = None,
+    continuation_dependency_kind: SlurmDependencyKind = "afterany",
+    output_dir: Path | None = None,
+    generation: str | None = None,
 ) -> Tuple[List[str], Optional[str]]:
     """Submit the first chunk and first dispatcher to start a drip-feed chain.
 
@@ -213,6 +251,10 @@ def submit_drip_feed_start(
             :func:`generate_dispatcher_chain` (may be empty for single-chunk).
         finalizer_script: Terminal finalizer submitted after the only chunk
             when no dispatcher is required.
+        continuation_dependency_kind: Dependency condition for the initial
+            dispatcher or single-chunk finalizer.
+        output_dir: Explicit lifecycle output root for attempt-scoped chains.
+        generation: Explicit lifecycle generation for attempt-scoped chains.
 
     Returns:
         Tuple of (job_ids, warning_message).  ``job_ids`` contains the
@@ -223,6 +265,9 @@ def submit_drip_feed_start(
     Raises:
         RuntimeError: If the first chunk submission fails.
     """
+    validated_dependency_kind = _validate_dependency_kind(
+        continuation_dependency_kind
+    )
     from phenotypic._cli._cli_slurm_lifecycle import (
         cancel_generation,
         submit_with_lifecycle,
@@ -230,12 +275,12 @@ def submit_drip_feed_start(
 
     job_ids: List[str] = []
     warning: Optional[str] = None
-    output_dir = _infer_output_dir(chunk_scripts[0])
-    generation = _ensure_generation(output_dir)
+    lifecycle_output = output_dir or _infer_output_dir(chunk_scripts[0])
+    lifecycle_generation = generation or _ensure_generation(lifecycle_output)
 
     chunk0_job = submit_with_lifecycle(
-        output_dir,
-        generation=generation,
+        lifecycle_output,
+        generation=lifecycle_generation,
         token="chunk-0",
         role="chunk",
         script_path=chunk_scripts[0],
@@ -246,12 +291,13 @@ def submit_drip_feed_start(
     if dispatcher_scripts:
         try:
             dispatch0_job = submit_with_lifecycle(
-                output_dir,
-                generation=generation,
+                lifecycle_output,
+                generation=lifecycle_generation,
                 token="dispatcher-1",
                 role="dispatcher",
                 script_path=dispatcher_scripts[0],
                 dependencies=(chunk0_job,),
+                dependency_kind=validated_dependency_kind,
             )
             job_ids.append(dispatch0_job)
             logger.info(
@@ -260,7 +306,9 @@ def submit_drip_feed_start(
                 chunk0_job,
             )
         except RuntimeError as exc:
-            cancellation = cancel_generation(output_dir, generation)
+            cancellation = cancel_generation(
+                lifecycle_output, lifecycle_generation
+            )
             detail = (
                 "the launch was fenced and all discovered jobs were cancelled"
                 if cancellation.quiescent
@@ -273,12 +321,13 @@ def submit_drip_feed_start(
     elif finalizer_script is not None:
         try:
             finalizer_job = submit_with_lifecycle(
-                output_dir,
-                generation=generation,
+                lifecycle_output,
+                generation=lifecycle_generation,
                 token="finalizer",
                 role="finalizer",
                 script_path=finalizer_script,
                 dependencies=(chunk0_job,),
+                dependency_kind=validated_dependency_kind,
             )
             job_ids.append(finalizer_job)
             logger.info(
@@ -287,7 +336,9 @@ def submit_drip_feed_start(
                 chunk0_job,
             )
         except RuntimeError as exc:
-            cancellation = cancel_generation(output_dir, generation)
+            cancellation = cancel_generation(
+                lifecycle_output, lifecycle_generation
+            )
             detail = (
                 "the launch was fenced and all discovered jobs were cancelled"
                 if cancellation.quiescent
@@ -299,6 +350,29 @@ def submit_drip_feed_start(
             ) from exc
 
     return job_ids, warning
+
+
+def _resolve_continuation_dependency_kinds(
+    *,
+    chunk_count: int,
+    has_finalizer: bool,
+    dependency_kinds: Sequence[SlurmDependencyKind] | None,
+) -> tuple[SlurmDependencyKind, ...]:
+    """Return one validated dependency kind per continuation edge."""
+    edge_count = max(0, chunk_count - 1)
+    if has_finalizer and chunk_count:
+        edge_count += 1
+    if dependency_kinds is None:
+        return cast(
+            tuple[SlurmDependencyKind, ...], ("afterany",) * edge_count
+        )
+    resolved = tuple(dependency_kinds)
+    if len(resolved) != edge_count:
+        raise ValueError(
+            "continuation_dependency_kinds must contain exactly "
+            f"{edge_count} entries for {chunk_count} chunk script(s)"
+        )
+    return tuple(_validate_dependency_kind(kind) for kind in resolved)
 
 
 def _infer_output_dir(script_path: Path) -> Path:

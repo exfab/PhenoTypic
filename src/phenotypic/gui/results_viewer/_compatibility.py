@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from phenotypic.analysis.qc import ExpectedVsDetectedCount
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     BundleLayout,
     atomic_write_bytes,
@@ -43,7 +43,7 @@ _MIGRATION_RECEIPT_VERSION = 1
 # guesser. A spelling is rewritten only when the target exists in the
 # referenced metadata file.
 LEGACY_METADATA_COLUMN_ALIASES: dict[str, str] = {
-    "Metadata_ImageName": str(METADATA.IMAGE_NAME),
+    "Metadata_ImageName": str(IMAGE.IMAGE_NAME),
 }
 
 

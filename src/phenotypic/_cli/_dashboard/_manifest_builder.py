@@ -10,8 +10,10 @@ silent SLURM failures that would otherwise go unreported.
 from __future__ import annotations
 
 import logging
+import json
 import subprocess
 from collections.abc import Collection, Mapping
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -19,7 +21,7 @@ from typing import Dict, List, Optional, Tuple
 from .._cli_failure_tracker import (
     append_failure,
     categorize_failures,
-    read_failures,
+    terminal_failure_index,
 )
 from .._cli_update_state import (
     aggregate_state_from_events,
@@ -32,7 +34,9 @@ from phenotypic.sdk_ import (
     DashboardManifestSlurmInfoKey,
     atomic_write_json,
     resolve_event_log_path,
+    resolve_processing_state_path,
 )
+from .._cli_completion import valid_image_success
 from phenotypic.sdk_.typing_ import ExecutionMode
 
 logger = logging.getLogger(__name__)
@@ -526,20 +530,35 @@ def build_manifest(
             diagnostics.samples,
         )
 
-    # 2. Read and categorise failures.
-    latest_current_failures: dict[tuple[str, str], dict] = {}
-    for failure in read_failures(progress_dir):
-        dataset = str(failure.get("dataset", ""))
-        image = str(failure.get("image", ""))
-        dataset_state = dataset_states.get(dataset)
-        if dataset_state is None or image not in dataset_state.failed:
-            continue
-        # Failure records are append-only. Replacing the mapping entry keeps
-        # only the diagnostic associated with the image's latest failed state.
-        latest_current_failures[(dataset, image)] = failure
-    failure_categories = categorize_failures(
-        list(latest_current_failures.values())
-    )
+    # 2. Load exact current work identities and the sole authoritative terminal
+    # journal. Legacy state without work IDs cannot promote ambiguous failure
+    # rows to terminal authority.
+    work_ids: dict[str, dict[str, str]] = {}
+    success_markers_required = False
+    try:
+        state_payload = json.loads(
+            resolve_processing_state_path(output_dir).read_text(encoding="utf-8")
+        )
+        raw_work_ids = state_payload.get("config", {}).get("work_ids", {})
+        success_markers_required = bool(
+            state_payload.get("config", {}).get(
+                "success_markers_required", False
+            )
+        )
+        if isinstance(raw_work_ids, dict):
+            work_ids = {
+                str(dataset): {
+                    str(image): str(work_id)
+                    for image, work_id in image_map.items()
+                }
+                for dataset, image_map in raw_work_ids.items()
+                if isinstance(image_map, dict)
+            }
+    except (OSError, json.JSONDecodeError, AttributeError):
+        logger.debug("No current work-id projection available", exc_info=True)
+
+    terminal_by_work_id = terminal_failure_index(output_dir)
+    matched_terminal_records = []
 
     # 3-4. SLURM-specific queries.
     is_slurm = execution_mode == "slurm"
@@ -559,8 +578,7 @@ def build_manifest(
         event_completed = sum(
             len(ds.completed) for ds in dataset_states.values()
         )
-        event_failed = sum(len(ds.failed) for ds in dataset_states.values())
-        if (event_completed + event_failed) >= total_images_for_check:
+        if event_completed >= total_images_for_check:
             completed_chunks = sorted(int(k) for k in numeric_slurm_job_ids)
         else:
             active_chunks, completed_chunks, pending_chunks = (
@@ -583,18 +601,86 @@ def build_manifest(
     for ds_name, ds_total in datasets.items():
         ds_state = dataset_states.get(ds_name)
         if ds_state is None:
+            authorized_names = (
+                set(dataset_inventory.get(ds_name, ()))
+                if dataset_inventory is not None
+                else set()
+            )
+            successful_names = {
+                image_name
+                for image_name in authorized_names
+                if success_markers_required
+                and (
+                    (work_id := work_ids.get(ds_name, {}).get(image_name))
+                    is not None
+                    and valid_image_success(
+                        output_dir,
+                        dataset=ds_name,
+                        image_stem=Path(image_name).stem,
+                        work_id=work_id,
+                    )
+                )
+            }
+            terminal_names: set[str] = set()
+            for image_name in authorized_names - successful_names:
+                work_id = work_ids.get(ds_name, {}).get(image_name)
+                record = (
+                    terminal_by_work_id.get(work_id)
+                    if work_id is not None
+                    else None
+                )
+                if record is not None:
+                    terminal_names.add(image_name)
+                    matched_terminal_records.append(asdict(record))
             per_dataset[ds_name] = {
                 "total": ds_total,
-                "completed": 0,
-                "failed": 0,
+                "successful": len(successful_names),
+                "terminal_failed": len(terminal_names),
+                "active": 0,
+                "completed": len(successful_names),
+                "failed": len(terminal_names),
                 "started": 0,
-                "pending": ds_total,
+                "pending": ds_total - len(successful_names) - len(terminal_names),
             }
+            global_completed += len(successful_names)
+            global_failed += len(terminal_names)
             global_in_progress += 0
         else:
-            ds_completed = len(ds_state.completed)
-            ds_failed = len(ds_state.failed)
-            ds_in_progress = len(ds_state.in_progress)
+            authorized_names = (
+                set(dataset_inventory.get(ds_name, ()))
+                if dataset_inventory is not None
+                else set(ds_state.completed | ds_state.started | ds_state.failed)
+            )
+            if success_markers_required:
+                successful_names = {
+                    image_name
+                    for image_name in authorized_names
+                    if (
+                        (work_id := work_ids.get(ds_name, {}).get(image_name))
+                        is not None
+                        and valid_image_success(
+                            output_dir,
+                            dataset=ds_name,
+                            image_stem=Path(image_name).stem,
+                            work_id=work_id,
+                        )
+                    )
+                }
+            else:
+                successful_names = set(ds_state.completed) & authorized_names
+            active_names = set(ds_state.in_progress) & authorized_names
+            terminal_names = set()
+            for image_name in authorized_names - successful_names - active_names:
+                work_id = work_ids.get(ds_name, {}).get(image_name)
+                if work_id is None:
+                    continue
+                record = terminal_by_work_id.get(work_id)
+                if record is not None:
+                    terminal_names.add(image_name)
+                    matched_terminal_records.append(asdict(record))
+            ds_completed = len(successful_names)
+            ds_failed = len(terminal_names)
+            ds_in_progress = len(active_names)
             ds_pending = ds_total - ds_completed - ds_failed - ds_in_progress
             if (
                 ds_completed > ds_total
@@ -611,6 +697,9 @@ def build_manifest(
 
             per_dataset[ds_name] = {
                 "total": ds_total,
+                "successful": ds_completed,
+                "terminal_failed": ds_failed,
+                "active": ds_in_progress,
                 "completed": ds_completed,
                 "failed": ds_failed,
                 "started": ds_in_progress,
@@ -629,15 +718,41 @@ def build_manifest(
     else:
         success_rate = 0.0
 
-    is_complete = (global_completed + global_failed) == total_images
+    failure_categories = categorize_failures(matched_terminal_records)
+    from phenotypic._cli._cli_completion import (
+        current_run_is_complete,
+        valid_aggregate_snapshot,
+    )
+
+    aggregate_marker = valid_aggregate_snapshot(output_dir)
+    marker_completion = current_run_is_complete(output_dir)
+    is_complete = (
+        global_completed == total_images
+        if marker_completion is None
+        else marker_completion
+    )
+
+    published_count = (
+        aggregate_marker.get("source_image_count", 0)
+        if aggregate_marker is not None
+        else 0
+    )
+    if not isinstance(published_count, int) or isinstance(published_count, bool):
+        published_count = 0
 
     manifest: dict = {
-        DashboardManifestKey.VERSION: 1,
+        DashboardManifestKey.VERSION: 3,
         DashboardManifestKey.LAST_UPDATED: datetime.now().isoformat(
             timespec="milliseconds"
         ),
         DashboardManifestKey.EXECUTION_MODE: execution_mode,
         DashboardManifestKey.TOTAL_IMAGES: total_images,
+        "successful": global_completed,
+        "terminal_failed": global_failed,
+        "active": global_in_progress,
+        "remaining": global_failed + max(global_pending, 0) + global_in_progress,
+        "publication_available": aggregate_marker is not None,
+        "published_images": published_count,
         DashboardManifestKey.COMPLETED: global_completed,
         DashboardManifestKey.FAILED: global_failed,
         DashboardManifestKey.STARTED: global_in_progress,

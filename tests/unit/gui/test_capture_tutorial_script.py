@@ -9,7 +9,7 @@ import polars as pl
 
 import scripts.capture_gui_tutorial_screenshots as capture
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA
+from phenotypic.schema import EXPERIMENT, IMAGE
 from phenotypic.sdk_ import (
     dataset_overlays_dir,
     deliverables_dir,
@@ -28,8 +28,8 @@ def test_results_timeline_seed_loads_as_current_output(tmp_path, monkeypatch):
         cache_root=tmp_path / ".test-phenotypic-viewer-cache",
     )
 
-    assert str(METADATA.IMAGE_NAME) in root.master_df.columns
-    assert str(EXPERIMENT_METADATA.DATASET) in root.master_df.columns
+    assert str(IMAGE.IMAGE_NAME) in root.master_df.columns
+    assert str(EXPERIMENT.DATASET) in root.master_df.columns
     assert root.master_df.height == (
             capture.RESULTS_TIMELINE_N_PLATES
             * capture.RESULTS_TIMELINE_N_TIMES
@@ -56,8 +56,36 @@ def test_results_timeline_seed_replaces_obsolete_schema(tmp_path, monkeypatch):
         cache_root=tmp_path / ".test-phenotypic-viewer-cache",
     )
 
-    assert str(METADATA.IMAGE_NAME) in root.master_df.columns
+    assert str(IMAGE.IMAGE_NAME) in root.master_df.columns
     assert "Metadata_ImageFile" not in root.master_df.columns
+
+
+def test_error_triage_seed_repairs_cached_legacy_master(tmp_path: Path) -> None:
+    """The capture-only cache repair rewrites the exact historical key."""
+    master_path = master_measurements_parquet_path(tmp_path)
+    master_path.parent.mkdir(parents=True)
+    legacy_image_name = "MetadataImage_ImageName"
+    pl.DataFrame(
+        {
+            legacy_image_name: ["plate-a"],
+            "Object_Label": [1],
+            "Size_Area": [10.0],
+        }
+    ).write_parquet(master_path)
+
+    repaired, canonical_image_name = capture._repair_cached_legacy_master(
+        pl.read_parquet(master_path), master_path
+    )
+
+    assert canonical_image_name == str(IMAGE.IMAGE_NAME)
+    assert repaired.columns == [
+        canonical_image_name,
+        "Object_Label",
+        "Size_Area",
+    ]
+    persisted = pl.read_parquet(master_path)
+    assert persisted.columns == repaired.columns
+    assert legacy_image_name not in persisted.columns
 
 
 class _FakeProcess:

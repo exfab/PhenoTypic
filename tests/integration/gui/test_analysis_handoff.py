@@ -21,7 +21,7 @@ from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._session import ToolSession
 
 from tests._output_layout import seed_output_dir
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 def _seed_cli_output(parent: Path) -> Path:
@@ -34,9 +34,9 @@ def _seed_cli_output(parent: Path) -> Path:
     out = parent / "results" / "demo"
     out.mkdir(parents=True)
     df = pl.DataFrame({
-        "MetadataExperiment_Dataset": ["d"] * 2,
-        str(METADATA.IMAGE_NAME): ["a", "b"],
-        "MetadataGenetic_Strain": ["A", "B"],
+        "Metadata_Dataset": ["d"] * 2,
+        str(IMAGE.IMAGE_NAME): ["a", "b"],
+        "Metadata_Strain": ["A", "B"],
         "Object_Label": [1, 1],
         "Shape_Area": [100.0, 200.0],
     })

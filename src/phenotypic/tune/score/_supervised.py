@@ -115,17 +115,19 @@ class SupervisedScorer(Scorer):
         >>> from pathlib import Path
         >>> import pandas as pd
         >>> from phenotypic.analysis import ExpectedVsDetectedCount
+        >>> from phenotypic.schema import IMAGE
         >>> from phenotypic.tune.score import GroundTruthMasks, SupervisedScorer
+        >>> image_name = str(IMAGE.IMAGE_NAME)
         >>> tmp = Path(tempfile.mkdtemp())
         >>> counts = tmp / "counts.csv"
         >>> _ = pd.DataFrame(
-        ...     {"MetadataImage_ImageName": ["Synthetic96PlateWithObjects"] * 96,
+        ...     {image_name: ["Synthetic96PlateWithObjects"] * 96,
         ...      "Object_Label": list(range(96))}
         ... ).to_csv(counts, index=False)
         >>> scorer = SupervisedScorer(
         ...     gt=GroundTruthMasks(gt_masks_source=counts),
         ...     count_check=ExpectedVsDetectedCount(
-        ...         metadata=str(counts), groupby=["MetadataImage_ImageName"]
+        ...         metadata=str(counts), groupby=[image_name]
         ...     ),
         ... )
         >>> scorer.gt.modality()

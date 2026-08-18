@@ -14,7 +14,7 @@ from phenotypic.gui.results_viewer.timeline_view._grid import (
     selectable_time_columns,
 )
 from tests._output_layout import write_master, write_measurements_mirror
-from phenotypic.schema import METADATA
+from phenotypic.schema import CULTURE, IMAGE
 
 
 def _value_sets(df: pl.DataFrame) -> dict[str, list[str]]:
@@ -27,10 +27,10 @@ def _value_sets(df: pl.DataFrame) -> dict[str, list[str]]:
 def _df() -> pl.DataFrame:
     return pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["ds"] * 4,
-            str(METADATA.IMAGE_NAME): ["a", "a", "b", "b"],
+            "Metadata_Dataset": ["ds"] * 4,
+            str(IMAGE.IMAGE_NAME): ["a", "a", "b", "b"],
             "Metadata_ImageNumber": pl.Series([1, 2, 1, 2], dtype=pl.Int64),
-            "MetadataCulture_Time": ["09:00", "10:00", "09:00", "10:00"],
+            "Metadata_Time": ["09:00", "10:00", "09:00", "10:00"],
             "Metadata_PlateNum": ["1", "1", "2", "2"],
             "Object_Label": [10, 11, 12, 13],
             "Size_Area": [1.0, 2.0, 3.0, 4.0],
@@ -50,9 +50,9 @@ def test_numeric_dtype_eligible_even_without_time_like_name() -> None:
     # M3: the dtype path admits a numeric column whose NAME does not match the
     # Metadata_Time-like regex — proving dtype is authoritative, name is a
     # string-typed FALLBACK (for String-stored time columns).
-    df = pl.DataFrame({"MetadataCulture_Generation": pl.Series([0, 1, 2], dtype=pl.Int64)})
+    df = pl.DataFrame({"Metadata_Generation": pl.Series([0, 1, 2], dtype=pl.Int64)})
     cols = selectable_time_columns(df, _value_sets(df))
-    assert "MetadataCulture_Generation" in cols
+    assert str(CULTURE.GENERATION) in cols
 
 
 def test_metadata_time_name_match_is_eligible_even_if_string() -> None:
@@ -61,7 +61,22 @@ def test_metadata_time_name_match_is_eligible_even_if_string() -> None:
     # its name matches the Metadata_Time-like pattern → still offered.
     df = _df()
     cols = selectable_time_columns(df, _value_sets(df))
-    assert "MetadataCulture_Time" in cols
+    assert str(CULTURE.TIME) in cols
+
+
+def test_legacy_time_header_is_returned_in_canonical_form() -> None:
+    source = pl.DataFrame(
+        {
+            "Metadata_Time": ["09:00", "10:00"],
+            "Object_Label": [1, 2],
+        }
+    )
+    original = source.clone()
+
+    cols = selectable_time_columns(source, _value_sets(source))
+
+    assert str(CULTURE.TIME) in cols
+    assert source.equals(original)
 
 
 def test_measurement_and_object_label_columns_are_excluded() -> None:
@@ -88,8 +103,8 @@ def test_is_large_time_axis() -> None:
 def test_empty_state_predicate_false_without_any_time_column() -> None:
     df = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["ds", "ds"],
-            str(METADATA.IMAGE_NAME): ["a", "b"],
+            "Metadata_Dataset": ["ds", "ds"],
+            str(IMAGE.IMAGE_NAME): ["a", "b"],
             "Metadata_PlateNum": ["1", "2"],  # categorical, no name/dtype match
             "Object_Label": [1, 2],
             "Size_Area": [1.0, 2.0],

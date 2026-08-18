@@ -29,7 +29,7 @@ from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._processing_inventory import (
     processing_inventory_cache_path,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     BundleLayout,
     ProcessingStateKey,
@@ -46,8 +46,8 @@ from phenotypic.sdk_ import (
 def _seed_output(root: Path, *, overlay_count: int = 2) -> None:
     frame = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["plate"] * 2,
-            str(METADATA.IMAGE_NAME): ["a", "b"],
+            "Metadata_Dataset": ["plate"] * 2,
+            str(IMAGE.IMAGE_NAME): ["a", "b"],
             "Size_Area": [10.0, 20.0],
         }
     )
@@ -492,8 +492,8 @@ def test_read_only_inventory_never_walks_nested_processing_tree(
     image_count = 256
     frame = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["plate"] * image_count,
-            str(METADATA.IMAGE_NAME): [
+            "Metadata_Dataset": ["plate"] * image_count,
+            str(IMAGE.IMAGE_NAME): [
                 f"image-{index}" for index in range(image_count)
             ],
             "Size_Area": [float(index) for index in range(image_count)],

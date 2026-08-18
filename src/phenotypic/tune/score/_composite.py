@@ -101,13 +101,15 @@ class CompositeScorer(Scorer):
 
         >>> import pandas as pd
         >>> from phenotypic.analysis import ExpectedVsDetectedCount
+        >>> from phenotypic.schema import IMAGE
         >>> from phenotypic.tune.score import CompositeScorer, QCScorer
+        >>> image_name = str(IMAGE.IMAGE_NAME)
         >>> layout = pd.DataFrame(
-        ...     {"MetadataImage_ImageName": ["p"] * 96, "Object_Label": list(range(96))}
+        ...     {image_name: ["p"] * 96, "Object_Label": list(range(96))}
         ... )
         >>> qc = QCScorer(
         ...     check=ExpectedVsDetectedCount(
-        ...         metadata=layout, groupby=["MetadataImage_ImageName"]
+        ...         metadata=layout, groupby=[image_name]
         ...     )
         ... )
         >>> comp = CompositeScorer(scorers=[qc, qc])

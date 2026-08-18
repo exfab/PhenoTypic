@@ -65,10 +65,10 @@ class TestLogGrowthModel:
 
         df = pd.DataFrame(
                 {
-                    "MetadataCulture_Time"     : t_data,
+                    "Metadata_Time"     : t_data,
                     "Shape_Area"        : size_data,
-                    "MetadataExperiment_Dataset"  : ["Test"]*len(t_data),
-                    "MetadataGenetic_Strain"   : ["Strain1"]*len(t_data),
+                    "Metadata_Dataset"  : ["Test"]*len(t_data),
+                    "Metadata_Strain"   : ["Strain1"]*len(t_data),
                     "Metadata_Replicate": list(range(len(t_data))),
                 }
         )
@@ -79,12 +79,12 @@ class TestLogGrowthModel:
         """Test LogGrowthModel initialization with various parameters."""
         # Test basic initialization
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         assert model.on == "Shape_Area"
-        assert model.groupby == ["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
-        assert model.time_label == "MetadataCulture_Time"
+        assert model.groupby == ["Metadata_Dataset", "Metadata_Strain"]
+        assert model.time_label == "Metadata_Time"
         assert model.Kmax_label is None
         assert model.lam == 1.2
         assert model.beta == 2
@@ -106,8 +106,11 @@ class TestLogGrowthModel:
         )
 
         assert model_custom.on == "Area"
-        assert model_custom.groupby == ["Dataset", "Strain"]
-        assert model_custom.time_label == "Time"
+        assert model_custom.groupby == [
+            "Metadata_Dataset",
+            "Metadata_Strain",
+        ]
+        assert model_custom.time_label == "Metadata_Time"
         assert model_custom.Kmax_label == "Max_Capacity"
         assert model_custom.lam == 2.0
         assert model_custom.beta == 10
@@ -118,7 +121,7 @@ class TestLogGrowthModel:
         """Test basic model analysis functionality."""
         model = LogGrowthModel(
                 on="Shape_Area",
-                groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
                 verbose=False,
         )
 
@@ -175,7 +178,7 @@ class TestLogGrowthModel:
 
         model = LogGrowthModel(
                 on="Shape_Area",
-                groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
                 Kmax_label="Kmax_Value",
         )
 
@@ -187,7 +190,7 @@ class TestLogGrowthModel:
     def test_parallel_processing(self, sample_data):
         """Test parallel processing functionality."""
         model_parallel = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"],
                 n_jobs=2
         )
 
@@ -195,7 +198,7 @@ class TestLogGrowthModel:
 
         # Compare with single-threaded results
         model_single = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"],
                 n_jobs=1
         )
 
@@ -209,7 +212,7 @@ class TestLogGrowthModel:
     def test_results_method(self, sample_data):
         """Test the results() method."""
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         # Should return empty DataFrame if analyze hasn't been called
@@ -227,19 +230,19 @@ class TestLogGrowthModel:
     def test_show_method(self, sample_data):
         """Test the show() method for visualization."""
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         model.analyze(sample_data)
 
         # Test basic plotting with criteria
-        fig, ax = model.show(criteria={"MetadataExperiment_Dataset": "Test"})
+        fig, ax = model.show(criteria={"Metadata_Dataset": "Test"})
         assert isinstance(fig, plt.Figure)
         assert isinstance(ax, plt.Axes)
 
         # Test plotting with more specific criteria
         fig2, ax2 = model.show(
-                criteria={"MetadataExperiment_Dataset": "Test", "MetadataGenetic_Strain": "Strain1"}
+                criteria={"Metadata_Dataset": "Test", "Metadata_Strain": "Strain1"}
         )
         assert isinstance(fig2, plt.Figure)
         assert isinstance(ax2, plt.Axes)
@@ -251,18 +254,18 @@ class TestLogGrowthModel:
         # Create data with multiple strains
         multi_strain_data = sample_data.copy()
         strain2_data = sample_data.copy()
-        strain2_data["MetadataGenetic_Strain"] = "Strain2"
+        strain2_data["Metadata_Strain"] = "Strain2"
 
         combined_data = pd.concat([multi_strain_data, strain2_data], ignore_index=True)
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         model.analyze(combined_data)
 
         # Test filtering to show only one strain
-        fig, ax = model.show(criteria={"MetadataGenetic_Strain": "Strain1"})
+        fig, ax = model.show(criteria={"Metadata_Strain": "Strain1"})
         assert isinstance(fig, plt.Figure)
 
         plt.close("all")
@@ -304,14 +307,14 @@ class TestLogGrowthModel:
         # But regularization and penalty terms will still contribute
         assert len(loss) > len(y)  # Should include regularization terms
 
-    @pytest.mark.parametrize("missing_column", ["Shape_Area", "MetadataCulture_Time"])
+    @pytest.mark.parametrize("missing_column", ["Shape_Area", "Metadata_Time"])
     def test_missing_columns(self, sample_data, missing_column):
         """Test behavior with missing required columns."""
         data_missing_col = sample_data.drop(columns=[missing_column])
 
         model = LogGrowthModel(
                 on="Shape_Area" if missing_column != "Shape_Area" else "Missing_Column",
-                groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
 
         with pytest.raises(KeyError):
@@ -321,15 +324,15 @@ class TestLogGrowthModel:
         """Test behavior with empty DataFrame."""
         empty_df = pd.DataFrame(
                 columns=[
-                    "MetadataCulture_Time",
+                    "Metadata_Time",
                     "Shape_Area",
-                    "MetadataExperiment_Dataset",
-                    "MetadataGenetic_Strain",
+                    "Metadata_Dataset",
+                    "Metadata_Strain",
                 ]
         )
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         with pytest.raises((ValueError, KeyError)):
@@ -339,15 +342,15 @@ class TestLogGrowthModel:
         """Test behavior with insufficient data (single timepoint)."""
         single_point_df = pd.DataFrame(
                 {
-                    "MetadataCulture_Time"   : [0],
+                    "Metadata_Time"   : [0],
                     "Shape_Area"      : [100],
-                    "MetadataExperiment_Dataset": ["Test"],
-                    "MetadataGenetic_Strain" : ["Strain1"],
+                    "Metadata_Dataset": ["Test"],
+                    "Metadata_Strain" : ["Strain1"],
                 }
         )
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         # Should handle gracefully, possibly returning NaN values
@@ -386,7 +389,7 @@ class TestLogGrowthModel:
         """Test verbose output functionality."""
         model = LogGrowthModel(
                 on="Shape_Area",
-                groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
                 verbose=True,
         )
 
@@ -407,15 +410,15 @@ class TestLogGrowthModel:
 
         df = pd.DataFrame(
                 {
-                    "MetadataCulture_Time"   : t,
+                    "Metadata_Time"   : t,
                     "Shape_Area"      : y,
-                    "MetadataExperiment_Dataset": ["Test"]*len(t),
-                    "MetadataGenetic_Strain" : ["Strain1"]*len(t),
+                    "Metadata_Dataset": ["Test"]*len(t),
+                    "Metadata_Strain" : ["Strain1"]*len(t),
                 }
         )
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         results = model.analyze(df)
@@ -436,7 +439,7 @@ class TestLogGrowthModel:
         # Test with mean aggregation (default)
         model_mean = LogGrowthModel(
                 on="Shape_Area",
-                groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
                 agg_func="mean",
         )
 
@@ -445,7 +448,7 @@ class TestLogGrowthModel:
         # Test with median aggregation
         model_median = LogGrowthModel(
                 on="Shape_Area",
-                groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
                 agg_func="median",
         )
 
@@ -464,11 +467,11 @@ class TestLogGrowthModel:
         go = pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
         model.analyze(sample_data)
 
-        fig = model.inspect(criteria={"MetadataExperiment_Dataset": "Test"})
+        fig = model.inspect(criteria={"Metadata_Dataset": "Test"})
         assert isinstance(fig, go.Figure)
         # 1 group -> 2 traces (line + markers)
         assert len(fig.data) >= 2
@@ -478,18 +481,18 @@ class TestLogGrowthModel:
         go = pytest.importorskip("plotly.graph_objects")
 
         strain2_data = sample_data.copy()
-        strain2_data["MetadataGenetic_Strain"] = "Strain2"
+        strain2_data["Metadata_Strain"] = "Strain2"
         combined_data = pd.concat(
                 [sample_data, strain2_data], ignore_index=True
         )
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
         model.analyze(combined_data)
 
         # Filter to one strain -> 2 traces (1 line + 1 scatter)
-        fig = model.inspect(criteria={"MetadataGenetic_Strain": "Strain1"})
+        fig = model.inspect(criteria={"Metadata_Strain": "Strain1"})
         assert isinstance(fig, go.Figure)
         assert len(fig.data) == 2
 
@@ -498,12 +501,12 @@ class TestLogGrowthModel:
         go = pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
         model.analyze(sample_data)
 
         with pytest.warns(UserWarning, match="No data found"):
-            fig = model.inspect(criteria={"MetadataExperiment_Dataset": "NonExistent"})
+            fig = model.inspect(criteria={"Metadata_Dataset": "NonExistent"})
         assert isinstance(fig, go.Figure)
         assert len(fig.data) == 0
 
@@ -512,11 +515,11 @@ class TestLogGrowthModel:
         pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
         model.analyze(sample_data)
 
-        fig = model.inspect(criteria={"MetadataExperiment_Dataset": "Test"})
+        fig = model.inspect(criteria={"Metadata_Dataset": "Test"})
 
         line_trace = fig.data[0]
         assert line_trace.mode == "lines"
@@ -534,12 +537,12 @@ class TestLogGrowthModel:
         pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
         model.analyze(sample_data)
 
         fig = model.inspect(
-                criteria={"MetadataExperiment_Dataset": "Test"}, legend=False
+                criteria={"Metadata_Dataset": "Test"}, legend=False
         )
         assert fig.layout.showlegend is False
 
@@ -548,12 +551,12 @@ class TestLogGrowthModel:
         pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
         model.analyze(sample_data)
 
         fig = model.inspect(
-                criteria={"MetadataExperiment_Dataset": "Test"}, tmax=5
+                criteria={"Metadata_Dataset": "Test"}, tmax=5
         )
         line_trace = fig.data[0]
         assert max(line_trace.x) <= 6.0  # tmax + step

@@ -37,7 +37,7 @@ from phenotypic.gui.shell import SandboxRoot
 from phenotypic.gui.shell._app import compose_hub
 from phenotypic.gui.shell._binding import BindingCoordinator
 from phenotypic.gui.shell._session import ToolSession
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     atomic_write_json,
     gui_launch_owner_path,
@@ -51,8 +51,8 @@ def _seed_output(parent: Path, name: str = "output") -> Path:
     output = parent / name
     frame = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["dataset"],
-            str(METADATA.IMAGE_NAME): ["plate"],
+            "Metadata_Dataset": ["dataset"],
+            str(IMAGE.IMAGE_NAME): ["plate"],
             "Object_Label": [1],
             "Shape_Area": [100.0],
         }

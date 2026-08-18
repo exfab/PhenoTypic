@@ -20,7 +20,7 @@ from phenotypic.sdk_ import (
     progress_dir,
     slurm_scripts_dir,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import EXPERIMENT, IMAGE
 
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
@@ -38,7 +38,7 @@ def _write_parquet(
     path.parent.mkdir(parents=True, exist_ok=True)
     columns: dict[str, list[int] | list[str]] = {"Size_Area": values}
     if image_names is not None:
-        columns[str(METADATA.IMAGE_NAME)] = image_names
+        columns[str(IMAGE.IMAGE_NAME)] = image_names
     pl.DataFrame(columns).write_parquet(path)
 
 
@@ -65,11 +65,18 @@ def test_recompile_slurm_dispatcher_submits_and_writes_metadata(
         output_dir: Path,
         slurm_args: dict[str, object],
         array_limit: int,
+        attempt_id: str | None = None,
     ) -> list[Path]:
         generated_tasks.extend(tasks)
         assert slurm_args == {"slurm_partition": "compute"}
         assert array_limit == 77
-        manifest_path = progress_dir(output_dir) / "recompile" / "task_manifest.json"
+        manifest_path = (
+            progress_dir(output_dir)
+            / "recompile"
+            / "attempts"
+            / str(attempt_id)
+            / "task_manifest.json"
+        )
         manifest_path.parent.mkdir(parents=True)
         manifest_path.write_text(json.dumps({"tasks": tasks}), encoding="utf-8")
         return scripts
@@ -131,7 +138,11 @@ def test_recompile_slurm_dispatcher_submits_and_writes_metadata(
     assert metadata["metadata_csv"] == str(metadata_csv)
     assert metadata["input_path"] == str(output_dir)
     assert metadata["recompile"]["task_manifest"] == str(
-        progress_dir(output_dir) / "recompile" / "task_manifest.json"
+        progress_dir(output_dir)
+        / "recompile"
+        / "attempts"
+        / metadata["recompile"]["attempt_id"]
+        / "task_manifest.json"
     )
     assert metadata["recompile"]["finalizer_task_index"] == len(generated_tasks) - 1
 
@@ -154,11 +165,18 @@ def test_recompile_slurm_dispatcher_waits_for_finalizer(
         output_dir: Path,
         slurm_args: dict[str, object],
         array_limit: int,
+        attempt_id: str | None = None,
     ) -> list[Path]:
         assert slurm_args == {"slurm_partition": "compute"}
         assert array_limit == 100
         finalizer_indices.append(len(tasks) - 1)
-        manifest_path = progress_dir(output_dir) / "recompile" / "task_manifest.json"
+        manifest_path = (
+            progress_dir(output_dir)
+            / "recompile"
+            / "attempts"
+            / str(attempt_id)
+            / "task_manifest.json"
+        )
         manifest_path.parent.mkdir(parents=True)
         manifest_path.write_text(json.dumps({"tasks": tasks}), encoding="utf-8")
         return [script]
@@ -190,7 +208,11 @@ def test_recompile_slurm_dispatcher_waits_for_finalizer(
             wait=True,
         )
 
-    mock_wait.assert_called_once_with(output_dir, finalizer_indices[0])
+    assert mock_wait.call_count == 1
+    assert mock_wait.call_args.args == (output_dir, finalizer_indices[0])
+    assert mock_wait.call_args.kwargs["recompile_finalizer_status_path"].name == (
+        f"task_{finalizer_indices[0]}.json"
+    )
 
 
 def test_recompile_slurm_dispatcher_falls_back_to_local_when_no_scripts(
@@ -265,6 +287,7 @@ def test_generate_recompile_scripts_write_manifest_and_worker_arrays(
         TASK_OVERLAY,
         build_recompile_tasks,
         generate_recompile_slurm_scripts,
+        recompile_task_status_path,
     )
 
     output_dir = tmp_path / "out"
@@ -343,13 +366,25 @@ def test_generate_recompile_scripts_write_manifest_and_worker_arrays(
         output_dir=output_dir,
         slurm_args={},
         array_limit=2,
+        attempt_id="attempt-script-args",
     )
 
     manifest_path = (
-        progress_dir(output_dir) / "recompile" / "task_manifest.json"
+        progress_dir(output_dir)
+        / "recompile"
+        / "attempts"
+        / "attempt-script-args"
+        / "task_manifest.json"
     )
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    assert manifest["tasks"] == tasks
+    assert [
+        {key: value for key, value in task.items() if key != "slurm_generation"}
+        for task in manifest["tasks"]
+    ] == tasks
+    assert all(
+        task["slurm_generation"] == "attempt-script-args"
+        for task in manifest["tasks"]
+    )
     assert len(scripts) == 3
     assert (
         scripts[-1].read_text(encoding="utf-8").count("_cli_recompile_worker")
@@ -359,20 +394,37 @@ def test_generate_recompile_scripts_write_manifest_and_worker_arrays(
         encoding="utf-8"
     )
     assert "#SBATCH --array=0-0" in scripts[-1].read_text(encoding="utf-8")
+    script_text = scripts[0].read_text(encoding="utf-8")
+    assert "+    --slurm-generation" not in script_text
+    assert "--slurm-generation attempt-script-args" in script_text
+    assert "--attempt-id attempt-script-args" in script_text
+    assert "--terminal-status-path" in script_text
+    assert str(
+        recompile_task_status_path(manifest_path, len(tasks) - 1)
+    ) in script_text
 
 
 def test_measurement_worker_writes_shard_with_dataset_and_image_file(
     tmp_path: Path,
 ) -> None:
     from phenotypic._cli._cli_recompile_worker import main
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
 
     output_dir = tmp_path / "out"
+    generation = "measurement-worker"
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
     img2 = output_dir / "results" / "plate_a" / "measurements" / "img2.parquet"
     img1 = output_dir / "results" / "plate_a" / "measurements" / "img1.parquet"
     _write_parquet(img2, [20])
     _write_parquet(img1, [10])
     manifest_path = (
-        progress_dir(output_dir) / "recompile" / "task_manifest.json"
+        progress_dir(output_dir)
+        / "recompile"
+        / "attempts"
+        / generation
+        / "task_manifest.json"
     )
     manifest_path.parent.mkdir(parents=True)
     manifest_path.write_text(
@@ -384,6 +436,7 @@ def test_measurement_worker_writes_shard_with_dataset_and_image_file(
                         "shard_id": 7,
                         "files": [str(img2), str(img1)],
                         "include_dataset_column": True,
+                        "slurm_generation": generation,
                     }
                 ]
             }
@@ -400,6 +453,10 @@ def test_measurement_worker_writes_shard_with_dataset_and_image_file(
             str(manifest_path),
             "--task-index",
             "0",
+            "--slurm-generation",
+            generation,
+            "--attempt-id",
+            generation,
         ],
     )
 
@@ -407,26 +464,28 @@ def test_measurement_worker_writes_shard_with_dataset_and_image_file(
     shard = pl.read_parquet(
         progress_dir(output_dir)
         / "recompile"
+        / "attempts"
+        / generation
         / "measurement_shards"
         / "shard_7.parquet"
     )
     assert shard.sort("Size_Area").select(
-        ["MetadataExperiment_Dataset", str(METADATA.IMAGE_NAME), "Size_Area"]
+        [str(EXPERIMENT.DATASET), str(IMAGE.IMAGE_NAME), "Size_Area"]
     ).to_dicts() == [
         {
-            "MetadataExperiment_Dataset": "plate_a",
-            str(METADATA.IMAGE_NAME): "img1",
+            str(EXPERIMENT.DATASET): "plate_a",
+            str(IMAGE.IMAGE_NAME): "img1",
             "Size_Area": 10,
         },
         {
-            "MetadataExperiment_Dataset": "plate_a",
-            str(METADATA.IMAGE_NAME): "img2",
+            str(EXPERIMENT.DATASET): "plate_a",
+            str(IMAGE.IMAGE_NAME): "img2",
             "Size_Area": 20,
         },
     ]
     status = json.loads(
         (
-            progress_dir(output_dir) / "recompile" / "status" / "task_0.json"
+            manifest_path.parent / "status" / "task_0.json"
         ).read_text(encoding="utf-8")
     )
     assert status["status"] == "completed"
@@ -436,13 +495,22 @@ def test_overlay_worker_records_save_failure_as_completed_nonfatal(
     tmp_path: Path,
 ) -> None:
     from phenotypic._cli._cli_recompile_worker import main
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
 
     output_dir = tmp_path / "out"
+    generation = "overlay-worker"
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
     hdf_path = output_dir / "results" / "plate_a" / "hdf" / "img1.h5"
     hdf_path.parent.mkdir(parents=True)
     hdf_path.write_text("stub", encoding="utf-8")
     manifest_path = (
-        progress_dir(output_dir) / "recompile" / "task_manifest.json"
+        progress_dir(output_dir)
+        / "recompile"
+        / "attempts"
+        / generation
+        / "task_manifest.json"
     )
     manifest_path.parent.mkdir(parents=True)
     manifest_path.write_text(
@@ -454,6 +522,7 @@ def test_overlay_worker_records_save_failure_as_completed_nonfatal(
                         "dataset_name": "plate_a",
                         "hdf_path": str(hdf_path),
                         "overlay_alpha": 0.7,
+                        "slurm_generation": generation,
                     }
                 ]
             }
@@ -492,13 +561,17 @@ def test_overlay_worker_records_save_failure_as_completed_nonfatal(
                 str(manifest_path),
                 "--task-index",
                 "0",
+                "--slurm-generation",
+                generation,
+                "--attempt-id",
+                generation,
             ],
         )
 
     assert result.exit_code == 0, result.output
     status = json.loads(
         (
-            progress_dir(output_dir) / "recompile" / "status" / "task_0.json"
+            manifest_path.parent / "status" / "task_0.json"
         ).read_text(encoding="utf-8")
     )
     assert status["status"] == "completed"
@@ -510,31 +583,41 @@ def test_finalizer_writes_master_outputs_and_rebuilds_dashboard(
     tmp_path: Path,
 ) -> None:
     from phenotypic._cli._cli_recompile_worker import main
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
 
     output_dir = tmp_path / "out"
-    shard_dir = progress_dir(output_dir) / "recompile" / "measurement_shards"
+    generation = "finalizer-worker"
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
+    attempt_dir = (
+        progress_dir(output_dir) / "recompile" / "attempts" / generation
+    )
+    shard_dir = attempt_dir / "measurement_shards"
     _write_parquet(shard_dir / "shard_1.parquet", [2])
     _write_parquet(shard_dir / "shard_0.parquet", [1])
-    status_dir = progress_dir(output_dir) / "recompile" / "status"
+    status_dir = attempt_dir / "status"
     status_dir.mkdir(parents=True)
     (status_dir / "task_0.json").write_text(
         json.dumps({"status": "completed", "task_type": "measurements"}),
         encoding="utf-8",
     )
-    manifest_path = (
-        progress_dir(output_dir) / "recompile" / "task_manifest.json"
-    )
+    manifest_path = attempt_dir / "task_manifest.json"
     manifest_path.write_text(
         json.dumps(
             {
                 "tasks": [
-                    {"task_type": "measurements"},
+                    {
+                        "task_type": "measurements",
+                        "slurm_generation": generation,
+                    },
                     {
                         "task_type": "finalize",
                         "dataset_names": ["plate_a"],
                         "include_dataset_column": True,
                         "metadata_csv": None,
                         "expected_non_finalizer_tasks": 1,
+                        "slurm_generation": generation,
                     },
                 ]
             }
@@ -563,6 +646,10 @@ def test_finalizer_writes_master_outputs_and_rebuilds_dashboard(
                 str(manifest_path),
                 "--task-index",
                 "1",
+                "--slurm-generation",
+                generation,
+                "--attempt-id",
+                generation,
             ],
         )
 
@@ -586,7 +673,48 @@ def test_finalizer_writes_master_outputs_and_rebuilds_dashboard(
     mock_dashboard.assert_called_once_with(output_dir, execution_mode="local")
     status = json.loads(
         (
-            progress_dir(output_dir) / "recompile" / "status" / "task_1.json"
+            manifest_path.parent / "status" / "task_1.json"
         ).read_text(encoding="utf-8")
     )
     assert status["status"] == "completed"
+
+
+def test_finalizer_blocks_publication_on_unknown_failed_task(
+    tmp_path: Path,
+) -> None:
+    """Bootstrap failures abort master and post publication."""
+    import phenotypic._cli._cli_recompile_worker as worker
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+
+    output_dir = tmp_path / "out"
+    generation = "blocked-finalizer"
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
+    manifest = (
+        progress_dir(output_dir)
+        / "recompile"
+        / "attempts"
+        / generation
+        / "task_manifest.json"
+    )
+    task = {"expected_non_finalizer_tasks": 1}
+    with (
+        patch.object(
+            worker,
+            "_wait_for_non_finalizer_statuses",
+            return_value=[{"task_type": "unknown", "status": "failed"}],
+        ),
+        patch.object(worker, "_write_master_outputs_from_shards") as master,
+        patch.object(worker, "_run_post_master_steps") as post,
+        pytest.raises(RuntimeError, match="non-finalizer recompile task"),
+    ):
+        worker._run_finalizer_task(
+            output_dir,
+            manifest,
+            task,
+            slurm_generation=generation,
+        )
+
+    master.assert_not_called()
+    post.assert_not_called()

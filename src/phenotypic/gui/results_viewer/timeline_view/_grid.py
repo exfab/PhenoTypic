@@ -19,11 +19,15 @@ import polars as pl
 
 from phenotypic.gui.results_viewer._filtered_state import KEY_DATASET, KEY_IMAGE_FILE
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._metadata import (
+    normalize_metadata_reference,
+    normalize_viewer_frame,
+)
 from phenotypic.gui.results_viewer.colony_view._grid import (
     _MEASUREMENT_PREFIXES,
     _OBJECT_LABEL_COL,
 )
-from phenotypic.schema import MeasurementInfo
+from phenotypic.schema import MeasurementInfo, MetadataInfo
 from phenotypic.sdk_ import is_metadata_header
 
 __all__ = [
@@ -67,11 +71,13 @@ def _measurement_prefixes() -> frozenset[str]:
             continue
         seen.add(cls)
         stack.extend(cls.__subclasses__())
+        if issubclass(cls, MetadataInfo):
+            continue
         try:
             category = cls.category()
         except Exception:  # abstract intermediate base — no category of its own
             continue
-        if category.startswith("Metadata") or category == "Object":
+        if category == "Object":
             continue
         prefixes.add(f"{category}_")
     return frozenset(prefixes)
@@ -82,8 +88,8 @@ def _measurement_prefixes() -> frozenset[str]:
 _TIME_AXIS_MEASUREMENT_PREFIXES: frozenset[str] = _measurement_prefixes()
 
 #: Case-insensitive name match for a "time-like" column. Seeded from Heatmap's
-#: time column (``str(CULTURE_METADATA.TIME)`` == ``MetadataCulture_Time``) but
-#: generalized so e.g. ``MetadataCulture_Timepoint`` / a ``Metadata_ImageNumber``
+#: time column (``str(CULTURE.TIME)`` == ``Metadata_Time``) but generalized so
+#: e.g. ``Metadata_Timepoint`` / a ``Metadata_ImageNumber``
 #: column also surface. Numeric/temporal dtype is an independent eligibility path.
 _TIME_NAME_RE = re.compile(
     r"(?:^|_)(time|timepoint|imagenumber|frame)(?:_|$|\d)", re.IGNORECASE
@@ -123,6 +129,7 @@ def selectable_time_columns(
         Eligible time-column names in bucketed sort order.
     """
     del column_value_sets  # eligibility is name/dtype-based, never cardinality
+    df = normalize_viewer_frame(df)
     eligible: list[str] = []
     schema = df.schema
     for col in df.columns:
@@ -180,6 +187,9 @@ def build_timeline_records(
         dicts. ``cell_ref`` is the ``(dataset, stem)`` tuple consumed by the
         thumbnail + DZI routes.
     """
+    df = normalize_viewer_frame(df)
+    row_col = normalize_metadata_reference(row_col)
+    time_col = normalize_metadata_reference(time_col)
     needed = [KEY_DATASET, KEY_IMAGE_FILE, row_col, time_col]
     have = [c for c in dict.fromkeys(needed) if c in df.columns]
     slim = df.select(have).drop_nulls(subset=[KEY_DATASET, KEY_IMAGE_FILE]).unique()

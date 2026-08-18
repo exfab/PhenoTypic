@@ -4,16 +4,13 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal, Mapping
 from uuid import UUID
 
 from phenotypic.sdk_ import (
     DashboardManifestKey,
-    atomic_write_json,
     manifest_json_path,
-    run_completion_marker_path,
 )
 from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 
@@ -69,7 +66,7 @@ def local_manifest_completion_problem(
 
 
 def publish_local_gui_completion(output_dir: Path) -> bool:
-    """Publish exact GUI generation evidence for a coherent local manifest.
+    """Publish exact GUI generation evidence for a coherent local run.
 
     Ordinary non-GUI CLI invocations do not carry the private environment
     token and remain unchanged. GUI-launched local runs publish only after
@@ -83,48 +80,51 @@ def publish_local_gui_completion(output_dir: Path) -> bool:
         was not launched by the GUI.
 
     Raises:
-        RuntimeError: If a GUI generation is present but the canonical local
-            manifest is missing, unreadable, incomplete, or failed.
+        RuntimeError: If current marker evidence is incomplete, or a legacy
+            run's canonical manifest is missing, unreadable, or incomplete.
     """
     generation = gui_record_generation_from_environment()
-    if generation is None:
-        return False
 
-    path = manifest_json_path(output_dir)
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(payload, dict):
-            raise TypeError("manifest is not an object")
-    except (
-        FileNotFoundError,
-        OSError,
-        UnicodeDecodeError,
-        json.JSONDecodeError,
-        TypeError,
-    ) as exc:
-        raise RuntimeError(
-            "Cannot publish GUI local completion without a readable "
-            f"canonical manifest at {path}"
-        ) from exc
+    from ._cli_completion import current_run_is_complete
 
-    if local_manifest_completion_problem(payload, generation) is not None:
+    marker_complete = current_run_is_complete(output_dir)
+    if marker_complete is False:
         raise RuntimeError(
-            "Cannot publish GUI local completion for a stale-generation, "
-            "incomplete, failed, or non-local canonical manifest"
+            "Cannot publish GUI local completion while current image outcomes "
+            "remain incomplete"
         )
+    if marker_complete is None and generation is None:
+        return False
+    if marker_complete is None:
+        path = manifest_json_path(output_dir)
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                raise TypeError("manifest is not an object")
+        except (
+            FileNotFoundError,
+            OSError,
+            UnicodeDecodeError,
+            json.JSONDecodeError,
+            TypeError,
+        ) as exc:
+            raise RuntimeError(
+                "Cannot publish legacy GUI local completion without a readable "
+                f"canonical manifest at {path}"
+            ) from exc
 
-    atomic_write_json(
-        run_completion_marker_path(output_dir),
-        {
-            "schema_version": 1,
-            "generation": generation,
-            "mode": "local",
-            "status": "complete",
-            "finalizer_succeeded": True,
-            "completed_at": datetime.now(timezone.utc).isoformat(
-                timespec="milliseconds"
-            ),
-        },
+        if local_manifest_completion_problem(payload, generation) is not None:
+            raise RuntimeError(
+                "Cannot publish legacy GUI local completion for a "
+                "stale-generation, incomplete, failed, or non-local manifest"
+            )
+
+    from ._cli_completion import publish_run_completion_evidence
+
+    publish_run_completion_evidence(
+        output_dir,
+        execution_epoch="local",
+        gui_record_generation=generation,
     )
     return True
 

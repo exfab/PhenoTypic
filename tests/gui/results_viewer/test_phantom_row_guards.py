@@ -21,7 +21,7 @@ from phenotypic.gui.results_viewer._filtered_state import (
     FilteredMeasurements,
     _extract_keys,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import BundleLayout
 
 from tests._output_layout import write_master
@@ -36,7 +36,7 @@ def _master() -> pl.DataFrame:
     """Clean master: two real, detected objects in one image."""
     return pl.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): ["plateA", "plateA"],
+            str(IMAGE.IMAGE_NAME): ["plateA", "plateA"],
             "Object_Label": [1, 2],
             "Bbox_CenterRR": [10.0, 20.0],
             "Bbox_CenterCC": [30.0, 40.0],
@@ -53,14 +53,14 @@ def _mirror_with_phantom() -> pl.DataFrame:
     """
     return pl.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): ["plateA", "plateA", None],
+            str(IMAGE.IMAGE_NAME): ["plateA", "plateA", None],
             "Object_Label": [1, 2, None],
             "Bbox_CenterRR": [10.0, 20.0, None],
             "Bbox_CenterCC": [30.0, 40.0, None],
             "Size_Area": [100.0, 200.0, None],
         },
         schema={
-            str(METADATA.IMAGE_NAME): pl.String,
+            str(IMAGE.IMAGE_NAME): pl.String,
             "Object_Label": pl.Int64,
             "Bbox_CenterRR": pl.Float64,
             "Bbox_CenterCC": pl.Float64,

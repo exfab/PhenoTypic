@@ -14,25 +14,31 @@ from ._cli_recompile_slurm_scripts import (
     TASK_FINALIZE,
     TASK_MEASUREMENTS,
     TASK_OVERLAY,
+    recompile_task_status_path,
+    recompile_attempt_dir,
 )
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA
+from ._cli_slurm_lifecycle import (
+    SlurmGenerationInactiveError,
+    assert_generation_active,
+    generation_publication_guard,
+)
+from phenotypic.schema import EXPERIMENT, IMAGE
 from phenotypic.sdk_ import (
     DIR_MEASUREMENTS,
     DIR_RECOMPILE_SHARDS,
     DIR_RESULTS,
     JobMetadataKey,
     PARQUET_WRITE_OPTIONS,
+    RECOMPILE_TASK_MANIFEST_JSON,
     atomic_write_json,
     atomic_write_with_writer,
     load_image_from_hdf,
     master_measurements_csv_path,
     master_measurements_parquet_path,
     task_status_filename,
-    task_status_path,
     shard_parquet_filename,
     progress_dir as progress_dir_helper,
     recompile_dir as recompile_dir_helper,
-    recompile_status_dir,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,20 +54,43 @@ _FINALIZER_STATUS_TIMEOUT_SECONDS = 600
 )
 @click.option(
     "--task-manifest",
-    type=click.Path(exists=True, path_type=Path),
+    type=click.Path(path_type=Path),
     required=True,
 )
 @click.option("--task-index", type=int, required=True)
-def main(output_dir: Path, task_manifest: Path, task_index: int) -> None:
+@click.option("--slurm-generation", required=True)
+@click.option("--attempt-id", required=True)
+@click.option("--terminal-status-path", type=click.Path(path_type=Path))
+def main(
+    output_dir: Path,
+    task_manifest: Path,
+    task_index: int,
+    slurm_generation: str,
+    attempt_id: str,
+    terminal_status_path: Path | None,
+) -> None:
     """Run one recompile task from a JSON task manifest."""
     try:
-        run_recompile_task(output_dir, task_manifest, task_index)
+        run_recompile_task(
+            output_dir,
+            task_manifest,
+            task_index,
+            slurm_generation=slurm_generation,
+            attempt_id=attempt_id,
+            terminal_status_path=terminal_status_path,
+        )
     except Exception as exc:
         raise click.ClickException(str(exc)) from exc
 
 
 def run_recompile_task(
-    output_dir: Path, task_manifest: Path, task_index: int
+    output_dir: Path,
+    task_manifest: Path,
+    task_index: int,
+    *,
+    slurm_generation: str,
+    attempt_id: str,
+    terminal_status_path: Path | None = None,
 ) -> None:
     """Load and dispatch a single recompile task.
 
@@ -70,35 +99,122 @@ def run_recompile_task(
         task_manifest: JSON manifest written by
             :func:`generate_recompile_slurm_scripts`.
         task_index: Zero-based task index in the manifest.
+        slurm_generation: Lifecycle generation supplied independently by the
+            scheduler script.
+        attempt_id: Attempt namespace supplied independently by the scheduler
+            script.
+        terminal_status_path: Attempt-scoped finalizer status supplied by the
+            scheduler script so a waiter can observe manifest bootstrap
+            failures before finalizer task metadata is available.
     """
-    output_dir = Path(output_dir)
-    task = _load_task(task_manifest, task_index)
-    task_type = str(task.get("task_type", ""))
-
+    output_dir = Path(output_dir).resolve()
+    _assert_worker_generation(output_dir, slurm_generation, attempt_id)
+    expected_manifest = (
+        recompile_attempt_dir(output_dir, attempt_id)
+        / RECOMPILE_TASK_MANIFEST_JSON
+    ).resolve()
+    if task_manifest.resolve() != expected_manifest:
+        raise ValueError("Recompile manifest is outside its attempt namespace")
+    task: dict[str, Any] | None = None
+    task_type = "unknown"
     try:
+        task = _load_task(task_manifest, task_index)
+        task_type = str(task.get("task_type", ""))
+        task_generation = task.get("slurm_generation")
+        if task_generation != slurm_generation:
+            raise ValueError("Recompile task generation does not match script")
         if task_type == TASK_MEASUREMENTS:
-            _run_measurement_task(output_dir, task)
+            _run_measurement_task(
+                output_dir,
+                task_manifest,
+                task,
+                slurm_generation=slurm_generation,
+            )
             _write_status(
-                output_dir, task_index, task_type, {"status": "completed"}
+                task_manifest,
+                task_index,
+                task_type,
+                {"status": "completed"},
+                output_dir=output_dir,
+                slurm_generation=slurm_generation,
             )
         elif task_type == TASK_OVERLAY:
-            status = _run_overlay_task(output_dir, task)
-            _write_status(output_dir, task_index, task_type, status)
-        elif task_type == TASK_FINALIZE:
-            _run_finalizer_task(output_dir, task)
-            _write_status(
-                output_dir, task_index, task_type, {"status": "completed"}
+            status = _run_overlay_task(
+                output_dir, task, slurm_generation=slurm_generation
             )
+            _write_status(
+                task_manifest,
+                task_index,
+                task_type,
+                status,
+                output_dir=output_dir,
+                slurm_generation=slurm_generation,
+            )
+        elif task_type == TASK_FINALIZE:
+            _run_finalizer_task(
+                output_dir,
+                task_manifest,
+                task,
+                slurm_generation=slurm_generation,
+            )
+            _write_status(
+                task_manifest,
+                task_index,
+                task_type,
+                {"status": "completed"},
+                output_dir=output_dir,
+                slurm_generation=slurm_generation,
+            )
+            _deactivate_generation_value(output_dir, slurm_generation)
         else:
             raise ValueError(f"Unknown recompile task type: {task_type!r}")
     except Exception as exc:
-        _write_status(
-            output_dir,
-            task_index,
-            task_type,
-            {"status": "failed", "error": f"{type(exc).__name__}: {exc}"},
-        )
+        try:
+            failure = {
+                "status": "failed",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+            _write_status(
+                task_manifest,
+                task_index,
+                task_type,
+                failure,
+                output_dir=output_dir,
+                slurm_generation=slurm_generation,
+            )
+            if terminal_status_path is not None:
+                current_status_path = recompile_task_status_path(
+                    task_manifest, task_index
+                )
+                if terminal_status_path != current_status_path:
+                    with generation_publication_guard(
+                        output_dir, slurm_generation
+                    ):
+                        atomic_write_json(
+                            terminal_status_path,
+                            {
+                                "task_type": TASK_FINALIZE,
+                                **failure,
+                                "manifest_unreadable": task is None,
+                                "worker_terminal_failure": True,
+                            },
+                            sort_keys=False,
+                        )
+        finally:
+            if not isinstance(exc, SlurmGenerationInactiveError):
+                _deactivate_generation_value(output_dir, slurm_generation)
         raise
+
+
+def _assert_worker_generation(
+    output_dir: Path, slurm_generation: str, attempt_id: str
+) -> None:
+    """Validate independently supplied worker ownership arguments."""
+    if not slurm_generation or not attempt_id:
+        raise ValueError("SLURM generation and attempt id are required")
+    if slurm_generation != attempt_id:
+        raise ValueError("SLURM generation and attempt id must match")
+    assert_generation_active(output_dir, slurm_generation)
 
 
 def _load_task(task_manifest: Path, task_index: int) -> dict[str, Any]:
@@ -117,15 +233,28 @@ def _load_task(task_manifest: Path, task_index: int) -> dict[str, Any]:
 
 
 def _write_status(
-    output_dir: Path, task_index: int, task_type: str, fields: dict[str, Any]
+    task_manifest: Path,
+    task_index: int,
+    task_type: str,
+    fields: dict[str, Any],
+    *,
+    output_dir: Path,
+    slurm_generation: str,
 ) -> None:
     """Atomically write one recompile task status JSON."""
-    status_path = task_status_path(output_dir, task_index)
+    status_path = recompile_task_status_path(task_manifest, task_index)
     payload = {"task_type": task_type, **fields}
-    atomic_write_json(status_path, payload, sort_keys=False)
+    with generation_publication_guard(output_dir, slurm_generation):
+        atomic_write_json(status_path, payload, sort_keys=False)
 
 
-def _run_measurement_task(output_dir: Path, task: dict[str, Any]) -> None:
+def _run_measurement_task(
+    output_dir: Path,
+    task_manifest: Path,
+    task: dict[str, Any],
+    *,
+    slurm_generation: str,
+) -> None:
     """Aggregate one measurement shard and write it under progress."""
     import polars as pl
 
@@ -146,13 +275,13 @@ def _run_measurement_task(output_dir: Path, task: dict[str, Any]) -> None:
         raise RuntimeError("No valid measurements found for shard")
 
     if (
-        str(METADATA.IMAGE_NAME) not in shard_df.columns
+        str(IMAGE.IMAGE_NAME) not in shard_df.columns
         and "filename" in shard_df.columns
     ):
         shard_df = shard_df.with_columns(
             pl.col("filename")
             .str.extract(r"([^/\\]+)\.[^.]+$", 1)
-            .alias(str(METADATA.IMAGE_NAME))
+            .alias(str(IMAGE.IMAGE_NAME))
         )
     if "filename" in shard_df.columns:
         shard_df = shard_df.drop("filename")
@@ -160,14 +289,15 @@ def _run_measurement_task(output_dir: Path, task: dict[str, Any]) -> None:
 
     shard_id = int(task["shard_id"])
     shard_path = (
-        recompile_dir_helper(progress_dir_helper(output_dir))
+        task_manifest.parent
         / DIR_RECOMPILE_SHARDS
         / shard_parquet_filename(shard_id)
     )
-    atomic_write_with_writer(
-        shard_path,
-        lambda p: shard_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
-    )
+    with generation_publication_guard(output_dir, slurm_generation):
+        atomic_write_with_writer(
+            shard_path,
+            lambda p: shard_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
+        )
 
 
 def _sort_measurement_shard(shard_df: Any) -> Any:
@@ -175,9 +305,9 @@ def _sort_measurement_shard(shard_df: Any) -> Any:
     sort_columns = [
         column
         for column in (
-            str(EXPERIMENT_METADATA.DATASET),
-            str(METADATA.IMAGE_NAME),
-            "Metadata_Well",  # legacy sort key: no WELL schema member (≠ SourceWell); keep literal
+            str(EXPERIMENT.DATASET),
+            str(IMAGE.IMAGE_NAME),
+            "Metadata_Well",
             "Object_Label",
         )
         if column in shard_df.columns
@@ -208,7 +338,10 @@ def _dataset_name_from_measurement_path(output_dir: Path, path: Path) -> str:
 
 
 def _run_overlay_task(
-    output_dir: Path, task: dict[str, Any]
+    output_dir: Path,
+    task: dict[str, Any],
+    *,
+    slurm_generation: str,
 ) -> dict[str, Any]:
     """Regenerate one overlay, treating per-image failures as nonfatal."""
     try:
@@ -225,7 +358,10 @@ def _run_overlay_task(
             overlay_alpha=float(task.get("overlay_alpha", 0.3)),
             save_overlays=True,
         )
-        output_manager.save_overlay(image, dataset_name, hdf_path.stem)
+        with generation_publication_guard(output_dir, slurm_generation):
+            output_manager.save_overlay(image, dataset_name, hdf_path.stem)
+    except SlurmGenerationInactiveError:
+        raise
     except Exception as exc:
         logger.warning("Overlay regeneration failed", exc_info=True)
         return {
@@ -237,26 +373,75 @@ def _run_overlay_task(
     return {"status": "completed", "overlay_failed": False}
 
 
-def _run_finalizer_task(output_dir: Path, task: dict[str, Any]) -> None:
+def _run_finalizer_task(
+    output_dir: Path,
+    task_manifest: Path,
+    task: dict[str, Any],
+    *,
+    slurm_generation: str,
+) -> None:
     """Finalize recompile outputs after all non-finalizer tasks finish."""
     progress_dir = progress_dir_helper(output_dir)
-    status_dir = recompile_status_dir(progress_dir)
+    attempt_dir = task_manifest.parent
+    status_dir = attempt_dir / "status"
     expected = int(task.get("expected_non_finalizer_tasks", 0))
 
     statuses = _wait_for_non_finalizer_statuses(status_dir, expected)
-    failed_measurements = [
-        status
-        for status in statuses
-        if status.get("task_type") == TASK_MEASUREMENTS
-        and status.get("status") == "failed"
+    failed_statuses = [
+        status for status in statuses if status.get("status") == "failed"
     ]
-    if failed_measurements:
+    if failed_statuses:
         raise RuntimeError(
-            f"{len(failed_measurements)} measurement shard task(s) failed"
+            f"{len(failed_statuses)} non-finalizer recompile task(s) failed"
         )
 
-    merged_df = _write_master_outputs_from_shards(output_dir)
-    _run_post_master_steps(output_dir, progress_dir, task, merged_df)
+    from phenotypic.sdk_ import phenotypic_cache_dir
+    from phenotypic.sdk_._file_locking import exclusive_path_lock
+
+    publication_lock = (
+        phenotypic_cache_dir(output_dir) / ".aggregate_publication.lock"
+    )
+    with exclusive_path_lock(publication_lock, timeout=60.0):
+        # The aggregate lock excludes competing finalizers. Each canonical
+        # mutation also acquires the lifecycle guard independently, allowing a
+        # newer generation to fence this worker between publication phases.
+        # Marker-last evidence keeps any interrupted mixed snapshot unreadable.
+        merged_df = _write_master_outputs_from_shards(
+            output_dir,
+            attempt_dir,
+            slurm_generation=slurm_generation,
+        )
+        _run_post_master_steps(
+            output_dir,
+            task,
+            merged_df,
+            slurm_generation=slurm_generation,
+        )
+        from ._cli_completion import current_success_counts
+
+        if (
+            merged_df is not None
+            and current_success_counts(output_dir) is not None
+        ):
+            from ._cli_completion import (
+                current_run_is_complete,
+                publish_aggregate_snapshot,
+                publish_run_completion_evidence,
+            )
+
+            with generation_publication_guard(output_dir, slurm_generation):
+                publish_aggregate_snapshot(output_dir)
+                if current_run_is_complete(output_dir) is True:
+                    publish_run_completion_evidence(
+                        output_dir,
+                        execution_epoch=slurm_generation,
+                    )
+        _regenerate_recompile_dashboard(
+            output_dir,
+            progress_dir,
+            task,
+            slurm_generation=slurm_generation,
+        )
 
 
 def _wait_for_non_finalizer_statuses(
@@ -298,14 +483,20 @@ def _read_expected_non_finalizer_statuses(
     return statuses
 
 
-def _write_master_outputs_from_shards(output_dir: Path) -> Any | None:
+def _write_master_outputs_from_shards(
+    output_dir: Path,
+    attempt_dir: Path | None = None,
+    *,
+    slurm_generation: str | None = None,
+) -> Any | None:
     """Concatenate shard Parquets and write master CSV/Parquet outputs."""
     import polars as pl
 
     shard_dir = (
-        recompile_dir_helper(progress_dir_helper(output_dir))
-        / DIR_RECOMPILE_SHARDS
-    )
+        attempt_dir
+        if attempt_dir is not None
+        else recompile_dir_helper(progress_dir_helper(output_dir))
+    ) / DIR_RECOMPILE_SHARDS
     shard_files = sorted(shard_dir.glob("shard_*.parquet"))
     if not shard_files:
         return None
@@ -318,23 +509,30 @@ def _write_master_outputs_from_shards(output_dir: Path) -> Any | None:
     # to the master archive. The master stays a clean, op-free record of
     # what the per-image workers measured.
 
-    try:
-        atomic_write_with_writer(
-            master_measurements_csv_path(output_dir), master_df.write_csv
-        )
-    except Exception:
-        logger.error("Failed to save master CSV during recompile finalize")
-        raise
-    try:
-        atomic_write_with_writer(
-            master_measurements_parquet_path(output_dir),
-            lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
-        )
-    except Exception:
-        logger.warning(
-            "Failed to save master Parquet during recompile finalize "
-            "(CSV was saved)"
-        )
+    def publish_master_outputs() -> None:
+        try:
+            atomic_write_with_writer(
+                master_measurements_csv_path(output_dir), master_df.write_csv
+            )
+        except Exception:
+            logger.error("Failed to save master CSV during recompile finalize")
+            raise
+        try:
+            atomic_write_with_writer(
+                master_measurements_parquet_path(output_dir),
+                lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
+            )
+        except Exception:
+            logger.warning(
+                "Failed to save master Parquet during recompile finalize "
+                "(CSV was saved)"
+            )
+
+    if slurm_generation is None:
+        publish_master_outputs()
+    else:
+        with generation_publication_guard(output_dir, slurm_generation):
+            publish_master_outputs()
 
     # Seeding ``measurements.{csv,parquet}``, persisting pipeline.json,
     # emitting configured analysis outputs, and per-feature splits all happen in
@@ -344,19 +542,25 @@ def _write_master_outputs_from_shards(output_dir: Path) -> Any | None:
     return master_df
 
 
+def _deactivate_generation_value(output_dir: Path, generation: str) -> None:
+    """Deactivate a generation supplied independently of task metadata."""
+    from ._cli_slurm_lifecycle import deactivate_generation
+
+    deactivate_generation(output_dir, generation)
+
+
 def _run_post_master_steps(
     output_dir: Path,
-    progress_dir: Path,
     task: dict[str, Any],
     merged_df: Any | None,
+    *,
+    slurm_generation: str | None = None,
 ) -> None:
-    """Run final outputs, rebuild the manifest, and generate the dashboard."""
+    """Run canonical post-master outputs before marker publication."""
     from ._cli_output_manager import (
         _load_pipeline_from_output_dir,
         finalize_post_master_outputs,
     )
-    from ._cli_utils import load_job_metadata
-    from ._dashboard import regenerate_dashboard_artifacts
 
     if merged_df is not None:
         # Single canonical post-master finalize: applies post to a copy of
@@ -370,18 +574,46 @@ def _run_post_master_steps(
             Path(str(metadata_csv_str)) if metadata_csv_str else None
         )
         no_qc = bool(task.get(JobMetadataKey.NO_QC, False))
-        finalize_post_master_outputs(
-            output_dir,
-            merged_df,
-            pipeline,
-            metadata_csv=metadata_csv,
-            no_qc=no_qc,
-        )
+        if slurm_generation is None:
+            finalize_post_master_outputs(
+                output_dir,
+                merged_df,
+                pipeline,
+                metadata_csv=metadata_csv,
+                no_qc=no_qc,
+            )
+        else:
+            with generation_publication_guard(output_dir, slurm_generation):
+                finalize_post_master_outputs(
+                    output_dir,
+                    merged_df,
+                    pipeline,
+                    metadata_csv=metadata_csv,
+                    no_qc=no_qc,
+                )
+
+
+def _regenerate_recompile_dashboard(
+    output_dir: Path,
+    progress_dir: Path,
+    task: dict[str, Any],
+    *,
+    slurm_generation: str | None = None,
+) -> None:
+    """Rebuild display caches after marker-last publication succeeds."""
+    from ._cli_utils import load_job_metadata
+    from ._dashboard import regenerate_dashboard_artifacts
 
     job_meta = load_job_metadata(progress_dir)
     dataset_names = [str(name) for name in task.get("dataset_names", [])]
     datasets_totals = _dataset_totals(output_dir, dataset_names)
-    regenerate_dashboard_artifacts(output_dir, job_meta, datasets_totals)
+    if slurm_generation is None:
+        regenerate_dashboard_artifacts(output_dir, job_meta, datasets_totals)
+    else:
+        with generation_publication_guard(output_dir, slurm_generation):
+            regenerate_dashboard_artifacts(
+                output_dir, job_meta, datasets_totals
+            )
 
 
 def _dataset_totals(

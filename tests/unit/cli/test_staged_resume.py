@@ -89,6 +89,29 @@ def test_invalid_hdf_requires_stage1(tmp_path: Path) -> None:
     assert plan.initial_stage == "stage1"
 
 
+def test_changed_work_id_restarts_from_stage1(tmp_path: Path) -> None:
+    output_dir = tmp_path / "out"
+    dataset = _dataset(tmp_path, ["changed.tif"])
+    hdf = _valid_hdf(output_dir, "changed")
+    with h5py.File(hdf, "r+") as handle:
+        handle.attrs["phenotypic_work_id"] = "old-work"
+    write_sidecar(output_dir, "plate", "changed", np.zeros((2, 2)))
+    write_stage3_completion_marker(
+        output_dir, "plate", "changed.tif", "changed"
+    )
+
+    plan = build_staged_resume_plan(
+        datasets=[dataset],
+        output_dir=output_dir,
+        input_root=tmp_path,
+        process_only_layer=None,
+        markers_required=True,
+        work_ids={"plate": {"changed.tif": "new-work"}},
+    )
+
+    assert plan.initial_stage == "stage1"
+
+
 def test_hdf_without_phenotypic_layers_requires_stage1(tmp_path: Path) -> None:
     output_dir = tmp_path / "out"
     dataset = _dataset(tmp_path, ["foreign.tif"])

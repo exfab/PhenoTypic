@@ -7,7 +7,7 @@ import numpy as np
 import skimage as ski
 from matplotlib.patches import Rectangle
 
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_.funcs_ import normalize_rgb_bitdepth
 
 from ._accessor_io_handler import AccessorIOHandler
@@ -206,7 +206,7 @@ class AccessorMplHandler(AccessorIOHandler):
                 )
                 hist, histc = ski.exposure.histogram(
                     image=self._subject_arr[:],
-                    nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH],
+                    nbins=2 ** self._root_image.metadata[IMAGE.BIT_DEPTH],
                 )
                 axes[1].plot(histc, hist, lw=linewidth)
                 axes[1].set_xlim(x_limits)
@@ -225,7 +225,7 @@ class AccessorMplHandler(AccessorIOHandler):
                     else:
                         hist, histc = ski.exposure.histogram(
                             image=self._subject_arr[:, :, idx - 1],
-                            nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH],
+                            nbins=2 ** self._root_image.metadata[IMAGE.BIT_DEPTH],
                         )
                         ax.plot(histc, hist, lw=linewidth)
                         ax.set_title(

@@ -194,10 +194,10 @@ def _default_qc_scorer() -> Any:
     import pandas as pd
 
     from phenotypic.analysis import ExpectedVsDetectedCount
-    from phenotypic.schema import METADATA
+    from phenotypic.schema import IMAGE
     from phenotypic.tune.score import QCScorer
 
-    image_name = str(METADATA.IMAGE_NAME)
+    image_name = str(IMAGE.IMAGE_NAME)
     empty = pd.DataFrame({image_name: [], "Object_Label": []})
     return QCScorer(
         check=ExpectedVsDetectedCount(

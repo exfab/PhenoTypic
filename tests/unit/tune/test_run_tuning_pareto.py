@@ -47,7 +47,7 @@ _OPTUNA = importlib.util.find_spec("optuna") is not None
 def _layout_csv(tmp_path) -> str:
     csv = tmp_path / "layout.csv"
     pd.DataFrame(
-        {"MetadataImage_ImageName": ["Synthetic96PlateWithObjects"] * 96,
+        {"Metadata_ImageName": ["Synthetic96PlateWithObjects"] * 96,
          "Object_Label": list(range(96))}
     ).to_csv(csv, index=False)
     return str(csv)
@@ -55,7 +55,7 @@ def _layout_csv(tmp_path) -> str:
 
 def _qc(tmp_path) -> QCScorer:
     return QCScorer(check=ExpectedVsDetectedCount(
-        metadata=_layout_csv(tmp_path), groupby=["MetadataImage_ImageName"]))
+        metadata=_layout_csv(tmp_path), groupby=["Metadata_ImageName"]))
 
 
 def _space() -> SearchSpace:

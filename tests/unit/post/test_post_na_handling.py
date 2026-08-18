@@ -215,11 +215,11 @@ class TestExpandMetadataNA:
 
         result = op.apply(df)
 
-        for label in ["MetadataGenetic_Strain", "Metadata_Cond", "MetadataCulture_Time"]:
+        for label in ["Metadata_Strain", "Metadata_Cond", "Metadata_Time"]:
             _assert_no_literal_nan_string(result[label])
             assert pd.isna(result.loc[1, label]), f"{label} row 1 should be NaN"
-        assert list(result["MetadataGenetic_Strain"]) [::2] == ["WT", "mut"]
-        assert result.loc[0, "MetadataCulture_Time"] == "24h"
+        assert list(result["Metadata_Strain"]) [::2] == ["WT", "mut"]
+        assert result.loc[0, "Metadata_Time"] == "24h"
         assert result.loc[2, "Metadata_Cond"] == "37C"
 
     @pytest.mark.parametrize("regex", [False, True])
@@ -237,7 +237,7 @@ class TestExpandMetadataNA:
 
         result = op.apply(df)
 
-        assert result["MetadataGenetic_Strain"].isna().all()
+        assert result["Metadata_Strain"].isna().all()
         assert result["Metadata_Cond"].isna().all()
 
     def test_na_rows_do_not_mask_a_real_arity_error(self):
@@ -305,9 +305,9 @@ class TestExpandMetadataNA:
         expected = pd.DataFrame(
             {
                 "Metadata_Name": ["WT_30C_24h", "mut_37C_48h"],
-                "MetadataGenetic_Strain": ["WT", "mut"],
+                "Metadata_Strain": ["WT", "mut"],
                 "Metadata_Cond": ["30C", "37C"],
-                "MetadataCulture_Time": ["24h", "48h"],
+                "Metadata_Time": ["24h", "48h"],
                 "Object_Label": [1, 2],
             }
         )
@@ -327,4 +327,4 @@ class TestExpandMetadataNA:
         result = op.apply(df)
 
         assert list(result.index) == ["row_a", "row_b"]
-        assert result.loc["row_b", "MetadataGenetic_Strain"] == "mut"
+        assert result.loc["row_b", "Metadata_Strain"] == "mut"

@@ -17,6 +17,7 @@ These tests poke the implementation directly (not through Dash's
 callback dispatch isn't the seam that breaks. The aim is fast unit-ish
 coverage for the post-review fixes.
 """
+
 from __future__ import annotations
 
 import sys
@@ -169,8 +170,10 @@ def _guard_action_controls(
 # H3: rerun the same output dir
 # ---------------------------------------------------------------------------
 
+
 def test_local_runner_reap_unblocks_rerun(
-    runner: LocalRunner, tmp_path: Path,
+    runner: LocalRunner,
+    tmp_path: Path,
 ) -> None:
     """Reaping a completed handle drops it so the same run_id can re-start.
 
@@ -216,8 +219,11 @@ def test_local_runner_reap_unblocks_rerun(
 # C2: validate runs do not block Local runs
 # ---------------------------------------------------------------------------
 
+
 def test_local_run_active_excludes_validate_records(
-    runner: LocalRunner, registry: RunRegistry, tmp_path: Path,
+    runner: LocalRunner,
+    registry: RunRegistry,
+    tmp_path: Path,
 ) -> None:
     """``_local_run_active`` ignores ``mode="validate"`` records.
 
@@ -247,10 +253,13 @@ def test_local_run_active_excludes_validate_records(
     )
     local_generation = uuid4()
     try:
-        assert runner.is_running(
-            "validate-1",
-            generation=validate_generation,
-        ) is True
+        assert (
+            runner.is_running(
+                "validate-1",
+                generation=validate_generation,
+            )
+            is True
+        )
         assert _local_run_active(runner, registry) is False
         registry.register(
             RunRecord(
@@ -289,6 +298,7 @@ def test_local_run_active_excludes_validate_records(
 # ---------------------------------------------------------------------------
 # Async SLURM submit infrastructure
 # ---------------------------------------------------------------------------
+
 
 def test_slurm_future_terminalizes_stable_record_without_browser_poll(
     tmp_path: Path,
@@ -334,7 +344,9 @@ def test_slurm_future_terminalizes_stable_record_without_browser_poll(
     assert updated.primary_scheduler_id == "701"
 
 
-def test_slurm_future_cannot_update_replaced_generation(tmp_path: Path) -> None:
+def test_slurm_future_cannot_update_replaced_generation(
+    tmp_path: Path,
+) -> None:
     """A late callback cannot write through a stale launch generation."""
     registry = RunRegistry()
     output_dir = tmp_path / "out"
@@ -777,6 +789,7 @@ def test_run_app_owns_one_startable_observer_lifecycle(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The app starts, stores, and registers cleanup for the exact observer."""
+
     class ObserverSpy:
         def __init__(self) -> None:
             self.starts = 0
@@ -1047,7 +1060,9 @@ def test_action_callbacks_capture_raw_controls_not_aggregate_store(
     """Run, Validate, and Save Preset have the full raw control contract."""
     sandbox = SandboxRoot.from_path(tmp_path)
     app = create_app(sandbox)
-    expected = [dependency.component_id for dependency in _action_control_states()]
+    expected = [
+        dependency.component_id for dependency in _action_control_states()
+    ]
     for action_id in (
         "rc-btn-run",
         "rc-btn-validate",
@@ -1062,7 +1077,7 @@ def test_action_callbacks_capture_raw_controls_not_aggregate_store(
         state_ids = [item["id"] for item in callback["state"]]
         assert "rc-store-form-state" not in state_ids
         start = state_ids.index(expected[0])
-        assert state_ids[start:start + len(expected)] == expected
+        assert state_ids[start : start + len(expected)] == expected
 
 
 def test_preset_round_trip_restores_all_controls_for_raw_run(
@@ -1073,7 +1088,7 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
     from phenotypic.gui.shell._metadata_context import (
         metadata_payload_from_path,
     )
-    from phenotypic.schema import METADATA
+    from phenotypic.schema import IMAGE
 
     sandbox = SandboxRoot.from_path(tmp_path)
     registry = RunRegistry()
@@ -1087,7 +1102,7 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
     (images / "plate_a.tif").write_bytes(b"one-image")
     output.mkdir()
     metadata.write_text(
-        f"{METADATA.IMAGE_NAME},Treatment\nplate_a,control\n",
+        f"{IMAGE.IMAGE_NAME},Treatment\nplate_a,control\n",
         encoding="utf-8",
     )
     metadata_payload = metadata_payload_from_path(sandbox, metadata)
@@ -1096,7 +1111,7 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
         str(images),
         str(output),
         "slurm",
-        ["dry_run", "resume"],
+        ["dry_run"],
         7,
         8,
         12,
@@ -1122,8 +1137,7 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
     save_callback = next(
         spec["callback"].__wrapped__
         for spec in app.callback_map.values()
-        if spec["inputs"]
-        and spec["inputs"][0]["id"] == "rc-btn-save-preset"
+        if spec["inputs"] and spec["inputs"][0]["id"] == "rc-btn-save-preset"
     )
     load_callback = next(
         spec["callback"].__wrapped__
@@ -1136,12 +1150,7 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
     save_response = save_callback(1, "full-slurm", *controls)
     assert save_response[1] == "Saved preset full-slurm"
 
-    preset = (
-        tmp_path
-        / ".phenotypic-gui"
-        / "presets"
-        / "full-slurm.json"
-    )
+    preset = tmp_path / ".phenotypic-gui" / "presets" / "full-slurm.json"
     load_response = load_callback(str(preset))
     loaded_controls = tuple(load_response[:22])
 
@@ -1387,28 +1396,31 @@ def test_empty_slurm_profile_never_invokes_submitter(
     pipeline.write_text('{"operations": []}', encoding="utf-8")
     images.mkdir()
     output.mkdir()
-    controls = _guard_action_controls(sandbox, (
-        str(pipeline),
-        str(images),
-        str(output),
-        "slurm",
-        [],
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        1,
-        None,
-    ))
+    controls = _guard_action_controls(
+        sandbox,
+        (
+            str(pipeline),
+            str(images),
+            str(output),
+            "slurm",
+            [],
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            1,
+            None,
+        ),
+    )
     monkeypatch.setattr(
         callbacks_module._SLURM_EXECUTOR,
         "submit",
@@ -1436,28 +1448,31 @@ def test_immediate_local_exit_terminalizes_allocated_generation(
     pipeline.write_text('{"operations": "invalid"}', encoding="utf-8")
     images.mkdir()
     output.mkdir()
-    controls = _guard_action_controls(sandbox, (
-        str(pipeline),
-        str(images),
-        str(output),
-        "local",
-        [],
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        1,
-        None,
-    ))
+    controls = _guard_action_controls(
+        sandbox,
+        (
+            str(pipeline),
+            str(images),
+            str(output),
+            "local",
+            [],
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            1,
+            None,
+        ),
+    )
     callback = _callback_by_name(app, "click_action")
 
     response = callback(0, 1, *controls, 0)
@@ -1492,28 +1507,31 @@ def test_local_record_is_durable_before_spawn_failure(
     pipeline.write_text('{"operations": []}', encoding="utf-8")
     images.mkdir()
     output.mkdir()
-    controls = _guard_action_controls(sandbox, (
-        str(pipeline),
-        str(images),
-        str(output),
-        "local",
-        [],
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        1,
-        None,
-    ))
+    controls = _guard_action_controls(
+        sandbox,
+        (
+            str(pipeline),
+            str(images),
+            str(output),
+            "local",
+            [],
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            1,
+            None,
+        ),
+    )
 
     def fail_after_claim(*args, **kwargs):
         claimed = registry.get("output")
@@ -1537,6 +1555,7 @@ def test_local_record_is_durable_before_spawn_failure(
 # Shared descriptor consumption
 # ---------------------------------------------------------------------------
 
+
 def test_run_console_has_no_passive_shared_authority_writer(
     tmp_path: Path,
 ) -> None:
@@ -1545,16 +1564,21 @@ def test_run_console_has_no_passive_shared_authority_writer(
         SHELL_METADATA_CSV_STORE,
         SHELL_SOURCE_IMAGE_ROOT_STORE,
     )
+
     sandbox = SandboxRoot.from_path(tmp_path)
     app = create_app(sandbox)
     outputs = [str(spec["output"]) for spec in app.callback_map.values()]
 
-    assert not any(SHELL_SOURCE_IMAGE_ROOT_STORE in output for output in outputs)
+    assert not any(
+        SHELL_SOURCE_IMAGE_ROOT_STORE in output for output in outputs
+    )
     assert not any(SHELL_METADATA_CSV_STORE in output for output in outputs)
 
 
 def test_shared_source_initializes_empty_run_input(tmp_path: Path) -> None:
-    from phenotypic.gui.run_console._callbacks import _input_dir_from_shared_source
+    from phenotypic.gui.run_console._callbacks import (
+        _input_dir_from_shared_source,
+    )
     from phenotypic.gui.shell._source_context import source_payload_from_path
 
     plates = tmp_path / "plates"
@@ -1570,7 +1594,9 @@ def test_shared_source_initializes_empty_run_input(tmp_path: Path) -> None:
 def test_shared_source_does_not_overwrite_non_empty_run_input(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.run_console._callbacks import _input_dir_from_shared_source
+    from phenotypic.gui.run_console._callbacks import (
+        _input_dir_from_shared_source,
+    )
     from phenotypic.gui.shell._source_context import source_payload_from_path
 
     plates = tmp_path / "plates"
@@ -1581,8 +1607,7 @@ def test_shared_source_does_not_overwrite_non_empty_run_input(
     payload = source_payload_from_path(sandbox, plates, source="manual")
 
     assert (
-        _input_dir_from_shared_source(sandbox, payload, str(existing))
-        is None
+        _input_dir_from_shared_source(sandbox, payload, str(existing)) is None
     )
 
 
@@ -1590,11 +1615,13 @@ def test_form_state_omits_ambient_metadata_until_explicit_include(
     tmp_path: Path,
 ) -> None:
     from phenotypic.gui.run_console._callbacks import _form_inputs_to_state
-    from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
-    from phenotypic.schema import METADATA
+    from phenotypic.gui.shell._metadata_context import (
+        metadata_payload_from_path,
+    )
+    from phenotypic.schema import IMAGE
 
     csv_path = tmp_path / "layout.csv"
-    csv_path.write_text(f"{METADATA.IMAGE_NAME},Treatment\nplate_a,control\n")
+    csv_path.write_text(f"{IMAGE.IMAGE_NAME},Treatment\nplate_a,control\n")
     sandbox = SandboxRoot.from_path(tmp_path)
     payload = metadata_payload_from_path(sandbox, csv_path)
 

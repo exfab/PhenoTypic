@@ -16,13 +16,13 @@ import pytest
 
 from phenotypic.analysis import GridOccupancy as _PublicGridOccupancy
 from phenotypic.analysis.qc import ExpectedVsDetectedCount, GridOccupancy
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE, SAMPLE
 
 
 def _layout(image_file: str = "plate1.png", n_cells: int = 96) -> pd.DataFrame:
     """Return a layout frame with one row per expected grid cell."""
     return pd.DataFrame({
-        str(METADATA.IMAGE_NAME): [image_file] * n_cells,
+        str(IMAGE.IMAGE_NAME): [image_file] * n_cells,
         "Object_Label": list(range(1, n_cells + 1)),
     })
 
@@ -37,7 +37,7 @@ def _measurements(
     repeats encode doublets. ``Object_Label`` is unique per row.
     """
     return pd.DataFrame({
-        str(METADATA.IMAGE_NAME): [image_file] * len(cell_ids),
+        str(IMAGE.IMAGE_NAME): [image_file] * len(cell_ids),
         "Object_Label": list(range(1, len(cell_ids) + 1)),
         "Grid_RowMajorIdx": list(cell_ids),
     })
@@ -61,7 +61,7 @@ class TestPublicSurface:
 
     def test_on_defaults_to_label(self) -> None:
         """``on`` is the label guard column; cells are counted via cell_label."""
-        chk = GridOccupancy(metadata=_layout(), groupby=[str(METADATA.IMAGE_NAME)])
+        chk = GridOccupancy(metadata=_layout(), groupby=[str(IMAGE.IMAGE_NAME)])
         assert chk.on == "Object_Label"
         assert chk.cell_label == "Grid_RowMajorIdx"
 
@@ -70,7 +70,7 @@ class TestOccupancyMetric:
     """Filled / expected metric across the pass/warn/fail bands."""
 
     def test_fully_filled_is_pass(self) -> None:
-        chk = GridOccupancy(metadata=_layout(), groupby=[str(METADATA.IMAGE_NAME)])
+        chk = GridOccupancy(metadata=_layout(), groupby=[str(IMAGE.IMAGE_NAME)])
         result = chk.analyze(_measurements("plate1.png", list(range(96))))
 
         assert (result["QC_Occupancy_Filled"] == 96).all()
@@ -87,7 +87,7 @@ class TestOccupancyMetric:
         mask the six empty cells, but the distinct-cell count exposes them.
         """
         cell_ids = list(range(90)) + [5, 17]  # 92 colonies, 90 distinct cells
-        chk = GridOccupancy(metadata=_layout(), groupby=[str(METADATA.IMAGE_NAME)])
+        chk = GridOccupancy(metadata=_layout(), groupby=[str(IMAGE.IMAGE_NAME)])
         result = chk.analyze(_measurements("plate1.png", cell_ids))
 
         assert (result["QC_Occupancy_Filled"] == 90).all()
@@ -98,7 +98,7 @@ class TestOccupancyMetric:
 
     def test_low_occupancy_warns(self) -> None:
         # 93/96 = 0.96875 ... below the 0.95 warn line? No — choose 91/96.
-        chk = GridOccupancy(metadata=_layout(), groupby=[str(METADATA.IMAGE_NAME)])
+        chk = GridOccupancy(metadata=_layout(), groupby=[str(IMAGE.IMAGE_NAME)])
         result = chk.analyze(_measurements("plate1.png", list(range(91))))
 
         metric = result["QC_Occupancy_Metric"].iloc[0]
@@ -109,7 +109,7 @@ class TestOccupancyMetric:
         assert (~result["QC_Occupancy_Flag"]).all()
 
     def test_very_low_occupancy_fails_and_flags(self) -> None:
-        chk = GridOccupancy(metadata=_layout(), groupby=[str(METADATA.IMAGE_NAME)])
+        chk = GridOccupancy(metadata=_layout(), groupby=[str(IMAGE.IMAGE_NAME)])
         result = chk.analyze(_measurements("plate1.png", list(range(80))))
 
         metric = result["QC_Occupancy_Metric"].iloc[0]
@@ -126,7 +126,7 @@ class TestThresholdValidation:
         with pytest.raises(ValueError):
             GridOccupancy(
                 metadata=_layout(),
-                groupby=[str(METADATA.IMAGE_NAME)],
+                groupby=[str(IMAGE.IMAGE_NAME)],
                 warn_threshold=0.90,
                 fail_threshold=0.95,  # fail above warn → invalid for lower-is-bad
             )
@@ -137,7 +137,7 @@ class TestUnmatchedGroup:
 
     def test_unmatched_group_fails_and_is_recorded(self) -> None:
         chk = GridOccupancy(
-            metadata=_layout("plate1.png"), groupby=[str(METADATA.IMAGE_NAME)]
+            metadata=_layout("plate1.png"), groupby=[str(IMAGE.IMAGE_NAME)]
         )
         result = chk.analyze(_measurements("plate2.png", list(range(10))))
 
@@ -149,7 +149,7 @@ class TestUnmatchedGroup:
 
     def test_unmatched_groups_reset_between_runs(self) -> None:
         chk = GridOccupancy(
-            metadata=_layout("plate1.png"), groupby=[str(METADATA.IMAGE_NAME)]
+            metadata=_layout("plate1.png"), groupby=[str(IMAGE.IMAGE_NAME)]
         )
         chk.analyze(_measurements("plate2.png", list(range(10))))
         chk.analyze(_measurements("plate1.png", list(range(96))))
@@ -160,13 +160,41 @@ class TestMissingCellColumn:
     """The cell-id column is guarded before the per-group loop runs."""
 
     def test_missing_cell_label_raises_keyerror(self) -> None:
-        chk = GridOccupancy(metadata=_layout(), groupby=[str(METADATA.IMAGE_NAME)])
+        chk = GridOccupancy(metadata=_layout(), groupby=[str(IMAGE.IMAGE_NAME)])
         bad = pd.DataFrame({
-            str(METADATA.IMAGE_NAME): ["plate1.png"] * 3,
+            str(IMAGE.IMAGE_NAME): ["plate1.png"] * 3,
             "Object_Label": [1, 2, 3],
         })
         with pytest.raises(KeyError, match="Grid_RowMajorIdx"):
             chk.analyze(bad)
+
+
+class TestMetadataCellLabelCompatibility:
+    """The cell reference accepts the flat metadata namespace at construction."""
+
+    def test_flat_sample_id_cell_label_normalizes_without_mutating_input(self) -> None:
+        chk = GridOccupancy(
+            metadata=_layout(),
+            groupby=[str(IMAGE.IMAGE_NAME)],
+            cell_label="Metadata_SampleID",
+        )
+        measurements = pd.DataFrame(
+            {
+                str(IMAGE.IMAGE_NAME): ["plate1.png"] * 3,
+                "Object_Label": [1, 2, 3],
+                "Metadata_SampleID": ["a", "b", "b"],
+                "Size_Area": [10.0, 11.0, 12.0],
+            }
+        )
+        original = measurements.copy(deep=True)
+
+        result = chk.analyze(measurements)
+
+        assert chk.cell_label == str(SAMPLE.SAMPLE_ID)
+        assert (result["QC_Occupancy_Filled"] == 2).all()
+        assert str(SAMPLE.SAMPLE_ID) in result.columns
+        assert "Size_Area" in result.columns
+        pd.testing.assert_frame_equal(measurements, original)
 
 
 class TestSerializationRoundTrip:
@@ -177,7 +205,7 @@ class TestSerializationRoundTrip:
         _layout().to_csv(layout_path, index=False)
 
         chk = GridOccupancy(
-            metadata=str(layout_path), groupby=[str(METADATA.IMAGE_NAME)]
+            metadata=str(layout_path), groupby=[str(IMAGE.IMAGE_NAME)]
         )
         dumped = chk.model_dump(mode="json")
         # The unified field persists the source *path*; the legacy split
@@ -194,12 +222,12 @@ class TestInspect:
     """Plotly output."""
 
     def test_inspect_returns_figure_after_analyze(self) -> None:
-        chk = GridOccupancy(metadata=_layout(), groupby=[str(METADATA.IMAGE_NAME)])
+        chk = GridOccupancy(metadata=_layout(), groupby=[str(IMAGE.IMAGE_NAME)])
         chk.analyze(_measurements("plate1.png", list(range(80))))
         fig = chk.inspect()
         assert isinstance(fig, go.Figure)
 
     def test_inspect_before_analyze_raises(self) -> None:
-        chk = GridOccupancy(metadata=_layout(), groupby=[str(METADATA.IMAGE_NAME)])
+        chk = GridOccupancy(metadata=_layout(), groupby=[str(IMAGE.IMAGE_NAME)])
         with pytest.raises(RuntimeError, match="analyze"):
             chk.inspect()

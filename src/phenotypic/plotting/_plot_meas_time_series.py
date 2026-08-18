@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from phenotypic.abc_.plotting import (
     PlotMeas,
@@ -18,6 +18,13 @@ from phenotypic.abc_.plotting import (
     canonical_group_key,
 )
 from phenotypic.sdk_ import ColumnRef, ColumnRefList, is_metadata_header
+
+from ._metadata import (
+    normalize_measurement_metadata_columns,
+    normalize_metadata_column_reference,
+    normalize_metadata_column_references,
+)
+from phenotypic.schema import CULTURE, GENETIC
 
 
 class PlotMeasTimeSeries(BaseModel, PlotMeas):
@@ -40,13 +47,27 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
     model_config = ConfigDict(extra="forbid")
 
     page_by: ColumnRefList = Field(
-            default_factory=lambda: ["MetadataGenetic_Strain"]
+            default_factory=lambda: [str(GENETIC.STRAIN)]
     )
     environment_by: ColumnRefList
     replicate_by: ColumnRefList
-    time: ColumnRef = "MetadataCulture_Time"
+    time: ColumnRef = str(CULTURE.TIME)
     measurements: ColumnRefList = Field(default_factory=list)
     connect: bool = True
+
+    @field_validator("page_by", "environment_by", "replicate_by", "measurements", mode="before")
+    @classmethod
+    def _normalize_column_references(cls, value: Any) -> list[str]:
+        """Accept current and flat metadata references in plotting fields."""
+        return normalize_metadata_column_references(value)
+
+    @field_validator("time", mode="before")
+    @classmethod
+    def _normalize_time_reference(cls, value: str) -> str:
+        """Accept current and flat metadata references for the time axis."""
+        if not isinstance(value, str):
+            raise ValueError("time must be a string column reference")
+        return normalize_metadata_column_reference(value)
 
     @model_validator(mode="after")
     def _validate_roles(self) -> "PlotMeasTimeSeries":
@@ -99,6 +120,7 @@ class PlotMeasTimeSeries(BaseModel, PlotMeas):
             raise TypeError(
                     "PlotMeasTimeSeries.inspect requires a pandas DataFrame subject"
             )
+        subject = normalize_measurement_metadata_columns(subject)
         if subject.empty:
             return PlotOutput(pages=())
         configured._validate_input_columns(subject)

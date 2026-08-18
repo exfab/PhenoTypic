@@ -130,7 +130,7 @@ class ExecutionConfig:
     # from a fresh run because existing terminal artifacts must be regenerated.
     restart: bool = False
 
-    # Full input inventory retained before ``--resume`` filters the work list.
+    # Full input inventory retained before continuation filters the work list.
     # Remote finalization uses it so fully completed datasets are not omitted.
     full_dataset_inventory: Dict[str, List[str]] = field(default_factory=dict)
 
@@ -140,6 +140,8 @@ class ExecutionConfig:
     staged_stage3_markers: bool = True
     # Durable event-log generation. Resume reuses it; restart creates a new one.
     processing_generation: str | None = None
+    # Per-submission SLURM lifecycle fence for authoritative image outcomes.
+    slurm_generation: str | None = None
 
     # Metadata join
     metadata_csv: Optional[Path] = None

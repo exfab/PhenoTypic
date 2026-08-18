@@ -12,6 +12,7 @@ import pytest
 
 from phenotypic.sdk_ import ColumnRef, ColumnRefList
 from phenotypic.sdk_._column_ref import _ColumnRefMarker
+from phenotypic.schema import GENETIC
 
 
 class TestColumnRefMarker:
@@ -68,7 +69,7 @@ class TestColumnRefRuntimeEquivalence:
 
         ec = EdgeCorrector(on="Shape_Area", groupby=["Metadata_Strain"])
         assert isinstance(ec.groupby, list)
-        assert ec.groupby == ["Metadata_Strain"]
+        assert ec.groupby == [str(GENETIC.STRAIN)]
 
 
 class TestAnalyzerSignatureMarkers:

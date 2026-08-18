@@ -16,7 +16,7 @@ from phenotypic.abc_ import GridFinder
 from phenotypic._core._image_parts.accessors import GridAccessor
 from phenotypic.grid import CenteredAutoGridFinder
 from phenotypic.measure import MeasureBounds
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_.constants_ import IMAGE_TYPES
 from phenotypic.schema import BBOX
 from phenotypic.sdk_.exceptions_ import IllegalAssignmentError
@@ -98,7 +98,7 @@ class ImageGridHandler(Image):
 
         self._grid_finder: Optional[GridFinder] = grid_finder
         self._accessors.grid = GridAccessor(self)
-        self.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.GRID.value
+        self.metadata[IMAGE.IMAGE_TYPE] = IMAGE_TYPES.GRID.value
 
     @property
     def grid(self) -> GridAccessor:

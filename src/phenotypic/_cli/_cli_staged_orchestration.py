@@ -29,9 +29,9 @@ from phenotypic.sdk_._file_locking import exclusive_path_lock
 from ._cli_file_locking import atomic_append, atomic_read
 from ._cli_slurm_lifecycle import (
     SchedulerQueryUnavailable,
+    _deactivate_generation_locked,
     append_lifecycle_entry,
     cancel_generation,
-    deactivate_generation,
     generation_is_active,
     initialize_slurm_lifecycle,
     ledger_job_for_token as lifecycle_job_for_token,
@@ -44,7 +44,7 @@ from ._cli_slurm_lifecycle import (
 )
 from ._cli_staged_resume import stage3_completion_exists
 
-_MANIFEST_VERSION = 2
+_MANIFEST_VERSION = 3
 _STATE_FILENAME = "staged_orchestration.json"
 _FAILURES_FILENAME = "stage2_terminal_failures.jsonl"
 _DEACTIVATIONS_FILENAME = "staged_epoch_deactivations.jsonl"
@@ -60,6 +60,9 @@ class StagedManifestEntry:
     image_name: str
     stem: str
     input_path: str
+    work_id: str = ""
+    relative_image_path: str = ""
+    attempt_id: str = ""
 
     @property
     def identity(self) -> str:
@@ -235,10 +238,10 @@ def write_staged_manifest(
 def load_staged_manifest(path: Path) -> list[StagedManifestEntry]:
     """Load and validate a versioned staged manifest."""
     raw = json.loads(Path(path).read_text(encoding="utf-8"))
-    if not isinstance(raw, dict) or raw.get("version") != _MANIFEST_VERSION:
+    if not isinstance(raw, dict) or raw.get("version") not in (2, _MANIFEST_VERSION):
         raise ValueError(
             f"Unsupported staged manifest version in {path}; "
-            f"expected {_MANIFEST_VERSION}"
+            f"expected 2 or {_MANIFEST_VERSION}"
         )
     images = raw.get("images")
     if not isinstance(images, list):
@@ -610,7 +613,7 @@ def deactivate_orchestration(
         return False
     epoch = str(state.get("epoch", ""))
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
-        deactivate_generation(output_dir, epoch)
+        _deactivate_generation_locked(output_dir, epoch)
     atomic_append(
         epoch_deactivation_journal_path(output_dir),
         json.dumps(
@@ -680,7 +683,7 @@ def mark_staged_complete(output_dir: Path, epoch: str) -> None:
     }
     atomic_write_json(staged_completion_path(output_dir), marker)
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
-        deactivate_generation(output_dir, epoch)
+        _deactivate_generation_locked(output_dir, epoch)
     state = load_orchestration_state(output_dir)
     if state is not None and state.get("epoch") == epoch:
         state["phase"] = "complete"

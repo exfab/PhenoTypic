@@ -9,12 +9,12 @@ def test_order_measurement_columns_full_contract():
     # Deliberately shuffled input spanning every partition.
     cols = [
         "Grid_RowNum",                 # info
-        "MetadataImage_ImageName",     # framework image (trailing)
+        "Metadata_ImageName",          # framework image (trailing)
         "Shape_Area",                  # measurement
-        "MetadataGenetic_Strain",      # front metadata (Strain cluster)
+        "Metadata_Strain",             # front metadata (Strain cluster)
         "Object_Label",                # info (leads info block by name, not position)
-        "MetadataSample_SampleID",     # front metadata (Identity cluster, leads)
-        "MetadataCondition_Media",     # front metadata (Condition cluster)
+        "Metadata_SampleID",           # front metadata (Identity cluster, leads)
+        "Metadata_Media",              # front metadata (Condition cluster)
         "Metadata_UnknownTag",         # uncategorized user metadata -> end of front
     ]
 
@@ -22,14 +22,14 @@ def test_order_measurement_columns_full_contract():
 
     assert ordered == [
         # front metadata: Identity (Sample) -> Strain -> Condition -> uncategorized
-        "MetadataSample_SampleID",
-        "MetadataGenetic_Strain",
-        "MetadataCondition_Media",
+        "Metadata_SampleID",
+        "Metadata_Strain",
+        "Metadata_Media",
         "Metadata_UnknownTag",
         # measurements
         "Shape_Area",
         # framework image block
-        "MetadataImage_ImageName",
+        "Metadata_ImageName",
         # per-object info block
         "Object_Label",
         "Grid_RowNum",
@@ -42,18 +42,36 @@ def test_order_measurement_columns_multiple_uncategorized_sort_last_alpha():
 
     cols = [
         "Metadata_Zebra",           # uncategorized
-        "MetadataGenetic_Strain",   # known front metadata
+        "Metadata_Strain",          # known front metadata
         "Metadata_Apple",           # uncategorized
         "Shape_Area",               # measurement
         "Object_Label",             # info
     ]
     ordered = order_measurement_columns(cols)
     assert ordered == [
-        "MetadataGenetic_Strain",   # known metadata leads the front block
+        "Metadata_Strain",          # known metadata leads the front block
         "Metadata_Apple",           # unknowns trail known, alpha-sorted
         "Metadata_Zebra",
         "Shape_Area",
         "Object_Label",
+    ]
+
+
+def test_order_measurement_columns_accepts_exact_legacy_headers():
+    """Historical per-topic headers retain owner order and IMAGE placement."""
+    from phenotypic.sdk_ import order_measurement_columns
+
+    columns = [
+        "Metadata_ImageName",
+        "Shape_Area",
+        "Metadata_Media",
+        "Metadata_SampleID",
+    ]
+    assert order_measurement_columns(columns) == [
+        "Metadata_SampleID",
+        "Metadata_Media",
+        "Shape_Area",
+        "Metadata_ImageName",
     ]
 
 
@@ -96,19 +114,19 @@ def test_insert_metadata_front_block_cluster_order():
 
     img = load_synth_yeast_plate()
     # Set tags out of cluster order on purpose.
-    img.metadata["Strain"] = "BY4741"        # MetadataGenetic_ (Strain cluster)
-    img.metadata["SampleID"] = "S1"          # MetadataSample_ (Identity cluster, leads)
-    img.metadata["Media"] = "YPD"            # MetadataCondition_ (Condition cluster)
+    img.metadata["Strain"] = "BY4741"
+    img.metadata["SampleID"] = "S1"
+    img.metadata["Media"] = "YPD"
 
     df = img.metadata.insert_metadata(pd.DataFrame({"Object_Label": [1]}))
     meta_cols = [c for c in df.columns if is_metadata_header(c)]
 
     # Identity (Sample) precedes Strain precedes Condition.
-    assert meta_cols.index("MetadataSample_SampleID") < meta_cols.index(
-        "MetadataGenetic_Strain"
+    assert meta_cols.index("Metadata_SampleID") < meta_cols.index(
+        "Metadata_Strain"
     )
-    assert meta_cols.index("MetadataGenetic_Strain") < meta_cols.index(
-        "MetadataCondition_Media"
+    assert meta_cols.index("Metadata_Strain") < meta_cols.index(
+        "Metadata_Media"
     )
 
 
@@ -121,7 +139,7 @@ def test_finalize_mirror_applies_cluster_order(tmp_path):
     # Clean master (metadata-free) with a join anchor column present in both frames.
     master = pl.DataFrame(
         {
-            "MetadataImage_ImageName": ["plateA"],
+            "Metadata_ImageName": ["plateA"],
             "Object_Label": [1],
             "Grid_RowNum": [1],
             "Shape_Area": [123.0],
@@ -130,7 +148,7 @@ def test_finalize_mirror_applies_cluster_order(tmp_path):
     # External metadata CSV with columns in NON-canonical order.
     meta_csv = tmp_path / "meta.csv"
     meta_csv.write_text(
-        "MetadataImage_ImageName,MetadataCondition_Media,MetadataGenetic_Strain,MetadataSample_SampleID\n"
+        "Metadata_ImageName,Metadata_Media,Metadata_Strain,Metadata_SampleID\n"
         "plateA,YPD,BY4741,S1\n"
     )
 
@@ -143,15 +161,15 @@ def test_finalize_mirror_applies_cluster_order(tmp_path):
 
     assert post_df.columns == [
         # front metadata: Identity(Sample) -> Strain -> Condition
-        "MetadataSample_SampleID",
-        "MetadataGenetic_Strain",
-        "MetadataCondition_Media",
+        "Metadata_SampleID",
+        "Metadata_Strain",
+        "Metadata_Media",
         # measurements (the metadata-join flag has no producer enum and rides
         # along here; every row matched, so it is all-False)
         "Shape_Area",
         "QC_MetadataOnly",
         # framework image block
-        "MetadataImage_ImageName",
+        "Metadata_ImageName",
         # per-object info block
         "Object_Label",
         "Grid_RowNum",
@@ -165,17 +183,17 @@ def test_join_metadata_prefixes_bare_columns(tmp_path):
     import polars as pl
     from phenotypic._cli._cli_output_manager import join_metadata
 
-    df = pl.DataFrame({"MetadataImage_ImageName": ["a"], "Shape_Area": [1.0]})
+    df = pl.DataFrame({"Metadata_ImageName": ["a"], "Shape_Area": [1.0]})
     csv = tmp_path / "m.csv"
     # Join key already prefixed; attribute columns are BARE (Strain known, Foo unknown).
-    csv.write_text("MetadataImage_ImageName,Strain,Foo\na,BY4741,bar\n")
+    csv.write_text("Metadata_ImageName,Strain,Foo\na,BY4741,bar\n")
 
     out = join_metadata(df, csv)
 
-    assert "MetadataGenetic_Strain" in out.columns  # bare known label -> per-topic
+    assert "Metadata_Strain" in out.columns
     assert "Metadata_Foo" in out.columns            # bare unknown label -> generic
     assert "Strain" not in out.columns and "Foo" not in out.columns
-    assert "MetadataImage_ImageName" in out.columns  # join key kept its raw name
+    assert "Metadata_ImageName" in out.columns
 
 
 def test_join_metadata_leaves_schema_header_columns_unprefixed(tmp_path):
@@ -184,16 +202,16 @@ def test_join_metadata_leaves_schema_header_columns_unprefixed(tmp_path):
     import polars as pl
     from phenotypic._cli._cli_output_manager import join_metadata
 
-    df = pl.DataFrame({"MetadataImage_ImageName": ["a"], "Shape_Area": [1.0]})
+    df = pl.DataFrame({"Metadata_ImageName": ["a"], "Shape_Area": [1.0]})
     csv = tmp_path / "m.csv"
     # Grid_RowNum is a real info-block header; Strain is a bare metadata label.
-    csv.write_text("MetadataImage_ImageName,Grid_RowNum,Strain\na,3,BY4741\n")
+    csv.write_text("Metadata_ImageName,Grid_RowNum,Strain\na,3,BY4741\n")
 
     out = join_metadata(df, csv)
 
     assert "Grid_RowNum" in out.columns              # supplied header left as-is
     assert "Metadata_Grid_RowNum" not in out.columns  # NOT prefixed
-    assert "MetadataGenetic_Strain" in out.columns   # bare label still prefixed
+    assert "Metadata_Strain" in out.columns
 
 
 def test_join_metadata_prefixed_then_ordered_lands_in_front(tmp_path):
@@ -203,16 +221,15 @@ def test_join_metadata_prefixed_then_ordered_lands_in_front(tmp_path):
     from phenotypic._cli._cli_output_manager import join_metadata
 
     df = pl.DataFrame(
-        {"MetadataImage_ImageName": ["a"], "Shape_Area": [1.0], "Object_Label": [1]}
+        {"Metadata_ImageName": ["a"], "Shape_Area": [1.0], "Object_Label": [1]}
     )
     csv = tmp_path / "m.csv"
-    csv.write_text("MetadataImage_ImageName,Strain\na,BY4741\n")
+    csv.write_text("Metadata_ImageName,Strain\na,BY4741\n")
 
     joined = join_metadata(df, csv)
     ordered = order_measurement_columns(joined.columns)
 
-    # Strain (now MetadataGenetic_Strain) leads, ahead of the measurements.
-    assert ordered.index("MetadataGenetic_Strain") < ordered.index("Shape_Area")
+    assert ordered.index("Metadata_Strain") < ordered.index("Shape_Area")
 
 
 def test_join_metadata_inner_emits_no_phantom_flag(tmp_path):

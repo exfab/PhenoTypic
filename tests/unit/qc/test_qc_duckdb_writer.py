@@ -1,5 +1,5 @@
 """Tests for the DuckDB-backed QC artifact writer."""
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 def test_duckdb_importable():
@@ -72,7 +72,7 @@ def _frame():
 
     return pd.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): ["a.png"] * 6,
+            str(IMAGE.IMAGE_NAME): ["a.png"] * 6,
             "Object_Label": [1, 2, 3, 4, 5, 6],
             "Plate": ["P1"] * 6,
             "Size_Area": [10.0, 11.0, 12.0, 10.5, 11.5, 200.0],

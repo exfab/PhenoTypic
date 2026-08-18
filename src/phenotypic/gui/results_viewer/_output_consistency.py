@@ -52,6 +52,11 @@ class OutputCompletionEvidence:
     manifest_total: int | None = None
     completion_marker_present: bool = False
     completion_marker_valid: bool = False
+    marker_authority_required: bool = False
+    aggregate_marker_present: bool = False
+    aggregate_marker_valid: bool = False
+    aggregate_publication_id: str | None = None
+    current_run_complete: bool | None = None
     staged_marker_present: bool = False
     staged_marker_valid: bool = False
     processing_state_present: bool = False
@@ -92,6 +97,14 @@ class OutputConsistencyReport:
     def has_active_owner(self) -> bool:
         """Return whether a nonterminal GUI owner was observed."""
         return self.evidence.owner_status in _ACTIVE_OWNER_STATUSES
+
+    @property
+    def core_readable(self) -> bool:
+        """Return whether canonical core aggregate bytes are authorized."""
+        return (
+            not self.evidence.marker_authority_required
+            or self.evidence.aggregate_marker_valid
+        )
 
 
 def classify_output_consistency(
@@ -148,6 +161,14 @@ def classify_output_consistency(
     terminal_marker = (
         evidence.completion_marker_valid or evidence.staged_marker_valid
     )
+
+    if (
+        evidence.marker_authority_required
+        and not evidence.aggregate_marker_valid
+    ):
+        incompleteness.append(
+            "current aggregate files lack valid marker-last publication evidence"
+        )
 
     if evidence.manifest_present and not evidence.manifest_readable:
         incompleteness.append("publication manifest is unreadable")
@@ -243,6 +264,16 @@ def classify_output_consistency(
     elif evidence.standalone_bundle and not incompleteness:
         state = "coherent"
         reasons = ("standalone deliverables bundle is a terminal snapshot",)
+    elif (
+        evidence.marker_authority_required
+        and evidence.aggregate_marker_valid
+        and evidence.current_run_complete is True
+        and evidence.completion_marker_valid
+        and not owner_failed
+        and not incompleteness
+    ):
+        state = "coherent"
+        reasons = ("current marker-authorized publication is complete",)
     elif manifest_success and not owner_failed and not incompleteness:
         state = "coherent"
         reasons = ("terminal manifest evidence is internally coherent",)
@@ -309,6 +340,33 @@ def inspect_output_consistency(layout: BundleLayout) -> OutputConsistencyReport:
     )
     processing_path = resolve_processing_state_path(output_root)
     processing_payload, processing_readable = _read_json(processing_path)
+    processing_config = (
+        processing_payload.get("config")
+        if processing_payload is not None
+        else None
+    )
+    marker_authority_required = bool(
+        isinstance(processing_config, dict)
+        and processing_config.get("success_markers_required") is True
+    )
+    from phenotypic._cli._cli_completion import (
+        valid_aggregate_snapshot,
+        valid_run_completion,
+    )
+
+    aggregate_marker = valid_aggregate_snapshot(output_root)
+    aggregate_marker_path = output_root / ".phenotypic" / "aggregate_publication.json"
+    marker_run_completion = valid_run_completion(output_root)
+    current_completion = (
+        marker_run_completion is not None
+        if marker_authority_required
+        else None
+    )
+    legacy_completion_valid = bool(
+        completion_payload is not None
+        and _string_value(completion_payload, "status") == "complete"
+        and completion_payload.get("finalizer_succeeded") is True
+    )
     event_log_path = resolve_event_log_path(output_root)
     processing_events, event_log_readable = _read_processing_events(
         event_log_path,
@@ -352,11 +410,19 @@ def inspect_output_consistency(layout: BundleLayout) -> OutputConsistencyReport:
         ),
         completion_marker_present=completion_path.is_file(),
         completion_marker_valid=(
-            _string_value(completion_payload, "status") == "complete"
-            and completion_payload.get("finalizer_succeeded") is True
-            if completion_payload is not None
-            else False
+            marker_run_completion is not None
+            if marker_authority_required
+            else legacy_completion_valid
         ),
+        marker_authority_required=marker_authority_required,
+        aggregate_marker_present=aggregate_marker_path.is_file(),
+        aggregate_marker_valid=aggregate_marker is not None,
+        aggregate_publication_id=(
+            _string_value(aggregate_marker, "publication_id")
+            if aggregate_marker is not None
+            else None
+        ),
+        current_run_complete=current_completion,
         staged_marker_present=staged_path.is_file(),
         staged_marker_valid=staged_valid,
         processing_state_present=processing_path.is_file(),
