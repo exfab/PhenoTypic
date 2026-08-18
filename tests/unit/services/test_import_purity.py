@@ -64,6 +64,19 @@ def test_service_module_imports_no_dash(module: str) -> None:
 # test failure rather than a silent precedent.
 GUI_IMPORT_ALLOWLIST: dict[str, set[str]] = {
     "phenotypic._services.runs": {"phenotypic.gui.shell._classifier"},
+    # TEMPORARY — tracked for removal, not a precedent.
+    # tune_spec's setup-authoring half calls resolve_metadata_csv, a five-line
+    # compatibility wrapper over resolve_metadata_csv_state in a 596-line
+    # browser-payload resolver that transitively reaches
+    # gui.shell._source_context -> ._classifier. The other three upward reaches
+    # in that half were promoted instead (grid_feasibility -> _services.tune_spec,
+    # sandbox_fingerprint -> _services.sandbox, tune_presets_dir ->
+    # sdk_._io_constants); this one is not a promotion, it is a design decision
+    # about inverting the payload dependency, and it belongs to a phase with room
+    # to make it. EXPIRES when that phase promotes or inverts the resolver.
+    "phenotypic._services.tune_spec": {
+        "phenotypic.gui.shell._metadata_context"
+    },
 }
 
 

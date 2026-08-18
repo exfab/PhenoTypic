@@ -144,6 +144,38 @@ IMAGE_EXTS: Final[frozenset[str]] = frozenset(
 )
 
 
+# ---------------------------------------------------------------------------
+# Sandbox-owned GUI state directories
+# ---------------------------------------------------------------------------
+# Defined here rather than under :mod:`phenotypic.gui` for the same reason as
+# ``IMAGE_EXTS``: ``tune_presets_dir`` resolves an artifact path, the Dash-free
+# ``_services`` tier authors into that directory, and the project's path rule
+# says every artifact path resolves through this module. ``gui/_config``
+# re-exports all four names for back-compat, so its existing consumers are
+# unchanged.
+
+#: Hidden directory inside the sandbox root that holds GUI-managed state
+#: (presets, builder tile caches, etc.). Always created lazily.
+SANDBOX_GUI_DIRNAME: Final[str] = ".phenotypic-gui"
+
+#: Subdirectory of :data:`SANDBOX_GUI_DIRNAME` holding saved run-console
+#: presets (one ``<name>.json`` per preset).
+SANDBOX_PRESETS_SUBDIR: Final[str] = "presets"
+
+#: Subdirectory of ``.phenotypic-gui/presets`` holding saved tuning specs.
+SANDBOX_TUNE_PRESETS_SUBDIR: Final[str] = "tune"
+
+
+def tune_presets_dir(sandbox_root: Path) -> Path:
+    """Return ``<sandbox>/.phenotypic-gui/presets/tune``."""
+    return (
+        Path(sandbox_root)
+        / SANDBOX_GUI_DIRNAME
+        / SANDBOX_PRESETS_SUBDIR
+        / SANDBOX_TUNE_PRESETS_SUBDIR
+    )
+
+
 def has_config_suffix(path: str | Path, suffixes: Iterable[str]) -> bool:
     """Return whether ``path`` ends with any configured suffix.
 

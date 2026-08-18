@@ -58,24 +58,52 @@ def _parsed_imports(module: object) -> list[str]:
     return names
 
 
-def test_pure_half_does_not_import_the_gui():
-    """The pure half may not reach up into any rendering surface.
+def _gui_modules_reached(module: object) -> set[str]:
+    """The ``phenotypic.gui`` *modules* ``module`` imports, at allowlist grain.
 
-    The plan specified ``"phenotypic.gui" not in inspect.getsource(tune_spec)``,
-    which is a source-text grep: it fails on a module that merely *mentions* the
-    GUI in a docstring (this one does) and passes on one that imports it under
-    an alias. It would also outlaw the legitimate ``if TYPE_CHECKING:`` block.
-    ``tests/unit/services/test_argv_promotion.py::test_argv_module_does_not_import_gui``
-    is the correct implementation; this mirrors it.
+    ``_parsed_imports`` yields both ``X`` and ``X.symbol`` for a ``from X import
+    symbol``. Only the shallowest name is a module, so keep the minimal elements
+    of the set: how many symbols a caller happens to pull from one module is not
+    a fact about how far it reaches.
+    """
+    reached = {
+        name
+        for name in _parsed_imports(module)
+        if name == "phenotypic.gui" or name.startswith("phenotypic.gui.")
+    }
+    return {
+        name
+        for name in reached
+        if not any(other != name and name.startswith(f"{other}.") for other in reached)
+    }
+
+
+def test_pure_half_reaches_exactly_its_allowlisted_gui_modules():
+    """The pure half's GUI reach is *exactly* what the allowlist grants.
+
+    Stronger than the tier-wide gate in ``test_import_purity.py``, which only
+    forbids reaching more: pinning the set means a second allowlist entry for
+    this module fails here, and so does a stale entry that no longer matches a
+    real import. The allowlist is imported rather than restated so the two
+    cannot drift apart.
+
+    Checked against parsed imports, never a source substring. The plan specified
+    ``"phenotypic.gui" not in inspect.getsource(tune_spec)``, which fails on a
+    module that merely *mentions* the GUI in a docstring (this one must, to
+    explain the boundary), passes on one importing it under an alias, and would
+    outlaw a legitimate ``if TYPE_CHECKING:`` import.
     """
     from phenotypic._services import tune_spec
 
-    offenders = [
-        name
-        for name in _parsed_imports(tune_spec)
-        if name == "phenotypic.gui" or name.startswith("phenotypic.gui.")
-    ]
-    assert not offenders, f"_services.tune_spec imports from the GUI: {offenders}"
+    from .test_import_purity import GUI_IMPORT_ALLOWLIST
+
+    assert _gui_modules_reached(tune_spec) == GUI_IMPORT_ALLOWLIST[
+        "phenotypic._services.tune_spec"
+    ], (
+        "the pure half's GUI reach changed; every entry in "
+        "test_import_purity.GUI_IMPORT_ALLOWLIST is TEMPORARY and each one has "
+        "to carry a justification and an expiry"
+    )
 
 
 def test_view_half_imports_the_pure_half():

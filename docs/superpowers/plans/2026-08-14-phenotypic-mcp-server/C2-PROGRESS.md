@@ -197,8 +197,144 @@ rather than left shadowing identical objects. Verified: `phenotypic.tune._spec`,
 - `uv run --no-sync mypy src/phenotypic`: **421 errors in 125 files** — baseline.
 - `uv run --no-sync ruff check <the four changed paths>`: clean.
 
-## Still open
+---
 
-`_validation.py` and `_setup_authoring.py` are **not** folded. Both depend on
-the team-lead decision recorded under *T7 blocker* above. Nothing else in T6/T7
-remains.
+## Gate fix — the aliased-import hole (commit `e5559170a`)
+
+Committed **separately** from T7, at the team lead's direction, so the history
+shows the boundary being strengthened rather than a fix hiding inside a feature
+commit.
+
+`test_service_module_does_not_import_gui` claimed *in its own docstring* to
+catch `from phenotypic import gui`, and did not: for an `ImportFrom` it
+collected only `node.module` (`"phenotypic"`), never the imported names. The
+equivalent check in `test_argv_promotion.py` has always collected both, so the
+tier-wide gate was the weaker of the two — on the boundary this phase exists to
+build, immediately before an allowlist entry was added to it. Found by mutation
+M3 during T6.
+
+Collecting the names forced a second change: an allowlist entry now matches by
+**prefix** rather than by string equality. `from gui.shell._classifier import
+classify` reaches both `..._classifier` and `..._classifier.classify`, so the
+existing `_services.runs` entry stopped matching; listing every symbol would
+make the allowlist grow on changes that reach nothing new.
+
+| # | Mutation | Result |
+|---|---|---|
+| M3-rerun | `from phenotypic import gui` in a `_services` module | **FAIL** (passed before the fix) |
+| M12 | allowlisted module (`_services.runs`) reaches a *different* gui module | **FAIL** |
+| M13 | the `_services.runs` allowlist entry is deleted | **FAIL** — the real import is caught |
+| — | clean tree | PASS (11 tests) |
+
+---
+
+## T7 part 2 — the three promotions, the allowlist, and the last two modules
+
+Team lead approved **Option 1** with four conditions; all four are met.
+
+### The three promotions (each keeps a re-export at the old location — condition 1)
+
+| Symbol | From | To | Old location now |
+|---|---|---|---|
+| `grid_feasibility` | `gui/tune/_domain_editor.py` | `_services/tune_spec.py` | re-export |
+| `sandbox_fingerprint` | `gui/shell/_source_context.py` | `_services/sandbox.py` | re-export |
+| `tune_presets_dir` + `SANDBOX_GUI_DIRNAME` + `SANDBOX_PRESETS_SUBDIR` + `SANDBOX_TUNE_PRESETS_SUBDIR` | `gui/_config.py` | `sdk_/_io_constants.py` | re-export |
+
+The third follows Task 2's `IMAGE_EXTS` move exactly, including that
+`_io_constants` does **not** re-export through `sdk_/__init__.py` — so
+`_services/tune_spec.py` imports `tune_presets_dir` from
+`phenotypic.sdk_._io_constants` directly, the same way `gui/_config.py` imports
+`IMAGE_EXTS`. Because `gui/_config.py` re-exports all four, none of the six
+other `SANDBOX_GUI_DIRNAME` consumers changed. `SANDBOX_BUILDER_TILES_SUBDIR`
+stayed in `gui/_config.py` — nothing below the GUI needs it.
+
+Removing `sandbox_fingerprint` left `hashlib` and `os` unused in
+`_source_context.py`; both imports were deleted.
+
+### The two folded modules
+
+`gui/tune/_validation.py` 68 → 26 lines (shim); `gui/tune/_setup_authoring.py`
+798 → 33 lines (shim). `_services/tune_spec.py` is now 1,617 lines.
+
+The `_setup_authoring` shim surface was AST-derived from every
+`from phenotypic.gui.tune._setup_authoring import ...` in `src/` and `tests/`,
+then unioned with the old `__all__` — 21 names. Condition 1's warning was
+warranted: `write_setup_draft` and `build_authored_setup_spec` reach it only
+through **multi-line parenthesised imports** in
+`tests/integration/gui/tune/test_setup_view.py`, the exact shape behind
+incidents X2 and X3.
+
+### The allowlist entry (condition 2)
+
+`GUI_IMPORT_ALLOWLIST` grows from **1 entry to 2**:
+
+```
+phenotypic._services.tune_spec -> phenotypic.gui.shell._metadata_context
+```
+
+It carries a comment naming what it wraps (`resolve_metadata_csv`, a five-line
+compatibility wrapper over `resolve_metadata_csv_state` in a 596-line
+browser-payload resolver that transitively reaches `gui.shell._source_context`
+→ `._classifier`), why it was not promoted (inverting the payload dependency is
+a design decision, not a side effect of this cluster), and an explicit
+**EXPIRES** line. Condition 4 honoured: `_metadata_context` was not promoted.
+
+`test_pure_half_reaches_exactly_its_allowlisted_gui_modules` now asserts the
+reach **equals** the allowlist rather than being a subset — so a second entry
+fails, and so does a stale entry with no matching import. It imports
+`GUI_IMPORT_ALLOWLIST` rather than restating it, so the two cannot drift.
+
+### Deviations
+
+**D5 — `_services/tune_spec.py` imports one GUI module.** Recorded here as the
+deviation condition 3 asks for. It is allowlisted, commented, expiry-tracked,
+and mutation-proven (M14).
+
+**D6 — the `IMAGE_EXTS` precedent includes its import path.** `tune_presets_dir`
+is imported from `phenotypic.sdk_._io_constants`, not `phenotypic.sdk_`, because
+`sdk_/__init__.py` does not re-export `IMAGE_EXTS` either. Following the
+precedent's *shape* meant following where it imports from; the first attempt
+used `phenotypic.sdk_` and failed at import.
+
+### Mutations run
+
+| # | Mutation | Result |
+|---|---|---|
+| M14 | un-allowlisted `gui.shell._source_context` import added to `tune_spec` | **FAIL** ×2 — tier gate + the equality test. **This is condition 3's required proof: the allowlist admits one module, not any module.** |
+| M15 | allowlist grows `gui._config` with no matching import | **FAIL** — the equality test rejects a stale entry |
+| M16 | `_domain_editor` redefines `grid_feasibility` | **FAIL** |
+| M17 | `_source_context` redefines `sandbox_fingerprint` | **FAIL** |
+| M18 | `_config` redefines `SANDBOX_PRESETS_SUBDIR` | **FIRST RUN: FALSE GREEN** — see below |
+| M19 | `tune_presets_dir` loses the `presets` path segment | **FAIL** |
+| M20 | `_config` drops `SANDBOX_TUNE_PRESETS_SUBDIR` from the re-export import | **FAIL** |
+
+**M18 is the second false green this cluster found, and it generalises the M7
+lesson past source-text checks.** `assert _config.X is _io_constants.X` **passed**
+with a parallel `SANDBOX_PRESETS_SUBDIR = "presets"` appended to `_config.py` —
+CPython interns short string literals, so a genuine second definition is the
+same object. Identity is not a re-export test for interned constants. The
+assertion now parses `_config`'s AST and requires each name to arrive by an
+`ImportFrom` of `phenotypic.sdk_._io_constants` and to be bound by no
+module-level `Assign` / `AnnAssign` / `def` / `class`. M18 and M20 both fail
+against it.
+
+### The generalised lesson (requested by the team lead)
+
+**No assertion in this codebase should be a substring search over source text**
+— M7 — **and an identity check is not automatically stronger** — M18. Both are
+proxies for a structural fact; assert the structural fact. The three checks that
+survived mutation here all parse the module and assert about its *bindings*:
+what it imports, from where, and what it defines.
+
+### Gates at T7 part 2
+
+- `tests/unit/gui` + `tests/integration/gui` + `tests/unit/services`:
+  **1786 passed, 3 skipped, 2 deselected** (= 1780 at T7 part 1 + 6 new tests).
+- `uv run --no-sync mypy src/phenotypic`: **no new errors** — verified by
+  diffing the *full* output with and without this change (`git stash`), not by
+  comparing totals. The two are identical apart from line ordering and internal
+  type-variable ids. **Note for later clusters:** the absolute count is not
+  stable run-to-run on this tree — byte-identical `src/` produced both
+  `421 errors in 125 files` and `420 errors in 124 files` (mypy's incremental
+  cache). Treat the diff as the baseline, not the number.
+- `uv run --no-sync ruff check <every changed path>`: clean.

@@ -170,3 +170,135 @@ def test_command_shim_reexports_every_public_name():
         "storage_url_preflight_issue",
     ):
         assert getattr(shim, name) is getattr(tune_spec, name), name
+
+
+def test_validation_shim_reexports_every_public_name():
+    """``_callbacks.py:87`` and ``test_validation.py`` import through here."""
+    from phenotypic._services import tune_spec
+    from phenotypic.gui.tune import _validation as shim
+
+    for name in (
+        "Blocks",
+        "Issue",
+        "can_deploy",
+        "preflight_issues",
+        "spec_path_issue",
+        "validate_setup",
+    ):
+        assert getattr(shim, name) is getattr(tune_spec, name), name
+
+
+def test_setup_authoring_shim_reexports_every_imported_name():
+    """Derived from the imports, not from the old ``__all__``.
+
+    ``write_setup_draft`` and ``build_authored_setup_spec`` reach this module
+    only through multi-line parenthesised imports in
+    ``tests/integration/gui/tune/test_setup_view.py`` — the shape that produced
+    the X2 and X3 incidents.
+    """
+    from phenotypic._services import tune_spec
+    from phenotypic.gui.tune import _setup_authoring as shim
+
+    for name in (
+        "SETUP_DRAFT_VERSION",
+        "SetupAuthoringResult",
+        "SetupDraft",
+        "SetupDraftCache",
+        "SetupPathPayload",
+        "SetupPathResolution",
+        "SetupWriteReceipt",
+        "authored_content_fingerprint",
+        "authored_setup_spec_path",
+        "build_authored_setup_spec",
+        "build_setup_draft",
+        "load_pipeline_or_spec",
+        "path_content_fingerprint",
+        "resolve_picker_payload",
+        "resolve_setup_path",
+        "setup_draft_from_store",
+        "setup_path_payload",
+        "setup_path_resolution_from_store",
+        "write_authored_setup_spec",
+        "write_setup_draft",
+        "write_setup_draft_receipt",
+    ):
+        assert getattr(shim, name) is getattr(tune_spec, name), name
+
+
+def test_grid_feasibility_is_one_function():
+    """Promoted out of ``_domain_editor`` so ``_validation`` could travel."""
+    from phenotypic._services.tune_spec import grid_feasibility as canonical
+    from phenotypic.gui.tune._domain_editor import grid_feasibility as shim
+
+    assert shim is canonical
+
+
+def test_sandbox_fingerprint_is_one_function():
+    """Promoted beside the ``SandboxRoot`` it hashes."""
+    from phenotypic._services.sandbox import sandbox_fingerprint as canonical
+    from phenotypic.gui.shell._source_context import sandbox_fingerprint as shim
+
+    assert shim is canonical
+
+
+def test_tune_presets_dir_is_one_function_and_three_constants():
+    """``gui/_config`` re-exports all four rather than defining them.
+
+    Task 2's ``IMAGE_EXTS`` move repeated for the tune presets path, so the six
+    other ``SANDBOX_GUI_DIRNAME`` consumers are untouched by the relocation.
+
+    **Identity alone was a false green here** — measured, not assumed. Three of
+    the four are short string literals, which CPython interns, so a parallel
+    ``SANDBOX_PRESETS_SUBDIR = "presets"`` added to ``_config`` satisfies ``is``
+    while being a second definition free to drift.
+
+    So the binding itself is asserted, from the parsed module: each name must
+    arrive by an ``ImportFrom`` of ``phenotypic.sdk_._io_constants``, and must
+    not be bound by any module-level assignment, ``def``, or ``class``. Both are
+    AST facts about how the module is written, never a substring of it.
+    """
+    import ast
+    import inspect
+
+    from phenotypic.gui import _config
+    from phenotypic.sdk_ import _io_constants
+
+    tree = ast.parse(inspect.getsource(_config))
+    locally_defined: set[str] = set()
+    reexported: set[str] = set()
+    for node in tree.body:  # module level only; a nested def is not a rebinding
+        if isinstance(node, ast.Assign):
+            locally_defined.update(
+                t.id for t in node.targets if isinstance(t, ast.Name)
+            )
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            locally_defined.add(node.target.id)
+        elif isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            locally_defined.add(node.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module == "phenotypic.sdk_._io_constants":
+                reexported.update(alias.name for alias in node.names)
+
+    for name in (
+        "SANDBOX_GUI_DIRNAME",
+        "SANDBOX_PRESETS_SUBDIR",
+        "SANDBOX_TUNE_PRESETS_SUBDIR",
+        "tune_presets_dir",
+    ):
+        assert getattr(_config, name) is getattr(_io_constants, name), name
+        assert name in reexported, f"{name} is not re-exported from _io_constants"
+        assert name not in locally_defined, (
+            f"gui/_config defines {name} in parallel with _io_constants; "
+            "interned string literals make this invisible to an identity check"
+        )
+
+
+def test_tune_presets_dir_still_resolves_the_same_path():
+    """The relocation is a move, not a redefinition."""
+    from pathlib import Path
+
+    from phenotypic.sdk_._io_constants import tune_presets_dir
+
+    assert tune_presets_dir(Path("/sandbox")) == Path(
+        "/sandbox/.phenotypic-gui/presets/tune"
+    )

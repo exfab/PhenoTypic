@@ -3,13 +3,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from phenotypic._services.tune_spec import (  # noqa: F401 - re-exported
+    grid_feasibility,
+)
 from phenotypic.tune._search_space import (
     Categorical,
     Domain,
     Fixed,
     FloatRange,
     IntRange,
-    SearchSpace,
 )
 
 
@@ -69,16 +71,3 @@ def domain_summary(domain: Domain) -> str:
     if isinstance(domain, Fixed):
         return f"fixed {domain.value}"
     return str(domain)
-
-
-def grid_feasibility(space: SearchSpace) -> tuple[bool, str]:
-    """Return whether every knob can be enumerated by grid search."""
-    for knob in space.knobs:
-        domain = knob.domain
-        if isinstance(domain, FloatRange) and domain.step is None:
-            return (
-                False,
-                f"Grid unavailable: {knob.key} is a continuous float. "
-                "Add a step, pin it, or use Optuna.",
-            )
-    return True, "All active knobs are enumerable."

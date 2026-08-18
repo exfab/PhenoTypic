@@ -12,14 +12,15 @@ different sandbox.
 """
 from __future__ import annotations
 
-import hashlib
 import logging
-import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal, TypeAlias, TypedDict
 
+from phenotypic._services.sandbox import (  # noqa: F401 - re-exported
+    sandbox_fingerprint,
+)
 from phenotypic.gui.shell._classifier import classify
 from phenotypic.gui.shell._sandbox import (
     SandboxRoot,
@@ -93,17 +94,6 @@ class SourceResolution:
     def is_resolved(self) -> bool:
         """Whether the payload resolves to a current sandbox directory."""
         return self.state == "resolved"
-
-
-def sandbox_fingerprint(sandbox: SandboxRoot) -> str:
-    """Return a stable, non-reversible identity for ``sandbox``.
-
-    The canonical root path is the launch-time sandbox identity. Hashing it
-    avoids placing another copy of that path in browser storage while ensuring
-    that the same relative name under a different root cannot be rebound.
-    """
-    root_bytes = os.fsencode(str(sandbox.root))
-    return hashlib.sha256(root_bytes).hexdigest()
 
 
 def source_payload_from_path(

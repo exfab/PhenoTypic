@@ -75,6 +75,10 @@ from phenotypic.sdk_ import (
 )
 from phenotypic.sdk_._io_constants import (  # re-exported for back-compat
     IMAGE_EXTS,
+    SANDBOX_GUI_DIRNAME,
+    SANDBOX_PRESETS_SUBDIR,
+    SANDBOX_TUNE_PRESETS_SUBDIR,
+    tune_presets_dir,
 )
 
 __all__ = [
@@ -367,30 +371,16 @@ CFG_BROWSE_PREPARATION_MANAGER: str = "pheno_browse_preparation_manager"
 # Sandbox subdirectories
 # ---------------------------------------------------------------------------
 
-#: Hidden directory inside the sandbox root that holds GUI-managed state
-#: (presets, builder tile caches, etc.). Always created lazily.
-SANDBOX_GUI_DIRNAME: str = ".phenotypic-gui"
-
-#: Subdirectory of :data:`SANDBOX_GUI_DIRNAME` holding saved run-console
-#: presets (one ``<name>.json`` per preset).
-SANDBOX_PRESETS_SUBDIR: str = "presets"
-
-#: Subdirectory of ``.phenotypic-gui/presets`` holding saved tuning specs.
-SANDBOX_TUNE_PRESETS_SUBDIR: str = "tune"
+# ``SANDBOX_GUI_DIRNAME`` / ``SANDBOX_PRESETS_SUBDIR`` /
+# ``SANDBOX_TUNE_PRESETS_SUBDIR`` / ``tune_presets_dir`` are canonical in
+# :mod:`phenotypic.sdk_._io_constants` and imported at the top of this module,
+# so the Dash-free ``_services`` tier can author into the tune presets
+# directory without importing a GUI package. They are re-exported here so this
+# module's existing consumers are unchanged.
 
 #: Subdirectory of :data:`SANDBOX_GUI_DIRNAME` holding builder DZI tile
 #: caches per loaded image.
 SANDBOX_BUILDER_TILES_SUBDIR: str = "builder_tiles"
-
-
-def tune_presets_dir(sandbox_root: Path) -> Path:
-    """Return ``<sandbox>/.phenotypic-gui/presets/tune``."""
-    return (
-        Path(sandbox_root)
-        / SANDBOX_GUI_DIRNAME
-        / SANDBOX_PRESETS_SUBDIR
-        / SANDBOX_TUNE_PRESETS_SUBDIR
-    )
 
 
 #: Hidden directory inside the results viewer's *output* directory

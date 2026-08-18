@@ -17,12 +17,13 @@ per session.
 """
 from __future__ import annotations
 
+import hashlib
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
 
-__all__ = ["SandboxRoot"]
+__all__ = ["SandboxRoot", "sandbox_fingerprint"]
 
 
 def _is_safe_relative_path(value: object) -> bool:
@@ -205,3 +206,14 @@ class SandboxRoot:
             # the caller filters it rather than crashing the render.
             return False
         return self._contains(target)
+
+
+def sandbox_fingerprint(sandbox: SandboxRoot) -> str:
+    """Return a stable, non-reversible identity for ``sandbox``.
+
+    The canonical root path is the launch-time sandbox identity. Hashing it
+    avoids placing another copy of that path in browser storage while ensuring
+    that the same relative name under a different root cannot be rebound.
+    """
+    root_bytes = os.fsencode(str(sandbox.root))
+    return hashlib.sha256(root_bytes).hexdigest()
