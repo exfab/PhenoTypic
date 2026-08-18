@@ -44,13 +44,14 @@ from phenotypic.gui.results_viewer._heatmap_tab._figure import (
     AggregatorName,
     build_heatmap_figure,
 )
-from phenotypic.schema import CULTURE_METADATA, METADATA
+from phenotypic.gui.results_viewer._metadata import normalize_viewer_frame
+from phenotypic.schema import CULTURE, IMAGE
 from phenotypic.gui.results_viewer._picker_navigation import (
     picker_button_disabled_states,
     step_picker_value,
 )
 
-_TIME_COL: str = str(CULTURE_METADATA.TIME)
+_TIME_COL: str = str(CULTURE.TIME)
 
 logger = logging.getLogger(__name__)
 
@@ -199,9 +200,9 @@ def register_heatmap_callbacks(app: dash.Dash) -> None:
         # Image options: unique ``Metadata_ImageName`` in the active
         # frame, or empty when the frame is missing.
         image_options: list[dict[str, str]] = []
-        if frame is not None and str(METADATA.IMAGE_NAME) in frame.columns:
+        if frame is not None and str(IMAGE.IMAGE_NAME) in frame.columns:
             unique = sorted(
-                v for v in frame[str(METADATA.IMAGE_NAME)].unique().to_list() if v is not None
+                v for v in frame[str(IMAGE.IMAGE_NAME)].unique().to_list() if v is not None
             )
             image_options = [{"label": str(f), "value": str(f)} for f in unique]
 
@@ -278,6 +279,10 @@ def _resolve_frame() -> pl.DataFrame | None:
         return None
     try:
         return get_curated_frame(filtered, output_root)
+    except ValueError:
+        # Metadata conflicts are actionable compatibility blockers, not an
+        # empty-state condition.
+        raise
     except Exception:  # noqa: BLE001 - defensive: stale config keys.
         logger.warning("filtered_df lookup failed", exc_info=True)
         return None
@@ -292,9 +297,9 @@ def _coerce_polars(obj: object) -> pl.DataFrame | None:
     being.
     """
     if isinstance(obj, pl.DataFrame):
-        return obj
+        return normalize_viewer_frame(obj)
     if isinstance(obj, pd.DataFrame):
-        return pl.from_pandas(obj)
+        return normalize_viewer_frame(pl.from_pandas(obj))
     return None
 
 

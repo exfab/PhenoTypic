@@ -14,10 +14,121 @@ from pydantic import (
     ConfigDict,
     Field,
     PrivateAttr,
+    field_validator,
 )
 
-from phenotypic.sdk_ import ColumnRef, ColumnRefList
+from phenotypic.sdk_ import (
+    ColumnRef,
+    ColumnRefList,
+    ensure_metadata_prefix,
+    is_metadata_header,
+    metadata_member_for_header,
+    metadata_member_for_label,
+    normalize_metadata_columns,
+)
 from phenotypic.sdk_._docstring_params import apply_docstring_descriptions
+
+
+def normalize_measurement_metadata_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy with only metadata-family columns normalized.
+
+    ``normalize_metadata_columns`` is intentionally for external metadata
+    tables, where a bare column is metadata by definition. Measurement tables
+    additionally carry columns such as ``Size_Area`` and ``Object_Label``;
+    this adapter isolates metadata columns before delegating, so those columns
+    are never reclassified or renamed. The caller's frame is not mutated.
+    """
+    source_names = [str(column) for column in frame.columns]
+    metadata_positions = [
+        position
+        for position, name in enumerate(source_names)
+        if (
+            is_metadata_header(name)
+            or metadata_member_for_header(name) is not None
+            or metadata_member_for_label(name) is not None
+        )
+    ]
+    if not metadata_positions:
+        return frame.copy(deep=True)
+
+    metadata = normalize_metadata_columns(frame.iloc[:, metadata_positions])
+    targets = [ensure_metadata_prefix(source_names[position]) for position in metadata_positions]
+    groups: dict[str, list[int]] = {}
+    for position, target in zip(metadata_positions, targets, strict=True):
+        groups.setdefault(target, []).append(position)
+    anchors = {
+        target: next(
+            (position for position in positions if source_names[position] == target),
+            positions[0],
+        )
+        for target, positions in groups.items()
+    }
+    normalized_by_anchor = {
+        anchor: metadata.iloc[:, index]
+        for index, anchor in enumerate(sorted(anchors.values()))
+    }
+    consumed = {position for positions in groups.values() for position in positions}
+    columns = [
+        normalized_by_anchor[position]
+        if position in normalized_by_anchor
+        else frame.iloc[:, position].copy(deep=True)
+        for position in range(len(source_names))
+        if position not in consumed or position in normalized_by_anchor
+    ]
+    return pd.concat(columns, axis=1)
+
+
+def normalize_metadata_column_reference(column: str) -> str:
+    """Resolve a known metadata reference without reclassifying measurements."""
+    name = str(column)
+    if (
+        is_metadata_header(name)
+        or metadata_member_for_header(name) is not None
+        or metadata_member_for_label(name) is not None
+    ):
+        return ensure_metadata_prefix(name)
+    return name
+
+
+def normalize_metadata_column_references(value: Any) -> list[str]:
+    """Normalize a user-supplied column-reference list for Pydantic fields.
+
+    A lone string is accepted as a one-element list for historical ``groupby``
+    ergonomics. ``None`` is intentionally not accepted here: optional callers
+    must handle it before calling this function, while required Pydantic fields
+    receive a clear validation error instead of iterating ``None`` or splitting
+    a string into characters.
+    """
+    if isinstance(value, str):
+        return [normalize_metadata_column_reference(value)]
+    if isinstance(value, np.ndarray):
+        if value.ndim != 1:
+            raise ValueError("column-reference arrays must be one-dimensional")
+        value = value.tolist()
+    if not isinstance(value, (list, tuple)):
+        raise ValueError("column references must be a string, list, tuple, or 1-D array")
+    if not all(isinstance(column, str) for column in value):
+        raise ValueError("every column reference must be a string")
+    return [normalize_metadata_column_reference(column) for column in value]
+
+
+def normalize_metadata_criteria(criteria: Mapping[str, Any]) -> dict[str, Any]:
+    """Return criteria with known metadata keys normalized and collision-checked."""
+    normalized: dict[str, Any] = {}
+    source_for_target: dict[str, str] = {}
+    for source, value in criteria.items():
+        if not isinstance(source, str):
+            raise ValueError("criteria keys must be strings")
+        target = normalize_metadata_column_reference(source)
+        previous = source_for_target.get(target)
+        if previous is not None and previous != source:
+            raise ValueError(
+                "criteria keys normalize to the same metadata column: "
+                f"{previous!r} and {source!r} -> {target!r}"
+            )
+        normalized[target] = value
+        source_for_target[target] = source
+    return normalized
 
 
 class SetAnalyzer(BaseModel, abc.ABC):
@@ -56,6 +167,46 @@ class SetAnalyzer(BaseModel, abc.ABC):
         default=1,
         validation_alias=AliasChoices("n_jobs", "num_workers"),
     )
+
+    @field_validator("on", mode="before")
+    @classmethod
+    def _normalize_on_reference(cls, value: str) -> str:
+        """Accept legacy, flat, and bare known metadata column references."""
+        if not isinstance(value, str):
+            raise ValueError("on must be a string column reference")
+        return normalize_metadata_column_reference(value)
+
+    @field_validator("groupby", mode="before")
+    @classmethod
+    def _normalize_groupby_references(cls, value: Any) -> Any:
+        """Accept legacy, flat, and bare known metadata grouping references."""
+        return normalize_metadata_column_references(value)
+
+    @field_validator(
+        "time_label",
+        "subject_label",
+        "rater_label",
+        "stderr_label",
+        "Kmax_label",
+        mode="before",
+        check_fields=False,
+    )
+    @classmethod
+    def _normalize_optional_column_reference(cls, value: Any) -> Any:
+        """Normalize metadata-capable subclass column-reference fields."""
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("column reference must be a string or None")
+        return normalize_metadata_column_reference(value)
+
+    @field_validator("s0_prior_groupby", mode="before", check_fields=False)
+    @classmethod
+    def _normalize_optional_groupby_references(cls, value: Any) -> Any:
+        """Normalize the optional inoculum-prior grouping list."""
+        if value is None:
+            return None
+        return normalize_metadata_column_references(value)
 
     _latest_measurements: pd.DataFrame = PrivateAttr(
         default_factory=pd.DataFrame
@@ -183,6 +334,8 @@ class SetAnalyzer(BaseModel, abc.ABC):
         1    P1   <NA>    1   12.5
         2    P2     WT    2    9.7
         """
+
+        criteria = normalize_metadata_criteria(criteria)
 
         def _is_list_like(x: Any) -> bool:
             return isinstance(x, Iterable) and not isinstance(x, (str, bytes))

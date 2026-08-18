@@ -9,6 +9,7 @@ missing or over-detected.
 from __future__ import annotations
 
 from pathlib import Path
+import re
 from typing import Annotated, Any, Callable, ClassVar
 
 import pandas as pd
@@ -22,8 +23,16 @@ from pydantic import (
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
 from phenotypic.abc_.plotting import PlotQc
-from phenotypic.sdk_ import ColumnRef
-from phenotypic.schema import OBJECT, QUALITY_COUNT
+from phenotypic.sdk_ import (
+    ColumnRef,
+    ensure_metadata_prefix,
+    is_metadata_header,
+    metadata_member_for_header,
+    metadata_member_for_label,
+    normalize_metadata_columns,
+)
+from phenotypic.schema import MeasurementInfo, MetadataInfo, OBJECT, QUALITY_COUNT
+import phenotypic.schema as schema
 
 # ``metadata`` is a single, unified field that accepts **either** an
 # in-memory layout :class:`pandas.DataFrame` (an "array") **or** a path
@@ -60,6 +69,150 @@ _MetadataField = Annotated[
         ]
     }),
 ]
+
+
+_EXTERNAL_QUALIFIED_HEADER = re.compile(r"^[A-Z][A-Za-z0-9]*_[A-Z][A-Za-z0-9]*$")
+
+
+def _is_known_nonmetadata_header(column: str) -> bool:
+    """Return whether *column* belongs to an explicit non-metadata schema enum."""
+    for name in schema.__all__:
+        candidate = getattr(schema, name)
+        if (
+            isinstance(candidate, type)
+            and issubclass(candidate, MeasurementInfo)
+            and not issubclass(candidate, MetadataInfo)
+            and candidate.owns_header(column)
+        ):
+            return True
+    return False
+
+
+def _is_layout_metadata_column(column: str) -> bool:
+    """Return whether a layout column belongs to the metadata namespace.
+
+    Known metadata headers and labels always normalize. Explicit known
+    non-metadata schema headers remain unchanged. Unknown external headers must
+    use two PascalCase segments (for example, ``ExternalMeasure_BatchKey``);
+    lower snake-case labels such as ``batch_id`` remain bare layout metadata.
+    """
+    if (
+        is_metadata_header(column)
+        or metadata_member_for_header(column) is not None
+        or metadata_member_for_label(column) is not None
+    ):
+        return True
+    return not (
+        _is_known_nonmetadata_header(column)
+        or _EXTERNAL_QUALIFIED_HEADER.fullmatch(column) is not None
+    )
+
+
+def _normalize_layout_column_reference(column: str) -> str:
+    """Resolve a layout-context column reference to its emitted spelling."""
+    return ensure_metadata_prefix(column) if _is_layout_metadata_column(column) else column
+
+
+def _normalize_layout_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    """Normalize layout metadata while preserving qualified non-metadata fields.
+
+    Unlike a metadata-only sidecar, a layout frame can carry qualified object,
+    measurement, or arbitrary external columns. Those are retained unchanged.
+    Every bare and lower snake-case column is metadata in this file-oriented
+    context, so generic labels such as ``Foo`` become ``Metadata_Foo`` through
+    the SDK normalizer.
+    """
+    source_names = [str(column) for column in frame.columns]
+    metadata_positions = [
+        position
+        for position, name in enumerate(source_names)
+        if _is_layout_metadata_column(name)
+    ]
+    if not metadata_positions:
+        return frame.copy(deep=True)
+
+    metadata = normalize_metadata_columns(frame.iloc[:, metadata_positions])
+    groups: dict[str, list[int]] = {}
+    for position in metadata_positions:
+        groups.setdefault(
+            _normalize_layout_column_reference(source_names[position]), []
+        ).append(position)
+    anchors = {
+        target: next(
+            (position for position in positions if source_names[position] == target),
+            positions[0],
+        )
+        for target, positions in groups.items()
+    }
+    normalized_by_anchor = {
+        anchor: metadata.iloc[:, index]
+        for index, anchor in enumerate(sorted(anchors.values()))
+    }
+    consumed = {position for positions in groups.values() for position in positions}
+    columns = [
+        normalized_by_anchor[position]
+        if position in normalized_by_anchor
+        else frame.iloc[:, position].copy(deep=True)
+        for position in range(len(source_names))
+        if position not in consumed or position in normalized_by_anchor
+    ]
+    return pd.concat(columns, axis=1)
+
+
+def _normalize_measurement_join_columns(
+    frame: pd.DataFrame, groupby: list[str]
+) -> pd.DataFrame:
+    """Normalize only join keys and known metadata aliases in measurement data.
+
+    Measurements are mixed tables, unlike layout files. Known metadata aliases
+    always normalize; otherwise, layout-style normalization applies only to a
+    column that supplies one of this check's configured grouping keys. This
+    keeps unrelated custom measures such as ``custom_score`` and ``note_text``
+    exactly as callers supplied them.
+    """
+    source_names = [str(column) for column in frame.columns]
+    metadata_positions = [
+        position
+        for position, name in enumerate(source_names)
+        if (
+            is_metadata_header(name)
+            or metadata_member_for_header(name) is not None
+            or metadata_member_for_label(name) is not None
+            or (
+                _is_layout_metadata_column(name)
+                and _normalize_layout_column_reference(name) in groupby
+            )
+        )
+    ]
+    if not metadata_positions:
+        return frame.copy(deep=True)
+
+    metadata = normalize_metadata_columns(frame.iloc[:, metadata_positions])
+    groups: dict[str, list[int]] = {}
+    for position in metadata_positions:
+        groups.setdefault(
+            _normalize_layout_column_reference(source_names[position]), []
+        ).append(position)
+    anchors = {
+        target: next(
+            (position for position in positions if source_names[position] == target),
+            positions[0],
+        )
+        for target, positions in groups.items()
+    }
+    normalized_by_anchor = {
+        anchor: metadata.iloc[:, index]
+        for index, anchor in enumerate(sorted(anchors.values()))
+    }
+    consumed = {position for positions in groups.values() for position in positions}
+    columns = [
+        normalized_by_anchor[position]
+        if position in normalized_by_anchor
+        else frame.iloc[:, position].copy(deep=True)
+        for position in range(len(source_names))
+        if position not in consumed or position in normalized_by_anchor
+    ]
+    return pd.concat(columns, axis=1)
 
 
 class ExpectedVsDetectedCount(QualityCheck, PlotQc):
@@ -151,17 +304,19 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
         >>> from phenotypic.analysis.qc import (
         ...     ExpectedVsDetectedCount,
         ... )
+        >>> from phenotypic.schema import IMAGE
+        >>> image_name = str(IMAGE.IMAGE_NAME)
         >>> metadata = pd.DataFrame({
-        ...     "MetadataImage_ImageName": ["plate1.png"] * 96,
+        ...     image_name: ["plate1.png"] * 96,
         ...     "Object_Label": list(range(96)),
         ... })
         >>> measurements = pd.DataFrame({
-        ...     "MetadataImage_ImageName": ["plate1.png"] * 95,
+        ...     image_name: ["plate1.png"] * 95,
         ...     "Object_Label": list(range(95)),
         ... })
         >>> chk = ExpectedVsDetectedCount(
         ...     metadata=metadata,
-        ...     groupby=["MetadataImage_ImageName"],
+        ...     groupby=[image_name],
         ... )
         >>> result = chk.analyze(measurements)  # doctest: +SKIP
         >>> "QC_Count_Metric" in result.columns  # doctest: +SKIP
@@ -171,16 +326,16 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
         the metric is infinite and the key is recorded:
 
         >>> metadata = pd.DataFrame({
-        ...     "MetadataImage_ImageName": ["plate1.png"] * 96,
+        ...     image_name: ["plate1.png"] * 96,
         ...     "Object_Label": list(range(96)),
         ... })
         >>> measurements = pd.DataFrame({
-        ...     "MetadataImage_ImageName": ["plate2.png"] * 10,
+        ...     image_name: ["plate2.png"] * 10,
         ...     "Object_Label": list(range(10)),
         ... })
         >>> chk = ExpectedVsDetectedCount(
         ...     metadata=metadata,
-        ...     groupby=["MetadataImage_ImageName"],
+        ...     groupby=[image_name],
         ... )
         >>> _ = chk.analyze(measurements)  # doctest: +SKIP
         >>> chk.unmatched_groups  # doctest: +SKIP
@@ -209,6 +364,12 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
 
     _metadata: pd.DataFrame = PrivateAttr(default_factory=pd.DataFrame)
     _expected_counts: pd.Series = PrivateAttr(default_factory=pd.Series)
+
+    @field_validator("groupby")
+    @classmethod
+    def _normalize_layout_groupby_references(cls, value: list[str]) -> list[str]:
+        """Apply the layout namespace rule to every configured grouping key."""
+        return [_normalize_layout_column_reference(column) for column in value]
 
     @field_validator("metadata", mode="before")
     @classmethod
@@ -320,8 +481,8 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
                 or ``str``) to a ``.csv``/``.parquet`` file.
 
         Returns:
-            The resolved DataFrame. If ``metadata`` is already a
-            DataFrame it is returned as-is (no copy).
+            A copied resolved DataFrame with layout metadata normalized. Known
+            object, grid, bounding-box, and measurement headers are retained.
 
         Raises:
             FileNotFoundError: If ``metadata`` is a path that does not
@@ -329,7 +490,7 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
             ValueError: If the path has an unsupported suffix.
         """
         if isinstance(metadata, pd.DataFrame):
-            return metadata
+            return _normalize_layout_columns(metadata)
 
         path = Path(metadata)
         if not path.exists():
@@ -339,9 +500,9 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
 
         suffix = path.suffix.lower()
         if suffix == ".csv":
-            return pd.read_csv(path)
+            return _normalize_layout_columns(pd.read_csv(path))
         if suffix == ".parquet":
-            return pd.read_parquet(path)
+            return _normalize_layout_columns(pd.read_parquet(path))
         raise ValueError(
             "metadata path must be a .csv or .parquet file; got "
             f"suffix {suffix!r}"
@@ -464,7 +625,7 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
             The augmented frame from :meth:`QualityCheck.analyze`.
         """
         self.unmatched_groups = []
-        return super().analyze(data)
+        return super().analyze(_normalize_measurement_join_columns(data, self.groupby))
 
     def inspect(
         self,

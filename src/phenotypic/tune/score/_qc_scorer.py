@@ -95,17 +95,19 @@ class QCScorer(Scorer):
     Examples:
         >>> import pandas as pd
         >>> from phenotypic.analysis import ExpectedVsDetectedCount
+        >>> from phenotypic.schema import IMAGE
         >>> from phenotypic.tune.score import QCScorer
+        >>> image_name = str(IMAGE.IMAGE_NAME)
         >>> layout = pd.DataFrame(
-        ...     {"MetadataImage_ImageName": ["p1"] * 96, "Object_Label": list(range(96))}
+        ...     {image_name: ["p1"] * 96, "Object_Label": list(range(96))}
         ... )
         >>> scorer = QCScorer(
         ...     check=ExpectedVsDetectedCount(
-        ...         metadata=layout, groupby=["MetadataImage_ImageName"]
+        ...         metadata=layout, groupby=[image_name]
         ...     )
         ... )
         >>> measured = pd.DataFrame(
-        ...     {"MetadataImage_ImageName": ["p1"] * 96, "Object_Label": list(range(96))}
+        ...     {image_name: ["p1"] * 96, "Object_Label": list(range(96))}
         ... )
         >>> # a perfect 96-well count match → zero cost
         >>> round(scorer.score_image(None, measured)["Count"], 3)

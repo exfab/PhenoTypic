@@ -10,7 +10,7 @@ import pandas as pd
 from skimage.measure import regionprops
 from typing import List
 
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_.constants_ import IMAGE_TYPES
 from phenotypic.schema import OBJECT
 
@@ -157,7 +157,7 @@ class ObjectsAccessor:
             Extract colony names for tracking:
 
             >>> colony_names = [
-            ...     obj.metadata[METADATA.IMAGE_NAME]
+            ...     obj.metadata[IMAGE.IMAGE_NAME]
             ...     for obj in plate.objects
             ... ]
         """
@@ -218,7 +218,7 @@ class ObjectsAccessor:
         current_object = self.props[index]
         label = current_object.label
         object_image = self._root_image[current_object.slice]
-        object_image.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.OBJECT.value
+        object_image.metadata[IMAGE.IMAGE_TYPE] = IMAGE_TYPES.OBJECT.value
         object_image.objmap[object_image.objmap[:] != label] = 0
         return object_image
 

@@ -170,6 +170,16 @@ rebuilds the progress manifest, and regenerates the progress dashboard.
 uv run python -m phenotypic --mode recompile --output ./out
 ```
 
+Before aggregation, recompile preflights and automatically migrates
+bundle-owned authoritative metadata to the flat `Metadata_<Label>` namespace.
+The same ordering applies locally and on SLURM. A blocked or failed migration
+aborts before aggregate outputs are published; a canonical bundle is an
+idempotent no-op. The migration receipt printed by the CLI can be used for
+rollback. HDF inputs are migrated copy-on-write, and an external file passed via
+`--metadata` is copied byte-for-byte to `deliverables/metadata.csv` before work,
+then normalized in memory. Neither the external file nor that provenance
+snapshot is rewritten by migration.
+
 Reach for it when the *numbers* are right but the *presentation* is not:
 
 - You deleted or corrupted `dashboard.html`.
@@ -327,7 +337,7 @@ before cancelling every active job in its ledger.
 
 - `--overlay-alpha` (default `0.3`) — opacity of the label overlay in the
   saved overlay PNGs.
-- `--no-dataset-column` — drop the `MetadataExperiment_Dataset` column, which is
+- `--no-dataset-column` — drop the `Metadata_Dataset` column, which is
   included by default and is what makes multi-dataset analysis possible.
 - `--no-qc` — skip the QC compute step. QC otherwise runs whenever the pipeline
   has a non-empty `qc` section, and re-running it resets GUI review progress.

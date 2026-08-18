@@ -29,9 +29,9 @@ from phenotypic.sdk_._file_locking import exclusive_path_lock
 from ._cli_file_locking import atomic_append, atomic_read
 from ._cli_slurm_lifecycle import (
     SchedulerQueryUnavailable,
+    _deactivate_generation_locked,
     append_lifecycle_entry,
     cancel_generation,
-    deactivate_generation,
     generation_is_active,
     initialize_slurm_lifecycle,
     ledger_job_for_token as lifecycle_job_for_token,
@@ -613,7 +613,7 @@ def deactivate_orchestration(
         return False
     epoch = str(state.get("epoch", ""))
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
-        deactivate_generation(output_dir, epoch)
+        _deactivate_generation_locked(output_dir, epoch)
     atomic_append(
         epoch_deactivation_journal_path(output_dir),
         json.dumps(
@@ -683,7 +683,7 @@ def mark_staged_complete(output_dir: Path, epoch: str) -> None:
     }
     atomic_write_json(staged_completion_path(output_dir), marker)
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
-        deactivate_generation(output_dir, epoch)
+        _deactivate_generation_locked(output_dir, epoch)
     state = load_orchestration_state(output_dir)
     if state is not None and state.get("epoch") == epoch:
         state["phase"] = "complete"

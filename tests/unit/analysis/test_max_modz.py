@@ -15,7 +15,7 @@ import pytest
 
 from phenotypic.analysis.qc import MaxModifiedZScore
 from phenotypic.analysis._helper._qc_math import modified_z_scores
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 # --------------------------------------------------------------------------- #
@@ -28,7 +28,7 @@ def clean_bin() -> pd.DataFrame:
     """Tightly-clustered members — every modified Z-score below warn."""
     return pd.DataFrame({
         "Plate": ["P1"] * 6,
-        "MetadataCulture_Time": [0] * 6,
+        "Metadata_Time": [0] * 6,
         "Size_Area": [10.0, 10.1, 9.9, 10.05, 9.95, 10.0],
     })
 
@@ -38,7 +38,7 @@ def one_extreme_outlier() -> pd.DataFrame:
     """One member far from the rest — max modified Z above fail."""
     return pd.DataFrame({
         "Plate": ["P1"] * 6,
-        "MetadataCulture_Time": [0] * 6,
+        "Metadata_Time": [0] * 6,
         "Size_Area": [10.0, 10.1, 9.9, 10.05, 9.95, 200.0],
     })
 
@@ -124,7 +124,7 @@ class TestNanGuardPaths:
     def test_min_replicates_nan_guard(self) -> None:
         data = pd.DataFrame({
             "Plate": ["P1", "P1"],
-            "MetadataCulture_Time": [0, 1],
+            "Metadata_Time": [0, 1],
             "Size_Area": [10.0, 20.0],
         })
         chk = MaxModifiedZScore(on="Size_Area", groupby=["Plate"])
@@ -136,7 +136,7 @@ class TestNanGuardPaths:
         # MAD and mean-AD are both zero -> all scores zero -> NaN metric.
         data = pd.DataFrame({
             "Plate": ["P1"] * 5,
-            "MetadataCulture_Time": [0] * 5,
+            "Metadata_Time": [0] * 5,
             "Size_Area": [42.0] * 5,
         })
         chk = MaxModifiedZScore(on="Size_Area", groupby=["Plate"])
@@ -156,7 +156,7 @@ class TestBehavioralEdges:
     def test_missing_time_label_treats_all_as_one_bin(
         self, one_extreme_outlier: pd.DataFrame
     ) -> None:
-        data = one_extreme_outlier.drop(columns=["MetadataCulture_Time"])
+        data = one_extreme_outlier.drop(columns=["Metadata_Time"])
         chk = MaxModifiedZScore(on="Size_Area", groupby=["Plate"])
         result = chk.analyze(data)
         assert result["QC_ZMax_NumMembers"].nunique() == 1
@@ -189,7 +189,7 @@ class TestBehavioralEdges:
     def test_summary_worst_metric_is_max(self) -> None:
         data = pd.DataFrame({
             "Plate": ["P1"] * 12,
-            "MetadataCulture_Time": [0] * 6 + [1] * 6,
+            "Metadata_Time": [0] * 6 + [1] * 6,
             "Size_Area": (
                 [10.0, 10.1, 9.9, 10.05, 9.95, 10.0]  # clean
                 + [10.0, 10.1, 9.9, 10.05, 9.95, 200.0]  # outlier
@@ -210,10 +210,10 @@ class TestBehavioralEdges:
 
     def test_group_members_maps_keys_to_member_rows(self) -> None:
         data = pd.DataFrame({
-            str(METADATA.IMAGE_NAME): ["plate1.png"] * 3,
+            str(IMAGE.IMAGE_NAME): ["plate1.png"] * 3,
             "Object_Label": [1, 2, 3],
             "Plate": ["P1"] * 3,
-            "MetadataCulture_Time": [0, 0, 0],
+            "Metadata_Time": [0, 0, 0],
             "Size_Area": [10.0, 11.0, 12.0],
         })
         chk = MaxModifiedZScore(on="Size_Area", groupby=["Plate"])

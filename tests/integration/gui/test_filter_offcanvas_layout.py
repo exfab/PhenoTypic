@@ -15,7 +15,7 @@ from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
 from phenotypic.gui.results_viewer._layout import build_app_layout
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from tests._output_layout import write_master, write_measurements_mirror
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 def _seed_output(tmp_path: Path) -> Path:
@@ -30,8 +30,8 @@ def _seed_output(tmp_path: Path) -> Path:
     out.mkdir(parents=True)
     master = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["ds1", "ds1"],
-            str(METADATA.IMAGE_NAME): ["a.tif", "b.tif"],
+            "Metadata_Dataset": ["ds1", "ds1"],
+            str(IMAGE.IMAGE_NAME): ["a.tif", "b.tif"],
             "Object_Label": [1, 2],
             "Size_Area": [100.0, 200.0],
         }

@@ -905,8 +905,10 @@ state, atomically promotes the staged bytes to
 `deliverables/metadata.csv`, and verifies the promoted hash. A copy or
 validation failure aborts before work is assigned.
 
-Workers and finalizers use this canonical copy rather than the external source
-path. An identical source does not rewrite the copy. A changed metadata digest
+Workers and finalizers use this canonical-path, byte-exact copy rather than the
+external source path. Header normalization occurs only in memory; metadata
+schema migration and finalization never rewrite the snapshot. An identical
+source does not rewrite the copy. A changed metadata digest
 invalidates finalization evidence and requires finalization only; it does not
 change per-image `work_id`. Existing compatible runs reuse their valid canonical
 copy when no new path is supplied. The aggregate and run markers bind its

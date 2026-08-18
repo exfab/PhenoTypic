@@ -30,7 +30,7 @@ class TestPostSerialization:
         assert len(loaded._post) == 1
         post_op = list(loaded._post.values())[0]
         assert isinstance(post_op, ExpandMetadata)
-        assert post_op.column == "MetadataImage_ImageName"
+        assert post_op.column == "Metadata_ImageName"
         assert post_op.labels == ["Metadata_A", "Metadata_B"]
         assert post_op.delimiter == "_"
 

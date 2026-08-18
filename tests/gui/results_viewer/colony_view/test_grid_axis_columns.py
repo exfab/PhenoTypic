@@ -4,6 +4,7 @@ from __future__ import annotations
 import polars as pl
 
 from phenotypic.gui.results_viewer.colony_view._grid import selectable_axis_columns
+from phenotypic.schema import EXPERIMENT
 
 
 def _frame_with_high_cardinality_metadata() -> pl.DataFrame:
@@ -29,14 +30,14 @@ def test_default_cap_excludes_high_cardinality_metadata() -> None:
     df = _frame_with_high_cardinality_metadata()
     cols = selectable_axis_columns(df, _value_sets(df))  # default 50
     assert "Metadata_PlateNum" not in cols  # 74 > 50
-    assert "Metadata_Dataset" in cols       # 3 in [2, 50]
+    assert str(EXPERIMENT.DATASET) in cols  # 3 in [2, 50]
 
 
 def test_none_cap_is_uncapped_and_admits_high_cardinality() -> None:
     df = _frame_with_high_cardinality_metadata()
     cols = selectable_axis_columns(df, _value_sets(df), max_cardinality=None)
     assert "Metadata_PlateNum" in cols      # 74 now allowed
-    assert "Metadata_Dataset" in cols
+    assert str(EXPERIMENT.DATASET) in cols
     # Exclusions still hold: measurement-prefixed + per-object id are dropped.
     assert "Size_Area" not in cols
     assert "Object_Label" not in cols
@@ -49,4 +50,4 @@ def test_none_cap_still_excludes_singleton_columns() -> None:
     )
     cols = selectable_axis_columns(df, _value_sets(df), max_cardinality=None)
     assert "Metadata_Const" not in cols
-    assert "Metadata_Dataset" in cols
+    assert str(EXPERIMENT.DATASET) in cols

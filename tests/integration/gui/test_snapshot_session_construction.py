@@ -16,7 +16,7 @@ from phenotypic.gui.results_viewer._output_root import (
     OutputRoot,
     OutputSnapshotChangedError,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import pipeline_json_path
 from tests._output_layout import seed_output_dir
 
@@ -25,8 +25,8 @@ def _bound_output(tmp_path: Path) -> OutputRoot:
     """Create and discover one minimal shared Results/Analysis output."""
     output = tmp_path / "output"
     frame = pl.DataFrame({
-        "MetadataExperiment_Dataset": ["dataset"],
-        str(METADATA.IMAGE_NAME): ["plate"],
+        "Metadata_Dataset": ["dataset"],
+        str(IMAGE.IMAGE_NAME): ["plate"],
         "Object_Label": [1],
         "Shape_Area": [100.0],
     })

@@ -1,7 +1,7 @@
 import logging
 
 from phenotypic import Image, GridImage, ImagePipeline
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic._core._pipeline_parts import IntermediateResult
 from phenotypic.correction import GridAligner
 from phenotypic.detect import OtsuDetector
@@ -69,7 +69,7 @@ def test_pipeline_on_image(plate_grid_images):
     assert set(output.columns) == set(compound_output.columns), "Different columns"
 
     # Exclude columns that are expected to differ (e.g., UUIDs that change between runs)
-    cols_to_skip = {str(METADATA.IMAGE_NAME)}  # UUIDs change between pipeline runs
+    cols_to_skip = {str(IMAGE.IMAGE_NAME)}  # UUIDs change between pipeline runs
 
     # For each column, check if values are close (handling NaNs)
     for col in output.columns:
@@ -415,27 +415,26 @@ def test_grid_preset_idempotent_repeated_measure(synth_plate_detected):
 
 # ---------------------------------------------------------------------------
 # Column ordering:
-#   [user metadata] -> [measurements] -> [MetadataImage_] -> [info block]
+#   [user metadata] -> [measurements] -> [Metadata_] -> [info block]
 # ---------------------------------------------------------------------------
 
 
 def _classify_columns(columns):
     """Split measure() columns into (front_meta, meas, image_meta, info) indices.
 
-    The framework ``MetadataImage_*`` bookkeeping block is *per-image* provenance
+    The framework ``Metadata_*`` bookkeeping block is *per-image* provenance
     and is emitted after the measurements (before the per-object info block), so
     it is classified separately from the user/experimental ``Metadata*`` tags
     that lead the frame. Info block = ``Object_Label`` plus the ``Bbox_*`` /
     ``Grid_*`` geometry that ``GridImage.info()`` / ``Image.info()`` emit;
     everything left over is a measurement.
     """
-    from phenotypic.schema import METADATA, OBJECT
-    from phenotypic.sdk_ import is_metadata_header
+    from phenotypic.schema import IMAGE, OBJECT
+    from phenotypic.sdk_ import is_metadata_header, metadata_owner_for_header
 
-    image_prefix = f"{METADATA.category()}_"  # "MetadataImage_"
     front_meta, image_meta, info, meas = [], [], [], []
     for i, c in enumerate(columns):
-        if c.startswith(image_prefix):
+        if metadata_owner_for_header(str(c)) is IMAGE:
             image_meta.append(i)
         elif is_metadata_header(c):
             front_meta.append(i)
@@ -448,10 +447,10 @@ def _classify_columns(columns):
 
 @timeit
 def test_measure_column_order_metadata_measurements_info(synth_plate_detected):
-    """measure() orders cols: user-metadata -> measurements -> MetadataImage_ -> info.
+    """measure() orders cols: user-metadata -> measurements -> Metadata_ -> info.
 
-    User/experimental metadata (the tag that folds to ``MetadataGenetic_Strain``)
-    is a contiguous prefix. The framework ``MetadataImage_*`` bookkeeping block is
+    User/experimental metadata (the tag that folds to ``Metadata_Strain``)
+    is a contiguous prefix. The framework ``Metadata_*`` bookkeeping block is
     pulled out of the front and sits after the measurements, immediately before
     the per-object image-info block (``Object_Label`` + ``Bbox_*`` / ``Grid_*``),
     which is the contiguous suffix led by ``Object_Label``.
@@ -459,7 +458,7 @@ def test_measure_column_order_metadata_measurements_info(synth_plate_detected):
     from phenotypic.schema import OBJECT
 
     image = synth_plate_detected.copy()
-    image.metadata["Strain"] = "BY4741"  # experimental tag -> MetadataGenetic_Strain
+    image.metadata["Strain"] = "BY4741"  # experimental tag -> Metadata_Strain
     pipe = ImagePipeline(
         meas={"MeasureShape": MeasureShape(), "MeasureIntensity": MeasureIntensity()},
         nrows=8,
@@ -476,17 +475,17 @@ def test_measure_column_order_metadata_measurements_info(synth_plate_detected):
     # User metadata is the leading contiguous block; info is the trailing one.
     assert front_meta == list(range(len(front_meta)))
     assert info == list(range(len(cols) - len(info), len(cols)))
-    # MetadataImage_ is contiguous and sits between measurements and the info block.
+    # Metadata_ is contiguous and sits between measurements and the info block.
     assert image_meta == list(range(min(image_meta), max(image_meta) + 1))
-    # Full ordering: user-metadata < measurements < MetadataImage_ < info block.
+    # Full ordering: user-metadata < measurements < Metadata_ < info block.
     assert max(front_meta) < min(meas)
     assert max(meas) < min(image_meta)
     assert max(image_meta) < min(info)
     # Object_Label leads the info block; the experimental tag folded to the front;
-    # the framework image name landed in the trailing MetadataImage_ block.
+    # the framework image name landed in the trailing Metadata_ block.
     assert cols[info[0]] == OBJECT.LABEL
-    assert "MetadataGenetic_Strain" in [cols[i] for i in front_meta]
-    assert "MetadataImage_ImageName" in [cols[i] for i in image_meta]
+    assert "Metadata_Strain" in [cols[i] for i in front_meta]
+    assert "Metadata_ImageName" in [cols[i] for i in image_meta]
 
 
 @timeit
@@ -494,7 +493,7 @@ def test_measure_column_order_without_metadata(synth_plate_detected):
     """With include_metadata=False, no Metadata* columns appear at all.
 
     Order collapses to measurements -> info block (both the user metadata and the
-    framework ``MetadataImage_*`` block are suppressed).
+    framework ``Metadata_*`` block are suppressed).
     """
     from phenotypic.schema import OBJECT
     from phenotypic.sdk_ import is_metadata_header
@@ -503,7 +502,7 @@ def test_measure_column_order_without_metadata(synth_plate_detected):
     df = pipe.measure(synth_plate_detected.copy(), include_metadata=False)
     cols = list(df.columns)
 
-    # No metadata columns at all (neither user tags nor framework MetadataImage_).
+    # No metadata columns at all (neither user tags nor framework Metadata_).
     assert not any(is_metadata_header(c) for c in cols)
 
     front_meta, meas, image_meta, info = _classify_columns(cols)

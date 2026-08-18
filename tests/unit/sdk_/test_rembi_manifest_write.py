@@ -6,7 +6,7 @@ from phenotypic.sdk_._io_constants import rembi_manifest_path
 
 def test_writes_parseable_yaml(tmp_path):
     (tmp_path / "deliverables").mkdir()
-    df = pd.DataFrame({"MetadataGenetic_Strain": ["BY4741"]})
+    df = pd.DataFrame({"Metadata_Strain": ["BY4741"]})
     p = write_rembi_manifest(tmp_path, df, [{"ImageName": "p1", "UUID": "u1",
                                              "BitDepth": 8, "ImageType": "rgb"}])
     assert p == rembi_manifest_path(tmp_path)

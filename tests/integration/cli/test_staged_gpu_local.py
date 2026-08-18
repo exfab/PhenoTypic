@@ -12,7 +12,7 @@ from uuid import uuid4
 from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureSize
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
 from phenotypic._cli._cli_process_only import process_only_output_path
@@ -135,7 +135,7 @@ def test_three_stage_cores_end_to_end(tmp_path):
     measurements_path = out / "results" / "ds" / "measurements" / "img.parquet"
     assert measurements_path.is_file()
     measurements = pl.read_parquet(measurements_path)
-    assert measurements[str(METADATA.IMAGE_NAME)].unique().to_list() == ["img"]
+    assert measurements[str(IMAGE.IMAGE_NAME)].unique().to_list() == ["img"]
     assert phenotypic.Image.load_hdf5(staged_hdf).name == "img"
     assert not sidecar_exists(out, "ds", "img")  # mandatory cleanup
 

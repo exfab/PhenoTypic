@@ -1086,10 +1086,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         Returns:
             pd.DataFrame: A DataFrame containing the results of all performed measurements combined
                 on the same index. Columns are ordered as
-                ``[metadata] -> [measurements] -> [MetadataImage_] -> [info block]``:
+                ``[metadata] -> [measurements] -> [Metadata_] -> [info block]``:
                 user/experimental ``Metadata*`` columns first (in canonical REMBI
                 order, present only when ``include_metadata`` is True), then the
-                measurement columns, then the framework ``MetadataImage_*``
+                measurement columns, then the framework ``Metadata_*``
                 bookkeeping block (per-image provenance: ``UUID``, ``ImageName``,
                 ``BitDepth``, …), then the per-object image-info block
                 (``Object_Label`` followed by the ``Bbox_*`` / ``Grid_*`` geometry
@@ -1234,12 +1234,12 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
     @staticmethod
     def _order_measurement_columns(df: pd.DataFrame) -> pd.DataFrame:
-        """Order columns as ``[metadata] -> [measurements] -> [MetadataImage_] -> [info]``.
+        """Order columns as ``[metadata] -> [measurements] -> [Metadata_] -> [info]``.
 
         Delegates to the single source of truth
         :func:`phenotypic.sdk_.order_measurement_columns`, shared with the polars
         mirror path, so both surfaces agree on the cluster/definition ordering and
-        the ``MetadataImage_``-after-measurements placement.
+        the ``Metadata_``-after-measurements placement.
 
         Args:
             df: The merged measurement DataFrame.

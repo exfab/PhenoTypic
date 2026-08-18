@@ -60,7 +60,7 @@ See also
 --------
 :mod:`phenotypic.sdk_.constants_`
     Image-data and framework-config enums (``IMAGE_MODE``, ``IMAGE_TYPES``,
-    ``GAMMA_ENCODINGS``, ``PIPE_STATUS``). The ``METADATA`` enum and the
+    ``GAMMA_ENCODINGS``, ``PIPE_STATUS``). The ``IMAGE`` enum and the
     experimental-tag vocabulary now live in :mod:`phenotypic.schema`.
 :mod:`phenotypic.sdk_.typing_`
     Literal aliases for closed value sets used at public boundaries

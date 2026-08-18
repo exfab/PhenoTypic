@@ -18,10 +18,14 @@ from typing import Any, ClassVar, Dict, Tuple
 
 import numpy as np
 import pandas as pd
-from pydantic import PrivateAttr
+from pydantic import PrivateAttr, field_validator
 
 from phenotypic.analysis._helper._inoculum_prior import _InoculumPrior
 from phenotypic.analysis.abc_._model_fitter import ModelFitter
+from phenotypic.analysis.abc_._set_analyzer import (
+    normalize_measurement_metadata_columns,
+    normalize_metadata_column_reference,
+)
 
 
 _DEFAULT_BETA = 10.0
@@ -74,6 +78,14 @@ class _LinearSoftplusBase(ModelFitter):
     s0_prior_groupby: list[str] | None = None
 
     _prior: _InoculumPrior = PrivateAttr()
+
+    @field_validator("s0_prior", mode="before")
+    @classmethod
+    def _normalize_s0_prior_reference(cls, value: Any) -> Any:
+        """Normalize metadata-backed prior columns without coercing scalar modes."""
+        if isinstance(value, str):
+            return normalize_metadata_column_reference(value)
+        return value
 
     def model_post_init(self, __context: Any) -> None:
         """Build the inoculum-prior helper from the resolved fields.
@@ -333,6 +345,7 @@ class _LinearSoftplusBase(ModelFitter):
                 ``inoc_groupby`` that is not a subset of ``self.groupby``,
                 or references columns absent from ``data``.
         """
+        data = normalize_measurement_metadata_columns(data)
         if self._prior.is_configured:
             self._prior.validate(data.columns, self.groupby)
 

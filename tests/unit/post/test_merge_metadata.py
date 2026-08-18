@@ -12,8 +12,8 @@ class TestMergeMetadataInit:
     def test_basic_construction(self):
         """MergeMetadata can be created with columns, label, delimiter."""
         mm = MergeMetadata(columns=["Strain", "Condition"], label="SampleID", delimiter="_")
-        assert mm.columns == ["MetadataGenetic_Strain", "Metadata_Condition"]
-        assert mm.label == "MetadataSample_SampleID"
+        assert mm.columns == ["Metadata_Strain", "Metadata_Condition"]
+        assert mm.label == "Metadata_SampleID"
         assert mm.delimiter == "_"
 
     def test_auto_prepends_metadata_prefix(self):
@@ -25,11 +25,11 @@ class TestMergeMetadataInit:
     def test_no_double_prefix(self):
         """Already-prefixed names are not double-prefixed."""
         mm = MergeMetadata(
-            columns=["MetadataGenetic_Strain", "Condition"],
-            label="MetadataSample_SampleID",
+            columns=["Metadata_Strain", "Condition"],
+            label="Metadata_SampleID",
         )
-        assert mm.columns == ["MetadataGenetic_Strain", "Metadata_Condition"]
-        assert mm.label == "MetadataSample_SampleID"
+        assert mm.columns == ["Metadata_Strain", "Metadata_Condition"]
+        assert mm.label == "Metadata_SampleID"
 
     def test_empty_columns_accepted_as_unset(self):
         """An empty columns list is the valid 'unset' state, not an error.
@@ -55,14 +55,14 @@ class TestMergeMetadataOperate:
         """Merge two metadata columns into one."""
         mm = MergeMetadata(columns=["Strain", "Condition"], label="SampleID", delimiter="_")
         df = pd.DataFrame({
-            "MetadataGenetic_Strain": ["WT", "mut"],
+            "Metadata_Strain": ["WT", "mut"],
             "Metadata_Condition": ["30C", "37C"],
             "Object_Label": [1, 2],
             "Shape_Area": [100, 200],
         })
         result = mm.apply(df)
-        assert "MetadataSample_SampleID" in result.columns
-        assert list(result["MetadataSample_SampleID"]) == ["WT_30C", "mut_37C"]
+        assert "Metadata_SampleID" in result.columns
+        assert list(result["Metadata_SampleID"]) == ["WT_30C", "mut_37C"]
 
     def test_original_columns_kept(self):
         """Source columns are always preserved."""

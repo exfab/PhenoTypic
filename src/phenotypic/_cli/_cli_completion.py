@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping
@@ -19,6 +20,7 @@ from phenotypic.sdk_ import (
     measurements_csv_path,
     measurements_parquet_path,
     run_completion_marker_path,
+    validated_published_metadata_migration_targets,
 )
 
 SUCCESS_MARKER_VERSION = 1
@@ -63,7 +65,9 @@ def publish_image_success(
         try:
             relative = resolved.relative_to(output_root)
         except ValueError as exc:
-            raise ValueError(f"Artifact escapes output root: {artifact}") from exc
+            raise ValueError(
+                f"Artifact escapes output root: {artifact}"
+            ) from exc
         descriptors[name] = {
             "path": relative.as_posix(),
             "size": resolved.stat().st_size,
@@ -129,6 +133,172 @@ def valid_image_success(
     return True
 
 
+def refresh_success_markers_after_metadata_migration(
+    output_dir: Path,
+    *,
+    receipt_paths: Iterable[Path] = (),
+) -> int:
+    """Refresh marker descriptors for receipt-certified schema rewrites.
+
+    Metadata migration intentionally rewrites bundle-owned per-image files.
+    This bridge preserves their existing scientific success authority without
+    blessing any unrelated artifact change. It is idempotent and scans durable
+    receipts so a later recompile repairs a kill between artifact migration and
+    marker refresh.
+
+    Args:
+        output_dir: Existing run-output root.
+        receipt_paths: Receipts just validated by the current migration phase.
+            Invalid explicit receipts fail the operation. Malformed historical
+            scan candidates are ignored as incomplete recovery evidence.
+
+    Returns:
+        Number of success markers whose artifact descriptors were refreshed.
+
+    Raises:
+        RuntimeError: A marker-bound artifact changed outside a certified
+            metadata migration transition.
+    """
+    from ._cli_state_management import load_processing_state
+
+    output_root = Path(output_dir).resolve()
+    state = load_processing_state(output_root)
+    if state is None or not state.config.get(
+        "success_markers_required", False
+    ):
+        return 0
+    raw_work_ids = state.config.get("work_ids")
+    if not isinstance(raw_work_ids, dict):
+        return 0
+
+    explicit = {Path(path).resolve() for path in receipt_paths}
+    candidates = set(explicit)
+    candidates.update(
+        (output_root / ".phenotypic" / "metadata_migration").glob(
+            "metadata-schema-*.json"
+        )
+    )
+    results_root = output_root / "results"
+    if results_root.is_dir():
+        candidates.update(
+            results_root.rglob(".metadata_migration/metadata-schema-*.json")
+        )
+
+    transitions: dict[Path, tuple[str, str]] = {}
+    for receipt_path in sorted(candidates):
+        try:
+            certified = validated_published_metadata_migration_targets(
+                receipt_path
+            )
+        except (OSError, TypeError, ValueError):
+            if receipt_path in explicit:
+                raise
+            continue
+        for artifact, source_fingerprint, post_fingerprint in certified:
+            resolved = artifact.resolve()
+            try:
+                resolved.relative_to(output_root)
+            except ValueError as exc:
+                raise RuntimeError(
+                    f"Metadata migration target escapes output root: {artifact}"
+                ) from exc
+            transition = (
+                source_fingerprint.removeprefix("sha256:"),
+                post_fingerprint.removeprefix("sha256:"),
+            )
+            previous = transitions.get(resolved)
+            if previous is not None and previous != transition:
+                raise RuntimeError(
+                    f"Conflicting metadata migration receipts for {resolved}"
+                )
+            transitions[resolved] = transition
+
+    refreshed = 0
+    for dataset, raw_images in raw_work_ids.items():
+        if not isinstance(dataset, str) or not isinstance(raw_images, dict):
+            continue
+        for image_name, work_id in raw_images.items():
+            if not isinstance(image_name, str) or not isinstance(work_id, str):
+                continue
+            stem = Path(image_name).stem
+            marker_path = image_completion_marker_path(
+                output_root, dataset, stem
+            )
+            try:
+                marker = json.loads(marker_path.read_text(encoding="utf-8"))
+            except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                continue
+            if (
+                not isinstance(marker, dict)
+                or marker.get("version") != SUCCESS_MARKER_VERSION
+                or marker.get("work_id") != work_id
+                or marker.get("dataset") != dataset
+                or marker.get("image_stem") != stem
+            ):
+                continue
+            artifacts = marker.get("artifacts")
+            if not isinstance(artifacts, dict) or not artifacts:
+                continue
+
+            changed = False
+            for descriptor in artifacts.values():
+                if not isinstance(descriptor, dict):
+                    raise RuntimeError(
+                        f"Invalid success marker: {marker_path}"
+                    )
+                relative = descriptor.get("path")
+                if not isinstance(relative, str):
+                    raise RuntimeError(
+                        f"Invalid success marker: {marker_path}"
+                    )
+                artifact = (output_root / relative).resolve()
+                try:
+                    artifact.relative_to(output_root)
+                except ValueError as exc:
+                    raise RuntimeError(
+                        f"Success marker artifact escapes output root: {artifact}"
+                    ) from exc
+                if not artifact.is_file():
+                    raise RuntimeError(
+                        f"Success marker artifact is missing: {artifact}"
+                    )
+                current_sha = _sha256(artifact)
+                current_size = artifact.stat().st_size
+                certified_transition = transitions.get(artifact)
+                if certified_transition is None:
+                    if (
+                        descriptor.get("sha256") != current_sha
+                        or descriptor.get("size") != current_size
+                    ):
+                        raise RuntimeError(
+                            "Uncertified artifact change prevents success marker "
+                            f"refresh: {artifact}"
+                        )
+                    continue
+                source_sha, post_sha = certified_transition
+                recorded_sha = descriptor.get("sha256")
+                if current_sha != post_sha or recorded_sha not in {
+                    source_sha,
+                    post_sha,
+                }:
+                    raise RuntimeError(
+                        "Metadata migration receipt does not bind success marker "
+                        f"artifact: {artifact}"
+                    )
+                if recorded_sha == source_sha:
+                    descriptor["sha256"] = post_sha
+                    descriptor["size"] = current_size
+                    changed = True
+                elif descriptor.get("size") != current_size:
+                    raise RuntimeError(
+                        f"Success marker size does not match artifact: {artifact}"
+                    )
+            if changed:
+                atomic_write_json(marker_path, marker)
+                refreshed += 1
+    return refreshed
+
+
 def current_success_counts(output_dir: Path) -> tuple[int, int] | None:
     """Return marker-validated ``(successful, total)`` for the current state.
 
@@ -142,11 +312,16 @@ def current_success_counts(output_dir: Path) -> tuple[int, int] | None:
         state = load_processing_state(output_dir)
     except (KeyError, TypeError, ValueError):
         return None
-    if state is None or not state.config.get("success_markers_required", False):
+    if state is None or not state.config.get(
+        "success_markers_required", False
+    ):
         return None
     raw_work_ids = state.config.get("work_ids")
     if not isinstance(raw_work_ids, dict):
-        return (0, sum(len(item.initial_images) for item in state.datasets.values()))
+        return (
+            0,
+            sum(len(item.initial_images) for item in state.datasets.values()),
+        )
 
     successful = 0
     total = 0
@@ -203,7 +378,9 @@ def current_aggregate_is_current(output_dir: Path) -> bool | None:
         state = load_processing_state(output_dir)
     except (KeyError, TypeError, ValueError):
         return None
-    if state is None or not state.config.get("success_markers_required", False):
+    if state is None or not state.config.get(
+        "success_markers_required", False
+    ):
         return None
     if state.config.get("process_only_layer"):
         return True
@@ -265,7 +442,9 @@ def authorized_measurement_sources(
         state = load_processing_state(output_dir)
     except (KeyError, TypeError, ValueError):
         return None
-    if state is None or not state.config.get("success_markers_required", False):
+    if state is None or not state.config.get(
+        "success_markers_required", False
+    ):
         return None
     raw_work_ids = state.config.get("work_ids")
     if not isinstance(raw_work_ids, dict):
@@ -299,7 +478,13 @@ def authorized_measurement_sources(
                     continue
                 source = (output_root / relative).resolve()
                 source.relative_to(output_root)
-            except (KeyError, OSError, ValueError, TypeError, json.JSONDecodeError):
+            except (
+                KeyError,
+                OSError,
+                ValueError,
+                TypeError,
+                json.JSONDecodeError,
+            ):
                 continue
             sources[source] = dataset
     return sources
@@ -317,8 +502,12 @@ def publish_aggregate_snapshot(output_dir: Path) -> Path:
     from ._cli_state_management import load_processing_state
 
     state = load_processing_state(output_dir)
-    if state is None or not state.config.get("success_markers_required", False):
-        raise RuntimeError("Aggregate marker publication requires current state")
+    if state is None or not state.config.get(
+        "success_markers_required", False
+    ):
+        raise RuntimeError(
+            "Aggregate marker publication requires current state"
+        )
     counts = current_success_counts(output_dir)
     if counts is None or counts[0] == 0:
         raise RuntimeError("No marker-authorized measurements to publish")
@@ -410,8 +599,10 @@ def publish_run_completion_evidence(
 
     completion = current_run_is_complete(output_dir)
     state = load_processing_state(output_dir)
-    if completion is None or state is None or not state.config.get(
-        "success_markers_required", False
+    if (
+        completion is None
+        or state is None
+        or not state.config.get("success_markers_required", False)
     ):
         path = run_completion_marker_path(output_dir)
         atomic_write_json(
@@ -422,7 +613,8 @@ def publish_run_completion_evidence(
                 "execution_epoch": execution_epoch,
                 "mode": (
                     "local"
-                    if gui_record_generation is not None or execution_epoch == "local"
+                    if gui_record_generation is not None
+                    or execution_epoch == "local"
                     else "slurm"
                 ),
                 "status": "complete",
@@ -434,7 +626,9 @@ def publish_run_completion_evidence(
         )
         return path
     if completion is not True:
-        raise RuntimeError("Current run does not have complete publication evidence")
+        raise RuntimeError(
+            "Current run does not have complete publication evidence"
+        )
     aggregate = (
         None
         if state.config.get("process_only_layer")
@@ -448,7 +642,9 @@ def publish_run_completion_evidence(
         "finalization_input_digest": (
             aggregate.get("finalization_input_digest")
             if aggregate is not None
-            else _canonical_digest({"process_only_layer": state.config.get("process_only_layer")})
+            else _canonical_digest(
+                {"process_only_layer": state.config.get("process_only_layer")}
+            )
         ),
         "scientific_config_digest": state.config.get("pipeline_sha256"),
         "publication_id": (
@@ -504,9 +700,14 @@ def valid_run_completion(output_dir: Path) -> dict[str, object] | None:
         state = load_processing_state(output_dir)
     except (KeyError, TypeError, ValueError):
         return None
-    if state is None or not state.config.get("success_markers_required", False):
+    if state is None or not state.config.get(
+        "success_markers_required", False
+    ):
         return marker if marker.get("finalizer_succeeded") is True else None
-    if marker.get("version") != 2 or current_run_is_complete(output_dir) is not True:
+    if (
+        marker.get("version") != 2
+        or current_run_is_complete(output_dir) is not True
+    ):
         return None
     work_ids = state.config.get("work_ids", {})
     expected: dict[str, object] = {

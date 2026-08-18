@@ -38,6 +38,7 @@ def _public_measurement_info_classes() -> tuple[type[Any], ...]:
         if (
             isinstance(value, type)
             and issubclass(value, info_base)
+            and bool(getattr(value, "__members__", None))
             and value not in seen
         ):
             infos.append(value)
@@ -114,6 +115,8 @@ def _copy_measurement_assets(srcdir: str) -> None:
 
 
 def _build_pages(srcdir: str) -> None:
+    import phenotypic.schema as schema
+
     output_dir = Path(srcdir) / "measurements_ref"
     if output_dir.exists():
         shutil.rmtree(output_dir)
@@ -122,7 +125,7 @@ def _build_pages(srcdir: str) -> None:
     metadata_infos = tuple(
         info_cls
         for info_cls in public_infos
-        if info_cls.category().startswith("Metadata")
+        if issubclass(info_cls, schema.MetadataInfo)
     )
     measurement_infos = tuple(
         info_cls for info_cls in public_infos if info_cls not in metadata_infos

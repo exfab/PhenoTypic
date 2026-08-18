@@ -28,7 +28,7 @@ from phenotypic.gui.shell._session import ToolSession
 from phenotypic.gui.results_viewer._discovery_contracts import (
     OutputDiscoveryProgress,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from tests._output_layout import seed_output_dir
 
 
@@ -36,8 +36,8 @@ def _seed_output(parent: Path, name: str = "output") -> Path:
     output = parent / name
     frame = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["dataset"],
-            str(METADATA.IMAGE_NAME): ["plate"],
+            "Metadata_Dataset": ["dataset"],
+            str(IMAGE.IMAGE_NAME): ["plate"],
             "Object_Label": [1],
             "Shape_Area": [100.0],
         }

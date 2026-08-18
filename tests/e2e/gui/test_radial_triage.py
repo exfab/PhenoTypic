@@ -23,7 +23,7 @@ import pytest
 from PIL import Image as PILImage
 from playwright.sync_api import Page, expect
 
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA
+from phenotypic.schema import EXPERIMENT, IMAGE
 from phenotypic.sdk_ import error_category_parquet_path
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import (
@@ -47,7 +47,7 @@ _DATASET = "ds1"
 _IMAGES = ("plate_001.tif", "plate_002.tif")
 _NUM_ROWS = 2
 _NUM_COLS = 2
-_DATASET_COLUMN = str(EXPERIMENT_METADATA.DATASET)
+_DATASET_COLUMN = str(EXPERIMENT.DATASET)
 
 
 def _build_master_df() -> pl.DataFrame:
@@ -65,7 +65,7 @@ def _build_master_df() -> pl.DataFrame:
                 rows.append(
                     {
                         _DATASET_COLUMN: _DATASET,
-                        str(METADATA.IMAGE_NAME): image,
+                        str(IMAGE.IMAGE_NAME): image,
                         "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,

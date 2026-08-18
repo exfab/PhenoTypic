@@ -47,7 +47,7 @@ from tests._output_layout import (
     write_measurements_mirror,
     write_pipeline_json,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 _INSTANCE_ID = "qc-SE-aaaa1111"
 
@@ -75,7 +75,7 @@ def _build_pipeline() -> ImagePipeline:
                 cls=ReplicateAgreement,
                 params={
                     "on": "Size_Area",
-                    "groupby": [str(METADATA.IMAGE_NAME)],
+                    "groupby": [str(IMAGE.IMAGE_NAME)],
                     "min_replicates": 2,
                 },
                 instance_id=_INSTANCE_ID,
@@ -91,8 +91,8 @@ def output_root(tmp_path: Path) -> OutputRoot:
     """Synthetic output dir with two replicate groups + a QC artifact."""
     master = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["d1"] * 6,
-            str(METADATA.IMAGE_NAME): ["img-1"] * 3 + ["img-2"] * 3,
+            "Metadata_Dataset": ["d1"] * 6,
+            str(IMAGE.IMAGE_NAME): ["img-1"] * 3 + ["img-2"] * 3,
             "Object_Label": [1, 2, 3, 1, 2, 3],
             "Bbox_CenterRR": [50] * 6,
             "Bbox_CenterCC": [50] * 6,
@@ -190,7 +190,7 @@ def test_recompute_matches_cli_for_identical_removals(
     mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
     cli_frame = mirror.filter(
         ~(
-            (pl.col(str(METADATA.IMAGE_NAME)) == "img-2")
+            (pl.col(str(IMAGE.IMAGE_NAME)) == "img-2")
             & (pl.col("Object_Label") == 3)
         )
     ).to_pandas()
@@ -206,7 +206,7 @@ def test_recompute_matches_cli_for_identical_removals(
     cli_summary = _db.module_summary(cli_root, _INSTANCE_ID)
 
     def _img2_metric(summary: pl.DataFrame) -> float:
-        row = summary.filter(pl.col(str(METADATA.IMAGE_NAME)) == "img-2")
+        row = summary.filter(pl.col(str(IMAGE.IMAGE_NAME)) == "img-2")
         return float(row.get_column("metric")[0])
 
     assert _img2_metric(gui_summary) == pytest.approx(
@@ -247,8 +247,8 @@ def test_legacy_sidecar_is_not_migrated_during_viewer_binding(
     # legacy sidecar carrying one.
     master = pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["d1"] * 2,
-            str(METADATA.IMAGE_NAME): ["img-1", "img-1"],
+            "Metadata_Dataset": ["d1"] * 2,
+            str(IMAGE.IMAGE_NAME): ["img-1", "img-1"],
             "Object_Label": [1, 2],
             "Bbox_CenterRR": [50, 50],
             "Bbox_CenterCC": [50, 50],
@@ -284,7 +284,7 @@ def test_legacy_sidecar_is_not_migrated_during_viewer_binding(
                         "enabled": True,
                         "params": {
                             "on": "Size_Area",
-                            "groupby": [str(METADATA.IMAGE_NAME)],
+                            "groupby": [str(IMAGE.IMAGE_NAME)],
                         },
                     }
                 ],
@@ -341,7 +341,7 @@ def test_recompute_delta_carries_after_status(
     groupby_cols = module.groupby_cols
     summary_before = _db.module_summary(output_root, _INSTANCE_ID)
     metric_before = summary_before.filter(
-        pl.col(str(METADATA.IMAGE_NAME)) == "img-2"
+        pl.col(str(IMAGE.IMAGE_NAME)) == "img-2"
     ).get_column("metric")[0]
 
     with app.server.app_context():
@@ -516,7 +516,7 @@ def test_settings_edit_waits_for_explicit_database_rebuild(
 
     before = _db.module_summary(output_root, _INSTANCE_ID)
     img1_before = before.filter(
-        pl.col(str(METADATA.IMAGE_NAME)) == "img-1"
+        pl.col(str(IMAGE.IMAGE_NAME)) == "img-1"
     ).get_column("status")[0]
     assert img1_before == "pass"
 
@@ -525,7 +525,7 @@ def test_settings_edit_waits_for_explicit_database_rebuild(
         _INSTANCE_ID,
         params={
             "on": "Size_Area",
-            "groupby": [str(METADATA.IMAGE_NAME)],
+            "groupby": [str(IMAGE.IMAGE_NAME)],
             "min_replicates": 2,
             "warn_threshold": 0.001,
             "fail_threshold": 0.002,
@@ -534,7 +534,7 @@ def test_settings_edit_waits_for_explicit_database_rebuild(
 
     stale = _db.module_summary(output_root, _INSTANCE_ID)
     img1_stale = stale.filter(
-        pl.col(str(METADATA.IMAGE_NAME)) == "img-1"
+        pl.col(str(IMAGE.IMAGE_NAME)) == "img-1"
     ).get_column("status")[0]
     assert img1_stale == "pass"
 
@@ -549,7 +549,7 @@ def test_settings_edit_waits_for_explicit_database_rebuild(
 
     after = _db.module_summary(output_root, _INSTANCE_ID)
     img1_after = after.filter(
-        pl.col(str(METADATA.IMAGE_NAME)) == "img-1"
+        pl.col(str(IMAGE.IMAGE_NAME)) == "img-1"
     ).get_column("status")[0]
     assert img1_after == "fail"
 
@@ -570,7 +570,7 @@ def test_settings_edit_waits_for_explicit_database_rebuild(
 
     recomputed = _db.module_summary(output_root, _INSTANCE_ID)
     img1_recomputed = recomputed.filter(
-        pl.col(str(METADATA.IMAGE_NAME)) == "img-1"
+        pl.col(str(IMAGE.IMAGE_NAME)) == "img-1"
     ).get_column("status")[0]
     assert img1_recomputed == "fail"
 

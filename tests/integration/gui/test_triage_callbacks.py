@@ -40,7 +40,7 @@ from tests._output_layout import (
     write_master,
     write_measurements_mirror,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 # ---------------------------------------------------------------------------
@@ -52,8 +52,8 @@ def _master() -> pl.DataFrame:
     """Minimal 4-object master frame for two images."""
     return pl.DataFrame(
         {
-            "MetadataExperiment_Dataset": ["d1"] * 4,
-            str(METADATA.IMAGE_NAME): ["img-A", "img-A", "img-B", "img-B"],
+            "Metadata_Dataset": ["d1"] * 4,
+            str(IMAGE.IMAGE_NAME): ["img-A", "img-A", "img-B", "img-B"],
             "Object_Label": [1, 2, 1, 2],
             "Bbox_CenterRR": [10.0, 20.0, 10.0, 20.0],
             "Bbox_CenterCC": [10.0, 20.0, 10.0, 20.0],
@@ -170,7 +170,7 @@ def test_toggle_via_filtered_state_writes_mirror(
     assert mirror_after.height == 3
     keys_after = set(
         zip(
-            mirror_after.get_column(str(METADATA.IMAGE_NAME)).to_list(),
+            mirror_after.get_column(str(IMAGE.IMAGE_NAME)).to_list(),
             mirror_after.get_column("Object_Label").to_list(),
         )
     )
@@ -246,7 +246,7 @@ def test_colony_wedge_mark_writes_category_parquet_and_drops_mirror(
     debris = pl.read_parquet(debris_path)
     debris_keys = set(
         zip(
-            debris.get_column(str(METADATA.IMAGE_NAME)).to_list(),
+            debris.get_column(str(IMAGE.IMAGE_NAME)).to_list(),
             debris.get_column("Object_Label").to_list(),
         )
     )
@@ -256,7 +256,7 @@ def test_colony_wedge_mark_writes_category_parquet_and_drops_mirror(
     mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
     mirror_keys = set(
         zip(
-            mirror.get_column(str(METADATA.IMAGE_NAME)).to_list(),
+            mirror.get_column(str(IMAGE.IMAGE_NAME)).to_list(),
             mirror.get_column("Object_Label").to_list(),
         )
     )
@@ -294,7 +294,7 @@ def test_colony_wedge_restore_round_trip(
     mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
     mirror_keys = set(
         zip(
-            mirror.get_column(str(METADATA.IMAGE_NAME)).to_list(),
+            mirror.get_column(str(IMAGE.IMAGE_NAME)).to_list(),
             mirror.get_column("Object_Label").to_list(),
         )
     )
@@ -394,7 +394,7 @@ def _post_status_cell_toggle(
     table_id = {"type": "card-details-table", "index": card_index}
     row = {
         "Status": "Removed",
-        str(METADATA.IMAGE_NAME): image_file,
+        str(IMAGE.IMAGE_NAME): image_file,
         "Object_Label": label,
     }
     return client.post(
@@ -501,7 +501,7 @@ def test_qc_wedge_mark_writes_category_parquet_and_drops_mirror(
     merged = pl.read_parquet(merged_path)
     merged_keys = set(
         zip(
-            merged.get_column(str(METADATA.IMAGE_NAME)).to_list(),
+            merged.get_column(str(IMAGE.IMAGE_NAME)).to_list(),
             merged.get_column("Object_Label").to_list(),
         )
     )
@@ -623,7 +623,7 @@ def test_colony_bulk_mark_marks_whole_selection(
     debris = pl.read_parquet(error_category_parquet_path(tmp_path, "debris"))
     debris_keys = set(
         zip(
-            debris.get_column(str(METADATA.IMAGE_NAME)).to_list(),
+            debris.get_column(str(IMAGE.IMAGE_NAME)).to_list(),
             debris.get_column("Object_Label").to_list(),
         )
     )

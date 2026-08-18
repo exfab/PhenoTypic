@@ -20,7 +20,7 @@ from phenotypic.gui.results_viewer.colony_view import _layout as colony_layout
 from phenotypic.gui.shell import _sidebar
 from phenotypic.gui.shell._ids import sidebar_entry_id
 from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import master_measurements_parquet_path
 
 
@@ -167,7 +167,7 @@ def _make_output(tmp_path: Path) -> OutputRoot:
     overlay_dir = tmp_path / "deliverables" / "overlays" / "d1"
     overlay_dir.mkdir(parents=True, exist_ok=True)
     df = pl.DataFrame(
-        {"MetadataExperiment_Dataset": ["d1"], str(METADATA.IMAGE_NAME): ["a"], "Size_Area": [1.0]}
+        {"Metadata_Dataset": ["d1"], str(IMAGE.IMAGE_NAME): ["a"], "Size_Area": [1.0]}
     )
     target = master_measurements_parquet_path(tmp_path)
     target.parent.mkdir(parents=True, exist_ok=True)

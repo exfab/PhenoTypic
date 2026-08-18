@@ -14,15 +14,15 @@ from joblib import Parallel, delayed
 from pydantic import Field, PrivateAttr
 
 from phenotypic.abc_.plotting import PlotAnalysis
-from phenotypic.schema import CULTURE_METADATA, MeasurementInfo, MODEL_METRICS, qualified_header
+from phenotypic.schema import CULTURE, MeasurementInfo, MODEL_METRICS, qualified_header
 from phenotypic.sdk_ import ColumnRef
 
-from ._set_analyzer import SetAnalyzer
+from ._set_analyzer import SetAnalyzer, normalize_measurement_metadata_columns
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
 
-_TIME = str(CULTURE_METADATA.TIME)
+_TIME = str(CULTURE.TIME)
 
 
 LossKind = Literal["linear", "soft_l1", "huber", "cauchy", "arctan"]
@@ -340,7 +340,7 @@ class ModelFitter(SetAnalyzer, PlotAnalysis, ABC):
         parallel via :class:`joblib.Parallel`), concatenate, and append
         constant hyperparameter columns from ``_post_fit_columns``.
         """
-        data = data.copy(deep=True)
+        data = normalize_measurement_metadata_columns(data)
         data.loc[:, self.time_label] = self._ensure_float_array(
                 data.loc[:, self.time_label]
         )

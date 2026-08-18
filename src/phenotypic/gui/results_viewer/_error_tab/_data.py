@@ -33,7 +33,7 @@ from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
     ReviewState,
     decode_group_key,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import pandas as pd
@@ -42,7 +42,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 logger = logging.getLogger(__name__)
 
-KEY_IMAGE_FILE = str(METADATA.IMAGE_NAME)
+KEY_IMAGE_FILE = str(IMAGE.IMAGE_NAME)
 KEY_OBJECT_LABEL = "Object_Label"
 
 #: A ``(image_file, object_label)`` curation key (mirrors the curation store).

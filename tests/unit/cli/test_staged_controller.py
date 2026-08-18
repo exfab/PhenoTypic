@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from contextlib import contextmanager
 from pathlib import Path
 
 import h5py
@@ -22,8 +23,10 @@ from phenotypic._cli._cli_staged_orchestration import (
     clear_stage2_sidecars,
     completed_inventory_images,
     current_slurm_job_id,
+    deactivate_orchestration,
     initialize_orchestration,
     load_orchestration_state,
+    mark_staged_complete,
     quarantine_unchanged_restart_parquets,
     read_job_ledger,
     save_orchestration_state,
@@ -629,6 +632,83 @@ def test_completion_marker_must_match_epoch(tmp_path: Path) -> None:
 
     assert not staged_completion_matches(tmp_path, "current")
     assert staged_completion_matches(tmp_path, "old")
+
+
+def test_deactivate_orchestration_does_not_reacquire_lifecycle_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Staged failure fencing uses the helper for a lock already held."""
+    _controller_fixture(tmp_path)
+    depth = 0
+    acquisitions = 0
+
+    @contextmanager
+    def fail_on_nested_lock(*_args: object, **_kwargs: object):
+        nonlocal acquisitions, depth
+        if depth:
+            raise AssertionError("nested lifecycle lock acquisition")
+        depth += 1
+        acquisitions += 1
+        try:
+            yield
+        finally:
+            depth -= 1
+
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_orchestration.exclusive_path_lock",
+        fail_on_nested_lock,
+    )
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_slurm_lifecycle.exclusive_path_lock",
+        fail_on_nested_lock,
+    )
+
+    assert deactivate_orchestration(tmp_path, "failed") is True
+
+    assert acquisitions == 1
+    assert not generation_is_active(tmp_path, "epoch-1")
+    state = load_orchestration_state(tmp_path)
+    assert state is not None
+    assert state["phase"] == "failed"
+
+
+def test_mark_staged_complete_does_not_reacquire_lifecycle_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Staged success fencing uses the helper for a lock already held."""
+    _controller_fixture(tmp_path)
+    depth = 0
+    acquisitions = 0
+
+    @contextmanager
+    def fail_on_nested_lock(*_args: object, **_kwargs: object):
+        nonlocal acquisitions, depth
+        if depth:
+            raise AssertionError("nested lifecycle lock acquisition")
+        depth += 1
+        acquisitions += 1
+        try:
+            yield
+        finally:
+            depth -= 1
+
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_orchestration.exclusive_path_lock",
+        fail_on_nested_lock,
+    )
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_slurm_lifecycle.exclusive_path_lock",
+        fail_on_nested_lock,
+    )
+
+    mark_staged_complete(tmp_path, "epoch-1")
+
+    assert acquisitions == 1
+    assert not generation_is_active(tmp_path, "epoch-1")
+    assert staged_completion_matches(tmp_path, "epoch-1")
+    state = load_orchestration_state(tmp_path)
+    assert state is not None
+    assert state["phase"] == "complete"
 
 
 def test_cancellation_fences_epoch_before_scancel(

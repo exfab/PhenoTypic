@@ -33,7 +33,7 @@ import polars as pl
 import pytest
 from playwright.sync_api import Page, expect
 
-from phenotypic.schema import CULTURE_METADATA, EXPERIMENT_METADATA, METADATA
+from phenotypic.schema import CULTURE, EXPERIMENT, IMAGE
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import (
     _build_sandbox,
@@ -67,8 +67,8 @@ _OUTPUT_NAME = "CliOutputExample"
 _NUM_ROWS = 2
 _NUM_COLS = 3
 _IMAGES = ("plate_001.tif", "plate_002.tif")
-_DATASET_COLUMN = str(EXPERIMENT_METADATA.DATASET)
-_TIME_COLUMN = str(CULTURE_METADATA.TIME)
+_DATASET_COLUMN = str(EXPERIMENT.DATASET)
+_TIME_COLUMN = str(CULTURE.TIME)
 
 
 def _build_real_master_df() -> pl.DataFrame:
@@ -89,7 +89,7 @@ def _build_real_master_df() -> pl.DataFrame:
                 rows.append(
                     {
                         _DATASET_COLUMN: "ds1",
-                        str(METADATA.IMAGE_NAME): image,
+                        str(IMAGE.IMAGE_NAME): image,
                         _TIME_COLUMN: 0.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,
@@ -255,7 +255,7 @@ def _se_entry(
     *,
     instance_id: str,
     on: str = "Size_Area",
-    groupby: tuple[str, ...] = (str(METADATA.IMAGE_NAME),),
+    groupby: tuple[str, ...] = (str(IMAGE.IMAGE_NAME),),
     warn_threshold: float = 0.10,
     fail_threshold: float = 0.20,
     enabled: bool = True,
@@ -280,7 +280,7 @@ def _count_entry(
     *,
     instance_id: str,
     metadata_path: str,
-    groupby: tuple[str, ...] = (str(METADATA.IMAGE_NAME),),
+    groupby: tuple[str, ...] = (str(IMAGE.IMAGE_NAME),),
     enabled: bool = True,
 ) -> dict:
     """Build one ExpectedVsDetectedCount entry."""
@@ -304,7 +304,7 @@ def _write_count_metadata(output_dir: Path) -> Path:
     for image in _IMAGES:
         for _ in range(_NUM_ROWS * _NUM_COLS):
             label += 1
-            rows.append({str(METADATA.IMAGE_NAME): image, "Object_Label": label})
+            rows.append({str(IMAGE.IMAGE_NAME): image, "Object_Label": label})
     pl.DataFrame(rows).write_csv(csv_path)
     return csv_path
 
@@ -455,7 +455,7 @@ def test_add_count_check_with_metadata_path(
         '[role="listbox"] [role="option"]', state="attached", timeout=10_000
     )
     page.locator(
-        '[role="listbox"] [role="option"]', has_text=str(METADATA.IMAGE_NAME)
+        '[role="listbox"] [role="option"]', has_text=str(IMAGE.IMAGE_NAME)
     ).first.click()
     # Close the multi-select overlay so it can't intercept the Save click.
     page.keyboard.press("Escape")
@@ -485,7 +485,7 @@ def test_add_count_check_with_metadata_path(
     )
     params = count_entries[0]["params"]
     assert params["metadata"] == str(csv_path)
-    assert params["groupby"] == [str(METADATA.IMAGE_NAME)]
+    assert params["groupby"] == [str(IMAGE.IMAGE_NAME)]
 
 
 def test_edit_check_modal(
@@ -922,7 +922,7 @@ def test_mark_flagged_pushes_to_removed_keys(
     for image in _IMAGES:
         for _ in range(100):
             label += 1
-            rows.append({str(METADATA.IMAGE_NAME): image, "Object_Label": label})
+            rows.append({str(IMAGE.IMAGE_NAME): image, "Object_Label": label})
     csv_path = output_dir / "count_metadata.csv"
     pl.DataFrame(rows).write_csv(csv_path)
 

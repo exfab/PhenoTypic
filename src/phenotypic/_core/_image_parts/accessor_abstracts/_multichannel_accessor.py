@@ -10,7 +10,7 @@ import skimage as ski
 from PIL import Image as PIL_Image
 from abc import ABC, abstractmethod
 from phenotypic._core._image_parts.accessor_abstracts import ImageAccessorBase
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_.constants_ import IO
 
 if TYPE_CHECKING:
@@ -65,7 +65,7 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
 
         effective_bit_depth = (
             bit_depth if bit_depth is not None
-            else self._root_image.metadata[METADATA.BIT_DEPTH]
+            else self._root_image.metadata[IMAGE.BIT_DEPTH]
         )
 
         # Convert to appropriate bit depth

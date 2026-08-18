@@ -58,7 +58,7 @@ def _layout_csv(tmp_path, names) -> str:
     rows = []
     for name in names:
         rows.extend(
-            {"MetadataImage_ImageName": name, "Object_Label": j} for j in range(96)
+            {"Metadata_ImageName": name, "Object_Label": j} for j in range(96)
         )
     csv = tmp_path / "layout.csv"
     pd.DataFrame(rows).to_csv(csv, index=False)
@@ -73,7 +73,7 @@ def _spec(tmp_path, names) -> TuningSpec:
         )),
         scorer=QCScorer(check=ExpectedVsDetectedCount(
             metadata=_layout_csv(tmp_path, names),
-            groupby=["MetadataImage_ImageName"],
+            groupby=["Metadata_ImageName"],
         )),
         evaluator=Evaluator(),
         strategy=GridConfig(),

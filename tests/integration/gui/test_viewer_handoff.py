@@ -22,7 +22,7 @@ from phenotypic.gui.shell._app import compose_hub
 from phenotypic.gui.shell._binding_jobs import ResultsBindJobManager
 
 from tests._output_layout import write_master
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 def _make_minimal_output(root: Path, dataset: str = "d1") -> None:
@@ -39,9 +39,9 @@ def _make_minimal_output(root: Path, dataset: str = "d1") -> None:
         root,
         pl.DataFrame(
             {
-                "MetadataExperiment_Dataset": [dataset, dataset],
-                str(METADATA.IMAGE_NAME): ["a", "b"],
-                "MetadataGenetic_Strain": ["s1", "s2"],
+                "Metadata_Dataset": [dataset, dataset],
+                str(IMAGE.IMAGE_NAME): ["a", "b"],
+                "Metadata_Strain": ["s1", "s2"],
                 "Object_Label": [1, 1],
                 "Size_Area": [100.0, 200.0],
             }

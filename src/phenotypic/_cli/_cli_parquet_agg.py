@@ -19,7 +19,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import polars as pl
 
-from phenotypic.schema import EXPERIMENT_METADATA
+from phenotypic.schema import EXPERIMENT
+
+from ._metadata_join import normalize_measurement_metadata_columns
 
 logger = logging.getLogger(__name__)
 
@@ -107,17 +109,21 @@ def aggregate_parquet_files(
             return None
         df = pl.concat(frames, how="diagonal_relaxed").rechunk()
 
+    df = normalize_measurement_metadata_columns(df)
+
     if (
         include_dataset_column
         and path_to_dataset
-        and str(EXPERIMENT_METADATA.DATASET) not in df.columns
+        and str(EXPERIMENT.DATASET) not in df.columns
     ):
-        mapping = {_source_path_key(p): name for p, name in path_to_dataset.items()}
+        mapping = {
+            _source_path_key(p): name for p, name in path_to_dataset.items()
+        }
         df = df.with_columns(
             pl.col(SOURCE_PATH_COLUMN)
             .str.replace_all(r"\\", "/")
             .replace_strict(mapping, default=None)
-            .alias(str(EXPERIMENT_METADATA.DATASET))
+            .alias(str(EXPERIMENT.DATASET))
         )
 
     if not keep_filename and SOURCE_PATH_COLUMN in df.columns:

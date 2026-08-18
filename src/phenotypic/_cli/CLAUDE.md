@@ -243,6 +243,14 @@ The mid-run `_cli_chunk_writer` does not join external metadata; it publishes cl
 rolling and master measurement state until finalization creates the metadata-joined
 mirror.
 
+**Metadata snapshot authority.** Before local processing or SLURM submission,
+full runs and recompile atomically copy the configured `--metadata` bytes to
+`deliverables/metadata.csv`, verify the copy, and use that stable path for
+finalization. The snapshot is source provenance, not a generated schema table:
+legacy headers normalize only in memory, while finalization and recompile
+metadata migration must leave its bytes unchanged. All generated measurement,
+analysis, QC, and REMBI outputs use canonical flat `Metadata_<Label>` headers.
+
 `QC_MetadataOnly` is a **user-facing output column, not internal machinery** — it is how a
 user filters the mirror for "which strains went undetected". Analysis/QC/post code must
 **not** branch on it. Those ops are public API (a notebook calls them on frames that never

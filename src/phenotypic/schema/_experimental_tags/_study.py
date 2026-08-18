@@ -2,22 +2,18 @@
 
 from .._measurement_info import Entry
 from .._rembi import REMBI_MODULE
-from .._tiers import IdentityInfo
+from .._tiers import MetadataInfo
 
 
-class STUDY_METADATA(IdentityInfo):
-    """Recommended ``MetadataStudy_*`` tags for the REMBI Study component.
+class STUDY(MetadataInfo):
+    """Recommended metadata tags for the REMBI Study component.
 
     One set per run (title, authors, license, …). Mirrors REMBI's Study field
-    names. Members render as ``MetadataStudy_<Label>`` (e.g.
-    ``MetadataStudy_Title``). Structured REMBI lists (authors/publications/links)
-    are flattened to scalar tags whose value may be a delimited string.
+    names. Members render in the shared ``Metadata_<Label>`` namespace.
+    Structured REMBI lists (authors/publications/links) are flattened to scalar
+    tags whose value may be a delimited string.
     Recommended vocabulary, not a validator.
     """
-
-    @classmethod
-    def category(cls) -> str:
-        return "MetadataStudy"
 
     @classmethod
     def rembi_module(cls) -> REMBI_MODULE:

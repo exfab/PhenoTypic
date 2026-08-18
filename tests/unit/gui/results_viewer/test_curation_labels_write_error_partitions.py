@@ -16,7 +16,7 @@ import polars as pl
 import phenotypic.sdk_ as tools_
 from phenotypic.sdk_ import BundleLayout
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 def _layout(tmp_path: Path) -> BundleLayout:
@@ -28,7 +28,7 @@ def _master(n: int = 6) -> pl.DataFrame:
     """A minimal master frame: n objects in one image, distinct centroids."""
     return pl.DataFrame(
         {
-            str(METADATA.IMAGE_NAME): ["plateA"] * n,
+            str(IMAGE.IMAGE_NAME): ["plateA"] * n,
             "Metadata_Dataset": ["ds1"] * n,
             "Object_Label": list(range(1, n + 1)),
             "Bbox_CenterRR": [10.0 * i for i in range(1, n + 1)],

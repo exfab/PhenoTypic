@@ -2,23 +2,18 @@
 
 from .._measurement_info import Entry
 from .._rembi import REMBI_MODULE
-from .._tiers import IdentityInfo
+from .._tiers import MetadataInfo
 
 
-class SAMPLE_METADATA(IdentityInfo):
-    """Recommended ``MetadataSample_*`` tags identifying a sample and its provenance.
+class SAMPLE(MetadataInfo):
+    """Recommended metadata tags identifying a sample and its provenance.
 
     These distinguish individual biological samples and track where each colony came
-    from (replicate, clone, source plate/well, library). Members render as
-    ``MetadataSample_<Label>`` (e.g. ``MetadataSample_BioReplicate``) in the
-    ``Metadata`` column family shared with the other experimental-tag enums.
+    from (replicate, clone, source plate/well, library). Members render in the
+    shared ``Metadata_<Label>`` namespace with the other experimental-tag enums.
     Recommended vocabulary, not a validator: arbitrary metadata columns are still
     accepted.
     """
-
-    @classmethod
-    def category(cls) -> str:
-        return "MetadataSample"
 
     @classmethod
     def rembi_module(cls) -> REMBI_MODULE:

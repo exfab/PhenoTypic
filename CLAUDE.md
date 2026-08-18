@@ -307,3 +307,9 @@ enforces this for ruff, but the rule binds regardless of the tool.
   write through `finalize_post_master_outputs`. Full file inventory,
   master-vs-mirror rules, and the finalize/chunk-writer carve-out are in
   [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md).
+- **Metadata startup snapshot:** full runs and recompile copy a configured
+  `--metadata` CSV byte-for-byte to `deliverables/metadata.csv` before local
+  work or SLURM submission. Treat that file as immutable input provenance:
+  normalize legacy headers only in memory, and never rewrite it from
+  finalization or metadata-schema migration. Generated scientific tables still
+  emit only the canonical flat `Metadata_<Label>` namespace.

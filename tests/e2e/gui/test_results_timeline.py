@@ -29,7 +29,7 @@ from tests.e2e.gui.conftest import (
     bind_results_output,
     publish_coherent_terminal_evidence,
 )
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA
+from phenotypic.schema import EXPERIMENT, IMAGE
 
 # Tight DOM-poll budget on a fresh Werkzeug server: stochastically slow on GHA.
 pytestmark = pytest.mark.ci_flaky
@@ -50,8 +50,8 @@ def _timeline_master_df() -> pl.DataFrame:
             label += 1
             rows.append(
                 {
-                    str(EXPERIMENT_METADATA.DATASET): _DATASET,
-                    str(METADATA.IMAGE_NAME): f"p{plate}_t{img_no}",
+                    str(EXPERIMENT.DATASET): _DATASET,
+                    str(IMAGE.IMAGE_NAME): f"p{plate}_t{img_no}",
                     "Metadata_ImageNumber": img_no,
                     "Metadata_PlateNum": str(plate),
                     "Object_Label": label,
@@ -73,8 +73,8 @@ def _no_time_master_df() -> pl.DataFrame:
             label += 1
             rows.append(
                 {
-                    str(EXPERIMENT_METADATA.DATASET): _DATASET,
-                    str(METADATA.IMAGE_NAME): f"p{plate}_t{rep}",
+                    str(EXPERIMENT.DATASET): _DATASET,
+                    str(IMAGE.IMAGE_NAME): f"p{plate}_t{rep}",
                     # Categorical group only — String, no numeric/temporal dtype
                     # and no Metadata_Time-like name, so no eligible time axis.
                     "Metadata_PlateNum": str(plate),

@@ -39,7 +39,7 @@ existing run (below) is still strictly read-only.
   exported from the [pipeline builder](03_build_pipeline.md).
 - A **metadata layout** CSV/Parquet inside the sandbox for the default
   `QCScorer` — one row per colony with the grouping column (e.g.
-  `MetadataImage_ImageName`) so the count scorer has a path-backed source that
+  `Metadata_ImageName`) so the count scorer has a path-backed source that
   round-trips into the spec.
 - For the Curate overlays and (when monitoring an existing run) the run
   itself, the calibration **image directory** must be reachable inside the

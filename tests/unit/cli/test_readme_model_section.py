@@ -31,7 +31,7 @@ from phenotypic.schema import (
 def _generator_with_model() -> READMEGenerator:
     pipe = ImagePipeline()
     pipe.set_model(
-        LinearLagModel(on="Shape_Area", groupby=["MetadataGenetic_Strain"])
+        LinearLagModel(on="Shape_Area", groupby=["Metadata_Strain"])
     )
     return READMEGenerator(config=SimpleNamespace(), pipeline=pipe)
 

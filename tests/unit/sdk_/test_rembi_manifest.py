@@ -4,9 +4,9 @@ from phenotypic.sdk_._rembi_manifest import build_rembi_manifest
 
 def _df():
     return pd.DataFrame({
-        "MetadataGenetic_Strain": ["BY4741", "by4742"],
-        "MetadataCondition_Media": ["YPD", "YPD"],
-        "MetadataCulture_Temperature": [30, 30],
+        "Metadata_Strain": ["BY4741", "by4742"],
+        "Metadata_Media": ["YPD", "YPD"],
+        "Metadata_Temperature": [30, 30],
         "Metadata_CustomTag": ["x", "x"],
         "Size_Area": [10, 12],
         "Shape_Circularity": [0.9, 0.8],
@@ -42,12 +42,12 @@ def test_image_data_always_present_even_empty():
 
 
 def test_study_config_overrides_csv_constant():
-    df = pd.DataFrame({"MetadataStudy_Title": ["from_csv", "from_csv"]})
+    df = pd.DataFrame({"Metadata_Title": ["from_csv", "from_csv"]})
     m = build_rembi_manifest(df, _imgmeta(), study_config={"Title": "from_file"})
     assert m["study"]["Title"] == "from_file"
 
 
 def test_study_ambiguity_collapses_to_list():
-    df = pd.DataFrame({"MetadataStudy_Title": ["a", "b"]})
+    df = pd.DataFrame({"Metadata_Title": ["a", "b"]})
     m = build_rembi_manifest(df, _imgmeta())
     assert sorted(m["study"]["Title"]) == ["a", "b"]

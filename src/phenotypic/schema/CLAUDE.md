@@ -20,27 +20,28 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
 - 32 measurement-column enum modules (`_shape.py`, `_size.py`,
   `_color_lab.py`, …) — one `MeasurementInfo` subclass each, re-exported from
   `__init__.py`.
-- `_metadata.py` — `METADATA`: framework-populated image bookkeeping
-  (`UUID`, `ImageName`, `BitDepth`, …). `category() == "MetadataImage"`, so members
-  render as `MetadataImage_<Label>` (e.g. `MetadataImage_ImageName`). These are
-  `image.metadata` accessor keys set by the pipeline, not user input.
-- `_experimental_tags/` — eight `MeasurementInfo` subclasses
-  (`GENETIC_METADATA`, `SAMPLE_METADATA`, `PLATE_METADATA`,
-  `CONDITION_METADATA`, `CULTURE_METADATA`, `ACQUISITION_METADATA`,
-  `EXPERIMENT_METADATA`, `STUDY_METADATA`), one per file, re-exported from
-  `__init__.py`. Each returns its own per-topic Scheme-B category
-  (`MetadataGenetic`, `MetadataSample`, `MetadataPlate`, `MetadataCondition`,
-  `MetadataCulture`, `MetadataAcquisition`, `MetadataExperiment`, `MetadataStudy`),
-  so members render as `Metadata<Topic>_<Label>`
-  (`SAMPLE_METADATA.BIO_REPLICATE` → `MetadataSample_BioReplicate`). All prefixes
-  share the `Metadata` column family — recognize any of them via
-  `phenotypic.sdk_.is_metadata_header` rather than a bare `"Metadata_"` literal.
-  A **recommended vocabulary, not a validator**: it standardizes `--metadata` CSV
-  columns + `post/` ops but arbitrary columns are still accepted (unknown labels
-  fall back to a generic `Metadata_<Label>` → REMBI `Uncategorized`).
+- `_metadata.py` — `IMAGE`: framework-populated image bookkeeping
+  (`UUID`, `ImageName`, `BitDepth`, …). It subclasses `MetadataInfo`; members
+  render in the shared flat namespace (for example `Metadata_ImageName`). These
+  are `image.metadata` accessor keys set by the pipeline, not user input.
+- `_experimental_tags/` — eight `MetadataInfo` subclasses (`GENETIC`, `SAMPLE`,
+  `PLATE`, `CONDITION`, `CULTURE`, `ACQUISITION`, `EXPERIMENT`, and `STUDY`),
+  one per file and re-exported from `__init__.py`. Every owner has
+  `category() == "Metadata"`, so `SAMPLE.BIO_REPLICATE` renders as
+  `Metadata_BioReplicate`. The owner class, not a category prefix, carries the
+  semantic type. Use `phenotypic.sdk_.metadata_owner_for_header` or
+  `metadata_member_for_header` for routing, membership, and set checks. A
+  **recommended vocabulary, not a validator**: it standardizes `--metadata` CSV
+  columns and `post/` ops, while arbitrary labels remain valid and become
+  `Metadata_<Label>` with REMBI module `Uncategorized`.
+- Exact previous-release stored headers such as `MetadataGenetic_Strain` remain
+  readable permanently and normalize in memory to `Metadata_Strain`. Previous
+  Python class names resolve through package `__getattr__` with a
+  `DeprecationWarning` for one transition release, but are excluded from
+  discovery and `__all__`. Do not use them in new code or examples.
 - **Front-block column order** is the bio-semantic cluster order
   (Identity → Strain → Condition → Design; see `sdk_/_metadata_helpers.py`
-  `_METADATA_CLUSTER_ORDER` / `order_measurement_columns`). REMBI
+  `_METADATA_OWNER_ORDER` / `order_measurement_columns`). REMBI
   (`rembi_module()` / `header_to_module`) is a *separate* provenance axis and does
   not drive column order.
 
@@ -177,11 +178,11 @@ Downstream users import headers directly:
     SHAPE.get_headers()  # ['Shape_Area', 'Shape_Perimeter', ...]
 
 Conventions: one class per file (or per file under a grouping subpackage like
-`_experimental_tags/`); bodies are pure data + `category()`; import **only**
+`_experimental_tags/`); bodies are pure data and inherit their category; import **only**
 stdlib and the sibling base (no other `phenotypic` imports) to keep the package
 import-light and preserve the package load-order trick in
 `phenotypic/__init__.py` (`abc_` imports the stdlib-only base from here before
-`sdk_.constants_` needs it). Metadata-naming enums (`METADATA` + the
-experimental tags) live here because they name `Metadata<Topic>_*` columns/keys.
+`sdk_.constants_` needs it). Metadata-naming enums (`IMAGE` + the semantic
+owners) live here because they name `Metadata_*` columns/keys.
 Framework-config enums that are *not* about naming columns/keys (e.g.
 `GAMMA_ENCODINGS`, `PIPE_STATUS`, `IMAGE_MODE`) stay in `sdk_/constants_.py`.

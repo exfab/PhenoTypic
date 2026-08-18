@@ -28,6 +28,12 @@ from typing import TYPE_CHECKING, Any
 import duckdb
 import polars as pl
 
+from phenotypic.gui.results_viewer._metadata import (
+    normalize_metadata_reference,
+    normalize_metadata_references,
+    normalize_viewer_frame,
+)
+
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from phenotypic.gui.results_viewer._output_root import OutputRoot
 
@@ -154,15 +160,17 @@ def _modules_from_con(con: duckdb.DuckDBPyConnection) -> list[QcModule]:
             name=r[2],
             table_name=r[3],
             summary_table=r[4],
-            groupby_cols=json.loads(r[5]),
+            groupby_cols=normalize_metadata_references(json.loads(r[5])),
             metric_col=r[6],
             status_col=r[7],
             flag_col=r[8],
-            member_key_cols=json.loads(r[9]),
+            member_key_cols=normalize_metadata_references(json.loads(r[9])),
             supports_object_curation=bool(r[10]),
-            time_col=r[11],
+            time_col=(
+                normalize_metadata_reference(r[11]) if r[11] is not None else None
+            ),
             higher_is_bad=bool(r[12]),
-            extra_cols=json.loads(r[13]),
+            extra_cols=normalize_metadata_references(json.loads(r[13])),
         )
         for r in rows
     ]
@@ -228,9 +236,11 @@ def module_summary(
         mod = _module_from_con(con, instance_id)
         if mod is None:
             return pl.DataFrame()
-        return con.execute(
-            f'SELECT * FROM "{mod.summary_table}" ORDER BY rank NULLS LAST'
-        ).pl()
+        return normalize_viewer_frame(
+            con.execute(
+                f'SELECT * FROM "{mod.summary_table}" ORDER BY rank NULLS LAST'
+            ).pl()
+        )
     finally:
         con.close()
 
@@ -262,7 +272,9 @@ def module_members(
         mod = _module_from_con(con, instance_id)
         if mod is None:
             return pl.DataFrame()
-        frame = con.execute(f'SELECT * FROM "{mod.table_name}"').pl()
+        frame = normalize_viewer_frame(
+            con.execute(f'SELECT * FROM "{mod.table_name}"').pl()
+        )
     finally:
         con.close()
     # Filter in polars (avoids dynamic SQL on column names); null/NaN-safe.

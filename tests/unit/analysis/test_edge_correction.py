@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from phenotypic.analysis import EdgeCorrector
-from phenotypic.schema import EDGE_CORRECTION, GRID
+from phenotypic.schema import EDGE_CORRECTION, GRID, IMAGE
 
 
 class TestSurroundedPositions:
@@ -340,11 +340,12 @@ class TestGroupbyBehavior:
 
         # Both groups should have been processed
         assert len(corrected) == 192
-        assert set(corrected["ImageName"]) == {"img1", "img2"}
+        image_name = str(IMAGE.IMAGE_NAME)
+        assert set(corrected[image_name]) == {"img1", "img2"}
 
         # Each group should have independent thresholds
-        img1_corrected = corrected[corrected["ImageName"] == "img1"]
-        img2_corrected = corrected[corrected["ImageName"] == "img2"]
+        img1_corrected = corrected[corrected[image_name] == "img1"]
+        img2_corrected = corrected[corrected[image_name] == "img2"]
 
         assert len(img1_corrected) == 96
         assert len(img2_corrected) == 96

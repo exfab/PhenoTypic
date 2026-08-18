@@ -19,6 +19,7 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.gui._config import tune_presets_dir
 from phenotypic.gui.shell._metadata_context import resolve_metadata_csv
+from phenotypic.gui.shell._metadata_context import normalize_metadata_column_reference
 from phenotypic.gui.shell._sandbox import (
     SandboxRoot,
     _is_safe_relative_path,
@@ -26,7 +27,7 @@ from phenotypic.gui.shell._sandbox import (
 )
 from phenotypic.gui.shell._source_context import sandbox_fingerprint
 from phenotypic.gui.tune._space import apply_space_edits, space_to_spec
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     CONFIG_SUFFIX_TUNING,
     PIPELINE_CONFIG_SUFFIXES,
@@ -44,6 +45,17 @@ _SETUP_DRAFT_CACHE_SIZE = 256
 _SAFE_STEM = re.compile(r"[^A-Za-z0-9_.-]+")
 _METADATA_SUFFIXES = frozenset({".csv", ".parquet"})
 _PIPELINE_SUFFIXES = PIPELINE_CONFIG_SUFFIXES | frozenset({CONFIG_SUFFIX_TUNING})
+
+
+def _normalize_setup_metadata_groupby(column: str) -> str:
+    """Normalize a metadata-only Setup group-by without relabeling locators.
+
+    Setup authors a QC scorer from a layout table, so an unqualified unknown
+    label is generic metadata. Qualified values may instead be object
+    locators or measurement keys, and the mixed-reference helper leaves them
+    unchanged.
+    """
+    return normalize_metadata_column_reference(str(column))
 
 
 class SetupPathPayload(TypedDict):
@@ -583,7 +595,10 @@ def build_authored_setup_spec(
             spec = space_to_spec(source, edits=edits or {})
 
         if needs_metadata and metadata_path is not None and metadata_path.is_file():
-            groupby = metadata_groupby or [str(METADATA.IMAGE_NAME)]
+            groupby = [
+                _normalize_setup_metadata_groupby(column)
+                for column in (metadata_groupby or [str(IMAGE.IMAGE_NAME)])
+            ]
             scorer = QCScorer(
                 check=ExpectedVsDetectedCount(
                     metadata=str(metadata_path),

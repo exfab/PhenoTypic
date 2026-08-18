@@ -36,14 +36,17 @@ if TYPE_CHECKING:
     from phenotypic.plotting._pipeline import AnalysisResult
 
 from ._cli_types import Dataset
-from ._metadata_join import prepare_metadata_join_keys
+from ._metadata_join import (
+    normalize_measurement_metadata_columns,
+    prepare_metadata_join_keys,
+)
 from ._measurement_sources import (
     add_metadata_image_name_from_filename,
     discover_measurement_sources,
     measurement_sources_by_path,
 )
 from ._cli_parquet_agg import SOURCE_PATH_COLUMN, aggregate_parquet_files
-from phenotypic.schema import EXPERIMENT_METADATA, METADATA, METADATA_MATCH
+from phenotypic.schema import EXPERIMENT, IMAGE, METADATA_MATCH
 from phenotypic.util import split_measurements
 from phenotypic.sdk_ import (
     analysis_manifest_path,
@@ -80,6 +83,21 @@ logger = logging.getLogger(__name__)
 _MEAS_PRESENT_SENTINEL: Final = "__phenotypic_measurement_present"
 
 
+def _is_metadata_integrity_error(exc: ValueError) -> bool:
+    """Return whether *exc* reports lossy metadata alias reconciliation.
+
+    Metadata normalization deliberately raises ``ValueError`` for conflicting
+    aliases, incompatible alias dtypes, and aliases that cannot be coalesced
+    losslessly. Those are schema-integrity failures, not optional post or I/O
+    failures: publishing a fallback mirror would silently discard metadata.
+    """
+    message = str(exc)
+    return message.startswith("Metadata columns normalizing to ") or (
+        message.startswith("Metadata aliases ")
+        and "conflicting non-null values" in message
+    )
+
+
 def join_metadata(
     df: "pl.DataFrame",
     metadata_csv: Path,
@@ -106,14 +124,10 @@ def join_metadata(
     rows but still drops *measurement*-unmatched rows, because measurements are
     the right frame.
 
-    Bare (un-prefixed) metadata *attribute* columns are prefixed via
-    :func:`~phenotypic.sdk_.ensure_metadata_prefix` (``Strain`` ->
-    ``MetadataGenetic_Strain``; unknown ``Foo`` -> ``Metadata_Foo``) so the
-    downstream column orderer recognizes them as front metadata, matching the
-    pandas ``insert_metadata`` path. Join-key columns, and any supplied column
-    that is already a canonical schema header (a measurement/info column such as
-    ``Grid_RowNum`` / ``Shape_Area``, or an already-prefixed ``Metadata*`` header),
-    keep their raw names — no ``Metadata_`` prefix is appended to them.
+    Bare, live, and future-flat known metadata names resolve through the central
+    metadata normalizer. Unknown attributes receive the generic ``Metadata_``
+    prefix. Raw shared join keys and non-metadata schema headers such as
+    ``Grid_RowNum`` / ``Shape_Area`` keep their names.
 
     Args:
         df: Measurements DataFrame (must have columns to join on).
@@ -128,8 +142,10 @@ def join_metadata(
         frame.
     """
     metadata_df = pl.read_csv(metadata_csv)
-    # sorted() makes the logged and join-key order deterministic.
-    common = sorted(set(df.columns) & set(metadata_df.columns))
+    prepared = prepare_metadata_join_keys(df, metadata_df)
+    df = prepared.measurements
+    metadata_df = prepared.metadata
+    common = list(prepared.analysis.columns)
     if not common:
         logger.warning(
             "Metadata CSV has no columns in common with measurements — skipping join"
@@ -137,36 +153,6 @@ def join_metadata(
         return df
 
     logger.info("Joining metadata on columns: %s", common)
-    # Prefix bare metadata attribute columns (non-join-key) so the mirror's
-    # column orderer recognizes them as front metadata (``Strain`` ->
-    # ``MetadataGenetic_Strain``; unknown ``Foo`` -> ``Metadata_Foo``), matching
-    # the pandas ``insert_metadata`` path. Deliberately left alone:
-    #   - join keys (they must keep their raw names so the join still matches);
-    #   - any supplied column that already has a canonical schema identity — a
-    #     measurement/info header (``Grid_RowNum``, ``Shape_Area``, ...) or an
-    #     already-prefixed ``Metadata*`` header — which must NOT get a
-    #     ``Metadata_`` prefix appended;
-    #   - a prefix that would collide with an existing column.
-    from phenotypic.schema import header_to_module
-    from phenotypic.sdk_ import ensure_metadata_prefix
-
-    known_headers = header_to_module()
-    taken = set(df.columns) | set(metadata_df.columns)
-    rename_map: dict[str, str] = {}
-    for col in metadata_df.columns:
-        if col in common or col in known_headers:
-            continue
-        prefixed = ensure_metadata_prefix(col)
-        if prefixed != col and prefixed not in taken:
-            rename_map[col] = prefixed
-            taken.add(prefixed)
-    if rename_map:
-        logger.info("Prefixing bare metadata columns: %s", rename_map)
-        metadata_df = metadata_df.rename(rename_map)
-
-    prepared = prepare_metadata_join_keys(df, metadata_df)
-    df = prepared.measurements
-    metadata_df = prepared.metadata
     n_rows_before = df.height
     n_cols_before = len(df.columns)
     flag = str(METADATA_MATCH.METADATA_ONLY)
@@ -693,7 +679,9 @@ def _apply_post_to_master(
     No-op cases — returns *master_df* unchanged:
         * *pipeline* is ``None`` (could not be recovered for the SLURM sentinel).
         * The pipeline has no post ops configured.
-        * Any post op raises (logged at WARNING; the master remains authoritative).
+        * Any operational post failure raises (logged at WARNING; the master
+          remains authoritative). Metadata alias integrity failures propagate
+          so callers cannot publish a lossy fallback mirror.
     """
     if pipeline is None:
         return master_df
@@ -732,6 +720,15 @@ def _apply_post_to_master(
                 exc_info=True,
             )
         return out
+    except ValueError as exc:
+        if _is_metadata_integrity_error(exc):
+            raise
+        logger.warning(
+            "Post-measurement transform raised during aggregation; "
+            "seeding clean master into measurements.{csv,parquet} instead",
+            exc_info=True,
+        )
+        return master_df
     except Exception:
         logger.warning(
             "Post-measurement transform raised during aggregation; "
@@ -771,13 +768,13 @@ def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
 #: Post-applied mirror columns that source the REMBI manifest's per-image
 #: ``image_data`` block, mapped to the bare keys
 #: :func:`phenotypic.sdk_._rembi_manifest.build_rembi_manifest` reads. Only the
-#: columns the mirror carries today are listed; ``MetadataImage_UUID`` is private
+#: columns the mirror carries today are listed; the image UUID is private
 #: and absent from the measurement frame, so it is naturally omitted.
 _REMBI_IMAGE_META_COLUMNS: Final[dict[str, str]] = {
-    str(METADATA.IMAGE_NAME): "ImageName",
-    str(METADATA.BIT_DEPTH): "BitDepth",
-    str(METADATA.IMAGE_TYPE): "ImageType",
-    str(METADATA.UUID): "UUID",
+    str(IMAGE.IMAGE_NAME): "ImageName",
+    str(IMAGE.BIT_DEPTH): "BitDepth",
+    str(IMAGE.IMAGE_TYPE): "ImageType",
+    str(IMAGE.UUID): "UUID",
 }
 
 
@@ -799,10 +796,10 @@ def _image_metadata_from_mirror(mirror_df: "pl.DataFrame") -> list[dict]:
 
     * ``QC_MetadataOnly`` — the authoritative signal, and the only one that works
       for the **documented** per-image join. When the CSV joins on
-      ``MetadataImage_ImageName``, the phantom *keeps* that key, so its image
+      the schema-owned image-name column, the phantom *keeps* that key, so its image
       name is emphatically **not** null and a name-based filter sees nothing.
     * a null image name — covers the per-colony join (on ``Grid_RowNum`` /
-      ``Grid_ColNum``), where ``MetadataImage_ImageName`` comes from the
+      ``Grid_ColNum``), where the image-name column comes from the
       measurement side and so is null on a phantom.
 
     Reading the flag is correct *here* even though analysis/post ops must never
@@ -811,6 +808,7 @@ def _image_metadata_from_mirror(mirror_df: "pl.DataFrame") -> list[dict]:
     Filtering the name column specifically (rather than ``drop_nulls()``) keeps
     legitimate images that merely lack an optional field such as ``BitDepth``.
     """
+    mirror_df = normalize_measurement_metadata_columns(mirror_df)
     present = [c for c in _REMBI_IMAGE_META_COLUMNS if c in mirror_df.columns]
     if not present:
         return []
@@ -819,7 +817,7 @@ def _image_metadata_from_mirror(mirror_df: "pl.DataFrame") -> list[dict]:
     if flag in real.columns:
         real = real.filter(~pl.col(flag).fill_null(False))
     distinct = real.select(present)
-    name_col = str(METADATA.IMAGE_NAME)
+    name_col = str(IMAGE.IMAGE_NAME)
     if name_col in present:
         distinct = distinct.filter(pl.col(name_col).is_not_null())
     distinct = distinct.unique()
@@ -859,8 +857,7 @@ def finalize_post_master_outputs(
        archive of what the workers measured, while the working frame
        used for the mirror picks up the external metadata columns. The
        join runs **before** post so :class:`PostMeasurement` ops can
-       reference joined columns (e.g.
-       ``EdgeCorrector(groupby="MetadataGenetic_Strain")``).
+       reference joined columns through their schema member names.
     2. Apply ``pipeline._post`` to the (optionally metadata-joined)
        working frame via :func:`_apply_post_to_master`. The resulting
        ``post_df`` is what the GUI viewer/curation layer reads from
@@ -879,9 +876,10 @@ def finalize_post_master_outputs(
        sees both post-applied and metadata-joined data), and run QC when
        configured.
 
-    Failures inside metadata-join, split, or analysis are logged at WARNING
-    and never raise; the master files remain authoritative regardless of
-    what happens here.
+    Operational failures inside metadata-join, split, or analysis are logged at
+    WARNING and do not replace the authoritative master. Metadata alias
+    conflicts are different: they raise before mirror publication, because a
+    clean-master fallback would silently discard requested metadata.
 
     Args:
         output_dir: Output root that already contains
@@ -927,20 +925,27 @@ def finalize_post_master_outputs(
     migrate_legacy_qc(output_dir)
 
     # Metadata join runs first so PostMeasurement ops can reference joined
-    # columns (e.g. ``EdgeCorrector(groupby="MetadataGenetic_Strain")``). The
+    # columns through their schema member names. The
     # master archive on disk is already written by the caller and stays
     # clean — only this in-memory working frame picks up the join.
-    working_df = master_df
+    working_df = normalize_measurement_metadata_columns(master_df)
     if metadata_csv is not None:
         try:
-            working_df = join_metadata(master_df, metadata_csv, how="left")
+            working_df = join_metadata(working_df, metadata_csv, how="left")
+        except ValueError:
+            # Metadata normalization uses ValueError for conflicting aliases,
+            # incompatible duplicate dtypes, and lossy coalescing. A fallback
+            # to the metadata-free master would publish an invalid mirror.
+            raise
         except Exception as e:
             logger.warning(
                 "Failed to join metadata CSV: %s: %s", type(e).__name__, e
             )
-    post_df = _apply_post_to_master(working_df, pipeline)
+    post_df = normalize_measurement_metadata_columns(
+        _apply_post_to_master(working_df, pipeline)
+    )
     # Reorder the mirror/splits/analysis frame to the canonical cluster contract
-    # ([front metadata] -> [measurements] -> [MetadataImage_] -> [info block]),
+    # ([front metadata] -> [measurements] -> [IMAGE metadata] -> [info block]),
     # the same helper the pandas per-image path uses. The clean master on disk is
     # untouched — only this in-memory working frame is reordered.
     from phenotypic.sdk_ import order_measurement_columns
@@ -971,7 +976,10 @@ def finalize_post_master_outputs(
         )
 
     if pipeline is not None:
-        from phenotypic.plotting._pipeline import AnalysisRegistry, PlotCoordinator
+        from phenotypic.plotting._pipeline import (
+            AnalysisRegistry,
+            PlotCoordinator,
+        )
 
         _persist_pipeline_to_output_dir(output_dir, pipeline)
         measurements_pd = post_df.to_pandas()
@@ -1019,9 +1027,7 @@ def finalize_post_master_outputs(
             registry,
             successful_modules=successful_qc,
             qc_database=(
-                qc_duckdb_path(output_dir)
-                if successful_qc
-                else None
+                qc_duckdb_path(output_dir) if successful_qc else None
             ),
         )
     else:
@@ -1120,6 +1126,7 @@ def split_master_by_feature(
     """
     del pipeline
 
+    master_df = normalize_measurement_metadata_columns(master_df)
     split_frames = split_measurements(master_df)
     if not split_frames:
         logger.info("No recognized MeasurementInfo columns -- skipping split")
@@ -1355,7 +1362,9 @@ def aggregate_measurements(
     from phenotypic.sdk_ import phenotypic_cache_dir
     from phenotypic.sdk_._file_locking import exclusive_path_lock
 
-    lock_path = phenotypic_cache_dir(output_dir) / ".aggregate_publication.lock"
+    lock_path = (
+        phenotypic_cache_dir(output_dir) / ".aggregate_publication.lock"
+    )
     with exclusive_path_lock(lock_path, timeout=60.0):
         return _aggregate_measurements_unlocked(
             output_dir=output_dir,
@@ -1539,12 +1548,10 @@ class OutputManager:
         # Add dataset column if requested
         if (
             self.include_dataset_column
-            and str(EXPERIMENT_METADATA.DATASET) not in measurements.columns
+            and str(EXPERIMENT.DATASET) not in measurements.columns
         ):
             measurements = measurements.copy()
-            measurements.insert(
-                0, str(EXPERIMENT_METADATA.DATASET), dataset_name
-            )
+            measurements.insert(0, str(EXPERIMENT.DATASET), dataset_name)
 
         output_path = self.get_output_path(
             dataset_name, "measurements", image_stem

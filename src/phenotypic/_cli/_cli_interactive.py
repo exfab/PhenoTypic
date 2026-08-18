@@ -12,7 +12,7 @@ from typing import List, Optional
 
 import click
 
-from phenotypic.schema import EXPERIMENT_METADATA
+from phenotypic.schema import EXPERIMENT
 from ._cli_types import Dataset, ExecutionConfig
 from ._cli_validation import full_validation
 
@@ -147,7 +147,7 @@ def _display_save_configuration(config: ExecutionConfig) -> None:
 
     if config.include_dataset_column:
         click.echo(
-            f"  Master CSV will include {str(EXPERIMENT_METADATA.DATASET)!r} column"
+            f"  Master CSV will include {str(EXPERIMENT.DATASET)!r} column"
             " for multi-dataset analysis"
         )
 

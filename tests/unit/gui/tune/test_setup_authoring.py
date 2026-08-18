@@ -36,7 +36,7 @@ from phenotypic.tune.targets import Param
 
 def _metadata(path: Path) -> Path:
     path.write_text(
-        "MetadataImage_ImageName,Object_Label\n"
+        "Metadata_ImageName,Object_Label\n"
         + "\n".join(f"plate,{i}" for i in range(96)),
         encoding="utf-8",
     )
@@ -64,6 +64,69 @@ def test_write_authored_setup_spec_uses_path_backed_qc_scorer(tmp_path: Path):
     assert reloaded.scorer.availability() is True
     assert reloaded.scorer.check.metadata == str(metadata_path)
     assert reloaded.search_space.knobs
+
+
+def test_setup_groupby_normalizes_bare_generic_metadata_reference(
+    tmp_path: Path,
+) -> None:
+    pipeline_path = tmp_path / "pipeline.json.pht-pipe"
+    pipeline_path.write_text(
+        ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]).to_json(),
+        encoding="utf-8",
+    )
+    metadata_path = tmp_path / "layout.csv"
+    metadata_path.write_text(
+        "Metadata_ImageName,Foo,Object_Label\nplate,control,1\n",
+        encoding="utf-8",
+    )
+
+    result = build_authored_setup_spec(
+        pipeline_or_spec_path=pipeline_path,
+        metadata_path=metadata_path,
+        metadata_groupby=["Foo"],
+    )
+
+    assert result.is_valid
+    assert result.spec is not None
+    assert result.spec.scorer.check.groupby == ["Metadata_Foo"]
+
+
+def test_setup_groupby_preserves_qualified_object_locator() -> None:
+    from phenotypic.gui.tune._setup_authoring import (
+        _normalize_setup_metadata_groupby,
+    )
+
+    assert _normalize_setup_metadata_groupby("batch_id") == "Metadata_batch_id"
+    assert _normalize_setup_metadata_groupby("Object_Label") == "Object_Label"
+    assert (
+        _normalize_setup_metadata_groupby("ExternalMeasure_BatchKey")
+        == "ExternalMeasure_BatchKey"
+    )
+
+
+def test_setup_groupby_batch_id_matches_metadata_layout_normalization(
+    tmp_path: Path,
+) -> None:
+    pipeline_path = tmp_path / "pipeline.json.pht-pipe"
+    pipeline_path.write_text(
+        ImagePipeline(ops=[BlurGauss(sigma=2.0), OtsuDetector()]).to_json(),
+        encoding="utf-8",
+    )
+    metadata_path = tmp_path / "layout.csv"
+    metadata_path.write_text(
+        "Metadata_ImageName,batch_id,Object_Label\nplate,batch-a,1\n",
+        encoding="utf-8",
+    )
+
+    result = build_authored_setup_spec(
+        pipeline_or_spec_path=pipeline_path,
+        metadata_path=metadata_path,
+        metadata_groupby=["batch_id"],
+    )
+
+    assert result.is_valid
+    assert result.spec is not None
+    assert result.spec.scorer.check.groupby == ["Metadata_batch_id"]
 
 
 def test_write_authored_setup_spec_requires_metadata_file(tmp_path: Path):
@@ -98,7 +161,7 @@ def test_write_authored_setup_spec_preserves_existing_spec_search_space(
         scorer=QCScorer(
             check=ExpectedVsDetectedCount(
                 metadata=str(metadata_path),
-                groupby=["MetadataImage_ImageName"],
+                groupby=["Metadata_ImageName"],
             )
         ),
         evaluator=Evaluator(),
@@ -118,7 +181,7 @@ def test_write_authored_setup_spec_preserves_existing_spec_search_space(
     assert reloaded.search_space == original.search_space
     assert type(reloaded.scorer) is type(original.scorer)
     assert reloaded.scorer.check.metadata == str(metadata_path)
-    assert reloaded.scorer.check.groupby == ["MetadataImage_ImageName"]
+    assert reloaded.scorer.check.groupby == ["Metadata_ImageName"]
     assert reloaded.strategy == original.strategy
     assert reloaded.budget == original.budget
     assert reloaded.evaluator == original.evaluator
@@ -140,7 +203,7 @@ def test_existing_spec_replaces_scorer_only_when_requested(tmp_path: Path):
         scorer=QCScorer(
             check=ExpectedVsDetectedCount(
                 metadata=str(original_metadata),
-                groupby=["MetadataImage_ImageName"],
+                groupby=["Metadata_ImageName"],
             )
         ),
         evaluator=Evaluator(),

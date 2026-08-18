@@ -68,7 +68,9 @@ def main(output_dir: Path, checkpoint_type: str, epoch: str | None) -> None:
         try:
             with open(lock_path, "r") as fh:
                 with file_lock(
-                    fh, timeout=30.0 if epoch is not None else 1.0, shared=False
+                    fh,
+                    timeout=30.0 if epoch is not None else 1.0,
+                    shared=False,
                 ):
                     if epoch is not None:
                         from ._cli_staged_orchestration import (
@@ -88,7 +90,9 @@ def main(output_dir: Path, checkpoint_type: str, epoch: str | None) -> None:
                     return
         except FileLockTimeout:
             if epoch is None:
-                logger.info("Another task is handling %s -- skipping", checkpoint)
+                logger.info(
+                    "Another task is handling %s -- skipping", checkpoint
+                )
                 return
             from ._cli_staged_orchestration import (
                 load_orchestration_state,
@@ -98,9 +102,11 @@ def main(output_dir: Path, checkpoint_type: str, epoch: str | None) -> None:
             if staged_completion_matches(output_dir, epoch):
                 return
             state = load_orchestration_state(output_dir)
-            if state is None or state.get("epoch") != epoch or state.get(
-                "phase"
-            ) in {"failed", "cancelled"}:
+            if (
+                state is None
+                or state.get("epoch") != epoch
+                or state.get("phase") in {"failed", "cancelled"}
+            ):
                 raise RuntimeError(
                     "The authoritative staged finalizer ended without a "
                     "matching completion marker"
@@ -166,7 +172,9 @@ def _run_manifest(output_dir: Path, progress_dir: Path) -> None:
 
         state = load_processing_state(output_dir)
         process_only_layer = (
-            state.config.get("process_only_layer") if state is not None else None
+            state.config.get("process_only_layer")
+            if state is not None
+            else None
         )
         if process_only_layer:
             _publish_run_completion_marker(output_dir, slurm_generation)
@@ -228,9 +236,7 @@ def _run_finalize(
             progress_dir,
             inventory=dataset_inventory,
             total_expected=total_expected,
-            generation=job_metadata.get(
-                JobMetadataKey.PROCESSING_GENERATION
-            ),
+            generation=job_metadata.get(JobMetadataKey.PROCESSING_GENERATION),
             timeout=600,
         )
 
@@ -280,7 +286,9 @@ def _run_finalize(
             counts = current_success_counts(output_dir)
             if counts is None or counts[0] > 0:
                 raise RuntimeError(message)
-            logger.warning("%s; closing terminal-incomplete lifecycle", message)
+            logger.warning(
+                "%s; closing terminal-incomplete lifecycle", message
+            )
         else:
             logger.warning(message)
     _check_epoch()
@@ -338,9 +346,7 @@ def _run_finalize(
         else:
             mark_staged_complete(output_dir, epoch)
         if marker_completion is True:
-            publish_run_completion_evidence(
-                output_dir, execution_epoch=epoch
-            )
+            publish_run_completion_evidence(output_dir, execution_epoch=epoch)
     elif slurm_generation is not None:
         _publish_run_completion_marker(output_dir, slurm_generation)
 
@@ -353,7 +359,7 @@ def _publish_run_completion_marker(
 ) -> bool:
     """Publish and fence ordinary completion for the exact active generation."""
     from ._cli_slurm_lifecycle import (
-        deactivate_generation,
+        _deactivate_generation_locked,
         lifecycle_lock_path,
         load_slurm_lifecycle,
     )
@@ -361,7 +367,10 @@ def _publish_run_completion_marker(
     marker_path = run_completion_marker_path(output_dir)
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
         lifecycle = load_slurm_lifecycle(output_dir)
-        if lifecycle is None or lifecycle.get("generation") != slurm_generation:
+        if (
+            lifecycle is None
+            or lifecycle.get("generation") != slurm_generation
+        ):
             raise RuntimeError(
                 "Cannot publish completion for a stale SLURM generation"
             )
@@ -397,7 +406,9 @@ def _publish_run_completion_marker(
                     "Cannot publish legacy SLURM completion without a valid manifest"
                 ) from exc
             if not isinstance(manifest, dict):
-                raise RuntimeError("Final dashboard manifest is not a JSON object")
+                raise RuntimeError(
+                    "Final dashboard manifest is not a JSON object"
+                )
             completed = manifest.get(DashboardManifestKey.COMPLETED)
             failed = manifest.get(DashboardManifestKey.FAILED)
             total = manifest.get(DashboardManifestKey.TOTAL_IMAGES)
@@ -413,7 +424,7 @@ def _publish_run_completion_marker(
                 and completed == total
             )
         if not complete:
-            if not deactivate_generation(output_dir, slurm_generation):
+            if not _deactivate_generation_locked(output_dir, slurm_generation):
                 raise RuntimeError(
                     "Incomplete SLURM generation could not be closed"
                 )
@@ -427,7 +438,7 @@ def _publish_run_completion_marker(
             output_dir,
             execution_epoch=slurm_generation,
         )
-        if not deactivate_generation(output_dir, slurm_generation):
+        if not _deactivate_generation_locked(output_dir, slurm_generation):
             raise RuntimeError(
                 "SLURM completion marker was published but the generation "
                 "could not be deactivated"

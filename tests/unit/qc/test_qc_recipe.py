@@ -23,7 +23,7 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.measure import MeasureShape
 from phenotypic.sdk_._qc_recipe import QcRecipe, QcRecipeEntry
 from phenotypic.sdk_ import pipeline_json_path
-from phenotypic.schema import METADATA
+from phenotypic.schema import IMAGE
 
 
 def _seed_pipeline_json(output_dir: Path) -> Path:
@@ -50,7 +50,7 @@ def _seed_legacy_pipeline_json(output_dir: Path) -> Path:
 
 
 def _se_params() -> dict:
-    return {"on": "Size_Area", "groupby": [str(METADATA.IMAGE_NAME)]}
+    return {"on": "Size_Area", "groupby": [str(IMAGE.IMAGE_NAME)]}
 
 
 class TestScopedReadModifyWrite:
