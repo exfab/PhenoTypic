@@ -74,6 +74,12 @@ def test_service_module_does_not_import_gui(module: str) -> None:
     Parsed imports, not a source substring: a ``"phenotypic.gui" not in source``
     check matches prose in a docstring (several of these modules explain *why*
     they must not import the GUI) and misses ``from phenotypic import gui``.
+
+    The imported *names* are collected too, not just the module the ``from``
+    names. Without them ``from phenotypic import gui`` yields only
+    ``"phenotypic"`` and slips through — an aliased reach that the equivalent
+    check in ``test_argv_promotion.py`` has always caught, making this gate the
+    weaker of the two until it was fixed.
     """
     import ast
     import importlib
@@ -86,13 +92,25 @@ def test_service_module_does_not_import_gui(module: str) -> None:
             imported.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
             imported.append(node.module)
+            imported.extend(f"{node.module}.{alias.name}" for alias in node.names)
 
     reached = {
         name for name in imported
         if name == "phenotypic.gui" or name.startswith("phenotypic.gui.")
     }
+    # An allowlist entry names a *module*, so it covers the names imported from
+    # it: `from x._classifier import classify` reaches both "x._classifier" and
+    # "x._classifier.classify", and listing every symbol separately would make
+    # the allowlist grow on changes that reach nothing new.
     allowed = GUI_IMPORT_ALLOWLIST.get(module, set())
-    assert reached <= allowed, (
-        f"{module} imports {sorted(reached - allowed)} from phenotypic.gui; "
+    offenders = sorted(
+        name
+        for name in reached
+        if not any(
+            name == entry or name.startswith(f"{entry}.") for entry in allowed
+        )
+    )
+    assert not offenders, (
+        f"{module} imports {offenders} from phenotypic.gui; "
         "promote the dependency or add an explicit allowlist entry explaining why"
     )
