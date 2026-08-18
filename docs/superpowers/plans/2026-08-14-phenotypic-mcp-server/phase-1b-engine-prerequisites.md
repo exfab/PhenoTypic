@@ -16,10 +16,125 @@ the existing suite.
 
 **Depends on:** Phase 1a complete and its exit gate green.
 
-**Tasks 10–14 (P3), 15 (P4), 16 (P5), 17 (P6), and 18 (P7) are mutually
-independent** and may be executed in parallel by separate agents. Only Task 14
-and Task 17 touch each other (the selector classes the staging layer consumes),
-so run 14 before 17 if they are split across agents.
+**These tasks are NOT mutually independent** — an earlier draft of this header
+claimed they were, and it was wrong in three ways. `15`, `16` and `18` all edit
+`tune/_tune_cli/_run.py`; `14` edits the same literal `10a` lifts; `11` needs
+`10`'s reconciliation and `12` extends the file `11` creates. The real shape is
+two chains — `10 → 11 → 12` and `10 → 14 → 17` — plus the `_run.py` group. See
+[execution.md](execution.md) for the clustering built from the corrected DAG.
+
+---
+
+## MANDATORY CORRECTIONS — read before executing any task below
+
+A plan review found defects in the task bodies of this document. **Where a task
+below conflicts with this section, this section wins.** Each was verified against
+the code; see [review-findings.md](review-findings.md) for the evidence.
+
+### Task 10 splits into 10a / 10b / 10c (B5)
+
+The task as written **cannot pass its own tests**, for three separate reasons:
+
+1. `discover()` (`_services/registry.py`) is **not** eight symmetric module walks.
+   It is seven `(module, category, base_class)` triples through
+   `_discover_from_module`, filtered `issubclass(obj, base_class)` where
+   `base_class: Type[ImageOperation]` — **plus** `analysis` through a separate
+   `_discover_analyzers` walking the `SetAnalyzer` hierarchy. The new modules fit
+   neither: `FilamentousFungiPipeline(PrefabPipeline)` is not an `ImageOperation`,
+   and the scorers are on the scorer hierarchy. Adding module names to a list
+   therefore discovers **nothing**, and all three test assertions fail.
+2. **`detect.nn` stays invisible regardless.** `_discover_from_module` uses
+   `inspect.getmembers(module, inspect.isclass)`, which reads `dir(module)`.
+   `detect/nn/__init__.py` is a module-level `__getattr__` lazy loader **with no
+   `__dir__`**, so `MicroSamDetector` is in `__all__` but never in the module dict
+   until touched. It needs an `__all__`-driven getattr walk — and then the
+   per-module `try/except ImportError` the task proposes sits at the wrong level,
+   because the failure lands at *getattr* time inside the heavy imports.
+3. **The proposed tuple reorders `detect.nn`**, three lines after instructing the
+   implementer to preserve order because resolution is first-match. The real order
+   is `detect, measure, enhance, refine, grid, correction, analysis, prefab, post,
+   detect.nn, tune, tune.score, tune.strategy`. **Copy it from the file, not from
+   the task body.**
+
+Execute as three tasks:
+
+| | Scope | Test |
+|---|---|---|
+| **10a** | Lift the `submodules` literal to `PHENOTYPIC_CLASS_MODULES`; both consumers read it. **Zero behaviour change.** | `test_one_shared_module_list` only |
+| **10b** | Give prefabs, scorers and strategies their category + base class so `discover()` can actually find them | `test_registry_reaches_prefabs...`, `test_scorers_and_strategies...` |
+| **10c** | `__all__`-driven getattr walk so lazy modules (`detect.nn`) are discoverable; guard at getattr level | the `MicroSamDetector` assertion |
+
+10a is the cheap one and unblocks Task 14. **Do not start 10b/10c until 10a is committed** — it is the only part with no behavioural risk.
+
+### Task 15: the tests do not match `run_tuning`, and the guard is misplaced (B9)
+
+- `run_tuning(spec, images, output_dir, *, ...)` — **`images` is a required
+  positional.** All three tests omit it, so they raise `TypeError` instead of
+  exercising the assertion under test. Add it.
+- `--slurm` additionally requires `spec_path` and `images_dir`
+  (`_validate_slurm_request`), and there is an `assert effective_storage_url is not None`
+  before the branch. A test that gets past the guard must satisfy those.
+- `test_screen_alone_still_works` as written runs a **real local tuning study**.
+  That is not a unit test; stub the engine.
+- **Placement:** the task raises immediately before `if slurm:`, but
+  `_write_run_marker` has already run by then, so a *refused* run leaves artifacts
+  behind. Put the guard in `_validate_slurm_request` — whose own docstring says
+  "Reject unsupported SLURM combinations **before any run artifact is written**" —
+  and give it a `screen: bool` parameter.
+
+### Task 16: pick one merge point (B4), and the CLI is argparse (B3)
+
+The task's Step 3 says to merge the four legacy flags **inside**
+`_submit_slurm_fleet`, while `test_legacy_flags_still_work` asserts the merge
+already happened **above** that boundary. Both cannot hold.
+
+**Decided:** merge in `run_tuning`; `_submit_slurm_fleet` takes one `slurm_args`
+dict, deleting its four `slurm_*` parameters and the `if ... is not None` chain.
+This changes `run_tuning`'s signature and its call site — say so in the commit.
+
+**Also (B3, decided by the user):** the tune CLI is **argparse, not Click** —
+there is no `cli` object, so every `CliRunner().invoke(...)` in the task is
+unrunnable; rewrite against `main([...])` / `_build_parser().parse_args(...)`.
+`--slurm` becomes `action="append"` with presence implying submission, matching
+`python -m phenotypic`. **A bare `--slurm` must keep working and keep meaning
+"submit"** — it ships today as a boolean and scripts rely on it. Wrap
+`parse_slurm_args`' `click.BadParameter` into `parser.error(...)`.
+
+**Edit `src/phenotypic/_services/argv.py`, not `gui/tune/_run_argv.py`** — Task 8
+already promoted the tune argv builder, and the GUI path is now a 15-line shim.
+
+### Task 18: re-load the calibration images (B7), and one test cannot fail (I4)
+
+`_finalize_generalization` takes `(winner, spec, output_dir, split, images,
+images_by_name)` — the last three being **loaded `GridImage` objects**.
+`finalize_distributed_study(output_dir)` has none of them. **Decided:** re-load
+them; the run marker records what is needed to re-scan. Dropping the step would
+leave `generalization.json` unwritten and make the held-out `gap` permanently
+null for every distributed study, which §8.3 relies on to detect an arm that won
+by overfitting.
+
+Also: `order.index(...) == 2` passes **even if step 4 is silently dropped** — add
+`assert len(order) == 4`. And note `_finalize_pareto_outputs` **does** have a test
+call site (`tests/unit/tune/test_run_tuning_pareto.py`), contrary to the task's
+claim, so moving the functions breaks it.
+
+### Task 14: one test cannot fail for its stated reason (I1a)
+
+`test_expected_vs_detected_keeps_its_shipped_field_name` asserts that
+`ExpectedVsDetectedCount(expected_counts_csv="x.csv")` raises. It does — but for
+**missing required `metadata`**, and it would still raise if someone added
+`expected_counts_csv` as an alias, which is the exact change the test claims to
+guard. Replace with:
+
+```python
+assert "expected_counts_csv" not in ExpectedVsDetectedCount.model_fields
+assert "metadata" in ExpectedVsDetectedCount.model_fields
+```
+
+### Task 13: the directory is `tests/unit/sdk_`, with a trailing underscore
+
+Mirrors `src/phenotypic/sdk_`. `tests/unit/sdk` does not exist.
+
 
 ---
 
