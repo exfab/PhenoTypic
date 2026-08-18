@@ -67,12 +67,14 @@ Every task's requirements implicitly include this section.
     that may be interned, assert the *structure*: the name arrives by an
     `ImportFrom` of the canonical module and is bound by no module-level
     `Assign`/`AnnAssign`/`def`/`class`.
-- **Check mypy by diffing, not by counting.** The absolute error count is not
-  stable on this tree — a byte-identical `src/` has produced both
-  `421 errors in 125 files` and `420 errors in 124 files` across runs (mypy's
-  incremental cache). Compare stashed-vs-current output, ignoring line order and
-  internal typevar ids. A count comparison will both miss real regressions and
-  raise false ones.
+- **Check mypy by diffing, not by counting.** Compare stashed-vs-current output,
+  ignoring line order and internal typevar ids. (Instability was suspected —
+  `421 errors in 125 files` and `420 errors in 124 files` were both observed —
+  but C2's gate then got 421/125 on three runs including a cold cache, and
+  diffed a rebuilt pre-cluster tree to 421/125 with only six typevar-id lines
+  differing. The discrepancy is more likely a differing tree state than mypy
+  nondeterminism. Diffing is still the right method: it is unaffected either
+  way, and a count comparison tells you nothing about *which* diagnostic moved.)
 - **Vendored reference sources under `docs/superpowers/specs/*/refs/` are
   read-only.** Never lint, format, or fix them.
 - **Cost convention:** every tuning score is a cost in `[0, 1]`, lower is better,
