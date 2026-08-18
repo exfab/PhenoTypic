@@ -269,6 +269,14 @@ enforces this for ruff, but the rule binds regardless of the tool.
   the old `phenotypic.sdk_.measurement_info` path was removed.
   `MeasurementInfo.get_labels()` returns unprefixed names; `get_headers()` returns the
   prefixed column names used in DataFrames.
+- **Metadata queries use schema ownership, never string prefixes:** determine whether a
+  header or label is metadata, and which metadata type owns it, with
+  `metadata_member_for_header()`, `metadata_owner_for_header()`,
+  `metadata_member_for_label()`, or `metadata_owner_for_label()`. When working with
+  schema classes directly, check `MetadataInfo` inheritance. Do not use
+  `startswith("Metadata_")`, prefix splitting, category-name comparisons, or other
+  serialized-string parsing as a semantic metadata check. String handling belongs only
+  in the centralized compatibility and canonicalization helpers.
 - **Authoring `MeasurementInfo` members:** members are declared with
   `Entry(label, desc, *, bio_desc="", image=None)` (the `Entry` value type in
   `phenotypic.schema`). When adding a new member or editing one, only author/edit
