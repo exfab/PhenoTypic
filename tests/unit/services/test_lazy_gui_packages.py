@@ -28,20 +28,13 @@ print(",".join(sorted(m for m in {forbidden!r} if m in sys.modules)))
         "phenotypic.gui.shell._sandbox",
         "phenotypic.gui.shell._classifier",
         "phenotypic.gui.shell._runs_registry",
-        pytest.param(
-            "phenotypic.gui.tune._space",
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason=(
-                    "_space.py:33-34 imports dash itself, not via its package "
-                    "__init__, so making the package lazy cannot fix it. "
-                    "Task 6 splits the module into a pure half "
-                    "(_services/tune_spec) and a Dash half (_space_view). "
-                    "strict=True means this XPASSes -> FAILS the moment Task 6 "
-                    "lands, forcing this marker to be removed rather than rot."
-                ),
-            ),
-        ),
+        # Was an xfail(strict=True) until Task 6: _space.py used to import dash
+        # itself at :33-34, which no package-__init__ laziness could fix. The
+        # split moved the pure half to _services/tune_spec and the Dash half to
+        # ._space_view, which the shim resolves through PEP 562 __getattr__ --
+        # so importing ._space is now genuinely dash-free and the marker is gone
+        # rather than rotting into a permanent expected failure.
+        "phenotypic.gui.tune._space",
         "phenotypic.gui.tune._run_argv",
     ],
 )
