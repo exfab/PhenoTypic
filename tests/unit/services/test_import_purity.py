@@ -120,9 +120,6 @@ def test_service_module_does_not_import_gui(module: str) -> None:
     check in ``test_argv_promotion.py`` has always caught, making this gate the
     weaker of the two until it was fixed.
     """
-    import ast
-    import importlib
-    import inspect
 
     reached = gui_modules_reached(module)
     # An allowlist entry names a *module*, so it covers the names imported from
