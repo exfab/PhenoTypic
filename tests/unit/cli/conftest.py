@@ -127,3 +127,67 @@ def make_output_manager() -> Callable[..., OutputManager]:
         )
 
     return _build
+
+
+@pytest.fixture
+def array_script_kwargs(tmp_path: Path) -> Dict[str, Any]:
+    """Minimal valid call for ``build_array_script_spec`` / ``generate_array_job_script``.
+
+    Supplies every argument except ``output_dir``, so a caller can render the
+    same chunk twice against the same output directory:
+
+        build_array_script_spec(output_dir=out, **array_script_kwargs)
+        generate_array_job_script(output_dir=out, **array_script_kwargs)
+
+    Mirrors ``generate_array_job_script``'s signature at
+    ``_cli_slurm_array_scripts.py`` -- ``dataset``, ``array_indices``,
+    ``config``, ``chunk_id``, ``checkpoint_interval``, ``is_last_chunk``.
+    """
+    from phenotypic._cli._cli_types import Dataset
+
+    src = tmp_path / "array_src"
+    src.mkdir()
+    images = []
+    for i in range(4):
+        img_path = src / f"image_{i:03d}.tif"
+        img_path.touch()
+        images.append(img_path)
+
+    pipeline_json = tmp_path / "array_pipeline.json"
+    pipeline_json.write_text('{"operations": []}')
+
+    dataset = Dataset(
+        name="array_dataset",
+        images=images,
+        input_dir=src,
+        output_dir=tmp_path / "array_out",
+    )
+    config = ExecutionConfig(
+        pipeline_json=pipeline_json,
+        input_path=src,
+        output_dir=tmp_path / "array_out",
+        image_type="GridImage",
+        nrows=8,
+        ncols=12,
+        bit_depth=None,
+        n_jobs=-1,
+        slurm_args={"slurm_partition": "short", "mem_gb": 16, "time": 60},
+        force_local=False,
+        wait=False,
+        ext=".tiff",
+        overlay_alpha=0.3,
+        include_dataset_column=False,
+        dry_run=False,
+        sample=None,
+        resume=False,
+        retry_failures=False,
+        skip_validation=False,
+    )
+    return {
+        "dataset": dataset,
+        "array_indices": (0, 4),
+        "config": config,
+        "chunk_id": 0,
+        "checkpoint_interval": 2,
+        "is_last_chunk": False,
+    }
