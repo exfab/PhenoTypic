@@ -135,6 +135,17 @@ nothing at all. Consequences adopted:
 
 - **Agents write progress to a committed file**, not only to messages. A file in
   the repo cannot be stranded; `C2-PROGRESS.md` is the first use.
+
+  **Correction (2026-08-18):** the orchestrator concluded mid-cluster that its
+  replies to C2 were not arriving, and said so. That was **wrong**. C2 received
+  all four. What actually happened is a timing artifact: two approvals were
+  delivered together, immediately *after* C2 had written its "still blocked"
+  report — so every report was composed before the corresponding reply landed,
+  which from the sender's side is indistinguishable from replies vanishing.
+  Diagnose a delivery failure from the *receiver's* account, not from the
+  pattern of your own outbox. The file channel is still worth keeping, but for
+  a different reason than the one claimed: it let C2 confirm the decision had
+  not changed between reading and acting.
 - **Require an acknowledgment as the agent's first action**, so "working" is
   distinguishable from "never started" within minutes rather than hours.
 - **Idle ≠ finished.** Poll the tree (`git log`, target files, recent mtimes)
