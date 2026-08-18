@@ -50,6 +50,9 @@ dual reader.
     Considered and deferred; parquet remains the only measurement surface.
 11. **Conformance is validated against the published NGFF JSON schemas via
     `jsonschema`**, not via `ome-zarr-models`.
+12. **Windows is a supported CLI platform for staged runs** (§3.8).
+13. **`fsync` before promote is on under SLURM and off locally**, logged at run
+    start and overridable with `--durable-writes` (§3.7).
 
 ### Supersessions
 
@@ -205,13 +208,20 @@ level-0 pixel (script claim C5).
   collapses per-channel chunks into one file, verified empirically.
 - Codec `zstd`, replacing `gzip-4`.
 
-**Write-buffer cost.** A shard is the write-buffer unit. The `rgb` case is
-`3 × 4096 × 4096 × 2 B` = **96 MB**; the worst case is a float64 `detect_mat` at
-**128 MB**, which sits exactly on the budget the validation script asserts.
-Against the project's memory-discipline rule this is acceptable for a single
-writer but MUST be accounted for when sizing `--njobs`: peak resident memory
-scales as `njobs × 128 MB`. Narrowing `detect_mat` to float32 would halve it and
-is worth considering (OQ10).
+**Chunk key encoding** uses the `"."` separator, so a chunk key is one path
+segment (`c.0.0.0`) rather than four nested directories. NGFF 0.5 permits all
+Zarr features including chunk key encodings unless it explicitly disallows them.
+This is a Windows path-length measure (§3.8) and MUST be uniform store-wide.
+
+**Write-buffer cost is not a constraint.** A shard is the write-buffer unit:
+`3 × 4096 × 4096 × 2 B` = 96 MB for `rgb`, and 128 MB worst-case for a float64
+`detect_mat`. That is measured against a per-worker **processing** peak of up to
+**24 GB** — Stage 1 workers run `imread` plus the whole pre-pipeline, Stage 3
+runs post-ops and measurement, and the transient allocations there dominate
+everything this design adds. The shard buffer is ~0.5% of that peak and the
+resident layers ~1.2%, so **`--njobs` sizing is governed by processing, exactly
+as it is today, and this change does not move it.** The figures are recorded
+only so a future reader does not have to re-derive them.
 
 **File counts, verified**, against a baseline of exactly 1 HDF file:
 
@@ -391,10 +401,10 @@ Used by every publishing stage (Stage 1, single-pass, and Stage 3):
    store that *validates*. Today's `.{pid}.part` makes duplicate execution
    benign; this restores that property with a stronger identifier than a
    reusable PID.
-2. Write all arrays and chunks; `fsync` each file and the `.part` directory.
-3. Write `OME/zarr.json`, then the root `zarr.json` **last**, then `fsync`
-   again. The root carries `work_id`, `series`, and `labels`, so an interrupted
-   store has no valid root and reads as absent.
+2. Write all arrays and chunks; `fsync` per §3.7.
+3. Write `OME/zarr.json`, then the root `zarr.json` **last**. The root carries
+   `work_id`, `series`, and `labels`, so an interrupted store has no valid root
+   and reads as absent.
 4. If the target exists, `os.replace` it to `.<stem>.ome.zarr.<uuid>.trash`;
    then `os.replace(part, final)`; then `rmtree` the trash.
 
@@ -492,9 +502,65 @@ being the sole writer of the label array between promotes, and resume state
 living outside the store. Concurrent readers during Stage 2 may observe a torn
 `objmap`; the completion marker, not the store's shape, is what gates consumers.
 
-Durability: `fsync` before promote (§3.2) makes the ordering guarantee a
-durability guarantee rather than a syscall-order one. Without it a node crash
-can land the root `zarr.json` before chunk data.
+**Durability is environment-dependent.** `write()` returns once data is in the
+page cache; without `fsync` the kernel may flush the root `zarr.json` **before**
+the chunk data it describes, so a node crash can leave a store that passes
+`valid_staged_store` — metadata parses, shapes agree — while reading
+`fill_value`. Silent wrong data, not a visible failure. Strengthening validation
+does not help: it checks metadata and shapes, never chunk contents, and
+checksums would cost a full read of everything just written.
+
+The dominant failure mode does not need `fsync`. A SLURM timeout kills the
+*process*; the kernel survives and flushes normally. `fsync` buys protection
+only against node loss, power failure, and filesystem crash.
+
+The promote therefore **`fsync`s under SLURM and not locally**, detected from
+`SLURM_CPUS_PER_TASK` / `SLURM_JOB_ID` exactly as `resolve_worker_count`
+([`_cli_utils.py:65`](../../../../src/phenotypic/_cli/_cli_utils.py)) already
+does. Because this makes the same command carry different guarantees in
+different places — a genuinely surprising thing to debug — two mitigations are
+required, not optional:
+
+- the resolved mode is **logged at run start** ("durable writes: on (SLURM)");
+- `--durable-writes / --no-durable-writes` overrides the detection explicitly.
+
+On POSIX this means `fsync` on each chunk file and on the `.part` directory. On
+Windows the directory `fsync` is skipped (§3.8).
+
+### 3.8 Windows
+
+Windows is a supported CLI platform for staged runs, and it is already exercised
+by the `tests-windows-full` lane
+([`run-pytest-full.yml:129`](../../../../.github/workflows/run-pytest-full.yml)).
+Moving from one file per image to ~40 changes six things:
+
+1. **No directory `fsync`.** Windows cannot open a directory handle for
+   flushing. §3.7's per-file `fsync` applies; the directory step is
+   POSIX-guarded, and Windows relies on NTFS journaling for the rest.
+2. **The move-aside can fail while files are open.** Windows refuses to rename a
+   directory when any file inside it is held open (`ERROR_SHARING_VIOLATION`) —
+   a running GUI, an antivirus scan, or the search indexer will do it. The
+   exposure is ~40× the single `.h5`. The promote wraps steps 4a/4b in
+   retry-with-backoff, reusing the shape of `_open_hdf_with_recovery`
+   ([`hdf_.py:34`](../../../../src/phenotypic/sdk_/hdf_.py)), which already does
+   exactly this for HDF lock conflicts.
+3. **The two-step move-aside is mandatory, not defensive.** `MoveFileEx`'s
+   `MOVEFILE_REPLACE_EXISTING` cannot name a directory, so there is no
+   single-call replace to fall back to on Windows.
+4. **`MAX_PATH`.** Zarr's default nested chunk keys plus an output root, dataset
+   name, and image stem can exceed 260 characters. Mitigated twice: the `"."`
+   chunk-key separator (§1.4) makes a chunk key one path segment instead of
+   four, and store paths are `\\?\`-prefixed on Windows.
+5. **NTFS is case-insensitive.** The store's path segments (`OME`, `rgb`,
+   `gray`, `detect_mat`, `objmap`, `labels`) contain no case-only collisions.
+   Asserted by test rather than left to inspection.
+6. **Per-file overhead.** Windows Defender scans each newly created file; 40
+   files × 10k images is 400k scans. Documented, not mitigated.
+
+Because Windows runs nightly rather than per-PR, a Windows-specific promote
+regression surfaces a day late. The commit-protocol tests (§7) should therefore
+run in the PR lane on Linux and the nightly lane on Windows, and the spec accepts
+the latency rather than promoting the whole Windows suite.
 
 ---
 
@@ -745,25 +811,27 @@ design and each refutation is retained as a regression assertion.
 - Adopting NGFF 0.6. Its `scene` layout is structurally this directory tree, so
   migration will mean adding a `scene` object to the root, not moving arrays.
 
-## 9. Open questions
+## 9. Resolved questions
 
-**OQ6 — Should the `<3.13` ceiling move?** It is `mahotas`' missing cp313 wheel,
-not zarr. Independent of this design, but this is the first spec to name the
-cause and the decision is now visible.
+Recorded rather than deleted, so the reasoning survives.
 
-**OQ7 — Windows support level.** §3.2 works on Windows only because the
-move-aside makes the target nonexistent, and the move-aside itself fails if any
-of ~40 files is held open. Is Windows a supported CLI platform for staged runs,
-or notebook-only?
+| | Question | Resolution |
+|---|---|---|
+| OQ1 | `bioformats2raw.layout` is transitional | **Accept the sunset.** The 0.6 `scene` layout is structurally this directory tree, so migration rewrites the root `zarr.json`, not the arrays. |
+| OQ2 | Cost of dropping Python 3.10 | **None.** Floor moves to 3.11. |
+| OQ3 | Inode count acceptable? | **Yes, with a knob.** `--pyramid-levels` makes the cost linear at 8 files/level; 1 level is 16 files/image, auto is 40. |
+| OQ4 | Path layout | **Confirmed** as `results/<dataset>/zarr/<stem>.ome.zarr/`. |
+| OQ5 | Migration ergonomics | **`--mode migrate`**, local-only with `--njobs`, absorbing the metadata-schema migration; a legacy-only output root fails with a pointer rather than auto-migrating. |
+| OQ6 | Move the `<3.13` ceiling? | **No.** Keep `mahotas`; the cap stays and its cause is now documented (§6). |
+| OQ7 | Windows support level | **Supported for staged runs.** Six consequences specified in §3.8. |
+| OQ8 | `fsync` before promote | **On under SLURM, off locally**, with explicit logging and a `--durable-writes` override (§3.7). |
+| OQ9 | `image-label.colors` at scale | **Acceptable.** ~60 KB for a 1536-colony plate; always emitted (§2.3). |
+| OQ10 | Shard buffer vs `--njobs` | **Not a constraint.** Per-worker processing peaks at ~24 GB; the shard buffer is ~0.5% of that. `--njobs` sizing is unchanged by this design (§1.4). |
 
-**OQ8 — Is `fsync`-before-promote worth its cost on HPC scratch?** §3.2
-specifies it. On Lustre this is a real per-image latency; the alternative is
-accepting process-crash-only safety and losing the guarantee on node failure.
+## 10. Open questions
 
-**OQ9 — `image-label.colors` at scale.** ~60 KB of JSON for a 1536-colony plate,
-regenerated on every promote. Acceptable, or should the store emit `image-label`
-only below a label-count threshold and accept schema non-conformance above it?
-
-**OQ10 — Shard write buffer vs `--njobs`.** Peak memory is
-`njobs × ~100 MB`. Should `--njobs` be capped automatically from available
-memory, or is documenting the relationship sufficient?
+None blocking. One adjacent observation, recorded but out of scope: `detect_mat`
+as float64 accounts for 96 MB of the resident image and 128 MB of the worst-case
+shard buffer. Narrowing it to float32 would halve both. That is a change to the
+`Image` data model with accuracy implications well beyond storage, and belongs in
+its own design.
