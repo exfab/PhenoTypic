@@ -317,7 +317,16 @@ enforces this for ruff, but the rule binds regardless of the tool.
   [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md).
 - **Metadata startup snapshot:** full runs and recompile copy a configured
   `--metadata` CSV byte-for-byte to `deliverables/metadata.csv` before local
-  work or SLURM submission. Treat that file as immutable input provenance:
-  normalize legacy headers only in memory, and never rewrite it from
-  finalization or metadata-schema migration. Generated scientific tables still
-  emit only the canonical flat `Metadata_<Label>` namespace.
+  work or SLURM submission. Treat that file as input provenance: **never rewrite
+  it as a side effect** of any other operation. Finalization, chunk writers, and
+  `--mode recompile` normalize legacy headers **only in memory**.
+  The sole exception is `--mode migrate`, which the user invokes explicitly to
+  convert a run: it rewrites `deliverables/metadata.csv` with canonical headers
+  and MUST first copy the untouched bytes to `deliverables/metadata.original.csv`
+  so the supplied input stays recoverable. No other code path may write either
+  file. Generated scientific tables still emit only the canonical flat
+  `Metadata_<Label>` namespace.
+  (`--mode migrate` is specified in
+  `docs/superpowers/specs/2026-08-18-ome-zarr-image-store/design.md`; until that
+  lands, the exception has no implementation and the rule is simply "never
+  rewrite".)

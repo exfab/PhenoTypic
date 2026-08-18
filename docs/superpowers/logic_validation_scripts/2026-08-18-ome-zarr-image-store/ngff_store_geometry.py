@@ -2,7 +2,7 @@
 """Re-derive the store-geometry claims behind the OME-Zarr image store (§1).
 
 The design replaces one HDF5 file per image with an OME-Zarr *directory* store.
-Two numeric claims drove design decisions and must not be taken on faith:
+These numeric claims drove design decisions and must not be taken on faith:
 
   C1  PYRAMID LEVEL COUNT. Levels halve until ``max(H, W) <= 512``. The count is
       ``ceil(log2(max(H, W) / 512)) + 1`` for images larger than the stop size,
@@ -18,10 +18,13 @@ Two numeric claims drove design decisions and must not be taken on faith:
       number of scale levels as its parent image. Because ``objmap`` shares the
       parent's (y, x) extent, C1 yields parity automatically — no special case.
 
-  C3  SHARD/CHUNK DIVISIBILITY. The Zarr v3 sharding codec requires the shard
-      shape to be an exact multiple of the chunk shape in every dimension. The
-      proposed 4096 shard over a 1024 chunk satisfies this; the script asserts
-      it rather than trusting the arithmetic by eye.
+  C3  SHARD/CHUNK DIVISIBILITY AND BUFFER SIZE. The Zarr v3 sharding codec
+      requires the shard shape to be an exact multiple of the chunk shape in
+      EVERY dimension -- including the channel axis, which is the load-bearing
+      part of the claim that a shard spanning all channels collapses the
+      per-channel chunks of ``rgb`` into a single file. A shard is also the
+      write-buffer unit, so its byte size bounds peak memory per writer; the
+      spec's --njobs guidance depends on that figure.
 
   C4  FILE COUNT. This is the claim that decided sharding, and the one an early
       draft got WRONG. The draft quoted "~15-20 files per image sharded" by
@@ -91,10 +94,16 @@ def level_count(height: int, width: int, stop_px: int = STOP_PX) -> int:
     return int(math.ceil(math.log2(longest / stop_px))) + 1
 
 
-def level_shapes(height: int, width: int) -> list[tuple[int, int]]:
-    """Explicit (h, w) per level, halving with ceil, as the writer will."""
+def level_shapes(
+    height: int, width: int, levels: int | None = None
+) -> list[tuple[int, int]]:
+    """Explicit (h, w) per level, halving with ceil, as the writer will.
+
+    ``levels=None`` uses the automatic count; an explicit value models the
+    ``--pyramid-levels N`` override.
+    """
     shapes = [(height, width)]
-    for _ in range(level_count(height, width) - 1):
+    for _ in range((levels or level_count(height, width)) - 1):
         h, w = shapes[-1]
         shapes.append((max(1, (h + 1) // 2), max(1, (w + 1) // 2)))
     return shapes
@@ -142,17 +151,43 @@ def _check_pyramid() -> None:
 # ---------------------------------------------------------------------------
 
 
+#: Peak per-writer buffer budget. Exceeding this makes ``--njobs N`` cost
+#: N x SHARD_BUDGET_MB and collides with the project's memory-discipline rule.
+SHARD_BUDGET_MB = 128
+
+
 def _check_divisibility() -> None:
-    print("\nC3 -- Zarr v3 sharding: shard shape must be a multiple of chunk shape")
+    print("\nC3 -- Zarr v3 sharding: divisibility in EVERY dimension, and buffer size")
+
+    # rgb is the only multi-channel array: chunk (1, 1024, 1024) in a
+    # (3, 4096, 4096) shard. The channel axis is what collapses 3 files into 1.
+    for name, n_c in IMAGE_LAYERS + LABEL_LAYERS:
+        chunk = (1, CHUNK_YX, CHUNK_YX) if n_c > 1 else (CHUNK_YX, CHUNK_YX)
+        shard = (n_c, SHARD_YX, SHARD_YX) if n_c > 1 else (SHARD_YX, SHARD_YX)
+        divides = all(s % c == 0 for s, c in zip(shard, chunk))
+        check(
+            f"{name}: shard {shard} divisible by chunk {chunk} in every dim",
+            divides,
+            f"per-dim ratios={tuple(s // c for s, c in zip(shard, chunk))}",
+        )
+
     check(
-        f"shard {SHARD_YX} is an exact multiple of chunk {CHUNK_YX}",
-        SHARD_YX % CHUNK_YX == 0,
-        f"ratio={SHARD_YX / CHUNK_YX}",
-    )
-    check(
-        "ratio is an integer >= 2 (sharding actually groups chunks)",
-        SHARD_YX // CHUNK_YX >= 2,
+        "chunks-per-shard edge ratio is an integer >= 2",
+        SHARD_YX % CHUNK_YX == 0 and SHARD_YX // CHUNK_YX >= 2,
         f"{SHARD_YX // CHUNK_YX} chunks per shard edge",
+    )
+
+    # Buffer size. uint16 is the widest dtype the design stores (rgb 16-bit,
+    # objmap uint16); detect_mat is float32/64 but single-channel.
+    worst = max(
+        n_c * SHARD_YX * SHARD_YX * np.dtype(dt).itemsize
+        for n_c, dt in ((3, np.uint16), (1, np.float64))
+    )
+    worst_mb = worst / 1024**2
+    check(
+        f"worst-case shard buffer stays within {SHARD_BUDGET_MB} MB",
+        worst_mb <= SHARD_BUDGET_MB,
+        f"{worst_mb:.0f} MB per writer -- peak memory is njobs x this",
     )
 
 
@@ -161,11 +196,14 @@ def _check_divisibility() -> None:
 # ---------------------------------------------------------------------------
 
 
-def data_files(height: int, width: int, n_channels: int, *, sharded: bool) -> int:
+def data_files(
+    height: int, width: int, n_channels: int, *, sharded: bool,
+    levels: int | None = None,
+) -> int:
     """Chunk (or shard) file count for one array across all pyramid levels."""
     grid = SHARD_YX if sharded else CHUNK_YX
     total = 0
-    for h, w in level_shapes(height, width):
+    for h, w in level_shapes(height, width, levels):
         tiles = math.ceil(h / grid) * math.ceil(w / grid)
         # rgb chunks are (1, y, x): one chunk per channel. A shard spanning the
         # full channel axis collapses those back into a single file.
@@ -173,9 +211,9 @@ def data_files(height: int, width: int, n_channels: int, *, sharded: bool) -> in
     return total
 
 
-def metadata_files(height: int, width: int) -> int:
+def metadata_files(height: int, width: int, levels: int | None = None) -> int:
     """``zarr.json`` count -- one per group, one per array level, plus OME-XML."""
-    n = level_count(height, width)
+    n = levels or level_count(height, width)
     count = 1  # root zarr.json
     count += 1  # OME/zarr.json
     count += 1  # OME/METADATA.ome.xml
@@ -185,13 +223,15 @@ def metadata_files(height: int, width: int) -> int:
     return count
 
 
-def store_files(height: int, width: int, *, sharded: bool) -> tuple[int, int]:
+def store_files(
+    height: int, width: int, *, sharded: bool, levels: int | None = None
+) -> tuple[int, int]:
     """(data_files, metadata_files) for a whole per-image store."""
     data = sum(
-        data_files(height, width, c, sharded=sharded)
+        data_files(height, width, c, sharded=sharded, levels=levels)
         for _, c in IMAGE_LAYERS + LABEL_LAYERS
     )
-    return data, metadata_files(height, width)
+    return data, metadata_files(height, width, levels)
 
 
 def _check_file_counts() -> None:
@@ -239,6 +279,39 @@ def _check_file_counts() -> None:
         f"actual={sd + sm}; the draft counted {sd} data files and omitted "
         f"{sm} zarr.json/OME-XML files",
     )
+
+
+# ---------------------------------------------------------------------------
+# C6 -- --pyramid-levels is a linear knob
+# ---------------------------------------------------------------------------
+
+
+def _check_tunable_levels() -> None:
+    """Each extra pyramid level costs a constant number of files."""
+    print("\nC6 -- --pyramid-levels N: marginal cost per level (sharded)")
+    for label, h, w in PLATES:
+        auto = level_count(h, w)
+        totals = []
+        for n in range(1, auto + 1):
+            d, m = store_files(h, w, sharded=True, levels=n)
+            totals.append(d + m)
+        deltas = {b - a for a, b in zip(totals, totals[1:])}
+        print(f"    {label:<28} auto={auto}  totals={totals}")
+        check(
+            f"{label}: cost per additional level is constant",
+            len(deltas) == 1,
+            f"deltas={sorted(deltas)}",
+        )
+        check(
+            f"{label}: that constant is 8 files/level (spec figure)",
+            deltas == {8},
+            f"deltas={sorted(deltas)}",
+        )
+        check(
+            f"{label}: --pyramid-levels 1 is the cheapest setting",
+            totals[0] == min(totals),
+            f"1 level = {totals[0]} files vs auto = {totals[-1]}",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -297,6 +370,7 @@ def main() -> NoReturn:
     _check_pyramid()
     _check_divisibility()
     _check_file_counts()
+    _check_tunable_levels()
     _check_label_downsampling()
 
     print()
