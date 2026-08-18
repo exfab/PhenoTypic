@@ -80,6 +80,32 @@ GUI_IMPORT_ALLOWLIST: dict[str, set[str]] = {
 }
 
 
+def gui_modules_reached(module: str) -> set[str]:
+    """Every ``phenotypic.gui`` name a module's parsed imports reach.
+
+    Shared by the subset gate below and the per-entry equality pin, so the two
+    cannot drift into disagreeing about what "reaches" means.
+    """
+    import ast
+    import importlib
+    import inspect
+
+    tree = ast.parse(inspect.getsource(importlib.import_module(module)))
+    imported: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            imported.append(node.module)
+            imported.extend(f"{node.module}.{alias.name}" for alias in node.names)
+
+    return {
+        name
+        for name in imported
+        if name == "phenotypic.gui" or name.startswith("phenotypic.gui.")
+    }
+
+
 @pytest.mark.parametrize("module", _service_modules())
 def test_service_module_does_not_import_gui(module: str) -> None:
     """No ``_services`` module may import ``phenotypic.gui`` off-allowlist.
@@ -98,19 +124,7 @@ def test_service_module_does_not_import_gui(module: str) -> None:
     import importlib
     import inspect
 
-    tree = ast.parse(inspect.getsource(importlib.import_module(module)))
-    imported: list[str] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            imported.extend(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
-            imported.append(node.module)
-            imported.extend(f"{node.module}.{alias.name}" for alias in node.names)
-
-    reached = {
-        name for name in imported
-        if name == "phenotypic.gui" or name.startswith("phenotypic.gui.")
-    }
+    reached = gui_modules_reached(module)
     # An allowlist entry names a *module*, so it covers the names imported from
     # it: `from x._classifier import classify` reaches both "x._classifier" and
     # "x._classifier.classify", and listing every symbol separately would make
@@ -126,4 +140,42 @@ def test_service_module_does_not_import_gui(module: str) -> None:
     assert not offenders, (
         f"{module} imports {offenders} from phenotypic.gui; "
         "promote the dependency or add an explicit allowlist entry explaining why"
+    )
+
+
+@pytest.mark.parametrize("module", sorted(GUI_IMPORT_ALLOWLIST))
+def test_allowlist_entry_matches_what_the_module_actually_reaches(module: str) -> None:
+    """Every allowlist entry is pinned by EQUALITY, not subset.
+
+    The gate above is subset-only: it catches a module reaching something
+    un-allowlisted, but not an entry that has been *widened*, gone stale, or
+    grown. Without this, editing one line of ``GUI_IMPORT_ALLOWLIST`` — say to
+    ``{"phenotypic.gui"}`` — dissolves the boundary for that module and nothing
+    fails. An allowlist nobody checks is a comment.
+
+    Equality also makes a stale entry fail: if the import it excused is removed,
+    the entry must be removed with it, so the allowlist can only shrink toward
+    zero rather than accumulating dead permissions.
+    """
+    reached = gui_modules_reached(module)
+    allowed = GUI_IMPORT_ALLOWLIST[module]
+
+    covered = {
+        name
+        for name in reached
+        if any(name == entry or name.startswith(f"{entry}.") for entry in allowed)
+    }
+    assert covered == reached, f"{module} reaches un-allowlisted {sorted(reached - covered)}"
+
+    # Each entry must ITSELF be a name the module reaches. This is what forbids
+    # a widened entry: allowlisting "phenotypic.gui" would satisfy the coverage
+    # check above while dissolving the boundary entirely, but "phenotypic.gui"
+    # is not itself imported — only "phenotypic.gui.shell._classifier" is. It
+    # also kills a stale entry, whose excused import no longer exists.
+    assert allowed <= reached, (
+        f"{module}'s allowlist entries {sorted(allowed - reached)} are not "
+        "imports this module actually makes. Either the entry is broader than "
+        "the real dependency (which would excuse everything beneath it), or it "
+        "is stale and the import it covered is gone. Every entry is TEMPORARY "
+        "and must name exactly what it excuses."
     )
