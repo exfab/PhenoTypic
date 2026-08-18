@@ -117,15 +117,28 @@ can fail" step was actually run with the failure observed.
 
 ## Dispatch record
 
-| Cluster | Agent | Status | Reviewer verdict |
+| Cluster | Agent | Status | Gate verdict |
 |---|---|---|---|
-| plan review | `plan-reviewer` | **ABANDONED — unresponsive.** Dispatched 2026-08-14; two status pings accepted into its inbox, no reply, no completion notification across ~2 days. Its seven-area brief was **folded into C1's post-cluster reviewer** rather than dropped. | — |
-| C1 | `C1-promotion` (Opus) | dispatched 2026-08-16 | — |
-| C2 | — | pending | — |
-| C3 | — | pending | — |
-| C4 | — | pending | — |
-| C5 | — | pending | — |
-| C6 | — | pending | — |
+| plan review | `plan-reviewer` | **DONE** — silent for ~3 days, delivered only when asked directly | 9 blockers, 8 improvements; all folded in |
+| **C1** (T1,2,2.5,3,4,5,8) | `C1-promotion` (Opus) | **COMPLETE & MERGED** — 7 commits, `af0c8596e`..`1292a946b` | `C1-gate-review`: 3 blockers, all fixed in `3d7a4f16a` |
+| **C2** (T6,7) | `C2-space-split-v2` (Opus) | dispatched 2026-08-18 (v1 produced nothing and never replied) | — |
+| C3 (T9) | — | pending; B8 fixed so it is dispatchable | — |
+| C4 (T10a,10b,10c,11,12) | — | pending; B5 splits T10 into three | — |
+| C5 (T13,14,17) | — | pending; must follow C4 | — |
+| C6 (T15,16,18) | — | pending; B3/B4/B7/B9 resolved in phase-1b corrections | — |
 
-Update this table as clusters complete — it is the phase's execution state, and
-the next dispatcher reads it rather than reconstructing intent from git log.
+## Agent-reliability notes (earned the hard way)
+
+Three of five agents this session failed to deliver through the message channel:
+two completed real work and went silent until asked directly; one produced
+nothing at all. Consequences adopted:
+
+- **Agents write progress to a committed file**, not only to messages. A file in
+  the repo cannot be stranded; `C2-PROGRESS.md` is the first use.
+- **Require an acknowledgment as the agent's first action**, so "working" is
+  distinguishable from "never started" within minutes rather than hours.
+- **Idle ≠ finished.** Poll the tree (`git log`, target files, recent mtimes)
+  rather than trusting an idle notification.
+- **Never run two implementation agents in one working tree.** They share a git
+  index; incident X1 was exactly this, and a second occurrence would not
+  necessarily be cosmetic.
