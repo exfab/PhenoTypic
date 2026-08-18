@@ -1413,7 +1413,6 @@ class RunRegistry:
 
 # Re-export Iterable so type-checker sees it; import lifted to module
 # scope to avoid the ``del`` shenanigans elsewhere.
-_ = Iterable
 
 
 #: Maximum lines retained in the in-memory ring buffer per run. Beyond this
